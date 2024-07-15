@@ -26,7 +26,7 @@ class SimpCityCrawler(Crawler):
         self.title_trash_selector = "a"
         self.posts_selector = "div[class*=message-main]"
         self.post_date_selector = "time"
-        self.post_date_attribute = "data-time"
+        self.post_date_attribute = "data-timestamp"
         self.posts_number_selector = "li[class=u-concealed] a"
         self.posts_number_attribute = "href"
         self.quotes_selector = "blockquote"
