@@ -245,7 +245,7 @@ async def check_latest_pypi():
     import urllib.request
 
     # retrieve info on latest version
-    contents = urllib.request.urlopen('https://pypi.org/pypi/cyberdrop-dl/json').read()
+    contents = urllib.request.urlopen('https://pypi.org/pypi/cyberdrop-dl-patched/json').read()
     data = json.loads(contents)
     latest_version = data['info']['version']
 
