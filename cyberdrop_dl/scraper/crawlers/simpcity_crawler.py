@@ -19,7 +19,6 @@ class SimpCityCrawler(Crawler):
     def __init__(self, manager: Manager):
         super().__init__(manager, "simpcity", "SimpCity")
         self.primary_base_domain = URL("https://simpcity.su")
-        self.logged_in = False
         self.request_limiter = AsyncLimiter(10, 1)
 
         self.title_selector = "h1[class=p-title-value]"
@@ -53,19 +52,7 @@ class SimpCityCrawler(Crawler):
         """Determines where to send the scrape item based on the url"""
         task_id = await self.scraping_progress.add_task(scrape_item.url)
 
-        if not self.logged_in:
-            login_url = self.primary_base_domain / "login"
-            session_cookie = self.manager.config_manager.authentication_data['Forums']['simpcity_xf_user_cookie']
-            username = self.manager.config_manager.authentication_data['Forums']['simpcity_username']
-            password = self.manager.config_manager.authentication_data['Forums']['simpcity_password']
-            wait_time = 5
-
-            await self.forum_login(login_url, session_cookie, username, password, wait_time)
-
-        if self.logged_in:
-            await self.forum(scrape_item)
-        else:
-            await log("SimpCity login failed. Skipping.", 40)
+        await self.forum(scrape_item)
 
         await self.scraping_progress.remove_task(task_id)
 
