@@ -19,7 +19,7 @@ bunkr, bunkrr, celebforum, coomer, cyberdrop, cyberfile, e-hentai, erome, fapell
 
 ## Installation and More Information
 
-Read the [Wiki!](https://jules-winnfieldx.gitbook.io/cyberdrop-dl/)
+Read the [Wiki!](https://script-ware.gitbook.io/cyberdrop-dl)
 
 You can find how to install the program and how to use it there. You can also find a list of supported hosts, and frequently asked questions.
 
