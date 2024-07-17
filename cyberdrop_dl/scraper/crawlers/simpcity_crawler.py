@@ -22,7 +22,7 @@ class SimpCityCrawler(Crawler):
         self.request_limiter = AsyncLimiter(10, 1)
 
         self.title_selector = "h1[class=p-title-value]"
-        self.title_trash_selector = "a"
+        self.title_trash_selector = "span"
         self.posts_selector = "div[class*=message-main]"
         self.post_date_selector = "time"
         self.post_date_attribute = "data-timestamp"
