@@ -15,6 +15,8 @@ from aiohttp import ClientSession
 
 from cyberdrop_dl.clients.errors import DownloadFailure, InvalidContentTypeFailure
 from cyberdrop_dl.utils.utilities import FILE_FORMATS, log
+from cyberdrop_dl.managers.hash_manager import Hasher
+
 
 if TYPE_CHECKING:
     from typing import Callable, Coroutine, Any
@@ -22,7 +24,6 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.client_manager import ClientManager
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem
-    from cyberdrop_dl.managers.hash_manager import Hasher
 
 
 async def is_4xx_client_error(status_code: int) -> bool:

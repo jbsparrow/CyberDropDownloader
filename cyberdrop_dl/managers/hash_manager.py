@@ -13,7 +13,7 @@ class Hasher:
                     filedata = fp.read(CHUNK_SIZE)
               return file_hash.digest()
     @property
-    def hasher():
+    def hasher(self):
       try:
           import xxhash
           return xxhash.xxh128
