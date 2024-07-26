@@ -303,8 +303,5 @@ class DownloadClient:
         await self.remove_with_hash(media_item,hash)
     async def mark_hash(self,domain, media_item,hash):
         await self.manager.db_manager.history_table.mark_hash(domain, media_item,hash)
-    async def remove_with_hash(self,media_item,hash):
-        if self.manager.db_manager.history_table.check_hash_exists(hash):
-            Path(media_item.complete_file).unlink()
     
     

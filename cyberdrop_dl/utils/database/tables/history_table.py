@@ -139,7 +139,6 @@ class HistoryTable:
         sql_file_check = await result.fetchone()
         return sql_file_check[1] == 1
 
-
     async def get_downloaded_filename(self, domain: str, media_item: MediaItem) -> str:
         """Returns the downloaded filename from the database"""
         domain = await get_db_domain(domain)
