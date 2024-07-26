@@ -168,7 +168,13 @@ class HistoryTable:
         for entry in bunkr_entries:
             entry = list(entry)
             entry[0] = "bunkrr"
-            await self.db_conn.execute("""INSERT or REPLACE INTO media VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", entry)
+            result=await self.db_conn.execute(
+                "SELECT CASE WHEN EXISTS (SELECT 1 FROM PRAGMA_TABLE_INFO('media') WHERE name = 'hash') THEN 1 ELSE 0 END AS hash;"
+            )
+            if (await result.fetchone())[0]:
+                await self.db_conn.execute("""INSERT or REPLACE INTO media VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)""", entry)
+            else:
+                await self.db_conn.execute("""INSERT INTO media VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,?)""", entry)
         await self.db_conn.commit()
 
         await self.db_conn.execute("""DELETE FROM media WHERE domain = 'bunkr'""")
