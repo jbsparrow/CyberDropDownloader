@@ -166,8 +166,8 @@ class DownloadClient:
         downloaded = await self._download(domain, manager, media_item, save_content)
         if downloaded:
             media_item.partial_file.rename(media_item.complete_file)
-            hash=Hasher().hash_file(media_item.complete_file)
-            await self.mark_completed(media_item,hash, domain)
+            await self.mark_completed(media_item,domain)
+            await self.check_hash(media_item, domain)
         return downloaded
         
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -297,3 +297,7 @@ class DownloadClient:
             if max_other_filesize and media.filesize > max_other_filesize:
                 return False
         return True
+    async def check_hash(self,media_item,domain):
+        hash=Hasher().hash_file(media_item.complete_file)
+        await self.manager.db_manager.history_table.mark_hash(domain, media_item,hash)
+    

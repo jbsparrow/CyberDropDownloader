@@ -116,8 +116,16 @@ class HistoryTable:
         domain = await get_db_domain(domain)
         url_path = await get_db_path(media_item.url, str(media_item.referer))
         await self.db_conn.execute("""UPDATE media SET completed = 1, completed_at = CURRENT_TIMESTAMP WHERE domain = ? and url_path = ?""",
-                                   (domain, url_path))
+        (domain, url_path))
         await self.db_conn.commit()
+    async def mark_hash(self, domain: str, media_item: MediaItem,hash:str):
+        """add hash """
+        domain = await get_db_domain(domain)
+        url_path = await get_db_path(media_item.url, str(media_item.referer))
+        await self.db_conn.execute("""UPDATE media SET hash= ? WHERE domain = ? and url_path = ?""",
+        (hash,domain, url_path,))
+        await self.db_conn.commit()
+   
 
     async def check_filename_exists(self, filename: str) -> bool:
         """Checks whether a downloaded filename exists in the database"""
@@ -194,4 +202,8 @@ class HistoryTable:
 
         if "completed_at" not in current_cols:
             await self.db_conn.execute("""ALTER TABLE media ADD COLUMN completed_at TIMESTAMP""")
+            await self.db_conn.commit()
+
+        if "hash" not in current_cols:
+            await self.db_conn.execute("""ALTER TABLE media ADD COLUMN hash TEXT""")
             await self.db_conn.commit()

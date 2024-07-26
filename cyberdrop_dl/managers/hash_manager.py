@@ -11,7 +11,7 @@ class Hasher:
               while filedata:
                     file_hash.update(filedata)
                     filedata = fp.read(CHUNK_SIZE)
-              return file_hash.digest()
+              return file_hash.hexdigest()
     @property
     def hasher(self):
       try:
