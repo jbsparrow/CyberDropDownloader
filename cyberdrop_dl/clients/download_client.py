@@ -215,10 +215,6 @@ class DownloadClient:
             if not media_item.complete_file.exists() and not media_item.partial_file.exists():
                 break
 
-            if media_item.complete_file.exists() and self.remove_with_hash(media_item):
-                proceed=True
-                break
-
             if media_item.complete_file.exists() and media_item.complete_file.stat().st_size == media_item.filesize:
                 proceed = False
                 break

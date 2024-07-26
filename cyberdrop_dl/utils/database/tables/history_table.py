@@ -94,7 +94,7 @@ class HistoryTable:
         result = await cursor.execute("""SELECT completed FROM media WHERE domain = ? and referer = ?""", (domain, str(referer)))
         sql_file_check = await result.fetchone()
         return sql_file_check and sql_file_check[0] != 0
-
+    
     async def insert_incompleted(self, domain: str, media_item: MediaItem) -> None:
         """Inserts an uncompleted file into the database"""
         domain = await get_db_domain(domain)
@@ -137,7 +137,7 @@ class HistoryTable:
         cursor = await self.db_conn.cursor()
         result = await cursor.execute("""SELECT EXISTS(SELECT 1 FROM media WHERE hash = ?)""", (hash,))
         sql_file_check = await result.fetchone()
-        return sql_file_check == 1
+        return sql_file_check[1] == 1
 
 
     async def get_downloaded_filename(self, domain: str, media_item: MediaItem) -> str:
