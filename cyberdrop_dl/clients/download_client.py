@@ -300,7 +300,6 @@ class DownloadClient:
     async def process_hash(self, domain, media_item):
         hash=Hasher().hash_file(media_item.complete_file)
         await self.mark_hash(domain, media_item,hash)
-        await self.remove_with_hash(media_item,hash)
     async def mark_hash(self,domain, media_item,hash):
         await self.manager.db_manager.history_table.mark_hash(domain, media_item,hash)
     
