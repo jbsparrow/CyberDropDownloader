@@ -167,7 +167,7 @@ class DownloadClient:
         if downloaded:
             media_item.partial_file.rename(media_item.complete_file)
             await self.mark_completed(media_item,domain)
-            await self.check_hash(media_item, domain)
+            await self.process_hash(media_item, domain)
         return downloaded
         
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -213,6 +213,10 @@ class DownloadClient:
                     return proceed, skip
 
             if not media_item.complete_file.exists() and not media_item.partial_file.exists():
+                break
+
+            if media_item.complete_file.exists() and self.remove_with_hash(media_item):
+                proceed=True
                 break
 
             if media_item.complete_file.exists() and media_item.complete_file.stat().st_size == media_item.filesize:
@@ -297,7 +301,14 @@ class DownloadClient:
             if max_other_filesize and media.filesize > max_other_filesize:
                 return False
         return True
-    async def check_hash(self,media_item,domain):
+    async def process_hash(self, domain, media_item):
         hash=Hasher().hash_file(media_item.complete_file)
+        await self.mark_hash(domain, media_item,hash)
+        await self.remove_with_hash(media_item,hash)
+    async def mark_hash(self,domain, media_item,hash):
         await self.manager.db_manager.history_table.mark_hash(domain, media_item,hash)
+    async def remove_with_hash(self,media_item,hash):
+        if self.manager.db_manager.history_table.check_hash_exists(hash):
+            Path(media_item.complete_file).unlink()
+    
     

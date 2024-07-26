@@ -133,6 +133,12 @@ class HistoryTable:
         result = await cursor.execute("""SELECT EXISTS(SELECT 1 FROM media WHERE download_filename = ?)""", (filename,))
         sql_file_check = await result.fetchone()
         return sql_file_check == 1
+    async def check_hash_exists(self, hash: str) -> bool:
+        cursor = await self.db_conn.cursor()
+        result = await cursor.execute("""SELECT EXISTS(SELECT 1 FROM media WHERE hash = ?)""", (hash,))
+        sql_file_check = await result.fetchone()
+        return sql_file_check == 1
+
 
     async def get_downloaded_filename(self, domain: str, media_item: MediaItem) -> str:
         """Returns the downloaded filename from the database"""
