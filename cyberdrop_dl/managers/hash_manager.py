@@ -3,9 +3,9 @@ class Hasher:
     def __init__(self):
         pass
     
-    def hash_file(filename):
+    def hash_file(self,filename):
         file_hash = self.hasher()
-        with self.path.open("rb") as fp:
+        with open(filename,"rb") as fp:
               CHUNK_SIZE = 1024 * 1024  # 1 mb
               filedata = fp.read(CHUNK_SIZE)
               while filedata:
@@ -14,7 +14,6 @@ class Hasher:
               return file_hash.digest()
     @property
     def hasher():
-      hasher: Callable
       try:
           import xxhash
           return xxhash.xxh128

@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.client_manager import ClientManager
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem
+    from cyberdrop_dl.managers.hash_manager import Hasher
 
 
 async def is_4xx_client_error(status_code: int) -> bool:
@@ -164,8 +165,8 @@ class DownloadClient:
         downloaded = await self._download(domain, manager, media_item, save_content)
         if downloaded:
             media_item.partial_file.rename(media_item.complete_file)
-            hash=self.hasher.getfilehash(media_item.complete_file)
-            await self.mark_completed(media_item, domain)
+            hash=Hasher().hash_file(media_item.complete_file)
+            await self.mark_completed(media_item,hash, domain)
         return downloaded
         
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
