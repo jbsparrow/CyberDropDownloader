@@ -14,6 +14,7 @@ from cyberdrop_dl.clients.download_client import DownloadClient
 from cyberdrop_dl.clients.errors import DownloadFailure, DDOSGuardFailure, ScrapeFailure
 from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.utils.utilities import CustomHTTPStatus
+from cyberdrop_dl.managers.token_bucket_manager import TokenBucket
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -54,6 +55,7 @@ class ClientManager:
 
         self.scraper_session = ScraperClient(self)
         self.downloader_session = DownloadClient(manager, self)
+        self._token_bucket=TokenBucket(32*1024,32*1024)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -116,3 +118,8 @@ class ClientManager:
             raise DownloadFailure(status=CustomHTTPStatus.IM_A_TEAPOT, message="No content-type in response header")
 
         raise DownloadFailure(status=status, message=f"HTTP status code {status}: {phrase}")
+    
+    async def check_bucket(self,size):
+        if not isinstance(size, int):
+            size=len(size)
+        await self._token_bucket.consume(size)
