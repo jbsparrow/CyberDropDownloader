@@ -121,6 +121,8 @@ class ClientManager:
         raise DownloadFailure(status=status, message=f"HTTP status code {status}: {phrase}")
     
     async def check_bucket(self,size):
+        if self.download_speed_limit<1024:
+            return 
         if not isinstance(size, int):
             size=len(size)
         await  self._leaky_bucket.acquire(size)
