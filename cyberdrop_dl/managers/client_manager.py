@@ -27,6 +27,8 @@ class ClientManager:
         self.connection_timeout = manager.config_manager.global_settings_data['Rate_Limiting_Options']['connection_timeout']
         self.read_timeout = manager.config_manager.global_settings_data['Rate_Limiting_Options']['read_timeout']
         self.rate_limit = manager.config_manager.global_settings_data['Rate_Limiting_Options']['rate_limit']
+        self.download_speed_limit = manager.config_manager.global_settings_data['Rate_Limiting_Options']['download_speed_limit']
+
         self.download_delay = manager.config_manager.global_settings_data['Rate_Limiting_Options']['download_delay']
         self.user_agent = manager.config_manager.global_settings_data['General']['user_agent']
         self.verify_ssl = not manager.config_manager.global_settings_data['General']['allow_insecure_connections']
@@ -54,7 +56,7 @@ class ClientManager:
 
         self.scraper_session = ScraperClient(self)
         self.downloader_session = DownloadClient(manager, self)
-        self._leaky_bucket=AsyncLimiter(32*1024,1)
+        self._leaky_bucket=AsyncLimiter(self.download_speed_limit,1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
