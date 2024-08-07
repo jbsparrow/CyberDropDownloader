@@ -54,7 +54,7 @@ class ClientManager:
 
         self.scraper_session = ScraperClient(self)
         self.downloader_session = DownloadClient(manager, self)
-        self._token_bucket=AsyncLimiter(32*1024,1)
+        self._leaky_bucket=AsyncLimiter(32*1024,1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -121,4 +121,4 @@ class ClientManager:
     async def check_bucket(self,size):
         if not isinstance(size, int):
             size=len(size)
-        await  self._token_bucket.acquire(size)
+        await  self._leaky_bucket.acquire(size)
