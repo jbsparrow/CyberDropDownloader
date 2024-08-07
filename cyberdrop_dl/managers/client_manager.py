@@ -55,7 +55,7 @@ class ClientManager:
 
         self.scraper_session = ScraperClient(self)
         self.downloader_session = DownloadClient(manager, self)
-        self._token_bucket=TokenBucket(32*1024,32*1024)
+        self._token_bucket=TokenBucket(1024*1024,1024*1024)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
