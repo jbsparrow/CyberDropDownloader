@@ -56,7 +56,7 @@ class ClientManager:
 
         self.scraper_session = ScraperClient(self)
         self.downloader_session = DownloadClient(manager, self)
-        self._leaky_bucket=AsyncLimiter(self.download_speed_limit,1)
+        self._leaky_bucket=AsyncLimiter(max(self.download_speed_limit,1024) if self.download_speed_limit else self.download_speed_limit,1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -121,7 +121,7 @@ class ClientManager:
         raise DownloadFailure(status=status, message=f"HTTP status code {status}: {phrase}")
     
     async def check_bucket(self,size):
-        if self.download_speed_limit<1024:
+        if self.download_speed_limit<=0:
             return 
         if not isinstance(size, int):
             size=len(size)
