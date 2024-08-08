@@ -1,4 +1,7 @@
 from aiolimiter import AsyncLimiter
+import  asyncio
+from aiolimiter.compat import wait_for
+
 
 class LeakyBucket( AsyncLimiter):
     def __init__(self,manager):
@@ -10,7 +13,25 @@ class LeakyBucket( AsyncLimiter):
             return
         if not isinstance(amount, int):
             amount=len(amount)
-        await super().acquire(amount)
+        loop = asyncio.get_running_loop()
+        task = asyncio.current_task(loop)
+        assert task is not None
+        while not self.has_capacity(amount):
+            # wait for the next drip to have left the bucket
+            # add a future to the _waiters map to be notified
+            # 'early' if capacity has come up
+            fut = loop.create_future()
+            self._waiters[task] = fut
+            try:
+                await wait_for(
+                    asyncio.shield(fut), 1 / self._rate_per_sec * amount, loop=loop
+                )
+            except asyncio.TimeoutError:
+                pass
+            fut.cancel()
+        self._waiters.pop(task, None)
+        self._level += amount
+        return None  
     def has_capacity(self, amount: float = 1) -> bool:
         """Check if there is enough capacity remaining in the limiter
 
