@@ -6,3 +6,6 @@
 
 # Python cache
 __pycache__
+#venv
+.venv
+venv

@@ -103,7 +103,10 @@ class SimpCityCrawler(Crawler):
                 scrape_post, continue_scraping = await self.check_post_number(post_number, current_post_number)
 
                 if scrape_post:
-                    date = int(post.select_one(self.post_date_selector).get(self.post_date_attribute))
+                    try:
+                        date = int(post.select_one(self.post_date_selector).get(self.post_date_attribute))
+                    except:
+                        pass
                     new_scrape_item = await self.create_scrape_item(scrape_item, thread_url, title, False, None, date)
 
                     # for elem in post.find_all(self.quotes_selector):

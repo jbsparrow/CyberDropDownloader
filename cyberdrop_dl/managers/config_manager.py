@@ -160,6 +160,9 @@ class ConfigManager:
             self.global_settings_data['Rate_Limiting_Options']['max_simultaneous_downloads_per_domain'])
         self.global_settings_data['Rate_Limiting_Options']['rate_limit'] = int(
             self.global_settings_data['Rate_Limiting_Options']['rate_limit'])
+        
+        self.global_settings_data['Rate_Limiting_Options']['download_speed_limit'] = int(
+            self.global_settings_data['Rate_Limiting_Options']['download_speed_limit'])
         self.global_settings_data['Rate_Limiting_Options']['read_timeout'] = int(
             self.global_settings_data['Rate_Limiting_Options']['read_timeout'])
 

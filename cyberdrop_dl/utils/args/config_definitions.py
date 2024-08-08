@@ -131,6 +131,7 @@ global_settings: Dict = {
         "download_delay": 0.5,
         "max_simultaneous_downloads": 15,
         "max_simultaneous_downloads_per_domain": 5,
+        "download_speed_limit":0
     },
     "UI_Options": {
         "vi_mode": False,
