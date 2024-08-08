@@ -162,7 +162,7 @@ def edit_rate_limiting_settings_prompt(manager: Manager) -> None:
     ).execute()
 
     download_speed_limit = inquirer.number(
-        message="Maximum download speed per second in bytes",
+        message="Maximum download speed per second in kb",
         default=int(manager.config_manager.global_settings_data['Rate_Limiting_Options']['download_speed_limit']),
         float_allowed=False,
         vi_mode=manager.vi_mode,
