@@ -15,5 +15,27 @@
             "python":"/home/john/src/CyberDropDownloader/.venv/bin/python3.11",
        
         },  
+
+        {
+            "name": "simpcity",
+            "type": "python",
+            "request": "launch",
+            "program": "/home/john/src/CyberDropDownloader/.venv/bin/cyberdrop-dl",
+            "args": ["--ignore-history","--download","https://simpcity.su/threads/twintwitcherz-jessicatalystic-low_ad_988-linneas_life_-linneas_feet.8265/page-6"],
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "python":"/home/john/src/CyberDropDownloader/.venv/bin/python3.11",
+        },
+
+        {
+            "name": "simpcity shadow",
+            "type": "python",
+            "request": "launch",
+            "program": "/home/john/src/CyberDropDownloader/.venv/bin/cyberdrop-dl",
+            "args": ["--ignore-history","--download","https://simpcity.su/threads/shadowifey.100509"],
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "python":"/home/john/src/CyberDropDownloader/.venv/bin/python3.11",
+        },
     ]
 }

@@ -142,7 +142,7 @@ class DownloadClient:
         if not media_item.partial_file.is_file():
             media_item.partial_file.touch()
         async with aiofiles.open(media_item.partial_file, mode='ab') as f:
-            async for chunk in content.iter_chunked(1024):
+            async for chunk,_ in content.iter_chunks():
                 await self.client_manager.check_bucket(chunk)
                 await asyncio.sleep(0)
                 await f.write(chunk)
