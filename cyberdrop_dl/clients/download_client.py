@@ -161,10 +161,10 @@ class DownloadClient:
         
         async def save_content(content: aiohttp.StreamReader) -> None:
             await self._append_content(media_item, content, partial(manager.progress_manager.file_progress.advance_file, media_item.task_id))
+
         downloaded = await self._download(domain, manager, media_item, save_content)
         if downloaded:
             media_item.partial_file.rename(media_item.complete_file)
-            hash=self.hasher.getfilehash(media_item.complete_file)
             await self.mark_completed(media_item, domain)
         return downloaded
         
