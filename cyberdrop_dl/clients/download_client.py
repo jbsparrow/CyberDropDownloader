@@ -38,7 +38,7 @@ async def is_4xx_client_error(status_code: int) -> bool:
 def limiter(func):
     """Wrapper handles limits for download session
 
-    :param func: 
+    :param func:
 
     """
 
