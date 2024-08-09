@@ -51,10 +51,11 @@ def limiter(func):
 
 class DownloadClient:
     """AIOHTTP operations for downloading"""
+
     def __init__(self, manager: Manager, client_manager: ClientManager):
         self.manager = manager
         self.client_manager = client_manager
-        
+
         self._headers = {"user-agent": client_manager.user_agent}
         self._timeouts = aiohttp.ClientTimeout(total=client_manager.read_timeout + client_manager.connection_timeout,
                                                connect=client_manager.connection_timeout)
@@ -89,10 +90,11 @@ class DownloadClient:
         downloaded_filename = await self.manager.db_manager.history_table.get_downloaded_filename(domain, media_item)
         download_dir = await self.get_download_dir(media_item)
         media_item.partial_file = download_dir / f"{downloaded_filename}.part"
-        
+
         resume_point = 0
         if isinstance(media_item.partial_file, Path) and media_item.partial_file.exists():
-            resume_point = media_item.partial_file.stat().st_size if media_item.partial_file.exists() else 0
+            resume_point = media_item.partial_file.stat(
+            ).st_size if media_item.partial_file.exists() else 0
             headers['Range'] = f'bytes={resume_point}-'
 
         await asyncio.sleep(self.client_manager.download_delay)
@@ -101,10 +103,10 @@ class DownloadClient:
                                       proxy=self.client_manager.proxy) as resp:
             if resp.status == HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE:
                 media_item.partial_file.unlink()
-                
+
             await self.client_manager.check_http_status(resp, download=True)
             content_type = resp.headers.get('Content-Type')
-            
+
             media_item.filesize = int(resp.headers.get('Content-Length', '0'))
             if not isinstance(media_item.complete_file, Path):
                 proceed, skip = await self.get_final_file_info(media_item, domain)
@@ -117,14 +119,15 @@ class DownloadClient:
                     await self.manager.progress_manager.download_progress.add_previously_completed(False)
                     await self.mark_completed(media_item, domain)
                     return False
-            
+
             ext = Path(media_item.filename).suffix.lower()
             if content_type and any(s in content_type.lower() for s in ('html', 'text')) and ext not in FILE_FORMATS['Text']:
-                raise InvalidContentTypeFailure(message=f"Received {content_type}, was expecting other")
+                raise InvalidContentTypeFailure(
+                    message=f"Received {content_type}, was expecting other")
 
             if resp.status != HTTPStatus.PARTIAL_CONTENT and media_item.partial_file.is_file():
                 media_item.partial_file.unlink()
-                
+
             media_item.task_id = await self.manager.progress_manager.file_progress.add_task(f"({domain.upper()}) {media_item.filename}", media_item.filesize + resume_point)
             if media_item.partial_file.is_file():
                 resume_point = media_item.partial_file.stat().st_size
@@ -136,7 +139,8 @@ class DownloadClient:
     async def _append_content(self, media_item, content: aiohttp.StreamReader, update_progress: partial) -> None:
         """Appends content to a file"""
         if not await self.client_manager.manager.download_manager.check_free_space():
-            raise DownloadFailure(status="No Free Space", message="Not enough free space")
+            raise DownloadFailure(status="No Free Space",
+                                  message="Not enough free space")
 
         media_item.partial_file.parent.mkdir(parents=True, exist_ok=True)
         if not media_item.partial_file.is_file():
@@ -148,7 +152,8 @@ class DownloadClient:
                 await update_progress(len(chunk))
         if not content.total_bytes and not media_item.partial_file.stat().st_size:
             media_item.partial_file.unlink()
-            raise DownloadFailure(status=HTTPStatus.INTERNAL_SERVER_ERROR, message="File is empty")
+            raise DownloadFailure(
+                status=HTTPStatus.INTERNAL_SERVER_ERROR, message="File is empty")
 
     async def download_file(self, manager: Manager, domain: str, media_item: MediaItem) -> bool:
         """Starts a file"""
@@ -158,7 +163,7 @@ class DownloadClient:
             await self.mark_incomplete(media_item, domain)
             await self.mark_completed(media_item, domain)
             return False
-        
+
         async def save_content(content: aiohttp.StreamReader) -> None:
             await self._append_content(media_item, content, partial(manager.progress_manager.file_progress.advance_file, media_item.task_id))
 
@@ -167,9 +172,9 @@ class DownloadClient:
             media_item.partial_file.rename(media_item.complete_file)
             await self.mark_completed(media_item, domain)
         return downloaded
-        
+
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-    
+
     async def mark_incomplete(self, media_item: MediaItem, domain: str) -> None:
         """Marks the media item as incomplete in the database"""
         await self.manager.db_manager.history_table.insert_incompleted(domain, media_item)
@@ -177,9 +182,9 @@ class DownloadClient:
     async def mark_completed(self, media_item: MediaItem, domain: str) -> None:
         """Marks the media item as completed in the database"""
         await self.manager.db_manager.history_table.mark_complete(domain, media_item)
-    
+
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-    
+
     async def get_download_dir(self, media_item: MediaItem) -> Path:
         """Returns the download directory for the media item"""
         download_folder = media_item.download_folder
@@ -191,14 +196,16 @@ class DownloadClient:
                 download_folder = download_folder.parent
             media_item.download_folder = download_folder
         return download_folder
-    
+
     async def get_final_file_info(self, media_item: MediaItem, domain: str) -> tuple[bool, bool]:
         """Complicated checker for if a file already exists, and was already downloaded"""
         download_dir = await self.get_download_dir(media_item)
         media_item.complete_file = download_dir / media_item.filename
-        media_item.partial_file = media_item.complete_file.with_suffix(media_item.complete_file.suffix + '.part')
-        
-        expected_size = media_item.filesize if isinstance(media_item.filesize, int) else None
+        media_item.partial_file = media_item.complete_file.with_suffix(
+            media_item.complete_file.suffix + '.part')
+
+        expected_size = media_item.filesize if isinstance(
+            media_item.filesize, int) else None
         proceed = True
         skip = False
         while True:
@@ -229,14 +236,16 @@ class DownloadClient:
                     if media_item.partial_file.stat().st_size == media_item.filesize:
                         if media_item.complete_file.exists():
                             new_complete_filename, new_partial_file = await self.iterate_filename(media_item.complete_file, media_item)
-                            media_item.partial_file.rename(new_complete_filename)
+                            media_item.partial_file.rename(
+                                new_complete_filename)
                             proceed = False
 
                             media_item.complete_file = new_complete_filename
                             media_item.partial_file = new_partial_file
                         else:
                             proceed = False
-                            media_item.partial_file.rename(media_item.complete_file)
+                            media_item.partial_file.rename(
+                                media_item.complete_file)
                 elif media_item.complete_file.exists():
                     if media_item.complete_file.stat().st_size == media_item.filesize:
                         proceed = False
@@ -257,18 +266,25 @@ class DownloadClient:
             if not temp_complete_file.exists() and not await self.manager.db_manager.history_table.check_filename_exists(filename):
                 media_item.filename = filename
                 complete_file = media_item.download_folder / media_item.filename
-                partial_file = complete_file.with_suffix(complete_file.suffix + '.part')
+                partial_file = complete_file.with_suffix(
+                    complete_file.suffix + '.part')
                 break
         return complete_file, partial_file
-    
+
     async def check_filesize_limits(self, media: MediaItem) -> bool:
         """Checks if the file size is within the limits"""
-        max_video_filesize = self.manager.config_manager.settings_data['File_Size_Limits']['maximum_video_size']
-        min_video_filesize = self.manager.config_manager.settings_data['File_Size_Limits']['minimum_video_size']
-        max_image_filesize = self.manager.config_manager.settings_data['File_Size_Limits']['maximum_image_size']
-        min_image_filesize = self.manager.config_manager.settings_data['File_Size_Limits']['minimum_image_size']
-        max_other_filesize = self.manager.config_manager.settings_data['File_Size_Limits']['maximum_other_size']
-        min_other_filesize = self.manager.config_manager.settings_data['File_Size_Limits']['minimum_other_size']
+        max_video_filesize = self.manager.config_manager.settings_data[
+            'File_Size_Limits']['maximum_video_size']
+        min_video_filesize = self.manager.config_manager.settings_data[
+            'File_Size_Limits']['minimum_video_size']
+        max_image_filesize = self.manager.config_manager.settings_data[
+            'File_Size_Limits']['maximum_image_size']
+        min_image_filesize = self.manager.config_manager.settings_data[
+            'File_Size_Limits']['minimum_image_size']
+        max_other_filesize = self.manager.config_manager.settings_data[
+            'File_Size_Limits']['maximum_other_size']
+        min_other_filesize = self.manager.config_manager.settings_data[
+            'File_Size_Limits']['minimum_other_size']
 
         if media.ext in FILE_FORMATS['Images']:
             if max_image_filesize and min_image_filesize:
