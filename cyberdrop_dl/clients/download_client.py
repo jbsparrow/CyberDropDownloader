@@ -4,18 +4,21 @@ import asyncio
 import copy
 import itertools
 import os
-from functools import partial, wraps
+from functools import partial
+from functools import wraps
 from http import HTTPStatus
 from pathlib import Path
-from typing import TYPE_CHECKING, Tuple
+from typing import Tuple
+from typing import TYPE_CHECKING
 
 import aiofiles
 import aiohttp
 from aiohttp import ClientSession
 
-from cyberdrop_dl.clients.errors import (DownloadFailure,
-                                         InvalidContentTypeFailure)
-from cyberdrop_dl.utils.utilities import FILE_FORMATS, log
+from cyberdrop_dl.clients.errors import DownloadFailure
+from cyberdrop_dl.clients.errors import InvalidContentTypeFailure
+from cyberdrop_dl.utils.utilities import FILE_FORMATS
+from cyberdrop_dl.utils.utilities import log
 
 if TYPE_CHECKING:
     from typing import Any, Callable, Coroutine
