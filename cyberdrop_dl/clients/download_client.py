@@ -33,7 +33,11 @@ async def is_4xx_client_error(status_code: int) -> bool:
 
 
 def limiter(func):
-    """Wrapper handles limits for download session"""
+    """Wrapper handles limits for download session
+
+    :param func: 
+
+    """
 
     @wraps(func)
     async def wrapper(self, *args, **kwargs):
