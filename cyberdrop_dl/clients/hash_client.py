@@ -33,6 +33,7 @@ class HashClient:
     async def hash_item(self,file):
         if not file.is_file():
             return
+        await self.manager.progress_manager.hash_progress.update_currently_hashing(file)
         hash=await self.manager.db_manager.hash_table.get_file_hash_exists(file)
         if not hash:
             hash = await self.manager.hash_manager.hash_file(file)

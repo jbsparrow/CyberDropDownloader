@@ -1,8 +1,9 @@
-from typing import Tuple, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from rich.console import Group
 from rich.panel import Panel
 from rich.progress import Progress, BarColumn
+from humanfriendly import format_size
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -21,14 +22,25 @@ class HashProgress:
         self.match_progress=Progress("[progress.description]{task.description}",
                                  BarColumn(bar_width=None),
                                  "{task.completed} of {task.total} Files")
+        
+        self.current_hashing_text=Progress("{task.description}")
 
        
-        
         self.hashed_files = 0
         self.prev_hash_files = 0
-        self.hash_progress_group = Group(self.hash_progress)
+
+        self.hash_progress_group = Group(self.current_hashing_text,self.hash_progress)
+    
         self.hashed_files_task_id = self.hash_progress.add_task("[green]Hashed", total=None)
         self.prev_hashed_files_task_id = self.hash_progress.add_task("[green]Previously Hashed", total=None)
+
+        self.currently_hashing_task_id = self.current_hashing_text.add_task("")
+
+        self.currently_hashing_size_task_id = self.current_hashing_text.add_task("")
+
+
+
+
 
 
         self.removed_files=0
@@ -45,11 +57,10 @@ class HashProgress:
     async def get_removed_progress(self) -> Panel:
         """Returns the progress bar"""
         return Panel(self.removed_progress_group, border_style="green", padding=(1, 1))
+    async def  update_currently_hashing(self,file):
+        self.current_hashing_text.update(self.currently_hashing_task_id ,description=f"[blue]{file}")
 
-    # async def update_hash(self) -> None:
-    #     """Updates the total number of files to be downloaded"""
-    #     self.hashed_file_total = self.hashed_file_total  + 1
-    #     self.progress.update(self.completed_files_task_id, total=self.hashed_file_total)
+        self.current_hashing_text.update(self.currently_hashing_size_task_id ,description=f"[blue]{format_size(file.stat().st_size)}")
       
 
     async def add_completed_hash(self) -> None:
