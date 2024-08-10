@@ -12,7 +12,7 @@ from cyberdrop_dl.scraper.scraper import ScrapeMapper
 from cyberdrop_dl.ui.ui import program_ui
 from cyberdrop_dl.utils.sorting import Sorter
 from cyberdrop_dl.utils.utilities import check_latest_pypi, log_with_color, check_partials_and_empty_folders, log
-
+from cyberdrop_dl.clients.hash_client import HashClient
 
 def startup() -> Manager:
     """
@@ -47,9 +47,8 @@ async def runtime(manager: Manager) -> None:
 async def post_runtime(manager: Manager) -> None:
     """Actions to complete after main runtime, and before ui shutdown"""
     #checking and removing dupes
-    downloads=manager.path_manager.completed_downloads
-    for download in downloads:
-        print(download)
+    await HashClient(manager).cleanup_dupes()
+    
 
 async def director(manager: Manager) -> None:
     """Runs the program and handles the UI"""

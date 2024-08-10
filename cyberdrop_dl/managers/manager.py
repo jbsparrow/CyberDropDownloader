@@ -85,6 +85,8 @@ class Manager:
             self.client_manager = ClientManager(self)
         if not isinstance(self.download_manager, DownloadManager):
             self.download_manager = DownloadManager(self)
+        if not isinstance(self.hash_manager, HashManager):
+            self.hash_manager = HashManager()
         self.progress_manager = ProgressManager(self)
         await self.progress_manager.startup()
 
