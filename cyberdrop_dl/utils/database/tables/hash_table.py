@@ -88,7 +88,7 @@ class HashTable:
         full_path=pathlib.Path(file).absolute()
         
         filename=full_path.name
-        folder=full_path.parent
+        folder=str(full_path.parent)
 
         # Assuming a table named 'file_info' with columns: id (primary key), hash, size, filename, folder
         try:
