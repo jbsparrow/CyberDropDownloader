@@ -15,6 +15,7 @@ from aiohttp import ClientSession
 
 from cyberdrop_dl.clients.errors import DownloadFailure, InvalidContentTypeFailure
 from cyberdrop_dl.utils.utilities import FILE_FORMATS, log
+from cyberdrop_dl.clients.hash_client import HashClient
 
 if TYPE_CHECKING:
     from typing import Callable, Coroutine, Any
@@ -116,7 +117,7 @@ class DownloadClient:
                     await log(f"Skipping {media_item.url} as it has already been downloaded", 10)
                     await self.manager.progress_manager.download_progress.add_previously_completed(False)
                     await self.mark_completed(media_item, domain)
-                  
+
                     return False
             
             ext = Path(media_item.filename).suffix.lower()
@@ -178,9 +179,18 @@ class DownloadClient:
         await self.manager.db_manager.history_table.insert_incompleted(domain, media_item)
     
     async def mark_completed(self, media_item: MediaItem, domain: str) -> None:
+        await self._add_db(media_item,domain)
+        await  self._handle_media_item_completion(media_item)
+       
+    async def _add_db(self,media_item: MediaItem, domain: str):
         """Marks the media item as completed in the database and adds to the completed list"""
         await self.manager.db_manager.history_table.mark_complete(domain, media_item)
+
+    async def _handle_media_item_completion(self, media_item) -> None:
+        """Handle hashing completed items and adds item to the completed list"""
         self.manager.path_manager.add_completed(media_item)
+        if self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading']:
+            await HashClient(self.manager).hash_item(media_item.complete_file)
     
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 

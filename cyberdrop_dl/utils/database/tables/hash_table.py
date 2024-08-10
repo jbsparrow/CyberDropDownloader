@@ -30,7 +30,7 @@ class HashTable:
 
         try:
             # Extract folder, filename, and size from the full path
-            path = pathlib.Path(full_path)
+            path = pathlib.Path(full_path).absolute()
             folder = str(path.parent)
             filename = path.name
             size = path.stat().st_size

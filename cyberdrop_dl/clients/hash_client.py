@@ -23,9 +23,9 @@ class HashClient:
             if not pathlib.Path(path).is_dir():
                 raise Exception("Path is not a directory")
             for file in pathlib.Path(path).glob("**/*"):
-                await self._hash_item_helper(file)
+                await self.hash_item(file)
                 
-    async def _hash_item_helper(self,file):
+    async def hash_item(self,file):
         hash=await self.manager.db_manager.hash_table.get_file_hash_exists(file)
         if not hash and file.exists():
             hash = await self.manager.hash_manager.hash_file(file)
@@ -38,7 +38,7 @@ class HashClient:
         hashes_dict=defaultdict(list)
         # first compare downloads to each other
         for item in self.manager.path_manager.completed_downloads:
-            hash=await self._hash_item_helper(item)
+            hash=await self.hash_item(item)
             if hash:
                 hashes_dict[hash].append(item)
         #remove downloaded files, so each group only has the first downloaded file
