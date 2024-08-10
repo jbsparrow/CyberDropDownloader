@@ -195,3 +195,45 @@ def edit_rate_limiting_settings_prompt(manager: Manager) -> None:
     manager.config_manager.global_settings_data['Rate_Limiting_Options']['download_delay'] = float(throttle)
     manager.config_manager.global_settings_data['Rate_Limiting_Options']['max_simultaneous_downloads'] = int(max_simultaneous_downloads)
     manager.config_manager.global_settings_data['Rate_Limiting_Options']['max_simultaneous_downloads_per_domain'] = int(max_simultaneous_downloads_per_domain)
+
+
+
+
+
+
+
+
+
+
+
+def edit_dupe_settings_prompt(manager: Manager) -> None:
+    """Edit the duplicate file removal settings"""
+    console.clear()
+    console.print("Editing Duplicate File Settings")
+
+#     Dupe_Cleanup_Options:
+#   delete_after_download: true
+#   hash_while_downloading: true
+#   keep_current_download: false
+    delete_after = inquirer.ch(
+        message="Delete Dupes After Download:",
+        default=int(manager.config_manager.global_settings_data['Dupe_Cleanup_Options'][' delete_after_download']),
+        float_allowed=False,
+        vi_mode=manager.vi_mode,
+    ).execute()
+    hash_while_downloading = inquirer.number(
+        message="Hash Files while Downloading:",
+        default=int(manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading']),
+        float_allowed=False,
+        vi_mode=manager.vi_mode,
+    ).execute()
+    keep_current = inquirer.number(
+        message="Keep one current download:",
+        default=int(manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_current_download']),
+        float_allowed=False,
+        vi_mode=manager.vi_mode,
+    ).execute()
+   
+    manager.config_manager.global_settings_data['Dupe_Cleanup_Options'][' delete_after_download'] =  delete_after
+    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading'] = hash_while_downloading
+    manager.config_manager.global_settings_data['Dupe_Cleanup_Optionss']['keep_current_download'] = keep_current
