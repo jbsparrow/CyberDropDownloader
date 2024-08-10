@@ -51,7 +51,6 @@ def program_ui(manager: Manager):
         elif action == 4:
             path=path_prompt(manager)
             HashClient(manager).hash_directory(path)
-            break
         
         # Sort All Configs
         elif action == 5:

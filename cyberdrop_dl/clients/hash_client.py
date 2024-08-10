@@ -28,3 +28,4 @@ class HashClient:
                 else:
                     hash = await self.manager.hash_manager.hash_file(file)
                     await self.manager.db_manager.hash_table.insert_or_update_hash_db(hash, file.stat().st_size, file.name, file.parent)
+            
