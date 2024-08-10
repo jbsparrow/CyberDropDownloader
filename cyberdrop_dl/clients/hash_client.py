@@ -26,8 +26,10 @@ class HashClient:
                 await self.hash_item(file)
                 
     async def hash_item(self,file):
+        if not file.is_file():
+            return
         hash=await self.manager.db_manager.hash_table.get_file_hash_exists(file)
-        if not hash and file.exists():
+        if not hash:
             hash = await self.manager.hash_manager.hash_file(file)
             await self.manager.db_manager.hash_table.insert_or_update_hash_db(hash, file.stat().st_size, file)
         return  hash
@@ -67,7 +69,7 @@ class HashClient:
                     ele.unlink(missing_ok=True)
             else:
                 path.unlink(missing_ok=True)
-                for ele in matches[1:]:
+                for ele in matches:
                     ele.unlink(missing_ok=True)
             
             
