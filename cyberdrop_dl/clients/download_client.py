@@ -142,7 +142,8 @@ class DownloadClient:
         if not media_item.partial_file.is_file():
             media_item.partial_file.touch()
         async with aiofiles.open(media_item.partial_file, mode='ab') as f:
-            async for chunk, _ in content.iter_chunks():
+            async for chunk,_ in content.iter_chunks():
+                await self.client_manager.check_bucket(chunk)
                 await asyncio.sleep(0)
                 await f.write(chunk)
                 await update_progress(len(chunk))
@@ -161,10 +162,10 @@ class DownloadClient:
         
         async def save_content(content: aiohttp.StreamReader) -> None:
             await self._append_content(media_item, content, partial(manager.progress_manager.file_progress.advance_file, media_item.task_id))
+
         downloaded = await self._download(domain, manager, media_item, save_content)
         if downloaded:
             media_item.partial_file.rename(media_item.complete_file)
-            hash=self.hasher.getfilehash(media_item.complete_file)
             await self.mark_completed(media_item, domain)
         return downloaded
         
