@@ -1,23 +1,25 @@
-
-class Hasher:
+import os  # Import os for file path manipulation
+import aiofiles
+class HashManager:
     def __init__(self):
-        pass
-    
-    def hash_file(filename):
-        file_hash = self.hasher()
-        with self.path.open("rb") as fp:
-              CHUNK_SIZE = 1024 * 1024  # 1 mb
-              filedata = fp.read(CHUNK_SIZE)
-              while filedata:
-                    file_hash.update(filedata)
-                    filedata = fp.read(CHUNK_SIZE)
-              return file_hash.digest()
-    @property
-    def hasher():
-      hasher: Callable
-      try:
-          import xxhash
-          return xxhash.xxh128
-      except ImportError:
-          import hashlib
-          return hashlib.md5
+        self.hasher = self._get_hasher()  # Initialize hasher in constructor
+
+    def _get_hasher(self):
+        """Tries to import xxhash, otherwise falls back to hashlib.md5"""
+        try:
+            import xxhash
+            return xxhash.xxh128
+        except ImportError:
+            import hashlib
+            return hashlib.md5
+
+    async def hash_file(self, filename):
+        file_path = os.path.join(os.getcwd(), filename)  # Construct full file path
+        async with aiofiles.open(file_path, "rb") as fp:
+            CHUNK_SIZE = 1024 * 1024  # 1 mb
+            filedata = await fp.read(CHUNK_SIZE)
+            hasher = self.hasher()  # Use the initialized hasher
+            while filedata:
+                hasher.update(filedata)
+                filedata = await fp.read(CHUNK_SIZE)
+            return hasher.hexdigest()
