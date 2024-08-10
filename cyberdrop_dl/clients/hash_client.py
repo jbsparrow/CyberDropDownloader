@@ -24,7 +24,7 @@ class HashClient:
 
     async def _hash_directory_helper(self,path):
         async with self._manager_context():
-            with self.manager.live_manager.get_hash_live() as live:
+            with self.manager.live_manager.get_hash_live():
                 if not pathlib.Path(path).is_dir():
                     raise Exception("Path is not a directory")
                 for file in pathlib.Path(path).glob("**/*"):
@@ -44,7 +44,7 @@ class HashClient:
         return  hash
 
     async def cleanup_dupes(self):
-        with self.manager.live_manager.get_hash_live() :
+        with self.manager.live_manager.get_remove_hash_live() :
             if not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_after_download']:
                 return
             hashes_dict=defaultdict(list)

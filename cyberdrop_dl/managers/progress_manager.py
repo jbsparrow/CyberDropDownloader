@@ -33,6 +33,7 @@ class ProgressManager:
         self.ui_refresh_rate = manager.config_manager.global_settings_data['UI_Options']['refresh_rate']
         
         self.layout: Layout = field(init=False)
+        self.hash_remove_layout: Layout = field(init=False)
         self.hash_layout: Layout = field(init=False)
 
     async def startup(self) -> None:
@@ -49,14 +50,15 @@ class ProgressManager:
             Layout(renderable=await self.download_stats_progress.get_progress(), name="Download Failures", ratio=1),
         )
 
-        hash_layout =Layout()
-        hash_layout.split_column(
+        hash_remove_layout =Layout()
+        hash_remove_layout.split_column(
         await self.hash_progress.get_hash_progress(),
         await self.hash_progress.get_removed_progress()
         )
         
         self.layout = progress_layout
-        self.hash_layout = hash_layout
+        self.hash_remove_layout = hash_remove_layout
+        self.hash_layout=await self.hash_progress.get_hash_progress()
 
     async def print_stats(self) -> None:
         """Prints the stats of the program"""
