@@ -62,6 +62,7 @@ class DownloadClient:
         self._global_limiter = self.client_manager.global_rate_limiter
         self.trace_configs = []
         self._file_path=None
+        self._hash_client=HashClient(self.manager)
         if os.getenv("PYCHARM_HOSTED") is not None:
             async def on_request_start(session, trace_config_ctx, params):
                 await log(f"Starting download {params.method} request to {params.url}", 40)
@@ -190,7 +191,7 @@ class DownloadClient:
         """Handle hashing completed items and adds item to the completed list"""
         self.manager.path_manager.add_completed(media_item)
         if self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading']:
-            await HashClient(self.manager).hash_item(media_item.complete_file)
+            await self._hash_client.hash_item(media_item.complete_file)
     
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
