@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING
 from rich.layout import Layout
 
 from cyberdrop_dl.ui.progress.downloads_progress import DownloadsProgress
+from cyberdrop_dl.ui.progress.hash_progress import HashProgress
+
 from cyberdrop_dl.ui.progress.file_progress import FileProgress
 from cyberdrop_dl.ui.progress.scraping_progress import ScrapingProgress
 from cyberdrop_dl.ui.progress.statistic_progress import DownloadStatsProgress, ScrapeStatsProgress
@@ -26,10 +28,12 @@ class ProgressManager:
         self.download_progress: DownloadsProgress = DownloadsProgress(manager)
         self.download_stats_progress: DownloadStatsProgress = DownloadStatsProgress()
         self.scrape_stats_progress: ScrapeStatsProgress = ScrapeStatsProgress()
+        self.hash_progress: HashProgress = HashProgress(manager)
         
         self.ui_refresh_rate = manager.config_manager.global_settings_data['UI_Options']['refresh_rate']
         
         self.layout: Layout = field(init=False)
+        self.hash_layout: Layout = field(init=False)
 
     async def startup(self) -> None:
         """Startup process for the progress manager"""
@@ -45,7 +49,14 @@ class ProgressManager:
             Layout(renderable=await self.download_stats_progress.get_progress(), name="Download Failures", ratio=1),
         )
 
+        hash_layout =Layout()
+        hash_layout.split_column(
+        await self.hash_progress.get_hash_progress(),
+        await self.hash_progress.get_removed_progress()
+        )
+        
         self.layout = progress_layout
+        self.hash_layout = hash_layout
 
     async def print_stats(self) -> None:
         """Prints the stats of the program"""

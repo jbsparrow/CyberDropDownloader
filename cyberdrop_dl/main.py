@@ -111,11 +111,7 @@ async def director(manager: Manager) -> None:
         await log("Starting UI...", 20)
         if not manager.args_manager.sort_all_configs:
             try:
-                if not manager.args_manager.no_ui:
-                    with Live(manager.progress_manager.layout, refresh_per_second=manager.config_manager.global_settings_data['UI_Options']['refresh_rate']):
-                        await runtime(manager)
-                        await post_runtime(manager)
-                else:
+                with manager.live_manager.get_main_live():
                     await runtime(manager)
                     await post_runtime(manager)
             except Exception as e:

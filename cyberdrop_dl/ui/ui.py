@@ -17,6 +17,8 @@ from cyberdrop_dl.ui.prompts.url_file_prompts import edit_urls_prompt
 from cyberdrop_dl.ui.prompts.settings_user_prompts import create_new_config_prompt, edit_config_values_prompt
 from cyberdrop_dl.clients.hash_client import HashClient
 from cyberdrop_dl.ui.prompts.settings_hash_prompts import path_prompt
+from rich.live import Live
+
 
 console = Console()
 

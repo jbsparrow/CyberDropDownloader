@@ -14,6 +14,7 @@ from cyberdrop_dl.managers.log_manager import LogManager
 from cyberdrop_dl.managers.path_manager import PathManager
 from cyberdrop_dl.managers.progress_manager import ProgressManager
 from cyberdrop_dl.managers.hash_manager import HashManager
+from cyberdrop_dl.managers.live_manager import LiveManager
 
 from cyberdrop_dl.utils.args import config_definitions
 from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
@@ -34,6 +35,7 @@ class Manager:
         self.client_manager: ClientManager = field(init=False)
         self.download_manager: DownloadManager = field(init=False)
         self.progress_manager: ProgressManager = field(init=False)
+        self.live_manager: LiveManager = field(init=False)
 
         self.first_time_setup: TransitionManager = TransitionManager(self)
 
@@ -87,6 +89,8 @@ class Manager:
             self.download_manager = DownloadManager(self)
         if not isinstance(self.hash_manager, HashManager):
             self.hash_manager = HashManager()
+        if not isinstance(self.live_manager, LiveManager):
+            self.live_manager = LiveManager(self)
         self.progress_manager = ProgressManager(self)
         await self.progress_manager.startup()
 
@@ -96,12 +100,17 @@ class Manager:
         MAX_NAME_LENGTHS['FOLDER'] = int(self.config_manager.global_settings_data['General']['max_folder_name_length'])
 
     async def async_db_hash_startup(self):
-        #start up the db manager and hash manager only
+        #start up the db manager and hash manager only for scanning
         if not isinstance(self.db_manager, DBManager):
             self.db_manager = DBManager(self, self.path_manager.history_db)
             await self.db_manager.startup()
         if not isinstance(self.hash_manager, HashManager):
             self.hash_manager = HashManager()
+        if not isinstance(self.live_manager, LiveManager):
+            self.live_manager = LiveManager(self)
+        self.progress_manager = ProgressManager(self)
+        await self.progress_manager.startup()
+
 
     
     async def args_consolidation(self) -> None:
