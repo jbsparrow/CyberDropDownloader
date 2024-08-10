@@ -43,7 +43,13 @@ async def runtime(manager: Manager) -> None:
     async with asyncio.TaskGroup() as task_group:
         manager.task_group = task_group
         await scrape_mapper.start()
-
+    
+async def post_runtime(manager: Manager) -> None:
+    """Actions to complete after main runtime, and before ui shutdown"""
+    #checking and removing dupes
+    downloads=manager.path_manager.completed_downloads
+    for download in downloads:
+        print(download)
 
 async def director(manager: Manager) -> None:
     """Runs the program and handles the UI"""
@@ -109,8 +115,10 @@ async def director(manager: Manager) -> None:
                 if not manager.args_manager.no_ui:
                     with Live(manager.progress_manager.layout, refresh_per_second=manager.config_manager.global_settings_data['UI_Options']['refresh_rate']):
                         await runtime(manager)
+                        await post_runtime(manager)
                 else:
                     await runtime(manager)
+                    await post_runtime(manager)
             except Exception as e:
                 print("\nAn error occurred, please report this to the developer")
                 print(e)
@@ -134,6 +142,10 @@ async def director(manager: Manager) -> None:
             await log("Updating Last Forum Post...", 20)
             await manager.log_manager.update_last_forum_post()
             
+        
+        # add the stuff here
+
+        
         await log("Printing Stats...", 20)
         await manager.progress_manager.print_stats()
 
