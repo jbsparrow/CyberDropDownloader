@@ -188,11 +188,14 @@ class DownloadClient:
         await self.manager.db_manager.history_table.mark_complete(domain, media_item)
 
     async def _handle_media_item_completion(self, media_item) -> None:
-        """Handle hashing completed items and adds item to the completed list"""
-        self.manager.path_manager.add_completed(media_item)
-        if self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading']:
-            await self._hash_client.hash_item(media_item.complete_file)
-    
+        try:
+            """Handle hashing completed items and adds item to the completed list"""
+            self.manager.path_manager.add_completed(media_item)
+            if self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading']:
+                await self._hash_client.hash_item(media_item.complete_file)
+        except Exception as e:
+            await log(f"After media processing failed: {media_item.complete_file} with error {e}", 40)
+
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     
