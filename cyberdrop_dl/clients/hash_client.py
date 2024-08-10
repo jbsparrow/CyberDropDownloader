@@ -67,5 +67,7 @@ class HashClient:
                     ele.unlink(missing_ok=True)
             else:
                 path.unlink(missing_ok=True)
+                for ele in matches[1:]:
+                    ele.unlink(missing_ok=True)
             
             

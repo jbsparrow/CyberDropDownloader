@@ -46,7 +46,6 @@ def edit_global_settings_prompt(manager: Manager) -> None:
         elif action == 4:
             edit_ui_settings_prompt(manager)
 
-       
         # Done
         elif action == 5:
             manager.config_manager.write_updated_global_settings_config()
