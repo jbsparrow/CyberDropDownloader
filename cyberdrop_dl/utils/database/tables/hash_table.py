@@ -70,7 +70,7 @@ class HashTable:
             return []
     
    
-    async def insert_or_update_hash_db(self, hash_value, file_size, filename, folder):
+    async def insert_or_update_hash_db(self, hash_value, file_size, file):
         """
         Inserts or updates a record in the specified SQLite database.
 
@@ -85,9 +85,10 @@ class HashTable:
         """
 
         cursor = await self.db_conn.cursor()
+        full_path=pathlib.Path(file).absolute()
         
-        filename=str(filename)
-        folder=str(folder)
+        filename=full_path.name
+        folder=full_path.parent
 
         # Assuming a table named 'file_info' with columns: id (primary key), hash, size, filename, folder
         try:

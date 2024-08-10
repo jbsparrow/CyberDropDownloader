@@ -29,7 +29,7 @@ class HashClient:
         hash=await self.manager.db_manager.hash_table.get_file_hash_exists(file)
         if not hash and file.exists():
             hash = await self.manager.hash_manager.hash_file(file)
-            await self.manager.db_manager.hash_table.insert_or_update_hash_db(hash, file.stat().st_size, file.name, file.parent)
+            await self.manager.db_manager.hash_table.insert_or_update_hash_db(hash, file.stat().st_size, file)
         return  hash
 
     async def cleanup_dupes(self):
