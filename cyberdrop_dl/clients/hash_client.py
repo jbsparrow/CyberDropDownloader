@@ -33,6 +33,8 @@ class HashClient:
         return  hash
 
     async def cleanup_dupes(self):
+        if not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_after_download']:
+            return
         hashes_dict=defaultdict(list)
         # first compare downloads to each other
         for item in self.manager.path_manager.completed_downloads:
@@ -58,12 +60,12 @@ class HashClient:
             all_matches=list(map(lambda x:pathlib.Path(x[0],x[1]),await self.manager.db_manager.hash_table.get_files_with_hash_matches(hash)))
             # delete files if more then one match exists
             matches=list(filter(lambda x:x!=path and x.exists(),all_matches))
-            if len(matches)>0:
+            if len(matches)==0:
+                continue
+            elif self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_current_download']:
+                for ele in matches:
+                    ele.unlink(missing_ok=True)
+            else:
                 path.unlink(missing_ok=True)
-
             
-
-
-        #compare other files in folder, and  remove downloaded if already exists
-
             
