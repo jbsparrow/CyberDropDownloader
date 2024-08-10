@@ -24,7 +24,8 @@ def edit_global_settings_prompt(manager: Manager) -> None:
                 Choice(1, "Edit General Settings"),
                 Choice(2, "Edit Rate Limiting Settings"),
                 Choice(3, "Edit UI Options"),
-                Choice(4, "Done"),
+                Choice(3, "Edit Dupe Options"),
+                Choice(5, "Done"),
             ],
             vi_mode=manager.vi_mode,
         ).execute()
@@ -39,8 +40,13 @@ def edit_global_settings_prompt(manager: Manager) -> None:
             
         # Edit UI Settings
         elif action == 3:
+            edit_dupe_settings_prompt(manager)
+
+       # Edit UI Settings
+        elif action == 4:
             edit_ui_settings_prompt(manager)
 
+       
         # Done
         elif action == 4:
             manager.config_manager.write_updated_global_settings_config()
@@ -211,26 +217,22 @@ def edit_dupe_settings_prompt(manager: Manager) -> None:
     console.clear()
     console.print("Editing Duplicate File Settings")
 
-#     Dupe_Cleanup_Options:
-#   delete_after_download: true
-#   hash_while_downloading: true
-#   keep_current_download: false
-    delete_after = inquirer.ch(
+    delete_after = inquirer.inquirer.select(
         message="Delete Dupes After Download:",
-        default=int(manager.config_manager.global_settings_data['Dupe_Cleanup_Options'][' delete_after_download']),
-        float_allowed=False,
+        default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options'][' delete_after_download'],
+        choices=[Choice(True,"True",Choice(False,"False"))]
         vi_mode=manager.vi_mode,
     ).execute()
     hash_while_downloading = inquirer.number(
         message="Hash Files while Downloading:",
-        default=int(manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading']),
-        float_allowed=False,
+        default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading'],
+        choices=[Choice(True,"True",Choice(False,"False"))],
         vi_mode=manager.vi_mode,
     ).execute()
     keep_current = inquirer.number(
         message="Keep one current download:",
-        default=int(manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_current_download']),
-        float_allowed=False,
+        default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_current_download'],
+        choices=[Choice(True,"True",Choice(False,"False"))]
         vi_mode=manager.vi_mode,
     ).execute()
    
