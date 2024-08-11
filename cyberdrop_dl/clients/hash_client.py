@@ -45,43 +45,47 @@ class HashClient:
         return  hash
 
     async def cleanup_dupes(self):
-        with self.manager.live_manager.get_remove_hash_live() :
+        with self.manager.live_manager.get_hash_live() :
             if not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_after_download']:
                 return
-            hashes_dict=defaultdict(list)
+            hashes_dict=defaultdict(lambda: defaultdict(list))
             # first compare downloads to each other
             for item in self.manager.path_manager.completed_downloads:
                 hash=await self.hash_item(item)
+                size=item.stat().st_size
                 if hash:
-                    hashes_dict[hash].append(item)
-            #remove downloaded files, so each group only has the first downloaded file
+                    hashes_dict[hash][size].append(item)
+            # #remove downloaded files, so each group only has the first downloaded file
             final_list=[]
-            for key,group in hashes_dict.items():
-                #double check files exits
-                match=False
-                for ele in group:
-                    if match:
-                        ele.unlink(missing_ok=True)
-                    elif ele.exists():
-                        match=ele
-                        final_list.append((key,ele))
-            # compare hashes against all hashes in db
-            for ele in final_list:
-                hash=ele[0]
-                path=ele[1]
-                size=pathlib.Path(path).stat().st_size
-                # get all files with same hash
-                all_matches=list(map(lambda x:pathlib.Path(x[0],x[1]),await self.manager.db_manager.hash_table.get_files_with_hash_matches(hash,size)))
-                # delete files if more then one match exists
-                matches=list(filter(lambda x:x!=path and x.exists(),all_matches))
-                if len(matches)==0:
-                    continue
-                elif self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_current_download']:
-                    for ele in matches:
-                        ele.unlink(missing_ok=True)
-                else:
-                    path.unlink(missing_ok=True)
-                    for ele in matches:
-                        ele.unlink(missing_ok=True)
+            for hash,size_dict in hashes_dict.items():
+                for size_group in size_dict.values():
+                    for ele in size_group:
+                        match=False
+                        if match:
+                            ele.unlink(missing_ok=True)
+                        elif ele.exists():
+                            match=ele
+                            final_list.append((hash,ele))
+
+            pass
+
+            # # compare hashes against all hashes in db
+            # for ele in final_list:
+            #     hash=ele[0]
+            #     path=ele[1]
+            #     size=pathlib.Path(path).stat().st_size
+            #     # get all files with same hash
+            #     all_matches=list(map(lambda x:pathlib.Path(x[0],x[1]),await self.manager.db_manager.hash_table.get_files_with_hash_matches(hash,size)))
+            #     # delete files if more then one match exists
+            #     matches=list(filter(lambda x:x!=path and x.exists(),all_matches))
+            #     if len(matches)==0:
+            #         continue
+            #     elif self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_current_download']:
+            #         for ele in matches:
+            #             ele.unlink(missing_ok=True)
+            #     else:
+            #         path.unlink(missing_ok=True)
+            #         for ele in matches:
+            #             ele.unlink(missing_ok=True)
             
             
