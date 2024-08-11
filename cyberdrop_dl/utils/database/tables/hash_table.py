@@ -48,7 +48,7 @@ class HashTable:
             print(f"Error checking file: {e}")
             return False
 
-    async def get_files_with_hash_matches(self,hash_value):
+    async def get_files_with_hash_matches(self,hash_value,size):
         """
         Retrieves a list of (folder, filename) tuples based on a given hash.
 
@@ -62,7 +62,7 @@ class HashTable:
         cursor = await self.db_conn.cursor()
 
         try:
-            await cursor.execute("SELECT folder, filename FROM hash WHERE hash = ?", (hash_value,))
+            await cursor.execute("SELECT folder, filename FROM hash WHERE hash = ? and size=?", (hash_value,size))
             results = await cursor.fetchall()
             return results
         except Exception as e:
