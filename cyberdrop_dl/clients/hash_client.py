@@ -39,11 +39,12 @@ class HashClient:
         hash=await self.manager.db_manager.hash_table.get_file_hash_exists(file)
         if not hash:
             try:
+                raise Exception('File hash')
                 hash = await self.manager.hash_manager.hash_file(file)
                 await self.manager.db_manager.hash_table.insert_or_update_hash_db(hash, file.stat().st_size, file)
                 await self.manager.progress_manager.hash_progress.add_completed_hash()
             except Exception as e:
-                log(f"Error hashing {file} : {e}")
+                await log(f"Error hashing {file} : {e}",40)
 
 
         else:
