@@ -61,7 +61,7 @@ class HashClient:
                 size=item.stat().st_size
                 if hash:
                     hashes_dict[hash][size].append(item)
-        
+ 
         with self.manager.live_manager.get_remove_file_via_hash_live() :
             # #remove downloaded files, so each group only has the first downloaded file
             for size_dict in hashes_dict.values():
@@ -76,10 +76,10 @@ class HashClient:
                         await self.manager.progress_manager.hash_progress.add_removed_file()
 
                     if selected_file:
-                        size_dict[size] = {'selected': selected_file, 'others': list(map(lambda x:str(x),files))}
+                        size_dict[size] = {'selected': selected_file, 'others': list(map(lambda x:str(x.absolute()),files))}
                     else:
                         del size_dict[size]           
-
+            
             for hash, size_dict in hashes_dict.items():
                 for size, data in size_dict.items():
                     selected_file = data['selected']

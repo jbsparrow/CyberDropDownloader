@@ -170,6 +170,8 @@ class DownloadClient:
         if downloaded:
             media_item.partial_file.rename(media_item.complete_file)
             await self.mark_completed(media_item, domain)
+            #only mark add path if actually downloaded this run
+            self.manager.path_manager.add_completed(media_item)
             self.file_path=media_item
         return downloaded
         
@@ -190,7 +192,6 @@ class DownloadClient:
     async def _handle_media_item_completion(self, media_item) -> None:
         try:
             """Handle hashing completed items and adds item to the completed list"""
-            self.manager.path_manager.add_completed(media_item)
             if self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading']:
                 await self._hash_client.hash_item(media_item.complete_file)
         except Exception as e:

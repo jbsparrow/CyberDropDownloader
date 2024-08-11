@@ -73,8 +73,8 @@ class ProgressManager:
         await log_with_color("\nDupe Stats:", "cyan", 20)
         await log_with_color(f"Previously Hashed {self.hash_progress.prev_hash_files} files", "yellow", 20)
         await log_with_color(f"Newly Hashed {self.hash_progress.hashed_files} files", "yellow", 20)
-        await log_with_color(f"Removed From Downloads{self.hash_progress.removed_files} files", "yellow", 20)
-        await log_with_color(f"Removed From Previous Downloads{self.hash_progress.removed_prev_files} files", "yellow", 20)
+        await log_with_color(f"Removed From Downloads {self.hash_progress.removed_files} files", "yellow", 20)
+        await log_with_color(f"Removed From Previous Downloads {self.hash_progress.removed_prev_files} files", "yellow", 20)
 
 
 
