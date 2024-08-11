@@ -103,6 +103,6 @@ class HashClient:
                     else:
                         for ele in filtered_matches:
                             ele.unlink(missing_ok=True)
-                            await self.manager.progress_manager.hash_progress.add_removed_file()
+                            await self.manager.progress_manager.hash_progress.add_removed_prev_file()
             
         

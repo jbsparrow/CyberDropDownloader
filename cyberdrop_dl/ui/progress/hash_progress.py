@@ -44,8 +44,11 @@ class HashProgress:
 
 
         self.removed_files=0
+        self.removed_prev_files=0
         self.removed_progress_group = Group(self.match_progress,self.remove_progress)
-        self.removed_files_task_id = self.remove_progress.add_task("[green]Removed Files", total=None)
+        self.removed_files_task_id = self.remove_progress.add_task("[green]Removed From Downloads Files", total=None)
+        self.removed_prev_files_task_id = self.remove_progress.add_task("[green]Removed From Previous Downloads Files", total=None)
+
 
 
 
@@ -79,3 +82,7 @@ class HashProgress:
         self.remove_progress.advance(self.removed_files_task_id , 1)
         self.removed_files += 1
 
+    async def add_removed_prev_file(self) -> None:
+        """Adds a completed file to the progress bar"""
+        self.remove_progress.advance(self.removed_prev_files_task_id , 1)
+        self.removed_prev_files += 1
