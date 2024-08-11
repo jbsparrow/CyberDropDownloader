@@ -3,7 +3,7 @@ import  pathlib
 from contextlib import asynccontextmanager
 from collections import defaultdict
 import asyncio
-from rich.live import Live
+from cyberdrop_dl.utils.utilities import log
 
 
 
@@ -38,9 +38,13 @@ class HashClient:
         await self.manager.progress_manager.hash_progress.update_currently_hashing(file)
         hash=await self.manager.db_manager.hash_table.get_file_hash_exists(file)
         if not hash:
-            hash = await self.manager.hash_manager.hash_file(file)
-            await self.manager.db_manager.hash_table.insert_or_update_hash_db(hash, file.stat().st_size, file)
-            await self.manager.progress_manager.hash_progress.add_completed_hash()
+            try:
+                hash = await self.manager.hash_manager.hash_file(file)
+                await self.manager.db_manager.hash_table.insert_or_update_hash_db(hash, file.stat().st_size, file)
+                await self.manager.progress_manager.hash_progress.add_completed_hash()
+            except Exception as e:
+                log(f"Error hashing {file} : {e}")
+
 
         else:
             await self.manager.progress_manager.hash_progress.add_prev_hash()
@@ -80,12 +84,9 @@ class HashClient:
                 # get all files with same hash
                 all_matches=list(map(lambda x:pathlib.Path(x[0],x[1]),await self.manager.db_manager.hash_table.get_files_with_hash_matches(current_hash,size)))
                 #what to count as a previous match
-                prev_matches=[]
-                if self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing']:
-                    prev_matches=list(filter(lambda x:x!=current_file ,all_matches))
-                else:
-                    prev_matches=list(filter(lambda x:x!=current_file and x.exists() ,all_matches))
-                
+                prev_matches = list(filter(lambda x: x != current_file and (x.exists() if not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing'] else True ), all_matches))
+
+               
                 #what do do with prev matches and current file
                 if len(prev_matches)==0:
                     continue
