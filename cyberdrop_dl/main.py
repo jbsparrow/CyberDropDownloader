@@ -111,7 +111,7 @@ async def director(manager: Manager) -> None:
         await log("Starting UI...", 20)
         if not manager.args_manager.sort_all_configs:
             try:
-                with manager.live_manager.get_main_live():
+                with manager.live_manager.get_main_live(stop=True) :
                     await runtime(manager)
                     await post_runtime(manager)
             except Exception as e:

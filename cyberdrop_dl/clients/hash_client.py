@@ -55,13 +55,15 @@ class HashClient:
                 size=item.stat().st_size
                 if hash:
                     hashes_dict[hash][size].append(item)
-            # #remove downloaded files, so each group only has the first downloaded file
-            final_list=[]
+        # #remove downloaded files, so each group only has the first downloaded file
+        final_list=[]
+        with self.manager.live_manager.get_hash_remove_live() :
             for hash,size_dict in hashes_dict.items():
                 for size_group in size_dict.values():
                     for ele in size_group:
                         match=False
                         if match:
+                            await self.manager.progress_manager.hash_progress.add_removed_file()
                             ele.unlink(missing_ok=True)
                         elif ele.exists():
                             match=ele
@@ -87,5 +89,5 @@ class HashClient:
             #         path.unlink(missing_ok=True)
             #         for ele in matches:
             #             ele.unlink(missing_ok=True)
-            
+        
             
