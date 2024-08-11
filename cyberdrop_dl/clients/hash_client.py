@@ -71,25 +71,28 @@ class HashClient:
                             match=ele
                             final_list.append((hash,ele))
 
-            pass
 
-            # # compare hashes against all hashes in db
-            # for ele in final_list:
-            #     hash=ele[0]
-            #     path=ele[1]
-            #     size=pathlib.Path(path).stat().st_size
-            #     # get all files with same hash
-            #     all_matches=list(map(lambda x:pathlib.Path(x[0],x[1]),await self.manager.db_manager.hash_table.get_files_with_hash_matches(hash,size)))
-            #     # delete files if more then one match exists
-            #     matches=list(filter(lambda x:x!=path and x.exists(),all_matches))
-            #     if len(matches)==0:
-            #         continue
-            #     elif self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download']:
-            #         for ele in matches:
-            #             ele.unlink(missing_ok=True)
-            #     else:
-            #         path.unlink(missing_ok=True)
-            #         for ele in matches:
-            #             ele.unlink(missing_ok=True)
+            # compare hashes against all hashes in db
+            for ele in final_list:
+                current_hash=ele[0]
+                current_file=ele[1]
+                size=current_file.stat().st_size
+                # get all files with same hash
+                all_matches=list(map(lambda x:pathlib.Path(x[0],x[1]),await self.manager.db_manager.hash_table.get_files_with_hash_matches(current_hash,size)))
+                #what to count as a previous match
+                prev_matches=[]
+                if self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing']:
+                    prev_matches=list(filter(lambda x:x!=current_file ,all_matches))
+                else:
+                    prev_matches=list(filter(lambda x:x!=current_file and x.exists() ,all_matches))
+                
+                #what do do with prev matches and current file
+                if len(prev_matches)==0:
+                    continue
+                elif self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download']:
+                    current_file.unlink(missing_ok=True)
+                else:
+                    for ele in prev_matches:
+                        ele.unlink(missing_ok=True)
         
-            
+    
