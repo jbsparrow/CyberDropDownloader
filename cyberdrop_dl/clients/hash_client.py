@@ -61,39 +61,48 @@ class HashClient:
                 size=item.stat().st_size
                 if hash:
                     hashes_dict[hash][size].append(item)
-        # #remove downloaded files, so each group only has the first downloaded file
-        final_list=[]
-        with self.manager.live_manager.get_hash_remove_live() :
-            for hash,size_dict in hashes_dict.items():
-                for size_group in size_dict.values():
-                    for ele in size_group:
-                        match=False
-                        if match:
-                            await self.manager.progress_manager.hash_progress.add_removed_file()
-                            ele.unlink(missing_ok=True)
-                        elif ele.exists():
-                            match=ele
-                            final_list.append((hash,ele))
-
-
-            # compare hashes against all hashes in db
-            for ele in final_list:
-                current_hash=ele[0]
-                current_file=ele[1]
-                size=current_file.stat().st_size
-                # get all files with same hash
-                all_matches=list(map(lambda x:pathlib.Path(x[0],x[1]),await self.manager.db_manager.hash_table.get_files_with_hash_matches(current_hash,size)))
-                #what to count as a previous match
-                prev_matches = list(filter(lambda x: x != current_file and (x.exists() if not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing'] else True ), all_matches))
-
-               
-                #what do do with prev matches and current file
-                if len(prev_matches)==0:
-                    continue
-                elif self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download']:
-                    current_file.unlink(missing_ok=True)
-                else:
-                    for ele in prev_matches:
-                        ele.unlink(missing_ok=True)
         
-    
+        with self.manager.live_manager.get_remove_file_via_hash_live() :
+            # #remove downloaded files, so each group only has the first downloaded file
+            for size_dict in hashes_dict.values():
+                for size, files in size_dict.items():
+                    selected_file = None
+                    for file in files:
+                        if file.exists():
+                            selected_file = file
+                            break 
+                    for file in filter(lambda x:x!=selected_file,files):
+                        file.unlink(missing_ok=True)
+                        await self.manager.progress_manager.hash_progress.add_removed_file()
+
+                    if selected_file:
+                        size_dict[size] = {'selected': selected_file, 'others': list(map(lambda x:str(x),files))}
+                    else:
+                        del size_dict[size]           
+
+            for hash, size_dict in hashes_dict.items():
+                for size, data in size_dict.items():
+                    selected_file = data['selected']
+                    other_files = data['others']
+
+                    # Get all matches from the database
+                    all_matches = list(map(lambda x: pathlib.Path(x[0], x[1]),
+                    await self.manager.db_manager.hash_table.get_files_with_hash_matches(hash, size)))
+
+                    # Filter out files with the same path as any file in other_files
+                    filtered_matches = [match for match in all_matches if match not in other_files]
+                    #Filter files based  on if the file exists
+                    filtered_matches = list(filter(lambda x: x.exists() if not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing'] else True ), all_matches)
+
+                    #what do do with prev matches and current file
+                    if len(filtered_matches)==0:
+                        continue
+                    elif self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download']:
+                        selected_file.unlink(missing_ok=True)
+                        await self.manager.progress_manager.hash_progress.add_removed_file()
+                    else:
+                        for ele in filtered_matches:
+                            ele.unlink(missing_ok=True)
+                            await self.manager.progress_manager.hash_progress.add_removed_file()
+            
+        

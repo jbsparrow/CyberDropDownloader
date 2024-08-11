@@ -65,8 +65,18 @@ class ProgressManager:
         await log_with_color("\nDownload Stats:", "cyan", 20)
         await log_with_color(f"Downloaded {self.download_progress.completed_files} files", "green", 20)
         await log_with_color(f"Previously Downloaded {self.download_progress.previously_completed_files} files", "yellow", 20)
+        
+
         await log_with_color(f"Skipped By Config {self.download_progress.skipped_files} files", "yellow", 20)
         await log_with_color(f"Failed {self.download_stats_progress.failed_files} files", "red", 20)
+
+        await log_with_color("\nDupe Stats:", "cyan", 20)
+        await log_with_color(f"Previously Hashed {self.hash_progress.prev_hash_files} files", "yellow", 20)
+        await log_with_color(f"Newly Hashed {self.hash_progress.hashed_files} files", "yellow", 20)
+        await log_with_color(f"Removed {self.hash_progress.removed_files} files", "yellow", 20)
+
+
+
 
         scrape_failures = await self.scrape_stats_progress.return_totals()
         await log_with_color("\nScrape Failures:", "cyan", 20)

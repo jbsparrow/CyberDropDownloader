@@ -27,7 +27,7 @@ class LiveManager:
 
                 
     @contextmanager
-    def get_hash_remove_live(self,stop=False):
+    def get_remove_file_via_hash_live(self,stop=False):
         try:
             if self.manager.args_manager.no_ui:
                 yield  
