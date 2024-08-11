@@ -25,6 +25,8 @@ class HashClient:
     async def _hash_directory_helper(self,path):
         async with self._manager_context():
             with self.manager.live_manager.get_hash_live(stop=True):
+                #force start live  manager for db connection
+                self.manager.startup()
                 if not pathlib.Path(path).is_dir():
                     raise Exception("Path is not a directory")
                 for file in pathlib.Path(path).glob("**/*"):
