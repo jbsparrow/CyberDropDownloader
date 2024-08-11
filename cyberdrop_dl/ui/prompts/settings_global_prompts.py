@@ -229,12 +229,30 @@ def edit_dupe_settings_prompt(manager: Manager) -> None:
         vi_mode=manager.vi_mode,
     ).execute()
     keep_current = inquirer.select(
-        message="Keep one current download:",
-        default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_current_download'],
+        message="Which files to prioritize:",
+        long_instruction=
+        """
+        If True, keep the existing file (previous download) and skip the new download
+        If False, keep the new download and potentially overwrite the existing file"
+        """,
+        default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download'],
+        choices=[Choice(True,"True"),Choice(False,"False")],
+        vi_mode=manager.vi_mode,
+    ).execute()
+
+
+    count_missing_files = inquirer.select(
+        message="Count moved files as existing",
+        long_instruction=
+        """
+        consider a missing/moved file as an existing
+        """,
+        default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing'],
         choices=[Choice(True,"True"),Choice(False,"False")],
         vi_mode=manager.vi_mode,
     ).execute()
    
     manager.config_manager.global_settings_data['Dupe_Cleanup_Options'][' delete_after_download'] =  delete_after
     manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading'] = hash_while_downloading
-    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_current_download'] = keep_current
+    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download'] = keep_current
+    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing'] = count_missing_files

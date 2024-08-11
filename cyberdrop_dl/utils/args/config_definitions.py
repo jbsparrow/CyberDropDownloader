@@ -137,7 +137,8 @@ global_settings: Dict = {
     {
   "delete_after_download": False,
   "hash_while_downloading": False,
-  "keep_current_download": False
+  "keep_prev_download": False,
+  "count_missing_as_existing": False
     },
 
     "UI_Options": {

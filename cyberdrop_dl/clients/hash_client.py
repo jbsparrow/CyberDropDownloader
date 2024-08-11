@@ -84,7 +84,7 @@ class HashClient:
             #     matches=list(filter(lambda x:x!=path and x.exists(),all_matches))
             #     if len(matches)==0:
             #         continue
-            #     elif self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_current_download']:
+            #     elif self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download']:
             #         for ele in matches:
             #             ele.unlink(missing_ok=True)
             #     else:
