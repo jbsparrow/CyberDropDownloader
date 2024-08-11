@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from collections import defaultdict
 import asyncio
 from cyberdrop_dl.utils.utilities import log
+from send2trash import send2trash
 
 
 
@@ -72,8 +73,11 @@ class HashClient:
                             selected_file = file
                             break 
                     for file in filter(lambda x:x!=selected_file,files):
-                        file.unlink(missing_ok=True)
-                        await self.manager.progress_manager.hash_progress.add_removed_file()
+                        try:
+                            send2trash(file)
+                            await self.manager.progress_manager.hash_progress.add_removed_file()
+                        except OSError:
+                            pass
 
                     if selected_file:
                         size_dict[size] = {'selected': selected_file, 'others': list(map(lambda x:str(x.absolute()),files))}
@@ -98,11 +102,17 @@ class HashClient:
                     if len(filtered_matches)==0:
                         continue
                     elif self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download']:
-                        selected_file.unlink(missing_ok=True)
+                        try:
+                            send2trash(selected_file)
+                        except OSError:
+                            pass
                         await self.manager.progress_manager.hash_progress.add_removed_file()
                     else:
                         for ele in filtered_matches:
-                            ele.unlink(missing_ok=True)
+                            try:
+                                send2trash(ele)
+                            except OSError:
+                                pass
                             await self.manager.progress_manager.hash_progress.add_removed_prev_file()
             
         
