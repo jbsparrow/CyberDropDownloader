@@ -61,7 +61,6 @@ class HashClient:
             await log(f"After media processing failed: {media_item.complete_file} with error {e}", 40)
 
 
-    
     async def cleanup_dupes(self):
         with self.manager.live_manager.get_hash_live() :
             if not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_after_download']:
