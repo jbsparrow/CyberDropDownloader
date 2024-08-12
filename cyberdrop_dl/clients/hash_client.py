@@ -73,7 +73,6 @@ class HashClient:
                 if hash:
                     hashes_dict[hash][size].append(item)
         with self.manager.live_manager.get_remove_file_via_hash_live() :
-            await asyncio.sleep(60)
             # #remove downloaded files, so each group only has the first downloaded file
             for size_dict in hashes_dict.values():
                 for size, files in size_dict.items():
