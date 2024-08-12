@@ -6,6 +6,7 @@ import aiosqlite
 
 from cyberdrop_dl.utils.database.tables.history_table import HistoryTable
 from cyberdrop_dl.utils.database.tables.temp_table import TempTable
+from cyberdrop_dl.utils.database.tables.hash_table import HashTable
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -20,6 +21,7 @@ class DBManager:
         self.ignore_history: bool = False
 
         self.history_table: HistoryTable = field(init=False)
+        self.hash_table: HashTable = field(init=False)  
         self.temp_table: TempTable = field(init=False)
 
     async def startup(self) -> None:
@@ -29,6 +31,7 @@ class DBManager:
         self.ignore_history = self.manager.config_manager.settings_data['Runtime_Options']['ignore_history']
 
         self.history_table = HistoryTable(self._db_conn)
+        self.hash_table=HashTable(self._db_conn)
         self.temp_table = TempTable(self._db_conn)
 
         self.history_table.ignore_history = self.ignore_history
@@ -36,6 +39,7 @@ class DBManager:
         await self._pre_allocate()
 
         await self.history_table.startup()
+        await self.hash_table.startup()
         await self.temp_table.startup()
 
     async def close(self) -> None:

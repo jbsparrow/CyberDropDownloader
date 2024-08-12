@@ -59,6 +59,7 @@ class ClientManager:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+
     async def get_downloader_spacer(self, key: str) -> float:
         """Returns the download spacer for a domain"""
         if key in self.download_spacer:
@@ -118,6 +119,5 @@ class ClientManager:
             raise DownloadFailure(status=CustomHTTPStatus.IM_A_TEAPOT, message="No content-type in response header")
 
         raise DownloadFailure(status=status, message=f"HTTP status code {status}: {phrase}")
-    
     async def check_bucket(self,size):
         await  self._leaky_bucket.acquire(size)

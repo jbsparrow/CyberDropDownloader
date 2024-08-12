@@ -12,7 +12,7 @@ from cyberdrop_dl.scraper.scraper import ScrapeMapper
 from cyberdrop_dl.ui.ui import program_ui
 from cyberdrop_dl.utils.sorting import Sorter
 from cyberdrop_dl.utils.utilities import check_latest_pypi, log_with_color, check_partials_and_empty_folders, log
-
+from cyberdrop_dl.clients.hash_client import HashClient
 
 def startup() -> Manager:
     """
@@ -43,7 +43,12 @@ async def runtime(manager: Manager) -> None:
     async with asyncio.TaskGroup() as task_group:
         manager.task_group = task_group
         await scrape_mapper.start()
-
+    
+async def post_runtime(manager: Manager) -> None:
+    """Actions to complete after main runtime, and before ui shutdown"""
+    #checking and removing dupes
+    await HashClient(manager).cleanup_dupes()
+    
 
 async def director(manager: Manager) -> None:
     """Runs the program and handles the UI"""
@@ -106,11 +111,9 @@ async def director(manager: Manager) -> None:
         await log("Starting UI...", 20)
         if not manager.args_manager.sort_all_configs:
             try:
-                if not manager.args_manager.no_ui:
-                    with Live(manager.progress_manager.layout, refresh_per_second=manager.config_manager.global_settings_data['UI_Options']['refresh_rate']):
-                        await runtime(manager)
-                else:
+                with manager.live_manager.get_main_live(stop=True) :
                     await runtime(manager)
+                    await post_runtime(manager)
             except Exception as e:
                 print("\nAn error occurred, please report this to the developer")
                 print(e)
@@ -134,6 +137,10 @@ async def director(manager: Manager) -> None:
             await log("Updating Last Forum Post...", 20)
             await manager.log_manager.update_last_forum_post()
             
+        
+        # add the stuff here
+
+        
         await log("Printing Stats...", 20)
         await manager.progress_manager.print_stats()
 

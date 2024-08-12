@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cyberdrop-dl-patched"
-version = "5.3.41"
+version = "5.4.1"
 description = "Bulk downloader for multiple file hosts"
 authors = ["Jules Winnfield <juleswinnfieldII@protonmail.com>", "Jacob B <admin@script-ware.net>"]
 readme = "README.md"
@@ -28,6 +28,8 @@ mediafire = "^0.6.1"
 mutagen = "^1.47.0"
 pillow = "^10.2.0"
 get-video-properties = "^0.1.1"
+humanfriendly = "^10.0"
+send2trash = "^1.8.3"
 
 [tool.poetry.scripts]
 cyberdrop-dl = "cyberdrop_dl.main:main"

@@ -15,6 +15,10 @@ from cyberdrop_dl.ui.prompts.general_prompts import (
 from cyberdrop_dl.ui.prompts.settings_global_prompts import edit_global_settings_prompt
 from cyberdrop_dl.ui.prompts.url_file_prompts import edit_urls_prompt
 from cyberdrop_dl.ui.prompts.settings_user_prompts import create_new_config_prompt, edit_config_values_prompt
+from cyberdrop_dl.clients.hash_client import HashClient
+from cyberdrop_dl.ui.prompts.settings_hash_prompts import path_prompt
+from rich.live import Live
+
 
 console = Console()
 
@@ -45,24 +49,29 @@ def program_ui(manager: Manager):
             manager.args_manager.retry = True
             break
             
-        # Sort All Configs
+        # Scanning folder to create hashes
         elif action == 4:
+            path=path_prompt(manager)
+            HashClient(manager).hash_directory(path)
+        
+        # Sort All Configs
+        elif action == 5:
             manager.args_manager.sort_all_configs = True
             manager.args_manager.all_configs = True
             break
 
         # Edit URLs
-        elif action == 5:
+        elif action == 6:
             input_file = manager.config_manager.settings_data['Files']['input_file'] if not manager.args_manager.input_file else manager.args_manager.input_file
             edit_urls_prompt(input_file, manager.vi_mode)
 
         # Select Config
-        elif action == 6:
+        elif action == 7:
             configs = manager.config_manager.get_configs()
             selected_config = select_config_prompt(manager, configs)
             manager.config_manager.change_config(selected_config)
 
-        elif action == 7:
+        elif action == 8:
             console.clear()
             console.print("Editing Input / Output File Paths")
             input_file = inquirer.filepath(
@@ -83,7 +92,7 @@ def program_ui(manager: Manager):
             manager.config_manager.write_updated_settings_config()
 
         # Manage Configs
-        elif action == 8:
+        elif action == 9:
             while True:
                 console.clear()
                 console.print("[bold]Manage Configs[/bold]")
@@ -138,9 +147,9 @@ def program_ui(manager: Manager):
                     break
 
         # Import Cyberdrop_V4 Items
-        elif action == 9:
+        elif action == 10:
             import_cyberdrop_v4_items_prompt(manager)
 
         # Exit
-        elif action == 10:
+        elif action == 11:
             exit(0)

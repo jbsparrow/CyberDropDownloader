@@ -166,6 +166,18 @@ class ConfigManager:
         self.global_settings_data['Rate_Limiting_Options']['read_timeout'] = int(
             self.global_settings_data['Rate_Limiting_Options']['read_timeout'])
 
+        self.global_settings_data['Dupe_Cleanup_Options']['delete_after_download'] = \
+            self.global_settings_data['Dupe_Cleanup_Options']['delete_after_download']
+        self.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading'] = \
+            self.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading']
+        self.global_settings_data['Dupe_Cleanup_Options']['dedupe_already_downloaded'] = \
+            self.global_settings_data['Dupe_Cleanup_Options']['dedupe_already_downloaded']
+        self.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download'] = \
+            self.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download']
+        self.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing'] = \
+            self.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing']
+
+
         self.global_settings_data['UI_Options']['refresh_rate'] = int(
             self.global_settings_data['UI_Options']['refresh_rate'])
         self.global_settings_data['UI_Options']['scraping_item_limit'] = int(

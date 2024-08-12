@@ -24,7 +24,8 @@ def edit_global_settings_prompt(manager: Manager) -> None:
                 Choice(1, "Edit General Settings"),
                 Choice(2, "Edit Rate Limiting Settings"),
                 Choice(3, "Edit UI Options"),
-                Choice(4, "Done"),
+                Choice(3, "Edit Dupe Options"),
+                Choice(5, "Done"),
             ],
             vi_mode=manager.vi_mode,
         ).execute()
@@ -39,10 +40,14 @@ def edit_global_settings_prompt(manager: Manager) -> None:
             
         # Edit UI Settings
         elif action == 3:
+            edit_dupe_settings_prompt(manager)
+
+       # Edit UI Settings
+        elif action == 4:
             edit_ui_settings_prompt(manager)
 
         # Done
-        elif action == 4:
+        elif action == 5:
             manager.config_manager.write_updated_global_settings_config()
             break
 
@@ -195,3 +200,57 @@ def edit_rate_limiting_settings_prompt(manager: Manager) -> None:
     manager.config_manager.global_settings_data['Rate_Limiting_Options']['download_delay'] = float(throttle)
     manager.config_manager.global_settings_data['Rate_Limiting_Options']['max_simultaneous_downloads'] = int(max_simultaneous_downloads)
     manager.config_manager.global_settings_data['Rate_Limiting_Options']['max_simultaneous_downloads_per_domain'] = int(max_simultaneous_downloads_per_domain)
+
+
+
+
+def edit_dupe_settings_prompt(manager: Manager) -> None:
+    """Edit the duplicate file removal settings"""
+    console.clear()
+    console.print("Editing Duplicate File Settings")
+
+    delete_after = inquirer.select(
+        message="Delete duplicate using hashes:",
+        default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_after_download'],
+        choices=[Choice(True,"True"),Choice(False,"False")],
+        vi_mode=manager.vi_mode,
+    ).execute()
+    hash_while_downloading = inquirer.select(
+        message="Hash Files during downloading:",
+        default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading'],
+        choices=[Choice(True,"True"),Choice(False,"False")],
+        vi_mode=manager.vi_mode,
+    ).execute()
+    keep_current = inquirer.select(
+        message="Keep previously downloaded files, rather one added from current execution: ",
+        long_instruction=
+        """
+        If True, keep the existing file (previously downloaded) and removes newly added file
+        If False, keep the newly added file and removes the prev files
+        """,
+        default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download'],
+        choices=[Choice(True,"True"),Choice(False,"False")],
+        vi_mode=manager.vi_mode,
+    ).execute()
+
+
+    count_missing_files = inquirer.select(
+        message="Count moved/deleted files as a valid previous downloaded",
+        default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing'],
+        choices=[Choice(True,"True"),Choice(False,"False")],
+        vi_mode=manager.vi_mode,
+    ).execute()
+
+
+    dedupe_already_downloaded = inquirer.select(
+        message="Remove duplicates from already downloaded files: ",
+        default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['dedupe_already_downloaded'],
+        choices=[Choice(True,"True"),Choice(False,"False")],
+        vi_mode=manager.vi_mode,
+    ).execute()
+   
+    manager.config_manager.global_settings_data['Dupe_Cleanup_Options'][' delete_after_download'] =  delete_after
+    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading'] = hash_while_downloading
+    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download'] = keep_current
+    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing'] = count_missing_files
+    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['dedupe_already_downloaded'] = dedupe_already_downloaded

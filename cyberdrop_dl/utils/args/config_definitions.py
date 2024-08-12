@@ -133,6 +133,16 @@ global_settings: Dict = {
         "max_simultaneous_downloads_per_domain": 5,
         "download_speed_limit":0
     },
+    "Dupe_Cleanup_Options":
+    {
+  "delete_after_download": False,
+  "hash_while_downloading": False,
+  "keep_prev_download": False,
+  "count_missing_as_existing": False,
+  "dedupe_already_downloaded": False
+
+    },
+
     "UI_Options": {
         "vi_mode": False,
         "refresh_rate": 10,
