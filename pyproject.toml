@@ -2,10 +2,10 @@
 name = "cyberdrop-dl-patched"
 version = "5.4.16"
 description = "Bulk downloader for multiple file hosts"
-authors = ["Jules Winnfield <juleswinnfieldII@protonmail.com>", "Jacob B <admin@script-ware.net>"]
+authors = ["Jacob B <admin@script-ware.net>"]
 readme = "README.md"
 repository = "https://github.com/jbsparrow/CyberDropDownloader"
-documentation = "https://jules-winnfieldx.gitbook.io/cyberdrop-dl/"
+documentation = "https://script-ware.gitbook.io/cyberdrop-dl/"
 packages = [{include = "cyberdrop_dl"}]
 
 [tool.poetry.dependencies]
