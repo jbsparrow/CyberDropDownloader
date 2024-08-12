@@ -72,14 +72,14 @@ class HashClient:
                 size=item.stat().st_size
                 if hash:
                     hashes_dict[hash][size].append(item)
- 
         with self.manager.live_manager.get_remove_file_via_hash_live() :
+            await asyncio.sleep(60)
             # #remove downloaded files, so each group only has the first downloaded file
             for size_dict in hashes_dict.values():
                 for size, files in size_dict.items():
                     selected_file = None
                     for file in files:
-                        if file.exists():
+                        if file.is_file():
                             selected_file = file
                             break 
                     for file in filter(lambda x:x!=selected_file,files):

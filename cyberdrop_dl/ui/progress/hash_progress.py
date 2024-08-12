@@ -46,8 +46,8 @@ class HashProgress:
         self.removed_files=0
         self.removed_prev_files=0
         self.removed_progress_group = Group(self.match_progress,self.remove_progress)
-        self.removed_files_task_id = self.remove_progress.add_task("[green]Removed From Downloads Files", total=None)
-        self.removed_prev_files_task_id = self.remove_progress.add_task("[green]Removed From Previous Downloads Files", total=None)
+        self.removed_files_task_id = self.remove_progress.add_task("[green]Removed From Currently Downloaded Files", total=None)
+        self.removed_prev_files_task_id = self.remove_progress.add_task("[green]Removed From Previously Downloaded Files", total=None)
 
 
 
