@@ -204,13 +204,6 @@ def edit_rate_limiting_settings_prompt(manager: Manager) -> None:
 
 
 
-
-
-
-
-
-
-
 def edit_dupe_settings_prompt(manager: Manager) -> None:
     """Edit the duplicate file removal settings"""
     console.clear()
@@ -245,7 +238,7 @@ def edit_dupe_settings_prompt(manager: Manager) -> None:
         message="Count moved/deleted files as existing",
         long_instruction=
         """
-        Don't remove moved/deleted files from previously downloaded
+        Count moved/deleted files as a valid previously downloaded
         """,
         default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing'],
         choices=[Choice(True,"True"),Choice(False,"False")],
@@ -253,9 +246,9 @@ def edit_dupe_settings_prompt(manager: Manager) -> None:
     ).execute()
 
 
-    add_prev_as_completed = inquirer.select(
-        message="Prevent existing files as being marked as previously downloaded: ",
-        default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['add_prev_as_completed'],
+    dedupe_existing_files = inquirer.select(
+        message="Remove duplicates for existing files: ",
+        default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['dedupe_existing_files'],
         choices=[Choice(True,"True"),Choice(False,"False")],
         vi_mode=manager.vi_mode,
     ).execute()
@@ -264,4 +257,4 @@ def edit_dupe_settings_prompt(manager: Manager) -> None:
     manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading'] = hash_while_downloading
     manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download'] = keep_current
     manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing'] = count_missing_files
-    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['add_prev_as_completed'] = add_prev_as_completed
+    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['dedupe_existing_files'] = dedupe_existing_files

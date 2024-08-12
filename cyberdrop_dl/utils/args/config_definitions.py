@@ -139,7 +139,7 @@ global_settings: Dict = {
   "hash_while_downloading": False,
   "keep_prev_download": False,
   "count_missing_as_existing": False,
-  "add_prev_as_completed": False
+  "dedupe_existing_files": False
 
     },
 

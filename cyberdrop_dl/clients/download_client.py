@@ -192,7 +192,7 @@ class DownloadClient:
     async def handle_media_item_completion(self, media_item,downloaded=False) -> None:
         """Sends to hash client to handle hashing and marks as completed/current download"""
         await self._hash_client.hash_item_during_download(media_item.complete_file)
-        if downloaded or self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['add_prev_as_completed']:
+        if downloaded or self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['dedupe_existing_files']:
                 self.manager.path_manager.add_completed(media_item.completed)
        
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
