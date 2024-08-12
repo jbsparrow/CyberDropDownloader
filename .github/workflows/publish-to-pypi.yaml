@@ -28,7 +28,7 @@ jobs:
         run: |
           version=$(poetry version --short)
           if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "version=$version" >> $GITHUB_ENV
+            echo "version=$version" >> $GITHUB_OUTPUT
           else
             echo "Not a valid version bump. Skipping tag creation."
             exit 0
