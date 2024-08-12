@@ -118,7 +118,7 @@ class DownloadClient:
                     await log(f"Skipping {media_item.url} as it has already been downloaded", 10)
                     await self.manager.progress_manager.download_progress.add_previously_completed(False)
                     await self.mark_completed(media_item, domain)
-                    await  self.handle_media_item_completion(downloaded=False)
+                    await  self.handle_media_item_completion(media_item,downloaded=False)
 
 
                     return False
@@ -172,7 +172,7 @@ class DownloadClient:
         if downloaded:
             media_item.partial_file.rename(media_item.complete_file)
             await self.mark_completed(media_item, domain)
-            await  self.handle_media_item_completion(downloaded=True)
+            await  self.handle_media_item_completion(media_item,downloaded=True)
         return downloaded
         
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
