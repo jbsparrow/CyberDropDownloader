@@ -118,6 +118,8 @@ class DownloadClient:
                     await log(f"Skipping {media_item.url} as it has already been downloaded", 10)
                     await self.manager.progress_manager.download_progress.add_previously_completed(False)
                     await self.mark_completed(media_item, domain)
+                    await  self.handle_media_item_completion(downloaded=False)
+
 
                     return False
             
@@ -161,6 +163,7 @@ class DownloadClient:
             await self.manager.progress_manager.download_progress.add_skipped()
             await self.mark_incomplete(media_item, domain)
             await self.mark_completed(media_item, domain)
+            await  self.handle_media_item_completion(downloaded=False)
             return False
         
         async def save_content(content: aiohttp.StreamReader) -> None:
@@ -170,9 +173,7 @@ class DownloadClient:
         if downloaded:
             media_item.partial_file.rename(media_item.complete_file)
             await self.mark_completed(media_item, domain)
-            #only mark add path if actually downloaded this run
-            self.manager.path_manager.add_completed(media_item)
-            self.file_path=media_item
+            await  self.handle_media_item_completion(downloaded=True)
         return downloaded
         
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -183,20 +184,17 @@ class DownloadClient:
     
     async def mark_completed(self, media_item: MediaItem, domain: str) -> None:
         await self._add_db(media_item,domain)
-        await  self._handle_media_item_completion(media_item)
        
     async def _add_db(self,media_item: MediaItem, domain: str):
         """Marks the media item as completed in the database and adds to the completed list"""
         await self.manager.db_manager.history_table.mark_complete(domain, media_item)
 
-    async def _handle_media_item_completion(self, media_item) -> None:
-        try:
-            """Handle hashing completed items and adds item to the completed list"""
-            if self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading']:
-                await self._hash_client.hash_item(media_item.complete_file)
-        except Exception as e:
-            await log(f"After media processing failed: {media_item.complete_file} with error {e}", 40)
-
+    async def handle_media_item_completion(self, media_item,downloaded=False) -> None:
+        """Sends to hash client to handle hashing and marks as completed/current download"""
+        await self._hash_client.hash_item_during_download(media_item.complete_file)
+        if downloaded or self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['add_prev_as_completed']:
+                self.manager.path_manager.add_completed(media_item.completed)
+       
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     

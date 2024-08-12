@@ -5,6 +5,7 @@ from collections import defaultdict
 import asyncio
 from cyberdrop_dl.utils.utilities import log
 from send2trash import send2trash
+from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem
 
 
 
@@ -51,6 +52,17 @@ class HashClient:
             await self.manager.progress_manager.hash_progress.add_prev_hash()
         return  hash
 
+    
+    async def hash_item_during_download(self,media_item:MediaItem):
+        try:
+            if self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading']:
+                if self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading']:
+                    self.hash_item(media_item.completed_path)
+        except Exception as e:
+            await log(f"After media processing failed: {media_item.complete_file} with error {e}", 40)
+
+
+    
     async def cleanup_dupes(self):
         with self.manager.live_manager.get_hash_live() :
             if not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_after_download']:

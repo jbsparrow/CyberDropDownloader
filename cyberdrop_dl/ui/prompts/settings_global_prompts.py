@@ -217,23 +217,23 @@ def edit_dupe_settings_prompt(manager: Manager) -> None:
     console.print("Editing Duplicate File Settings")
 
     delete_after = inquirer.select(
-        message="Delete Dupes After Download:",
+        message="Delete duplicate using hashes:",
         default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_after_download'],
         choices=[Choice(True,"True"),Choice(False,"False")],
         vi_mode=manager.vi_mode,
     ).execute()
     hash_while_downloading = inquirer.select(
-        message="Hash Files while Downloading:",
+        message="Hash Files during downloading:",
         default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading'],
         choices=[Choice(True,"True"),Choice(False,"False")],
         vi_mode=manager.vi_mode,
     ).execute()
     keep_current = inquirer.select(
-        message="Which files to prioritize:",
+        message="Keep previously downloaded files, rather one added from current execution: ",
         long_instruction=
         """
-        If True, keep the existing file (previous download) and skip the new download
-        If False, keep the new download and potentially overwrite the existing file"
+        If True, keep the existing file (previously downloaded) and removes newly added file
+        If False, keep the newly added file and removes the prev files
         """,
         default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download'],
         choices=[Choice(True,"True"),Choice(False,"False")],
@@ -242,12 +242,20 @@ def edit_dupe_settings_prompt(manager: Manager) -> None:
 
 
     count_missing_files = inquirer.select(
-        message="Count moved files as existing",
+        message="Count moved/deleted files as existing",
         long_instruction=
         """
-        consider a missing/moved file as an existing
+        Don't remove moved/deleted files from previously downloaded
         """,
         default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing'],
+        choices=[Choice(True,"True"),Choice(False,"False")],
+        vi_mode=manager.vi_mode,
+    ).execute()
+
+
+    add_prev_as_completed = inquirer.select(
+        message="Prevent existing files as being marked as previously downloaded: ",
+        default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['add_prev_as_completed'],
         choices=[Choice(True,"True"),Choice(False,"False")],
         vi_mode=manager.vi_mode,
     ).execute()
@@ -256,3 +264,4 @@ def edit_dupe_settings_prompt(manager: Manager) -> None:
     manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading'] = hash_while_downloading
     manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download'] = keep_current
     manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing'] = count_missing_files
+    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['add_prev_as_completed'] = add_prev_as_completed
