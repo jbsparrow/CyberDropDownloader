@@ -28,22 +28,22 @@ jobs:
         run: |
           version=$(poetry version --short)
           if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "version=$version" >> $GITHUB_OUTPUT
+            echo "version=$version" >> $GITHUB_ENV
           else
             echo "Not a valid version bump. Skipping tag creation."
             exit 0
           fi
 
       - name: Create Tag
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && steps.release.outputs.version != '' }}
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && env.version != '' }}
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git tag ${{ env.version }}
-          git push origin ${{ steps.release.outputs.version }}
+          git push origin ${{ env.version }}
           echo "ref is ${{ github.ref }}"
           echo "event name is ${{ github.event_name }}"
-          echo "version is ${{ steps.release.outputs.version }}"
+          echo "version is ${{ env.version }}"  # Output the version for debugging
 
       - name: Build project for distribution
         if: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
