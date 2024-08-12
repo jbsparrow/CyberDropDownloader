@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cyberdrop-dl-patched"
-version = "5.4.14"
+version = "5.4.15"
 description = "Bulk downloader for multiple file hosts"
 authors = ["Jules Winnfield <juleswinnfieldII@protonmail.com>", "Jacob B <admin@script-ware.net>"]
 readme = "README.md"
