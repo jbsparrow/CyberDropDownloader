@@ -34,8 +34,18 @@ jobs:
             exit 0
           fi
 
+      - name: Check if Tag Exists
+        id: tag_exists
+        run: |
+          if git rev-parse "refs/tags/${{ env.version }}" >/dev/null 2>&1; then
+            echo "Tag ${{ env.version }} already exists."
+            echo "tag_exists=true" >> $GITHUB_ENV
+          else
+            echo "tag_exists=false" >> $GITHUB_ENV
+          fi
+      
       - name: Create Tag
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && env.version != '' }}
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && env.tag_exists == 'false' }}
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
@@ -46,7 +56,7 @@ jobs:
         if: ${{ github.ref == 'refs/heads/master' && env.version != '' }}
         run: |
           git fetch --tags
-          git checkout "refs/tags/${{ env.version }}"  # Checkout the newly created tag
+          git checkout "refs/tags/${{ env.version }}"
           echo "Checked out tag ${{ env.version }}"
 
       - name: Build project for distribution
