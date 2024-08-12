@@ -170,8 +170,8 @@ class ConfigManager:
             self.global_settings_data['Dupe_Cleanup_Options']['delete_after_download']
         self.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading'] = \
             self.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading']
-        self.global_settings_data['Dupe_Cleanup_Options']['dedupe_existing_files'] = \
-            self.global_settings_data['Dupe_Cleanup_Options']['dedupe_existing_files']
+        self.global_settings_data['Dupe_Cleanup_Options']['dedupe_already_downloaded'] = \
+            self.global_settings_data['Dupe_Cleanup_Options']['dedupe_already_downloaded']
         self.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download'] = \
             self.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download']
         self.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing'] = \

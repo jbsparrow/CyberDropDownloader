@@ -235,20 +235,16 @@ def edit_dupe_settings_prompt(manager: Manager) -> None:
 
 
     count_missing_files = inquirer.select(
-        message="Count moved/deleted files as existing",
-        long_instruction=
-        """
-        Count moved/deleted files as a valid previously downloaded
-        """,
+        message="Count moved/deleted files as a valid previous downloaded",
         default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing'],
         choices=[Choice(True,"True"),Choice(False,"False")],
         vi_mode=manager.vi_mode,
     ).execute()
 
 
-    dedupe_existing_files = inquirer.select(
-        message="Remove duplicates for existing files: ",
-        default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['dedupe_existing_files'],
+    dedupe_already_downloaded = inquirer.select(
+        message="Remove duplicates from already downloaded files: ",
+        default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['dedupe_already_downloaded'],
         choices=[Choice(True,"True"),Choice(False,"False")],
         vi_mode=manager.vi_mode,
     ).execute()
@@ -257,4 +253,4 @@ def edit_dupe_settings_prompt(manager: Manager) -> None:
     manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading'] = hash_while_downloading
     manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download'] = keep_current
     manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing'] = count_missing_files
-    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['dedupe_existing_files'] = dedupe_existing_files
+    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['dedupe_already_downloaded'] = dedupe_already_downloaded
