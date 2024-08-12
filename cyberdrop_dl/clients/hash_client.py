@@ -56,8 +56,7 @@ class HashClient:
     async def hash_item_during_download(self,media_item:MediaItem):
         try:
             if self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading']:
-                if self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading']:
-                    self.hash_item(media_item.completed_path)
+                    self.hash_item(media_item.complete_file)
         except Exception as e:
             await log(f"After media processing failed: {media_item.complete_file} with error {e}", 40)
 
