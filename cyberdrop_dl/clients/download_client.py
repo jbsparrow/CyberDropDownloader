@@ -163,7 +163,6 @@ class DownloadClient:
             await self.manager.progress_manager.download_progress.add_skipped()
             await self.mark_incomplete(media_item, domain)
             await self.mark_completed(media_item, domain)
-            await  self.handle_media_item_completion(downloaded=False)
             return False
         
         async def save_content(content: aiohttp.StreamReader) -> None:
