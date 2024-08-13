@@ -1,1 +1,2 @@
-__version__ = "5.4.17"
+import importlib
+version = importlib.metadata.version('cyberdrop-dl-patched')
