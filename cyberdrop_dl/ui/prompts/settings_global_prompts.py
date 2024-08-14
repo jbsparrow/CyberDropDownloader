@@ -260,7 +260,7 @@ If False, keep the new file and move any matching previous files to the trash
 
     dedupe_already_downloaded = inquirer.select(
         message="Remove duplicates from already existing files: ",
-        long_instruction="Removes duplicates from files generated from current links, even if skipped for already existing on system",
+        long_instruction="Removes duplicates from files generated from current links, even if skipped/not downloaded for already existing on system",
         default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['dedupe_already_downloaded'],
         choices=[Choice(True,"True"),Choice(False,"False")],
         vi_mode=manager.vi_mode,
