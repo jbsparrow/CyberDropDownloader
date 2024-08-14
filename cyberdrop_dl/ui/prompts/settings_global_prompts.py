@@ -262,7 +262,7 @@ If False, keep the new file and move any matching previous files to the trash
         vi_mode=manager.vi_mode,
     ).execute()
    
-    manager.config_manager.global_settings_data['Dupe_Cleanup_Options'][' delete_after_download'] =  delete_after
+    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_after_download'] =  delete_after
     manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading'] = hash_while_downloading
     manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download'] = keep_current
     manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing'] = count_missing_files
