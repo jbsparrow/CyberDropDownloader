@@ -212,11 +212,7 @@ def edit_dupe_settings_prompt(manager: Manager) -> None:
     console.print("Editing Duplicate File Settings")
 
     delete_after = inquirer.select(
-        message="Delete duplicate using hashes:",
-        long_instruction=
-        """
-Toggle for enabling deduplication
-        """,
+        message="Toggle duplicate files deletion using hashes:",
         default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_after_download'],
         choices=[Choice(True,"True"),Choice(False,"False")],
         vi_mode=manager.vi_mode,
@@ -234,7 +230,7 @@ together during deduplication process
         vi_mode=manager.vi_mode,
     ).execute()
     keep_current = inquirer.select(
-        message="Keep previously hashed files, rather one added/updated from current execution",
+        message="Keep previously hashed files, rather than ones added/updated from current execution",
         long_instruction=
         """
 previous marking indicates a file already in the database that passes the existing check, and does not match the list of files created or updated from the current links
@@ -260,7 +256,7 @@ If False, keep the new file and move any matching previous files to the trash
 
     dedupe_already_downloaded = inquirer.select(
         message="Remove duplicates from already existing files: ",
-        long_instruction="Removes duplicates from files generated from current links, even if skipped/not downloaded for already existing on system",
+        long_instruction="Removes duplicates from files generated from current links, even if 'skipped/not downloaded; for already existing on system",
         default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['dedupe_already_downloaded'],
         choices=[Choice(True,"True"),Choice(False,"False")],
         vi_mode=manager.vi_mode,
