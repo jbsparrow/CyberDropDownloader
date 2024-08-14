@@ -212,11 +212,7 @@ def edit_dupe_settings_prompt(manager: Manager) -> None:
     console.print("Editing Duplicate File Settings")
 
     delete_after = inquirer.select(
-        message="Delete duplicate using hashes:",
-        long_instruction=
-        """
-Toggle for enabling deduplication
-        """,
+        message="Toggle deletion duplicates files using hashes:",
         default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_after_download'],
         choices=[Choice(True,"True"),Choice(False,"False")],
         vi_mode=manager.vi_mode,
