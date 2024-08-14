@@ -24,7 +24,7 @@ def edit_global_settings_prompt(manager: Manager) -> None:
                 Choice(1, "Edit General Settings"),
                 Choice(2, "Edit Rate Limiting Settings"),
                 Choice(3, "Edit UI Options"),
-                Choice(3, "Edit Dupe Options"),
+                Choice(4, "Edit Dupe Options"),
                 Choice(5, "Done"),
             ],
             vi_mode=manager.vi_mode,
@@ -38,13 +38,15 @@ def edit_global_settings_prompt(manager: Manager) -> None:
         elif action == 2:
             edit_rate_limiting_settings_prompt(manager)
             
-        # Edit UI Settings
+ 
+       # Edit UI Settings
         elif action == 3:
+            edit_ui_settings_prompt(manager)
+
+        #Edit Dupe
+        elif action == 4:
             edit_dupe_settings_prompt(manager)
 
-       # Edit UI Settings
-        elif action == 4:
-            edit_ui_settings_prompt(manager)
 
         # Done
         elif action == 5:
