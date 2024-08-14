@@ -215,7 +215,7 @@ def edit_dupe_settings_prompt(manager: Manager) -> None:
         message="Delete duplicate using hashes:",
         long_instruction=
         """
-Toggle for enabling duplicate delection
+Toggle for enabling deduplication
         """,
         default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_after_download'],
         choices=[Choice(True,"True"),Choice(False,"False")],
