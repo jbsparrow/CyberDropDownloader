@@ -223,7 +223,12 @@ Toggle for enabling deduplication
     ).execute()
     hash_while_downloading = inquirer.select(
         message="Hash Files during downloading:",
-        long_instruction="Generate file hashes required for deduplication, after each download",
+        long_instruction=
+        
+"""
+Generate file hashes after each download, instead of batched
+together during deduplication process  
+""",
         default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading'],
         choices=[Choice(True,"True"),Choice(False,"False")],
         vi_mode=manager.vi_mode,
