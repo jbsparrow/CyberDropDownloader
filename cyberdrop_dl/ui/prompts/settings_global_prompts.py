@@ -215,7 +215,7 @@ def edit_dupe_settings_prompt(manager: Manager) -> None:
         message="Delete duplicate using hashes:",
         long_instruction=
         """
-        Toggle for enabling duplicate delection
+Toggle for enabling duplicate delection
         """,
         default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_after_download'],
         choices=[Choice(True,"True"),Choice(False,"False")],
@@ -223,7 +223,7 @@ def edit_dupe_settings_prompt(manager: Manager) -> None:
     ).execute()
     hash_while_downloading = inquirer.select(
         message="Hash Files during downloading:",
-        long_instruction="Hash files after each download",
+        long_instruction="Generate file hashes required for deduplication, after each download",
         default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading'],
         choices=[Choice(True,"True"),Choice(False,"False")],
         vi_mode=manager.vi_mode,
@@ -232,10 +232,10 @@ def edit_dupe_settings_prompt(manager: Manager) -> None:
         message="Keep previously hashed files, rather one added/updated from current execution",
         long_instruction=
         """
-        previous marking indicates a file already in the database that passes the existing check, and does not match the list of files created or updated from the current links
-        
-        If True, priority is given to files marked as previous
-        If False, keep the new file and move any matching previous files to the trash
+previous marking indicates a file already in the database that passes the existing check, and does not match the list of files created or updated from the current links
+
+If True, priority is given to files marked as previous
+If False, keep the new file and move any matching previous files to the trash
         """,
         default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download'],
         choices=[Choice(True,"True"),Choice(False,"False")],
@@ -246,7 +246,7 @@ def edit_dupe_settings_prompt(manager: Manager) -> None:
     count_missing_files = inquirer.select(
         message="Counts moved/deleted files as a valid previous download",
         default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing'],
-        long_instruction="Removes the 'existing' check for files marked  as previous",
+        long_instruction="Removes the 'existing' check for files marked as previous",
         choices=[Choice(True,"True"),Choice
         (False,"False")],
         vi_mode=manager.vi_mode,
