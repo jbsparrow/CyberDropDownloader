@@ -6,7 +6,8 @@ import aiosqlite
 
 from cyberdrop_dl.utils.database.table_definitions import create_hash
 
-
+from rich.console import Console
+console=Console()
 class HashTable:
     def __init__(self, db_conn: aiosqlite.Connection):
         self.db_conn: aiosqlite.Connection = db_conn
@@ -45,7 +46,7 @@ class HashTable:
                 return result[0]
             return None
         except Exception as e:
-            print(f"Error checking file: {e}")
+            console.print(f"Error checking file: {e}")
             return False
 
     async def get_files_with_hash_matches(self,hash_value,size):
@@ -66,7 +67,7 @@ class HashTable:
             results = await cursor.fetchall()
             return results
         except Exception as e:
-            print(f"Error retrieving folder and filename: {e}")
+            console.print(f"Error retrieving folder and filename: {e}")
             return []
     
    
@@ -103,7 +104,7 @@ class HashTable:
             await self.db_conn.commit()
             return True
         except Exception as e:
-            print(f"Error inserting/updating record: {e}")
+            console.print(f"Error inserting/updating record: {e}")
             return False
 
 
