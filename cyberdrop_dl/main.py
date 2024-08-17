@@ -169,7 +169,7 @@ def main():
         try:
             asyncio.run(director(manager))
         except KeyboardInterrupt:
-            console.print("\nTrying to Exit...")
+            ConsoleManager().console.print("\nTrying to Exit...")
             with contextlib.suppress(Exception):
                 asyncio.run(manager.close())
             exit(1)
