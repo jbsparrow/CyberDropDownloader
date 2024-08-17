@@ -5,14 +5,15 @@ import time
 from rich.console import Console
 
 console = Console()
-lock=threading.Lock()
-
+_height,_width=None,None
 
 
 
 class ConsoleManager:
     def __init__(self):
         pass
+    
+
 
     @property
     def console(self):
@@ -20,24 +21,20 @@ class ConsoleManager:
     
 
     def log(self,*args, **kwargs):
-        thread=threading.Thread(target=self._log_helper,args=args, kwargs=kwargs)
-        thread.start()
-        thread.join()
+        self._log_helper(*args, **kwargs)
     def _log_helper(self,*args, **kwargs):
-        _width, _height = shutil.get_terminal_size()
-        with lock:
+        global _height
+        _width, _new_height = shutil.get_terminal_size()
+        if not _height==_new_height:
+            _height=_new_height
             console.size = (_width, _height - 4)
-            self.console.log(*args, **kwargs)
-            time.sleep(.4)
-            console.size = (_width, _height)
+        self.console.log(*args, **kwargs)
     def print(self,text):
-        thread=threading.Thread(self._print_helper,args=text)
-        thread.start()
-        thread.join()
+        self._print_helper(text)
     def _print_helper(self,text):
-        _width, _height = shutil.get_terminal_size()
-        with lock:
+        global _height
+        _width, _new_height = shutil.get_terminal_size()
+        if not _height==_new_height:
+            _height=_new_height
             console.size = (_width, _height - 4)
-            self.console.print(text)
-            time.sleep(.3)
-            console.size = (_width, _height)
+        self.console.print(text)
