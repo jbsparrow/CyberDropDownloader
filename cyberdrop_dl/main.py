@@ -5,7 +5,6 @@ import os
 import sys
 import traceback
 
-from rich.live import Live
 
 from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.scraper.scraper import ScrapeMapper
@@ -13,6 +12,8 @@ from cyberdrop_dl.ui.ui import program_ui
 from cyberdrop_dl.utils.sorting import Sorter
 from cyberdrop_dl.utils.utilities import check_latest_pypi, log_with_color, check_partials_and_empty_folders, log
 from cyberdrop_dl.clients.hash_client import HashClient
+from cyberdrop_dl.managers.console_manager import ConsoleManager
+
 
 def startup() -> Manager:
     """
@@ -31,7 +32,7 @@ def startup() -> Manager:
         return manager
 
     except KeyboardInterrupt:
-        print("\nExiting...")
+        ConsoleManager().print("\nExiting...")
         exit(0)
 
 
@@ -43,6 +44,7 @@ async def runtime(manager: Manager) -> None:
     async with asyncio.TaskGroup() as task_group:
         manager.task_group = task_group
         await scrape_mapper.start()
+
     
 async def post_runtime(manager: Manager) -> None:
     """Actions to complete after main runtime, and before ui shutdown"""
@@ -115,9 +117,9 @@ async def director(manager: Manager) -> None:
                     await runtime(manager)
                     await post_runtime(manager)
             except Exception as e:
-                print("\nAn error occurred, please report this to the developer")
-                print(e)
-                print(traceback.format_exc())
+                ConsoleManager().console.print("\nAn error occurred, please report this to the developer")
+                ConsoleManager().print(e)
+                ConsoleManager().console.print(traceback.format_exc())
                 exit(1)
 
         clear_screen_proc = await asyncio.create_subprocess_shell('cls' if os.name == 'nt' else 'clear')
@@ -167,7 +169,7 @@ def main():
         try:
             asyncio.run(director(manager))
         except KeyboardInterrupt:
-            print("\nTrying to Exit...")
+            console.print("\nTrying to Exit...")
             with contextlib.suppress(Exception):
                 asyncio.run(manager.close())
             exit(1)

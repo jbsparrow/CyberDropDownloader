@@ -56,9 +56,9 @@ class HashClient:
     async def hash_item_during_download(self,media_item:MediaItem):
         try:
             if self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading']:
-                    self.hash_item(media_item.complete_file)
+                    await self.hash_item(media_item.complete_file)
         except Exception as e:
-            await log(f"After media processing failed: {media_item.complete_file} with error {e}", 40)
+            await log(f"After hash processing failed: {media_item.complete_file} with error {e}", 40)
 
 
     async def cleanup_dupes(self):
@@ -69,9 +69,13 @@ class HashClient:
             # first compare downloads to each other
             for item in self.manager.path_manager.completed_downloads:
                 hash=await self.hash_item(item)
-                size=item.stat().st_size
-                if hash:
-                    hashes_dict[hash][size].append(item)
+                try:
+                    size=item.stat().st_size
+                    if hash:
+                        hashes_dict[hash][size].append(item)
+                except Exception as e:
+                    await log(f"After hash processing failed: {item} with error {e}", 40)
+
         with self.manager.live_manager.get_remove_file_via_hash_live() :
             # #remove downloaded files, so each group only has the first downloaded file
             for size_dict in hashes_dict.values():
