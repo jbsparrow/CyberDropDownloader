@@ -34,12 +34,12 @@ class JDownloader:
             jd.connect(self.jdownloader_username, self.jdownloader_password)
             self.jdownloader_agent = jd.get_device(self.jdownloader_device)
         except (myjdapi.MYJDApiException, JDownloaderFailure) as e:
-            await log("Failed JDownloader setup", 40)
+            await log("Failed JDownloader setup", 40,sleep=10)
             await log(e.message, 40)
             self.enabled = False
         except myjdapi.MYJDDeviceNotFoundException as e:
-            await log("Failed JDownloader setup", 40)
-            await log(str(e), 40)
+            await log("Failed JDownloader setup", 40,sleep=10)
+            await log(str(e), 40,sleep=3)
             #show message longer
             self.enabled = False
 

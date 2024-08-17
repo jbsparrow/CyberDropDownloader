@@ -20,21 +20,26 @@ class ConsoleManager:
         return console
     
 
-    def log(self,*args, **kwargs):
-        self._log_helper(*args, **kwargs)
-    def _log_helper(self,*args, **kwargs):
+    def log(self,*args, sleep=None,**kwargs):
+        self._log_helper(*args,sleep=sleep, **kwargs)
+    def _log_helper(self,*args, sleep=None,**kwargs):
         global _height
         _width, _new_height = shutil.get_terminal_size()
         if not _height==_new_height:
             _height=_new_height
             console.size = (_width, _height - 4)
         self.console.log(*args, **kwargs)
-    def print(self,text):
-        self._print_helper(text)
-    def _print_helper(self,text):
+        if sleep:
+            time.sleep(sleep)
+
+    def print(self,text,sleep=None):
+        self._print_helper(text,sleep=sleep)
+    def _print_helper(self,text,sleep=None):
         global _height
         _width, _new_height = shutil.get_terminal_size()
         if not _height==_new_height:
             _height=_new_height
             console.size = (_width, _height - 4)
         self.console.print(text)
+        if sleep:
+            time.sleep(sleep)

@@ -99,17 +99,17 @@ def error_handling_wrapper(func):
     return wrapper
 
 
-async def log(message: [str, Exception], level: int) -> None:
+async def log(message: [str, Exception], level: int,sleep:int=None) -> None:
     """Simple logging function"""
-    ConsoleManager().log(level, message)
+    ConsoleManager().log(level, message,sleep=sleep)
     if DEBUG_VAR:
-        logger_debug.log(level, message)
+        logger_debug.log(level, message,sleep=sleep)
 
 
-async def log_debug(message: [str, Exception], level: int) -> None:
+async def log_debug(message: [str, Exception], level: int,sleep:int=None) -> None:
     """Simple logging function"""
     if DEBUG_VAR:
-        ConsoleManager().log(level, message.encode('ascii', 'ignore').decode('ascii'))
+        ConsoleManager().log(level, message.encode('ascii', 'ignore').decode('ascii'),sleep=sleep)
 
 
 async def log_with_color(message: str, style: str, level: int) -> None:
