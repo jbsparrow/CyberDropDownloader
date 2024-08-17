@@ -36,6 +36,11 @@ class JDownloader:
             await log("Failed JDownloader setup", 40)
             await log(e.message, 40)
             self.enabled = False
+        except myjdapi.MYJDDeviceNotFoundException as e:
+            await log("Failed JDownloader setup", 40)
+            await log(str(e), 40)
+            self.enabled = False
+
 
     async def direct_unsupported_to_jdownloader(self, url: URL, title: str) -> None:
         """Sends links to JDownloader"""

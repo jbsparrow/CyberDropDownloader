@@ -32,7 +32,7 @@ def startup() -> Manager:
         return manager
 
     except KeyboardInterrupt:
-        ConsoleManager().console.print(e)
+        ConsoleManager().print("\nExiting...")
         exit(0)
 
 
@@ -42,14 +42,8 @@ async def runtime(manager: Manager) -> None:
 
     # NEW CODE
     async with asyncio.TaskGroup() as task_group:
-        try:
-            manager.task_group = task_group
-            await scrape_mapper.start()
-        except Exception as e:
-            ConsoleManager().console.print(e)
-            ConsoleManager().console.print(traceback.format_exc())
-            exit(1)
-
+        manager.task_group = task_group
+        await scrape_mapper.start()
 
     
 async def post_runtime(manager: Manager) -> None:
@@ -124,7 +118,7 @@ async def director(manager: Manager) -> None:
                     await post_runtime(manager)
             except Exception as e:
                 ConsoleManager().console.print("\nAn error occurred, please report this to the developer")
-                ConsoleManager().console.print(e)
+                ConsoleManager().print(e)
                 ConsoleManager().console.print(traceback.format_exc())
                 exit(1)
 

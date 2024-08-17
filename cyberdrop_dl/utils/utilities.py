@@ -51,6 +51,7 @@ FILE_FORMATS = {
         '.txt',
     }
 }
+from cyberdrop_dl.managers.console_manager import ConsoleManager
 
 
 def error_handling_wrapper(func):
@@ -100,7 +101,7 @@ def error_handling_wrapper(func):
 
 async def log(message: [str, Exception], level: int) -> None:
     """Simple logging function"""
-    logger.log(level, message)
+    ConsoleManager().log(level, message)
     if DEBUG_VAR:
         logger_debug.log(level, message)
 
@@ -108,7 +109,7 @@ async def log(message: [str, Exception], level: int) -> None:
 async def log_debug(message: [str, Exception], level: int) -> None:
     """Simple logging function"""
     if DEBUG_VAR:
-        logger_debug.log(level, message.encode('ascii', 'ignore').decode('ascii'))
+        ConsoleManager().log(level, message.encode('ascii', 'ignore').decode('ascii'))
 
 
 async def log_with_color(message: str, style: str, level: int) -> None:

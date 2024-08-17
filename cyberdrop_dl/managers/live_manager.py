@@ -20,7 +20,7 @@ class LiveManager:
             if stop:
                 self.live.stop()
         except Exception as e:
-            ConsoleManager().console.print(e)
+            ConsoleManager().print(e)
                 
 
             
