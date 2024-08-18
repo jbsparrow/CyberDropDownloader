@@ -340,7 +340,6 @@ class ScrapeMapper:
             date=arrow.get(item[2]) if item[2] else time_zero
             item = ScrapeItem(link, parent_title="", part_of_album=True, retry=True, retry_path=retry_path)
             self.manager.task_group.create_task(self.map_url(item,date))
-        print("dd")
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def extension_check(self, url: URL) -> bool:
@@ -405,6 +404,7 @@ class ScrapeMapper:
             return
 
         elif skip:
+            pass
             await log(f"Skipping URL by Config Selections: {scrape_item.url}", 10)
 
         elif await self.extension_check(scrape_item.url):

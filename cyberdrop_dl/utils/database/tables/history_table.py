@@ -147,9 +147,9 @@ class HistoryTable:
     async def get_all_items(self) -> Iterable[Row]:
         """Returns a list of all items"""
         cursor = await self.db_conn.cursor()
-        result = await cursor.execute("""SELECT referer, download_path,completed_at FROM media""")
-        failed_files = await result.fetchall()
-        return failed_files
+        result = await cursor.execute("""SELECT referer, download_path,completed_at FROM media ORDER BY completed_at DESC;""")
+        all_files = await result.fetchall()
+        return all_files
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fix_bunkr_v4_entries(self) -> None:

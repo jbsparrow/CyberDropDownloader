@@ -102,6 +102,7 @@ def error_handling_wrapper(func):
 async def log(message: [str, Exception], level: int,sleep:int=None) -> None:
     """Simple logging function"""
     ConsoleManager().log(level, message,sleep=sleep)
+    logger.log(level, message)
     if DEBUG_VAR:
         logger_debug.log(level, message,sleep=sleep)
 
@@ -109,6 +110,7 @@ async def log(message: [str, Exception], level: int,sleep:int=None) -> None:
 async def log_debug(message: [str, Exception], level: int,sleep:int=None) -> None:
     """Simple logging function"""
     if DEBUG_VAR:
+        logger_debug.log(level, message.encode('ascii', 'ignore').decode('ascii'))
         ConsoleManager().log(level, message.encode('ascii', 'ignore').decode('ascii'),sleep=sleep)
 
 
