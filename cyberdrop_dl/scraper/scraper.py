@@ -334,19 +334,12 @@ class ScrapeMapper:
         """Loads failed links from db"""
         items = await self.manager.db_manager.history_table.get_all_items()
         time_zero=arrow.get(0)
-        out=[]
         for item in items:
             link = URL(item[0])
             retry_path = Path(item[1])
-            date=arrow.get(item[2]) if item[2] is not None else time_zero
-            if date<arrow.get("2024.07.17"):
-                continue
-            if date>arrow.get("2024.09.17"):
-                continue
+            date=arrow.get(item[2]) if item[2] else time_zero
             item = ScrapeItem(link, parent_title="", part_of_album=True, retry=True, retry_path=retry_path)
-            out.append(item)
-        for item  in out:
-            self.manager.task_group.create_task(self.map_url(item))
+            self.manager.task_group.create_task(self.map_url(item,date))
         print("dd")
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -362,7 +355,7 @@ class ScrapeMapper:
         except NoExtensionFailure:
             return False
 
-    async def map_url(self, scrape_item: ScrapeItem) -> None:
+    async def map_url(self, scrape_item: ScrapeItem,date:arrow.Arrow=None) -> None:
         """Maps URLs to their respective handlers"""
         if not scrape_item.url:
             return
@@ -381,11 +374,11 @@ class ScrapeMapper:
         if any(x in scrape_item.url.host.lower() for x in ["facebook", "instagram", "fbcdn"]):
             await log(f"Skipping {scrape_item.url} as it is a blocked domain", 10)
             return
-       
-
-
-        
         skip = False
+        if date<arrow.get("2024.07.17"):
+            skip = True
+        if date>arrow.get("2024.09.17"):  
+            skip= True
         if self.manager.config_manager.settings_data['Ignore_Options']['skip_hosts']:
             for skip_host in self.manager.config_manager.settings_data['Ignore_Options']['skip_hosts']:
                 if skip_host in scrape_item.url.host:
