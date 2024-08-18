@@ -1,4 +1,5 @@
 from __future__ import annotations
+import arrow
 
 import re
 from dataclasses import Field
@@ -274,10 +275,12 @@ class ScrapeMapper:
 
         await self.no_crawler_downloader.startup()
 
-        if not self.manager.args_manager.retry:
+        if not self.manager.args_manager.retry_any:
             await self.load_links()
-        else:
+        elif self.manager.args_manager.retry_failed:
             await self.load_failed_links()
+        elif self.manager.args_manager.retry_all:
+            await self.load_all_links()
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -327,6 +330,26 @@ class ScrapeMapper:
             item = ScrapeItem(link, parent_title="", part_of_album=True, retry=True, retry_path=retry_path)
             self.manager.task_group.create_task(self.map_url(item))
 
+    async def load_all_links(self) -> None:
+        """Loads failed links from db"""
+        items = await self.manager.db_manager.history_table.get_all_items()
+        time_zero=arrow.get(0)
+        out=[]
+        for item in items:
+            link = URL(item[0])
+            retry_path = Path(item[1])
+            date=arrow.get(item[2]) if item[2] is not None else time_zero
+            if date<arrow.get("2024.07.17"):
+                continue
+            if date>arrow.get("2024.09.17"):
+                continue
+            if not re.search("bunkrr",str(link)):
+                continue
+            item = ScrapeItem(link, parent_title="", part_of_album=True, retry=True, retry_path=retry_path)
+            out.append(item)
+        for item  in out:
+            self.manager.task_group.create_task(self.map_url(item))
+        print("dd")
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def extension_check(self, url: URL) -> bool:
@@ -360,7 +383,10 @@ class ScrapeMapper:
         if any(x in scrape_item.url.host.lower() for x in ["facebook", "instagram", "fbcdn"]):
             await log(f"Skipping {scrape_item.url} as it is a blocked domain", 10)
             return
+       
 
+
+        
         skip = False
         if self.manager.config_manager.settings_data['Ignore_Options']['skip_hosts']:
             for skip_host in self.manager.config_manager.settings_data['Ignore_Options']['skip_hosts']:

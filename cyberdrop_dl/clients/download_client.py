@@ -203,7 +203,7 @@ class DownloadClient:
     async def get_download_dir(self, media_item: MediaItem) -> Path:
         """Returns the download directory for the media item"""
         download_folder = media_item.download_folder
-        if self.manager.args_manager.retry:
+        if self.manager.args_manager.retry_any:
             return download_folder
 
         if self.manager.config_manager.settings_data['Download_Options']['block_download_sub_folders']:

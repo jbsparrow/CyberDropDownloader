@@ -17,6 +17,8 @@ def parse_args() -> argparse.Namespace:
     general.add_argument("--download-all-configs", action="store_true", help="Skip the UI and go straight to downloading (runs all configs sequentially)", default=False)
     general.add_argument("--sort-all-configs", action="store_true", help="Sort all configs sequentially", default=False)
     general.add_argument("--retry-failed", action="store_true", help="retry failed downloads", default=False)
+    general.add_argument("--retry-all", action="store_true", help="retry all downloads", default=False)
+
 
     # File Paths
     file_paths = parser.add_argument_group("File_Paths")
@@ -82,4 +84,8 @@ def parse_args() -> argparse.Namespace:
     
     # Links
     parser.add_argument("links", metavar="link", nargs="*", help="link to content to download (passing multiple links is supported)", default=[])
-    return parser.parse_args()
+    args= parser.parse_args()
+    #set ignore history on retry_all
+    if args.retry_all:
+        args.ignore_history = True
+    return args

@@ -46,7 +46,7 @@ def program_ui(manager: Manager):
 
         # Retry Failed Downloads
         elif action == 3:
-            manager.args_manager.retry = True
+            manager.args_manager.retry_failed = True
             break
             
         # Scanning folder to create hashes
