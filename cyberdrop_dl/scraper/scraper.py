@@ -343,8 +343,6 @@ class ScrapeMapper:
                 continue
             if date>arrow.get("2024.09.17"):
                 continue
-            if not re.search("bunkrr",str(link)):
-                continue
             item = ScrapeItem(link, parent_title="", part_of_album=True, retry=True, retry_path=retry_path)
             out.append(item)
         for item  in out:
