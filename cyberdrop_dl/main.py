@@ -12,7 +12,7 @@ from cyberdrop_dl.ui.ui import program_ui
 from cyberdrop_dl.utils.sorting import Sorter
 from cyberdrop_dl.utils.utilities import check_latest_pypi, log_with_color, check_partials_and_empty_folders, log
 from cyberdrop_dl.clients.hash_client import HashClient
-from cyberdrop_dl.managers.console_manager import ConsoleManager
+from cyberdrop_dl.managers.console_manager import print_
 
 
 def startup() -> Manager:
@@ -32,7 +32,7 @@ def startup() -> Manager:
         return manager
 
     except KeyboardInterrupt:
-        ConsoleManager().print("\nExiting...")
+        print_("\nExiting...")
         exit(0)
 
 
@@ -64,6 +64,10 @@ async def director(manager: Manager) -> None:
     if os.getenv("PYCHARM_HOSTED") is not None or manager.config_manager.settings_data['Runtime_Options']['log_level'] == -1:
         manager.config_manager.settings_data['Runtime_Options']['log_level'] = 10
         cyberdrop_dl.utils.utilities.DEBUG_VAR = True
+
+    if os.getenv("PYCHARM_HOSTED") is not None or manager.config_manager.settings_data['Runtime_Options']['console_log_level'] == -1:
+        cyberdrop_dl.utils.utilities.CONSOLE_DEBUG_VAR = True
+
         
     if cyberdrop_dl.utils.utilities.DEBUG_VAR:
         logger_debug.setLevel(manager.config_manager.settings_data['Runtime_Options']['log_level'])
@@ -106,6 +110,8 @@ async def director(manager: Manager) -> None:
         formatter = logging.Formatter("%(levelname)-8s : %(asctime)s : %(filename)s:%(lineno)d : %(message)s")
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
+        import cyberdrop_dl.managers.console_manager
+        cyberdrop_dl.managers.console_manager.LEVEL=manager.config_manager.settings_data['Runtime_Options']['console_log_level']
 
         await log("Starting Async Processes...", 20)
         await manager.async_startup()
@@ -117,9 +123,9 @@ async def director(manager: Manager) -> None:
                     await runtime(manager)
                     await post_runtime(manager)
             except Exception as e:
-                ConsoleManager().console.print("\nAn error occurred, please report this to the developer")
-                ConsoleManager().print(e)
-                ConsoleManager().console.print(traceback.format_exc())
+                print_("\nAn error occurred, please report this to the developer")
+                print_(e)
+                print_(traceback.format_exc())
                 exit(1)
 
         clear_screen_proc = await asyncio.create_subprocess_shell('cls' if os.name == 'nt' else 'clear')
@@ -169,7 +175,7 @@ def main():
         try:
             asyncio.run(director(manager))
         except KeyboardInterrupt:
-            ConsoleManager().console.print("\nTrying to Exit...")
+            print_("\nTrying to Exit...")
             with contextlib.suppress(Exception):
                 asyncio.run(manager.close())
             exit(1)

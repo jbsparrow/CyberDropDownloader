@@ -360,6 +360,15 @@ def edit_runtime_options_prompt(manager: Manager, config: Dict) -> None:
         vi_mode=manager.vi_mode,
     ).execute()
 
+
+    console_log_level = inquirer.number(
+        message="Enter the log level for console output:",
+        default=int(config['Runtime_Options']['console_log_level']),
+        validate=NumberValidator(),
+        long_instruction="100 is the default, and reserved for disabling (uses pythons logging numerical levels)",
+        vi_mode=manager.vi_mode,
+    ).execute()
+
     for key in config["Runtime_Options"]:
         config["Runtime_Options"][key] = False
 
@@ -367,6 +376,8 @@ def edit_runtime_options_prompt(manager: Manager, config: Dict) -> None:
         config["Runtime_Options"][key] = True
 
     config['Runtime_Options']['log_level'] = int(log_level)
+    config['Runtime_Options']['console_log_level'] = int(console_log_level)
+
 
 
 def edit_sort_options_prompt(manager: Manager, config: Dict) -> None:

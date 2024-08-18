@@ -1,13 +1,13 @@
 from rich.live import Live
 from contextlib import contextmanager
-from cyberdrop_dl.managers.console_manager import ConsoleManager
+from cyberdrop_dl.managers.console_manager import console,print_
 
 
 
 class LiveManager:
     def __init__(self,manager):
         self.manager = manager
-        self.live=Live(auto_refresh=True, refresh_per_second=self.manager.config_manager.global_settings_data['UI_Options']['refresh_rate'],console=ConsoleManager().console)
+        self.live=Live(auto_refresh=True, refresh_per_second=self.manager.config_manager.global_settings_data['UI_Options']['refresh_rate'],console=console)
     @contextmanager
     def get_main_live(self,stop=False):
         try:
@@ -20,7 +20,7 @@ class LiveManager:
             if stop:
                 self.live.stop()
         except Exception as e:
-            ConsoleManager().print(e)
+            print_(e)
                 
 
             
@@ -39,7 +39,7 @@ class LiveManager:
             if stop:
                 self.live.stop()
         except Exception as e:
-            ConsoleManager().console.print(e)
+            print_(e)
                 
 
 
@@ -56,5 +56,5 @@ class LiveManager:
             if stop:
                 self.live.stop()
         except Exception as e:
-            ConsoleManager().console.print(e)
+            print_(e)
                 
