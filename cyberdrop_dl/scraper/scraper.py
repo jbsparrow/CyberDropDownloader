@@ -1,4 +1,5 @@
 from __future__ import annotations
+import arrow
 
 import re
 from dataclasses import Field
@@ -274,10 +275,12 @@ class ScrapeMapper:
 
         await self.no_crawler_downloader.startup()
 
-        if not self.manager.args_manager.retry:
+        if not self.manager.args_manager.retry_any:
             await self.load_links()
-        else:
+        elif self.manager.args_manager.retry_failed:
             await self.load_failed_links()
+        elif self.manager.args_manager.retry_all:
+            await self.load_all_links()
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -327,6 +330,16 @@ class ScrapeMapper:
             item = ScrapeItem(link, parent_title="", part_of_album=True, retry=True, retry_path=retry_path)
             self.manager.task_group.create_task(self.map_url(item))
 
+    async def load_all_links(self) -> None:
+        """Loads failed links from db"""
+        items = await self.manager.db_manager.history_table.get_all_items()
+        time_zero=arrow.get(0)
+        for item in items:
+            link = URL(item[0])
+            retry_path = Path(item[1])
+            date=arrow.get(item[2]) if item[2] else time_zero
+            item = ScrapeItem(link, parent_title="", part_of_album=True, retry=True, retry_path=retry_path)
+            self.manager.task_group.create_task(self.map_url(item,date))
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def extension_check(self, url: URL) -> bool:
@@ -341,7 +354,7 @@ class ScrapeMapper:
         except NoExtensionFailure:
             return False
 
-    async def map_url(self, scrape_item: ScrapeItem) -> None:
+    async def map_url(self, scrape_item: ScrapeItem,date:arrow.Arrow=None) -> None:
         """Maps URLs to their respective handlers"""
         if not scrape_item.url:
             return
@@ -360,20 +373,22 @@ class ScrapeMapper:
         if any(x in scrape_item.url.host.lower() for x in ["facebook", "instagram", "fbcdn"]):
             await log(f"Skipping {scrape_item.url} as it is a blocked domain", 10)
             return
-
         skip = False
-        if self.manager.config_manager.settings_data['Ignore_Options']['skip_hosts']:
+        # if not skip and date<arrow.get("2024.07.17"):
+        #     skip = True
+        # if not skip and  date>arrow.get("2024.09.17"):  
+        #     skip= True
+        if not skip and  self.manager.config_manager.settings_data['Ignore_Options']['skip_hosts']:
             for skip_host in self.manager.config_manager.settings_data['Ignore_Options']['skip_hosts']:
-                if skip_host in scrape_item.url.host:
+                if re.search(skip_host,scrape_item.url.host):
                     skip = True
                     break
-        if self.manager.config_manager.settings_data['Ignore_Options']['only_hosts']:
+        if not skip and self.manager.config_manager.settings_data['Ignore_Options']['only_hosts']:
             skip = True
             for only_host in self.manager.config_manager.settings_data['Ignore_Options']['only_hosts']:
-                if only_host in scrape_item.url.host:
+                if re.search(only_host,scrape_item.url.host): 
                     skip = False
                     break
-
         if str(scrape_item.url).endswith("/"):
             if scrape_item.url.query_string:
                 query = scrape_item.url.query_string[:-1]
@@ -389,6 +404,7 @@ class ScrapeMapper:
             return
 
         elif skip:
+            pass
             await log(f"Skipping URL by Config Selections: {scrape_item.url}", 10)
 
         elif await self.extension_check(scrape_item.url):

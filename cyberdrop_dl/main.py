@@ -130,7 +130,7 @@ async def director(manager: Manager) -> None:
             if manager.args_manager.sort_downloads:
                 sorter = Sorter(manager)
                 await sorter.sort()
-        elif manager.config_manager.settings_data['Sorting']['sort_downloads'] and not manager.args_manager.retry:
+        elif manager.config_manager.settings_data['Sorting']['sort_downloads'] and not manager.args_manager.retry_any:
             sorter = Sorter(manager)
             await sorter.sort()
         await check_partials_and_empty_folders(manager)
@@ -169,7 +169,7 @@ def main():
         try:
             asyncio.run(director(manager))
         except KeyboardInterrupt:
-            console.print("\nTrying to Exit...")
+            ConsoleManager().console.print("\nTrying to Exit...")
             with contextlib.suppress(Exception):
                 asyncio.run(manager.close())
             exit(1)
