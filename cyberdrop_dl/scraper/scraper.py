@@ -375,22 +375,21 @@ class ScrapeMapper:
             await log(f"Skipping {scrape_item.url} as it is a blocked domain", 10)
             return
         skip = False
-        if date<arrow.get("2024.07.17"):
+        if not skip and date<arrow.get("2024.07.17"):
             skip = True
-        if date>arrow.get("2024.09.17"):  
+        if not skip and  date>arrow.get("2024.09.17"):  
             skip= True
-        if self.manager.config_manager.settings_data['Ignore_Options']['skip_hosts']:
+        if not skip and  self.manager.config_manager.settings_data['Ignore_Options']['skip_hosts']:
             for skip_host in self.manager.config_manager.settings_data['Ignore_Options']['skip_hosts']:
                 if re.search(skip_host,scrape_item.url.host):
                     skip = True
                     break
-        if self.manager.config_manager.settings_data['Ignore_Options']['only_hosts']:
+        if not skip and self.manager.config_manager.settings_data['Ignore_Options']['only_hosts']:
             skip = True
             for only_host in self.manager.config_manager.settings_data['Ignore_Options']['only_hosts']:
                 if re.search(only_host,scrape_item.url.host): 
                     skip = False
                     break
-
         if str(scrape_item.url).endswith("/"):
             if scrape_item.url.query_string:
                 query = scrape_item.url.query_string[:-1]
