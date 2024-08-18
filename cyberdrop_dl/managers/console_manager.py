@@ -13,13 +13,9 @@ QUEUE= deque()
 
 def log(level,record,*args, sleep=None,**kwargs):
     level=level  or 10
-    _log_helper(level,record,sleep=sleep, **kwargs)
-def _log_helper(level,record,*args, sleep=None,**kwargs):
-    QUEUE.append((record,sleep))
-
+    if  level>=LEVEL:
+        QUEUE.append((record,sleep))
 def print_(text,sleep=None):
-    _print_helper(text,sleep=sleep)
-def _print_helper(text,sleep=None):
     console.print(text)
     
 
@@ -35,8 +31,7 @@ class ConsoleManager:
         if self.thread:
             self.thread.join()
 
-
-    async def flush_buffer_thread(self):
+    def flush_buffer_thread(self):
         max_entries=10
         while True:
             log_rends = []

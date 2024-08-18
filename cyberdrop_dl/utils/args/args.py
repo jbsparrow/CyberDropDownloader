@@ -1,4 +1,5 @@
 import argparse
+import  arrow
 
 from cyberdrop_dl import __version__ as VERSION
 from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
@@ -18,6 +19,9 @@ def parse_args() -> argparse.Namespace:
     general.add_argument("--sort-all-configs", action="store_true", help="Sort all configs sequentially", default=False)
     general.add_argument("--retry-failed", action="store_true", help="retry failed downloads", default=False)
     general.add_argument("--retry-all", action="store_true", help="retry all downloads", default=False)
+    general.add_argument("--after", help="only download completed downloads at or after this date", default=None,type=lambda x:None if not x else arrow.get(x))
+    general.add_argument("--before", help="only download completed downloads at or before this date", default=None,type=lambda x:None if not x else arrow.get(x))
+
 
 
     # File Paths

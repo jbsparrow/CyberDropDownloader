@@ -203,6 +203,6 @@ class Manager:
     async def close(self) -> None:
         """Closes the manager"""
         await self.db_manager.close()
-        await self.console_manager.close()
+        self.console_manager.close()
         self.db_manager: DBManager = field(init=False)
 

@@ -333,11 +333,10 @@ class ScrapeMapper:
     async def load_all_links(self) -> None:
         """Loads failed links from db"""
         items = await self.manager.db_manager.history_table.get_all_items()
-        time_zero=arrow.get(0)
         for item in items:
             link = URL(item[0])
             retry_path = Path(item[1])
-            date=arrow.get(item[2]) if item[2] else time_zero
+            date=arrow.get(item[2]) if item[2] else None
             item = ScrapeItem(link, parent_title="", part_of_album=True, retry=True, retry_path=retry_path)
             self.manager.task_group.create_task(self.map_url(item,date))
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -374,10 +373,11 @@ class ScrapeMapper:
             await log(f"Skipping {scrape_item.url} as it is a blocked domain", 10)
             return
         skip = False
-        # if not skip and date<arrow.get("2024.07.17"):
-        #     skip = True
-        # if not skip and  date>arrow.get("2024.09.17"):  
-        #     skip= True
+        date =date or arrow.get(0)
+        if not skip and date<self.manager.args_manager.after:
+            skip = True
+        if not skip and date>self.manager.args_manager.before:
+            skip = True
         if not skip and  self.manager.config_manager.settings_data['Ignore_Options']['skip_hosts']:
             for skip_host in self.manager.config_manager.settings_data['Ignore_Options']['skip_hosts']:
                 if re.search(skip_host,scrape_item.url.host):
