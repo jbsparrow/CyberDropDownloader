@@ -14,22 +14,33 @@ QUEUE= deque()
 def log(level,record,*args, sleep=None,**kwargs):
     level=level  or 10
     if  level>=LEVEL:
-        QUEUE.append((record,sleep))
+        # QUEUE.append((record,sleep))
+        console.log(record)
+        if sleep:
+            time.sleep(sleep)
 def print_(text,sleep=None):
+    set_console_height()
     console.print(text)
-    
+
+def set_console_height():
+    global _HEIGHT
+    _width, _new_height = shutil.get_terminal_size()
+    if not _HEIGHT==_new_height:
+        _HEIGHT=_new_height
+    console.size = (_width, _HEIGHT - 4)
 
 class ConsoleManager:
-    def __init__(self):
-        
+    def __init__(self): 
         self.thread=None
     
     def startup(self) -> None:
-        self.thread = threading.Thread(target=self.flush_buffer_thread)
-        self.thread.start()
+        pass
+        # self.thread = threading.Thread(target=self.flush_buffer_thread)
+        # self.thread.start()
     def close(self):
-        if self.thread:
-            self.thread.join()
+        pass
+        # if self.thread:
+        #     self.thread.join()
 
     def flush_buffer_thread(self):
         max_entries=10
@@ -46,14 +57,10 @@ class ConsoleManager:
                 if not bool(log_rends):
                     time.sleep(.3)
                     continue
-                global _HEIGHT
-                _width, _new_height = shutil.get_terminal_size()
-                if not _HEIGHT==_new_height:
-                    _HEIGHT=_new_height
-                console.size = (_width, _HEIGHT - 4)
+                set_console_height()
                 console.log("\n".join(log_rends))
                 if sleep:
                     time.sleep(sleep)
-            except Exception as e:
+            except Exception:
                 pass
    

@@ -26,7 +26,7 @@ class HashClient:
 
     async def _hash_directory_helper(self,path):
         async with self._manager_context():
-            with self.manager.live_manager.get_hash_live(stop=True):
+            async with self.manager.live_manager.get_hash_live(stop=True):
                 #force start live  manager for db connection
                 self.manager.startup()
                 if not pathlib.Path(path).is_dir():
@@ -62,7 +62,7 @@ class HashClient:
 
 
     async def cleanup_dupes(self):
-        with self.manager.live_manager.get_hash_live() :
+        async with self.manager.live_manager.get_hash_live() :
             if not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_after_download']:
                 return
             hashes_dict=defaultdict(lambda: defaultdict(list))
@@ -76,7 +76,7 @@ class HashClient:
                 except Exception as e:
                     await log(f"After hash processing failed: {item} with error {e}", 40)
 
-        with self.manager.live_manager.get_remove_file_via_hash_live() :
+        async with self.manager.live_manager.get_remove_file_via_hash_live() :
             # #remove downloaded files, so each group only has the first downloaded file
             for size_dict in hashes_dict.values():
                 for size, files in size_dict.items():
