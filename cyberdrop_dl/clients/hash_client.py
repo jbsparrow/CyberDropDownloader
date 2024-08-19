@@ -14,6 +14,7 @@ class HashClient:
     """Manage hashes and db insertion"""
     def __init__(self,manager):
         self.manager=manager
+        self.hashes=defaultdict(lambda:None)
         
     @asynccontextmanager
     async def _manager_context(self):
@@ -35,8 +36,11 @@ class HashClient:
                     await self.hash_item(file)
                 
     async def hash_item(self,file):
+        key=str(pathlib.Path(file).absolute())
         if not file.is_file():
             return
+        elif self.hashes[key]:
+            return self.hashes[key]
         await self.manager.progress_manager.hash_progress.update_currently_hashing(file)
         hash=await self.manager.db_manager.hash_table.get_file_hash_exists(file)
         if not hash:
@@ -46,10 +50,9 @@ class HashClient:
                 await self.manager.progress_manager.hash_progress.add_new_completed_hash()
             except Exception as e:
                 await log(f"Error hashing {file} : {e}",40)
-
-
         else:
             await self.manager.progress_manager.hash_progress.add_prev_hash()
+        self.hashes[key]=hash
         return  hash
 
     

@@ -1,6 +1,6 @@
 from rich.live import Live
 import traceback
-from contextlib import contextmanager,asynccontextmanager
+from contextlib import asynccontextmanager
 from cyberdrop_dl.managers.console_manager import console
 from cyberdrop_dl.utils.utilities import log
 
