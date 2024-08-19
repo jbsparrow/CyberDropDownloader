@@ -359,12 +359,12 @@ class ScrapeMapper:
 
     async def map_url(self, scrape_item: ScrapeItem,date:arrow.Arrow=None) -> None:
         """Maps URLs to their respective handlers"""
-        if not self.manager.args_manager.max_items:
-            pass
-        else:
-            with self.lock:
-                if self.count>self.manager.args_manager.max_items:
-                    return
+        # if not self.manager.args_manager.max_items:
+        #     pass
+        # else:
+        #     with self.lock:
+        #         if self.count>self.manager.args_manager.max_items:
+        #             return
         if not scrape_item.url:
             return
         if not isinstance(scrape_item.url, URL):
@@ -409,8 +409,8 @@ class ScrapeMapper:
         key = next((key for key in self.mapping if key in scrape_item.url.host.lower()), None)
 
         if key and not skip:
-            async with self.lock:
-                self.count=self.count + 1
+            # async with self.lock:
+            #     self.count=self.count + 1
             scraper = self.existing_crawlers[key]
             self.manager.task_group.create_task(scraper.run(scrape_item))
             return
@@ -431,6 +431,7 @@ class ScrapeMapper:
             filename, ext = await get_filename_and_ext(scrape_item.url.name)
             media_item = MediaItem(scrape_item.url, scrape_item.url, None, download_folder, filename, ext, filename)
             self.manager.task_group.create_task(self.no_crawler_downloader.run(media_item))
+
 
         elif self.jdownloader.enabled:
             await log(f"Sending unsupported URL to JDownloader: {scrape_item.url}", 10)
