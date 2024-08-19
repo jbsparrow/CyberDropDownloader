@@ -394,8 +394,36 @@ class ScrapeMapper:
                 scrape_item.url = scrape_item.url.with_path(scrape_item.url.path[:-1])
 
         key = next((key for key in self.mapping if key in scrape_item.url.host.lower()), None)
-        scraper = self.existing_crawlers[key]
-        self.manager.task_group.create_task(scraper.run(scrape_item))
+        if key:
+            scraper = self.existing_crawlers[key]
+            self.manager.task_group.create_task(scraper.run(scrape_item))
+            return
+
+        elif await self.extension_check(scrape_item.url):
+            check_complete = await self.manager.db_manager.history_table.check_complete("no_crawler", scrape_item.url, scrape_item.url)
+            if check_complete:
+                await log(f"Skipping {scrape_item.url} as it has already been downloaded", 10)
+                await self.manager.progress_manager.download_progress.add_previously_completed()
+                return
+            await scrape_item.add_to_parent_title("Loose Files")
+            scrape_item.part_of_album = True
+            download_folder = await get_download_path(self.manager, scrape_item, "no_crawler")
+            filename, ext = await get_filename_and_ext(scrape_item.url.name)
+            media_item = MediaItem(scrape_item.url, scrape_item.url, None, download_folder, filename, ext, filename)
+            self.manager.task_group.create_task(self.no_crawler_downloader.run(media_item))
+
+        elif self.jdownloader.enabled:
+            await log(f"Sending unsupported URL to JDownloader: {scrape_item.url}", 10)
+            try:
+                await self.jdownloader.direct_unsupported_to_jdownloader(scrape_item.url, scrape_item.parent_title)
+            except JDownloaderFailure as e:
+                await log(f"Failed to send {scrape_item.url} to JDownloader", 40)
+                await log(e.message, 40)
+                await self.manager.log_manager.write_unsupported_urls_log(scrape_item.url)
+
+        else:
+            await log(f"Unsupported URL: {scrape_item.url}", 30)
+            await self.manager.log_manager.write_unsupported_urls_log(scrape_item.url)
     async def filter_items(self, scrape_item) -> None:
         """Maps URLs to their respective handlers"""
         if not self.manager.args_manager.max_items:
