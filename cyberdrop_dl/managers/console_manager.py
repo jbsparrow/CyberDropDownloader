@@ -28,9 +28,10 @@ class ConsoleManager:
         # if not _height==_new_height:
         #     _height=_new_height
         #     console.size = (_width, _height - 4)
-        self.console.log(*args, **kwargs)
-        if sleep:
-            time.sleep(sleep)
+        # self.console.log(*args, **kwargs)
+        # if sleep:
+        #     time.sleep(sleep)
+        pass
 
     def print(self,text,sleep=None):
         self._print_helper(text,sleep=sleep)
