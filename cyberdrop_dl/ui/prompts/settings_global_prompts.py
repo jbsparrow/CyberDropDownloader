@@ -242,7 +242,7 @@ together during deduplication process
 
 
     keep_current = inquirer.select(
-        message="Keep at least 1 current file when unduping",
+        message="Keep at least 1 new file when unduping",
         long_instruction=
         """
         If False and the current file is in the hash table, then the current file will be deleted
@@ -264,7 +264,7 @@ together during deduplication process
 
     dedupe_already_downloaded = inquirer.select(
         message="Remove duplicates from already existing files: ",
-        long_instruction="Removes duplicates from files generated from current links, even if 'skipped/not downloaded; for already existing on system",
+        long_instruction="marks already existing files as 'new'",
         default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['dedupe_already_downloaded'],
         choices=[Choice(True,"True"),Choice(False,"False")],
         vi_mode=manager.vi_mode,
