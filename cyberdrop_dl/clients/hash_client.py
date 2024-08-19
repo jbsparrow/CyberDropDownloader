@@ -43,7 +43,7 @@ class HashClient:
             try:
                 hash = await self.manager.hash_manager.hash_file(file)
                 await self.manager.db_manager.hash_table.insert_or_update_hash_db(hash, file.stat().st_size, file)
-                await self.manager.progress_manager.hash_progress.add_completed_hash()
+                await self.manager.progress_manager.hash_progress.add_new_completed_hash()
             except Exception as e:
                 await log(f"Error hashing {file} : {e}",40)
 

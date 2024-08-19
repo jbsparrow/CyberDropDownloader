@@ -66,7 +66,7 @@ class HashProgress:
         self.current_hashing_text.update(self.currently_hashing_size_task_id ,description=f"[blue]{format_size(file.stat().st_size)}")
       
 
-    async def add_completed_hash(self) -> None:
+    async def add_new_completed_hash(self) -> None:
         """Adds a completed file to the progress bar"""
         self.hash_progress.advance(self.hashed_files_task_id , 1)
         self.hashed_files += 1
