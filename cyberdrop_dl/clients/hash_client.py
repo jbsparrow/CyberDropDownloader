@@ -115,20 +115,32 @@ class HashClient:
                     filtered_matches = list(filter(lambda x: x.exists() if not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing'] else True,all_matches ))
 
                     #what do do with prev matches and current file
-                    if len(filtered_matches)==0:
-                        continue
-                    elif self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download']:
-                        try:
-                            send2trash(selected_file)
-                        except OSError:
-                            pass
-                        await self.manager.progress_manager.hash_progress.add_removed_file()
-                    else:
+                    if not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']["keep"]['keep_prev_download']:
                         for ele in filtered_matches:
+                            if not ele.exists():
+                                continue
                             try:
                                 send2trash(ele)
+                                await self.manager.progress_manager.hash_progress.add_removed_prev_file()
                             except OSError:
-                                pass
-                            await self.manager.progress_manager.hash_progress.add_removed_prev_file()
+                                continue
+                    #delete all prev match except for one
+                    else:
+                         for ele in filtered_matches[1:]:
+                            if not ele.exists():
+                                continue
+                            try:
+                                send2trash(ele)
+                                await self.manager.progress_manager.hash_progress.add_removed_prev_file()
+                            except OSError:
+                                continue
             
-        
+                    if not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']["keep"]['keep_current_download']:
+                        try:
+                            if ele.exists():
+                                send2trash(ele)
+                                await self.manager.progress_manager.hash_progress.add_removed_file()
+
+                        except OSError:
+                            pass
+                    
