@@ -11,7 +11,6 @@ from cyberdrop_dl.scraper.scraper import ScrapeMapper
 from cyberdrop_dl.ui.ui import program_ui
 from cyberdrop_dl.utils.sorting import Sorter
 from cyberdrop_dl.utils.utilities import check_latest_pypi, log_with_color, check_partials_and_empty_folders, log
-from cyberdrop_dl.clients.hash_client import HashClient
 from cyberdrop_dl.managers.console_manager import print_
 
 
@@ -49,7 +48,7 @@ async def runtime(manager: Manager) -> None:
 async def post_runtime(manager: Manager) -> None:
     """Actions to complete after main runtime, and before ui shutdown"""
     #checking and removing dupes
-    await HashClient(manager).cleanup_dupes()
+    await manager.hash_manager.hash_client.cleanup_dupes()
     
 
 async def director(manager: Manager) -> None:
