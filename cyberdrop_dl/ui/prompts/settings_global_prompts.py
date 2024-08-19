@@ -245,6 +245,7 @@ together during deduplication process
         message="Keep at least 1 new file when unduping",
         long_instruction=
         """
+        File is always kept if not in hash table
         If False and the current file is in the hash table, then the current file will be deleted
         """,
         default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_new_download'],

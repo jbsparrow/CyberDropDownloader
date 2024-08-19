@@ -73,7 +73,7 @@ class HashClient:
                 return
             hashes_dict=defaultdict(lambda: defaultdict(list))
             # first compare downloads to each other
-            for item in self.manager.path_manager.completed_downloads:
+            for item in list(self.manager.path_manager.completed_downloads):
                 hash=await self.hash_item(item)
                 try:
                     size=item.stat().st_size

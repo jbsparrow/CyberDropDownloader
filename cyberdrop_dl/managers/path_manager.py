@@ -35,7 +35,7 @@ class PathManager:
         self.unsupported_urls_log: Path = field(init=False)
         self.download_error_log: Path = field(init=False)
         self.scrape_error_log: Path = field(init=False)
-        self._completed_downloads=[]
+        self._completed_downloads=set()
 
 
     
@@ -75,7 +75,7 @@ class PathManager:
         self.history_db.touch(exist_ok=True)
 
     def add_completed(self,media:MediaItem):
-        self._completed_downloads.append(media.complete_file.absolute())
+        self._completed_downloads.add(media.complete_file.absolute())
     @property
     def completed_downloads(self):
         return self._completed_downloads
