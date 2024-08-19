@@ -220,6 +220,7 @@ async def purge_dir(dirname: Path) -> None:
         dir_count = len(os.listdir(sub_dir))
         if dir_count == 0:
             deleted.append(sub_dir)
+    log(deleted,100)
     list(map(os.rmdir, deleted))
 
 
