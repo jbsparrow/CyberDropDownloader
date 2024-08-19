@@ -369,10 +369,8 @@ class ScrapeMapper:
         except NoExtensionFailure:
             return False
     async def map_url(self, scrape_item: ScrapeItem,date:arrow.Arrow=None):
-        try:
-            scrape_item = self.get_item_from_entry(scrape_item)
-        except AttributeError:
-            return
+        if not isinstance(scrape_item.url, URL):
+            scrape_item.url = URL(scrape_item.url)
         if await self.filter_items(scrape_item):
             await self.add_item_to_group(scrape_item)
 
