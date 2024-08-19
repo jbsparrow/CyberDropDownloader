@@ -366,7 +366,7 @@ class ScrapeMapper:
             return False
     async def map_url(self, scrape_item: ScrapeItem,date:arrow.Arrow=None):
         try:
-            scrape_item.url = self.get_item_url(scrape_item)
+            scrape_item = self.get_item_from_entryg(scrape_item)
         except AttributeError:
             return
         if await self.filter_items(scrape_item):
