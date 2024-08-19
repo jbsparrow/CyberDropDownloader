@@ -321,28 +321,36 @@ class ScrapeMapper:
             await log("No valid links found.", 30)
         for link in links:
             item = ScrapeItem(url=link, parent_title="")
-            self.manager.task_group.create_task(self.map_url(item))
+            self.manager.task_group.create_task(self.add_item_to_group(item))
 
     async def load_failed_links(self) -> None:
         """Loads failed links from db"""
-        items = await self.manager.db_manager.history_table.get_failed_items()
+        entries= await self.manager.db_manager.history_table.get_failed_items()
+        items=[]
+        for entry in entries:
+            item=self.get_item_from_entry(entry)
+            if await self.filter_items(item):
+                items.append(item)
+        if self.manager.args_manager.max_items:
+            items = items[:self.manager.args_manager.max_items]
         for item in items:
-            link = URL(item[0])
-            retry_path = Path(item[1])
+            self.manager.task_group.create_task(self.add_item_to_group(item))
 
-            item = ScrapeItem(link, parent_title="", part_of_album=True, retry=True, retry_path=retry_path)
-            self.manager.task_group.create_task(self.map_url(item))
 
     async def load_all_links(self) -> None:
-        """Loads failed links from db"""
+        """Loads all links from db"""
+        entries = await self.manager.db_manager.history_table.get_all_items(self.manager.args_manager.after,self.manager.args_manager.before)
         items=[]
-        items = await self.manager.db_manager.history_table.get_all_items()
+        for entry in entries:
+            item=self.get_item_from_entry(entry)
+            if await self.filter_items(item):
+                items.append(item)
+        if self.manager.args_manager.max_items:
+            items = items[:self.manager.args_manager.max_items]
         for item in items:
-            link = URL(item[0])
-            retry_path = Path(item[1])
-            date=arrow.get(item[2]) if item[2] else None
-            item = ScrapeItem(link, parent_title="", part_of_album=True, retry=True, retry_path=retry_path)
-            self.manager.task_group.create_task(self.map_url(item,date))
+            self.manager.task_group.create_task(self.add_item_to_group(item))
+
+
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def extension_check(self, url: URL) -> bool:
@@ -356,15 +364,37 @@ class ScrapeMapper:
             return False
         except NoExtensionFailure:
             return False
+    async def map_url(self, scrape_item: ScrapeItem,date:arrow.Arrow=None):
+        try:
+            scrape_item.url = self.get_item_url(scrape_item)
+        except AttributeError:
+            return
+        if await self.filter_items(scrape_item):
+            await self.add_item_to_group(scrape_item)
 
-    async def map_url(self, scrape_item: ScrapeItem,date:arrow.Arrow=None) -> None:
+    def get_item_from_entry(self,entry): 
+        link = URL(entry[0])
+        retry_path = Path(entry[1])
+        scrape_item = ScrapeItem(link, parent_title="", part_of_album=True, retry=True, retry_path=retry_path)
+        if not isinstance(scrape_item.url, URL):
+            scrape_item.url = URL(scrape_item.url)
+        return scrape_item
+
+    async def add_item_to_group(self,scrape_item):
+        if str(scrape_item.url).endswith("/"):
+            if scrape_item.url.query_string:
+                query = scrape_item.url.query_string[:-1]
+                scrape_item.url = scrape_item.url.with_query(query)
+            else:
+                scrape_item.url = scrape_item.url.with_path(scrape_item.url.path[:-1])
+
+        key = next((key for key in self.mapping if key in scrape_item.url.host.lower()), None)
+        scraper = self.existing_crawlers[key]
+        self.manager.task_group.create_task(scraper.run(scrape_item))
+    async def filter_items(self, scrape_item) -> None:
         """Maps URLs to their respective handlers"""
-        # if not self.manager.args_manager.max_items:
-        #     pass
-        # else:
-        #     with self.lock:
-        #         if self.count>self.manager.args_manager.max_items:
-        #             return
+        if not self.manager.args_manager.max_items:
+            pass
         if not scrape_item.url:
             return
         if not isinstance(scrape_item.url, URL):
@@ -383,11 +413,10 @@ class ScrapeMapper:
             await log(f"Skipping {scrape_item.url} as it is a blocked domain", 10)
             return
         skip = False
-        date =date or arrow.get(0)
-        if not skip and date<self.manager.args_manager.after:
-            skip = True
-        if not skip and date>self.manager.args_manager.before:
-            skip = True
+        # if not skip and date<self.manager.args_manager.after:
+        #     skip = True
+        # if not skip and date>self.manager.args_manager.before:
+        #     skip = True
         if not skip and  self.manager.config_manager.settings_data['Ignore_Options']['skip_hosts']:
             for skip_host in self.manager.config_manager.settings_data['Ignore_Options']['skip_hosts']:
                 if re.search(skip_host,scrape_item.url.host):
@@ -399,22 +428,8 @@ class ScrapeMapper:
                 if re.search(only_host,scrape_item.url.host): 
                     skip = False
                     break
-        if str(scrape_item.url).endswith("/"):
-            if scrape_item.url.query_string:
-                query = scrape_item.url.query_string[:-1]
-                scrape_item.url = scrape_item.url.with_query(query)
-            else:
-                scrape_item.url = scrape_item.url.with_path(scrape_item.url.path[:-1])
-
-        key = next((key for key in self.mapping if key in scrape_item.url.host.lower()), None)
-
-        if key and not skip:
-            # async with self.lock:
-            #     self.count=self.count + 1
-            scraper = self.existing_crawlers[key]
-            self.manager.task_group.create_task(scraper.run(scrape_item))
-            return
-
+        if not skip:
+            return scrape_item
         elif skip:
             pass
             await log(f"Skipping URL by Config Selections: {scrape_item.url}", 10)
@@ -431,7 +446,6 @@ class ScrapeMapper:
             filename, ext = await get_filename_and_ext(scrape_item.url.name)
             media_item = MediaItem(scrape_item.url, scrape_item.url, None, download_folder, filename, ext, filename)
             self.manager.task_group.create_task(self.no_crawler_downloader.run(media_item))
-
 
         elif self.jdownloader.enabled:
             await log(f"Sending unsupported URL to JDownloader: {scrape_item.url}", 10)

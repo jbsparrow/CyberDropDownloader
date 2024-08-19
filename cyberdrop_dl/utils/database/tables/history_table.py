@@ -144,10 +144,14 @@ class HistoryTable:
         return failed_files
 
 
-    async def get_all_items(self) -> Iterable[Row]:
+    async def get_all_items(self,after,before) -> Iterable[Row]:
         """Returns a list of all items"""
         cursor = await self.db_conn.cursor()
-        result = await cursor.execute("""SELECT referer, download_path,completed_at FROM media ORDER BY completed_at DESC;""")
+        result = await cursor.execute("""
+        SELECT referer, download_path,completed_at
+        FROM media
+        WHERE COALESCE(completed_at, '1970-01-01') BETWEEN ? AND ?
+        ORDER BY completed_at DESC;""",(after.format("YYYY-MM-DD"),before.format("YYYY-MM-DD")))
         all_files = await result.fetchall()
         return all_files
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
