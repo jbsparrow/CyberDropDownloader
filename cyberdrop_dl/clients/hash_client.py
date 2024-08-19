@@ -110,7 +110,7 @@ class HashClient:
                     await self.manager.db_manager.hash_table.get_files_with_hash_matches(hash, size)))
 
                     # Filter out files with the same path as any file in other_files
-                    filtered_matches = [match for match in all_matches if match not in other_files]
+                    filtered_matches = [match for match in all_matches if str(match) not in other_files]
                     #Filter files based  on if the file exists
                     filtered_matches = list(filter(lambda x: x.exists() if not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing'] else True,all_matches ))
 
