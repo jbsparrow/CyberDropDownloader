@@ -1,4 +1,5 @@
 from __future__ import annotations
+import asyncio
 import arrow
 
 import re
@@ -44,6 +45,8 @@ class ScrapeMapper:
         self.existing_crawlers = {}
         self.no_crawler_downloader = Downloader(self.manager, "no_crawler")
         self.jdownloader = JDownloader(self.manager)
+        self.lock=asyncio.Lock()
+        self.count=0
 
     async def bunkrr(self) -> None:
         """Creates a Bunkr Crawler instance"""
@@ -334,8 +337,6 @@ class ScrapeMapper:
         """Loads failed links from db"""
         items=[]
         items = await self.manager.db_manager.history_table.get_all_items()
-        if self.manager.args_manager.max_items:
-            items = items[:self.manager.args_manager.max_items]
         for item in items:
             link = URL(item[0])
             retry_path = Path(item[1])
@@ -358,6 +359,12 @@ class ScrapeMapper:
 
     async def map_url(self, scrape_item: ScrapeItem,date:arrow.Arrow=None) -> None:
         """Maps URLs to their respective handlers"""
+        if not self.manager.args_manager.max_items:
+            pass
+        else:
+            with self.lock:
+                if self.count>self.manager.args_manager.max_items:
+                    return
         if not scrape_item.url:
             return
         if not isinstance(scrape_item.url, URL):
@@ -402,6 +409,8 @@ class ScrapeMapper:
         key = next((key for key in self.mapping if key in scrape_item.url.host.lower()), None)
 
         if key and not skip:
+            async with self.lock:
+                self.count=self.count + 1
             scraper = self.existing_crawlers[key]
             self.manager.task_group.create_task(scraper.run(scrape_item))
             return
