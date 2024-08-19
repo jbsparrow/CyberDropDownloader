@@ -115,7 +115,7 @@ class HashClient:
                     filtered_matches = list(filter(lambda x: x.exists() if not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing'] else True,all_matches ))
 
                     #what do do with prev matches and current file
-                    if not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']["keep"]['keep_prev_download']:
+                    if not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download']:
                         for ele in filtered_matches:
                             if not ele.exists():
                                 continue
@@ -135,7 +135,7 @@ class HashClient:
                             except OSError:
                                 continue
             
-                    if not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']["keep"]['keep_current_download']:
+                    if not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_current_download']:
                         try:
                             if ele.exists():
                                 send2trash(ele)
