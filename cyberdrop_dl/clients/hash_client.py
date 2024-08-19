@@ -15,6 +15,7 @@ class HashClient:
     def __init__(self,manager):
         self.manager=manager
         self.hashes=defaultdict(lambda:None)
+        self.prev_hashes=set()
         
     @asynccontextmanager
     async def _manager_context(self):
@@ -34,9 +35,10 @@ class HashClient:
                     raise Exception("Path is not a directory")
                 for file in pathlib.Path(path).glob("**/*"):
                     await self.hash_item(file)
-                
+    def _get_key_from_file(file):
+        return str(pathlib.Path(file).absolute())          
     async def hash_item(self,file):
-        key=str(pathlib.Path(file).absolute())
+        key=self._get_key_from_file(file)
         if not file.is_file():
             return
         elif self.hashes[key]:
@@ -52,6 +54,7 @@ class HashClient:
                 await log(f"Error hashing {file} : {e}",40)
         else:
             await self.manager.progress_manager.hash_progress.add_prev_hash()
+            self.prev_hashes.add(key)
         self.hashes[key]=hash
         return  hash
 
@@ -135,7 +138,7 @@ class HashClient:
                             except OSError:
                                 continue
             
-                    if not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_current_download']:
+                    if not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_new_download'] and self._get_key_from_file(ele) in self.prev_hashes:
                         try:
                             if ele.exists():
                                 send2trash(ele)

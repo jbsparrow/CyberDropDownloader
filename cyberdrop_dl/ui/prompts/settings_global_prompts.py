@@ -245,9 +245,9 @@ together during deduplication process
         message="Keep at least 1 current file when unduping",
         long_instruction=
         """
-        If False then all currently downloaded files will be deleted, when a prev hash match is found
+        If False and the current file is in the hash table, then the current file will be deleted
         """,
-        default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_current_download'],
+        default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_new_download'],
         choices=[Choice(True,"True"),Choice(False,"False")],
         vi_mode=manager.vi_mode,
     ).execute()
@@ -273,6 +273,6 @@ together during deduplication process
     manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_after_download'] =  delete_after
     manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading'] = hash_while_downloading
     manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download'] = keep_prev
-    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_current_download'] = keep_current
+    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_new_download'] = keep_current
     manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing'] = count_missing_files
     manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['dedupe_already_downloaded'] = dedupe_already_downloaded
