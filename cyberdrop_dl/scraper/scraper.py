@@ -316,11 +316,15 @@ class ScrapeMapper:
         else:
             links.extend(self.manager.args_manager.other_links)
         links = list(filter(None, links))
+        items=[]
 
         if not links:
             await log("No valid links found.", 30)
         for link in links:
-            item = ScrapeItem(url=link, parent_title="")
+            item=self.get_item_from_link(link)
+            if await self.filter_items(item):
+                items.append(item)
+        for item in items:
             self.manager.task_group.create_task(self.add_item_to_group(item))
 
     async def load_failed_links(self) -> None:
@@ -366,11 +370,14 @@ class ScrapeMapper:
             return False
     async def map_url(self, scrape_item: ScrapeItem,date:arrow.Arrow=None):
         try:
-            scrape_item = self.get_item_from_entryg(scrape_item)
+            scrape_item = self.get_item_from_entry(scrape_item)
         except AttributeError:
             return
         if await self.filter_items(scrape_item):
             await self.add_item_to_group(scrape_item)
+
+    def get_item_from_link(self, link):
+         return ScrapeItem(url=link, parent_title="")
 
     def get_item_from_entry(self,entry): 
         link = URL(entry[0])
