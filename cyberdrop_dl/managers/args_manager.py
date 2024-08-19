@@ -20,6 +20,8 @@ class ArgsManager:
         self.retry_all=False
         self.retry_any=False
 
+        self.max_items = None
+
         self.immediate_download = False
         self.no_ui = False
         self.load_config_from_args = False
@@ -119,6 +121,7 @@ class ArgsManager:
         self.other_links = self.parsed_args['links']
         self.after= self.parsed_args['after'] or arrow.get(0)
         self.before= self.parsed_args['before'] or arrow.get("3000")
+        self.max_items = self.parsed_args['max_items']
  
         del self.parsed_args['download']
         del self.parsed_args['download_all_configs']

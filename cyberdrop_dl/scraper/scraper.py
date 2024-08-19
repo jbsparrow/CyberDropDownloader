@@ -334,6 +334,8 @@ class ScrapeMapper:
         """Loads failed links from db"""
         items=[]
         items = await self.manager.db_manager.history_table.get_all_items()
+        if self.manager.args_manager.max_items:
+            items = items[:self.manager.args_manager.max_items]
         for item in items:
             link = URL(item[0])
             retry_path = Path(item[1])
