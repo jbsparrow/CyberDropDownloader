@@ -243,6 +243,7 @@ async def check_partials_and_empty_folders(manager: Manager):
         await log_with_color("Checking for empty folders...", "yellow", 20)
         await purge_dir(manager.path_manager.download_dir)
         if isinstance(manager.path_manager.sorted_dir, Path):
+            log(manager.path_manager.sorted_dir,100)
             await purge_dir(manager.path_manager.sorted_dir)
 
 
