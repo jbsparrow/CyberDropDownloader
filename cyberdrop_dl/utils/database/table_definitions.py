@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS hash (
   original_filename TEXT,
   file_size INT,
   hash TEXT,
-  UNIQUE (folder, filename)
-  PRIMARY KEY (folder, filename,hash)
+  UNIQUE (folder, original_filename)
+  PRIMARY KEY (folder, original_filename,hash)
 );
 """

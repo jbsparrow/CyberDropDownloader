@@ -128,7 +128,7 @@ class HistoryTable:
         domain = await get_db_domain(domain)
         url_path = await get_db_path(media_item.url, str(media_item.referer))
         file_size=pathlib.Path(media_item.complete_file).stat().st_size
-        await self.db_conn.execute("""UPDATE media SET file_size=? CURRENT_TIMESTAMP WHERE domain = ? and url_path = ?""",
+        await self.db_conn.execute("""UPDATE media SET file_size=? WHERE domain = ? and url_path = ?""",
                                    (file_size,domain, url_path))
         await self.db_conn.commit()
     async def check_filename_exists(self, filename: str) -> bool:
