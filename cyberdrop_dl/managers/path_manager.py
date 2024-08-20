@@ -74,8 +74,8 @@ class PathManager:
             self.input_file.touch(exist_ok=True)
         self.history_db.touch(exist_ok=True)
 
-    def add_completed(self,media:MediaItem):
-        self._completed_downloads.add(media.complete_file.absolute())
+    def add_completed(self,media_item:MediaItem):
+        self._completed_downloads.add(media_item)
     @property
     def completed_downloads(self):
         return self._completed_downloads

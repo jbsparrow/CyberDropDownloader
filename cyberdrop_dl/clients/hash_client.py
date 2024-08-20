@@ -34,10 +34,10 @@ class HashClient:
                 if not pathlib.Path(path).is_dir():
                     raise Exception("Path is not a directory")
                 for file in pathlib.Path(path).glob("**/*"):
-                    await self.hash_item(file)
+                    await self.hash_item(file,None,None)
     def _get_key_from_file(self,file):
         return str(pathlib.Path(file).absolute())          
-    async def hash_item(self,file):
+    async def hash_item(self,file,original_filename,refer):
         key=self._get_key_from_file(file)
         if not file.is_file():
             return
@@ -48,7 +48,7 @@ class HashClient:
         if not hash:
             try:
                 hash = await self.manager.hash_manager.hash_file(file)
-                await self.manager.db_manager.hash_table.insert_or_update_hash_db(hash, file.stat().st_size, file)
+                await self.manager.db_manager.hash_table.insert_or_update_hash_db(hash,file,original_filename,refer)
                 await self.manager.progress_manager.hash_progress.add_new_completed_hash()
             except Exception as e:
                 await log(f"Error hashing {file} : {e}",40)
@@ -62,7 +62,8 @@ class HashClient:
     async def hash_item_during_download(self,media_item:MediaItem):
         try:
             if self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading']:
-                    await self.hash_item(media_item.complete_file)
+                    await self.hash_item(media_item.complete_file,media_item.original_filename,media_item.referer
+                                         )
         except Exception as e:
             await log(f"After hash processing failed: {media_item.complete_file} with error {e}", 40)
 
@@ -73,8 +74,10 @@ class HashClient:
                 return
             hashes_dict=defaultdict(lambda: defaultdict(list))
             # first compare downloads to each other
-            for item in list(self.manager.path_manager.completed_downloads):
-                hash=await self.hash_item(item)
+            for media_item in list(self.manager.path_manager.completed_downloads):
+                
+                hash=await self.hash_item(media_item.complete_file,media_item.original_filename,media_item.referer)
+                item=media_item.complete_file.absolute()
                 try:
                     size=item.stat().st_size
                     if hash:

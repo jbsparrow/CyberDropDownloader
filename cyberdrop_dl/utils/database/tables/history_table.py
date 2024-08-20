@@ -43,7 +43,8 @@ class HistoryTable:
         await self.db_conn.execute(create_history)
         await self.db_conn.commit()
         await self.fix_primary_keys()
-        await self.add_columns()
+        await self.add_columns_media()
+        await self.add_columns_hash()
         await self.fix_bunkr_v4_entries()
 
     async def check_complete(self, domain: str, url: URL, referer: URL) -> bool:
@@ -189,7 +190,7 @@ class HistoryTable:
             await self.db_conn.execute("""ALTER TABLE media_copy RENAME TO media""")
             await self.db_conn.commit()
 
-    async def add_columns(self) -> None:
+    async def add_columns_media(self) -> None:
         cursor = await self.db_conn.cursor()
         result = await cursor.execute("""pragma table_info(media)""")
         result = await result.fetchall()
@@ -205,4 +206,23 @@ class HistoryTable:
 
         if "completed_at" not in current_cols:
             await self.db_conn.execute("""ALTER TABLE media ADD COLUMN completed_at TIMESTAMP""")
+            await self.db_conn.commit()
+
+
+    async def add_columns_hash(self) -> None:
+        cursor = await self.db_conn.cursor()
+        result = await cursor.execute("""pragma table_info(hash)""")
+        result = await result.fetchall()
+        current_cols = [col[1] for col in result]
+        
+        if "download_filename" not in current_cols:
+            await self.db_conn.execute("""ALTER TABLE hash RENAME COLUMN filename TO download_filename;""")
+            await self.db_conn.commit()
+
+        if "original_filename" not in current_cols:
+            await self.db_conn.execute("""ALTER TABLE hash ADD COLUMN original_filename TEXT""")
+            await self.db_conn.commit()
+
+        if "referer" not in current_cols:
+            await self.db_conn.execute("""ALTER TABLE hash ADD COLUMN referer TEXT""")
             await self.db_conn.commit()
