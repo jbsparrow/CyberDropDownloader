@@ -122,8 +122,8 @@ class ArgsManager:
             self.flaresolverr = self.parsed_args['flaresolverr']
 
         self.other_links = self.parsed_args['links']
-        self.after= self.parsed_args['after'] or arrow.get(0)
-        self.before= self.parsed_args['before'] or arrow.get("3000")
+        self.after= self.parsed_args['completed_after'] or arrow.get(0)
+        self.before= self.parsed_args['completed_before'] or arrow.get("3000")
         self.max_items = self.parsed_args['max_items']
  
         del self.parsed_args['download']
