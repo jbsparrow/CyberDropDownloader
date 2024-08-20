@@ -101,7 +101,7 @@ class HashClient:
                     for file in filter(lambda x:x!=selected_file,files):
                         try:
                             send2trash(file)
-                            await log(f"Sent new download : {str(ele)} to trash with hash {hash}", 10)
+                            await log(f"Sent new download : {str(file)} to trash with hash {hash}", 10)
                             await self.manager.progress_manager.hash_progress.add_removed_file()
                         except OSError:
                             pass
