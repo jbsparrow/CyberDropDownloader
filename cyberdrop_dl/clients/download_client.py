@@ -156,7 +156,7 @@ class DownloadClient:
 
     async def download_file(self, manager: Manager, domain: str, media_item: MediaItem) -> bool:
         """Starts a file"""
-        if self.manager.config_manager.settings_data['Download_Options']['skip_download_process_completed']:
+        if self.manager.config_manager.settings_data['Download_Options']['skip_mark_completed']:
             await log(f"Download Skip {media_item.url} due to mark completed option", 10)
             await self.manager.progress_manager.download_progress.add_skipped()
             await self.mark_incomplete(media_item, domain)
@@ -182,7 +182,7 @@ class DownloadClient:
     async def process_completed(self, media_item: MediaItem, domain: str) -> None:
         """Marks the media item as completed in the database and adds to the completed list"""
         await self.manager.db_manager.history_table.mark_complete(domain, media_item)
-        await self.manager.db_manager.history_table.add_file_size(media_item)
+        await self.manager.db_manager.history_table.add_filesize(domain, media_item)
        
       
 
