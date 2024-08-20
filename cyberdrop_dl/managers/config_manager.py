@@ -178,8 +178,6 @@ class ConfigManager:
             self.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download']
         self.global_settings_data['Dupe_Cleanup_Options']['keep_new_download'] = \
             self.global_settings_data['Dupe_Cleanup_Options']['keep_new_download']        
-        self.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing'] = \
-            self.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing']
 
 
         self.global_settings_data['UI_Options']['refresh_rate'] = int(

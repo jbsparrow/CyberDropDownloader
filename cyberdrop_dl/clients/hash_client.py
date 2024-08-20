@@ -119,7 +119,7 @@ class HashClient:
                     # Filter out files with the same path as any file in other_files
                     filtered_matches = [match for match in all_matches if str(match) not in other_files]
                     #Filter files based  on if the file exists
-                    filtered_matches = list(filter(lambda x: x.exists() if not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing'] else True,filtered_matches ))
+                    filtered_matches = list(filter(lambda x: x.exists(),filtered_matches ))
 
                     #what do do with prev matches and current file
                     if not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download']:

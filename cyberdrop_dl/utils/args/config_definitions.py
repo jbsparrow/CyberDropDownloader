@@ -141,7 +141,6 @@ global_settings: Dict = {
  "keep_prev_download": False,
         "keep_new_download": True,
 
-  "count_missing_as_existing": False,
   "dedupe_already_downloaded": False
 
     },
