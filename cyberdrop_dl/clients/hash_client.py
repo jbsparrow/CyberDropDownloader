@@ -35,7 +35,7 @@ class HashClient:
                     raise Exception("Path is not a directory")
                 for file in pathlib.Path(path).glob("**/*"):
                     await self.hash_item(file)
-    def _get_key_from_file(file):
+    def _get_key_from_file(self,file):
         return str(pathlib.Path(file).absolute())          
     async def hash_item(self,file):
         key=self._get_key_from_file(file)
