@@ -278,15 +278,14 @@ class ScrapeMapper:
 
         await self.no_crawler_downloader.startup()
 
-        if not self.manager.args_manager.retry_any:
-            await self.load_links()
-        elif self.manager.args_manager.retry_failed:
+        if self.manager.args_manager.retry_failed:
             await self.load_failed_links()
         elif self.manager.args_manager.retry_all:
             await self.load_all_links()
-
         elif self.manager.args_manager.retry_maintenance:
             await self.load_all_bunkr_failed_links_via_hash()
+        else:
+            await self.load_links()
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 

@@ -78,7 +78,6 @@ class ArgsManager:
             self.sort_all_configs = True
             self.all_configs = True
             self.immediate_download = True
-
         if self.parsed_args['retry_failed']:
             self.retry_failed = True
             self.retry_any=True
@@ -133,6 +132,7 @@ class ArgsManager:
         del self.parsed_args['no_ui']
         del self.parsed_args['retry_failed']
         del self.parsed_args['retry_all']
+        del self.parsed_args['retry_maintenance']
         del self.parsed_args['input_file']
         del self.parsed_args['output_folder']
         del self.parsed_args['appdata_folder']
