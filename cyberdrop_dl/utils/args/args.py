@@ -22,7 +22,7 @@ def parse_args() -> argparse.Namespace:
     general.add_argument("--retry-maintenance", action="store_true", help="retry all failed downloads due to maintenance, only supports bunkr and requires files to be hashed", default=False)
     general.add_argument("--completed-after", help="only download completed downloads at or after this date", default=None,type=lambda x:None if not x else arrow.get(x))
     general.add_argument("--completed-before", help="only download completed downloads at or before this date", default=None,type=lambda x:None if not x else arrow.get(x))
-    general.add_argument("--max-items", help="max number of items to retrive from database",type=int)
+    general.add_argument("--max-items-retry", help="max number of links to retry",type=int)
 
 
     # File Paths
