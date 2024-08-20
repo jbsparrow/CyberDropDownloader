@@ -229,41 +229,36 @@ together during deduplication process
         choices=[Choice(True,"True"),Choice(False,"False")],
         vi_mode=manager.vi_mode,
     ).execute()
-    keep_current = inquirer.select(
-        message="Keep previously hashed files, rather than ones added/updated from current execution",
-        long_instruction=
-        """
-previous marking indicates a file already in the database that passes the existing check, and does not match the list of files created or updated from the current links
-
-If True, priority is given to files marked as previous
-If False, keep the new file and move any matching previous files to the trash
-        """,
-        default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download'],
-        choices=[Choice(True,"True"),Choice(False,"False")],
-        vi_mode=manager.vi_mode,
-    ).execute()
-
-
-    count_missing_files = inquirer.select(
-        message="Counts moved/deleted files as a valid previous download",
-        default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing'],
-        long_instruction="Removes the 'existing' check for files marked as previous",
-        choices=[Choice(True,"True"),Choice
-        (False,"False")],
-        vi_mode=manager.vi_mode,
-    ).execute()
-
 
     dedupe_already_downloaded = inquirer.select(
-        message="Remove duplicates from already existing files: ",
-        long_instruction="Removes duplicates from files generated from current links, even if 'skipped/not downloaded; for already existing on system",
+        message="How to handle files already on system: ",
         default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['dedupe_already_downloaded'],
-        choices=[Choice(True,"True"),Choice(False,"False")],
+        choices=[Choice(True,"Mark Existing Files as 'new'"),Choice(False,"Skip Existing Files")],
         vi_mode=manager.vi_mode,
     ).execute()
+
+
+    keep_current = inquirer.select(
+        message="What to do with new file when deduping: ",
+        long_instruction="Files are only deleted if they existed in db before the current run",
+        default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_new_download'],
+        choices=[Choice(True,"Keep a newfile"),Choice(False,"Delete all new files")],
+        vi_mode=manager.vi_mode,
+    ).execute()
+
+    keep_prev = inquirer.select(
+        message="What to do with previous file(s) when deduping:",
+        default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options'],
+        long_instruction="Previous files are files not in generated from the links provided",
+        choices=[Choice(True,"Keep a previous file "),Choice(False,"Delete all previous files")],
+        vi_mode=manager.vi_mode,
+    ).execute()
+
+
    
     manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_after_download'] =  delete_after
     manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading'] = hash_while_downloading
-    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download'] = keep_current
-    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing'] = count_missing_files
+    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download'] = keep_prev
+    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_new_download'] = keep_current
+
     manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['dedupe_already_downloaded'] = dedupe_already_downloaded

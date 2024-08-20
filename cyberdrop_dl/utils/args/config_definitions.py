@@ -95,6 +95,7 @@ settings: Dict = {
     "Runtime_Options": {
         "ignore_history": False,
         "log_level": 10,
+        "console_log_level":100,
         "skip_check_for_partial_files": False,
         "skip_check_for_empty_folders": False,
         "delete_partial_files": False,
@@ -137,8 +138,9 @@ global_settings: Dict = {
     {
   "delete_after_download": False,
   "hash_while_downloading": False,
-  "keep_prev_download": False,
-  "count_missing_as_existing": False,
+ "keep_prev_download": False,
+        "keep_new_download": True,
+
   "dedupe_already_downloaded": False
 
     },

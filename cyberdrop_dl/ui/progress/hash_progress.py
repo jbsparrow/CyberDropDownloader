@@ -27,7 +27,7 @@ class HashProgress:
 
        
         self.hashed_files = 0
-        self.prev_hash_files = 0
+        self.prev_hashed_files = 0
 
         self.hash_progress_group = Group(self.current_hashing_text,self.hash_progress)
     
@@ -66,7 +66,7 @@ class HashProgress:
         self.current_hashing_text.update(self.currently_hashing_size_task_id ,description=f"[blue]{format_size(file.stat().st_size)}")
       
 
-    async def add_completed_hash(self) -> None:
+    async def add_new_completed_hash(self) -> None:
         """Adds a completed file to the progress bar"""
         self.hash_progress.advance(self.hashed_files_task_id , 1)
         self.hashed_files += 1
@@ -74,7 +74,7 @@ class HashProgress:
     async def add_prev_hash(self) -> None:
         """Adds a completed file to the progress bar"""
         self.hash_progress.advance(self.prev_hashed_files_task_id , 1)
-        self.prev_hash_files += 1
+        self.prev_hashed_files += 1
 
 
     async def add_removed_file(self) -> None:

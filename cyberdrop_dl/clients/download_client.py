@@ -15,7 +15,6 @@ from aiohttp import ClientSession
 
 from cyberdrop_dl.clients.errors import DownloadFailure, InvalidContentTypeFailure
 from cyberdrop_dl.utils.utilities import FILE_FORMATS, log
-from cyberdrop_dl.clients.hash_client import HashClient
 
 if TYPE_CHECKING:
     from typing import Callable, Coroutine, Any
@@ -62,7 +61,6 @@ class DownloadClient:
         self._global_limiter = self.client_manager.global_rate_limiter
         self.trace_configs = []
         self._file_path=None
-        self._hash_client=HashClient(self.manager)
         if os.getenv("PYCHARM_HOSTED") is not None:
             async def on_request_start(session, trace_config_ctx, params):
                 await log(f"Starting download {params.method} request to {params.url}", 40)
@@ -191,7 +189,7 @@ class DownloadClient:
     async def handle_media_item_completion(self, media_item,downloaded=False) -> None:
         """Sends to hash client to handle hashing and marks as completed/current download"""
         try:
-            await self._hash_client.hash_item_during_download(media_item)
+            await self.manager.hash_manager.hash_client.hash_item_during_download(media_item)
             if downloaded or self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['dedupe_already_downloaded']:
                     self.manager.path_manager.add_completed(media_item)
         except Exception as e:

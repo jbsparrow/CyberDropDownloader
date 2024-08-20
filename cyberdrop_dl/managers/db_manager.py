@@ -1,3 +1,5 @@
+import signal
+from contextlib import contextmanager
 from dataclasses import field
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -12,6 +14,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
+    
 class DBManager:
     def __init__(self, manager: 'Manager', db_path: Path):
         self.manager = manager

@@ -143,6 +143,8 @@ class ConfigManager:
 
         self.settings_data['Runtime_Options']['log_level'] = int(self.settings_data['Runtime_Options']['log_level'])
 
+        self.settings_data['Runtime_Options']['console_log_level'] = int(self.settings_data['Runtime_Options']['console_log_level'])
+
         self.global_settings_data['General']['max_file_name_length'] = int(
             self.global_settings_data['General']['max_file_name_length'])
         self.global_settings_data['General']['max_folder_name_length'] = int(
@@ -174,8 +176,8 @@ class ConfigManager:
             self.global_settings_data['Dupe_Cleanup_Options']['dedupe_already_downloaded']
         self.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download'] = \
             self.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download']
-        self.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing'] = \
-            self.global_settings_data['Dupe_Cleanup_Options']['count_missing_as_existing']
+        self.global_settings_data['Dupe_Cleanup_Options']['keep_new_download'] = \
+            self.global_settings_data['Dupe_Cleanup_Options']['keep_new_download']        
 
 
         self.global_settings_data['UI_Options']['refresh_rate'] = int(

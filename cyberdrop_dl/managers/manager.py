@@ -19,7 +19,10 @@ from cyberdrop_dl.managers.live_manager import LiveManager
 from cyberdrop_dl.utils.args import config_definitions
 from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
 from cyberdrop_dl.utils.transfer.first_time_setup import TransitionManager
+from cyberdrop_dl.managers.console_manager import ConsoleManager
+
 from cyberdrop_dl.utils.utilities import log
+
 
 
 class Manager:
@@ -33,6 +36,7 @@ class Manager:
         self.log_manager: LogManager = field(init=False)
         self.db_manager: DBManager = field(init=False)
         self.client_manager: ClientManager = field(init=False)
+
         self.download_manager: DownloadManager = field(init=False)
         self.progress_manager: ProgressManager = field(init=False)
         self.live_manager: LiveManager = field(init=False)
@@ -47,6 +51,7 @@ class Manager:
         self.scrape_mapper = field(init=False)
         
         self.vi_mode: bool = None
+        self.console_manager:ConsoleManager = field(init=False)
 
     def startup(self) -> None:
         """Startup process for the manager"""
@@ -88,9 +93,12 @@ class Manager:
         if not isinstance(self.download_manager, DownloadManager):
             self.download_manager = DownloadManager(self)
         if not isinstance(self.hash_manager, HashManager):
-            self.hash_manager = HashManager()
+            self.hash_manager = HashManager(self)
         if not isinstance(self.live_manager, LiveManager):
             self.live_manager = LiveManager(self)
+        if not isinstance(self.console_manager, ConsoleManager):
+            self.console_manager = ConsoleManager()
+            self.console_manager.startup()
         self.progress_manager = ProgressManager(self)
         await self.progress_manager.startup()
 
@@ -105,9 +113,12 @@ class Manager:
             self.db_manager = DBManager(self, self.path_manager.history_db)
             await self.db_manager.startup()
         if not isinstance(self.hash_manager, HashManager):
-            self.hash_manager = HashManager()
+            self.hash_manager = HashManager(self)
         if not isinstance(self.live_manager, LiveManager):
             self.live_manager = LiveManager(self)
+        if not isinstance(self.console_manager, ConsoleManager):
+            self.console_manager = ConsoleManager()
+            self.console_manager.startup()
         self.progress_manager = ProgressManager(self)
         await self.progress_manager.startup()
 
@@ -193,5 +204,6 @@ class Manager:
     async def close(self) -> None:
         """Closes the manager"""
         await self.db_manager.close()
+        self.console_manager.close()
         self.db_manager: DBManager = field(init=False)
 
