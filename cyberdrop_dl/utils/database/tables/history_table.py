@@ -156,6 +156,18 @@ class HistoryTable:
         all_files = await result.fetchall()
         return all_files
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    async def get_all_bunkr_failed_via_hash(self) -> Iterable[Row]:
+        """Returns a list of all items"""
+        cursor = await self.db_conn.cursor()
+        result = await cursor.execute("""
+SELECT m.referer
+FROM hash h
+INNER JOIN media m ON h.download_filename= m.download_filename
+WHERE h.hash = 'eb669b6362e031fa2b0f1215480c4e30';
+        """)
+        all_files = await result.fetchall()
+        return all_files
+    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fix_bunkr_v4_entries(self) -> None:
         """Fixes bunkr v4 entries in the database"""

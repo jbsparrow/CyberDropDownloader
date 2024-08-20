@@ -19,6 +19,7 @@ class ArgsManager:
         self.retry_failed = False
         self.retry_all=False
         self.retry_any=False
+        self.retry_maintenance = False
 
         self.max_items = None
 
@@ -85,6 +86,9 @@ class ArgsManager:
         if self.parsed_args['retry_all']:
             self.retry_all = True
             self.retry_any = True
+            self.immediate_download = True
+        if self.parsed_args['retry_maintenance']:
+            self.retry_maintenance = True
             self.immediate_download = True
         if self.parsed_args['input_file']:
             self.input_file = Path(self.parsed_args['input_file'])

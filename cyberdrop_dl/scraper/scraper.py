@@ -285,6 +285,9 @@ class ScrapeMapper:
         elif self.manager.args_manager.retry_all:
             await self.load_all_links()
 
+        elif self.manager.args_manager.retry_maintenance:
+            await self.load_all_bunkr_failed_links_via_hash()
+
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def regex_links(self, line: str) -> List:
@@ -354,6 +357,18 @@ class ScrapeMapper:
         for item in items:
             self.manager.task_group.create_task(self.add_item_to_group(item))
 
+    async def load_all_bunkr_failed_links_via_hash(self) -> None:
+        """Loads all bunkr links with maintance hash"""
+        entries = await self.manager.db_manager.history_table.get_all_bunkr_failed_via_hash(self.manager.args_manager.after,self.manager.args_manager.before)
+        items=[]
+        for entry in entries:
+            item=self.get_item_from_entry(entry)
+            if await self.filter_items(item):
+                items.append(item)
+        if self.manager.args_manager.max_items:
+            items = items[:self.manager.args_manager.max_items]
+        for item in items:
+            self.manager.task_group.create_task(self.add_item_to_group(item))
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
