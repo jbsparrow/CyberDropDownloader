@@ -71,7 +71,7 @@ class HashTable:
             return []
     
    
-    async def insert_or_update_hash_db(self, hash_value, file,original_filename,refer):
+    async def insert_or_update_hash_db(self, hash_value, file,original_filename,referer):
         """
         Inserts or updates a record in the specified SQLite database.
 
@@ -95,7 +95,7 @@ class HashTable:
         # Assuming a table named 'file_info' with columns: id (primary key), hash, size, filename, folder
         try:
             await cursor.execute("INSERT INTO hash (hash, size, download_filename, folder,original_filename,referer) VALUES (?, ?, ?, ?,?,?)",
-                        (hash_value, file_size, download_filename, folder,original_filename,refer))
+                        (hash_value, file_size, download_filename, folder,original_filename,referer))
             await self.db_conn.commit()
             return True
         except IntegrityError:
@@ -103,10 +103,10 @@ class HashTable:
             await cursor.execute("""UPDATE hash
     SET size = ?,
     hash = ?,
-    referer = CASE WHEN ? IS NOT NULL THEN ? ELSE referer END,
+    referer= CASE WHEN ? IS NOT NULL THEN ? ELSE referer END,
     original_filename = CASE WHEN ? IS NOT NULL THEN ? ELSE original_filename END
 WHERE download_filename = ? AND folder = ?;""",
-                        (file_size,hash_value,refer,original_filename, download_filename, folder))
+                        (file_size,hash_value,referer,referer,original_filename,original_filename,download_filename,folder))
             await self.db_conn.commit()
             return True
         except Exception as e:
