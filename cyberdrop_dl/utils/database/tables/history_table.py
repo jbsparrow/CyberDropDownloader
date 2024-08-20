@@ -165,6 +165,11 @@ class HistoryTable:
         all_files = await result.fetchall()
         return all_files
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    async def get_all_bunkr_failed(self):
+        hash_list= self.get_all_bunkr_failed_via_hash()
+        # size_list= self.get_all_bunkr_failed_via_size()
+        
+    
     async def get_all_bunkr_failed_via_hash(self) -> Iterable[Row]:
         """Returns a list of all items"""
         cursor = await self.db_conn.cursor()
