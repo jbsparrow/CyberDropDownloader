@@ -18,6 +18,7 @@ create_fixed_history = """CREATE TABLE IF NOT EXISTS media_copy (domain TEXT,
                                                download_path TEXT,
                                                download_filename TEXT,
                                                original_filename TEXT,
+                                               file_size INT,
                                                completed INTEGER NOT NULL,
                                                PRIMARY KEY (domain, url_path, original_filename)
                                                );"""
@@ -29,7 +30,7 @@ CREATE TABLE IF NOT EXISTS hash (
   folder TEXT,
   download_filename TEXT,
   original_filename TEXT,
-  size INT,
+  file_size INT,
   hash TEXT,
   UNIQUE (folder, filename)
   PRIMARY KEY (folder, filename,hash)

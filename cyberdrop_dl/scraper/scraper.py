@@ -358,7 +358,7 @@ class ScrapeMapper:
 
     async def load_all_bunkr_failed_links_via_hash(self) -> None:
         """Loads all bunkr links with maintance hash"""
-        entries = await self.manager.db_manager.history_table.get_all_bunkr_failed_via_hash()
+        entries = await self.manager.db_manager.history_table.get_all_bunkr_failed()
         items=[]
         for entry in entries:
             item=self.get_item_from_entry(entry)
