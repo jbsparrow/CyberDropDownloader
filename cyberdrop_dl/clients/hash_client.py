@@ -94,7 +94,7 @@ class HashClient:
                     for file in filter(lambda x:x!=selected_file,files):
                         try:
                             send2trash(file)
-                            await log(f"Sent {str(ele)} to trash with hash {hash}", 10)
+                            await log(f"Sent new download : {str(ele)} to trash with hash {hash}", 10)
                             await self.manager.progress_manager.hash_progress.add_removed_file()
                         except OSError:
                             pass
@@ -125,7 +125,7 @@ class HashClient:
                                 continue
                             try:
                                 send2trash(ele)
-                                await log(f"Sent {str(ele)} to trash with hash {hash}", 10)
+                                await log(f"Sent prev download: {str(ele)} to trash with hash {hash}", 10)
                                 await self.manager.progress_manager.hash_progress.add_removed_prev_file()
                             except OSError:
                                 continue
@@ -136,7 +136,7 @@ class HashClient:
                                 continue
                             try:
                                 send2trash(ele)
-                                await log(f"Sent {str(ele)} to trash with hash {hash}", 10)
+                                await log(f"Sent prev download: {str(ele)} to trash with hash {hash}", 10)
                                 await self.manager.progress_manager.hash_progress.add_removed_prev_file()
                             except OSError:
                                 continue
@@ -145,7 +145,7 @@ class HashClient:
                         try:
                             if ele.exists():
                                 send2trash(ele)
-                                await log(f"Sent {str(ele)} to trash with hash {hash}", 10)
+                                await log(f"Sent new download:{str(ele)} to trash with hash {hash}", 10)
                                 await self.manager.progress_manager.hash_progress.add_removed_file()
 
                         except OSError:
