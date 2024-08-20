@@ -40,7 +40,7 @@ class HashTable:
             cursor = await self.db_conn.cursor()
 
             # Check if the file exists with matching folder, filename, and size
-            await cursor.execute("SELECT hash FROM hash WHERE folder=? AND download_filename=? AND size=?", (folder, filename, size))
+            await cursor.execute("SELECT hash FROM hash WHERE folder=? AND download_filename=? AND file_size=?", (folder, filename, size))
             result = await cursor.fetchone()
             if result and result[0]:
                 return result[0]
@@ -63,7 +63,7 @@ class HashTable:
         cursor = await self.db_conn.cursor()
 
         try:
-            await cursor.execute("SELECT folder, download_filename FROM hash WHERE hash = ? and size=?", (hash_value,size))
+            await cursor.execute("SELECT folder, download_filename FROM hash WHERE hash = ? and file_size=?", (hash_value,size))
             results = await cursor.fetchall()
             return results
         except Exception as e:
@@ -94,14 +94,14 @@ class HashTable:
 
         # Assuming a table named 'file_info' with columns: id (primary key), hash, size, filename, folder
         try:
-            await cursor.execute("INSERT INTO hash (hash, size, download_filename, folder,original_filename,referer) VALUES (?, ?, ?, ?,?,?)",
+            await cursor.execute("INSERT INTO hash (hash, file_size, download_filename, folder,original_filename,referer) VALUES (?, ?, ?, ?,?,?)",
                         (hash_value, file_size, download_filename, folder,original_filename,referer))
             await self.db_conn.commit()
             return True
         except IntegrityError:
             # Handle potential duplicate key (assuming a unique constraint on hash, filename, and folder)
             await cursor.execute("""UPDATE hash
-    SET size = ?,
+    SET file_size = ?,
     hash = ?,
     referer= CASE WHEN ? IS NOT NULL THEN ? ELSE referer END,
     original_filename = CASE WHEN ? IS NOT NULL THEN ? ELSE original_filename END
