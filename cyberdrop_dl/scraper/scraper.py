@@ -440,8 +440,6 @@ class ScrapeMapper:
             await self.manager.log_manager.write_unsupported_urls_log(scrape_item.url)
     async def filter_items(self, scrape_item) -> None:
         """Maps URLs to their respective handlers"""
-        if not self.manager.args_manager.max_items:
-            pass
         if not scrape_item.url:
             return
         if not isinstance(scrape_item.url, URL):
