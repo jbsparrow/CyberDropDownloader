@@ -166,7 +166,7 @@ class HistoryTable:
         return all_files
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
     async def get_all_bunkr_failed(self):
-        hash_list= self.get_all_bunkr_failed_via_hash()
+        hash_list= await self.get_all_bunkr_failed_via_hash()
         # size_list= self.get_all_bunkr_failed_via_size()
         
     
