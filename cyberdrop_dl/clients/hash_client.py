@@ -39,22 +39,26 @@ class HashClient:
         return str(pathlib.Path(file).absolute())          
     async def hash_item(self,file,original_filename,refer):
         key=self._get_key_from_file(file)
+        file=pathlib.Path(file)
+        refer=str(refer)
+        original_filename=str(original_filename)
         if not file.is_file():
             return
         elif self.hashes[key]:
             return self.hashes[key]
         await self.manager.progress_manager.hash_progress.update_currently_hashing(file)
         hash=await self.manager.db_manager.hash_table.get_file_hash_exists(file)
-        if not hash:
-            try:
+        try:
+            if not hash:
                 hash = await self.manager.hash_manager.hash_file(file)
                 await self.manager.db_manager.hash_table.insert_or_update_hash_db(hash,file,original_filename,refer)
                 await self.manager.progress_manager.hash_progress.add_new_completed_hash()
-            except Exception as e:
+            else:
+                await self.manager.progress_manager.hash_progress.add_prev_hash()
+                await self.manager.db_manager.hash_table.insert_or_update_hash_db(hash,file,original_filename,refer)
+                self.prev_hashes.add(key)
+        except Exception as e:
                 await log(f"Error hashing {file} : {e}",40)
-        else:
-            await self.manager.progress_manager.hash_progress.add_prev_hash()
-            self.prev_hashes.add(key)
         self.hashes[key]=hash
         return  hash
 
@@ -152,5 +156,6 @@ class HashClient:
                                 await self.manager.progress_manager.hash_progress.add_removed_file()
 
                         except OSError:
+
                             pass
                     

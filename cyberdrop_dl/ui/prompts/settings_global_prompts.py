@@ -245,7 +245,7 @@ together during deduplication process
         choices=[Choice(True,"Keep a newfile"),Choice(False,"Delete all new files")],
         vi_mode=manager.vi_mode,
     ).execute()
-    
+
     keep_prev = inquirer.select(
         message="What to do with previous file(s) when deduping:",
         default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options'],
@@ -253,9 +253,6 @@ together during deduplication process
         choices=[Choice(True,"Keep a previous file "),Choice(False,"Delete all previous files")],
         vi_mode=manager.vi_mode,
     ).execute()
-
-
-
 
 
    

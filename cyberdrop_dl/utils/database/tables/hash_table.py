@@ -94,7 +94,7 @@ class HashTable:
 
         # Assuming a table named 'file_info' with columns: id (primary key), hash, size, filename, folder
         try:
-            await cursor.execute("INSERT INTO hash (hash, size, download_filename, folder,original_filename,refer) VALUES (?, ?, ?, ?,?,?)",
+            await cursor.execute("INSERT INTO hash (hash, size, download_filename, folder,original_filename,referer) VALUES (?, ?, ?, ?,?,?)",
                         (hash_value, file_size, download_filename, folder,original_filename,refer))
             await self.db_conn.commit()
             return True
