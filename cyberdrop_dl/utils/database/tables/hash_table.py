@@ -15,9 +15,30 @@ class HashTable:
     async def startup(self) -> None:
         """Startup process for the HistoryTable"""
         await self.db_conn.execute(create_hash)
+        await self.add_columns_hash()
         await self.db_conn.commit()
 
+    async def add_columns_hash(self) -> None:
+        cursor = await self.db_conn.cursor()
+        result = await cursor.execute("""pragma table_info(hash)""")
+        result = await result.fetchall()
+        current_cols = [col[1] for col in result]
+        
+        if "download_filename" not in current_cols:
+            await self.db_conn.execute("""ALTER TABLE hash RENAME COLUMN filename TO download_filename;""")
+            await self.db_conn.commit()
 
+        if "file_size" not in current_cols:
+            await self.db_conn.execute("""ALTER TABLE hash RENAME COLUMN size TO file_size;""")
+            await self.db_conn.commit()
+
+        if "original_filename" not in current_cols:
+            await self.db_conn.execute("""ALTER TABLE hash ADD COLUMN original_filename TEXT""")
+            await self.db_conn.commit()
+
+        if "referer" not in current_cols:
+            await self.db_conn.execute("""ALTER TABLE hash ADD COLUMN referer TEXT""")
+            await self.db_conn.commit()
     async def get_file_hash_exists(self, full_path):
         """
         Checks if a file exists in the database based on its folder, filename, and size.
