@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING, Iterable, Any
 from yarl import URL
 
 from cyberdrop_dl.utils.database.table_definitions import create_history, create_fixed_history
+from cyberdrop_dl.utils.utilities import log
+
 
 if TYPE_CHECKING:
     from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem
@@ -166,21 +168,41 @@ class HistoryTable:
         return all_files
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
     async def get_all_bunkr_failed(self):
-        hash_list= self.get_all_bunkr_failed_via_hash()
-        # size_list= self.get_all_bunkr_failed_via_size()
-        
+        hash_list= await self.get_all_bunkr_failed_via_hash()
+        size_list= await self.get_all_bunkr_failed_via_size()
+        return hash_list + size_list
+
+    async def get_all_bunkr_failed_via_size(self) -> Iterable[Row]:
+        try:
+            """Returns a list of all items"""
+            cursor = await self.db_conn.cursor()
+            result = await cursor.execute("""
+            SELECT referer,download_path,completed_at
+            from media
+            where file_size=322509
+    ;
+            """)
+            all_files = await result.fetchall()
+            return all_files    
+        except Exception as e:
+            log(f"Error getting bunkr failed via size: {e}",20)
+            return []
     
     async def get_all_bunkr_failed_via_hash(self) -> Iterable[Row]:
-        """Returns a list of all items"""
-        cursor = await self.db_conn.cursor()
-        result = await cursor.execute("""
-SELECT m.referer,download_path,completed_at
-FROM hash h
-INNER JOIN media m ON h.download_filename= m.download_filename
-WHERE h.hash = 'eb669b6362e031fa2b0f1215480c4e30';
-        """)
-        all_files = await result.fetchall()
-        return all_files
+        try:
+            """Returns a list of all items"""
+            cursor = await self.db_conn.cursor()
+            result = await cursor.execute("""
+    SELECT m.referer,download_path,completed_at
+    FROM hash h
+    INNER JOIN media m ON h.download_filename= m.download_filename
+    WHERE h.hash = 'eb669b6362e031fa2b0f1215480c4e30';
+            """)
+            all_files = await result.fetchall()
+            return all_files
+        except Exception as e:
+            log(f"Error getting bunkr failed via hash: {e}",20)
+            return []
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fix_bunkr_v4_entries(self) -> None:
