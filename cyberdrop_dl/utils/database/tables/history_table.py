@@ -1,4 +1,5 @@
 from __future__ import annotations
+import pathlib
 
 from sqlite3 import Row, IntegrityError
 
@@ -120,6 +121,14 @@ class HistoryTable:
                                    (domain, url_path))
         await self.db_conn.commit()
 
+    async def add_filesize(self, domain: str, media_item: MediaItem) -> None:
+        """add the file size to the db"""
+        domain = await get_db_domain(domain)
+        url_path = await get_db_path(media_item.url, str(media_item.referer))
+        file_size=pathlib.Path(media_item.complete_file).stat().st_size
+        await self.db_conn.execute("""UPDATE media SET file_size=? CURRENT_TIMESTAMP WHERE domain = ? and url_path = ?""",
+                                   (file_size,domain, url_path))
+        await self.db_conn.commit()
     async def check_filename_exists(self, filename: str) -> bool:
         """Checks whether a downloaded filename exists in the database"""
         cursor = await self.db_conn.cursor()
@@ -160,7 +169,7 @@ class HistoryTable:
         """Returns a list of all items"""
         cursor = await self.db_conn.cursor()
         result = await cursor.execute("""
-SELECT m.referer,m.download_path,m.completed_at
+SELECT m.referer,m.download_path,
 FROM hash h
 INNER JOIN media m ON h.download_filename= m.download_filename
 WHERE h.hash = 'eb669b6362e031fa2b0f1215480c4e30';
@@ -219,7 +228,9 @@ WHERE h.hash = 'eb669b6362e031fa2b0f1215480c4e30';
         if "completed_at" not in current_cols:
             await self.db_conn.execute("""ALTER TABLE media ADD COLUMN completed_at TIMESTAMP""")
             await self.db_conn.commit()
-
+        if "file_size" not in current_cols:
+            await self.db_conn.execute("""ALTER TABLE media ADD COLUMN file_size INT""")
+            await self.db_conn.commit()
 
     async def add_columns_hash(self) -> None:
         cursor = await self.db_conn.cursor()
@@ -229,6 +240,10 @@ WHERE h.hash = 'eb669b6362e031fa2b0f1215480c4e30';
         
         if "download_filename" not in current_cols:
             await self.db_conn.execute("""ALTER TABLE hash RENAME COLUMN filename TO download_filename;""")
+            await self.db_conn.commit()
+
+        if "file_size" not in current_cols:
+            await self.db_conn.execute("""ALTER TABLE hash RENAME COLUMN size TO file_size;""")
             await self.db_conn.commit()
 
         if "original_filename" not in current_cols:
