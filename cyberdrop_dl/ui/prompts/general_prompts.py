@@ -1,4 +1,6 @@
 from __future__ import annotations
+import pathlib
+import asyncio
 
 import os
 from typing import TYPE_CHECKING
@@ -8,6 +10,7 @@ from InquirerPy.base.control import Choice
 from InquirerPy.separator import Separator
 from InquirerPy.validator import EmptyInputValidator, PathValidator
 from rich.console import Console
+from cyberdrop_dl.utils.utilities import log
 
 from cyberdrop_dl.utils.transfer.transfer_v4_config import transfer_v4_config
 from cyberdrop_dl.utils.transfer.transfer_v4_db import transfer_v4_db
@@ -125,11 +128,21 @@ def import_cyberdrop_v4_items_prompt(manager: Manager) -> None:
             import_download_history_path = inquirer.filepath(
                 message="Select the download_history.sql file to import",
                 default=home_path,
-                validate=PathValidator(is_file=True, message="Input is not a file"),
+                validate=PathValidator(message="Input is not a file"),
                 vi_mode=manager.vi_mode,
+                filter=lambda x: pathlib.Path(x)
             ).execute()
-
-            transfer_v4_db(import_download_history_path, manager.path_manager.history_db)
+            if import_download_history_path.is_file():
+                transfer_v4_db(import_download_history_path, manager.path_manager.history_db)
+            else:
+                loop=asyncio.new_event_loop()
+                for ele in pathlib.Path(import_download_history_path).glob("**/*.sqlite"):
+                    if str(ele)==str(manager.path_manager.history_db):
+                        continue
+                    try:
+                        transfer_v4_db(ele, )
+                    except Exception as e:
+                        loop.run_until_complete(log(f"Error importing {ele.name}: {str(e)}",20))
 
         # Done
         elif action == 3:
