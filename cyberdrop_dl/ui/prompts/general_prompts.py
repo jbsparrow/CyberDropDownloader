@@ -140,7 +140,7 @@ def import_cyberdrop_v4_items_prompt(manager: Manager) -> None:
                     if str(ele)==str(manager.path_manager.history_db):
                         continue
                     try:
-                        transfer_v4_db(ele, )
+                        transfer_v4_db(ele, manager.path_manager.history_db)
                     except Exception as e:
                         loop.run_until_complete(log(f"Error importing {ele.name}: {str(e)}",20))
 
