@@ -213,7 +213,7 @@ class HistoryTable:
         for entry in bunkr_entries:
             entry = list(entry)
             entry[0] = "bunkrr"
-            await self.db_conn.execute("""INSERT or REPLACE INTO media VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""", entry)
+            await self.db_conn.execute("""INSERT or REPLACE INTO media VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)""", entry)
         await self.db_conn.commit()
 
         await self.db_conn.execute("""DELETE FROM media WHERE domain = 'bunkr'""")
