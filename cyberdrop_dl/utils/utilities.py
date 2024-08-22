@@ -91,7 +91,7 @@ FILE_FORMATS = {
 def error_handling_wrapper(func):
     """Wrapper handles errors for url scraping
 
-    :param func: 
+    :param func:
 
     """
 

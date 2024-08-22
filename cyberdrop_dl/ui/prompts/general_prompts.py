@@ -25,7 +25,7 @@ console = Console()
 def main_prompt(manager: Manager) -> int:
     """Main prompt for the program
 
-    :param manager: Manager: 
+    :param manager: Manager:
 
     """
     action = inquirer.select(
@@ -56,7 +56,7 @@ def main_prompt(manager: Manager) -> int:
 def manage_configs_prompt(manager: Manager) -> int:
     """Manage Configs Prompt
 
-    :param manager: Manager: 
+    :param manager: Manager:
 
     """
     console.clear()
@@ -82,8 +82,8 @@ def manage_configs_prompt(manager: Manager) -> int:
 def select_config_prompt(manager: Manager, configs: List) -> str:
     """Select a config file from a list of configs
 
-    :param manager: Manager: 
-    :param configs: List: 
+    :param manager: Manager:
+    :param configs: List:
 
     """
     choice = inquirer.fuzzy(
@@ -102,7 +102,7 @@ def select_config_prompt(manager: Manager, configs: List) -> str:
 def import_cyberdrop_v4_items_prompt(manager: Manager) -> None:
     """Import Cyberdrop_V4 Items
 
-    :param manager: Manager: 
+    :param manager: Manager:
 
     """
     while True:
@@ -165,7 +165,7 @@ def import_cyberdrop_v4_items_prompt(manager: Manager) -> None:
 def donations_prompt(manager: Manager) -> None:
     """Donations prompt
 
-    :param manager: Manager: 
+    :param manager: Manager:
 
     """
     console.clear()

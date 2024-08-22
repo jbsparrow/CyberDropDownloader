@@ -21,8 +21,8 @@ if TYPE_CHECKING:
 def _match_config_dicts(default: Dict, existing: Dict) -> Dict:
     """Matches the keys of two dicts and returns the default dict with the values of the existing dict
 
-    :param default: Dict: 
-    :param existing: Dict: 
+    :param default: Dict:
+    :param existing: Dict:
 
     """
     for group in default:
@@ -35,8 +35,8 @@ def _match_config_dicts(default: Dict, existing: Dict) -> Dict:
 def _save_yaml(file: Path, data: Dict) -> None:
     """Saves a dict to a yaml file
 
-    :param file: Path: 
-    :param data: Dict: 
+    :param file: Path:
+    :param data: Dict:
 
     """
     file.parent.mkdir(parents=True, exist_ok=True)
@@ -47,7 +47,7 @@ def _save_yaml(file: Path, data: Dict) -> None:
 def _load_yaml(file: Path) -> Dict:
     """Loads a yaml file and returns it as a dict
 
-    :param file: Path: 
+    :param file: Path:
 
     """
     with open(file, "r") as yaml_file:
@@ -58,7 +58,7 @@ def _load_yaml(file: Path) -> Dict:
 def get_keys(dl, keys=None) -> set:
     """
 
-    :param dl: 
+    :param dl:
     :param keys:  (Default value = None)
 
     """
@@ -289,8 +289,8 @@ class ConfigManager:
     def create_new_config(self, new_settings: Path, settings_data: Dict) -> None:
         """Creates a new settings config file
 
-        :param new_settings: Path: 
-        :param settings_data: Dict: 
+        :param new_settings: Path:
+        :param settings_data: Dict:
 
         """
         settings_data["Files"]["input_file"] = str(settings_data["Files"]["input_file"])
@@ -339,7 +339,7 @@ class ConfigManager:
     def change_default_config(self, config_name: str) -> None:
         """Changes the default config
 
-        :param config_name: str: 
+        :param config_name: str:
 
         """
         self.manager.cache_manager.save("default_config", config_name)
@@ -347,7 +347,7 @@ class ConfigManager:
     def delete_config(self, config_name: str) -> None:
         """Deletes a config
 
-        :param config_name: str: 
+        :param config_name: str:
 
         """
         configs = self.get_configs()
@@ -362,7 +362,7 @@ class ConfigManager:
     def change_config(self, config_name: str) -> None:
         """Changes the config
 
-        :param config_name: str: 
+        :param config_name: str:
 
         """
         self.loaded_config = config_name
