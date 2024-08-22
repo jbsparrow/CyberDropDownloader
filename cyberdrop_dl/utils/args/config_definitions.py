@@ -46,7 +46,7 @@ authentication_settings: Dict = {
     "Reddit": {
         "reddit_personal_use_script": "",
         "reddit_secret": "",
-    }
+    },
 }
 
 
@@ -110,7 +110,7 @@ settings: Dict = {
         "sorted_image": "{sort_dir}/{base_dir}/Images/{filename}{ext}",
         "sorted_other": "{sort_dir}/{base_dir}/Other/{filename}{ext}",
         "sorted_video": "{sort_dir}/{base_dir}/Videos/{filename}{ext}",
-    }
+    },
 }
 
 
@@ -138,5 +138,5 @@ global_settings: Dict = {
         "refresh_rate": 10,
         "scraping_item_limit": 5,
         "downloading_item_limit": 5,
-    }
+    },
 }

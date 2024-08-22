@@ -33,13 +33,15 @@ def main_prompt(manager: Manager) -> int:
             Choice(5, "Edit URLs"),
             Separator(),
             Choice(
-                6, f"Select Config (Current: {manager.config_manager.loaded_config})"),
+                6, f"Select Config (Current: {manager.config_manager.loaded_config})"
+            ),
             Choice(7, "Change URLs.txt file and Download Location"),
             Choice(8, "Edit Configs"),
             Separator(),
             Choice(9, "Import Cyberdrop_V4 Items"),
             Choice(10, "Exit"),
-        ], long_instruction="ARROW KEYS: Navigate | ENTER: Select",
+        ],
+        long_instruction="ARROW KEYS: Navigate | ENTER: Select",
         vi_mode=manager.vi_mode,
     ).execute()
 
@@ -60,7 +62,8 @@ def manage_configs_prompt(manager: Manager) -> int:
             Choice(5, "Edit Authentication Values"),
             Choice(6, "Edit Global Values"),
             Choice(7, "Done"),
-        ], long_instruction="ARROW KEYS: Navigate | ENTER: Select",
+        ],
+        long_instruction="ARROW KEYS: Navigate | ENTER: Select",
         vi_mode=manager.vi_mode,
     ).execute()
 
@@ -93,7 +96,8 @@ def import_cyberdrop_v4_items_prompt(manager: Manager) -> None:
                 Choice(1, "Import Config"),
                 Choice(2, "Import download_history.sql"),
                 Choice(3, "Done"),
-            ], long_instruction="ARROW KEYS: Navigate | ENTER: Select",
+            ],
+            long_instruction="ARROW KEYS: Navigate | ENTER: Select",
             vi_mode=manager.vi_mode,
         ).execute()
 
@@ -106,18 +110,17 @@ def import_cyberdrop_v4_items_prompt(manager: Manager) -> None:
             ).execute()
 
             if (manager.path_manager.config_dir / new_config_name).is_dir():
-                console.print(
-                    f"Config with name '{new_config_name}' already exists!")
+                console.print(f"Config with name '{new_config_name}' already exists!")
                 inquirer.confirm(
-                    message="Press enter to return to the import menu.").execute()
+                    message="Press enter to return to the import menu."
+                ).execute()
                 continue
 
             home_path = "~/" if os.name == "posix" else "C:\\"
             import_config_path = inquirer.filepath(
                 message="Select the config file to import",
                 default=home_path,
-                validate=PathValidator(
-                    is_file=True, message="Input is not a file"),
+                validate=PathValidator(is_file=True, message="Input is not a file"),
             ).execute()
 
             transfer_v4_config(manager, import_config_path, new_config_name)
@@ -128,13 +131,13 @@ def import_cyberdrop_v4_items_prompt(manager: Manager) -> None:
             import_download_history_path = inquirer.filepath(
                 message="Select the download_history.sql file to import",
                 default=home_path,
-                validate=PathValidator(
-                    is_file=True, message="Input is not a file"),
+                validate=PathValidator(is_file=True, message="Input is not a file"),
                 vi_mode=manager.vi_mode,
             ).execute()
 
-            transfer_v4_db(import_download_history_path,
-                           manager.path_manager.history_db)
+            transfer_v4_db(
+                import_download_history_path, manager.path_manager.history_db
+            )
 
         # Done
         elif action == 3:
@@ -146,19 +149,23 @@ def donations_prompt(manager: Manager) -> None:
     console.clear()
     console.print("[bold]Donations[/bold]")
     console.print("")
-    console.print("I started making this program around three years ago at this point,"
-                  "\nIt has grown larger than I could've imagined and I'm very proud of it."
-                  "\nI have put a lot of time and effort into this program and I'm glad that people are using it."
-                  "\nThanks to everyone that have supported me, "
-                  "it keeps me motivated to continue working on this program.")
+    console.print(
+        "I started making this program around three years ago at this point,"
+        "\nIt has grown larger than I could've imagined and I'm very proud of it."
+        "\nI have put a lot of time and effort into this program and I'm glad that people are using it."
+        "\nThanks to everyone that have supported me, "
+        "it keeps me motivated to continue working on this program."
+    )
     console.print("")
     console.print(
-        "If you'd like to support me and my work, you can donate to me via the following methods:")
+        "If you'd like to support me and my work, you can donate to me via the following methods:"
+    )
     console.print("BuyMeACoffee: https://www.buymeacoffee.com/jbsparrow")
     console.print("Github Sponsor: https://github.com/sponsors/jbsparrow")
 
     console.print("")
     console.print("Thank you for your support!")
     console.print("")
-    inquirer.confirm(message="Press enter to return to the main menu.",
-                     vi_mode=manager.vi_mode).execute()
+    inquirer.confirm(
+        message="Press enter to return to the main menu.", vi_mode=manager.vi_mode
+    ).execute()
