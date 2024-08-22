@@ -16,7 +16,12 @@ if TYPE_CHECKING:
 
 
 def _match_config_dicts(default: Dict, existing: Dict) -> Dict:
-    """Matches the keys of two dicts and returns the default dict with the values of the existing dict"""
+    """Matches the keys of two dicts and returns the default dict with the values of the existing dict
+
+    :param default: Dict: 
+    :param existing: Dict: 
+
+    """
     for group in default:
         for key in default[group]:
             if group in existing and key in existing[group]:
@@ -25,20 +30,35 @@ def _match_config_dicts(default: Dict, existing: Dict) -> Dict:
 
 
 def _save_yaml(file: Path, data: Dict) -> None:
-    """Saves a dict to a yaml file"""
+    """Saves a dict to a yaml file
+
+    :param file: Path: 
+    :param data: Dict: 
+
+    """
     file.parent.mkdir(parents=True, exist_ok=True)
     with open(file, "w") as yaml_file:
         yaml.dump(data, yaml_file)
 
 
 def _load_yaml(file: Path) -> Dict:
-    """Loads a yaml file and returns it as a dict"""
+    """Loads a yaml file and returns it as a dict
+
+    :param file: Path: 
+
+    """
     with open(file, "r") as yaml_file:
         yaml_values = yaml.load(yaml_file.read(), Loader=yaml.FullLoader)
         return yaml_values if yaml_values else {}
 
 
 def get_keys(dl, keys=None) -> set:
+    """
+
+    :param dl: 
+    :param keys:  (Default value = None)
+
+    """
     keys = keys or []
     if isinstance(dl, dict):
         keys += dl.keys()
@@ -49,6 +69,7 @@ def get_keys(dl, keys=None) -> set:
 
 
 class ConfigManager:
+    """ """
     def __init__(self, manager: "Manager"):
         self.manager = manager
         self.loaded_config: str = field(init=False)
@@ -263,7 +284,12 @@ class ConfigManager:
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     def create_new_config(self, new_settings: Path, settings_data: Dict) -> None:
-        """Creates a new settings config file"""
+        """Creates a new settings config file
+
+        :param new_settings: Path: 
+        :param settings_data: Dict: 
+
+        """
         settings_data["Files"]["input_file"] = str(settings_data["Files"]["input_file"])
         settings_data["Files"]["download_folder"] = str(
             settings_data["Files"]["download_folder"]
@@ -308,11 +334,19 @@ class ConfigManager:
         ]
 
     def change_default_config(self, config_name: str) -> None:
-        """Changes the default config"""
+        """Changes the default config
+
+        :param config_name: str: 
+
+        """
         self.manager.cache_manager.save("default_config", config_name)
 
     def delete_config(self, config_name: str) -> None:
-        """Deletes a config"""
+        """Deletes a config
+
+        :param config_name: str: 
+
+        """
         configs = self.get_configs()
         configs.remove(config_name)
 
@@ -323,7 +357,11 @@ class ConfigManager:
         shutil.rmtree(config)
 
     def change_config(self, config_name: str) -> None:
-        """Changes the config"""
+        """Changes the config
+
+        :param config_name: str: 
+
+        """
         self.loaded_config = config_name
         self.startup()
 

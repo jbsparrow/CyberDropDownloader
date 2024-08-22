@@ -88,7 +88,11 @@ FILE_FORMATS = {
 
 
 def error_handling_wrapper(func):
-    """Wrapper handles errors for url scraping"""
+    """Wrapper handles errors for url scraping
+
+    :param func: 
+
+    """
 
     @wraps(func)
     async def wrapper(self, *args, **kwargs):
@@ -190,6 +194,7 @@ async def get_log_output_text() -> str:
 
 
 class CustomHTTPStatus(IntEnum):
+    """ """
     WEB_SERVER_IS_DOWN = 521
     IM_A_TEAPOT = 418
     DDOS_GUARD = 429

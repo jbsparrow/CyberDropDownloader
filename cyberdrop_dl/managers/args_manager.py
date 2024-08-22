@@ -7,6 +7,7 @@ from cyberdrop_dl.utils.args.args import parse_args
 
 
 class ArgsManager:
+    """ """
     def __init__(self):
         self.parsed_args = {}
 

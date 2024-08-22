@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
 
 class ProgressManager:
+    """ """
     def __init__(self, manager: "Manager"):
         # File Download Bars
         self.manager = manager

@@ -20,7 +20,11 @@ console = Console()
 
 
 def create_new_config_prompt(manager: Manager) -> None:
-    """Create a new config file"""
+    """Create a new config file
+
+    :param manager: Manager: 
+
+    """
     console.clear()
     console.print("Create a new config file")
     config_name = inquirer.text(
@@ -37,7 +41,11 @@ def create_new_config_prompt(manager: Manager) -> None:
 
 
 def edit_config_values_prompt(manager: Manager) -> None:
-    """Edit the config values"""
+    """Edit the config values
+
+    :param manager: Manager: 
+
+    """
     config = manager.config_manager.settings_data
 
     while True:
@@ -95,7 +103,12 @@ def edit_config_values_prompt(manager: Manager) -> None:
 
 
 def edit_download_options_prompt(manager: Manager, config: Dict) -> None:
-    """Edit the download options"""
+    """Edit the download options
+
+    :param manager: Manager: 
+    :param config: Dict: 
+
+    """
     console.clear()
     action = inquirer.checkbox(
         message="Select the download options you want to enable:",
@@ -165,7 +178,12 @@ def edit_download_options_prompt(manager: Manager, config: Dict) -> None:
 
 
 def edit_input_output_file_paths_prompt(manager: Manager, config: Dict) -> None:
-    """Edit the input / output file paths"""
+    """Edit the input / output file paths
+
+    :param manager: Manager: 
+    :param config: Dict: 
+
+    """
     console.clear()
     console.print("Editing Input / Output File Paths")
     input_file = inquirer.filepath(
@@ -186,7 +204,12 @@ def edit_input_output_file_paths_prompt(manager: Manager, config: Dict) -> None:
 
 
 def edit_log_file_naming_path_prompt(manager: Manager, config: Dict) -> None:
-    """Edit the log file naming / path"""
+    """Edit the log file naming / path
+
+    :param manager: Manager: 
+    :param config: Dict: 
+
+    """
     console.clear()
     console.print("Editing Log File Naming / Path")
     log_folder = inquirer.filepath(
@@ -241,7 +264,12 @@ def edit_log_file_naming_path_prompt(manager: Manager, config: Dict) -> None:
 
 
 def edit_file_size_limits_prompt(manager: Manager, config: Dict) -> None:
-    """Edit the file size limits"""
+    """Edit the file size limits
+
+    :param manager: Manager: 
+    :param config: Dict: 
+
+    """
     console.clear()
     console.print("Editing File Size Limits")
     maximum_image_size = inquirer.number(
@@ -296,7 +324,12 @@ def edit_file_size_limits_prompt(manager: Manager, config: Dict) -> None:
 
 
 def edit_ignore_options_prompt(manager: Manager, config: Dict) -> None:
-    """Edit the ignore options"""
+    """Edit the ignore options
+
+    :param manager: Manager: 
+    :param config: Dict: 
+
+    """
     console.clear()
     console.print("Editing Ignore Options")
     action = inquirer.checkbox(
@@ -370,7 +403,12 @@ def edit_ignore_options_prompt(manager: Manager, config: Dict) -> None:
 
 
 def edit_runtime_options_prompt(manager: Manager, config: Dict) -> None:
-    """Edit the runtime options"""
+    """Edit the runtime options
+
+    :param manager: Manager: 
+    :param config: Dict: 
+
+    """
     console.clear()
     console.print("Editing Runtime Options")
     action = inquirer.checkbox(
@@ -429,7 +467,12 @@ def edit_runtime_options_prompt(manager: Manager, config: Dict) -> None:
 
 
 def edit_sort_options_prompt(manager: Manager, config: Dict) -> None:
-    """Edit the sort options"""
+    """Edit the sort options
+
+    :param manager: Manager: 
+    :param config: Dict: 
+
+    """
     console.clear()
     console.print("Editing Sort Options")
     config["Sorting"]["sort_downloads"] = False
