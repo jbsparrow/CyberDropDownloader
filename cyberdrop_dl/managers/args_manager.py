@@ -15,9 +15,7 @@ class ArgsManager:
 
         self.all_configs = False
         self.sort_all_configs = False
-<<<<<<< Updated upstream
         self.retry = False
-=======
         self.retry_failed = False
         self.retry_all=False
         self.retry_any=False
@@ -25,7 +23,6 @@ class ArgsManager:
         self.webhook_url = ""
 
         self.max_items = None
->>>>>>> Stashed changes
 
         self.immediate_download = False
         self.no_ui = False
@@ -118,15 +115,12 @@ class ArgsManager:
             self.flaresolverr = self.parsed_args['flaresolverr']
 
         self.other_links = self.parsed_args['links']
-<<<<<<< Updated upstream
 
-=======
         self.after= self.parsed_args['completed_after'] or arrow.get(0)
         self.before= self.parsed_args['completed_before'] or arrow.get("3000")
         self.max_items = self.parsed_args['max_items_retry']
         self.webhook_url = self.parsed_args['webhook_url']
- 
->>>>>>> Stashed changes
+
         del self.parsed_args['download']
         del self.parsed_args['download_all_configs']
         del self.parsed_args['config']
