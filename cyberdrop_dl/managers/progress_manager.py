@@ -9,7 +9,8 @@ from cyberdrop_dl.ui.progress.hash_progress import HashProgress
 from cyberdrop_dl.ui.progress.file_progress import FileProgress
 from cyberdrop_dl.ui.progress.scraping_progress import ScrapingProgress
 from cyberdrop_dl.ui.progress.statistic_progress import DownloadStatsProgress, ScrapeStatsProgress
-from cyberdrop_dl.utils.utilities import log_with_color
+from cyberdrop_dl.utils.utilities import log_with_color, get_log_output_text
+from aiohttp import ClientSession
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -87,3 +88,22 @@ class ProgressManager:
         await log_with_color("\nDownload Failures:", "cyan", 20)
         for key, value in download_failures.items():
             await log_with_color(f"Download Failures ({key}): {value}", "red", 20)
+
+        await self.send_webhook_message(self.manager.config_manager.settings_data['Logs']['webhook_url'])
+
+    async def send_webhook_message(self, webhook_url: str) -> None:
+        """Outputs the stats to a code block for webhook messages"""
+        log = await get_log_output_text()
+        log_message = log.replace('[cyan]', '').replace('[cyan]\n', '\n')
+        log_message = log_message.replace('[green]', '+ ').replace('[green]\n', '\n+ ')
+        log_message = log_message.replace('[red]', '- ').replace('[red]\n', '\n- ')
+        log_message = log_message.replace('[yellow]', '*** ').replace('[yellow]\n', '\n*** ')
+        data = {
+            "content": log_message,
+            "username": "CyberDrop-DL",
+        }
+        # Make an asynchronous POST request to the webhook
+        if webhook_url:
+            async with ClientSession() as session:
+                async with session.post(webhook_url, json=data) as response:
+                    await response.text()

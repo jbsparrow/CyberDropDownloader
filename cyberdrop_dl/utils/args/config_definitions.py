@@ -69,6 +69,7 @@ settings: Dict = {
     },
     "Logs": {
         "log_folder": str(APP_STORAGE / "Configs" / "{config}" / "Logs"),
+        "webhook_url": "",
         "main_log_filename": "downloader.log",
         "last_forum_post_filename": "Last_Scraped_Forum_Posts.txt",
         "unsupported_urls_filename": "Unsupported_URLs.txt",
