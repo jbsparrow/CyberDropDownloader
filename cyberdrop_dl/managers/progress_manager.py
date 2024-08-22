@@ -18,32 +18,31 @@ if TYPE_CHECKING:
 
 class ProgressManager:
     """ """
+
     def __init__(self, manager: "Manager"):
         # File Download Bars
         self.manager = manager
         self.file_progress: FileProgress = FileProgress(
-            manager.config_manager.global_settings_data["UI_Options"][
-                "downloading_item_limit"
-            ],
+            manager.config_manager.global_settings_data["UI_Options"]
+            ["downloading_item_limit"],
             manager,
         )
 
         # Scraping Printout
         self.scraping_progress: ScrapingProgress = ScrapingProgress(
-            manager.config_manager.global_settings_data["UI_Options"][
-                "scraping_item_limit"
-            ],
+            manager.config_manager.global_settings_data["UI_Options"]
+            ["scraping_item_limit"],
             manager,
         )
 
         # Overall Progress Bars & Stats
         self.download_progress: DownloadsProgress = DownloadsProgress(manager)
-        self.download_stats_progress: DownloadStatsProgress = DownloadStatsProgress()
+        self.download_stats_progress: DownloadStatsProgress = DownloadStatsProgress(
+        )
         self.scrape_stats_progress: ScrapeStatsProgress = ScrapeStatsProgress()
 
         self.ui_refresh_rate = manager.config_manager.global_settings_data[
-            "UI_Options"
-        ]["refresh_rate"]
+            "UI_Options"]["refresh_rate"]
 
         self.layout: Layout = field(init=False)
 
@@ -87,8 +86,8 @@ class ProgressManager:
         """Prints the stats of the program"""
         await log_with_color("\nDownload Stats:", "cyan", 20)
         await log_with_color(
-            f"Downloaded {self.download_progress.completed_files} files", "green", 20
-        )
+            f"Downloaded {self.download_progress.completed_files} files",
+            "green", 20)
         await log_with_color(
             f"Previously Downloaded {self.download_progress.previously_completed_files} files",
             "yellow",
@@ -100,32 +99,34 @@ class ProgressManager:
             20,
         )
         await log_with_color(
-            f"Failed {self.download_stats_progress.failed_files} files", "red", 20
-        )
+            f"Failed {self.download_stats_progress.failed_files} files", "red",
+            20)
 
         scrape_failures = await self.scrape_stats_progress.return_totals()
         await log_with_color("\nScrape Failures:", "cyan", 20)
         for key, value in scrape_failures.items():
-            await log_with_color(f"Scrape Failures ({key}): {value}", "red", 20)
+            await log_with_color(f"Scrape Failures ({key}): {value}", "red",
+                                 20)
 
         download_failures = await self.download_stats_progress.return_totals()
         await log_with_color("\nDownload Failures:", "cyan", 20)
         for key, value in download_failures.items():
-            await log_with_color(f"Download Failures ({key}): {value}", "red", 20)
+            await log_with_color(f"Download Failures ({key}): {value}", "red",
+                                 20)
 
         await self.send_webhook_message(
-            self.manager.config_manager.settings_data["Logs"]["webhook_url"]
-        )
+            self.manager.config_manager.settings_data["Logs"]["webhook_url"])
 
     async def send_webhook_message(self, webhook_url: str) -> None:
         """Outputs the stats to a code block for webhook messages"""
         log = await get_log_output_text()
         log_message = log.replace("[cyan]", "").replace("[cyan]\n", "\n")
-        log_message = log_message.replace("[green]", "+ ").replace("[green]\n", "\n+ ")
-        log_message = log_message.replace("[red]", "- ").replace("[red]\n", "\n- ")
+        log_message = log_message.replace("[green]",
+                                          "+ ").replace("[green]\n", "\n+ ")
+        log_message = log_message.replace("[red]",
+                                          "- ").replace("[red]\n", "\n- ")
         log_message = log_message.replace("[yellow]", "*** ").replace(
-            "[yellow]\n", "\n*** "
-        )
+            "[yellow]\n", "\n*** ")
         data = {
             "content": log_message,
             "username": "CyberDrop-DL",

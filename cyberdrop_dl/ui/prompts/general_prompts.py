@@ -18,7 +18,6 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.managers.manager import Manager
 
-
 console = Console()
 
 
@@ -38,7 +37,8 @@ def main_prompt(manager: Manager) -> int:
             Choice(5, "Edit URLs"),
             Separator(),
             Choice(
-                6, f"Select Config (Current: {manager.config_manager.loaded_config})"
+                6,
+                f"Select Config (Current: {manager.config_manager.loaded_config})"
             ),
             Choice(7, "Change URLs.txt file and Download Location"),
             Choice(8, "Edit Configs"),
@@ -92,7 +92,8 @@ def select_config_prompt(manager: Manager, configs: List) -> str:
         validate=lambda result: len(result) > 0,
         invalid_message="Need to select a config.",
         message="Select a config file:",
-        long_instruction="ARROW KEYS: Navigate | TYPE: Filter | TAB: select, ENTER: Finish Selection",
+        long_instruction=
+        "ARROW KEYS: Navigate | TYPE: Filter | TAB: select, ENTER: Finish Selection",
         vi_mode=manager.vi_mode,
     ).execute()
 
@@ -128,7 +129,8 @@ def import_cyberdrop_v4_items_prompt(manager: Manager) -> None:
             ).execute()
 
             if (manager.path_manager.config_dir / new_config_name).is_dir():
-                console.print(f"Config with name '{new_config_name}' already exists!")
+                console.print(
+                    f"Config with name '{new_config_name}' already exists!")
                 inquirer.confirm(
                     message="Press enter to return to the import menu."
                 ).execute()
@@ -138,7 +140,8 @@ def import_cyberdrop_v4_items_prompt(manager: Manager) -> None:
             import_config_path = inquirer.filepath(
                 message="Select the config file to import",
                 default=home_path,
-                validate=PathValidator(is_file=True, message="Input is not a file"),
+                validate=PathValidator(is_file=True,
+                                       message="Input is not a file"),
             ).execute()
 
             transfer_v4_config(manager, import_config_path, new_config_name)
@@ -149,13 +152,13 @@ def import_cyberdrop_v4_items_prompt(manager: Manager) -> None:
             import_download_history_path = inquirer.filepath(
                 message="Select the download_history.sql file to import",
                 default=home_path,
-                validate=PathValidator(is_file=True, message="Input is not a file"),
+                validate=PathValidator(is_file=True,
+                                       message="Input is not a file"),
                 vi_mode=manager.vi_mode,
             ).execute()
 
-            transfer_v4_db(
-                import_download_history_path, manager.path_manager.history_db
-            )
+            transfer_v4_db(import_download_history_path,
+                           manager.path_manager.history_db)
 
         # Done
         elif action == 3:
@@ -176,8 +179,7 @@ def donations_prompt(manager: Manager) -> None:
         "\nIt has grown larger than I could've imagined and I'm very proud of it."
         "\nI have put a lot of time and effort into this program and I'm glad that people are using it."
         "\nThanks to everyone that have supported me, "
-        "it keeps me motivated to continue working on this program."
-    )
+        "it keeps me motivated to continue working on this program.")
     console.print("")
     console.print(
         "If you'd like to support me and my work, you can donate to me via the following methods:"
@@ -188,6 +190,5 @@ def donations_prompt(manager: Manager) -> None:
     console.print("")
     console.print("Thank you for your support!")
     console.print("")
-    inquirer.confirm(
-        message="Press enter to return to the main menu.", vi_mode=manager.vi_mode
-    ).execute()
+    inquirer.confirm(message="Press enter to return to the main menu.",
+                     vi_mode=manager.vi_mode).execute()

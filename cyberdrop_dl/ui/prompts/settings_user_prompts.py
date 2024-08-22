@@ -35,7 +35,8 @@ def create_new_config_prompt(manager: Manager) -> None:
     ).execute()
     if (manager.path_manager.config_dir / config_name).is_dir():
         console.print(f"Config with name '{config_name}' already exists!")
-        inquirer.confirm(message="Press enter to return to the main menu.").execute()
+        inquirer.confirm(
+            message="Press enter to return to the main menu.").execute()
         return
     manager.config_manager.change_config(config_name)
     edit_config_values_prompt(manager)
@@ -117,12 +118,14 @@ def edit_download_options_prompt(manager: Manager, config: Dict) -> None:
             Choice(
                 value="block_download_sub_folders",
                 name="Block Download Sub Folders",
-                enabled=config["Download_Options"]["block_download_sub_folders"],
+                enabled=config["Download_Options"]
+                ["block_download_sub_folders"],
             ),
             Choice(
                 value="disable_download_attempt_limit",
                 name="Disable Download Attempt Limit",
-                enabled=config["Download_Options"]["disable_download_attempt_limit"],
+                enabled=config["Download_Options"]
+                ["disable_download_attempt_limit"],
             ),
             Choice(
                 value="disable_file_timestamps",
@@ -132,24 +135,26 @@ def edit_download_options_prompt(manager: Manager, config: Dict) -> None:
             Choice(
                 value="include_album_id_in_folder_name",
                 name="Include Album ID In Folder Name",
-                enabled=config["Download_Options"]["include_album_id_in_folder_name"],
+                enabled=config["Download_Options"]
+                ["include_album_id_in_folder_name"],
             ),
             Choice(
                 value="include_thread_id_in_folder_name",
                 name="Include Thread ID In Folder Name",
-                enabled=config["Download_Options"]["include_album_id_in_folder_name"],
+                enabled=config["Download_Options"]
+                ["include_album_id_in_folder_name"],
             ),
             Choice(
                 value="remove_domains_from_folder_names",
                 name="Remove Domains From Folder Names",
-                enabled=config["Download_Options"]["remove_domains_from_folder_names"],
+                enabled=config["Download_Options"]
+                ["remove_domains_from_folder_names"],
             ),
             Choice(
                 value="remove_generated_id_from_filenames",
                 name="Remove Generated ID From Filenames",
-                enabled=config["Download_Options"][
-                    "remove_generated_id_from_filenames"
-                ],
+                enabled=config["Download_Options"]
+                ["remove_generated_id_from_filenames"],
             ),
             Choice(
                 value="scrape_single_forum_post",
@@ -164,7 +169,8 @@ def edit_download_options_prompt(manager: Manager, config: Dict) -> None:
             Choice(
                 value="skip_download_mark_completed",
                 name="Skip Download and Mark it as Completed",
-                enabled=config["Download_Options"]["skip_download_mark_completed"],
+                enabled=config["Download_Options"]
+                ["skip_download_mark_completed"],
             ),
         ],
         long_instruction="ARROW KEYS: Navigate | TAB: Select | ENTER: Confirm",
@@ -178,7 +184,8 @@ def edit_download_options_prompt(manager: Manager, config: Dict) -> None:
         config["Download_Options"][key] = True
 
 
-def edit_input_output_file_paths_prompt(manager: Manager, config: Dict) -> None:
+def edit_input_output_file_paths_prompt(manager: Manager,
+                                        config: Dict) -> None:
     """Edit the input / output file paths
 
     :param manager: Manager:
@@ -196,7 +203,8 @@ def edit_input_output_file_paths_prompt(manager: Manager, config: Dict) -> None:
     download_folder = inquirer.text(
         message="Enter the download folder path:",
         default=str(config["Files"]["download_folder"]),
-        validate=PathValidator(is_dir=True, message="Input is not a directory"),
+        validate=PathValidator(is_dir=True,
+                               message="Input is not a directory"),
         vi_mode=manager.vi_mode,
     ).execute()
 
@@ -216,7 +224,8 @@ def edit_log_file_naming_path_prompt(manager: Manager, config: Dict) -> None:
     log_folder = inquirer.filepath(
         message="Enter the log folder path:",
         default=str(config["Logs"]["log_folder"]),
-        validate=PathValidator(is_dir=True, message="Input is not a directory"),
+        validate=PathValidator(is_dir=True,
+                               message="Input is not a directory"),
         vi_mode=manager.vi_mode,
     ).execute()
     main_log_filename = inquirer.text(
@@ -259,7 +268,8 @@ def edit_log_file_naming_path_prompt(manager: Manager, config: Dict) -> None:
     config["Logs"]["main_log_filename"] = main_log_filename
     config["Logs"]["last_forum_post_filename"] = last_forum_post_filename
     config["Logs"]["unsupported_urls_filename"] = unsupported_urls_filename
-    config["Logs"]["download_error_urls_filename"] = download_error_urls_filename
+    config["Logs"][
+        "download_error_urls_filename"] = download_error_urls_filename
     config["Logs"]["scrape_error_urls_filename"] = scrape_error_urls_filename
     config["Logs"]["webhook_url"] = webhook_url
 
@@ -378,7 +388,8 @@ def edit_ignore_options_prompt(manager: Manager, config: Dict) -> None:
         choices=skip_choices,
         multiselect=True,
         message="Select any sites you want to ignore while scraping:",
-        long_instruction="ARROW KEYS: Move | TYPE: Filter | TAB: Select | ENTER: Confirm",
+        long_instruction=
+        "ARROW KEYS: Move | TYPE: Filter | TAB: Select | ENTER: Confirm",
         vi_mode=manager.vi_mode,
     ).execute()
 
@@ -393,7 +404,8 @@ def edit_ignore_options_prompt(manager: Manager, config: Dict) -> None:
         choices=only_choices,
         multiselect=True,
         message="Select only the sites you want to scrape from:",
-        long_instruction="ARROW KEYS: Move | TYPE: Filter | TAB: Select | ENTER: Confirm",
+        long_instruction=
+        "ARROW KEYS: Move | TYPE: Filter | TAB: Select | ENTER: Confirm",
         vi_mode=manager.vi_mode,
     ).execute()
 
@@ -423,12 +435,14 @@ def edit_runtime_options_prompt(manager: Manager, config: Dict) -> None:
             Choice(
                 value="skip_check_for_partial_files",
                 name="Skip checking for partial files in the download folder",
-                enabled=config["Runtime_Options"]["skip_check_for_partial_files"],
+                enabled=config["Runtime_Options"]
+                ["skip_check_for_partial_files"],
             ),
             Choice(
                 value="skip_check_for_empty_folders",
                 name="Skip checking for empty folders in the download folder",
-                enabled=config["Runtime_Options"]["skip_check_for_empty_folders"],
+                enabled=config["Runtime_Options"]
+                ["skip_check_for_empty_folders"],
             ),
             Choice(
                 value="delete_partial_files",
@@ -438,7 +452,8 @@ def edit_runtime_options_prompt(manager: Manager, config: Dict) -> None:
             Choice(
                 value="send_unsupported_to_jdownloader",
                 name="Send unsupported urls to JDownloader to download",
-                enabled=config["Runtime_Options"]["send_unsupported_to_jdownloader"],
+                enabled=config["Runtime_Options"]
+                ["send_unsupported_to_jdownloader"],
             ),
             Choice(
                 value="update_last_forum_post",
@@ -454,7 +469,8 @@ def edit_runtime_options_prompt(manager: Manager, config: Dict) -> None:
         message="Enter the log level:",
         default=int(config["Runtime_Options"]["log_level"]),
         validate=NumberValidator(),
-        long_instruction="10 is the default (uses pythons logging numerical levels)",
+        long_instruction=
+        "10 is the default (uses pythons logging numerical levels)",
         vi_mode=manager.vi_mode,
     ).execute()
 
@@ -486,7 +502,8 @@ def edit_sort_options_prompt(manager: Manager, config: Dict) -> None:
         sort_folder = inquirer.filepath(
             message="Enter the folder you want to sort files into:",
             default=str(config["Sorting"]["sort_folder"]),
-            validate=PathValidator(is_dir=True, message="Input is not a directory"),
+            validate=PathValidator(is_dir=True,
+                                   message="Input is not a directory"),
             vi_mode=manager.vi_mode,
         ).execute()
         sort_incremementer_format = inquirer.text(
@@ -521,7 +538,8 @@ def edit_sort_options_prompt(manager: Manager, config: Dict) -> None:
         ).execute()
 
         config["Sorting"]["sort_folder"] = Path(sort_folder)
-        config["Sorting"]["sort_incremementer_format"] = sort_incremementer_format
+        config["Sorting"][
+            "sort_incremementer_format"] = sort_incremementer_format
         config["Sorting"]["sorted_audio"] = sorted_audio
         config["Sorting"]["sorted_video"] = sorted_video
         config["Sorting"]["sorted_image"] = sorted_image

@@ -7,21 +7,24 @@ from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
 def parse_args() -> argparse.Namespace:
     """Parses the command line arguments passed into the program"""
     parser = argparse.ArgumentParser(
-        description="Bulk downloader for multiple file hosts"
-    )
+        description="Bulk downloader for multiple file hosts")
     general = parser.add_argument_group("General")
-    general.add_argument(
-        "-V", "--version", action="version", version=f"%(prog)s {VERSION}"
-    )
-    general.add_argument(
-        "--config", type=str, help="name of config to load", default=""
-    )
-    general.add_argument(
-        "--proxy", type=str, help="manually specify proxy string", default=""
-    )
-    general.add_argument(
-        "--flaresolverr", type=str, help="IP:PORT for flaresolverr", default=""
-    )
+    general.add_argument("-V",
+                         "--version",
+                         action="version",
+                         version=f"%(prog)s {VERSION}")
+    general.add_argument("--config",
+                         type=str,
+                         help="name of config to load",
+                         default="")
+    general.add_argument("--proxy",
+                         type=str,
+                         help="manually specify proxy string",
+                         default="")
+    general.add_argument("--flaresolverr",
+                         type=str,
+                         help="IP:PORT for flaresolverr",
+                         default="")
     general.add_argument(
         "--no-ui",
         action="store_true",
@@ -37,7 +40,8 @@ def parse_args() -> argparse.Namespace:
     general.add_argument(
         "--download-all-configs",
         action="store_true",
-        help="Skip the UI and go straight to downloading (runs all configs sequentially)",
+        help=
+        "Skip the UI and go straight to downloading (runs all configs sequentially)",
         default=False,
     )
     general.add_argument(
@@ -52,13 +56,15 @@ def parse_args() -> argparse.Namespace:
         help="retry failed downloads",
         default=False,
     )
-    general.add_argument(
-        "--retry-all", action="store_true", help="retry all downloads", default=False
-    )
+    general.add_argument("--retry-all",
+                         action="store_true",
+                         help="retry all downloads",
+                         default=False)
     general.add_argument(
         "--retry-maintenance",
         action="store_true",
-        help="retry all failed downloads due to maintenance, only supports bunkr and requires files to be hashed",
+        help=
+        "retry all failed downloads due to maintenance, only supports bunkr and requires files to be hashed",
         default=False,
     )
     general.add_argument(
@@ -73,9 +79,9 @@ def parse_args() -> argparse.Namespace:
         default=None,
         type=lambda x: None if not x else arrow.get(x),
     )
-    general.add_argument(
-        "--max-items-retry", help="max number of links to retry", type=int
-    )
+    general.add_argument("--max-items-retry",
+                         help="max number of links to retry",
+                         type=int)
 
     # File Paths
     file_paths = parser.add_argument_group("File_Paths")
@@ -86,9 +92,11 @@ def parse_args() -> argparse.Namespace:
         help="path to txt file containing urls to download",
         default="",
     )
-    file_paths.add_argument(
-        "-d", "--output-folder", type=str, help="path to download folder", default=""
-    )
+    file_paths.add_argument("-d",
+                            "--output-folder",
+                            type=str,
+                            help="path to download folder",
+                            default="")
     file_paths.add_argument(
         "--config-file",
         type=str,
@@ -364,13 +372,15 @@ def parse_args() -> argparse.Namespace:
     ui_options.add_argument(
         "--scraping-item-limit",
         type=int,
-        help="number of lines to allow for scraping items before overflow (default: %(default)s)",
+        help=
+        "number of lines to allow for scraping items before overflow (default: %(default)s)",
         default=5,
     )
     ui_options.add_argument(
         "--downloading-item-limit",
         type=int,
-        help="number of lines to allow for downloading items before overflow (default: %(default)s)",
+        help=
+        "number of lines to allow for downloading items before overflow (default: %(default)s)",
         default=5,
     )
 
@@ -379,7 +389,8 @@ def parse_args() -> argparse.Namespace:
         "links",
         metavar="link",
         nargs="*",
-        help="link to content to download (passing multiple links is supported)",
+        help=
+        "link to content to download (passing multiple links is supported)",
         default=[],
     )
     return parser.parse_args()

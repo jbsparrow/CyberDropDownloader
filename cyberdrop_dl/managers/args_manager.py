@@ -8,6 +8,7 @@ from cyberdrop_dl.utils.args.args import parse_args
 
 class ArgsManager:
     """ """
+
     def __init__(self):
         self.parsed_args = {}
 
@@ -102,19 +103,17 @@ class ArgsManager:
         if self.parsed_args["main_log_filename"]:
             self.main_log_filename = self.parsed_args["main_log_filename"]
         if self.parsed_args["last_forum_post_filename"]:
-            self.last_forum_post_filename = self.parsed_args["last_forum_post_filename"]
+            self.last_forum_post_filename = self.parsed_args[
+                "last_forum_post_filename"]
         if self.parsed_args["unsupported_urls_filename"]:
             self.unsupported_urls_filename = self.parsed_args[
-                "unsupported_urls_filename"
-            ]
+                "unsupported_urls_filename"]
         if self.parsed_args["download_error_urls_filename"]:
             self.download_error_urls_filename = self.parsed_args[
-                "download_error_urls_filename"
-            ]
+                "download_error_urls_filename"]
         if self.parsed_args["scrape_error_urls_filename"]:
             self.scrape_error_urls_filename = self.parsed_args[
-                "scrape_error_urls_filename"
-            ]
+                "scrape_error_urls_filename"]
 
         if self.parsed_args["proxy"]:
             self.proxy = self.parsed_args["proxy"]
