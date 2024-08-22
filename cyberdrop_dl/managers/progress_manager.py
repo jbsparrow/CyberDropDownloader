@@ -7,9 +7,10 @@ from rich.layout import Layout
 from cyberdrop_dl.ui.progress.downloads_progress import DownloadsProgress
 from cyberdrop_dl.ui.progress.file_progress import FileProgress
 from cyberdrop_dl.ui.progress.scraping_progress import ScrapingProgress
-from cyberdrop_dl.ui.progress.statistic_progress import (DownloadStatsProgress,
-                                                         ScrapeStatsProgress)
-from cyberdrop_dl.utils.utilities import get_log_output_text, log_with_color
+from cyberdrop_dl.ui.progress.statistic_progress import DownloadStatsProgress
+from cyberdrop_dl.ui.progress.statistic_progress import ScrapeStatsProgress
+from cyberdrop_dl.utils.utilities import get_log_output_text
+from cyberdrop_dl.utils.utilities import log_with_color
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager

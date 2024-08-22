@@ -13,9 +13,10 @@ from typing import TYPE_CHECKING
 import rich
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import (FailedLoginFailure,
-                                         InvalidContentTypeFailure,
-                                         NoExtensionFailure, PasswordProtected)
+from cyberdrop_dl.clients.errors import FailedLoginFailure
+from cyberdrop_dl.clients.errors import InvalidContentTypeFailure
+from cyberdrop_dl.clients.errors import NoExtensionFailure
+from cyberdrop_dl.clients.errors import PasswordProtected
 
 if TYPE_CHECKING:
     from typing import Tuple

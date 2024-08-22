@@ -5,8 +5,9 @@ from typing import TYPE_CHECKING
 
 from InquirerPy import inquirer
 from InquirerPy.base.control import Choice
-from InquirerPy.validator import (EmptyInputValidator, NumberValidator,
-                                  PathValidator)
+from InquirerPy.validator import EmptyInputValidator
+from InquirerPy.validator import NumberValidator
+from InquirerPy.validator import PathValidator
 from rich.console import Console
 
 from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains

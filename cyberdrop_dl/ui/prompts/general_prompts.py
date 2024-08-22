@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING
 from InquirerPy import inquirer
 from InquirerPy.base.control import Choice
 from InquirerPy.separator import Separator
-from InquirerPy.validator import EmptyInputValidator, PathValidator
+from InquirerPy.validator import EmptyInputValidator
+from InquirerPy.validator import PathValidator
 from rich.console import Console
 
 from cyberdrop_dl.utils.transfer.transfer_v4_config import transfer_v4_config

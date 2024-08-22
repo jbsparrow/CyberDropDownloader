@@ -3,13 +3,16 @@ import shutil
 from dataclasses import field
 from pathlib import Path
 from time import sleep
-from typing import TYPE_CHECKING, Dict, List
+from typing import Dict
+from typing import List
+from typing import TYPE_CHECKING
 
 import yaml
 
 from cyberdrop_dl.managers.log_manager import LogManager
-from cyberdrop_dl.utils.args.config_definitions import (
-    authentication_settings, global_settings, settings)
+from cyberdrop_dl.utils.args.config_definitions import authentication_settings
+from cyberdrop_dl.utils.args.config_definitions import global_settings
+from cyberdrop_dl.utils.args.config_definitions import settings
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager

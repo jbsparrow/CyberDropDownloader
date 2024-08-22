@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import Dict
 
-from cyberdrop_dl.managers.path_manager import APP_STORAGE, DOWNLOAD_STORAGE
+from cyberdrop_dl.managers.path_manager import APP_STORAGE
+from cyberdrop_dl.managers.path_manager import DOWNLOAD_STORAGE
 
 authentication_settings: Dict = {
     "Forums": {
