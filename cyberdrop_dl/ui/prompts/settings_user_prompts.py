@@ -200,6 +200,11 @@ def edit_log_file_naming_path_prompt(manager: Manager, config: Dict) -> None:
         validate=EmptyInputValidator("Input should not be empty"),
         vi_mode=manager.vi_mode,
     ).execute()
+    webhook_url = inquirer.text(
+        message="Enter the Discord webhook url:",
+        default=config['Logs']['webhook_url'],
+        vi_mode=manager.vi_mode,
+    ).execute()
 
     config['Logs']['log_folder'] = Path(log_folder)
     config['Logs']['main_log_filename'] = main_log_filename
@@ -207,6 +212,7 @@ def edit_log_file_naming_path_prompt(manager: Manager, config: Dict) -> None:
     config['Logs']['unsupported_urls_filename'] = unsupported_urls_filename
     config['Logs']['download_error_urls_filename'] = download_error_urls_filename
     config['Logs']['scrape_error_urls_filename'] = scrape_error_urls_filename
+    config['Logs']['webhook_url'] = webhook_url
 
 
 def edit_file_size_limits_prompt(manager: Manager, config: Dict) -> None:

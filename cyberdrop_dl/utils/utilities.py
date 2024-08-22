@@ -29,6 +29,9 @@ MAX_NAME_LENGTHS = {"FILE": 95, "FOLDER": 60}
 
 DEBUG_VAR = False
 
+global LOG_OUTPUT_TEXT
+LOG_OUTPUT_TEXT = "```diff\n"
+
 FILE_FORMATS = {
     'Images': {
         '.jpg', '.jpeg', '.png', '.gif',
@@ -113,10 +116,18 @@ async def log_debug(message: [str, Exception], level: int) -> None:
 
 async def log_with_color(message: str, style: str, level: int) -> None:
     """Simple logging function with color"""
+    global LOG_OUTPUT_TEXT
     logger.log(level, message)
     if DEBUG_VAR:
         logger_debug.log(level, message)
     rich.print(f"[{style}]{message}[/{style}]")
+    LOG_OUTPUT_TEXT += f"[{style}]{message}\n"
+
+
+async def get_log_output_text() -> str:
+    global LOG_OUTPUT_TEXT
+    return LOG_OUTPUT_TEXT + "```"
+
 
 
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
