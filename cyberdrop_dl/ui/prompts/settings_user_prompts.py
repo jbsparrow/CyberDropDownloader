@@ -29,7 +29,8 @@ def create_new_config_prompt(manager: Manager) -> None:
     ).execute()
     if (manager.path_manager.config_dir / config_name).is_dir():
         console.print(f"Config with name '{config_name}' already exists!")
-        inquirer.confirm(message="Press enter to return to the main menu.").execute()
+        inquirer.confirm(
+            message="Press enter to return to the main menu.").execute()
         return
     manager.config_manager.change_config(config_name)
     edit_config_values_prompt(manager)
@@ -152,7 +153,8 @@ def edit_input_output_file_paths_prompt(manager: Manager, config: Dict) -> None:
     download_folder = inquirer.text(
         message="Enter the download folder path:",
         default=str(config['Files']['download_folder']),
-        validate=PathValidator(is_dir=True, message="Input is not a directory"),
+        validate=PathValidator(
+            is_dir=True, message="Input is not a directory"),
         vi_mode=manager.vi_mode,
     ).execute()
 
@@ -167,7 +169,8 @@ def edit_log_file_naming_path_prompt(manager: Manager, config: Dict) -> None:
     log_folder = inquirer.filepath(
         message="Enter the log folder path:",
         default=str(config['Logs']['log_folder']),
-        validate=PathValidator(is_dir=True, message="Input is not a directory"),
+        validate=PathValidator(
+            is_dir=True, message="Input is not a directory"),
         vi_mode=manager.vi_mode,
     ).execute()
     main_log_filename = inquirer.text(
@@ -312,7 +315,8 @@ def edit_ignore_options_prompt(manager: Manager, config: Dict) -> None:
         vi_mode=manager.vi_mode,
     ).execute()
 
-    skip_hosts = [host for host in skip_hosts if host in SupportedDomains.supported_hosts]
+    skip_hosts = [
+        host for host in skip_hosts if host in SupportedDomains.supported_hosts]
     config["Ignore_Options"]["skip_hosts"] = skip_hosts
 
     only_choices = list(SupportedDomains.supported_hosts)
@@ -325,7 +329,8 @@ def edit_ignore_options_prompt(manager: Manager, config: Dict) -> None:
         vi_mode=manager.vi_mode,
     ).execute()
 
-    only_hosts = [host for host in only_hosts if host in SupportedDomains.supported_hosts]
+    only_hosts = [
+        host for host in only_hosts if host in SupportedDomains.supported_hosts]
     config["Ignore_Options"]["only_hosts"] = only_hosts
 
 
@@ -380,13 +385,15 @@ def edit_sort_options_prompt(manager: Manager, config: Dict) -> None:
     console.clear()
     console.print("Editing Sort Options")
     config["Sorting"]["sort_downloads"] = False
-    sort_downloads = inquirer.confirm(message="Do you want Cyberdrop-DL to sort files for you?", vi_mode=manager.vi_mode).execute()
+    sort_downloads = inquirer.confirm(
+        message="Do you want Cyberdrop-DL to sort files for you?", vi_mode=manager.vi_mode).execute()
     if sort_downloads:
         config["Sorting"]["sort_downloads"] = True
         sort_folder = inquirer.filepath(
             message="Enter the folder you want to sort files into:",
             default=str(config['Sorting']['sort_folder']),
-            validate=PathValidator(is_dir=True, message="Input is not a directory"),
+            validate=PathValidator(
+                is_dir=True, message="Input is not a directory"),
             vi_mode=manager.vi_mode,
         ).execute()
         sort_incremementer_format = inquirer.text(

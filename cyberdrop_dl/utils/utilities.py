@@ -111,7 +111,8 @@ async def log(message: [str, Exception], level: int) -> None:
 async def log_debug(message: [str, Exception], level: int) -> None:
     """Simple logging function"""
     if DEBUG_VAR:
-        logger_debug.log(level, message.encode('ascii', 'ignore').decode('ascii'))
+        logger_debug.log(level, message.encode(
+            'ascii', 'ignore').decode('ascii'))
 
 
 async def log_with_color(message: str, style: str, level: int) -> None:
@@ -127,7 +128,6 @@ async def log_with_color(message: str, style: str, level: int) -> None:
 async def get_log_output_text() -> str:
     global LOG_OUTPUT_TEXT
     return LOG_OUTPUT_TEXT + "```"
-
 
 
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -176,7 +176,8 @@ async def get_filename_and_ext(filename: str, forum: bool = False) -> Tuple[str,
     if len(filename_parts[-1]) > 5:
         raise NoExtensionFailure()
     ext = "." + filename_parts[-1].lower()
-    filename = filename_parts[0][:MAX_NAME_LENGTHS['FILE']] if len(filename_parts[0]) > MAX_NAME_LENGTHS['FILE'] else filename_parts[0]
+    filename = filename_parts[0][:MAX_NAME_LENGTHS['FILE']] if len(
+        filename_parts[0]) > MAX_NAME_LENGTHS['FILE'] else filename_parts[0]
     filename = filename.strip()
     filename = filename.rstrip(".")
     filename = await sanitize(filename + ext)
@@ -235,7 +236,8 @@ async def check_partials_and_empty_folders(manager: Manager):
             file.unlink(missing_ok=True)
     elif not manager.config_manager.settings_data['Runtime_Options']['skip_check_for_partial_files']:
         await log_with_color("Checking for partial downloads...", "yellow", 20)
-        partial_downloads = any(f.is_file() for f in manager.path_manager.download_dir.rglob("*.part"))
+        partial_downloads = any(
+            f.is_file() for f in manager.path_manager.download_dir.rglob("*.part"))
         if partial_downloads:
             await log_with_color("There are partial downloads in the downloads folder", "yellow", 20)
         temp_downloads = any(Path(f).is_file() for f in await manager.db_manager.temp_table.get_temp_names())
@@ -256,7 +258,8 @@ async def check_latest_pypi():
     import urllib.request
 
     # retrieve info on latest version
-    contents = urllib.request.urlopen('https://pypi.org/pypi/cyberdrop-dl/json').read()
+    contents = urllib.request.urlopen(
+        'https://pypi.org/pypi/cyberdrop-dl/json').read()
     data = json.loads(contents)
     latest_version = data['info']['version']
 

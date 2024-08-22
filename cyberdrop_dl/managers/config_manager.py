@@ -63,7 +63,8 @@ class ConfigManager:
     def startup(self) -> None:
         """Pre-startup process for the config manager"""
         if not isinstance(self.loaded_config, str):
-            self.loaded_config = self.manager.cache_manager.get("default_config")
+            self.loaded_config = self.manager.cache_manager.get(
+                "default_config")
             if not self.loaded_config:
                 self.loaded_config = "Default"
             if self.manager.args_manager.load_config_from_args:
@@ -71,7 +72,8 @@ class ConfigManager:
 
         self.authentication_settings = self.manager.path_manager.config_dir / "authentication.yaml"
         self.global_settings = self.manager.path_manager.config_dir / "global_settings.yaml"
-        self.settings = self.manager.path_manager.config_dir / self.loaded_config / "settings.yaml"
+        self.settings = self.manager.path_manager.config_dir / \
+            self.loaded_config / "settings.yaml"
 
         self.settings.parent.mkdir(parents=True, exist_ok=True)
         self.load_configs()
@@ -99,11 +101,15 @@ class ConfigManager:
         else:
             from cyberdrop_dl.managers.path_manager import APP_STORAGE, DOWNLOAD_STORAGE
             self.settings_data = copy.deepcopy(settings)
-            self.settings_data['Files']['input_file'] = APP_STORAGE / "Configs" / self.loaded_config / "URLs.txt"
-            self.settings_data['Files']['download_folder'] = DOWNLOAD_STORAGE / "Cyberdrop-DL Downloads"
-            self.settings_data['Logs']['log_folder'] = APP_STORAGE / "Configs" / self.loaded_config / "Logs"
+            self.settings_data['Files']['input_file'] = APP_STORAGE / \
+                "Configs" / self.loaded_config / "URLs.txt"
+            self.settings_data['Files']['download_folder'] = DOWNLOAD_STORAGE / \
+                "Cyberdrop-DL Downloads"
+            self.settings_data['Logs']['log_folder'] = APP_STORAGE / \
+                "Configs" / self.loaded_config / "Logs"
             self.settings_data['Logs']['webhook_url'] = ""
-            self.settings_data['Sorting']['sort_folder'] = DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"
+            self.settings_data['Sorting']['sort_folder'] = DOWNLOAD_STORAGE / \
+                "Cyberdrop-DL Sorted Downloads"
             self.write_updated_settings_config()
 
     def _verify_authentication_config(self) -> None:
@@ -115,19 +121,26 @@ class ConfigManager:
             self.authentication_data = existing_auth_data
             return
 
-        self.authentication_data = _match_config_dicts(default_auth_data, existing_auth_data)
+        self.authentication_data = _match_config_dicts(
+            default_auth_data, existing_auth_data)
         _save_yaml(self.authentication_settings, self.authentication_data)
 
     def _verify_settings_config(self) -> None:
         """Verifies the settings config file and creates it if it doesn't exist"""
         default_settings_data = copy.deepcopy(settings)
         existing_settings_data = _load_yaml(self.settings)
-        self.settings_data = _match_config_dicts(default_settings_data, existing_settings_data)
-        self.settings_data['Files']['input_file'] = Path(self.settings_data['Files']['input_file'])
-        self.settings_data['Files']['download_folder'] = Path(self.settings_data['Files']['download_folder'])
-        self.settings_data['Logs']['log_folder'] = Path(self.settings_data['Logs']['log_folder'])
-        self.settings_data['Logs']['webhook_url'] = str(self.settings_data['Logs']['webhook_url'])
-        self.settings_data['Sorting']['sort_folder'] = Path(self.settings_data['Sorting']['sort_folder'])
+        self.settings_data = _match_config_dicts(
+            default_settings_data, existing_settings_data)
+        self.settings_data['Files']['input_file'] = Path(
+            self.settings_data['Files']['input_file'])
+        self.settings_data['Files']['download_folder'] = Path(
+            self.settings_data['Files']['download_folder'])
+        self.settings_data['Logs']['log_folder'] = Path(
+            self.settings_data['Logs']['log_folder'])
+        self.settings_data['Logs']['webhook_url'] = str(
+            self.settings_data['Logs']['webhook_url'])
+        self.settings_data['Sorting']['sort_folder'] = Path(
+            self.settings_data['Sorting']['sort_folder'])
 
         # change to ints
         self.settings_data['File_Size_Limits']['maximum_image_size'] = int(
@@ -143,7 +156,8 @@ class ConfigManager:
         self.settings_data['File_Size_Limits']['minimum_other_size'] = int(
             self.settings_data['File_Size_Limits']['minimum_other_size'])
 
-        self.settings_data['Runtime_Options']['log_level'] = int(self.settings_data['Runtime_Options']['log_level'])
+        self.settings_data['Runtime_Options']['log_level'] = int(
+            self.settings_data['Runtime_Options']['log_level'])
 
         self.global_settings_data['General']['max_file_name_length'] = int(
             self.global_settings_data['General']['max_file_name_length'])
@@ -171,16 +185,20 @@ class ConfigManager:
             self.global_settings_data['UI_Options']['scraping_item_limit'])
         self.global_settings_data['UI_Options']['downloading_item_limit'] = int(
             self.global_settings_data['UI_Options']['downloading_item_limit'])
-        
+
         if get_keys(default_settings_data) == get_keys(existing_settings_data):
             return
 
         save_data = copy.deepcopy(self.settings_data)
-        save_data['Files']['input_file'] = str(save_data['Files']['input_file'])
-        save_data['Files']['download_folder'] = str(save_data['Files']['download_folder'])
+        save_data['Files']['input_file'] = str(
+            save_data['Files']['input_file'])
+        save_data['Files']['download_folder'] = str(
+            save_data['Files']['download_folder'])
         save_data['Logs']['log_folder'] = str(save_data['Logs']['log_folder'])
-        save_data['Logs']['webhook_url'] = str(save_data['Logs']['webhook_url'])
-        save_data['Sorting']['sort_folder'] = str(save_data['Sorting']['sort_folder'])
+        save_data['Logs']['webhook_url'] = str(
+            save_data['Logs']['webhook_url'])
+        save_data['Sorting']['sort_folder'] = str(
+            save_data['Sorting']['sort_folder'])
         _save_yaml(self.settings, save_data)
 
     def _verify_global_settings_config(self) -> None:
@@ -192,18 +210,24 @@ class ConfigManager:
             self.global_settings_data = existing_global_settings_data
             return
 
-        self.global_settings_data = _match_config_dicts(default_global_settings_data, existing_global_settings_data)
+        self.global_settings_data = _match_config_dicts(
+            default_global_settings_data, existing_global_settings_data)
         _save_yaml(self.global_settings, self.global_settings_data)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     def create_new_config(self, new_settings: Path, settings_data: Dict) -> None:
         """Creates a new settings config file"""
-        settings_data['Files']['input_file'] = str(settings_data['Files']['input_file'])
-        settings_data['Files']['download_folder'] = str(settings_data['Files']['download_folder'])
-        settings_data['Logs']['log_folder'] = str(settings_data['Logs']['log_folder'])
-        settings_data['Logs']['webhook_url'] = str(settings_data['Logs']['webhook_url'])
-        settings_data['Sorting']['sort_folder'] = str(settings_data['Sorting']['sort_folder'])
+        settings_data['Files']['input_file'] = str(
+            settings_data['Files']['input_file'])
+        settings_data['Files']['download_folder'] = str(
+            settings_data['Files']['download_folder'])
+        settings_data['Logs']['log_folder'] = str(
+            settings_data['Logs']['log_folder'])
+        settings_data['Logs']['webhook_url'] = str(
+            settings_data['Logs']['webhook_url'])
+        settings_data['Sorting']['sort_folder'] = str(
+            settings_data['Sorting']['sort_folder'])
         _save_yaml(new_settings, settings_data)
 
     def write_updated_authentication_config(self) -> None:
@@ -213,11 +237,16 @@ class ConfigManager:
     def write_updated_settings_config(self) -> None:
         """Write updated settings data"""
         settings_data = copy.deepcopy(self.settings_data)
-        settings_data['Files']['input_file'] = str(settings_data['Files']['input_file'])
-        settings_data['Files']['download_folder'] = str(settings_data['Files']['download_folder'])
-        settings_data['Logs']['log_folder'] = str(settings_data['Logs']['log_folder'])
-        settings_data['Logs']['webhook_url'] = str(settings_data['Logs']['webhook_url'])
-        settings_data['Sorting']['sort_folder'] = str(settings_data['Sorting']['sort_folder'])
+        settings_data['Files']['input_file'] = str(
+            settings_data['Files']['input_file'])
+        settings_data['Files']['download_folder'] = str(
+            settings_data['Files']['download_folder'])
+        settings_data['Logs']['log_folder'] = str(
+            settings_data['Logs']['log_folder'])
+        settings_data['Logs']['webhook_url'] = str(
+            settings_data['Logs']['webhook_url'])
+        settings_data['Sorting']['sort_folder'] = str(
+            settings_data['Sorting']['sort_folder'])
         _save_yaml(self.settings, settings_data)
 
     def write_updated_global_settings_config(self) -> None:

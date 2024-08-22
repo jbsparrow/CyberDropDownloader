@@ -140,4 +140,3 @@ global_settings: Dict = {
         "downloading_item_limit": 5,
     }
 }
-

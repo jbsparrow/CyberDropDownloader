@@ -18,18 +18,21 @@ class ProgressManager:
     def __init__(self, manager: 'Manager'):
         # File Download Bars
         self.manager = manager
-        self.file_progress: FileProgress = FileProgress(manager.config_manager.global_settings_data['UI_Options']['downloading_item_limit'], manager)
+        self.file_progress: FileProgress = FileProgress(
+            manager.config_manager.global_settings_data['UI_Options']['downloading_item_limit'], manager)
 
         # Scraping Printout
-        self.scraping_progress: ScrapingProgress = ScrapingProgress(manager.config_manager.global_settings_data['UI_Options']['scraping_item_limit'], manager)
+        self.scraping_progress: ScrapingProgress = ScrapingProgress(
+            manager.config_manager.global_settings_data['UI_Options']['scraping_item_limit'], manager)
 
         # Overall Progress Bars & Stats
         self.download_progress: DownloadsProgress = DownloadsProgress(manager)
         self.download_stats_progress: DownloadStatsProgress = DownloadStatsProgress()
         self.scrape_stats_progress: ScrapeStatsProgress = ScrapeStatsProgress()
-        
-        self.ui_refresh_rate = manager.config_manager.global_settings_data['UI_Options']['refresh_rate']
-        
+
+        self.ui_refresh_rate = manager.config_manager.global_settings_data[
+            'UI_Options']['refresh_rate']
+
         self.layout: Layout = field(init=False)
 
     async def startup(self) -> None:
@@ -72,9 +75,12 @@ class ProgressManager:
         """Outputs the stats to a code block for webhook messages"""
         log = await get_log_output_text()
         log_message = log.replace('[cyan]', '').replace('[cyan]\n', '\n')
-        log_message = log_message.replace('[green]', '+ ').replace('[green]\n', '\n+ ')
-        log_message = log_message.replace('[red]', '- ').replace('[red]\n', '\n- ')
-        log_message = log_message.replace('[yellow]', '*** ').replace('[yellow]\n', '\n*** ')
+        log_message = log_message.replace(
+            '[green]', '+ ').replace('[green]\n', '\n+ ')
+        log_message = log_message.replace(
+            '[red]', '- ').replace('[red]\n', '\n- ')
+        log_message = log_message.replace(
+            '[yellow]', '*** ').replace('[yellow]\n', '\n*** ')
         data = {
             "content": log_message,
             "username": "CyberDrop-DL",
