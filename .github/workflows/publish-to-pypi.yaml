@@ -2,12 +2,13 @@ name: Publish To PyPi
 
 on:
   push:
+    branches:
+      - master
     tags:
       - '*.*.*'
 
 jobs:
   release:
-    name: Release
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -22,16 +23,44 @@ jobs:
         run: |
           curl -sSL https://install.python-poetry.org | python - -y
 
-      - name: Update PATH
-        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
-
-      - name: Build project for distribution
-        run: poetry build
-
       - name: Check Version
         id: check-version
         run: |
-          [[ "$(poetry version --short)" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || echo prerelease=true >> $GITHUB_OUTPUT
+          version=$(poetry version --short)
+          if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "version=$version" >> $GITHUB_ENV
+          else
+            echo "Not a valid version bump. Skipping tag creation."
+            exit 0
+          fi
+
+      - name: Check if Tag Exists
+        id: tag_exists
+        run: |
+          if git rev-parse "refs/tags/${{ env.version }}" >/dev/null 2>&1; then
+            echo "Tag ${{ env.version }} already exists."
+            echo "tag_exists=true" >> $GITHUB_ENV
+          else
+            echo "tag_exists=false" >> $GITHUB_ENV
+          fi
+      
+      - name: Create Tag
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && env.tag_exists == 'false' }}
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git tag ${{ env.version }}
+          git push origin ${{ env.version }}
+
+      - name: Checkout Tag
+        if: ${{ github.ref == 'refs/heads/master' && env.version != '' }}
+        run: |
+          git fetch --tags
+          git checkout "refs/tags/${{ env.version }}"
+          echo "Checked out tag ${{ env.version }}"
+
+      - name: Build project for distribution
+        run: poetry build
 
       - name: Publish to PyPI
         env:

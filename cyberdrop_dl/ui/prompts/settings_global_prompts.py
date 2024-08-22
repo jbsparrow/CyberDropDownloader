@@ -24,7 +24,8 @@ def edit_global_settings_prompt(manager: Manager) -> None:
                 Choice(1, "Edit General Settings"),
                 Choice(2, "Edit Rate Limiting Settings"),
                 Choice(3, "Edit UI Options"),
-                Choice(4, "Done"),
+                Choice(4, "Edit Dupe Options"),
+                Choice(5, "Done"),
             ],
             vi_mode=manager.vi_mode,
         ).execute()
@@ -37,12 +38,18 @@ def edit_global_settings_prompt(manager: Manager) -> None:
         elif action == 2:
             edit_rate_limiting_settings_prompt(manager)
             
-        # Edit UI Settings
+ 
+       # Edit UI Settings
         elif action == 3:
             edit_ui_settings_prompt(manager)
 
-        # Done
+        #Edit Dupe
         elif action == 4:
+            edit_dupe_settings_prompt(manager)
+
+
+        # Done
+        elif action == 5:
             manager.config_manager.write_updated_global_settings_config()
             break
 
@@ -160,6 +167,13 @@ def edit_rate_limiting_settings_prompt(manager: Manager) -> None:
         float_allowed=False,
         vi_mode=manager.vi_mode,
     ).execute()
+
+    download_speed_limit = inquirer.number(
+        message="Maximum download speed per second in kb",
+        default=int(manager.config_manager.global_settings_data['Rate_Limiting_Options']['download_speed_limit']),
+        float_allowed=False,
+        vi_mode=manager.vi_mode,
+    ).execute()
     throttle = inquirer.number(
         message="Delay between requests during the download stage:",
         default=float(manager.config_manager.global_settings_data['Rate_Limiting_Options']['download_delay']),
@@ -184,6 +198,67 @@ def edit_rate_limiting_settings_prompt(manager: Manager) -> None:
     manager.config_manager.global_settings_data['Rate_Limiting_Options']['read_timeout'] = int(read_timeout)
     manager.config_manager.global_settings_data['Rate_Limiting_Options']['download_attempts'] = int(download_attempts)
     manager.config_manager.global_settings_data['Rate_Limiting_Options']['rate_limit'] = int(rate_limit)
+    manager.config_manager.global_settings_data['Rate_Limiting_Options']['download_speed_limit'] = int(download_speed_limit)
     manager.config_manager.global_settings_data['Rate_Limiting_Options']['download_delay'] = float(throttle)
     manager.config_manager.global_settings_data['Rate_Limiting_Options']['max_simultaneous_downloads'] = int(max_simultaneous_downloads)
     manager.config_manager.global_settings_data['Rate_Limiting_Options']['max_simultaneous_downloads_per_domain'] = int(max_simultaneous_downloads_per_domain)
+
+
+
+
+def edit_dupe_settings_prompt(manager: Manager) -> None:
+    """Edit the duplicate file removal settings"""
+    console.clear()
+    console.print("Editing Duplicate File Settings")
+
+    delete_after = inquirer.select(
+        message="Toggle duplicate files deletion using hashes:",
+        default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_after_download'],
+        choices=[Choice(True,"True"),Choice(False,"False")],
+        vi_mode=manager.vi_mode,
+    ).execute()
+    hash_while_downloading = inquirer.select(
+        message="Hash Files during downloading:",
+        long_instruction=
+        
+"""
+Generate file hashes after each download, instead of batched
+together during deduplication process  
+""",
+        default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading'],
+        choices=[Choice(True,"True"),Choice(False,"False")],
+        vi_mode=manager.vi_mode,
+    ).execute()
+
+    dedupe_already_downloaded = inquirer.select(
+        message="How to handle files already on system: ",
+        default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['dedupe_already_downloaded'],
+        choices=[Choice(True,"Mark Existing Files as 'new'"),Choice(False,"Skip Existing Files")],
+        vi_mode=manager.vi_mode,
+    ).execute()
+
+
+    keep_current = inquirer.select(
+        message="What to do with new file when deduping: ",
+        long_instruction="Files are only deleted if they existed in db before the current run",
+        default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_new_download'],
+        choices=[Choice(True,"Keep a newfile"),Choice(False,"Delete all new files")],
+        vi_mode=manager.vi_mode,
+    ).execute()
+
+    keep_prev = inquirer.select(
+        message="What to do with previous file(s) when deduping:",
+        default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options'],
+        long_instruction="Previous files are files not in generated from the links provided",
+        choices=[Choice(True,"Keep a previous file "),Choice(False,"Delete all previous files")],
+        vi_mode=manager.vi_mode,
+    ).execute()
+
+
+   
+    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_after_download'] =  delete_after
+    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading'] = hash_while_downloading
+    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download'] = keep_prev
+    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_new_download'] = keep_current
+
+    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['dedupe_already_downloaded'] = dedupe_already_downloaded

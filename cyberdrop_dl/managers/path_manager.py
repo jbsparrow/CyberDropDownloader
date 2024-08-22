@@ -2,6 +2,7 @@ import os
 from dataclasses import field
 from pathlib import Path
 from typing import TYPE_CHECKING
+from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -34,7 +35,10 @@ class PathManager:
         self.unsupported_urls_log: Path = field(init=False)
         self.download_error_log: Path = field(init=False)
         self.scrape_error_log: Path = field(init=False)
+        self._completed_downloads=set()
 
+
+    
     def pre_startup(self) -> None:
         if self.manager.args_manager.appdata_dir:
             global APP_STORAGE
@@ -69,3 +73,9 @@ class PathManager:
         if not self.input_file.is_file():
             self.input_file.touch(exist_ok=True)
         self.history_db.touch(exist_ok=True)
+
+    def add_completed(self,media_item:MediaItem):
+        self._completed_downloads.add(media_item)
+    @property
+    def completed_downloads(self):
+        return self._completed_downloads

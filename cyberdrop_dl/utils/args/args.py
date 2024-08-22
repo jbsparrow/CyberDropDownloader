@@ -1,4 +1,5 @@
 import argparse
+import  arrow
 
 from cyberdrop_dl import __version__ as VERSION
 from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
@@ -22,6 +23,7 @@ def parse_args() -> argparse.Namespace:
     general.add_argument("--completed-after", help="only download completed downloads at or after this date", default=None,type=lambda x:None if not x else arrow.get(x))
     general.add_argument("--completed-before", help="only download completed downloads at or before this date", default=None,type=lambda x:None if not x else arrow.get(x))
     general.add_argument("--max-items-retry", help="max number of links to retry",type=int)
+
 
     # File Paths
     file_paths = parser.add_argument_group("File_Paths")
@@ -88,4 +90,8 @@ def parse_args() -> argparse.Namespace:
     
     # Links
     parser.add_argument("links", metavar="link", nargs="*", help="link to content to download (passing multiple links is supported)", default=[])
-    return parser.parse_args()
+    args= parser.parse_args()
+    #set ignore history on retry_all
+    if args.retry_all or args.retry_maintenance:
+        args.ignore_history = True
+    return args

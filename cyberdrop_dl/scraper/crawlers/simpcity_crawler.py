@@ -20,13 +20,14 @@ class SimpCityCrawler(Crawler):
         super().__init__(manager, "simpcity", "SimpCity")
         self.primary_base_domain = URL("https://simpcity.su")
         self.logged_in = False
+        self.login_attempts = 0
         self.request_limiter = AsyncLimiter(10, 1)
 
         self.title_selector = "h1[class=p-title-value]"
-        self.title_trash_selector = "a"
+        self.title_trash_selector = "span"
         self.posts_selector = "div[class*=message-main]"
         self.post_date_selector = "time"
-        self.post_date_attribute = "data-time"
+        self.post_date_attribute = "data-timestamp"
         self.posts_number_selector = "li[class=u-concealed] a"
         self.posts_number_attribute = "href"
         self.quotes_selector = "blockquote"
@@ -53,19 +54,21 @@ class SimpCityCrawler(Crawler):
         """Determines where to send the scrape item based on the url"""
         task_id = await self.scraping_progress.add_task(scrape_item.url)
 
-        if not self.logged_in:
+        if not self.logged_in and self.login_attempts == 0:
             login_url = self.primary_base_domain / "login"
             session_cookie = self.manager.config_manager.authentication_data['Forums']['simpcity_xf_user_cookie']
             username = self.manager.config_manager.authentication_data['Forums']['simpcity_username']
             password = self.manager.config_manager.authentication_data['Forums']['simpcity_password']
             wait_time = 5
 
-            await self.forum_login(login_url, session_cookie, username, password, wait_time)
+            if session_cookie or (username and password):
+                self.login_attempts += 1
+                await self.forum_login(login_url, session_cookie, username, password, wait_time)
 
-        if self.logged_in:
-            await self.forum(scrape_item)
-        else:
-            await log("SimpCity login failed. Skipping.", 40)
+        if not self.logged_in and self.login_attempts == 1:
+            await log("SimpCity login failed. Scraping without an account.", 40)
+
+        await self.forum(scrape_item)
 
         await self.scraping_progress.remove_task(task_id)
 
@@ -100,7 +103,10 @@ class SimpCityCrawler(Crawler):
                 scrape_post, continue_scraping = await self.check_post_number(post_number, current_post_number)
 
                 if scrape_post:
-                    date = int(post.select_one(self.post_date_selector).get(self.post_date_attribute))
+                    try:
+                        date = int(post.select_one(self.post_date_selector).get(self.post_date_attribute))
+                    except:
+                        pass
                     new_scrape_item = await self.create_scrape_item(scrape_item, thread_url, title, False, None, date)
 
                     # for elem in post.find_all(self.quotes_selector):

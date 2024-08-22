@@ -7,7 +7,7 @@ import os
 from http import HTTPStatus
 from functools import wraps, partial
 from pathlib import Path
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING, Tuple,List
 
 import aiofiles
 import aiohttp
@@ -59,8 +59,8 @@ class DownloadClient:
         self._timeouts = aiohttp.ClientTimeout(total=client_manager.read_timeout + client_manager.connection_timeout,
                                                connect=client_manager.connection_timeout)
         self._global_limiter = self.client_manager.global_rate_limiter
-
         self.trace_configs = []
+        self._file_path=None
         if os.getenv("PYCHARM_HOSTED") is not None:
             async def on_request_start(session, trace_config_ctx, params):
                 await log(f"Starting download {params.method} request to {params.url}", 40)
@@ -115,7 +115,10 @@ class DownloadClient:
                 if not proceed:
                     await log(f"Skipping {media_item.url} as it has already been downloaded", 10)
                     await self.manager.progress_manager.download_progress.add_previously_completed(False)
-                    await self.mark_completed(media_item, domain)
+                    await self.process_completed(media_item, domain)
+                    await  self.handle_media_item_completion(media_item,downloaded=False)
+
+
                     return False
             
             ext = Path(media_item.filename).suffix.lower()
@@ -142,7 +145,8 @@ class DownloadClient:
         if not media_item.partial_file.is_file():
             media_item.partial_file.touch()
         async with aiofiles.open(media_item.partial_file, mode='ab') as f:
-            async for chunk, _ in content.iter_chunks():
+            async for chunk,_ in content.iter_chunks():
+                await self.client_manager.check_bucket(chunk)
                 await asyncio.sleep(0)
                 await f.write(chunk)
                 await update_progress(len(chunk))
@@ -156,7 +160,7 @@ class DownloadClient:
             await log(f"Download Skip {media_item.url} due to mark completed option", 10)
             await self.manager.progress_manager.download_progress.add_skipped()
             await self.mark_incomplete(media_item, domain)
-            await self.mark_completed(media_item, domain)
+            await self.process_completed(media_item, domain)
             return False
         
         async def save_content(content: aiohttp.StreamReader) -> None:
@@ -165,7 +169,8 @@ class DownloadClient:
         downloaded = await self._download(domain, manager, media_item, save_content)
         if downloaded:
             media_item.partial_file.rename(media_item.complete_file)
-            await self.mark_completed(media_item, domain)
+            await self.process_completed(media_item, domain)
+            await  self.handle_media_item_completion(media_item,downloaded=True)
         return downloaded
         
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -173,17 +178,30 @@ class DownloadClient:
     async def mark_incomplete(self, media_item: MediaItem, domain: str) -> None:
         """Marks the media item as incomplete in the database"""
         await self.manager.db_manager.history_table.insert_incompleted(domain, media_item)
-
-    async def mark_completed(self, media_item: MediaItem, domain: str) -> None:
-        """Marks the media item as completed in the database"""
-        await self.manager.db_manager.history_table.mark_complete(domain, media_item)
     
+    async def process_completed(self, media_item: MediaItem, domain: str) -> None:
+        """Marks the media item as completed in the database and adds to the completed list"""
+        await self.manager.db_manager.history_table.mark_complete(domain, media_item)
+        await self.manager.db_manager.history_table.add_filesize(domain, media_item)
+       
+      
+
+    async def handle_media_item_completion(self, media_item,downloaded=False) -> None:
+        """Sends to hash client to handle hashing and marks as completed/current download"""
+        try:
+            await self.manager.hash_manager.hash_client.hash_item_during_download(media_item)
+            if downloaded or self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['dedupe_already_downloaded']:
+                    self.manager.path_manager.add_completed(media_item)
+        except Exception as e:
+            await log(f"Error handling media item completion: {str(e)}", 10)
+       
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
     
     async def get_download_dir(self, media_item: MediaItem) -> Path:
         """Returns the download directory for the media item"""
         download_folder = media_item.download_folder
-        if self.manager.args_manager.retry:
+        if self.manager.args_manager.retry_any:
             return download_folder
 
         if self.manager.config_manager.settings_data['Download_Options']['block_download_sub_folders']:
@@ -295,3 +313,13 @@ class DownloadClient:
             if max_other_filesize and media.filesize > max_other_filesize:
                 return False
         return True
+
+    @property
+    def file_path(self) -> List[str]:
+        return self._file_path
+    @file_path.setter
+    def file_path(self, media_item: MediaItem):
+        self._file_path = media_item.filename
+
+
+

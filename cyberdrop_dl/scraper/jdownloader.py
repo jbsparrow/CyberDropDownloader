@@ -8,6 +8,7 @@ from myjdapi import myjdapi
 from cyberdrop_dl.clients.errors import JDownloaderFailure
 from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.utils.utilities import log
+import time
 
 if TYPE_CHECKING:
     from yarl import URL
@@ -36,6 +37,13 @@ class JDownloader:
             await log("Failed JDownloader setup", 40)
             await log(e.message, 40)
             self.enabled = False
+            time.sleep(20)
+        except myjdapi.MYJDDeviceNotFoundException as e:
+            await log("Failed JDownloader setup", 40)
+            await log(str(e), 40)
+            self.enabled = False
+            time.sleep(20)
+
 
     async def direct_unsupported_to_jdownloader(self, url: URL, title: str) -> None:
         """Sends links to JDownloader"""

@@ -145,6 +145,8 @@ class ConfigManager:
 
         self.settings_data['Runtime_Options']['log_level'] = int(self.settings_data['Runtime_Options']['log_level'])
 
+        self.settings_data['Runtime_Options']['console_log_level'] = int(self.settings_data['Runtime_Options']['console_log_level'])
+
         self.global_settings_data['General']['max_file_name_length'] = int(
             self.global_settings_data['General']['max_file_name_length'])
         self.global_settings_data['General']['max_folder_name_length'] = int(
@@ -162,8 +164,23 @@ class ConfigManager:
             self.global_settings_data['Rate_Limiting_Options']['max_simultaneous_downloads_per_domain'])
         self.global_settings_data['Rate_Limiting_Options']['rate_limit'] = int(
             self.global_settings_data['Rate_Limiting_Options']['rate_limit'])
+        
+        self.global_settings_data['Rate_Limiting_Options']['download_speed_limit'] = int(
+            self.global_settings_data['Rate_Limiting_Options']['download_speed_limit'])
         self.global_settings_data['Rate_Limiting_Options']['read_timeout'] = int(
             self.global_settings_data['Rate_Limiting_Options']['read_timeout'])
+
+        self.global_settings_data['Dupe_Cleanup_Options']['delete_after_download'] = \
+            self.global_settings_data['Dupe_Cleanup_Options']['delete_after_download']
+        self.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading'] = \
+            self.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading']
+        self.global_settings_data['Dupe_Cleanup_Options']['dedupe_already_downloaded'] = \
+            self.global_settings_data['Dupe_Cleanup_Options']['dedupe_already_downloaded']
+        self.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download'] = \
+            self.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download']
+        self.global_settings_data['Dupe_Cleanup_Options']['keep_new_download'] = \
+            self.global_settings_data['Dupe_Cleanup_Options']['keep_new_download']        
+
 
         self.global_settings_data['UI_Options']['refresh_rate'] = int(
             self.global_settings_data['UI_Options']['refresh_rate'])

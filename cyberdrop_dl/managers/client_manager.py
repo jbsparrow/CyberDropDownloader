@@ -14,6 +14,7 @@ from cyberdrop_dl.clients.download_client import DownloadClient
 from cyberdrop_dl.clients.errors import DownloadFailure, DDOSGuardFailure, ScrapeFailure
 from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.utils.utilities import CustomHTTPStatus
+from cyberdrop_dl.managers.leaky import LeakyBucket
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -23,10 +24,10 @@ class ClientManager:
     """Creates a 'client' that can be referenced by scraping or download sessions"""
     def __init__(self, manager: Manager):
         self.manager = manager
-
         self.connection_timeout = manager.config_manager.global_settings_data['Rate_Limiting_Options']['connection_timeout']
         self.read_timeout = manager.config_manager.global_settings_data['Rate_Limiting_Options']['read_timeout']
         self.rate_limit = manager.config_manager.global_settings_data['Rate_Limiting_Options']['rate_limit']
+
         self.download_delay = manager.config_manager.global_settings_data['Rate_Limiting_Options']['download_delay']
         self.user_agent = manager.config_manager.global_settings_data['General']['user_agent']
         self.verify_ssl = not manager.config_manager.global_settings_data['General']['allow_insecure_connections']
@@ -54,8 +55,10 @@ class ClientManager:
 
         self.scraper_session = ScraperClient(self)
         self.downloader_session = DownloadClient(manager, self)
+        self._leaky_bucket=LeakyBucket(manager)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
 
     async def get_downloader_spacer(self, key: str) -> float:
         """Returns the download spacer for a domain"""
@@ -116,3 +119,5 @@ class ClientManager:
             raise DownloadFailure(status=CustomHTTPStatus.IM_A_TEAPOT, message="No content-type in response header")
 
         raise DownloadFailure(status=status, message=f"HTTP status code {status}: {phrase}")
+    async def check_bucket(self,size):
+        await  self._leaky_bucket.acquire(size)

@@ -13,10 +13,16 @@ from cyberdrop_dl.managers.download_manager import DownloadManager
 from cyberdrop_dl.managers.log_manager import LogManager
 from cyberdrop_dl.managers.path_manager import PathManager
 from cyberdrop_dl.managers.progress_manager import ProgressManager
+from cyberdrop_dl.managers.hash_manager import HashManager
+from cyberdrop_dl.managers.live_manager import LiveManager
+
 from cyberdrop_dl.utils.args import config_definitions
 from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
 from cyberdrop_dl.utils.transfer.first_time_setup import TransitionManager
+from cyberdrop_dl.managers.console_manager import ConsoleManager
+
 from cyberdrop_dl.utils.utilities import log
+
 
 
 class Manager:
@@ -25,11 +31,15 @@ class Manager:
         self.cache_manager: CacheManager = CacheManager(self)
         self.path_manager: PathManager = field(init=False)
         self.config_manager: ConfigManager = field(init=False)
+        self.hash_manager: HashManager = field(init=False)
+
         self.log_manager: LogManager = field(init=False)
         self.db_manager: DBManager = field(init=False)
         self.client_manager: ClientManager = field(init=False)
+
         self.download_manager: DownloadManager = field(init=False)
         self.progress_manager: ProgressManager = field(init=False)
+        self.live_manager: LiveManager = field(init=False)
 
         self.first_time_setup: TransitionManager = TransitionManager(self)
 
@@ -41,6 +51,7 @@ class Manager:
         self.scrape_mapper = field(init=False)
         
         self.vi_mode: bool = None
+        self.console_manager:ConsoleManager = field(init=False)
 
     def startup(self) -> None:
         """Startup process for the manager"""
@@ -67,6 +78,7 @@ class Manager:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    
     async def async_startup(self) -> None:
         """Async startup process for the manager"""
         await self.args_consolidation()
@@ -80,6 +92,13 @@ class Manager:
             self.client_manager = ClientManager(self)
         if not isinstance(self.download_manager, DownloadManager):
             self.download_manager = DownloadManager(self)
+        if not isinstance(self.hash_manager, HashManager):
+            self.hash_manager = HashManager(self)
+        if not isinstance(self.live_manager, LiveManager):
+            self.live_manager = LiveManager(self)
+        if not isinstance(self.console_manager, ConsoleManager):
+            self.console_manager = ConsoleManager()
+            self.console_manager.startup()
         self.progress_manager = ProgressManager(self)
         await self.progress_manager.startup()
 
@@ -88,6 +107,23 @@ class Manager:
         MAX_NAME_LENGTHS['FILE'] = int(self.config_manager.global_settings_data['General']['max_file_name_length'])
         MAX_NAME_LENGTHS['FOLDER'] = int(self.config_manager.global_settings_data['General']['max_folder_name_length'])
 
+    async def async_db_hash_startup(self):
+        #start up the db manager and hash manager only for scanning
+        if not isinstance(self.db_manager, DBManager):
+            self.db_manager = DBManager(self, self.path_manager.history_db)
+            await self.db_manager.startup()
+        if not isinstance(self.hash_manager, HashManager):
+            self.hash_manager = HashManager(self)
+        if not isinstance(self.live_manager, LiveManager):
+            self.live_manager = LiveManager(self)
+        if not isinstance(self.console_manager, ConsoleManager):
+            self.console_manager = ConsoleManager()
+            self.console_manager.startup()
+        self.progress_manager = ProgressManager(self)
+        await self.progress_manager.startup()
+
+
+    
     async def args_consolidation(self) -> None:
         """Consolidates runtime arguments with config values"""
         for arg in self.args_manager.parsed_args:
@@ -168,3 +204,6 @@ class Manager:
     async def close(self) -> None:
         """Closes the manager"""
         await self.db_manager.close()
+        self.console_manager.close()
+        self.db_manager: DBManager = field(init=False)
+

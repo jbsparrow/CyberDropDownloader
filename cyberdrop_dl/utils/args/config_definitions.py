@@ -96,6 +96,7 @@ settings: Dict = {
     "Runtime_Options": {
         "ignore_history": False,
         "log_level": 10,
+        "console_log_level":100,
         "skip_check_for_partial_files": False,
         "skip_check_for_empty_folders": False,
         "delete_partial_files": False,
@@ -132,7 +133,19 @@ global_settings: Dict = {
         "download_delay": 0.5,
         "max_simultaneous_downloads": 15,
         "max_simultaneous_downloads_per_domain": 5,
+        "download_speed_limit":0
     },
+    "Dupe_Cleanup_Options":
+    {
+  "delete_after_download": False,
+  "hash_while_downloading": False,
+ "keep_prev_download": False,
+        "keep_new_download": True,
+
+  "dedupe_already_downloaded": False
+
+    },
+
     "UI_Options": {
         "vi_mode": False,
         "refresh_rate": 10,

@@ -5,13 +5,13 @@ import os
 import sys
 import traceback
 
-from rich.live import Live
 
 from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.scraper.scraper import ScrapeMapper
 from cyberdrop_dl.ui.ui import program_ui
 from cyberdrop_dl.utils.sorting import Sorter
 from cyberdrop_dl.utils.utilities import check_latest_pypi, log_with_color, check_partials_and_empty_folders, log
+from cyberdrop_dl.managers.console_manager import print_
 
 
 def startup() -> Manager:
@@ -31,7 +31,7 @@ def startup() -> Manager:
         return manager
 
     except KeyboardInterrupt:
-        print("\nExiting...")
+        print_("\nExiting...")
         exit(0)
 
 
@@ -44,6 +44,12 @@ async def runtime(manager: Manager) -> None:
         manager.task_group = task_group
         await scrape_mapper.start()
 
+    
+async def post_runtime(manager: Manager) -> None:
+    """Actions to complete after main runtime, and before ui shutdown"""
+    #checking and removing dupes
+    await manager.hash_manager.hash_client.cleanup_dupes()
+    
 
 async def director(manager: Manager) -> None:
     """Runs the program and handles the UI"""
@@ -57,6 +63,10 @@ async def director(manager: Manager) -> None:
     if os.getenv("PYCHARM_HOSTED") is not None or manager.config_manager.settings_data['Runtime_Options']['log_level'] == -1:
         manager.config_manager.settings_data['Runtime_Options']['log_level'] = 10
         cyberdrop_dl.utils.utilities.DEBUG_VAR = True
+
+    if os.getenv("PYCHARM_HOSTED") is not None or manager.config_manager.settings_data['Runtime_Options']['console_log_level'] == -1:
+        cyberdrop_dl.utils.utilities.CONSOLE_DEBUG_VAR = True
+
         
     if cyberdrop_dl.utils.utilities.DEBUG_VAR:
         logger_debug.setLevel(manager.config_manager.settings_data['Runtime_Options']['log_level'])
@@ -99,6 +109,8 @@ async def director(manager: Manager) -> None:
         formatter = logging.Formatter("%(levelname)-8s : %(asctime)s : %(filename)s:%(lineno)d : %(message)s")
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
+        import cyberdrop_dl.managers.console_manager
+        cyberdrop_dl.managers.console_manager.LEVEL=manager.config_manager.settings_data['Runtime_Options']['console_log_level']
 
         await log("Starting Async Processes...", 20)
         await manager.async_startup()
@@ -106,15 +118,13 @@ async def director(manager: Manager) -> None:
         await log("Starting UI...", 20)
         if not manager.args_manager.sort_all_configs:
             try:
-                if not manager.args_manager.no_ui:
-                    with Live(manager.progress_manager.layout, refresh_per_second=manager.config_manager.global_settings_data['UI_Options']['refresh_rate']):
-                        await runtime(manager)
-                else:
+                async with manager.live_manager.get_main_live(stop=True) :
                     await runtime(manager)
+                    await post_runtime(manager)
             except Exception as e:
-                print("\nAn error occurred, please report this to the developer")
-                print(e)
-                print(traceback.format_exc())
+                print_("\nAn error occurred, please report this to the developer")
+                print_(e)
+                print_(traceback.format_exc())
                 exit(1)
 
         clear_screen_proc = await asyncio.create_subprocess_shell('cls' if os.name == 'nt' else 'clear')
@@ -125,7 +135,7 @@ async def director(manager: Manager) -> None:
             if manager.args_manager.sort_downloads:
                 sorter = Sorter(manager)
                 await sorter.sort()
-        elif manager.config_manager.settings_data['Sorting']['sort_downloads'] and not manager.args_manager.retry:
+        elif manager.config_manager.settings_data['Sorting']['sort_downloads'] and not manager.args_manager.retry_any:
             sorter = Sorter(manager)
             await sorter.sort()
         await check_partials_and_empty_folders(manager)
@@ -134,6 +144,10 @@ async def director(manager: Manager) -> None:
             await log("Updating Last Forum Post...", 20)
             await manager.log_manager.update_last_forum_post()
             
+        
+        # add the stuff here
+
+        
         await log("Printing Stats...", 20)
         await manager.progress_manager.print_stats()
 
@@ -160,7 +174,7 @@ def main():
         try:
             asyncio.run(director(manager))
         except KeyboardInterrupt:
-            print("\nTrying to Exit...")
+            print_("\nTrying to Exit...")
             with contextlib.suppress(Exception):
                 asyncio.run(manager.close())
             exit(1)

@@ -1,4 +1,6 @@
 from __future__ import annotations
+import pathlib
+import asyncio
 
 import os
 from typing import TYPE_CHECKING
@@ -8,6 +10,7 @@ from InquirerPy.base.control import Choice
 from InquirerPy.separator import Separator
 from InquirerPy.validator import EmptyInputValidator, PathValidator
 from rich.console import Console
+from cyberdrop_dl.utils.utilities import log
 
 from cyberdrop_dl.utils.transfer.transfer_v4_config import transfer_v4_config
 from cyberdrop_dl.utils.transfer.transfer_v4_db import transfer_v4_db
@@ -29,15 +32,16 @@ def main_prompt(manager: Manager) -> int:
             Choice(1, "Download"),
             Choice(2, "Download (All Configs)"),
             Choice(3, "Retry Failed Downloads"),
-            Choice(4, "Sort All Configs"),
-            Choice(5, "Edit URLs"),
+            Choice(4, "Create File Hashes"),
+            Choice(5, "Sort All Configs"),
+            Choice(6, "Edit URLs"),
             Separator(),
-            Choice(6, f"Select Config (Current: {manager.config_manager.loaded_config})"),
-            Choice(7, "Change URLs.txt file and Download Location"),
-            Choice(8, "Edit Configs"),
+            Choice(7, f"Select Config (Current: {manager.config_manager.loaded_config})"),
+            Choice(8, "Change URLs.txt file and Download Location"),
+            Choice(9, "Edit Configs"),
             Separator(),
-            Choice(9, "Import Cyberdrop_V4 Items"),
-            Choice(10, "Exit"),
+            Choice(10, "Import Cyberdrop_V4 Items"),
+            Choice(11, "Exit"),
         ], long_instruction="ARROW KEYS: Navigate | ENTER: Select",
         vi_mode=manager.vi_mode,
     ).execute()
@@ -124,11 +128,21 @@ def import_cyberdrop_v4_items_prompt(manager: Manager) -> None:
             import_download_history_path = inquirer.filepath(
                 message="Select the download_history.sql file to import",
                 default=home_path,
-                validate=PathValidator(is_file=True, message="Input is not a file"),
+                validate=PathValidator(message="Input is not a file"),
                 vi_mode=manager.vi_mode,
+                filter=lambda x: pathlib.Path(x)
             ).execute()
-
-            transfer_v4_db(import_download_history_path, manager.path_manager.history_db)
+            if import_download_history_path.is_file():
+                transfer_v4_db(import_download_history_path, manager.path_manager.history_db)
+            else:
+                loop=asyncio.new_event_loop()
+                for ele in pathlib.Path(import_download_history_path).glob("**/*.sqlite"):
+                    if str(ele)==str(manager.path_manager.history_db):
+                        continue
+                    try:
+                        transfer_v4_db(ele, manager.path_manager.history_db)
+                    except Exception as e:
+                        loop.run_until_complete(log(f"Error importing {ele.name}: {str(e)}",20))
 
         # Done
         elif action == 3:
