@@ -13,12 +13,9 @@ from typing import TYPE_CHECKING
 import rich
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import (
-    NoExtensionFailure,
-    FailedLoginFailure,
-    InvalidContentTypeFailure,
-    PasswordProtected,
-)
+from cyberdrop_dl.clients.errors import (FailedLoginFailure,
+                                         InvalidContentTypeFailure,
+                                         NoExtensionFailure, PasswordProtected)
 
 if TYPE_CHECKING:
     from typing import Tuple
@@ -333,9 +330,10 @@ async def check_partials_and_empty_folders(manager: Manager):
 
 async def check_latest_pypi():
     """Checks if the current version is the latest version"""
-    from cyberdrop_dl import __version__ as current_version
     import json
     import urllib.request
+
+    from cyberdrop_dl import __version__ as current_version
 
     # retrieve info on latest version
     contents = urllib.request.urlopen("https://pypi.org/pypi/cyberdrop-dl/json").read()

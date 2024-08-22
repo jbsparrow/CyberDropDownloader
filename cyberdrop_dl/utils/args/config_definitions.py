@@ -4,7 +4,6 @@ from typing import Dict
 
 from cyberdrop_dl.managers.path_manager import APP_STORAGE, DOWNLOAD_STORAGE
 
-
 authentication_settings: Dict = {
     "Forums": {
         "celebforum_xf_user_cookie": "",

@@ -3,16 +3,13 @@ import shutil
 from dataclasses import field
 from pathlib import Path
 from time import sleep
-from typing import Dict, List, TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, List
 
 import yaml
 
 from cyberdrop_dl.managers.log_manager import LogManager
 from cyberdrop_dl.utils.args.config_definitions import (
-    authentication_settings,
-    settings,
-    global_settings,
-)
+    authentication_settings, global_settings, settings)
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -107,7 +104,8 @@ class ConfigManager:
         if self.settings.is_file():
             self._verify_settings_config()
         else:
-            from cyberdrop_dl.managers.path_manager import APP_STORAGE, DOWNLOAD_STORAGE
+            from cyberdrop_dl.managers.path_manager import (APP_STORAGE,
+                                                            DOWNLOAD_STORAGE)
 
             self.settings_data = copy.deepcopy(settings)
             self.settings_data["Files"]["input_file"] = (
