@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
 class Rule34VaultCrawler(Crawler):
     """ """
+
     def __init__(self, manager: Manager):
         super().__init__(manager, "rule34vault", "Rule34Vault")
         self.primary_base_url = URL("https://rule34vault.com")
@@ -54,8 +55,7 @@ class Rule34VaultCrawler(Crawler):
                 link = f"{self.primary_base_url}{link}"
             link = URL(link)
             new_scrape_item = await self.create_scrape_item(
-                scrape_item, link, title, True
-            )
+                scrape_item, link, title, True)
             self.manager.task_group.create_task(self.run(new_scrape_item))
         if not content:
             return
@@ -63,11 +63,12 @@ class Rule34VaultCrawler(Crawler):
         if len(scrape_item.url.parts) > 2:
             page = int(scrape_item.url.parts[-1])
             next_page = scrape_item.url.with_path(
-                f"/{scrape_item.url.parts[1]}/page/{page + 1}"
-            )
+                f"/{scrape_item.url.parts[1]}/page/{page + 1}")
         else:
-            next_page = scrape_item.url.with_path(f"/{scrape_item.url.parts[1]}/page/2")
-        new_scrape_item = await self.create_scrape_item(scrape_item, next_page, "")
+            next_page = scrape_item.url.with_path(
+                f"/{scrape_item.url.parts[1]}/page/2")
+        new_scrape_item = await self.create_scrape_item(
+            scrape_item, next_page, "")
         self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -77,9 +78,11 @@ class Rule34VaultCrawler(Crawler):
             soup = await self.client.get_BS4(self.domain, scrape_item.url)
 
         title_str = soup.select_one("div[class*=title]").text
-        title = await self.create_title(title_str, scrape_item.url.parts[-1], None)
+        title = await self.create_title(title_str, scrape_item.url.parts[-1],
+                                        None)
 
-        content_block = soup.select_one('div[class="box-grid ng-star-inserted"]')
+        content_block = soup.select_one(
+            'div[class="box-grid ng-star-inserted"]')
         content = content_block.select('a[class="box ng-star-inserted"]')
         for file_page in content:
             link = file_page.get("href")
@@ -87,8 +90,7 @@ class Rule34VaultCrawler(Crawler):
                 link = f"{self.primary_base_url}{link}"
             link = URL(link)
             new_scrape_item = await self.create_scrape_item(
-                scrape_item, link, title, True
-            )
+                scrape_item, link, title, True)
             self.manager.task_group.create_task(self.run(new_scrape_item))
         if not content:
             return
@@ -98,7 +100,8 @@ class Rule34VaultCrawler(Crawler):
             next_page = scrape_item.url.with_query({"page": int(page) + 1})
         else:
             next_page = scrape_item.url.with_query({"page": 2})
-        new_scrape_item = await self.create_scrape_item(scrape_item, next_page, "")
+        new_scrape_item = await self.create_scrape_item(
+            scrape_item, next_page, "")
         self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -110,8 +113,7 @@ class Rule34VaultCrawler(Crawler):
         date = await self.parse_datetime(
             soup.select_one(
                 'div[class="posted-date-full text-secondary mt-4 ng-star-inserted"]'
-            ).text
-        )
+            ).text)
         scrape_item.date = date
 
         image = soup.select_one('img[class*="img ng-star-inserted"]')
