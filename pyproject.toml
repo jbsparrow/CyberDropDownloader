@@ -6,7 +6,7 @@ authors = ["Jacob B <admin@script-ware.net>"]
 readme = "README.md"
 repository = "https://github.com/jbsparrow/CyberDropDownloader"
 documentation = "https://script-ware.gitbook.io/cyberdrop-dl/"
-packages = [{include = "cyberdrop_dl"}]
+packages = [{ include = "cyberdrop_dl" }]
 
 [tool.poetry.dependencies]
 python = "^3.11"
