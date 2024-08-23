@@ -73,7 +73,7 @@ class Rule34VaultCrawler(Crawler):
         title_str = soup.select_one('div[class*=title]').text
         title = await self.create_title(title_str, scrape_item.url.parts[-1], None)
 
-        content_block = soup.select_one('div[class="grid ng-star-inserted"]')
+        content_block = soup.select_one('div[class="box-grid ng-star-inserted"]')
         content = content_block.select('a[class="box ng-star-inserted"]')
         for file_page in content:
             link = file_page.get('href')
@@ -99,7 +99,7 @@ class Rule34VaultCrawler(Crawler):
         async with self.request_limiter:
             soup = await self.client.get_BS4(self.domain, scrape_item.url)
 
-        date = await self.parse_datetime(soup.select_one('div[class="text-primary ng-star-inserted"]').text.split("(")[1].split(")")[0])
+        date = await self.parse_datetime(soup.select_one('div[class="posted-date-full text-secondary mt-4 ng-star-inserted"]').text)
         scrape_item.date = date
 
         image = soup.select_one('img[class*="img ng-star-inserted"]')
