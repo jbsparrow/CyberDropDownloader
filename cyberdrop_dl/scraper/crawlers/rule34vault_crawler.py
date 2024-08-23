@@ -47,7 +47,8 @@ class Rule34VaultCrawler(Crawler):
 
         title = await self.create_title(scrape_item.url.parts[1], None, None)
 
-        content_block = soup.select_one('div[class="box-grid ng-star-inserted"]')
+        content_block = soup.select_one(
+            'div[class="box-grid ng-star-inserted"]')
         content = content_block.select('a[class="box ng-star-inserted"]')
         for file_page in content:
             link = file_page.get("href")
@@ -61,7 +62,8 @@ class Rule34VaultCrawler(Crawler):
             return
 
         if "?page=" in scrape_item.url.parts[1]:
-            page = int(scrape_item.url.parts[1].split("page=")[-1].split("&")[0])
+            page = int(scrape_item.url.parts[1].split(
+                "page=")[-1].split("&")[0])
             next_page = scrape_item.url.with_path(
                 f"/{scrape_item.url.parts[1]}".replace(f"page={page}", f"page={page + 1}"), encoded=True)
         else:
