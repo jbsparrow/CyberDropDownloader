@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 
 class Rule34VaultCrawler(Crawler):
+    """ """
     def __init__(self, manager: Manager):
         super().__init__(manager, "rule34vault", "Rule34Vault")
         self.primary_base_url = URL("https://rule34vault.com")
