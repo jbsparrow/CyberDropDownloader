@@ -11,3 +11,5 @@ __pycache__
 venv
 # vscode
 .vscode
+# pycharm
+.idea

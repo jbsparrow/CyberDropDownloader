@@ -161,8 +161,8 @@ def donations_prompt(manager: Manager) -> None:
                   "it keeps me motivated to continue working on this program.")
     console.print("")
     console.print("If you'd like to support me and my work, you can donate to me via the following methods:")
-    console.print("BuyMeACoffee: https://www.buymeacoffee.com/juleswinnft")
-    console.print("Github Sponsor: https://github.com/sponsors/Jules-WinnfieldX")
+    console.print("BuyMeACoffee: https://www.buymeacoffee.com/jbsparrow")
+    console.print("Github Sponsor: https://github.com/sponsors/jbsparrow")
 
     console.print("")
     console.print("Thank you for your support!")

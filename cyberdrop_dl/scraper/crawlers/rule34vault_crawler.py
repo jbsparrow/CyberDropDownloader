@@ -9,13 +9,16 @@ from yarl import URL
 
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
-from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wrapper
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
+from cyberdrop_dl.utils.utilities import get_filename_and_ext
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
 class Rule34VaultCrawler(Crawler):
+    """ """
+
     def __init__(self, manager: Manager):
         super().__init__(manager, "rule34vault", "Rule34Vault")
         self.primary_base_url = URL("https://rule34vault.com")
@@ -44,24 +47,33 @@ class Rule34VaultCrawler(Crawler):
 
         title = await self.create_title(scrape_item.url.parts[1], None, None)
 
-        content_block = soup.select_one('div[class="grid ng-star-inserted"]')
+        content_block = soup.select_one(
+            'div[class="box-grid ng-star-inserted"]')
         content = content_block.select('a[class="box ng-star-inserted"]')
         for file_page in content:
-            link = file_page.get('href')
+            link = file_page.get("href")
             if link.startswith("/"):
                 link = f"{self.primary_base_url}{link}"
             link = URL(link)
-            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True)
+            new_scrape_item = await self.create_scrape_item(
+                scrape_item, link, title, True)
             self.manager.task_group.create_task(self.run(new_scrape_item))
         if not content:
             return
 
-        if len(scrape_item.url.parts) > 2:
-            page = int(scrape_item.url.parts[-1])
-            next_page = scrape_item.url.with_path(f"/{scrape_item.url.parts[1]}/page/{page + 1}")
+        if "?page=" in scrape_item.url.parts[1]:
+            page = int(
+                scrape_item.url.parts[1].split("page=")[-1].split("&")[0])
+            next_page = scrape_item.url.with_path(
+                f"/{scrape_item.url.parts[1]}".replace(f"page={page}",
+                                                       f"page={page + 1}"),
+                encoded=True,
+            )
         else:
-            next_page = scrape_item.url.with_path(f"/{scrape_item.url.parts[1]}/page/2")
-        new_scrape_item = await self.create_scrape_item(scrape_item, next_page, "")
+            next_page = scrape_item.url.with_path(
+                f"/{scrape_item.url.parts[1]}?page=2", encoded=True)
+        new_scrape_item = await self.create_scrape_item(
+            scrape_item, next_page, "")
         self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -70,17 +82,20 @@ class Rule34VaultCrawler(Crawler):
         async with self.request_limiter:
             soup = await self.client.get_BS4(self.domain, scrape_item.url)
 
-        title_str = soup.select_one('div[class*=title]').text
-        title = await self.create_title(title_str, scrape_item.url.parts[-1], None)
+        title_str = soup.select_one("div[class*=title]").text
+        title = await self.create_title(title_str, scrape_item.url.parts[-1],
+                                        None)
 
-        content_block = soup.select_one('div[class="grid ng-star-inserted"]')
+        content_block = soup.select_one(
+            'div[class="box-grid ng-star-inserted"]')
         content = content_block.select('a[class="box ng-star-inserted"]')
         for file_page in content:
-            link = file_page.get('href')
+            link = file_page.get("href")
             if link.startswith("/"):
                 link = f"{self.primary_base_url}{link}"
             link = URL(link)
-            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True)
+            new_scrape_item = await self.create_scrape_item(
+                scrape_item, link, title, True)
             self.manager.task_group.create_task(self.run(new_scrape_item))
         if not content:
             return
@@ -90,7 +105,8 @@ class Rule34VaultCrawler(Crawler):
             next_page = scrape_item.url.with_query({"page": int(page) + 1})
         else:
             next_page = scrape_item.url.with_query({"page": 2})
-        new_scrape_item = await self.create_scrape_item(scrape_item, next_page, "")
+        new_scrape_item = await self.create_scrape_item(
+            scrape_item, next_page, "")
         self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -99,12 +115,16 @@ class Rule34VaultCrawler(Crawler):
         async with self.request_limiter:
             soup = await self.client.get_BS4(self.domain, scrape_item.url)
 
-        date = await self.parse_datetime(soup.select_one('div[class="text-primary ng-star-inserted"]').text.split("(")[1].split(")")[0])
+        date = await self.parse_datetime(
+            soup.select_one(
+                'div[class="posted-date-full text-secondary mt-4 ng-star-inserted"]'
+            ).text)
         scrape_item.date = date
 
         image = soup.select_one('img[class*="img ng-star-inserted"]')
         if image:
-            link = image.get('src')
+            link = image.get("src").replace(".small",
+                                            "").replace(".thumbnail", "")
             if link.startswith("/"):
                 link = f"{self.primary_base_url}{link}"
             link = URL(link)
@@ -112,7 +132,8 @@ class Rule34VaultCrawler(Crawler):
             await self.handle_file(link, scrape_item, filename, ext)
         video = soup.select_one("video source")
         if video:
-            link = video.get('src')
+            link = video.get("src").replace(".small",
+                                            "").replace(".thumbnail", "")
             if link.startswith("/"):
                 link = f"{self.primary_base_url}{link}"
             link = URL(link)

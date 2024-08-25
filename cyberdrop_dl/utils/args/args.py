@@ -37,6 +37,7 @@ def parse_args() -> argparse.Namespace:
     file_paths.add_argument("--unsupported-urls-filename", type=str, help="filename for the unsupported urls log file", default="")
     file_paths.add_argument("--download-error-urls-filename", type=str, help="filename for the download error urls log file", default="")
     file_paths.add_argument("--scrape-error-urls-filename", type=str, help="filename for the scrape error urls log file", default="")
+    file_paths.add_argument("--webhook_url", help="Discord webhook url to send download recap to", default="")
 
     # Settings
     download_options = parser.add_argument_group("Download_Options")

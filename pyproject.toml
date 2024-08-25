@@ -1,12 +1,12 @@
 [tool.poetry]
 name = "cyberdrop-dl-patched"
-version = "5.4.34"
+version = "5.4.38"
 description = "Bulk downloader for multiple file hosts"
 authors = ["Jacob B <admin@script-ware.net>"]
 readme = "README.md"
 repository = "https://github.com/jbsparrow/CyberDropDownloader"
 documentation = "https://script-ware.gitbook.io/cyberdrop-dl/"
-packages = [{include = "cyberdrop_dl"}]
+packages = [{ include = "cyberdrop_dl" }]
 
 [tool.poetry.dependencies]
 python = "^3.11"

@@ -101,7 +101,8 @@ class ConfigManager:
             self.settings_data = copy.deepcopy(settings)
             self.settings_data['Files']['input_file'] = APP_STORAGE / "Configs" / self.loaded_config / "URLs.txt"
             self.settings_data['Files']['download_folder'] = DOWNLOAD_STORAGE / "Cyberdrop-DL Downloads"
-            self.settings_data["Logs"]["log_folder"] = APP_STORAGE / "Configs" / self.loaded_config / "Logs"
+            self.settings_data['Logs']['log_folder'] = APP_STORAGE / "Configs" / self.loaded_config / "Logs"
+            self.settings_data['Logs']['webhook_url'] = ""
             self.settings_data['Sorting']['sort_folder'] = DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"
             self.write_updated_settings_config()
 
@@ -124,7 +125,8 @@ class ConfigManager:
         self.settings_data = _match_config_dicts(default_settings_data, existing_settings_data)
         self.settings_data['Files']['input_file'] = Path(self.settings_data['Files']['input_file'])
         self.settings_data['Files']['download_folder'] = Path(self.settings_data['Files']['download_folder'])
-        self.settings_data["Logs"]["log_folder"] = Path(self.settings_data["Logs"]["log_folder"])
+        self.settings_data['Logs']['log_folder'] = Path(self.settings_data['Logs']['log_folder'])
+        self.settings_data['Logs']['webhook_url'] = str(self.settings_data['Logs']['webhook_url'])
         self.settings_data['Sorting']['sort_folder'] = Path(self.settings_data['Sorting']['sort_folder'])
 
         # change to ints
@@ -193,7 +195,8 @@ class ConfigManager:
         save_data = copy.deepcopy(self.settings_data)
         save_data['Files']['input_file'] = str(save_data['Files']['input_file'])
         save_data['Files']['download_folder'] = str(save_data['Files']['download_folder'])
-        save_data["Logs"]["log_folder"] = str(save_data["Logs"]["log_folder"])
+        save_data['Logs']['log_folder'] = str(save_data['Logs']['log_folder'])
+        save_data['Logs']['webhook_url'] = str(save_data['Logs']['webhook_url'])
         save_data['Sorting']['sort_folder'] = str(save_data['Sorting']['sort_folder'])
         _save_yaml(self.settings, save_data)
 
@@ -215,7 +218,8 @@ class ConfigManager:
         """Creates a new settings config file"""
         settings_data['Files']['input_file'] = str(settings_data['Files']['input_file'])
         settings_data['Files']['download_folder'] = str(settings_data['Files']['download_folder'])
-        settings_data["Logs"]["log_folder"] = str(settings_data["Logs"]["log_folder"])
+        settings_data['Logs']['log_folder'] = str(settings_data['Logs']['log_folder'])
+        settings_data['Logs']['webhook_url'] = str(settings_data['Logs']['webhook_url'])
         settings_data['Sorting']['sort_folder'] = str(settings_data['Sorting']['sort_folder'])
         _save_yaml(new_settings, settings_data)
 
@@ -228,7 +232,8 @@ class ConfigManager:
         settings_data = copy.deepcopy(self.settings_data)
         settings_data['Files']['input_file'] = str(settings_data['Files']['input_file'])
         settings_data['Files']['download_folder'] = str(settings_data['Files']['download_folder'])
-        settings_data["Logs"]["log_folder"] = str(settings_data["Logs"]["log_folder"])
+        settings_data['Logs']['log_folder'] = str(settings_data['Logs']['log_folder'])
+        settings_data['Logs']['webhook_url'] = str(settings_data['Logs']['webhook_url'])
         settings_data['Sorting']['sort_folder'] = str(settings_data['Sorting']['sort_folder'])
         _save_yaml(self.settings, settings_data)
 
