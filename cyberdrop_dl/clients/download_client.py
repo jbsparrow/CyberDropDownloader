@@ -156,9 +156,11 @@ class DownloadClient:
 
     async def download_file(self, manager: Manager, domain: str, media_item: MediaItem) -> bool:
         """Starts a file"""
-        if self.manager.config_manager.settings_data['Download_Options']['skip_download_mark_completed']:
+        if not self.manager.config_manager.settings_data['Download_Options']['skip_download_mark_completed']:
             await log(f"Download Skip {media_item.url} due to mark completed option", 10)
             await self.manager.progress_manager.download_progress.add_skipped()
+            #set completed path
+            media_item.complete_file = await self.get_file_location(media_item)
             await self.mark_incomplete(media_item, domain)
             await self.process_completed(media_item, domain)
             return False
@@ -210,10 +212,12 @@ class DownloadClient:
             media_item.download_folder = download_folder
         return download_folder
     
+    async def get_file_location(self,media_item):
+        download_dir = await self.get_download_dir(media_item)
+        return download_dir / media_item.filename
     async def get_final_file_info(self, media_item: MediaItem, domain: str) -> tuple[bool, bool]:
         """Complicated checker for if a file already exists, and was already downloaded"""
-        download_dir = await self.get_download_dir(media_item)
-        media_item.complete_file = download_dir / media_item.filename
+        media_item.complete_file = await self.get_file_location(media_item)
         media_item.partial_file = media_item.complete_file.with_suffix(media_item.complete_file.suffix + '.part')
         
         expected_size = media_item.filesize if isinstance(media_item.filesize, int) else None
