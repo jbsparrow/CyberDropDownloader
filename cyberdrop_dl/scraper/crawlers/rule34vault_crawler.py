@@ -130,10 +130,11 @@ class Rule34VaultCrawler(Crawler):
             link = URL(link)
             filename, ext = await get_filename_and_ext(link.name)
             await self.handle_file(link, scrape_item, filename, ext)
-        video = soup.select_one("video source")
+        video = soup.select_one(
+            'div[class="con-video ng-star-inserted"] > video > source')
         if video:
-            link = video.get("src").replace(".small",
-                                            "").replace(".thumbnail", "")
+            link = (video.get("src").replace(".small", "").replace(
+                ".thumbnail", "").replace(".720", "").replace(".hevc", ""))
             if link.startswith("/"):
                 link = f"{self.primary_base_url}{link}"
             link = URL(link)
