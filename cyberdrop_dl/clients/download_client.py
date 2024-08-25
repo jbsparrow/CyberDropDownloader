@@ -159,6 +159,7 @@ class DownloadClient:
         if self.manager.config_manager.settings_data['Download_Options']['skip_download_mark_completed']:
             await log(f"Download Skip {media_item.url} due to mark completed option", 10)
             await self.manager.progress_manager.download_progress.add_skipped()
+            #set completed path
             await self.mark_incomplete(media_item, domain)
             await self.process_completed(media_item, domain)
             return False
@@ -181,10 +182,16 @@ class DownloadClient:
     
     async def process_completed(self, media_item: MediaItem, domain: str) -> None:
         """Marks the media item as completed in the database and adds to the completed list"""
+        await self.mark_completed(domain, media_item)
+        await self.add_file_size(domain, media_item)
+    async def mark_completed(self, domain, media_item):
         await self.manager.db_manager.history_table.mark_complete(domain, media_item)
-        await self.manager.db_manager.history_table.add_filesize(domain, media_item)
-       
-      
+    async def add_file_size(self,domain, media_item):
+        if not isinstance(media_item.complete_file,Path):
+            media_item.complete_file = await self.get_file_location(media_item)
+        if media_item.complete_file.exists():
+            await self.manager.db_manager.history_table.add_filesize(domain, media_item)
+
 
     async def handle_media_item_completion(self, media_item,downloaded=False) -> None:
         """Sends to hash client to handle hashing and marks as completed/current download"""
@@ -210,10 +217,12 @@ class DownloadClient:
             media_item.download_folder = download_folder
         return download_folder
     
+    async def get_file_location(self,media_item):
+        download_dir = await self.get_download_dir(media_item)
+        return download_dir / media_item.filename
     async def get_final_file_info(self, media_item: MediaItem, domain: str) -> tuple[bool, bool]:
         """Complicated checker for if a file already exists, and was already downloaded"""
-        download_dir = await self.get_download_dir(media_item)
-        media_item.complete_file = download_dir / media_item.filename
+        media_item.complete_file = await self.get_file_location(media_item)
         media_item.partial_file = media_item.complete_file.with_suffix(media_item.complete_file.suffix + '.part')
         
         expected_size = media_item.filesize if isinstance(media_item.filesize, int) else None
