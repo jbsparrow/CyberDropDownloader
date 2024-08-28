@@ -142,6 +142,7 @@ class ScrapeMapper:
         self.existing_crawlers['jpg2.su'] = self.existing_crawlers['jpg.church']
         self.existing_crawlers['jpg3.su'] = self.existing_crawlers['jpg.church']
         self.existing_crawlers['jpg4.su'] = self.existing_crawlers['jpg.church']
+        self.existing_crawlers['jpg5.su'] = self.existing_crawlers['jpg.church']
         self.existing_crawlers['host.church'] = self.existing_crawlers['jpg.church']
 
     async def kemono(self) -> None:
