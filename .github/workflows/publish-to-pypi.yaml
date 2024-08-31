@@ -11,6 +11,8 @@ jobs:
   release:
     runs-on: ubuntu-latest
     environment: release
+    permissions:
+      id-token: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
