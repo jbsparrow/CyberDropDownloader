@@ -80,7 +80,7 @@ class ClientManager:
         headers = response.headers
 
         if download:
-            if headers.get('ETag') in ['"eb669b6362e031fa2b0f1215480c4e30"', '"a9e4cee098dc6f1e09ec124299f26b30"']:
+            if headers.get('Content-Length') == "322509" and headers.get('Content-Type') == "video/mp4":
                 raise DownloadFailure(status="Bunkr Maintenance", message="Bunkr under maintenance")
             if headers.get('ETag') == '"d835884373f4d6c8f24742ceabe74946"':
                 raise DownloadFailure(status=HTTPStatus.NOT_FOUND, message="Imgur image has been removed")
