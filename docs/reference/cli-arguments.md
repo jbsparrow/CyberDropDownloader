@@ -54,10 +54,11 @@ For items not explained below, you can find their counterparts in the Configurat
 --minimum-other-size <number>
 
 // Filtering Options
---completed-after                      : Filters downloads return by --retry options to those add/completed after the given date
+--completed-after                      : Filters downloads return by ;'--retry' options to those add/completed after the given date
 
---completed-before                     : Filters downloads return by --retry options to those add/completed before the given date
+--completed-before                     : Filters downloads return by '--retry' options to those add/completed before the given date
 
+--max-items-retry                    : Limits the number of items returned by '--retry' options to the number given
 // Ignore Options
 --exclude-videos
 --exclude-images
