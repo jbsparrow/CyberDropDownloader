@@ -7,12 +7,14 @@ from typing import TYPE_CHECKING
 
 import aiohttp
 import certifi
-from aiohttp import ClientResponse, ContentTypeError
+from aiohttp import ClientResponse
+from aiohttp import ContentTypeError
 from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.clients.download_client import DownloadClient
-from cyberdrop_dl.clients.errors import (DDOSGuardFailure, DownloadFailure,
-                                         ScrapeFailure)
+from cyberdrop_dl.clients.errors import DDOSGuardFailure
+from cyberdrop_dl.clients.errors import DownloadFailure
+from cyberdrop_dl.clients.errors import ScrapeFailure
 from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.managers.leaky import LeakyBucket
 from cyberdrop_dl.utils.utilities import CustomHTTPStatus
