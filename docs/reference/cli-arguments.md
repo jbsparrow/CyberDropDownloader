@@ -18,6 +18,8 @@ For items not explained below, you can find their counterparts in the Configurat
 --download                         : Skips the UI and goes straight to downloading
 --download-all-configs             : Runs all configs sequentially
 --retry-failed                     : Retries failed links that are in the download history
+--retry-all                        : Retries all downloads that are in the download history
+--retry-maintenance                : Retries maintenance links that are in the download history, and were marked as completed
 
 // Files
 --input-file                       : Manually specify the URLs.txt file to load (path)
