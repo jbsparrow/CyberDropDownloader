@@ -3,14 +3,13 @@ name: Bug report
 about: Create a report to help us improve
 title: "[BUG]"
 labels: bug
-assignees: Jules-WinnfieldX
+assignees: jbsparrow
 
 ---
 
 **Describe the bug**
 A clear and concise description of what the bug is.
-Make sure to read the FAQ here first: https://github.com/Jules-WinnfieldX/CyberDropDownloader/wiki
-
+Make sure to read the FAQ here first: https://script-ware.gitbook.io/cyberdrop-dl/frequently-asked-questions
 **To Help Reproduce**
 Steps to help reproduce the behavior:
 1. Describe the bug accurately.
