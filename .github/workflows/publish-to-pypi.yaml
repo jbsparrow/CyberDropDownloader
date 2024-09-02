@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     environment: release
     permissions:
-      id-token: write
+      id-token: write  # Required for OIDC authentication
       contents: write
     steps:
       - name: Checkout code
@@ -66,7 +66,16 @@ jobs:
       - name: Build project for distribution
         run: poetry build
 
-      - name: Publish to PyPI
+      - name: Authenticate with PyPI using OIDC
+        id: pypi_auth
+        run: |
+          TOKEN=$(curl -sSL -X POST "https://pypi.org/_/oidc/github" \
+            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            -H "Accept: application/json" \
+            -d "audience=pypi" | jq -r '.token')
+          echo "PYPI_TOKEN=${TOKEN}" >> $GITHUB_ENV
+
+      - name: Publish to PyPI using verified publisher
         env:
-          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_TOKEN }}
-        run: poetry publish --username __token__ --password ${{ secrets.PYPI_TOKEN }}
+          POETRY_PYPI_TOKEN_PYPI: ${{ env.PYPI_TOKEN }}
+        run: poetry publish
