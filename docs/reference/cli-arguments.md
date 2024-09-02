@@ -53,6 +53,11 @@ For items not explained below, you can find their counterparts in the Configurat
 --maximum-other-size <number>
 --minimum-other-size <number>
 
+// Filtering Options
+--completed-after                      : Filters downloads return by --retry options to those add/completed after the given date
+
+--completed-before                     : Filters downloads return by --retry options to those add/completed before the given date
+
 // Ignore Options
 --exclude-videos
 --exclude-images
