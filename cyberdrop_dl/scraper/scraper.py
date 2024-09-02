@@ -395,9 +395,14 @@ class ScrapeMapper:
     def get_item_from_entry(self,entry): 
         link = URL(entry[0])
         retry_path = Path(entry[1])
-        scrape_item = ScrapeItem(link, parent_title="", part_of_album=True, retry=True, retry_path=retry_path)
+        scrape_item = ScrapeItem(link, parent_title="", 
+        part_of_album=True, retry=True, retry_path=retry_path)
+        completed_at=entry[2]
+        created_at=entry[3]
         if not isinstance(scrape_item.url, URL):
             scrape_item.url = URL(scrape_item.url)
+        scrape_item.completed_at = completed_at
+        scrape_item.created_at = created_at
         return scrape_item
 
     async def add_item_to_group(self,scrape_item):
@@ -459,10 +464,15 @@ class ScrapeMapper:
             await log(f"Skipping {scrape_item.url} as it is a blocked domain", 10)
             return
         skip = False
-        # if not skip and date<self.manager.args_manager.after:
-        #     skip = True
-        # if not skip and date>self.manager.args_manager.before:
-        #     skip = True
+        item_date=scrape_item.completed_after or scrape_item.created_at
+        if skip or not item_date or not self.manager.args_manager.after:
+            pass
+        elif arrow.get(item_date)<self.manager.args_manager.after:
+            skip = True
+        if skip or not item_date or not self.manager.args_manager.before:
+            pass
+        elif arrow.get(item_date)>self.manager.args_manager.before:
+            skip = True
         if not skip and  self.manager.config_manager.settings_data['Ignore_Options']['skip_hosts']:
             for skip_host in self.manager.config_manager.settings_data['Ignore_Options']['skip_hosts']:
                 if scrape_item.url.host.find(skip_host) != -1:
