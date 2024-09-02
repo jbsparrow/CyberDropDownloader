@@ -66,16 +66,27 @@ jobs:
       - name: Build project for distribution
         run: poetry build
 
-      - name: Authenticate with PyPI using OIDC
-        id: pypi_auth
+      - name: Mint API token
+        id: mint-token
         run: |
-          TOKEN=$(curl -sSL -X POST "https://pypi.org/_/oidc/github" \
-            -H "Authorization: Bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            -H "Accept: application/json" \
-            -d "audience=pypi" | jq -r '.token')
-          echo "PYPI_TOKEN=${TOKEN}" >> $GITHUB_ENV
+          # retrieve the ambient OIDC token
+          resp=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=pypi")
+          oidc_token=$(jq -r '.value' <<< "${resp}")
 
-      - name: Publish to PyPI using verified publisher
+          # exchange the OIDC token for an API token
+          resp=$(curl -X POST https://pypi.org/_/oidc/mint-token -d "{\"token\": \"${oidc_token}\"}")
+          api_token=$(jq -r '.token' <<< "${resp}")
+
+          # mask the newly minted API token, so that we don't accidentally leak it
+          echo "::add-mask::${api_token}"
+
+          # see the next step in the workflow for an example of using this step output
+          echo "api-token=${api_token}" >> "${GITHUB_OUTPUT}"
+
+      - name: Publish to PyPI using minted token
         env:
-          POETRY_PYPI_TOKEN_PYPI: ${{ env.PYPI_TOKEN }}
-        run: poetry publish
+          POETRY_PYPI_TOKEN_PYPI: ${{ steps.mint-token.outputs.api-token }}
+        run: |
+          poetry config pypi-token.pypi ${{ steps.mint-token.outputs.api-token }}
+          poetry publish
