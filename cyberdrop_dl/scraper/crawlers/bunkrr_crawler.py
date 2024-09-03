@@ -122,7 +122,6 @@ class BunkrrCrawler(Crawler):
                     filename, ext = await get_filename_and_ext(link.name)
                 else:
                     filename, ext = await get_filename_and_ext(scrape_item.url.name)
-
         await self.handle_file(link, scrape_item, filename, ext)
 
     @error_handling_wrapper

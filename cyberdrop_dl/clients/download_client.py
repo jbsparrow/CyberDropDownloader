@@ -109,6 +109,7 @@ class DownloadClient:
             if not isinstance(media_item.complete_file, Path):
                 proceed, skip = await self.get_final_file_info(media_item, domain)
                 await self.mark_incomplete(media_item, domain)
+                await self.client_manager.check_bunkr_maint(headers)
                 if skip:
                     await self.manager.progress_manager.download_progress.add_skipped()
                     return False
