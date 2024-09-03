@@ -117,7 +117,7 @@ class ClientManager:
             raise DownloadFailure(status=CustomHTTPStatus.IM_A_TEAPOT, message="No content-type in response header")
 
         raise DownloadFailure(status=status, message=f"HTTP status code {status}: {phrase}")
-    async def check_bunkr_maint(headers):
+    async def check_bunkr_maint(self,headers):
         if headers.get('Content-Length') == "322509" and headers.get('Content-Type') == "video/mp4":
             raise DownloadFailure(status="Bunkr Maintenance", message="Bunkr under maintenance")
     async def check_bucket(self,size):
