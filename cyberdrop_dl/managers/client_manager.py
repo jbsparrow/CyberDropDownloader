@@ -80,8 +80,6 @@ class ClientManager:
         headers = response.headers
 
         if download:
-            if headers.get('Content-Length') == "322509" and headers.get('Content-Type') == "video/mp4":
-                raise DownloadFailure(status="Bunkr Maintenance", message="Bunkr under maintenance")
             if headers.get('ETag') == '"d835884373f4d6c8f24742ceabe74946"':
                 raise DownloadFailure(status=HTTPStatus.NOT_FOUND, message="Imgur image has been removed")
             if headers.get('ETag') == '"65b7753c-528a"':
@@ -119,5 +117,8 @@ class ClientManager:
             raise DownloadFailure(status=CustomHTTPStatus.IM_A_TEAPOT, message="No content-type in response header")
 
         raise DownloadFailure(status=status, message=f"HTTP status code {status}: {phrase}")
+    async def check_bunkr_maint(headers):
+        if headers.get('Content-Length') == "322509" and headers.get('Content-Type') == "video/mp4":
+            raise DownloadFailure(status="Bunkr Maintenance", message="Bunkr under maintenance")
     async def check_bucket(self,size):
         await  self._leaky_bucket.acquire(size)
