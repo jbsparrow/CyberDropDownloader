@@ -40,6 +40,8 @@ class ScrapeItem:
         self.possible_datetime: int = possible_datetime
         self.retry: bool = retry
         self.retry_path: Path = retry_path
+        self.completed_at=None
+        self.created_at=None
 
     async def add_to_parent_title(self, title: str) -> None:
         """Adds a title to the parent title"""

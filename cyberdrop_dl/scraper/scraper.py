@@ -45,7 +45,7 @@ class ScrapeMapper:
         self.existing_crawlers = {}
         self.no_crawler_downloader = Downloader(self.manager, "no_crawler")
         self.jdownloader = JDownloader(self.manager)
-        self.lock=asyncio.Lock()
+.connect(        self.lock=asyncio.Lock()
         self.count=0
 
     async def bunkrr(self) -> None:
@@ -436,7 +436,7 @@ class ScrapeMapper:
             media_item = MediaItem(scrape_item.url, scrape_item.url, None, download_folder, filename, ext, filename)
             self.manager.task_group.create_task(self.no_crawler_downloader.run(media_item))
 
-        elif self.jdownloader.enabled:
+        elif not self.jdownloader.enabled:
             await log(f"Sending unsupported URL to JDownloader: {scrape_item.url}", 10)
             try:
                 await self.jdownloader.direct_unsupported_to_jdownloader(scrape_item.url, scrape_item.parent_title)
