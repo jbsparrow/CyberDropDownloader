@@ -150,7 +150,7 @@ class HistoryTable:
     async def get_failed_items(self) -> Iterable[Row]:
         """Returns a list of failed items"""
         cursor = await self.db_conn.cursor()
-        result = await cursor.execute("""SELECT referer, download_path,completed_at FROM media WHERE completed = 0""")
+        result = await cursor.execute("""SELECT referer, download_path,completed_at,created_at FROM media WHERE completed = 0""")
         failed_files = await result.fetchall()
         return failed_files
 
@@ -159,7 +159,7 @@ class HistoryTable:
         """Returns a list of all items"""
         cursor = await self.db_conn.cursor()
         result = await cursor.execute("""
-        SELECT referer, download_path,completed_at
+        SELECT referer, download_path,completed_at,created_at
         FROM media
         WHERE COALESCE(completed_at, '1970-01-01') BETWEEN ? AND ?
         ORDER BY completed_at DESC;""",(after.format("YYYY-MM-DD"),before.format("YYYY-MM-DD")))
@@ -176,7 +176,7 @@ class HistoryTable:
             """Returns a list of all items"""
             cursor = await self.db_conn.cursor()
             result = await cursor.execute("""
-            SELECT referer,download_path,completed_at
+            SELECT referer,download_path,completed_at,created_at
             from media
             where file_size=322509
     ;
@@ -192,7 +192,7 @@ class HistoryTable:
             """Returns a list of all items"""
             cursor = await self.db_conn.cursor()
             result = await cursor.execute("""
-    SELECT m.referer,download_path,completed_at
+    SELECT m.referer,download_path,completed_at,created_at
     FROM hash h
     INNER JOIN media m ON h.download_filename= m.download_filename
     WHERE h.hash = 'eb669b6362e031fa2b0f1215480c4e30';
