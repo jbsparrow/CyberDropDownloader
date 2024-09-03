@@ -16,6 +16,7 @@ from cyberdrop_dl.ui.prompts.settings_global_prompts import edit_global_settings
 from cyberdrop_dl.ui.prompts.url_file_prompts import edit_urls_prompt
 from cyberdrop_dl.ui.prompts.settings_user_prompts import create_new_config_prompt, edit_config_values_prompt
 from cyberdrop_dl.ui.prompts.settings_hash_prompts import path_prompt
+from cyberdrop_dl.clients.hash_client import hash_directory_scanner
 
 
 console = Console()
@@ -50,7 +51,7 @@ def program_ui(manager: Manager):
         # Scanning folder to create hashes
         elif action == 4:
             path=path_prompt(manager)
-            manager.hash_manager.hash_client.hash_directory(path)
+            hash_directory_scanner(manager,path)
         
         # Sort All Configs
         elif action == 5:
