@@ -108,6 +108,13 @@ This is the maximum number of files that can be downloaded from a single domain 
 
 Some domains have internal limits set by the program, such as Bunkrr, CyberFile, etc.
 
+
+* download\_speed\_limit
+
+This is the max rate of downloading in KB for all downloads combined
+Set to  0 or None to disable
+
+
 </details>
 
 <details>
