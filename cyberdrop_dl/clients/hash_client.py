@@ -1,13 +1,25 @@
 import  pathlib
+import asyncio
 
 from contextlib import asynccontextmanager
 from collections import defaultdict
-import asyncio
 from cyberdrop_dl.utils.utilities import log
 from send2trash import send2trash
 from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem
 
 
+@asynccontextmanager
+async def hash_scan_directory_context(manager):
+    await manager.async_db_hash_startup()
+    yield
+    await manager.close()
+
+def hash_directory_scanner(manager,path):
+    asyncio.run(_hash_directory_scanner_helper(manager,path))
+
+async def _hash_directory_scanner_helper(manager,path):
+    async with hash_scan_directory_context(manager):
+        await manager.hash_manager.hash_client.hash_directory(path)
 
 
 class HashClient:
@@ -22,11 +34,9 @@ class HashClient:
         await self.manager.async_db_hash_startup()
         yield
         await self.manager.close()
-    
-    def hash_directory(self,path):
-        asyncio.run(self._hash_directory_helper(path))
 
-    async def _hash_directory_helper(self,path):
+
+    async def hash_directory(self,path):
         async with self._manager_context():
             async with self.manager.live_manager.get_hash_live(stop=True):
                 #force start live  manager for db connection
