@@ -58,7 +58,7 @@ For items not explained below, you can find their counterparts in the Configurat
 
 --completed-before                     : Filters downloads return by '--retry' options to those add/completed before the given date
 
---max-items-retry                    : Limits the number of items returned by '--retry' options to the number given
+--max-items-retry                      : Limits the number of items returned by '--retry' options to the number given
 // Ignore Options
 --exclude-videos
 --exclude-images
