@@ -390,7 +390,10 @@ class ScrapeMapper:
             await self.add_item_to_group(scrape_item)
 
     def get_item_from_link(self, link):
-         return ScrapeItem(url=link, parent_title="")
+        item=ScrapeItem(url=link, parent_title="")
+        item.completed_at = None
+        item.created_at = None
+        return item
 
     def get_item_from_entry(self,entry): 
         link = URL(entry[0])
@@ -464,7 +467,7 @@ class ScrapeMapper:
             await log(f"Skipping {scrape_item.url} as it is a blocked domain", 10)
             return
         skip = False
-        item_date=scrape_item.completed_after or scrape_item.created_at
+        item_date=scrape_item.completed_at or scrape_item.created_at
         if skip or not item_date or not self.manager.args_manager.after:
             pass
         elif arrow.get(item_date)<self.manager.args_manager.after:
