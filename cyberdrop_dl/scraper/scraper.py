@@ -45,7 +45,7 @@ class ScrapeMapper:
         self.existing_crawlers = {}
         self.no_crawler_downloader = Downloader(self.manager, "no_crawler")
         self.jdownloader = JDownloader(self.manager)
-.connect(        self.lock=asyncio.Lock()
+        self.lock=asyncio.Lock()
         self.count=0
 
     async def bunkrr(self) -> None:
