@@ -80,11 +80,11 @@ class DownloadClient:
     async def _download(self, domain: str, manager: Manager, media_item: MediaItem,
                         save_content: Callable[[aiohttp.StreamReader], Coroutine[Any, Any, None]], client_session: ClientSession) -> bool:
         """Downloads a file"""
-        headers = copy.deepcopy(self._headers)
-        headers['Referer'] = str(media_item.referer)
+        download_headers = copy.deepcopy(self._headers)
+        download_headers['Referer'] = str(media_item.referer)
         if domain == "pixeldrain":
             if self.manager.config_manager.authentication_data['PixelDrain']['pixeldrain_api_key']:
-                headers["Authorization"] = await self.manager.download_manager.basic_auth("Cyberdrop-DL", self.manager.config_manager.authentication_data['PixelDrain']['pixeldrain_api_key'])
+                download_headers["Authorization"] = await self.manager.download_manager.basic_auth("Cyberdrop-DL", self.manager.config_manager.authentication_data['PixelDrain']['pixeldrain_api_key'])
 
         downloaded_filename = await self.manager.db_manager.history_table.get_downloaded_filename(domain, media_item)
         download_dir = await self.get_download_dir(media_item)
@@ -93,11 +93,11 @@ class DownloadClient:
         resume_point = 0
         if isinstance(media_item.partial_file, Path) and media_item.partial_file.exists():
             resume_point = media_item.partial_file.stat().st_size if media_item.partial_file.exists() else 0
-            headers['Range'] = f'bytes={resume_point}-'
+            download_headers['Range'] = f'bytes={resume_point}-'
 
         await asyncio.sleep(self.client_manager.download_delay)
 
-        async with client_session.get(media_item.url, headers=headers, ssl=self.client_manager.ssl_context,
+        async with client_session.get(media_item.url, headers=download_headers, ssl=self.client_manager.ssl_context,
                                       proxy=self.client_manager.proxy) as resp:
             if resp.status == HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE:
                 media_item.partial_file.unlink()
@@ -109,7 +109,7 @@ class DownloadClient:
             if not isinstance(media_item.complete_file, Path):
                 proceed, skip = await self.get_final_file_info(media_item, domain)
                 await self.mark_incomplete(media_item, domain)
-                await self.client_manager.check_bunkr_maint(headers)
+                await self.client_manager.check_bunkr_maint(resp.headers)
                 if skip:
                     await self.manager.progress_manager.download_progress.add_skipped()
                     return False
