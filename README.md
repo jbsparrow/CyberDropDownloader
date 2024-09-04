@@ -1,4 +1,4 @@
-# `cyberdrop-dl`
+# `cyberdrop-dl-patched`
 
 **Bulk downloader for multiple file hosts**
 
@@ -7,8 +7,7 @@
 [![Downloads](https://static.pepy.tech/badge/cyberdrop-dl-patched/month)](https://pepy.tech/project/cyberdrop-dl-patched)
 [![Downloads](https://static.pepy.tech/badge/cyberdrop-dl-patched/week)](https://pepy.tech/project/cyberdrop-dl-patched)
 
-[![Discord Banner 3](https://discordapp.com/api/guilds/1070206871564197908/widget.png?style=banner3)](https://discord.com/invite/kbZCxz22Qp)
-
+New Patched version to keep alive. Original project has been depricated.
 Brand new and improved! Cyberdrop-DL now has an updated paint job, fantastic new look. It's now easier to use than ever before!
 
 ![Screenshot 2023-12-03 190747](https://github.com/Jules-WinnfieldX/CyberDropDownloader/assets/61347133/aa6b7e21-a039-42e9-9308-ca62750a49cf)
@@ -22,5 +21,4 @@ bunkr, bunkrr, celebforum, coomer, cyberdrop, cyberfile, e-hentai, erome, fapell
 Read the [Wiki!](https://script-ware.gitbook.io/cyberdrop-dl)
 
 You can find how to install the program and how to use it there. You can also find a list of supported hosts, and frequently asked questions.
-
 
