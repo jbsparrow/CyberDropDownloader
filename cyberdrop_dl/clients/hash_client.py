@@ -27,13 +27,16 @@ class HashClient:
     def __init__(self,manager):
         self.manager=manager
         self.hashes=defaultdict(lambda:None)
-        self.prev_hashes=set()
+        self.prev_hashes=None
         
     @asynccontextmanager
     async def _manager_context(self):
         await self.manager.async_db_hash_startup()
         yield
         await self.manager.close()
+    async def startup(self):
+        self.prev_hashes=set(self.manager.db_manager.hash_table.get_all_unique_hashes())
+
 
 
     async def hash_directory(self,path):
@@ -66,7 +69,6 @@ class HashClient:
             else:
                 await self.manager.progress_manager.hash_progress.add_prev_hash()
                 await self.manager.db_manager.hash_table.insert_or_update_hash_db(hash,file,original_filename,refer)
-                self.prev_hashes.add(key)
         except Exception as e:
                 await log(f"Error hashing {file} : {e}",40)
         self.hashes[key]=hash
@@ -160,7 +162,7 @@ class HashClient:
                             except OSError:
                                 continue
             
-                    if not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_new_download'] and self._get_key_from_file(ele) in self.prev_hashes:
+                    if not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_new_download'] and hash in self.prev_hashes:
                         try:
                             if ele.exists():
                                 send2trash(ele)
