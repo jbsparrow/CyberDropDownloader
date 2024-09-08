@@ -135,7 +135,7 @@ WHERE download_filename = ? AND folder = ?;""",
             return False
 
 
-    async def get_all_hashes(self):
+    async def get_all_unique_hashes(self):
         """
         Retrieves a list of (folder, filename) tuples based on a given hash.
 
@@ -151,7 +151,7 @@ WHERE download_filename = ? AND folder = ?;""",
         try:
             await cursor.execute("SELECT DISTINCT hash FROM hash")
             results = await cursor.fetchall()
-            return results
+            return list(map(lambda x: x[0], results))
         except Exception as e:
             console.print(f"Error retrieving folder and filename: {e}")
             return []

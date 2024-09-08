@@ -94,6 +94,7 @@ class Manager:
             self.download_manager = DownloadManager(self)
         if not isinstance(self.hash_manager, HashManager):
             self.hash_manager = HashManager(self)
+            await self.hash_manager.startup()
         if not isinstance(self.live_manager, LiveManager):
             self.live_manager = LiveManager(self)
         if not isinstance(self.console_manager, ConsoleManager):
@@ -114,6 +115,7 @@ class Manager:
             await self.db_manager.startup()
         if not isinstance(self.hash_manager, HashManager):
             self.hash_manager = HashManager(self)
+            await self.hash_manager.startup()
         if not isinstance(self.live_manager, LiveManager):
             self.live_manager = LiveManager(self)
         if not isinstance(self.console_manager, ConsoleManager):

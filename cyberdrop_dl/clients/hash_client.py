@@ -35,7 +35,7 @@ class HashClient:
         yield
         await self.manager.close()
     async def startup(self):
-        self.prev_hashes=set(self.manager.db_manager.hash_table.get_all_unique_hashes())
+        self.prev_hashes=set(await self.manager.db_manager.hash_table.get_all_unique_hashes())
 
 
 
@@ -90,8 +90,7 @@ class HashClient:
                 return
             hashes_dict=defaultdict(lambda: defaultdict(list))
             # first compare downloads to each other
-            for media_item in list(self.manager.path_manager.completed_downloads):
-                
+            for media_item in list(self.manager.path_manager.completed_downloads):  
                 hash=await self.hash_item(media_item.complete_file,media_item.original_filename,media_item.referer)
                 item=media_item.complete_file.absolute()
                 try:
@@ -107,9 +106,12 @@ class HashClient:
                 for size, files in size_dict.items():
                     selected_file = None
                     for file in files:
-                        if file.is_file():
+                        if file.is_file() and file in self.manager.path_manager.prev_downloads_paths:
                             selected_file = file
-                            break 
+                            break
+                        elif file.is_file():
+                            selected_file = file
+                            continue
                     for file in filter(lambda x:x!=selected_file,files):
                         try:
                             send2trash(file)
@@ -135,7 +137,7 @@ class HashClient:
                     # Filter out files with the same path as any file in other_files
                     filtered_matches = [match for match in all_matches if str(match) not in other_files]
                     #Filter files based  on if the file exists
-                    filtered_matches = list(filter(lambda x: x.exists(),filtered_matches )) 
+                    filtered_matches = list(filter(lambda x: x.exists(),filtered_matches ))
                     
                     #what do do with prev matches and current file
                     if len(filtered_matches) == 0:
@@ -161,8 +163,15 @@ class HashClient:
                                 await self.manager.progress_manager.hash_progress.add_removed_prev_file()
                             except OSError:
                                 continue
-            
-                    if not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_new_download'] and hash in self.prev_hashes:
+                    if self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_new_download']:
+                        continue
+                    elif hash not in self.prev_hashes:
+                        continue
+                    elif self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download']:
+                        send2trash(ele)
+                    elif selected_file in self.manager.path_manager.prev_downloads_paths:
+                        continue
+                    else:
                         try:
                             if ele.exists():
                                 send2trash(ele)
