@@ -27,7 +27,6 @@ class HashClient:
     def __init__(self,manager):
         self.manager=manager
         self.hashes=defaultdict(lambda:None)
-        self.prev_hashes=None
         
     @asynccontextmanager
     async def _manager_context(self):
@@ -35,7 +34,7 @@ class HashClient:
         yield
         await self.manager.close()
     async def startup(self):
-        self.prev_hashes=set(await self.manager.db_manager.hash_table.get_all_unique_hashes())
+        pass
 
 
 
@@ -135,15 +134,15 @@ class HashClient:
                     await self.manager.db_manager.hash_table.get_files_with_hash_matches(hash, size)))
 
                     # Filter out files with the same path as any file in other_files
-                    filtered_matches = [match for match in all_matches if str(match) not in other_files]
+                    other_matches = [match for match in all_matches if str(match) not in other_files]
                     #Filter files based  on if the file exists
-                    filtered_matches = list(filter(lambda x: x.exists(),filtered_matches ))
+                    existing_other_matches = list(filter(lambda x: x.exists(),other_matches ))
                     
                     #what do do with prev matches and current file
-                    if len(filtered_matches) == 0:
+                    if len(existing_other_matches) == 0:
                         pass
                     elif not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download']:
-                        for ele in filtered_matches:
+                        for ele in existing_other_matches:
                             if not ele.exists():
                                 continue
                             try:
@@ -154,7 +153,7 @@ class HashClient:
                                 continue
                     #delete all prev match except for one
                     else:
-                         for ele in filtered_matches[1:]:
+                         for ele in existing_other_matches[1:]:
                             if not ele.exists():
                                 continue
                             try:
@@ -165,9 +164,9 @@ class HashClient:
                                 continue
                     if self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_new_download']:
                         continue
-                    elif hash not in self.prev_hashes:
-                        continue
                     elif not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download']:
+                        continue
+                    elif len(other_matches)==0:
                         continue
                     elif selected_file in self.manager.path_manager.prev_downloads_paths:
                         continue
