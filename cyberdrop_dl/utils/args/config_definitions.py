@@ -141,8 +141,8 @@ global_settings: Dict = {
   "hash_while_downloading": False,
  "keep_prev_download": False,
         "keep_new_download": True,
-
-  "dedupe_already_downloaded": False
+  "dedupe_already_downloaded": False,
+  "delete_off_disk": False
 
     },
 

@@ -180,7 +180,8 @@ class ConfigManager:
             self.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download']
         self.global_settings_data['Dupe_Cleanup_Options']['keep_new_download'] = \
             self.global_settings_data['Dupe_Cleanup_Options']['keep_new_download']        
-
+        self.global_settings_data['Dupe_Cleanup_Options']['delete_off_disk'] = \
+            self.global_settings_data['Dupe_Cleanup_Options']['delete_off_disk']
 
         self.global_settings_data['UI_Options']['refresh_rate'] = int(
             self.global_settings_data['UI_Options']['refresh_rate'])

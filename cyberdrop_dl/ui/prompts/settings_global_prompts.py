@@ -240,7 +240,7 @@ together during deduplication process
 
     keep_current = inquirer.select(
         message="What to do with new file when deduping: ",
-        long_instruction="Files are only deleted if they existed in db before the current run",
+        long_instruction="Keep a curent file. Current files are files that were either downloaded or dedupe_already_downloaded is true and the file was skipped for already existing",
         default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_new_download'],
         choices=[Choice(True,"Keep a newfile"),Choice(False,"Delete all new files")],
         vi_mode=manager.vi_mode,
@@ -249,10 +249,18 @@ together during deduplication process
     keep_prev = inquirer.select(
         message="What to do with previous file(s) when deduping:",
         default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options'],
-        long_instruction="Previous files are files not in generated from the links provided",
+        long_instruction="Any file that is not in the list of current files with a matching hash",
         choices=[Choice(True,"Keep a previous file "),Choice(False,"Delete all previous files")],
         vi_mode=manager.vi_mode,
     ).execute()
+
+    delete_off_disk = inquirer.select(
+        message="How to handle removal of files: ",
+        default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_off_disk'],
+        choices=[Choice(True,"Permanently Delete File"),Choice(False,"Send to Trash")],
+        vi_mode=manager.vi_mode,
+    ).execute()
+
 
 
    
@@ -262,3 +270,5 @@ together during deduplication process
     manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_new_download'] = keep_current
 
     manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['dedupe_already_downloaded'] = dedupe_already_downloaded
+
+    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_off_disk'] = delete_off_disk
