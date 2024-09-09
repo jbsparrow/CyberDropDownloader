@@ -240,7 +240,7 @@ together during deduplication process
 
     keep_current = inquirer.select(
         message="What to do with new file when deduping: ",
-        long_instruction="Keep a curent file. Current files are files that were either downloaded or dedupe_already_downloaded is true and the file was skipped for already existing",
+        long_instruction="Keep a curent file. Current files are files that were either downloaded or a file was skipped for already existing when dedupe_already_downloaded is true",
         default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_new_download'],
         choices=[Choice(True,"Keep a newfile"),Choice(False,"Delete all new files")],
         vi_mode=manager.vi_mode,
