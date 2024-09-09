@@ -147,7 +147,7 @@ If enabled for each hash and size match one download will be kept on the system.
 If disabled all current files will be deleted if the following is all true
 - The file did not exist on the filesystem prior to the current run
 - keep prev_download is set to true, this ignores if file exists on the filesystem or not
-- A file must be in the database with a matching hash. This excludes files downloaded and skipped for already existing
+- The hash must have already existing on the system prior to the current run
 
 * keep\_prev\_download
 prev downloads are files that are match with the list of files to be processed. A previous download is one not processed by the urls given and that exists in the database for the same hash and file size

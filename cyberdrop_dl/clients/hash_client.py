@@ -27,6 +27,7 @@ class HashClient:
     def __init__(self,manager):
         self.manager=manager
         self.hashes=defaultdict(lambda:None)
+        self.prev_hashes=None
         
     @asynccontextmanager
     async def _manager_context(self):
@@ -34,7 +35,8 @@ class HashClient:
         yield
         await self.manager.close()
     async def startup(self):
-        pass
+        self.prev_hashes=set(await self.manager.db_manager.hash_table.get_all_unique_hashes())
+
 
 
 
@@ -166,10 +168,11 @@ class HashClient:
                         continue
                     elif not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download']:
                         continue
-                    elif len(other_matches)==0:
-                        continue
                     elif selected_file in self.manager.path_manager.prev_downloads_paths:
                         continue
+                    elif hash not in self.prev_hashes:
+                        continue
+                   
                     else:
                         try:
                             if ele.exists():
