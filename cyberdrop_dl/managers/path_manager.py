@@ -36,6 +36,9 @@ class PathManager:
         self.download_error_log: Path = field(init=False)
         self.scrape_error_log: Path = field(init=False)
         self._completed_downloads=set()
+        self._completed_downloads_set=set()
+        self._prev_downloads=set()
+        self._prev_downloads_set=set()
 
 
     
@@ -76,6 +79,20 @@ class PathManager:
 
     def add_completed(self,media_item:MediaItem):
         self._completed_downloads.add(media_item)
+        self._completed_downloads_set.add(media_item.complete_file.absolute())
+    def add_prev(self,media_item:MediaItem):
+        self._prev_downloads.add(media_item)
+        self._prev_downloads_set.add(media_item.complete_file.absolute())    
     @property
     def completed_downloads(self):
         return self._completed_downloads
+    @property
+    def prev_downloads(self):
+        return self._prev_downloads
+    @property
+    def completed_downloads_paths(self):
+        return self._completed_downloads_set
+    
+    @property
+    def prev_downloads_paths(self):
+        return self._prev_downloads_set
