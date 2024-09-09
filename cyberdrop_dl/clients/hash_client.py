@@ -167,8 +167,8 @@ class HashClient:
                         continue
                     elif hash not in self.prev_hashes:
                         continue
-                    elif self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download']:
-                        send2trash(ele)
+                    elif not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download']:
+                        continue
                     elif selected_file in self.manager.path_manager.prev_downloads_paths:
                         continue
                     else:
