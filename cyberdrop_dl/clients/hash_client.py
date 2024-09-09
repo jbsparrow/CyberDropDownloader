@@ -183,7 +183,7 @@ class HashClient:
                         except OSError:
 
                             pass
-    async def send2trash(self,path):
+    def send2trash(self,path):
         if self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_off_disk']:
             pathlib.Path(path).unlink(missing_ok=True)
         else:
