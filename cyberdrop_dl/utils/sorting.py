@@ -28,6 +28,8 @@ class Sorter:
         self.sorted_downloads = manager.path_manager.sorted_dir
         self.incrementer_format = manager.config_manager.settings_data['Sorting']['sort_incremementer_format']
         self.sort_cdl_only = manager.config_manager.settings_data['Sorting']['sort_cdl_only']
+        if manager.config_manager.settings_data['Download_Options']['skip_download_mark_completed']:
+            self.sort_cdl_only = False
         self.db_manager = manager.db_manager
 
         self.audio_format = manager.config_manager.settings_data['Sorting']['sorted_audio']
