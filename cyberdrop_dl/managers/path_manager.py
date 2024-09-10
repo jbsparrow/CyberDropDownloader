@@ -7,10 +7,14 @@ from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
-if os.getenv("PYCHARM_HOSTED") is not None:
+if os.getenv("PYCHARM_HOSTED") is not None or 'TERM_PROGRAM' in os.environ.keys() and os.environ['TERM_PROGRAM'] == 'vscode':
     """This is for testing purposes only"""
-    APP_STORAGE = Path("../AppData")
-    DOWNLOAD_STORAGE = Path("../Downloads")
+    if os.getcwd().endswith("cyberdrop_dl"):
+        APP_STORAGE = Path("../AppData")
+        DOWNLOAD_STORAGE = Path("../Downloads")
+    else:
+        APP_STORAGE = Path("./AppData")
+        DOWNLOAD_STORAGE = Path("./Downloads")
 else:
     APP_STORAGE = Path("./AppData")
     DOWNLOAD_STORAGE = Path("./Downloads")

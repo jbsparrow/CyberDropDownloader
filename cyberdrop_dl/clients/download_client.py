@@ -61,7 +61,7 @@ class DownloadClient:
         self._global_limiter = self.client_manager.global_rate_limiter
         self.trace_configs = []
         self._file_path=None
-        if os.getenv("PYCHARM_HOSTED") is not None:
+        if os.getenv("PYCHARM_HOSTED") is not None or 'TERM_PROGRAM' in os.environ.keys() and os.environ['TERM_PROGRAM'] == 'vscode':
             async def on_request_start(session, trace_config_ctx, params):
                 await log(f"Starting download {params.method} request to {params.url}", 40)
 

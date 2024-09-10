@@ -46,7 +46,7 @@ class ScraperClient:
         self._global_limiter = self.client_manager.global_rate_limiter
 
         self.trace_configs = []
-        if os.getenv("PYCHARM_HOSTED") is not None:
+        if os.getenv("PYCHARM_HOSTED") is not None or 'TERM_PROGRAM' in os.environ.keys() and os.environ['TERM_PROGRAM'] == 'vscode':
             async def on_request_start(session, trace_config_ctx, params):
                 await log(f"Starting scrape {params.method} request to {params.url}", 10)
 
