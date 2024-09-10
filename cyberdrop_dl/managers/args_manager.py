@@ -39,7 +39,7 @@ class ArgsManager:
         
         # Sorting
         self.sort_downloads = field(init=False)
-        self.sort_cdl_only = field(init=False)
+        self.sort_cdl_only = field(init=True)
         self.sort_folder = None
         
         # Logs
@@ -104,8 +104,8 @@ class ArgsManager:
             self.log_dir = Path(self.parsed_args['log_folder'])
         if self.parsed_args['sort_downloads']:
             self.sort_downloads = True
-        if self.parsed_args['sort_cdl_only']:
-            self.sort_cdl_only = True
+        if not self.parsed_args['sort_cdl_only']:
+            self.sort_cdl_only = False
         if self.parsed_args['sort_folder']:
             self.sort_folder = Path(self.parsed_args['sort_folder'])
             
