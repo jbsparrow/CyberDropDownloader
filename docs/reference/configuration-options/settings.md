@@ -303,6 +303,12 @@ Setting this to true will allow Cyberdrop-DL to sort downloads after a run is co
 
 ***
 
+* sort\_cdl\_only
+
+Setting this to true will sort only files that were downloaded by Cyberdrop-DL. sort_downloads must be true for this to work.
+
+***
+
 * sort\_folder
 
 This is the path to the folder you'd like sorted downloads to be stored in.

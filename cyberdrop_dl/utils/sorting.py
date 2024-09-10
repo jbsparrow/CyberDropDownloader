@@ -27,6 +27,8 @@ class Sorter:
         self.download_dir = manager.path_manager.download_dir
         self.sorted_downloads = manager.path_manager.sorted_dir
         self.incrementer_format = manager.config_manager.settings_data['Sorting']['sort_incremementer_format']
+        self.sort_cdl_only = manager.config_manager.settings_data['Sorting']['sort_cdl_only']
+        self.db_manager = manager.db_manager
 
         self.audio_format = manager.config_manager.settings_data['Sorting']['sorted_audio']
         self.image_format = manager.config_manager.settings_data['Sorting']['sorted_image']
@@ -81,7 +83,16 @@ class Sorter:
             await log_with_color("Download Directory does not exist", "red", 40)
             return
 
-        for folder in self.download_dir.iterdir():
+        downloadfolders = []
+        if self.sort_cdl_only:
+            async for x in self.db_manager.history_table.get_unique_download_paths():
+                if Path(x).exists():
+                    downloadfolders.append(Path(x))
+        else:
+            for folder in self.download_dir.iterdir():
+                downloadfolders.append(folder)
+
+        for folder in downloadfolders:
             if not folder.is_dir():
                 continue
 
