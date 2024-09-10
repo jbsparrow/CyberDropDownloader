@@ -115,7 +115,7 @@ class HashClient:
                             continue
                     for file in filter(lambda x:x!=selected_file,files):
                         try:
-                            send2trash(file)
+                            self.send2trash(file)
                             await log(f"Sent new download : {str(file)} to trash with hash {hash}", 10)
                             await self.manager.progress_manager.hash_progress.add_removed_file()
                         except OSError:
@@ -148,7 +148,7 @@ class HashClient:
                             if not ele.exists():
                                 continue
                             try:
-                                send2trash(ele)
+                                self.send2trash(ele)
                                 await log(f"Sent prev download: {str(ele)} to trash with hash {hash}", 10)
                                 await self.manager.progress_manager.hash_progress.add_removed_prev_file()
                             except OSError:
@@ -159,7 +159,7 @@ class HashClient:
                             if not ele.exists():
                                 continue
                             try:
-                                send2trash(ele)
+                                self.send2trash(ele)
                                 await log(f"Sent prev download: {str(ele)} to trash with hash {hash}", 10)
                                 await self.manager.progress_manager.hash_progress.add_removed_prev_file()
                             except OSError:
@@ -176,11 +176,15 @@ class HashClient:
                     else:
                         try:
                             if ele.exists():
-                                send2trash(ele)
+                                self.send2trash(ele)
                                 await log(f"Sent new download:{str(ele)} to trash with hash {hash}", 10)
                                 await self.manager.progress_manager.hash_progress.add_removed_file()
 
                         except OSError:
 
                             pass
-                    
+    def send2trash(self,path):
+        if self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_off_disk']:
+            pathlib.Path(path).unlink(missing_ok=True)
+        else:
+            send2trash(path)
