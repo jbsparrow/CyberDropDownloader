@@ -12,6 +12,9 @@ if os.getenv("PYCHARM_HOSTED") is not None or 'TERM_PROGRAM' in os.environ.keys(
     if os.getcwd().endswith("cyberdrop_dl"):
         APP_STORAGE = Path("../AppData")
         DOWNLOAD_STORAGE = Path("../Downloads")
+    else:
+        APP_STORAGE = Path("./AppData")
+        DOWNLOAD_STORAGE = Path("./Downloads")
 else:
     APP_STORAGE = Path("./AppData")
     DOWNLOAD_STORAGE = Path("./Downloads")
