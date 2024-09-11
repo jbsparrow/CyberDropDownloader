@@ -91,8 +91,11 @@ class Sorter:
             tempdownloadfolders = []
             for folder in folders:
                 folder = folder[0]
-                relative_folder = Path(folder).relative_to(self.download_dir)
-                base_download_dir = self.download_dir / relative_folder.parts[0]
+                try:
+                    relative_folder = Path(folder).relative_to(self.download_dir)
+                    base_download_dir = self.download_dir / relative_folder.parts[0]
+                except ValueError:
+                    continue
                 if Path(base_download_dir).exists():
                     tempdownloadfolders.append(Path(folder))
             downloadfolders = list(set(tempdownloadfolders))
