@@ -1,6 +1,7 @@
 import asyncio
 import itertools
 import subprocess
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -10,6 +11,8 @@ from PIL import Image
 from videoprops import get_audio_properties, get_video_properties
 
 from cyberdrop_dl.utils.utilities import FILE_FORMATS, log_with_color, purge_dir
+
+logger = logging.getLogger('cyberdrop_dl')
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -93,8 +96,12 @@ class Sorter:
             try:
                 relative_folder = folder.relative_to(self.download_dir)
                 base_folder = self.download_dir / relative_folder.parts[0]
-            except ValueError:
-                continue
+                print(relative_folder.i4rejohodf)
+            except Exception as e:
+                if e.__class__ == ValueError:
+                    continue
+                logger.log(40, f"Error: {e}\n\nfolder: {folder}\ndownload_dir: {self.download_dir}\nrelative_folder: {relative_folder}")
+                raise e
             
             if base_folder.exists():
                 existing_folders.append(base_folder)
