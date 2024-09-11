@@ -39,6 +39,7 @@ class ArgsManager:
         
         # Sorting
         self.sort_downloads = field(init=False)
+        self.sort_cdl_only = field(init=True)
         self.sort_folder = None
         
         # Logs
@@ -103,6 +104,8 @@ class ArgsManager:
             self.log_dir = Path(self.parsed_args['log_folder'])
         if self.parsed_args['sort_downloads']:
             self.sort_downloads = True
+        if not self.parsed_args['sort_cdl_only']:
+            self.sort_cdl_only = False
         if self.parsed_args['sort_folder']:
             self.sort_folder = Path(self.parsed_args['sort_folder'])
             
@@ -133,7 +136,7 @@ class ArgsManager:
         self.after= self.parsed_args['completed_after'] or arrow.get(0)
         self.before= self.parsed_args['completed_before'] or arrow.get("3000")
         self.max_items = self.parsed_args['max_items_retry']
- 
+
 
         del self.parsed_args['download']
         del self.parsed_args['download_all_configs']
@@ -150,4 +153,5 @@ class ArgsManager:
         del self.parsed_args['proxy']
         del self.parsed_args['links']
         del self.parsed_args['sort_downloads']
+        del self.parsed_args['sort_cdl_only']
         del self.parsed_args['sort_folder']
