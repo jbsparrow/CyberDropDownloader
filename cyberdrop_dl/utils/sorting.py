@@ -87,7 +87,8 @@ class Sorter:
 
         downloadfolders = []
         if self.sort_cdl_only:
-            async for x in self.db_manager.history_table.get_unique_download_paths():
+            folders = await self.db_manager.history_table.get_unique_download_paths()
+            for x in folders:
                 if Path(x).exists():
                     downloadfolders.append(Path(x))
         else:
