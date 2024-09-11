@@ -41,7 +41,8 @@ def main_prompt(manager: Manager) -> int:
             Choice(9, "Edit Configs"),
             Separator(),
             Choice(10, "Import Cyberdrop_V4 Items"),
-            Choice(11, "Exit"),
+            Choice(11, "View Changelog"),
+            Choice(12, "Exit"),
         ], long_instruction="ARROW KEYS: Navigate | ENTER: Select",
         vi_mode=manager.vi_mode,
     ).execute()
