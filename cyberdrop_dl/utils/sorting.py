@@ -88,10 +88,14 @@ class Sorter:
         downloadfolders = []
         if self.sort_cdl_only:
             folders = await self.db_manager.history_table.get_unique_download_paths()
+            tempdownloadfolders = []
             for folder in folders:
                 folder = folder[0]
-                if Path(folder).exists():
-                    downloadfolders.append(Path(folder))
+                relative_folder = Path(folder).relative_to(self.download_dir)
+                base_download_dir = self.download_dir / relative_folder.parts[0]
+                if Path(base_download_dir).exists():
+                    tempdownloadfolders.append(Path(folder))
+            downloadfolders = list(set(tempdownloadfolders))
         else:
             for folder in self.download_dir.iterdir():
                 downloadfolders.append(folder)
