@@ -85,28 +85,29 @@ class Sorter:
             await log_with_color("Download Directory does not exist", "red", 40)
             return
 
-        downloadfolders = []
-        if self.sort_cdl_only:
-            folders = await self.db_manager.history_table.get_unique_download_paths()
-            tempdownloadfolders = []
-            for folder in folders:
-                folder = folder[0]
-                try:
-                    relative_folder = Path(folder).relative_to(self.download_dir)
-                    base_download_dir = self.download_dir / relative_folder.parts[0]
-                except ValueError:
-                    continue
-                if Path(base_download_dir).exists():
-                    tempdownloadfolders.append(Path(folder))
-            downloadfolders = list(set(tempdownloadfolders))
-        else:
-            for folder in self.download_dir.iterdir():
-                downloadfolders.append(folder)
-
-        for folder in downloadfolders:
+        unique_download_paths = await self.db_manager.history_table.get_unique_download_paths()
+        download_folders = [Path(path[0]) for path in unique_download_paths]
+        existing_folders = []
+        
+        for folder in download_folders:
+            try:
+                relative_folder = folder.relative_to(self.download_dir)
+                base_folder = self.download_dir / relative_folder.parts[0]
+            except ValueError:
+                continue
+            
+            if base_folder.exists():
+                existing_folders.append(base_folder)
+        
+        download_folders.extend(existing_folders)
+        download_folders = list(set(download_folders))
+        
+        for folder in self.download_dir.iterdir():
             if not folder.is_dir():
                 continue
-
+            if folder not in download_folders and self.sort_cdl_only:
+                continue
+            
             files = await self.find_files_in_dir(folder)
             for file in files:
                 ext = file.suffix.lower()
