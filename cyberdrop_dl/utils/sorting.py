@@ -93,14 +93,12 @@ class Sorter:
 
         download_folders=await self.get_download_folder()
         async with self.manager.live_manager.get_sort_live(stop=True):
-            all_scan_folders=list(self.download_dir.iterdir())
+            all_scan_folders=list(filter(lambda x:x.is_dir(),self.download_dir.iterdir()))
             await self.manager.progress_manager.sort_progress.set_total(len(all_scan_folders))
 
             for folder in all_scan_folders:
-                if not folder.is_dir():
-                    continue
                 if self.sort_cdl_only and folder not in download_folders:
-                    continue
+                    pass
                 else:
                     files = await self.find_files_in_dir(folder)
                     for file in files:
