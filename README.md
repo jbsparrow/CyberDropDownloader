@@ -1,4 +1,4 @@
-# `cyberdrop-dl`
+# `cyberdrop-dl-patched`
 
 **Bulk downloader for multiple file hosts**
 
