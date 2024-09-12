@@ -10,7 +10,7 @@ import PIL
 from PIL import Image
 from videoprops import get_audio_properties, get_video_properties
 
-from cyberdrop_dl.utils.utilities import FILE_FORMATS, log_with_color, purge_dir_tree,purge_dir
+from cyberdrop_dl.utils.utilities import FILE_FORMATS, log_with_color, purge_dir_tree
 
 logger = logging.getLogger('cyberdrop_dl')
 
@@ -111,7 +111,7 @@ class Sorter:
                     await self.sort_video(file, folder.name)
                 else:
                     await self.sort_other(file, folder.name)
-            await purge_dir(folder)
+            await purge_dir_tree(folder)
 
         await asyncio.sleep(5)
         await purge_dir_tree(self.download_dir)

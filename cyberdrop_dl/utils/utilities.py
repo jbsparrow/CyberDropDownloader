@@ -234,14 +234,6 @@ async def purge_dir_tree(dirname: Path) -> None:
     list(map(os.rmdir, deleted))
 
 
-async def purge_dir(dirname: Path) -> None:
-    """Purges directory if empyty"""
-    dir_tree = list(os.walk(dirname, topdown=False))
-    if len(dir_tree) == 0:
-        os.rmdir(dirname)
-
-
-   
 
 
 async def check_partials_and_empty_folders(manager: Manager):
