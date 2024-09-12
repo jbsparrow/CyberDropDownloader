@@ -89,7 +89,7 @@ class Sorter:
             return
 
         unique_download_paths = await self.db_manager.history_table.get_unique_download_paths()
-        download_folders = [Path(path[0]) for path in unique_download_paths]
+        download_folders = [Path(download_path[0]) for download_path in unique_download_paths if Path(download_path[0]).is_dir() and Path(download_path[0]) != self.download_dir]
         existing_folders = []
         
         for folder in download_folders:
@@ -102,7 +102,7 @@ class Sorter:
                 logger.log(40, f"Error: {e}\n\nfolder: {folder}\ndownload_dir: {self.download_dir}\nrelative_folder: {relative_folder}")
                 raise e
             
-            if base_folder.exists():
+            if base_folder.is_dir():
                 existing_folders.append(base_folder)
         
         download_folders.extend(existing_folders)
