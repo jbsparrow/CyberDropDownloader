@@ -35,5 +35,17 @@ D\bDE\bES\bSC\bCR\bRI\bIP\bPT\bTI\bIO\bON\bN
 
 
 
+C\bCH\bHA\bAN\bNG\bGE\bEL\bLO\bOG\bG
+\tVersion 5.5.1
+
+D\bDE\bES\bSC\bCR\bRI\bIP\bPT\bTI\bIO\bON\bN
+\tThis update introduces the following changes:
+\t\t1. small fixes for sorting system
+
+
+
+\tDetails:
+\t\t- use - instead of _ for new arguments
+\t\t- fix bug where purge_dir is called for each file, instead of each directory when done
 
 """

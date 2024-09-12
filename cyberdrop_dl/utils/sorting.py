@@ -114,7 +114,7 @@ class Sorter:
                             await self.sort_video(file, folder.name)
                         else:
                             await self.sort_other(file, folder.name)
-                        await purge_dir_tree(folder)
+                    await purge_dir_tree(folder)
                 await self.manager.progress_manager.sort_progress.add_sorted_dir()
 
         await asyncio.sleep(5)
