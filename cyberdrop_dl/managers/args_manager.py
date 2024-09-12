@@ -157,7 +157,7 @@ class ArgsManager:
         del self.parsed_args['proxy']
         del self.parsed_args['links']
         del self.parsed_args['sort_downloads']
-        del self.parsed_args['sort_cdl_only']
+        del self.parsed_args['sort_all_downloads']
         del self.parsed_args['sort_folder']
         del self.parsed_args['scan_folder']
         del self.parsed_args['completed_after']
