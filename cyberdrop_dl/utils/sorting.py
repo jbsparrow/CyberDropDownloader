@@ -131,7 +131,7 @@ class Sorter:
         if not self.sort_cdl_only:
             return []
         unique_download_paths = await self.db_manager.history_table.get_unique_download_paths()
-        download_folders = download_folders = [Path(download_path[0]) for download_path in unique_download_paths if Path(download_path[0]).is_dir() and Path(download_path[0]) != self.download_dir]
+        download_folders = [Path(download_path[0]) for download_path in unique_download_paths if Path(download_path[0]).is_dir() and Path(download_path[0]) != self.download_dir]
         existing_folders = []
         for folder in download_folders:
             try:
