@@ -80,7 +80,7 @@ For items not explained below, you can find their counterparts in the Configurat
 --sort-downloads
 --sort-all-downloads                      : Only sort all downloads within a the scan_dir
 --sort-folder
---scan-dir                                : set a directory to scan
+--scan-folder                             : set a directory to scan
 
 
 // UI Options
