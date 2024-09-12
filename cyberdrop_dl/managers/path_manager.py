@@ -7,10 +7,14 @@ from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
-if os.getenv("PYCHARM_HOSTED") is not None:
+if os.getenv("PYCHARM_HOSTED") is not None or 'TERM_PROGRAM' in os.environ.keys() and os.environ['TERM_PROGRAM'] == 'vscode':
     """This is for testing purposes only"""
-    APP_STORAGE = Path("../AppData")
-    DOWNLOAD_STORAGE = Path("../Downloads")
+    if os.getcwd().endswith("cyberdrop_dl"):
+        APP_STORAGE = Path("../AppData")
+        DOWNLOAD_STORAGE = Path("../Downloads")
+    else:
+        APP_STORAGE = Path("./AppData")
+        DOWNLOAD_STORAGE = Path("./Downloads")
 else:
     APP_STORAGE = Path("./AppData")
     DOWNLOAD_STORAGE = Path("./Downloads")
@@ -36,6 +40,9 @@ class PathManager:
         self.download_error_log: Path = field(init=False)
         self.scrape_error_log: Path = field(init=False)
         self._completed_downloads=set()
+        self._completed_downloads_set=set()
+        self._prev_downloads=set()
+        self._prev_downloads_set=set()
 
 
     
@@ -76,6 +83,20 @@ class PathManager:
 
     def add_completed(self,media_item:MediaItem):
         self._completed_downloads.add(media_item)
+        self._completed_downloads_set.add(media_item.complete_file.absolute())
+    def add_prev(self,media_item:MediaItem):
+        self._prev_downloads.add(media_item)
+        self._prev_downloads_set.add(media_item.complete_file.absolute())    
     @property
     def completed_downloads(self):
         return self._completed_downloads
+    @property
+    def prev_downloads(self):
+        return self._prev_downloads
+    @property
+    def completed_downloads_paths(self):
+        return self._completed_downloads_set
+    
+    @property
+    def prev_downloads_paths(self):
+        return self._prev_downloads_set

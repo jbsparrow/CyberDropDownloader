@@ -165,7 +165,16 @@ class HistoryTable:
         ORDER BY completed_at DESC;""",(after.format("YYYY-MM-DD"),before.format("YYYY-MM-DD")))
         all_files = await result.fetchall()
         return all_files
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+
+    async def get_unique_download_paths(self) -> Iterable[Row]:
+        """Returns a list of unique download paths"""
+        cursor = await self.db_conn.cursor()
+        result = await cursor.execute("""SELECT DISTINCT download_path FROM media""")
+        all_files = await result.fetchall()
+        return all_files
+
+
     async def get_all_bunkr_failed(self):
         hash_list= await self.get_all_bunkr_failed_via_hash()
         size_list= await self.get_all_bunkr_failed_via_size()
@@ -254,6 +263,7 @@ class HistoryTable:
         if "completed_at" not in current_cols:
             await self.db_conn.execute("""ALTER TABLE media ADD COLUMN completed_at TIMESTAMP""")
             await self.db_conn.commit()
+
         if "file_size" not in current_cols:
             await self.db_conn.execute("""ALTER TABLE media ADD COLUMN file_size INT""")
             await self.db_conn.commit()
