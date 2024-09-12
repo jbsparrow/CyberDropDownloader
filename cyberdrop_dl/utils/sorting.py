@@ -27,7 +27,7 @@ def get_file_date_in_us_ca_formats(file: Path) -> tuple[str, str]:
 
 class Sorter:
     def __init__(self, manager: 'Manager'):
-        self.download_dir = manager.path_manager.download_dir
+        self.download_dir = manager.path_manager.scan_dir or manager.path_manager.download_dir
         self.sorted_downloads = manager.path_manager.sorted_dir
         self.incrementer_format = manager.config_manager.settings_data['Sorting']['sort_incremementer_format']
         self.sort_cdl_only = manager.config_manager.settings_data['Sorting']['sort_cdl_only']
@@ -80,6 +80,8 @@ class Sorter:
     async def sort(self) -> None:
         """Sorts the files in the download directory into their respective folders"""
         await log_with_color("\nSorting Downloads: Please Wait", "cyan", 20)
+        #make sort dir
+        self.sorted_downloads.mkdir(parents=True, exist_ok=True)
 
         if await self.check_dir_parents():
             return
@@ -88,33 +90,13 @@ class Sorter:
             await log_with_color("Download Directory does not exist", "red", 40)
             return
 
-        unique_download_paths = await self.db_manager.history_table.get_unique_download_paths()
-        download_folders = [Path(path[0]) for path in unique_download_paths]
-        existing_folders = []
-        
-        for folder in download_folders:
-            try:
-                relative_folder = folder.relative_to(self.download_dir)
-                base_folder = self.download_dir / relative_folder.parts[0]
-                print(relative_folder.i4rejohodf)
-            except Exception as e:
-                if e.__class__ == ValueError:
-                    continue
-                logger.log(40, f"Error: {e}\n\nfolder: {folder}\ndownload_dir: {self.download_dir}\nrelative_folder: {relative_folder}")
-                raise e
-            
-            if base_folder.exists():
-                existing_folders.append(base_folder)
-        
-        download_folders.extend(existing_folders)
-        download_folders = list(set(download_folders))
+        download_folders=await self.get_download_folder()
         
         for folder in self.download_dir.iterdir():
             if not folder.is_dir():
                 continue
-            if folder not in download_folders and self.sort_cdl_only:
+            if self.sort_cdl_only and folder not in download_folders:
                 continue
-            
             files = await self.find_files_in_dir(folder)
             for file in files:
                 ext = file.suffix.lower()
@@ -138,6 +120,28 @@ class Sorter:
         await log_with_color(f"Organized: {self.video_count} Video Files", "green", 20)
         await log_with_color(f"Organized: {self.other_count} Other Files", "green", 20)
 
+    async def get_download_folder(self):
+        """Gets the download folder"""
+        if not self.sort_cdl_only:
+            return []
+        unique_download_paths = await self.db_manager.history_table.get_unique_download_paths()
+        download_folders = download_folders = [Path(download_path[0]) for download_path in unique_download_paths if Path(download_path[0]).is_dir() and Path(download_path[0]) != self.download_dir]
+        existing_folders = []
+        for folder in download_folders:
+            try:
+                relative_folder = folder.relative_to(self.download_dir)
+                base_folder = self.download_dir / relative_folder.parts[0]
+                print(relative_folder)
+            except Exception as e:
+                if e.__class__ == ValueError:
+                    continue
+                logger.log(40, f"Error: {e}\n\nfolder: {folder}\ndownload_dir: {self.download_dir}\nrelative_folder: {relative_folder}")
+                raise e
+            if base_folder.exists():
+                existing_folders.append(base_folder)
+        download_folders.extend(existing_folders)
+        download_folders = list(set(download_folders))
+        return download_folders
     async def sort_audio(self, file: Path, base_name: str) -> None:
         """Sorts an audio file into the sorted audio folder"""
         self.audio_count += 1

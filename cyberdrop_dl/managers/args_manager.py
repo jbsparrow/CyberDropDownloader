@@ -41,6 +41,9 @@ class ArgsManager:
         self.sort_downloads = field(init=False)
         self.sort_cdl_only = field(init=True)
         self.sort_folder = None
+        self.scan_folder=None
+
+    
         
         # Logs
         self.main_log_filename = None
@@ -108,7 +111,8 @@ class ArgsManager:
             self.sort_cdl_only = False
         if self.parsed_args['sort_folder']:
             self.sort_folder = Path(self.parsed_args['sort_folder'])
-            
+        if self.parsed_args['scan_folder']:
+            self.scan_folder = Path(self.parsed_args['scan_folder'])   
         if self.parsed_args['main_log_filename']:
             self.main_log_filename = self.parsed_args['main_log_filename']
         if self.parsed_args['last_forum_post_filename']:
@@ -155,3 +159,8 @@ class ArgsManager:
         del self.parsed_args['sort_downloads']
         del self.parsed_args['sort_cdl_only']
         del self.parsed_args['sort_folder']
+        del self.parsed_args['scan_folder']
+        del self.parsed_args['completed_after']
+        del self.parsed_args['completed_before']
+
+

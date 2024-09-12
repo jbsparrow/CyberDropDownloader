@@ -397,6 +397,12 @@ def edit_sort_options_prompt(manager: Manager, config: Dict) -> None:
         sort_folder = inquirer.filepath(
             message="Enter the folder you want to sort files into:",
             default=str(config['Sorting']['sort_folder']),
+            vi_mode=manager.vi_mode,
+        ).execute()
+
+        scan_folder = inquirer.filepath(
+            message="Enter the folder you want to scan for files",
+            default=str(config['Sorting']['scan_folder'] or config['Files']['download_folder']),
             validate=PathValidator(is_dir=True, message="Input is not a directory"),
             vi_mode=manager.vi_mode,
         ).execute()
@@ -432,6 +438,7 @@ def edit_sort_options_prompt(manager: Manager, config: Dict) -> None:
         ).execute()
 
         config['Sorting']['sort_folder'] = Path(sort_folder)
+        config['Sorting']['scan_folder'] = Path(scan_folder) if bool(scan_folder) else None
         config['Sorting']['sort_incremementer_format'] = sort_incremementer_format
         config['Sorting']['sorted_audio'] = sorted_audio
         config['Sorting']['sorted_video'] = sorted_video

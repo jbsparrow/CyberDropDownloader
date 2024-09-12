@@ -106,6 +106,7 @@ settings: Dict = {
     "Sorting": {
         "sort_downloads": False,
         "sort_folder": str(DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"),
+        "scan_folder":None,
         "sort_cdl_only": True,
         "sort_incremementer_format": " ({i})",
         "sorted_audio": "{sort_dir}/{base_dir}/Audio/{filename}{ext}",

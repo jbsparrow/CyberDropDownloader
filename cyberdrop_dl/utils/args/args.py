@@ -82,6 +82,7 @@ def parse_args() -> argparse.Namespace:
     sorting_options.add_argument("--sort-downloads", action="store_true", help="sort downloads into folders", default=False)
     sorting_options.add_argument("--sort-cdl-only", action="store_true", help="only sort CDL files.", default=True)
     sorting_options.add_argument("--sort_folder", type=str, help="path to where you want CDL to store it's log files", default="")
+    sorting_options.add_argument("--scan_folder", type=str, help="path to scan for files, if not set then the download_dir is used", default="")
     
     ui_options = parser.add_argument_group("UI_Options")
     ui_options.add_argument("--vi-mode", action="store_true", help="enable VIM keybindings for UI", default=None)

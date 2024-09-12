@@ -47,6 +47,7 @@ def get_keys(dl, keys=None) -> set:
     return set(keys)
 
 
+
 class ConfigManager:
     def __init__(self, manager: 'Manager'):
         self.manager = manager
@@ -104,6 +105,7 @@ class ConfigManager:
             self.settings_data['Logs']['log_folder'] = APP_STORAGE / "Configs" / self.loaded_config / "Logs"
             self.settings_data['Logs']['webhook_url'] = ""
             self.settings_data['Sorting']['sort_folder'] = DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"
+            self.settings_data['Sorting']['scan_folder'] = None
             self.write_updated_settings_config()
 
     def _verify_authentication_config(self) -> None:
@@ -128,6 +130,8 @@ class ConfigManager:
         self.settings_data['Logs']['log_folder'] = Path(self.settings_data['Logs']['log_folder'])
         self.settings_data['Logs']['webhook_url'] = str(self.settings_data['Logs']['webhook_url'])
         self.settings_data['Sorting']['sort_folder'] = Path(self.settings_data['Sorting']['sort_folder'])
+        self.settings_data['Sorting']['scan_folder'] = Path(self.settings_data['Sorting']['scan_folder']) if self.settings_data['Sorting']['scan_folder'] else None
+
 
         # change to ints
         self.settings_data['File_Size_Limits']['maximum_image_size'] = int(
@@ -222,6 +226,7 @@ class ConfigManager:
         settings_data['Logs']['log_folder'] = str(settings_data['Logs']['log_folder'])
         settings_data['Logs']['webhook_url'] = str(settings_data['Logs']['webhook_url'])
         settings_data['Sorting']['sort_folder'] = str(settings_data['Sorting']['sort_folder'])
+        settings_data['Sorting']['scan_folder'] = str(settings_data['Sorting']['scan_folder'])
         _save_yaml(new_settings, settings_data)
 
     def write_updated_authentication_config(self) -> None:
@@ -236,6 +241,8 @@ class ConfigManager:
         settings_data['Logs']['log_folder'] = str(settings_data['Logs']['log_folder'])
         settings_data['Logs']['webhook_url'] = str(settings_data['Logs']['webhook_url'])
         settings_data['Sorting']['sort_folder'] = str(settings_data['Sorting']['sort_folder'])
+        settings_data['Sorting']['scan_folder'] = str(settings_data['Sorting']['scan_folder'])
+
         _save_yaml(self.settings, settings_data)
 
     def write_updated_global_settings_config(self) -> None:
