@@ -221,7 +221,7 @@ async def remove_id(manager: Manager, filename: str, ext: str) -> Tuple[str, str
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
 
-async def purge_dir(dirname: Path) -> None:
+async def purge_dir_tree(dirname: Path) -> None:
     """Purges empty directories"""
     deleted = []
     dir_tree = list(os.walk(dirname, topdown=False))
@@ -232,6 +232,8 @@ async def purge_dir(dirname: Path) -> None:
         if dir_count == 0:
             deleted.append(sub_dir)
     list(map(os.rmdir, deleted))
+
+
 
 
 async def check_partials_and_empty_folders(manager: Manager):
@@ -252,9 +254,9 @@ async def check_partials_and_empty_folders(manager: Manager):
 
     if not manager.config_manager.settings_data['Runtime_Options']['skip_check_for_empty_folders']:
         await log_with_color("Checking for empty folders...", "yellow", 20)
-        await purge_dir(manager.path_manager.download_dir)
+        await purge_dir_tree(manager.path_manager.download_dir)
         if isinstance(manager.path_manager.sorted_dir, Path):
-            await purge_dir(manager.path_manager.sorted_dir)
+            await purge_dir_tree(manager.path_manager.sorted_dir)
 
 
 async def check_latest_pypi():

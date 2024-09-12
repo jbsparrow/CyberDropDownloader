@@ -64,3 +64,17 @@ class LiveManager:
 
 
                 
+    @asynccontextmanager
+    async def get_sort_live(self,stop=False):
+        try:
+            if self.manager.args_manager.no_ui:
+                yield  
+            else:
+                self.live.start()
+                self.live.update(self.manager.progress_manager.sort_layout,refresh=True)
+                yield
+            if stop:
+                self.live.stop()
+        except Exception as e:
+            await log(f"Issue with rich live {e}",level=10)
+            await log(f"Issue with rich live {traceback.format_exc()}",level=10)

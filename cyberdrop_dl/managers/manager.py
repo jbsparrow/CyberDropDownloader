@@ -187,6 +187,8 @@ class Manager:
         print_settings['Files']['download_folder'] = str(print_settings['Files']['download_folder'])
         print_settings["Logs"]["log_folder"] = str(print_settings["Logs"]["log_folder"])
         print_settings['Sorting']['sort_folder'] = str(print_settings['Sorting']['sort_folder'])
+        print_settings['Sorting']['scan_folder'] = str(print_settings['Sorting']['scan_folder']) if str(print_settings['Sorting']['scan_folder']) else ""
+
 
         input_file = str(self.path_manager.input_file)
         download_dir = str(self.path_manager.download_dir)
