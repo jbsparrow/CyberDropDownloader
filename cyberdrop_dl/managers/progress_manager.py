@@ -5,6 +5,8 @@ from rich.layout import Layout
 
 from cyberdrop_dl.ui.progress.downloads_progress import DownloadsProgress
 from cyberdrop_dl.ui.progress.hash_progress import HashProgress
+from cyberdrop_dl.ui.progress.sort_progress import SortProgress
+
 
 from cyberdrop_dl.ui.progress.file_progress import FileProgress
 from cyberdrop_dl.ui.progress.scraping_progress import ScrapingProgress
@@ -30,12 +32,16 @@ class ProgressManager:
         self.download_stats_progress: DownloadStatsProgress = DownloadStatsProgress()
         self.scrape_stats_progress: ScrapeStatsProgress = ScrapeStatsProgress()
         self.hash_progress: HashProgress = HashProgress(manager)
+        self.sort_progress: SortProgress= SortProgress(manager)
+
         
         self.ui_refresh_rate = manager.config_manager.global_settings_data['UI_Options']['refresh_rate']
         
         self.layout: Layout = field(init=False)
         self.hash_remove_layout: Layout = field(init=False)
         self.hash_layout: Layout = field(init=False)
+        self.sort_layout: Layout = field(init=False)
+
 
     async def startup(self) -> None:
         """Startup process for the progress manager"""
@@ -58,6 +64,8 @@ class ProgressManager:
         self.layout = progress_layout
         self.hash_remove_layout = hash_remove_layout
         self.hash_layout=await self.hash_progress.get_hash_progress()
+        self.sort_layout=await self.sort_progress.get_sort_progress()
+
 
     async def print_stats(self) -> None:
         """Prints the stats of the program"""

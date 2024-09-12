@@ -27,6 +27,7 @@ def get_file_date_in_us_ca_formats(file: Path) -> tuple[str, str]:
 
 class Sorter:
     def __init__(self, manager: 'Manager'):
+        self.manager = manager
         self.download_dir = manager.path_manager.scan_dir or manager.path_manager.download_dir
         self.sorted_downloads = manager.path_manager.sorted_dir
         self.incrementer_format = manager.config_manager.settings_data['Sorting']['sort_incremementer_format']
@@ -91,27 +92,32 @@ class Sorter:
             return
 
         download_folders=await self.get_download_folder()
-        
-        for folder in self.download_dir.iterdir():
-            if not folder.is_dir():
-                continue
-            if self.sort_cdl_only and folder not in download_folders:
-                continue
-            files = await self.find_files_in_dir(folder)
-            for file in files:
-                ext = file.suffix.lower()
-                if '.part' in ext:
-                    continue
+        async with self.manager.live_manager.get_sort_live(stop=True):
+            all_scan_folders=list(self.download_dir.iterdir())
+            await self.manager.progress_manager.sort_progress.set_total(len(all_scan_folders))
 
-                if ext in FILE_FORMATS['Audio']:
-                    await self.sort_audio(file, folder.name)
-                elif ext in FILE_FORMATS['Images']:
-                    await self.sort_image(file, folder.name)
-                elif ext in FILE_FORMATS['Videos']:
-                    await self.sort_video(file, folder.name)
+            for folder in all_scan_folders:
+                if not folder.is_dir():
+                    continue
+                if self.sort_cdl_only and folder not in download_folders:
+                    continue
                 else:
-                    await self.sort_other(file, folder.name)
-            await purge_dir_tree(folder)
+                    files = await self.find_files_in_dir(folder)
+                    for file in files:
+                        ext = file.suffix.lower()
+                        if '.part' in ext:
+                            continue
+
+                        if ext in FILE_FORMATS['Audio']:
+                            await self.sort_audio(file, folder.name)
+                        elif ext in FILE_FORMATS['Images']:
+                            await self.sort_image(file, folder.name)
+                        elif ext in FILE_FORMATS['Videos']:
+                            await self.sort_video(file, folder.name)
+                        else:
+                            await self.sort_other(file, folder.name)
+                        await purge_dir_tree(folder)
+                await self.manager.progress_manager.sort_progress.add_sorted_dir()
 
         await asyncio.sleep(5)
         await purge_dir_tree(self.download_dir)
