@@ -107,7 +107,7 @@ class ArgsManager:
             self.log_dir = Path(self.parsed_args['log_folder'])
         if self.parsed_args['sort_downloads']:
             self.sort_downloads = True
-        if not self.parsed_args['sort_cdl_only']:
+        if self.parsed_args['sort_all_downloads']:
             self.sort_cdl_only = False
         if self.parsed_args['sort_folder']:
             self.sort_folder = Path(self.parsed_args['sort_folder'])
