@@ -78,8 +78,10 @@ For items not explained below, you can find their counterparts in the Configurat
 
 // Sorting Options
 --sort-downloads
---sort-all-downloads                      : Only sort files that were downloaded by Cyberdrop-DL
+--sort-all-downloads                      : Only sort all downloads with in a the scan_dir
 --sort-folder
+--scan-dir                                : set a directory to scan
+
 
 // UI Options
 --vi-mode
