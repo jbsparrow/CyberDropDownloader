@@ -21,7 +21,7 @@ class SortProgress:
         self.sorted_dirs = 0
 
         self.sort_progress_group = Group( self.sort_progress)
-        self.sorted_dir_task_id = self.sort_progress.add_task("[green]Completed", total=0)
+        self.sorted_dir_task_id = self.sort_progress.add_task("[green]Sorted", total=0)
     
 
     async def set_total(self,total) -> None:
