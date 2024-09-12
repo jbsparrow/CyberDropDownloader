@@ -1,6 +1,7 @@
 import asyncio
 import itertools
 import subprocess
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -10,6 +11,8 @@ from PIL import Image
 from videoprops import get_audio_properties, get_video_properties
 
 from cyberdrop_dl.utils.utilities import FILE_FORMATS, log_with_color, purge_dir
+
+logger = logging.getLogger('cyberdrop_dl')
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -85,19 +88,33 @@ class Sorter:
             await log_with_color("Download Directory does not exist", "red", 40)
             return
 
-        downloadfolders = []
-        if self.sort_cdl_only:
-            async for x in self.db_manager.history_table.get_unique_download_paths():
-                if Path(x).exists():
-                    downloadfolders.append(Path(x))
-        else:
-            for folder in self.download_dir.iterdir():
-                downloadfolders.append(folder)
-
-        for folder in downloadfolders:
+        unique_download_paths = await self.db_manager.history_table.get_unique_download_paths()
+        download_folders = [Path(path[0]) for path in unique_download_paths]
+        existing_folders = []
+        
+        for folder in download_folders:
+            try:
+                relative_folder = folder.relative_to(self.download_dir)
+                base_folder = self.download_dir / relative_folder.parts[0]
+                print(relative_folder.i4rejohodf)
+            except Exception as e:
+                if e.__class__ == ValueError:
+                    continue
+                logger.log(40, f"Error: {e}\n\nfolder: {folder}\ndownload_dir: {self.download_dir}\nrelative_folder: {relative_folder}")
+                raise e
+            
+            if base_folder.exists():
+                existing_folders.append(base_folder)
+        
+        download_folders.extend(existing_folders)
+        download_folders = list(set(download_folders))
+        
+        for folder in self.download_dir.iterdir():
             if not folder.is_dir():
                 continue
-
+            if folder not in download_folders and self.sort_cdl_only:
+                continue
+            
             files = await self.find_files_in_dir(folder)
             for file in files:
                 ext = file.suffix.lower()
