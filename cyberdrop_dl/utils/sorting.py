@@ -111,9 +111,11 @@ class Sorter:
                     await self.sort_video(file, folder.name)
                 else:
                     await self.sort_other(file, folder.name)
+            await purge_self(folder)
 
         await asyncio.sleep(5)
         await purge_dir(self.download_dir)
+
 
         await log_with_color(f"Organized: {self.audio_count} Audio Files", "green", 20)
         await log_with_color(f"Organized: {self.image_count} Image Files", "green", 20)

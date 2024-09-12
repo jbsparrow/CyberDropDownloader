@@ -234,6 +234,16 @@ async def purge_dir(dirname: Path) -> None:
     list(map(os.rmdir, deleted))
 
 
+async def purge_self(dirname: Path) -> None:
+    """Purges directory if empyty"""
+    dir_tree = list(os.walk(dirname, topdown=False))
+    if len(dir_tree) == 0:
+        os.rmdir(dirname)
+
+
+   
+
+
 async def check_partials_and_empty_folders(manager: Manager):
     """Checks for partial downloads and empty folders"""
     if manager.config_manager.settings_data['Runtime_Options']['delete_partial_files']:
