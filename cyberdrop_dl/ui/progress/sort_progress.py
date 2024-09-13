@@ -42,6 +42,12 @@ class SortProgress:
         self.uninitiated_tasks: List[TaskID] = []
         self.tasks_visibility_limit = visible_task_limit
 
+        #counts
+        self.audio_count=0
+        self.video_count=0
+        self.image_count=0
+        self.other_count=0
+
     async def get_progress(self) -> Panel:
         """Returns the progress bar"""
         return Panel(self.progress_group, title=f"Sorting Downloads ━ Config: {self.manager.config_manager.loaded_config}", border_style="green", padding=(1, 1))
@@ -110,3 +116,13 @@ class SortProgress:
             self.invisible_tasks.append(task_id)
             await self.redraw()
         self.progress.advance(task_id, amount)
+
+    async def increment_audio(self):
+        self.audio_count += 1
+
+    async def increment_video(self):
+        self.video_count += 1
+    async def increment_image(self):
+        self.image_count += 1
+    async def increment_other(self):
+        self.other_count += 1

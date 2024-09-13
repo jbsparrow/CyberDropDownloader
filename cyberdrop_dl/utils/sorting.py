@@ -77,6 +77,9 @@ class Sorter:
         if self.download_dir in self.sorted_downloads.parents:
             await log_with_color("Sort Directory cannot be in the Download Directory", "red", 40)
             return True
+        elif  self.download_dir == self.sorted_downloads:
+            await log_with_color("Sort Directory cannot be the Directory being scanned", "red", 40)
+            return True
         return False
 
     async def sort(self) -> None:
@@ -130,10 +133,7 @@ class Sorter:
         clear_screen_proc = await asyncio.create_subprocess_shell('cls' if os_name == 'nt' else 'clear')
         await clear_screen_proc.wait()
 
-        await log_with_color(f"Organized: {self.audio_count} Audios", "green", 20)
-        await log_with_color(f"Organized: {self.image_count} Images", "green", 20)
-        await log_with_color(f"Organized: {self.video_count} Videos", "green", 20)
-        await log_with_color(f"Organized: {self.other_count} Other Files", "green", 20)
+
 
     async def get_download_folder(self):
         """Gets the download folder"""
@@ -179,6 +179,8 @@ class Sorter:
                                                  sample_rate=sample_rate, file_date_us=file_date_us, file_date_ca=file_date_ca))
 
         await self.move_cd(file, new_file)
+        self.manager.progress_manager.sort_progress.increment_audio()
+
 
     async def sort_image(self, file: Path, base_name: str) -> None:
         """Sorts an image file into the sorted image folder"""
@@ -201,6 +203,8 @@ class Sorter:
                                                  file_date_ca=file_date_ca))
 
         await self.move_cd(file, new_file)
+        self.manager.progress_manager.sort_progress.increment_image()
+
 
     async def sort_video(self, file: Path, base_name: str) -> None:
         """Sorts a video file into the sorted video folder"""
@@ -230,6 +234,7 @@ class Sorter:
                                                  codec=codec, file_date_us=file_date_us, file_date_ca=file_date_ca))
 
         await self.move_cd(file, new_file)
+        self.manager.progress_manager.sort_progress.increment_video()
 
     async def sort_other(self, file: Path, base_name: str) -> None:
         """Sorts an other file into the sorted other folder"""
@@ -243,3 +248,5 @@ class Sorter:
                                                  filename=filename, ext=ext, file_date_us=file_date_us, file_date_ca=file_date_ca))
 
         await self.move_cd(file, new_file)
+        self.manager.progress_manager.sort_progress.increment_other()
+
