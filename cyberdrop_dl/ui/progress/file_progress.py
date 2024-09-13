@@ -113,16 +113,6 @@ class FileProgress:
             raise ValueError("Task ID not found")
         await self.redraw()
 
-    async def mark_task_completed(self, task_id: TaskID) -> None:
-        """Marks the given task as completed"""
-        self.progress.update(task_id, visible=False)
-        if task_id in self.visible_tasks:
-            self.visible_tasks.remove(task_id)
-        elif task_id in self.invisible_tasks:
-            self.invisible_tasks.remove(task_id)
-        await self.redraw()
-        self.completed_tasks.append(task_id)
-
     async def advance_file(self, task_id: TaskID, amount: int) -> None:
         """Advances the progress of the given task by the given amount"""
         if task_id in self.uninitiated_tasks:
@@ -130,15 +120,3 @@ class FileProgress:
             self.invisible_tasks.append(task_id)
             await self.redraw()
         self.progress.advance(task_id, amount)
-
-    async def update_file_length(self, task_id: TaskID, total: int) -> None:
-        """Updates the total number of bytes to be downloaded for the given task"""
-        if task_id in self.invisible_tasks:
-            self.progress.update(task_id, total=total, visible=False)
-        elif task_id in self.visible_tasks:
-            self.progress.update(task_id, total=total, visible=True)
-        elif task_id in self.uninitiated_tasks:
-            self.progress.update(task_id, total=total, visible=False)
-            self.uninitiated_tasks.remove(task_id)
-            self.invisible_tasks.append(task_id)
-            await self.redraw()

@@ -32,7 +32,7 @@ class ProgressManager:
         self.download_stats_progress: DownloadStatsProgress = DownloadStatsProgress()
         self.scrape_stats_progress: ScrapeStatsProgress = ScrapeStatsProgress()
         self.hash_progress: HashProgress = HashProgress(manager)
-        self.sort_progress: SortProgress= SortProgress(manager)
+        self.sort_progress: SortProgress= SortProgress(1, manager)
 
         
         self.ui_refresh_rate = manager.config_manager.global_settings_data['UI_Options']['refresh_rate']
@@ -64,7 +64,7 @@ class ProgressManager:
         self.layout = progress_layout
         self.hash_remove_layout = hash_remove_layout
         self.hash_layout=await self.hash_progress.get_hash_progress()
-        self.sort_layout=await self.sort_progress.get_sort_progress()
+        self.sort_layout=await self.sort_progress.get_progress()
 
 
     async def print_stats(self) -> None:

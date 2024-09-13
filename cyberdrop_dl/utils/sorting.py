@@ -4,6 +4,7 @@ import subprocess
 import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
+from os import name as os_name
 
 import filedate
 import PIL
@@ -94,13 +95,16 @@ class Sorter:
         download_folders=await self.get_download_folder()
         async with self.manager.live_manager.get_sort_live(stop=True):
             all_scan_folders=list(filter(lambda x:x.is_dir(),self.download_dir.iterdir()))
-            await self.manager.progress_manager.sort_progress.set_total(len(all_scan_folders))
+            queue_length = len(all_scan_folders)
+            await self.manager.progress_manager.sort_progress.set_queue_length(queue_length)
 
             for folder in all_scan_folders:
                 if self.sort_cdl_only and folder not in download_folders:
                     pass
                 else:
                     files = await self.find_files_in_dir(folder)
+                    # add folder to progress and set number of files
+                    task_id = await self.manager.progress_manager.sort_progress.add_task(folder.name, len(files))
                     for file in files:
                         ext = file.suffix.lower()
                         if '.part' in ext:
@@ -114,16 +118,21 @@ class Sorter:
                             await self.sort_video(file, folder.name)
                         else:
                             await self.sort_other(file, folder.name)
+                        await self.manager.progress_manager.sort_progress.advance_folder(task_id, 1) # advance folder progress by one file
                     await purge_dir_tree(folder)
-                await self.manager.progress_manager.sort_progress.add_sorted_dir()
+                queue_length -= 1
+                await self.manager.progress_manager.sort_progress.set_queue_length(queue_length) # update queue length
+                await self.manager.progress_manager.sort_progress.remove_folder(task_id) # remove folder from progress
 
-        await asyncio.sleep(5)
+        await asyncio.sleep(1)
         await purge_dir_tree(self.download_dir)
 
+        clear_screen_proc = await asyncio.create_subprocess_shell('cls' if os_name == 'nt' else 'clear')
+        await clear_screen_proc.wait()
 
-        await log_with_color(f"Organized: {self.audio_count} Audio Files", "green", 20)
-        await log_with_color(f"Organized: {self.image_count} Image Files", "green", 20)
-        await log_with_color(f"Organized: {self.video_count} Video Files", "green", 20)
+        await log_with_color(f"Organized: {self.audio_count} Audios", "green", 20)
+        await log_with_color(f"Organized: {self.image_count} Images", "green", 20)
+        await log_with_color(f"Organized: {self.video_count} Videos", "green", 20)
         await log_with_color(f"Organized: {self.other_count} Other Files", "green", 20)
 
     async def get_download_folder(self):
