@@ -290,10 +290,17 @@ You can use the shared path flags below in any part of the sorting schemas. You 
 Shared Path Flags:
 
 * sort\_dir - sort\_folder path
-* base\_dir - the highest level folder name inside the downloads folder (model name / thread name)
+* base\_dir - the highest level folder name inside the folder being scan (model name / thread name)
 * parent\_dir - the folder name of where the file is (album name)
 * filename - the files name (stem)
 * ext - the files extension
+
+
+***
+
+* sort\_downloads
+
+Setting this to true will allow Cyberdrop-DL to sort downloads after a run is complete.
 
 ***
 
