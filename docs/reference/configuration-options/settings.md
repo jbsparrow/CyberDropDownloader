@@ -299,6 +299,7 @@ Shared Path Flags:
 ***
 
 * scan\_folder
+
 Sets the starting point for the file scan
 
 Each direct child of the scan_folder is recursively scanned ,and files are moved based on your settings
