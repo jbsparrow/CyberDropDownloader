@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING
 from rich.console import Group
 from rich.panel import Panel
 from rich.progress import Progress, BarColumn
-from humanfriendly import format_size
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
