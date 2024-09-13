@@ -1,4 +1,26 @@
 """
+
+------------------------------------------------------------
+
+C\bCH\bHA\bAN\bNG\bGE\bEL\bLO\bOG\bG
+\tVersion 5.6.1
+
+
+D\bDE\bES\bSC\bCR\bRI\bIP\bPT\bTI\bIO\bON\bN
+\tThis update introduces the following changes:
+\t\t1. Fixes issue with --sort-all-downloads
+\t\t2. Improves sort status visibility
+
+\tDetails:
+\t\t- The sort status is now display under hash, along with other statuses
+\t\t- --sort-all-downloads is disabled by default, thus only cdl downloads are sorted without the flag
+\t\t- The sort_folder can not be the same as the scan_dir
+
+
+
+\tFor more details, visit the wiki: https://script-ware.gitbook.io
+
+
 ------------------------------------------------------------
 
 C\bCH\bHA\bAN\bNG\bGE\bEL\bLO\bOG\bG
