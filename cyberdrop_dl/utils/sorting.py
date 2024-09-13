@@ -130,9 +130,9 @@ class Sorter:
         clear_screen_proc = await asyncio.create_subprocess_shell('cls' if os_name == 'nt' else 'clear')
         await clear_screen_proc.wait()
 
-        await log_with_color(f"Organized: {self.audio_count} Audio Files", "green", 20)
-        await log_with_color(f"Organized: {self.image_count} Image Files", "green", 20)
-        await log_with_color(f"Organized: {self.video_count} Video Files", "green", 20)
+        await log_with_color(f"Organized: {self.audio_count} Audios", "green", 20)
+        await log_with_color(f"Organized: {self.image_count} Images", "green", 20)
+        await log_with_color(f"Organized: {self.video_count} Videos", "green", 20)
         await log_with_color(f"Organized: {self.other_count} Other Files", "green", 20)
 
     async def get_download_folder(self):
