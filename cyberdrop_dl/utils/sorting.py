@@ -179,7 +179,7 @@ class Sorter:
                                                  sample_rate=sample_rate, file_date_us=file_date_us, file_date_ca=file_date_ca))
 
         await self.move_cd(file, new_file)
-        self.manager.progress_manager.sort_progress.increment_audio()
+        await self.manager.progress_manager.sort_progress.increment_audio()
 
 
     async def sort_image(self, file: Path, base_name: str) -> None:
@@ -203,7 +203,7 @@ class Sorter:
                                                  file_date_ca=file_date_ca))
 
         await self.move_cd(file, new_file)
-        self.manager.progress_manager.sort_progress.increment_image()
+        await self.manager.progress_manager.sort_progress.increment_image()
 
 
     async def sort_video(self, file: Path, base_name: str) -> None:
@@ -234,7 +234,7 @@ class Sorter:
                                                  codec=codec, file_date_us=file_date_us, file_date_ca=file_date_ca))
 
         await self.move_cd(file, new_file)
-        self.manager.progress_manager.sort_progress.increment_video()
+        await self.manager.progress_manager.sort_progress.increment_video()
 
     async def sort_other(self, file: Path, base_name: str) -> None:
         """Sorts an other file into the sorted other folder"""
@@ -248,5 +248,5 @@ class Sorter:
                                                  filename=filename, ext=ext, file_date_us=file_date_us, file_date_ca=file_date_ca))
 
         await self.move_cd(file, new_file)
-        self.manager.progress_manager.sort_progress.increment_other()
+        await self.manager.progress_manager.sort_progress.increment_other()
 
