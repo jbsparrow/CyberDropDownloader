@@ -62,7 +62,3 @@ class DownloadsProgress:
         """Adds a failed file to the progress bar"""
         self.progress.advance(self.failed_files_task_id, 1)
         self.failed_files += 1
-
-    async def return_totals(self) -> Tuple[int, int, int, int]:
-        """Returns the total number of completed, previously completed, skipped and failed files"""
-        return self.completed_files, self.previously_completed_files, self.skipped_files, self.failed_files
