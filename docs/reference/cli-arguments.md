@@ -77,10 +77,10 @@ For items not explained below, you can find their counterparts in the Configurat
 --send-unsupported-to-jdownloader
 
 // Sorting Options
---sort-downloads
+--sort-downloads                          : enable sorting of downloads
 --sort-all-downloads                      : sort all downloads within the scan_dir
---sort-folder
---scan-folder                             : set a directory to scan
+--sort-folder                             : set directory to move scanned files to
+--scan-folder                             : set a directory to scan recursively for files
 
 
 // UI Options
