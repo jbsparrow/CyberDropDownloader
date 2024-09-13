@@ -77,6 +77,9 @@ class Sorter:
         if self.download_dir in self.sorted_downloads.parents:
             await log_with_color("Sort Directory cannot be in the Download Directory", "red", 40)
             return True
+        elif  self.download_dir == self.sorted_downloads:
+            await log_with_color("Sort Directory cannot be the Directory being scanned", "red", 40)
+            return True
         return False
 
     async def sort(self) -> None:
