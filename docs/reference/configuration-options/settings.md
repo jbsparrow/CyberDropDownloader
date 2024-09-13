@@ -290,7 +290,7 @@ You can use the shared path flags below in any part of the sorting schemas. You 
 Shared Path Flags:
 
 * sort\_dir - sort\_folder path
-* base\_dir - the highest level folder name inside the folder being scan 'scan_folder' (model name / thread name)
+* base\_dir - the highest level folder name inside the folder being scanned 'scan_folder' (model name / thread name)
 * parent\_dir - the folder name of where the file is (album name)
 * filename - the files name (stem)
 * ext - the files extension
@@ -299,11 +299,11 @@ Shared Path Flags:
 ***
 
 * scan\_folder
+Sets the starting point for the file scan
 
-This sets the folder to sort, all child folders within this folder will be sorted.
-This is done recursively for all files within the child folders
+Each direct child of the scan_folder is recursively scanned ,and files are moved to sort_dir based on your settings
 
-If this value is not set, then the download folder will be sorted
+If not set then the downloads_dir is used instead
 ***
 
 * sort\_downloads
