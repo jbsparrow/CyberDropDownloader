@@ -301,9 +301,9 @@ Shared Path Flags:
 * scan\_folder
 Sets the starting point for the file scan
 
-Each direct child of the scan_folder is recursively scanned ,and files are moved to sort_dir based on your settings
+Each direct child of the scan_folder is recursively scanned ,and files are moved based on your settings
 
-If not set then the downloads_dir is used instead
+If this is not set then the downloads_dir is used instead
 ***
 
 * sort\_downloads
