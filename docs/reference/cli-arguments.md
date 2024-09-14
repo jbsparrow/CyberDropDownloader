@@ -79,7 +79,7 @@ For items not explained below, you can find their counterparts in the Configurat
 // Sorting Options
 --sort-downloads                          : enable sorting of downloads
 --sort-all-downloads                      : sort all downloads within the scan_dir
---sort-folder                             : set directoy to move scanned files to
+--sort-folder                             : set directory to move scanned files to
 --scan-folder                             : set a directory to scan recursively for files
 
 
