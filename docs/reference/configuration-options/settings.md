@@ -140,6 +140,12 @@ What you want Cyberdrop-DL to call the scrape error log.
 
 Cyberdrop-DL will output the links it fails to scrape, and the reason in CSV format.
 
+***
+
+* discord\_webhook\_url
+
+The URL of the Discord webhook that you want to send download stats to.
+
 </details>
 
 <details>
