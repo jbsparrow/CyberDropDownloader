@@ -68,6 +68,9 @@ class GoFileCrawler(Crawler):
         if "password" in JSON_Resp:
             raise PasswordProtected()
         
+        if JSON_Resp["canAccess"] is False:
+            raise ScrapeFailure(403, "Album is private")
+        
         title = await self.create_title(JSON_Resp["name"], content_id, None)
 
         contents = JSON_Resp["children"]
