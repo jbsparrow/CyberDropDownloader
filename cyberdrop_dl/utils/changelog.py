@@ -3,6 +3,22 @@
 ------------------------------------------------------------
 
 C\bCH\bHA\bAN\bNG\bGE\bEL\bLO\bOG\bG
+\tVersion 5.6.11
+
+
+D\bDE\bES\bSC\bCR\bRI\bIP\bPT\bTI\bIO\bON\bN
+\tThis update introduces the following changes:
+\t\t1. Detect and raise an error for private gofile folders
+
+\tDetails:
+\t\t- Private gofile folders will now raise an error when attempting to download them instead of crashing CDL
+
+
+\tFor more details, visit the wiki: https://script-ware.gitbook.io
+
+------------------------------------------------------------
+
+C\bCH\bHA\bAN\bNG\bGE\bEL\bLO\bOG\bG
 \tVersion 5.6.1
 
 
@@ -17,9 +33,7 @@ D\bDE\bES\bSC\bCR\bRI\bIP\bPT\bTI\bIO\bON\bN
 \t\t- The sort_folder can not be the same as the scan_dir
 
 
-
 \tFor more details, visit the wiki: https://script-ware.gitbook.io
-
 
 ------------------------------------------------------------
 
