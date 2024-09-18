@@ -72,12 +72,13 @@ class PixelDrainCrawler(Crawler):
             filename, ext = await get_filename_and_ext(JSON_Resp['name'])
         except NoExtensionFailure:
             if "text/plain" in JSON_Resp["mime_type"]:
+                await scrape_item.add_to_parent_title(f"{JSON_Resp['name']} (Pixeldrain)")
                 async with self.request_limiter:
                     text = await self.client.get_text(self.domain, self.api_address / "file" / scrape_item.url.parts[-1])
                 lines = text.split("\n")
                 for line in lines:
                     link = URL(line)
-                    new_scrape_item = await self.create_scrape_item(scrape_item, link, f"{JSON_Resp['name']} (Pixeldrain)", True, JSON_Resp['id'], date)
+                    new_scrape_item = await self.create_scrape_item(scrape_item, link, "", False, None, date)
                     await self.handle_external_links(new_scrape_item)
             elif "image" or "video" in JSON_Resp["mime_type"]:
                 filename, ext = await get_filename_and_ext(JSON_Resp['name'] + "." + JSON_Resp["mime_type"].split("/")[-1])
