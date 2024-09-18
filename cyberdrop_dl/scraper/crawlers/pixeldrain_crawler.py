@@ -71,7 +71,15 @@ class PixelDrainCrawler(Crawler):
         try:
             filename, ext = await get_filename_and_ext(JSON_Resp['name'])
         except NoExtensionFailure:
-            if "image" or "video" in JSON_Resp["mime_type"]:
+            if "text/plain" in JSON_Resp["mime_type"]:
+                async with self.request_limiter:
+                    text = await self.client.get_text(self.domain, self.api_address / "file" / scrape_item.url.parts[-1])
+                lines = text.split("\n")
+                for line in lines:
+                    link = URL(line)
+                    new_scrape_item = await self.create_scrape_item(scrape_item, link, f"{JSON_Resp['name']} (Pixeldrain)", True, JSON_Resp['id'], date)
+                    await self.handle_external_links(new_scrape_item)
+            elif "image" or "video" in JSON_Resp["mime_type"]:
                 filename, ext = await get_filename_and_ext(JSON_Resp['name'] + "." + JSON_Resp["mime_type"].split("/")[-1])
             else:
                 raise NoExtensionFailure()
