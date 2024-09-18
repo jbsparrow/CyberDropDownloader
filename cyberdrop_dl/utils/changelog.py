@@ -3,6 +3,22 @@
 ------------------------------------------------------------
 
 C\bCH\bHA\bAN\bNG\bGE\bEL\bLO\bOG\bG
+\tVersion 5.6.20
+
+
+D\bDE\bES\bSC\bCR\bRI\bIP\bPT\bTI\bIO\bON\bN
+\tThis update introduces the following changes:
+\t\t1. Ability to scrape URLs from PixelDrain text post
+
+\tDetails:
+\t\t- Cyberdrop-DL will now scrape URLs from PixelDrain text posts and make a folder for all the URLs within the post, reducing clutter.
+
+
+\tFor more details, visit the wiki: https://script-ware.gitbook.io
+
+------------------------------------------------------------
+
+C\bCH\bHA\bAN\bNG\bGE\bEL\bLO\bOG\bG
 \tVersion 5.6.11
 
 
