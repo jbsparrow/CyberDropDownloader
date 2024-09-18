@@ -73,6 +73,8 @@ class ConfigManager:
         self.authentication_settings = self.manager.path_manager.config_dir / "authentication.yaml"
         self.global_settings = self.manager.path_manager.config_dir / "global_settings.yaml"
         self.settings = self.manager.path_manager.config_dir / self.loaded_config / "settings.yaml"
+        if (self.manager.path_manager.config_dir / self.loaded_config / "authentication.yaml").is_file():
+            self.authentication_settings = self.manager.path_manager.config_dir / self.loaded_config / "authentication.yaml"
 
         self.settings.parent.mkdir(parents=True, exist_ok=True)
         self.load_configs()
