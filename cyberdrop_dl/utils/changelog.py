@@ -1,5 +1,6 @@
 """
 
+------------------------------------------------------------
 
 C\bCH\bHA\bAN\bNG\bGE\bEL\bLO\bOG\bG
 \tVersion 5.6.20
@@ -14,6 +15,8 @@ D\bDE\bES\bSC\bCR\bRI\bIP\bPT\bTI\bIO\bON\bN
 
 
 \tFor more details, visit the wiki: https://script-ware.gitbook.io
+
+------------------------------------------------------------
 
 C\bCH\bHA\bAN\bNG\bGE\bEL\bLO\bOG\bG
 \tVersion 5.6.13
