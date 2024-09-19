@@ -14,6 +14,8 @@ If you use the cookie extractor to load the XF\_User\_Cookies into the program, 
 
 It is best to leave the authentication parameter for SimpCity blank, as they have made their forum public and have asked users scraping the website not to use logged in users.
 
+In order to set specific authentication values for a config instead of the global values, make an `authentication.yaml` file in the config folder.
+
 ***
 
 * \<forum>\_xf\_user\_cookie
