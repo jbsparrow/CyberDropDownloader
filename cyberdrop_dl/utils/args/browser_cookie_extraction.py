@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 def cookie_wrapper(func):
     """Wrapper handles errors for url scraping"""
+
     @wraps(func)
     def wrapper(self, *args, **kwargs):
         try:
@@ -24,11 +25,15 @@ def cookie_wrapper(func):
         except PermissionError:
             console = Console()
             console.clear()
-            console.print("We've encountered a Permissions Error. Please close all browsers and try again.", style="bold red")
-            console.print("If you are still having issues, make sure all browsers processes are closed in a Task Manager.", style="bold red")
+            console.print("We've encountered a Permissions Error. Please close all browsers and try again.",
+                          style="bold red")
+            console.print(
+                "If you are still having issues, make sure all browsers processes are closed in a Task Manager.",
+                style="bold red")
             console.print("Nothing has been saved.", style="bold red")
             inquirer.confirm(message="Press enter to return menu.").execute()
             return
+
     return wrapper
 
 
@@ -40,11 +45,13 @@ def get_forum_cookies(manager: Manager, browser: str) -> None:
     for forum in SupportedDomains.supported_forums:
         try:
             cookie = get_cookie(browser, forum)
-            auth_args['Forums'][f'{SupportedDomains.supported_forums_map[forum]}_xf_user_cookie'] = cookie._cookies[forum]['/']['xf_user'].value
+            auth_args['Forums'][f'{SupportedDomains.supported_forums_map[forum]}_xf_user_cookie'] = \
+            cookie._cookies[forum]['/']['xf_user'].value
         except KeyError:
             try:
                 cookie = get_cookie(browser, "www." + forum)
-                auth_args['Forums'][f'{SupportedDomains.supported_forums_map[forum]}_xf_user_cookie'] = cookie._cookies["www." + forum]['/']['xf_user'].value
+                auth_args['Forums'][f'{SupportedDomains.supported_forums_map[forum]}_xf_user_cookie'] = \
+                cookie._cookies["www." + forum]['/']['xf_user'].value
             except KeyError:
                 pass
 

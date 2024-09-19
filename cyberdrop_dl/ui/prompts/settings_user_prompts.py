@@ -366,7 +366,6 @@ def edit_runtime_options_prompt(manager: Manager, config: Dict) -> None:
         vi_mode=manager.vi_mode,
     ).execute()
 
-
     console_log_level = inquirer.number(
         message="Enter the log level for console output:",
         default=int(config['Runtime_Options']['console_log_level']),
@@ -385,13 +384,13 @@ def edit_runtime_options_prompt(manager: Manager, config: Dict) -> None:
     config['Runtime_Options']['console_log_level'] = int(console_log_level)
 
 
-
 def edit_sort_options_prompt(manager: Manager, config: Dict) -> None:
     """Edit the sort options"""
     console.clear()
     console.print("Editing Sort Options")
     config["Sorting"]["sort_downloads"] = False
-    sort_downloads = inquirer.confirm(message="Do you want Cyberdrop-DL to sort files for you?", vi_mode=manager.vi_mode).execute()
+    sort_downloads = inquirer.confirm(message="Do you want Cyberdrop-DL to sort files for you?",
+                                      vi_mode=manager.vi_mode).execute()
     if sort_downloads:
         config["Sorting"]["sort_downloads"] = True
         sort_folder = inquirer.filepath(

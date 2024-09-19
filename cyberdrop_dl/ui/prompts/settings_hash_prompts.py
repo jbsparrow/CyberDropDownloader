@@ -10,7 +10,6 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
-
 def path_prompt(manager: Manager):
     home_path = "~/" if os.name == "posix" else "C:\\"
     hash_path = inquirer.filepath(

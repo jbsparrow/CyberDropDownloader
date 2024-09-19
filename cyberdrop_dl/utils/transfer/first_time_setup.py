@@ -149,9 +149,11 @@ class TransitionManager:
 
         # User data transfer
         new_user_data['Download_Options']['block_download_sub_folders'] = old_data['Runtime']['block_sub_folders']
-        new_user_data['Download_Options']['disable_download_attempt_limit'] = old_data['Runtime']['disable_attempt_limit']
+        new_user_data['Download_Options']['disable_download_attempt_limit'] = old_data['Runtime'][
+            'disable_attempt_limit']
         new_user_data['Download_Options']['include_album_id_in_folder_name'] = old_data['Runtime']['include_id']
-        new_user_data['Download_Options']['remove_generated_id_from_filenames'] = old_data['Runtime']['remove_bunkr_identifier']
+        new_user_data['Download_Options']['remove_generated_id_from_filenames'] = old_data['Runtime'][
+            'remove_bunkr_identifier']
         new_user_data['Download_Options']['separate_posts'] = old_data['Forum_Options']['separate_posts']
         new_user_data['Download_Options']['skip_download_mark_completed'] = False
 
@@ -171,9 +173,12 @@ class TransitionManager:
         new_user_data['Ignore_Options']['only_hosts'] = old_data['Ignore']['only_hosts']
 
         new_user_data['Runtime_Options']['ignore_history'] = old_data['Ignore']['ignore_history']
-        new_user_data['Runtime_Options']['skip_check_for_partial_files'] = old_data['Runtime']['skip_check_for_partial_files_and_empty_dirs']
-        new_user_data['Runtime_Options']['skip_check_for_empty_folders'] = old_data['Runtime']['skip_check_for_partial_files_and_empty_dirs']
-        new_user_data['Runtime_Options']['send_unsupported_to_jdownloader'] = old_data['JDownloader']['apply_jdownloader']
+        new_user_data['Runtime_Options']['skip_check_for_partial_files'] = old_data['Runtime'][
+            'skip_check_for_partial_files_and_empty_dirs']
+        new_user_data['Runtime_Options']['skip_check_for_empty_folders'] = old_data['Runtime'][
+            'skip_check_for_partial_files_and_empty_dirs']
+        new_user_data['Runtime_Options']['send_unsupported_to_jdownloader'] = old_data['JDownloader'][
+            'apply_jdownloader']
 
         new_user_data['Sorting']['sort_downloads'] = old_data['Sorting']['sort_downloads']
 
@@ -181,19 +186,22 @@ class TransitionManager:
             new_user_data['Files']['input_file'] = "./URLs.txt"
 
         # Global data transfer
-        new_global_settings_data['General']['allow_insecure_connections'] = old_data['Runtime']['allow_insecure_connections']
+        new_global_settings_data['General']['allow_insecure_connections'] = old_data['Runtime'][
+            'allow_insecure_connections']
         new_global_settings_data['General']['user_agent'] = old_data['Runtime']['user_agent']
         new_global_settings_data['General']['proxy'] = old_data['Runtime']['proxy']
         new_global_settings_data['General']['max_file_name_length'] = old_data['Runtime']['max_filename_length']
         new_global_settings_data['General']['max_folder_name_length'] = old_data['Runtime']['max_folder_name_length']
         new_global_settings_data['General']['required_free_space'] = old_data['Runtime']['required_free_space']
 
-        new_global_settings_data['Rate_Limiting_Options']['connection_timeout'] = old_data['Ratelimiting']['connection_timeout']
+        new_global_settings_data['Rate_Limiting_Options']['connection_timeout'] = old_data['Ratelimiting'][
+            'connection_timeout']
         new_global_settings_data['Rate_Limiting_Options']['download_attempts'] = old_data['Runtime']['attempts']
         new_global_settings_data['Rate_Limiting_Options']['download_delay'] = old_data['Ratelimiting']['throttle']
         new_global_settings_data['Rate_Limiting_Options']['read_timeout'] = old_data['Ratelimiting']['read_timeout']
         new_global_settings_data['Rate_Limiting_Options']['rate_limit'] = old_data['Ratelimiting']['ratelimit']
-        new_global_settings_data['Rate_Limiting_Options']['max_simultaneous_downloads_per_domain'] = old_data['Runtime']['max_concurrent_downloads_per_domain']
+        new_global_settings_data['Rate_Limiting_Options']['max_simultaneous_downloads_per_domain'] = \
+        old_data['Runtime']['max_concurrent_downloads_per_domain']
 
         new_user_data['Files']['input_file'] = str(new_user_data['Files']['input_file'])
         new_user_data['Files']['download_folder'] = str(new_user_data['Files']['download_folder'])
