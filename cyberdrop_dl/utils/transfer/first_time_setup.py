@@ -201,7 +201,7 @@ class TransitionManager:
         new_global_settings_data['Rate_Limiting_Options']['read_timeout'] = old_data['Ratelimiting']['read_timeout']
         new_global_settings_data['Rate_Limiting_Options']['rate_limit'] = old_data['Ratelimiting']['ratelimit']
         new_global_settings_data['Rate_Limiting_Options']['max_simultaneous_downloads_per_domain'] = \
-        old_data['Runtime']['max_concurrent_downloads_per_domain']
+            old_data['Runtime']['max_concurrent_downloads_per_domain']
 
         new_user_data['Files']['input_file'] = str(new_user_data['Files']['input_file'])
         new_user_data['Files']['download_folder'] = str(new_user_data['Files']['download_folder'])

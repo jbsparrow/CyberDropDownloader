@@ -46,12 +46,12 @@ def get_forum_cookies(manager: Manager, browser: str) -> None:
         try:
             cookie = get_cookie(browser, forum)
             auth_args['Forums'][f'{SupportedDomains.supported_forums_map[forum]}_xf_user_cookie'] = \
-            cookie._cookies[forum]['/']['xf_user'].value
+                cookie._cookies[forum]['/']['xf_user'].value
         except KeyError:
             try:
                 cookie = get_cookie(browser, "www." + forum)
                 auth_args['Forums'][f'{SupportedDomains.supported_forums_map[forum]}_xf_user_cookie'] = \
-                cookie._cookies["www." + forum]['/']['xf_user'].value
+                    cookie._cookies["www." + forum]['/']['xf_user'].value
             except KeyError:
                 pass
 

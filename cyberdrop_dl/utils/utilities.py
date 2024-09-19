@@ -60,6 +60,7 @@ FILE_FORMATS = {
 
 def error_handling_wrapper(func):
     """Wrapper handles errors for url scraping"""
+
     @wraps(func)
     async def wrapper(self, *args, **kwargs):
         link = args[0] if isinstance(args[0], URL) else args[0].url
@@ -100,6 +101,7 @@ def error_handling_wrapper(func):
                 await log(traceback.format_exc(), 40)
                 await self.manager.log_manager.write_scrape_error_log(link, " See Log for Details")
                 await self.manager.progress_manager.scrape_stats_progress.add_failure("Unknown")
+
     return wrapper
 
 
@@ -111,12 +113,12 @@ async def log(message: [str, Exception], level: int, sleep: int = None) -> None:
     log_console(level, message, sleep=sleep)
 
 
-
-
 async def log_debug(message: [str, Exception], level: int, sleep: int = None) -> None:
     """Simple logging function"""
     if DEBUG_VAR:
         logger_debug.log(level, message.encode('ascii', 'ignore').decode('ascii'))
+
+
 async def log_debug_console(message: [str, Exception], level: int, sleep: int = None):
     if CONSOLE_DEBUG_VAR:
         log_console(level, message.encode('ascii', 'ignore').decode('ascii'), sleep=sleep)
@@ -135,7 +137,6 @@ async def log_with_color(message: str, style: str, level: int) -> None:
 async def get_log_output_text() -> str:
     global LOG_OUTPUT_TEXT
     return LOG_OUTPUT_TEXT + "```"
-
 
 
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -184,7 +185,8 @@ async def get_filename_and_ext(filename: str, forum: bool = False) -> Tuple[str,
     if len(filename_parts[-1]) > 5:
         raise NoExtensionFailure()
     ext = "." + filename_parts[-1].lower()
-    filename = filename_parts[0][:MAX_NAME_LENGTHS['FILE']] if len(filename_parts[0]) > MAX_NAME_LENGTHS['FILE'] else filename_parts[0]
+    filename = filename_parts[0][:MAX_NAME_LENGTHS['FILE']] if len(filename_parts[0]) > MAX_NAME_LENGTHS['FILE'] else \
+    filename_parts[0]
     filename = filename.strip()
     filename = filename.rstrip(".")
     filename = await sanitize(filename + ext)
@@ -234,8 +236,6 @@ async def purge_dir_tree(dirname: Path) -> None:
     list(map(os.rmdir, deleted))
 
 
-
-
 async def check_partials_and_empty_folders(manager: Manager):
     """Checks for partial downloads and empty folders"""
     if manager.config_manager.settings_data['Runtime_Options']['delete_partial_files']:
@@ -250,7 +250,8 @@ async def check_partials_and_empty_folders(manager: Manager):
             await log_with_color("There are partial downloads in the downloads folder", "yellow", 20)
         temp_downloads = any(Path(f).is_file() for f in await manager.db_manager.temp_table.get_temp_names())
         if temp_downloads:
-            await log_with_color("There are partial downloads from the previous run, please re-run the program.", "yellow", 20)
+            await log_with_color("There are partial downloads from the previous run, please re-run the program.",
+                                 "yellow", 20)
 
     if not manager.config_manager.settings_data['Runtime_Options']['skip_check_for_empty_folders']:
         await log_with_color("Checking for empty folders...", "yellow", 20)
