@@ -20,7 +20,8 @@ if TYPE_CHECKING:
 class RedditCrawler(Crawler):
     def __init__(self, manager: Manager):
         super().__init__(manager, "reddit", "Reddit")
-        self.reddit_personal_use_script = self.manager.config_manager.authentication_data['Reddit']['reddit_personal_use_script']
+        self.reddit_personal_use_script = self.manager.config_manager.authentication_data['Reddit'][
+            'reddit_personal_use_script']
         self.reddit_secret = self.manager.config_manager.authentication_data['Reddit']['reddit_secret']
         self.request_limiter = AsyncLimiter(5, 1)
 
@@ -123,7 +124,8 @@ class RedditCrawler(Crawler):
         items = [item for item in submission.media_metadata.values() if item["status"] == "valid"]
         links = [URL(item["s"]["u"]).with_host("i.redd.it").with_query(None) for item in items]
         for link in links:
-            new_scrape_item = await self.create_new_scrape_item(link, scrape_item, scrape_item.parent_title, scrape_item.possible_datetime)
+            new_scrape_item = await self.create_new_scrape_item(link, scrape_item, scrape_item.parent_title,
+                                                                scrape_item.possible_datetime)
             await self.media(new_scrape_item, reddit)
 
     @error_handling_wrapper

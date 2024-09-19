@@ -1,20 +1,17 @@
-import signal
-from contextlib import contextmanager
 from dataclasses import field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import aiosqlite
 
+from cyberdrop_dl.utils.database.tables.hash_table import HashTable
 from cyberdrop_dl.utils.database.tables.history_table import HistoryTable
 from cyberdrop_dl.utils.database.tables.temp_table import TempTable
-from cyberdrop_dl.utils.database.tables.hash_table import HashTable
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
-    
 class DBManager:
     def __init__(self, manager: 'Manager', db_path: Path):
         self.manager = manager
@@ -24,7 +21,7 @@ class DBManager:
         self.ignore_history: bool = False
 
         self.history_table: HistoryTable = field(init=False)
-        self.hash_table: HashTable = field(init=False)  
+        self.hash_table: HashTable = field(init=False)
         self.temp_table: TempTable = field(init=False)
 
     async def startup(self) -> None:
@@ -34,7 +31,7 @@ class DBManager:
         self.ignore_history = self.manager.config_manager.settings_data['Runtime_Options']['ignore_history']
 
         self.history_table = HistoryTable(self._db_conn)
-        self.hash_table=HashTable(self._db_conn)
+        self.hash_table = HashTable(self._db_conn)
         self.temp_table = TempTable(self._db_conn)
 
         self.history_table.ignore_history = self.ignore_history

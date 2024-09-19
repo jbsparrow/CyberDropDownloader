@@ -29,7 +29,7 @@ class ImgBoxCrawler(Crawler):
 
         if "t" in scrape_item.url.host or "_" in scrape_item.url.name:
             scrape_item.url = self.primary_base_domain / scrape_item.url.name.split("_")[0]
-            
+
         if "gallery/edit" in str(scrape_item.url):
             scrape_item.url = self.primary_base_domain / "g" / scrape_item.url.parts[-2]
 
@@ -46,7 +46,9 @@ class ImgBoxCrawler(Crawler):
         async with self.request_limiter:
             soup = await self.client.get_BS4(self.domain, scrape_item.url)
 
-        title = await self.create_title(soup.select_one("div[id=gallery-view] h1").get_text().strip().rsplit(" - ", 1)[0], scrape_item.url.parts[2], None)
+        title = await self.create_title(
+            soup.select_one("div[id=gallery-view] h1").get_text().strip().rsplit(" - ", 1)[0], scrape_item.url.parts[2],
+            None)
 
         scrape_item.part_of_album = True
         await scrape_item.add_to_parent_title(title)

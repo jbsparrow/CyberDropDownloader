@@ -73,7 +73,8 @@ class CoomerCrawler(Crawler):
     @error_handling_wrapper
     async def handle_post_content(self, scrape_item: ScrapeItem, post: Dict, user: str, user_str: str) -> None:
         """Handles the content of a post"""
-        if "#ad" in post['content'] and self.manager.config_manager.settings_data['Ignore_Options']['ignore_coomer_ads']:
+        if "#ad" in post['content'] and self.manager.config_manager.settings_data['Ignore_Options'][
+            'ignore_coomer_ads']:
             return
 
         date = post["published"].replace("T", " ")
@@ -146,6 +147,7 @@ class CoomerCrawler(Crawler):
                 post_title = post_id + " - " + post_title
 
         new_title = await self.create_title(user, None, None)
-        new_scrape_item = await self.create_scrape_item(old_scrape_item, link, new_title, True, None, await self.parse_datetime(date))
+        new_scrape_item = await self.create_scrape_item(old_scrape_item, link, new_title, True, None,
+                                                        await self.parse_datetime(date))
         await new_scrape_item.add_to_parent_title(post_title)
         self.manager.task_group.create_task(self.run(new_scrape_item))

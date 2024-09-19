@@ -1,8 +1,8 @@
 from __future__ import annotations
-import pathlib
-import asyncio
 
+import asyncio
 import os
+import pathlib
 from typing import TYPE_CHECKING
 
 from InquirerPy import inquirer
@@ -10,16 +10,15 @@ from InquirerPy.base.control import Choice
 from InquirerPy.separator import Separator
 from InquirerPy.validator import EmptyInputValidator, PathValidator
 from rich.console import Console
-from cyberdrop_dl.utils.utilities import log
 
 from cyberdrop_dl.utils.transfer.transfer_v4_config import transfer_v4_config
 from cyberdrop_dl.utils.transfer.transfer_v4_db import transfer_v4_db
+from cyberdrop_dl.utils.utilities import log
 
 if TYPE_CHECKING:
     from typing import List
 
     from cyberdrop_dl.managers.manager import Manager
-
 
 console = Console()
 
@@ -136,14 +135,14 @@ def import_cyberdrop_v4_items_prompt(manager: Manager) -> None:
             if import_download_history_path.is_file():
                 transfer_v4_db(import_download_history_path, manager.path_manager.history_db)
             else:
-                loop=asyncio.new_event_loop()
+                loop = asyncio.new_event_loop()
                 for ele in pathlib.Path(import_download_history_path).glob("**/*.sqlite"):
-                    if str(ele)==str(manager.path_manager.history_db):
+                    if str(ele) == str(manager.path_manager.history_db):
                         continue
                     try:
                         transfer_v4_db(ele, manager.path_manager.history_db)
                     except Exception as e:
-                        loop.run_until_complete(log(f"Error importing {ele.name}: {str(e)}",20))
+                        loop.run_until_complete(log(f"Error importing {ele.name}: {str(e)}", 20))
 
         # Done
         elif action == 3:

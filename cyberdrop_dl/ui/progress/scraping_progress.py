@@ -16,6 +16,7 @@ async def adjust_title(s: str, length: int = 40, placeholder: str = "...") -> st
 
 class ScrapingProgress:
     """Class that manages the download progress of individual files"""
+
     def __init__(self, visible_tasks_limit: int, manager: 'Manager'):
         self.manager = manager
 
@@ -30,8 +31,10 @@ class ScrapingProgress:
         self.progress_str = "[{color}]{description}"
         self.overflow_str = "[{color}]... And {number} Other Links"
         self.queue_str = "[{color}]... And {number} Links In Scrape Queue"
-        self.overflow_task_id = self.overflow.add_task(self.overflow_str.format(color=self.color, number=0, type_str=self.type_str), visible=False)
-        self.queue_task_id = self.queue.add_task(self.queue_str.format(color=self.color, number=0, type_str=self.type_str), visible=False)
+        self.overflow_task_id = self.overflow.add_task(
+            self.overflow_str.format(color=self.color, number=0, type_str=self.type_str), visible=False)
+        self.queue_task_id = self.queue.add_task(
+            self.queue_str.format(color=self.color, number=0, type_str=self.type_str), visible=False)
 
         self.visible_tasks: List[TaskID] = []
         self.invisible_tasks: List[TaskID] = []
@@ -62,23 +65,30 @@ class ScrapingProgress:
             self.progress.update(task_id, visible=True)
 
         if len(self.invisible_tasks) > 0:
-            self.overflow.update(self.overflow_task_id, description=self.overflow_str.format(color=self.color, number=len(self.invisible_tasks), type_str=self.type_str), visible=True)
+            self.overflow.update(self.overflow_task_id, description=self.overflow_str.format(color=self.color,
+                                                                                             number=len(
+                                                                                                 self.invisible_tasks),
+                                                                                             type_str=self.type_str),
+                                 visible=True)
         else:
             self.overflow.update(self.overflow_task_id, visible=False)
 
         queue_length = await self.get_queue_length()
         if queue_length > 0:
-            self.queue.update(self.queue_task_id, description=self.queue_str.format(color=self.color, number=queue_length, type_str=self.type_str), visible=True)
+            self.queue.update(self.queue_task_id,
+                              description=self.queue_str.format(color=self.color, number=queue_length,
+                                                                type_str=self.type_str), visible=True)
         else:
             self.queue.update(self.queue_task_id, visible=False)
-        
+
         if not passed:
             await self.manager.progress_manager.file_progress.redraw(True)
 
     async def add_task(self, url: URL) -> TaskID:
         """Adds a new task to the progress bar"""
         if len(self.visible_tasks) >= self.tasks_visibility_limit:
-            task_id = self.progress.add_task(self.progress_str.format(color=self.color, description=str(url)), visible=False)
+            task_id = self.progress.add_task(self.progress_str.format(color=self.color, description=str(url)),
+                                             visible=False)
             self.invisible_tasks.append(task_id)
         else:
             task_id = self.progress.add_task(self.progress_str.format(color=self.color, description=str(url)))

@@ -55,7 +55,8 @@ class SocialMediaGirlsCrawler(Crawler):
 
         if not self.logged_in:
             login_url = self.primary_base_domain / "login"
-            session_cookie = self.manager.config_manager.authentication_data['Forums']['socialmediagirls_xf_user_cookie']
+            session_cookie = self.manager.config_manager.authentication_data['Forums'][
+                'socialmediagirls_xf_user_cookie']
             username = self.manager.config_manager.authentication_data['Forums']['socialmediagirls_username']
             password = self.manager.config_manager.authentication_data['Forums']['socialmediagirls_password']
             wait_time = 15
@@ -96,7 +97,9 @@ class SocialMediaGirlsCrawler(Crawler):
 
             posts = soup.select(self.posts_selector)
             for post in posts:
-                current_post_number = int(post.select_one(self.posts_number_selector).get(self.posts_number_attribute).split('/')[-1].split('post-')[-1])
+                current_post_number = int(
+                    post.select_one(self.posts_number_selector).get(self.posts_number_attribute).split('/')[-1].split(
+                        'post-')[-1])
                 scrape_post, continue_scraping = await self.check_post_number(post_number, current_post_number)
 
                 if scrape_post:
@@ -245,9 +248,12 @@ class SocialMediaGirlsCrawler(Crawler):
             data = data.replace("\/\/", "https://www.")
             data = data.replace("\\", "")
 
-            embed = re.search(r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,4}\\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)", data)
+            embed = re.search(
+                r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,4}\\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)", data)
             if not embed:
-                embed = re.search(r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,4}\/[-a-zA-Z0-9@:%._\+~#=]*\/[-a-zA-Z0-9@:?&%._\+~#=]*", data)
+                embed = re.search(
+                    r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,4}\/[-a-zA-Z0-9@:%._\+~#=]*\/[-a-zA-Z0-9@:?&%._\+~#=]*",
+                    data)
 
             if embed:
                 link = embed.group(0).replace("www.", "")

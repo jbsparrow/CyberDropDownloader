@@ -74,11 +74,12 @@ class JPGChurchCrawler(Crawler):
         """Scrapes an album"""
         album_id = scrape_item.url.parts[2]
         results = await self.get_album_results(album_id)
-        
+
         async with self.request_limiter:
             soup = await self.client.get_BS4(self.domain, scrape_item.url / "sub")
 
-        title = await self.create_title(soup.select_one("a[data-text=album-name]").get_text(), scrape_item.url.parts[2], None)
+        title = await self.create_title(soup.select_one("a[data-text=album-name]").get_text(), scrape_item.url.parts[2],
+                                        None)
         albums = soup.select("a[class='image-container --media']")
         for album in albums:
             sub_album_link = URL(album.get('href'))

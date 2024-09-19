@@ -4,7 +4,6 @@ from typing import Dict
 
 from cyberdrop_dl.managers.path_manager import APP_STORAGE, DOWNLOAD_STORAGE
 
-
 authentication_settings: Dict = {
     "Forums": {
         "celebforum_xf_user_cookie": "",
@@ -48,7 +47,6 @@ authentication_settings: Dict = {
         "reddit_secret": "",
     }
 }
-
 
 settings: Dict = {
     "Download_Options": {
@@ -96,7 +94,7 @@ settings: Dict = {
     "Runtime_Options": {
         "ignore_history": False,
         "log_level": 10,
-        "console_log_level":100,
+        "console_log_level": 100,
         "skip_check_for_partial_files": False,
         "skip_check_for_empty_folders": False,
         "delete_partial_files": False,
@@ -106,7 +104,7 @@ settings: Dict = {
     "Sorting": {
         "sort_downloads": False,
         "sort_folder": str(DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"),
-        "scan_folder":None,
+        "scan_folder": None,
         "sort_cdl_only": True,
         "sort_incremementer_format": " ({i})",
         "sorted_audio": "{sort_dir}/{base_dir}/Audio/{filename}{ext}",
@@ -115,7 +113,6 @@ settings: Dict = {
         "sorted_video": "{sort_dir}/{base_dir}/Videos/{filename}{ext}",
     }
 }
-
 
 global_settings: Dict = {
     "General": {
@@ -135,18 +132,18 @@ global_settings: Dict = {
         "download_delay": 0.5,
         "max_simultaneous_downloads": 15,
         "max_simultaneous_downloads_per_domain": 5,
-        "download_speed_limit":0
+        "download_speed_limit": 0
     },
     "Dupe_Cleanup_Options":
-    {
-  "delete_after_download": False,
-  "hash_while_downloading": False,
- "keep_prev_download": False,
-        "keep_new_download": True,
-  "dedupe_already_downloaded": False,
-  "delete_off_disk": False
+        {
+            "delete_after_download": False,
+            "hash_while_downloading": False,
+            "keep_prev_download": False,
+            "keep_new_download": True,
+            "dedupe_already_downloaded": False,
+            "delete_off_disk": False
 
-    },
+        },
 
     "UI_Options": {
         "vi_mode": False,
@@ -155,4 +152,3 @@ global_settings: Dict = {
         "downloading_item_limit": 5,
     }
 }
-

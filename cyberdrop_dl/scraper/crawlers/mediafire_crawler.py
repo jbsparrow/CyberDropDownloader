@@ -48,7 +48,8 @@ class MediaFireCrawler(Crawler):
         chunk_size = 100
         while True:
             try:
-                folder_contents = self.api.folder_get_content(folder_key=folder_key, content_type='files', chunk=chunk, chunk_size=chunk_size)
+                folder_contents = self.api.folder_get_content(folder_key=folder_key, content_type='files', chunk=chunk,
+                                                              chunk_size=chunk_size)
             except api.MediaFireConnectionError:
                 raise ScrapeFailure(500, "MediaFire connection closed")
             files = folder_contents['folder_content']['files']
@@ -80,6 +81,7 @@ class MediaFireCrawler(Crawler):
         await self.handle_file(link, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
     async def parse_datetime(self, date: str) -> int:
         """Parses a datetime string into a unix timestamp"""
         date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")

@@ -129,4 +129,3 @@ class OmegaScansCrawler(Crawler):
         """Parses a datetime string into a unix timestamp"""
         date = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
         return calendar.timegm(date.timetuple())
-

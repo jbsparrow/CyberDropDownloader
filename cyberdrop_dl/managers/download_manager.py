@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 class FileLock:
     """Is this necessary? No. But I want it."""
+
     def __init__(self):
         self._locked_files = {}
 
@@ -54,10 +55,13 @@ class DownloadManager:
         if key in self.download_limits:
             instances = self.download_limits[key]
         else:
-            instances = self.manager.config_manager.global_settings_data['Rate_Limiting_Options']['max_simultaneous_downloads_per_domain']
+            instances = self.manager.config_manager.global_settings_data['Rate_Limiting_Options'][
+                'max_simultaneous_downloads_per_domain']
 
-        if instances > self.manager.config_manager.global_settings_data['Rate_Limiting_Options']['max_simultaneous_downloads_per_domain']:
-            instances = self.manager.config_manager.global_settings_data['Rate_Limiting_Options']['max_simultaneous_downloads_per_domain']
+        if instances > self.manager.config_manager.global_settings_data['Rate_Limiting_Options'][
+            'max_simultaneous_downloads_per_domain']:
+            instances = self.manager.config_manager.global_settings_data['Rate_Limiting_Options'][
+                'max_simultaneous_downloads_per_domain']
         return instances
 
     async def basic_auth(self, username, password) -> str:
@@ -73,14 +77,17 @@ class DownloadManager:
 
     async def check_allowed_filetype(self, media_item: MediaItem) -> bool:
         """Checks if the file type is allowed to download"""
-        if media_item.ext in FILE_FORMATS['Images'] and self.manager.config_manager.settings_data['Ignore_Options']['exclude_images']:
+        if media_item.ext in FILE_FORMATS['Images'] and self.manager.config_manager.settings_data['Ignore_Options'][
+            'exclude_images']:
             return False
-        if media_item.ext in FILE_FORMATS['Videos'] and self.manager.config_manager.settings_data['Ignore_Options']['exclude_videos']:
+        if media_item.ext in FILE_FORMATS['Videos'] and self.manager.config_manager.settings_data['Ignore_Options'][
+            'exclude_videos']:
             return False
-        if media_item.ext in FILE_FORMATS['Audio'] and self.manager.config_manager.settings_data['Ignore_Options']['exclude_audio']:
+        if media_item.ext in FILE_FORMATS['Audio'] and self.manager.config_manager.settings_data['Ignore_Options'][
+            'exclude_audio']:
             return False
         if (self.manager.config_manager.settings_data['Ignore_Options']['exclude_other'] and
-              media_item.ext not in FILE_FORMATS['Images'] and media_item.ext not in FILE_FORMATS['Videos'] and
-              media_item.ext not in FILE_FORMATS['Audio']):
+                media_item.ext not in FILE_FORMATS['Images'] and media_item.ext not in FILE_FORMATS['Videos'] and
+                media_item.ext not in FILE_FORMATS['Audio']):
             return False
         return True

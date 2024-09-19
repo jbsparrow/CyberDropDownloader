@@ -19,6 +19,38 @@ D\bDE\bES\bSC\bCR\bRI\bIP\bPT\bTI\bIO\bON\bN
 ------------------------------------------------------------
 
 C\bCH\bHA\bAN\bNG\bGE\bEL\bLO\bOG\bG
+\tVersion 5.6.13
+
+
+D\bDE\bES\bSC\bCR\bRI\bIP\bPT\bTI\bIO\bON\bN
+\tThis update introduces the following changes:
+\t\t1. Per-config authentication settings
+
+\tDetails:
+\t\t- If an authentication.yaml file is placed within your config directory, it will be used instead of the global authentication values.
+
+
+\tFor more details, visit the wiki: https://script-ware.gitbook.io
+
+------------------------------------------------------------
+
+C\bCH\bHA\bAN\bNG\bGE\bEL\bLO\bOG\bG
+\tVersion 5.6.12
+
+
+D\bDE\bES\bSC\bCR\bRI\bIP\bPT\bTI\bIO\bON\bN
+\tThis update introduces the following changes:
+\t\t1. Reformat code and organize imports
+
+\tDetails:
+\t\t- Reformatted code to be more readable and removed unused imports.
+
+
+\tFor more details, visit the wiki: https://script-ware.gitbook.io
+
+------------------------------------------------------------
+
+C\bCH\bHA\bAN\bNG\bGE\bEL\bLO\bOG\bG
 \tVersion 5.6.11
 
 

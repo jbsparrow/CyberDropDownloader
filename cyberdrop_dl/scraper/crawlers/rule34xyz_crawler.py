@@ -68,7 +68,8 @@ class Rule34XYZCrawler(Crawler):
         async with self.request_limiter:
             soup = await self.client.get_BS4(self.domain, scrape_item.url)
 
-        date = await self.parse_datetime(soup.select_one('div[class="posted ng-star-inserted"]').text.split("(")[1].split(")")[0])
+        date = await self.parse_datetime(
+            soup.select_one('div[class="posted ng-star-inserted"]').text.split("(")[1].split(")")[0])
         scrape_item.date = date
 
         image = soup.select_one('img[class*="img shadow-base"]')
