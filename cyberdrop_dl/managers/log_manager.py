@@ -50,15 +50,15 @@ class LogManager:
         """Writes to the scrape error log"""
         async with aiofiles.open(self.scrape_error_log, 'a') as f:
             await f.write(f"{url},{error_message}\n")
-            
+
     async def update_last_forum_post(self) -> None:
         """Updates the last forum post"""
         input_file = self.manager.path_manager.input_file
         base_urls = []
-        
+
         async with aiofiles.open(input_file, 'r') as f:
             current_urls = await f.readlines()
-            
+
         for url in current_urls:
             if "http" not in url:
                 continue

@@ -46,7 +46,8 @@ class ImgBBCrawler(Crawler):
         async with self.request_limiter:
             soup = await self.client.get_BS4(self.domain, scrape_item.url / "sub")
 
-        title = await self.create_title(soup.select_one("a[data-text=album-name]").get_text(), scrape_item.url.parts[2], None)
+        title = await self.create_title(soup.select_one("a[data-text=album-name]").get_text(), scrape_item.url.parts[2],
+                                        None)
         albums = soup.select("a[class='image-container --media']")
         for album in albums:
             sub_album_link = URL(album.get('href'))
@@ -109,5 +110,5 @@ class ImgBBCrawler(Crawler):
 
     async def check_direct_link(self, url: URL) -> bool:
         """Determines if the url is a direct link or not"""
-        mapping_direct = [r'i.ibb.co',]
+        mapping_direct = [r'i.ibb.co', ]
         return any(re.search(domain, str(url)) for domain in mapping_direct)

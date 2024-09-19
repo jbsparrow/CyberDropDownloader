@@ -56,7 +56,8 @@ class CyberfileCrawler(Crawler):
                 ajax_dict = await self.client.post_data(self.domain, self.api_files, data=data)
                 ajax_soup = BeautifulSoup(ajax_dict['html'].replace("\\", ""), 'html.parser')
             title = await self.create_title(ajax_dict['page_title'], scrape_item.url.parts[2], None)
-            num_pages = int(ajax_soup.select("a[onclick*=loadImages]")[-1].get('onclick').split(',')[2].split(")")[0].strip())
+            num_pages = int(
+                ajax_soup.select("a[onclick*=loadImages]")[-1].get('onclick').split(',')[2].split(")")[0].strip())
 
             tile_listings = ajax_soup.select("div[class=fileListing] div[class*=fileItem]")
             for tile in tile_listings:
@@ -89,7 +90,8 @@ class CyberfileCrawler(Crawler):
 
         page = 1
         while True:
-            data = {"pageType": "nonaccountshared", "nodeId": node_id, "pageStart": page, "perPage": 0, "filterOrderBy": ""}
+            data = {"pageType": "nonaccountshared", "nodeId": node_id, "pageStart": page, "perPage": 0,
+                    "filterOrderBy": ""}
             async with self.request_limiter:
                 ajax_dict = await self.client.post_data("cyberfile", self.api_files, data=data)
                 ajax_soup = BeautifulSoup(ajax_dict['html'].replace("\\", ""), 'html.parser')
@@ -145,7 +147,7 @@ class CyberfileCrawler(Crawler):
         async with self.request_limiter:
             ajax_dict = await self.client.post_data(self.domain, self.api_details, data=data)
             ajax_soup = BeautifulSoup(ajax_dict['html'].replace("\\", ""), 'html.parser')
-            
+
         if "albumPasswordModel" in ajax_dict['html']:
             await log(f"Album is password protected: {scrape_item.url}", 30)
             raise PasswordProtected()

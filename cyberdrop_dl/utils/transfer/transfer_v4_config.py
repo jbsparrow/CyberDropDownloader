@@ -4,8 +4,8 @@ from typing import Dict
 
 import yaml
 
-from cyberdrop_dl.utils.args.config_definitions import settings
 from cyberdrop_dl.managers.manager import Manager
+from cyberdrop_dl.utils.args.config_definitions import settings
 
 
 def _save_yaml(file: Path, data: Dict) -> None:
@@ -61,7 +61,8 @@ def transfer_v4_config(manager: Manager, old_config_path: Path, new_config_name:
     new_user_data['Download_Options']['block_download_sub_folders'] = old_data['Runtime']['block_sub_folders']
     new_user_data['Download_Options']['disable_download_attempt_limit'] = old_data['Runtime']['disable_attempt_limit']
     new_user_data['Download_Options']['include_album_id_in_folder_name'] = old_data['Runtime']['include_id']
-    new_user_data['Download_Options']['remove_generated_id_from_filenames'] = old_data['Runtime']['remove_bunkr_identifier']
+    new_user_data['Download_Options']['remove_generated_id_from_filenames'] = old_data['Runtime'][
+        'remove_bunkr_identifier']
     new_user_data['Download_Options']['separate_posts'] = old_data['Forum_Options']['separate_posts']
     new_user_data['Download_Options']['skip_download_mark_completed'] = False
 
@@ -81,8 +82,10 @@ def transfer_v4_config(manager: Manager, old_config_path: Path, new_config_name:
     new_user_data['Ignore_Options']['only_hosts'] = old_data['Ignore']['only_hosts']
 
     new_user_data['Runtime_Options']['ignore_history'] = old_data['Ignore']['ignore_history']
-    new_user_data['Runtime_Options']['skip_check_for_partial_files'] = old_data['Runtime']['skip_check_for_partial_files_and_empty_dirs']
-    new_user_data['Runtime_Options']['skip_check_for_empty_folders'] = old_data['Runtime']['skip_check_for_partial_files_and_empty_dirs']
+    new_user_data['Runtime_Options']['skip_check_for_partial_files'] = old_data['Runtime'][
+        'skip_check_for_partial_files_and_empty_dirs']
+    new_user_data['Runtime_Options']['skip_check_for_empty_folders'] = old_data['Runtime'][
+        'skip_check_for_partial_files_and_empty_dirs']
     new_user_data['Runtime_Options']['send_unsupported_to_jdownloader'] = old_data['JDownloader']['apply_jdownloader']
 
     new_user_data['Sorting']['sort_downloads'] = old_data['Sorting']['sort_downloads']
@@ -100,7 +103,8 @@ def transfer_v4_config(manager: Manager, old_config_path: Path, new_config_name:
     new_global_data['Rate_Limiting_Options']['download_delay'] = old_data['Ratelimiting']['throttle']
     new_global_data['Rate_Limiting_Options']['read_timeout'] = old_data['Ratelimiting']['read_timeout']
     new_global_data['Rate_Limiting_Options']['rate_limit'] = old_data['Ratelimiting']['ratelimit']
-    new_global_data['Rate_Limiting_Options']['max_simultaneous_downloads_per_domain'] = old_data['Runtime']['max_concurrent_downloads_per_domain']
+    new_global_data['Rate_Limiting_Options']['max_simultaneous_downloads_per_domain'] = old_data['Runtime'][
+        'max_concurrent_downloads_per_domain']
 
     # Save Data
     new_settings = manager.path_manager.config_dir / new_config_name / "settings.yaml"

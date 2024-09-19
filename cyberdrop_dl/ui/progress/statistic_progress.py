@@ -36,7 +36,8 @@ class DownloadStatsProgress:
         if failure_type in self.failure_types:
             self.progress.advance(self.failure_types[failure_type], 1)
         else:
-            self.failure_types[failure_type] = self.progress.add_task(failure_type, total=self.failed_files, completed=1)
+            self.failure_types[failure_type] = self.progress.add_task(failure_type, total=self.failed_files,
+                                                                      completed=1)
         await self.update_total(self.failed_files)
 
     async def return_totals(self) -> Dict:
@@ -78,7 +79,8 @@ class ScrapeStatsProgress:
         if failure_type in self.failure_types:
             self.progress.advance(self.failure_types[failure_type], 1)
         else:
-            self.failure_types[failure_type] = self.progress.add_task(failure_type, total=self.failed_files, completed=1)
+            self.failure_types[failure_type] = self.progress.add_task(failure_type, total=self.failed_files,
+                                                                      completed=1)
         await self.update_total(self.failed_files)
 
     async def return_totals(self) -> Dict:

@@ -44,7 +44,7 @@ class ScrolllerCrawler(Crawler):
         scrape_item.part_of_album = True
 
         request_body = {
-                "query": """
+            "query": """
                     query SubredditQuery(
                         $url: String!
                         $filter: SubredditPostFilter
@@ -72,12 +72,12 @@ class ScrolllerCrawler(Crawler):
                         }
                     }
                 """,
-                "variables": {
-                    "url": f"/r/{subreddit}",
-                    "filter": None,
-                    "hostsDown": None
-                },
-            }
+            "variables": {
+                "url": f"/r/{subreddit}",
+                "filter": None,
+                "hostsDown": None
+            },
+        }
 
         iterator = None
         iterations = 0
