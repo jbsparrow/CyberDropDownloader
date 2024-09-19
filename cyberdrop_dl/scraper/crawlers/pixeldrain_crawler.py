@@ -52,7 +52,7 @@ class PixelDrainCrawler(Crawler):
             try:
                 filename, ext = await get_filename_and_ext(file['name'])
             except NoExtensionFailure:
-                if "image" or "video" in file["mime_type"]:
+                if "image" in file["mime_type"] or "video" in file["mime_type"]:
                     filename, ext = await get_filename_and_ext(file['name'] + "." + file["mime_type"].split("/")[-1])
                 else:
                     raise NoExtensionFailure()
