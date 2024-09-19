@@ -40,7 +40,7 @@ class PixelDrainCrawler(Crawler):
         """Scrapes a folder"""
         album_id = scrape_item.url.parts[2]
         results = await self.get_album_results(album_id)
-        
+
         async with self.request_limiter:
             JSON_Resp = await self.client.get_json(self.domain, self.api_address / "list" / scrape_item.url.parts[-1])
 
@@ -64,7 +64,8 @@ class PixelDrainCrawler(Crawler):
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a file"""
         async with self.request_limiter:
-            JSON_Resp = await self.client.get_json(self.domain, self.api_address / "file" / scrape_item.url.parts[-1] / "info")
+            JSON_Resp = await self.client.get_json(self.domain,
+                                                   self.api_address / "file" / scrape_item.url.parts[-1] / "info")
 
         link = await self.create_download_link(JSON_Resp['id'])
         date = await self.parse_datetime(JSON_Resp['date_upload'].replace("T", " ").split(".")[0])
@@ -72,7 +73,8 @@ class PixelDrainCrawler(Crawler):
             filename, ext = await get_filename_and_ext(JSON_Resp['name'])
         except NoExtensionFailure:
             if "image" or "video" in JSON_Resp["mime_type"]:
-                filename, ext = await get_filename_and_ext(JSON_Resp['name'] + "." + JSON_Resp["mime_type"].split("/")[-1])
+                filename, ext = await get_filename_and_ext(
+                    JSON_Resp['name'] + "." + JSON_Resp["mime_type"].split("/")[-1])
             else:
                 raise NoExtensionFailure()
         new_scrape_item = await self.create_scrape_item(scrape_item, link, "", False, None, date)

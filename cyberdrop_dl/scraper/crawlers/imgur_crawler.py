@@ -49,12 +49,14 @@ class ImgurCrawler(Crawler):
         album_id = scrape_item.url.parts[-1]
 
         async with self.request_limiter:
-            JSON_Obj = await self.client.get_json(self.domain, self.imgur_api / f"album/{album_id}", headers_inc=self.headers)
+            JSON_Obj = await self.client.get_json(self.domain, self.imgur_api / f"album/{album_id}",
+                                                  headers_inc=self.headers)
         title_part = JSON_Obj["data"].get("title", album_id)
         title = await self.create_title(title_part, scrape_item.url.parts[2], None)
 
         async with self.request_limiter:
-            JSON_Obj = await self.client.get_json(self.domain, self.imgur_api / f"album/{album_id}/images", headers_inc=self.headers)
+            JSON_Obj = await self.client.get_json(self.domain, self.imgur_api / f"album/{album_id}/images",
+                                                  headers_inc=self.headers)
 
         for image in JSON_Obj["data"]:
             link = URL(image["link"])
@@ -72,7 +74,8 @@ class ImgurCrawler(Crawler):
 
         image_id = scrape_item.url.parts[-1]
         async with self.request_limiter:
-            JSON_Obj = await self.client.get_json(self.domain, self.imgur_api / f"image/{image_id}", headers_inc=self.headers)
+            JSON_Obj = await self.client.get_json(self.domain, self.imgur_api / f"image/{image_id}",
+                                                  headers_inc=self.headers)
 
         date = JSON_Obj["data"]["datetime"]
         link = URL(JSON_Obj["data"]["link"])

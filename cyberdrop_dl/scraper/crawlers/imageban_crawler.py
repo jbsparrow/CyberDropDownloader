@@ -43,7 +43,8 @@ class ImageBanCrawler(Crawler):
         async with self.request_limiter:
             soup = await self.client.get_BS4(self.domain, scrape_item.url)
 
-        title = await self.create_title(soup.select_one("title").get_text().replace("Просмотр альбома: ", ""), scrape_item.url.parts[2], None)
+        title = await self.create_title(soup.select_one("title").get_text().replace("Просмотр альбома: ", ""),
+                                        scrape_item.url.parts[2], None)
         content_block = soup.select_one('div[class="row text-center"]')
         images = content_block.select("a")
 
@@ -98,7 +99,8 @@ class ImageBanCrawler(Crawler):
         async with self.request_limiter:
             soup = await self.client.get_BS4(self.domain, scrape_item.url)
 
-        date = await self.parse_datetime(f"{(scrape_item.url.parts[2])}-{(scrape_item.url.parts[3])}-{(scrape_item.url.parts[4])}")
+        date = await self.parse_datetime(
+            f"{(scrape_item.url.parts[2])}-{(scrape_item.url.parts[3])}-{(scrape_item.url.parts[4])}")
         scrape_item.possible_datetime = date
 
         image = soup.select_one("img[id=img_main]")

@@ -1,13 +1,13 @@
 from __future__ import annotations
-import asyncio
-import arrow
 
+import asyncio
 import re
 from dataclasses import Field
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import aiofiles
+import arrow
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import NoExtensionFailure, JDownloaderFailure
@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 
 class ScrapeMapper:
     """This class maps links to their respective handlers, or JDownloader if they are unsupported"""
+
     def __init__(self, manager: Manager):
         self.manager = manager
         self.mapping = {"bunkrr": self.bunkrr, "celebforum": self.celebforum, "coomer": self.coomer,
@@ -33,20 +34,22 @@ class ScrapeMapper:
                         "imgur": self.imgur, "img.kiwi": self.imgwiki, "jpg.church": self.jpgchurch,
                         "jpg.homes": self.jpgchurch, "jpg.fish": self.jpgchurch, "jpg.fishing": self.jpgchurch,
                         "jpg.pet": self.jpgchurch, "jpeg.pet": self.jpgchurch, "jpg1.su": self.jpgchurch,
-                        "jpg2.su": self.jpgchurch, "jpg3.su": self.jpgchurch, "jpg4.su": self.jpgchurch, "jpg5.su": self.jpgchurch,
+                        "jpg2.su": self.jpgchurch, "jpg3.su": self.jpgchurch, "jpg4.su": self.jpgchurch,
+                        "jpg5.su": self.jpgchurch,
                         "host.church": self.jpgchurch, "kemono": self.kemono, "leakedmodels": self.leakedmodels,
                         "mediafire": self.mediafire, "nudostar.com": self.nudostar, "nudostar.tv": self.nudostartv,
                         "omegascans": self.omegascans, "pimpandhost": self.pimpandhost, "pixeldrain": self.pixeldrain,
-                        "postimg": self.postimg, "realbooru": self.realbooru, "reddit": self.reddit, 
-                        "redd.it": self.reddit, "redgifs": self.redgifs, "rule34vault": self.rule34vault, "rule34.xxx": self.rule34xxx,
+                        "postimg": self.postimg, "realbooru": self.realbooru, "reddit": self.reddit,
+                        "redd.it": self.reddit, "redgifs": self.redgifs, "rule34vault": self.rule34vault,
+                        "rule34.xxx": self.rule34xxx,
                         "rule34.xyz": self.rule34xyz, "saint": self.saint, "scrolller": self.scrolller,
-                        "simpcity": self.simpcity, "socialmediagirls": self.socialmediagirls, "toonily": self.toonily, 
+                        "simpcity": self.simpcity, "socialmediagirls": self.socialmediagirls, "toonily": self.toonily,
                         "xbunker": self.xbunker, "xbunkr": self.xbunkr, "bunkr": self.bunkrr}
         self.existing_crawlers = {}
         self.no_crawler_downloader = Downloader(self.manager, "no_crawler")
         self.jdownloader = JDownloader(self.manager)
-        self.lock=asyncio.Lock()
-        self.count=0
+        self.lock = asyncio.Lock()
+        self.count = 0
 
     async def bunkrr(self) -> None:
         """Creates a Bunkr Crawler instance"""
@@ -189,7 +192,7 @@ class ScrapeMapper:
         """Creates a PostImg Crawler instance"""
         from cyberdrop_dl.scraper.crawlers.postimg_crawler import PostImgCrawler
         self.existing_crawlers['postimg'] = PostImgCrawler(self.manager)
-        
+
     async def realbooru(self) -> None:
         """Creates a RealBooru Crawler instance"""
         from cyberdrop_dl.scraper.crawlers.realbooru_crawler import RealBooruCrawler
@@ -319,12 +322,12 @@ class ScrapeMapper:
         else:
             links.extend(self.manager.args_manager.other_links)
         links = list(filter(None, links))
-        items=[]
+        items = []
 
         if not links:
             await log("No valid links found.", 30)
         for link in links:
-            item=self.get_item_from_link(link)
+            item = self.get_item_from_link(link)
             if await self.filter_items(item):
                 items.append(item)
         for item in items:
@@ -332,10 +335,10 @@ class ScrapeMapper:
 
     async def load_failed_links(self) -> None:
         """Loads failed links from db"""
-        entries= await self.manager.db_manager.history_table.get_failed_items()
-        items=[]
+        entries = await self.manager.db_manager.history_table.get_failed_items()
+        items = []
         for entry in entries:
-            item=self.get_item_from_entry(entry)
+            item = self.get_item_from_entry(entry)
             if await self.filter_items(item):
                 items.append(item)
         if self.manager.args_manager.max_items:
@@ -343,13 +346,13 @@ class ScrapeMapper:
         for item in items:
             self.manager.task_group.create_task(self.add_item_to_group(item))
 
-
     async def load_all_links(self) -> None:
         """Loads all links from db"""
-        entries = await self.manager.db_manager.history_table.get_all_items(self.manager.args_manager.after,self.manager.args_manager.before)
-        items=[]
+        entries = await self.manager.db_manager.history_table.get_all_items(self.manager.args_manager.after,
+                                                                            self.manager.args_manager.before)
+        items = []
         for entry in entries:
-            item=self.get_item_from_entry(entry)
+            item = self.get_item_from_entry(entry)
             if await self.filter_items(item):
                 items.append(item)
         if self.manager.args_manager.max_items:
@@ -360,10 +363,10 @@ class ScrapeMapper:
     async def load_all_bunkr_failed_links_via_hash(self) -> None:
         """Loads all bunkr links with maintance hash"""
         entries = await self.manager.db_manager.history_table.get_all_bunkr_failed()
-        entries=list(sorted(set(entries),reverse=True,key=lambda x:arrow.get(x[-1])))
-        items=[]
+        entries = list(sorted(set(entries), reverse=True, key=lambda x: arrow.get(x[-1])))
+        items = []
         for entry in entries:
-            item=self.get_item_from_entry(entry)
+            item = self.get_item_from_entry(entry)
             if await self.filter_items(item):
                 items.append(item)
         if self.manager.args_manager.max_items:
@@ -385,32 +388,32 @@ class ScrapeMapper:
         except NoExtensionFailure:
             return False
 
-    async def map_url(self, scrape_item: ScrapeItem,date:arrow.Arrow=None):
+    async def map_url(self, scrape_item: ScrapeItem, date: arrow.Arrow = None):
         if not isinstance(scrape_item.url, URL):
             scrape_item.url = URL(scrape_item.url)
         if await self.filter_items(scrape_item):
             await self.add_item_to_group(scrape_item)
 
     def get_item_from_link(self, link):
-        item=ScrapeItem(url=link, parent_title="")
+        item = ScrapeItem(url=link, parent_title="")
         item.completed_at = None
         item.created_at = None
         return item
 
-    def get_item_from_entry(self,entry): 
+    def get_item_from_entry(self, entry):
         link = URL(entry[0])
         retry_path = Path(entry[1])
-        scrape_item = ScrapeItem(link, parent_title="", 
-        part_of_album=True, retry=True, retry_path=retry_path)
-        completed_at=entry[2]
-        created_at=entry[3]
+        scrape_item = ScrapeItem(link, parent_title="",
+                                 part_of_album=True, retry=True, retry_path=retry_path)
+        completed_at = entry[2]
+        created_at = entry[3]
         if not isinstance(scrape_item.url, URL):
             scrape_item.url = URL(scrape_item.url)
         scrape_item.completed_at = completed_at
         scrape_item.created_at = created_at
         return scrape_item
 
-    async def add_item_to_group(self,scrape_item):
+    async def add_item_to_group(self, scrape_item):
         if str(scrape_item.url).endswith("/"):
             if scrape_item.url.query_string:
                 query = scrape_item.url.query_string[:-1]
@@ -425,7 +428,8 @@ class ScrapeMapper:
             return
 
         elif await self.extension_check(scrape_item.url):
-            check_complete = await self.manager.db_manager.history_table.check_complete("no_crawler", scrape_item.url, scrape_item.url)
+            check_complete = await self.manager.db_manager.history_table.check_complete("no_crawler", scrape_item.url,
+                                                                                        scrape_item.url)
             if check_complete:
                 await log(f"Skipping {scrape_item.url} as it has already been downloaded", 10)
                 await self.manager.progress_manager.download_progress.add_previously_completed()
@@ -470,16 +474,16 @@ class ScrapeMapper:
             await log(f"Skipping {scrape_item.url} as it is a blocked domain", 10)
             return
         skip = False
-        item_date=scrape_item.completed_at or scrape_item.created_at
+        item_date = scrape_item.completed_at or scrape_item.created_at
         if skip or not item_date or not self.manager.args_manager.after:
             pass
-        elif arrow.get(item_date)<self.manager.args_manager.after:
+        elif arrow.get(item_date) < self.manager.args_manager.after:
             skip = True
         if skip or not item_date or not self.manager.args_manager.before:
             pass
-        elif arrow.get(item_date)>self.manager.args_manager.before:
+        elif arrow.get(item_date) > self.manager.args_manager.before:
             skip = True
-        if not skip and  self.manager.config_manager.settings_data['Ignore_Options']['skip_hosts']:
+        if not skip and self.manager.config_manager.settings_data['Ignore_Options']['skip_hosts']:
             for skip_host in self.manager.config_manager.settings_data['Ignore_Options']['skip_hosts']:
                 if scrape_item.url.host.find(skip_host) != -1:
                     skip = True
@@ -487,7 +491,7 @@ class ScrapeMapper:
         if not skip and self.manager.config_manager.settings_data['Ignore_Options']['only_hosts']:
             skip = True
             for only_host in self.manager.config_manager.settings_data['Ignore_Options']['only_hosts']:
-                if scrape_item.url.host.find(only_host)!=-1: 
+                if scrape_item.url.host.find(only_host) != -1:
                     skip = False
                     break
         if not skip:
@@ -497,7 +501,8 @@ class ScrapeMapper:
             await log(f"Skipping URL by Config Selections: {scrape_item.url}", 10)
 
         elif await self.extension_check(scrape_item.url):
-            check_complete = await self.manager.db_manager.history_table.check_complete("no_crawler", scrape_item.url, scrape_item.url)
+            check_complete = await self.manager.db_manager.history_table.check_complete("no_crawler", scrape_item.url,
+                                                                                        scrape_item.url)
             if check_complete:
                 await log(f"Skipping {scrape_item.url} as it has already been downloaded", 10)
                 await self.manager.progress_manager.download_progress.add_previously_completed()

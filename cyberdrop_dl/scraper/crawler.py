@@ -74,7 +74,8 @@ class Crawler(ABC):
             original_filename = filename
 
         download_folder = await get_download_path(self.manager, scrape_item, self.folder_domain)
-        media_item = MediaItem(url, scrape_item.url, scrape_item.album_id, download_folder, filename, ext, original_filename)
+        media_item = MediaItem(url, scrape_item.url, scrape_item.album_id, download_folder, filename, ext,
+                               original_filename)
         if scrape_item.possible_datetime:
             media_item.datetime = scrape_item.possible_datetime
 
@@ -96,7 +97,8 @@ class Crawler(ABC):
     async def check_post_number(self, post_number: int, current_post_number: int) -> (bool, bool):
         """Checks if the program should scrape the current post"""
         """Returns (scrape_post, continue_scraping)"""
-        scrape_single_forum_post = self.manager.config_manager.settings_data['Download_Options']['scrape_single_forum_post']
+        scrape_single_forum_post = self.manager.config_manager.settings_data['Download_Options'][
+            'scrape_single_forum_post']
 
         if scrape_single_forum_post:
             if not post_number:
@@ -116,7 +118,8 @@ class Crawler(ABC):
         self.manager.task_group.create_task(self.manager.scrape_mapper.map_url(scrape_item))
 
     @error_handling_wrapper
-    async def forum_login(self, login_url: URL, session_cookie: str, username: str, password: str, wait_time: int = 0) -> None:
+    async def forum_login(self, login_url: URL, session_cookie: str, username: str, password: str,
+                          wait_time: int = 0) -> None:
         """Logs into a forum"""
         if session_cookie:
             self.client.client_manager.cookies.update_cookies({"xf_user": session_cookie},
@@ -167,17 +170,18 @@ class Crawler(ABC):
 
     async def check_complete_from_referer(self, scrape_item: ScrapeItem) -> bool:
         """Checks if the scrape item has already been scraped"""
-        check_complete = await self.manager.db_manager.history_table.check_complete_by_referer(self.domain, scrape_item.url)
+        check_complete = await self.manager.db_manager.history_table.check_complete_by_referer(self.domain,
+                                                                                               scrape_item.url)
         if check_complete:
             await log(f"Skipping {scrape_item.url} as it has already been downloaded", 10)
             await self.manager.progress_manager.download_progress.add_previously_completed()
             return True
         return False
-    
+
     async def get_album_results(self, album_id: str) -> bool | dict[Any, Any]:
         """Checks whether an album has completed given its domain and album id"""
         return await self.manager.db_manager.history_table.check_album(self.domain, album_id)
-    
+
     async def check_album_results(self, url: URL, album_results: dict[Any, Any]) -> bool:
         """Checks whether an album has completed given its domain and album id"""
         url_path = await get_db_path(url.with_query(""), self.domain)
@@ -209,10 +213,12 @@ class Crawler(ABC):
             title = "Untitled"
 
         title = title.strip()
-        if self.manager.config_manager.settings_data['Download_Options']['include_album_id_in_folder_name'] and album_id:
+        if self.manager.config_manager.settings_data['Download_Options'][
+            'include_album_id_in_folder_name'] and album_id:
             title = f"{title} {album_id}"
 
-        if self.manager.config_manager.settings_data['Download_Options']['include_thread_id_in_folder_name'] and thread_id:
+        if self.manager.config_manager.settings_data['Download_Options'][
+            'include_thread_id_in_folder_name'] and thread_id:
             title = f"{title} {thread_id}"
 
         if not self.manager.config_manager.settings_data['Download_Options']['remove_domains_from_folder_names']:

@@ -49,14 +49,18 @@ class GoFileCrawler(Crawler):
 
         try:
             async with self.request_limiter:
-                JSON_Resp = await self.client.get_json(self.domain, (self.api_address / "contents" / content_id).with_query({"wt": self.websiteToken}), headers_inc=self.headers)
+                JSON_Resp = await self.client.get_json(self.domain,
+                                                       (self.api_address / "contents" / content_id).with_query(
+                                                           {"wt": self.websiteToken}), headers_inc=self.headers)
         except DownloadFailure as e:
             if e.status == http.HTTPStatus.UNAUTHORIZED:
                 self.websiteToken = ""
                 self.manager.cache_manager.remove("gofile_website_token")
                 await self.get_website_token(self.js_address, self.client)
                 async with self.request_limiter:
-                    JSON_Resp = await self.client.get_json(self.domain, (self.api_address / "contents" / content_id).with_query({"wt": self.websiteToken}), headers_inc=self.headers)
+                    JSON_Resp = await self.client.get_json(self.domain,
+                                                           (self.api_address / "contents" / content_id).with_query(
+                                                               {"wt": self.websiteToken}), headers_inc=self.headers)
             else:
                 raise ScrapeFailure(e.status, e.message)
 
@@ -64,20 +68,22 @@ class GoFileCrawler(Crawler):
             raise ScrapeFailure(404, "Album not found")
 
         JSON_Resp = JSON_Resp['data']
-        
+
         if "password" in JSON_Resp:
             raise PasswordProtected()
-        
+
         if JSON_Resp["canAccess"] is False:
             raise ScrapeFailure(403, "Album is private")
-        
+
         title = await self.create_title(JSON_Resp["name"], content_id, None)
 
         contents = JSON_Resp["children"]
         for content_id in contents:
             content = contents[content_id]
             if content["type"] == "folder":
-                new_scrape_item = await self.create_scrape_item(scrape_item, self.primary_base_domain / "d" / content["code"], title, True)
+                new_scrape_item = await self.create_scrape_item(scrape_item,
+                                                                self.primary_base_domain / "d" / content["code"], title,
+                                                                True)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
                 continue
             if content["link"] == "overloaded":
