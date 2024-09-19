@@ -80,7 +80,7 @@ class PixelDrainCrawler(Crawler):
                     link = URL(line)
                     new_scrape_item = await self.create_scrape_item(scrape_item, link, "", False, None, date)
                     await self.handle_external_links(new_scrape_item)
-            elif "image" or "video" in JSON_Resp["mime_type"]:
+            elif "image" in JSON_Resp["mime_type"] or "video" in JSON_Resp["mime_type"]:
                 filename, ext = await get_filename_and_ext(JSON_Resp['name'] + "." + JSON_Resp["mime_type"].split("/")[-1])
             else:
                 raise NoExtensionFailure()
