@@ -95,7 +95,9 @@ class CelebForumCrawler(Crawler):
 
             posts = soup.select(self.posts_selector)
             for post in posts:
-                current_post_number = int(post.select_one(self.posts_number_selector).get(self.posts_number_attribute).split('/')[-1].split('post-')[-1])
+                current_post_number = int(
+                    post.select_one(self.posts_number_selector).get(self.posts_number_attribute).split('/')[-1].split(
+                        'post-')[-1])
                 scrape_post, continue_scraping = await self.check_post_number(post_number, current_post_number)
 
                 if scrape_post:

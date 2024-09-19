@@ -1,18 +1,21 @@
+import asyncio
+
 from aiolimiter import AsyncLimiter
-import  asyncio
 from aiolimiter.compat import wait_for
 
 
-class LeakyBucket( AsyncLimiter):
-    def __init__(self,manager):
-        self.download_speed_limit = manager.config_manager.global_settings_data['Rate_Limiting_Options']['download_speed_limit']
-        self.max_amount=1024*1024*10
-        super().__init__(self.download_speed_limit*1024,1)
+class LeakyBucket(AsyncLimiter):
+    def __init__(self, manager):
+        self.download_speed_limit = manager.config_manager.global_settings_data['Rate_Limiting_Options'][
+            'download_speed_limit']
+        self.max_amount = 1024 * 1024 * 10
+        super().__init__(self.download_speed_limit * 1024, 1)
+
     async def acquire(self, amount: float = 1):
-        if self.download_speed_limit<=0:
+        if self.download_speed_limit <= 0:
             return
         if not isinstance(amount, int):
-            amount=len(amount)
+            amount = len(amount)
         loop = asyncio.get_running_loop()
         task = asyncio.current_task(loop)
         assert task is not None
@@ -31,7 +34,8 @@ class LeakyBucket( AsyncLimiter):
             fut.cancel()
         self._waiters.pop(task, None)
         self._level += amount
-        return None  
+        return None
+
     def has_capacity(self, amount: float = 1) -> bool:
         """Check if there is enough capacity remaining in the limiter
 
@@ -48,7 +52,7 @@ class LeakyBucket( AsyncLimiter):
                 if not fut.done():
                     fut.set_result(True)
                     break
-        #allows for one packet to be received until bucket empties
-        if self._level>self.max_rate:
+        # allows for one packet to be received until bucket empties
+        if self._level > self.max_rate:
             return False
         return self._level + amount <= self.max_amount

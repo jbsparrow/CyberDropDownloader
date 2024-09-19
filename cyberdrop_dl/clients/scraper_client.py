@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import json
 import os
-
-import aiohttp
 from functools import wraps
 from typing import TYPE_CHECKING, Dict, Optional
 
+import aiohttp
 from aiohttp import ClientSession
 from bs4 import BeautifulSoup
 from multidict import CIMultiDictProxy
@@ -21,6 +20,7 @@ if TYPE_CHECKING:
 
 def limiter(func):
     """Wrapper handles limits for scrape session"""
+
     @wraps(func)
     async def wrapper(self, *args, **kwargs):
         domain_limiter = await self.client_manager.get_rate_limiter(args[0])
@@ -33,11 +33,13 @@ def limiter(func):
                                              trace_configs=self.trace_configs) as client:
                 kwargs['client_session'] = client
                 return await func(self, *args, **kwargs)
+
     return wrapper
 
 
 class ScraperClient:
     """AIOHTTP operations for scraping"""
+
     def __init__(self, client_manager: ClientManager) -> None:
         self.client_manager = client_manager
         self._headers = {"user-agent": client_manager.user_agent}
@@ -46,7 +48,8 @@ class ScraperClient:
         self._global_limiter = self.client_manager.global_rate_limiter
 
         self.trace_configs = []
-        if os.getenv("PYCHARM_HOSTED") is not None or 'TERM_PROGRAM' in os.environ.keys() and os.environ['TERM_PROGRAM'] == 'vscode':
+        if os.getenv("PYCHARM_HOSTED") is not None or 'TERM_PROGRAM' in os.environ.keys() and os.environ[
+            'TERM_PROGRAM'] == 'vscode':
             async def on_request_start(session, trace_config_ctx, params):
                 await log(f"Starting scrape {params.method} request to {params.url}", 10)
 
@@ -58,23 +61,24 @@ class ScraperClient:
             trace_config.on_request_start.append(on_request_start)
             trace_config.on_request_end.append(on_request_end)
             self.trace_configs.append(trace_config)
-            
+
     @limiter
     async def flaresolverr(self, domain: str, url: URL, client_session: ClientSession) -> str:
         """Returns the resolved URL from the given URL"""
         if not self.client_manager.flaresolverr:
             raise ScrapeFailure(status="DDOS-Guard", message="FlareSolverr is not configured")
-        
+
         headers = {**self._headers, **{"Content-Type": "application/json"}}
         data = {"cmd": "request.get", "url": str(url), "maxTimeout": 60000}
-        
-        async with client_session.post(f"http://{self.client_manager.flaresolverr}/v1", headers=headers, ssl=self.client_manager.ssl_context,
+
+        async with client_session.post(f"http://{self.client_manager.flaresolverr}/v1", headers=headers,
+                                       ssl=self.client_manager.ssl_context,
                                        proxy=self.client_manager.proxy, json=data) as response:
             json_obj = await response.json()
             status = json_obj.get("status")
             if status != "ok":
                 raise ScrapeFailure(status="DDOS-Guard", message="Failed to resolve URL with flaresolverr")
-            
+
             return json_obj.get("solution").get("response")
 
     @limiter
@@ -95,7 +99,8 @@ class ScraperClient:
             return BeautifulSoup(text, 'html.parser')
 
     @limiter
-    async def get_BS4_and_return_URL(self, domain: str, url: URL, client_session: ClientSession) -> tuple[BeautifulSoup, URL]:
+    async def get_BS4_and_return_URL(self, domain: str, url: URL, client_session: ClientSession) -> tuple[
+        BeautifulSoup, URL]:
         """Returns a BeautifulSoup object and response URL from the given URL"""
         async with client_session.get(url, headers=self._headers, ssl=self.client_manager.ssl_context,
                                       proxy=self.client_manager.proxy) as response:
@@ -108,7 +113,8 @@ class ScraperClient:
             return BeautifulSoup(text, 'html.parser'), URL(response.url)
 
     @limiter
-    async def get_json(self, domain: str, url: URL, params: Optional[Dict] = None, headers_inc: Optional[Dict] = None, client_session: ClientSession = None) -> Dict:
+    async def get_json(self, domain: str, url: URL, params: Optional[Dict] = None, headers_inc: Optional[Dict] = None,
+                       client_session: ClientSession = None) -> Dict:
         """Returns a JSON object from the given URL"""
         headers = {**self._headers, **headers_inc} if headers_inc else self._headers
 
@@ -135,7 +141,8 @@ class ScraperClient:
             return text
 
     @limiter
-    async def post_data(self, domain: str, url: URL, client_session: ClientSession, data: Dict, req_resp: bool = True) -> Dict:
+    async def post_data(self, domain: str, url: URL, client_session: ClientSession, data: Dict,
+                        req_resp: bool = True) -> Dict:
         """Returns a JSON object from the given URL when posting data"""
         async with client_session.post(url, headers=self._headers, ssl=self.client_manager.ssl_context,
                                        proxy=self.client_manager.proxy, data=data) as response:

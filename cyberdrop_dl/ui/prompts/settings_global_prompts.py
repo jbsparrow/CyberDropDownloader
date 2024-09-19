@@ -37,13 +37,13 @@ def edit_global_settings_prompt(manager: Manager) -> None:
         # Edit Rate Limiting Settings
         elif action == 2:
             edit_rate_limiting_settings_prompt(manager)
-            
- 
-       # Edit UI Settings
+
+
+        # Edit UI Settings
         elif action == 3:
             edit_ui_settings_prompt(manager)
 
-        #Edit Dupe
+        # Edit Dupe
         elif action == 4:
             edit_dupe_settings_prompt(manager)
 
@@ -125,7 +125,7 @@ def edit_ui_settings_prompt(manager: Manager) -> None:
         float_allowed=False,
         vi_mode=manager.vi_mode,
     ).execute()
-    
+
     vi_mode = inquirer.confirm(
         message="Enable VI/VIM keybindings?",
         default=bool(manager.config_manager.global_settings_data['UI_Options']['vi_mode']),
@@ -189,7 +189,8 @@ def edit_rate_limiting_settings_prompt(manager: Manager) -> None:
     ).execute()
     max_simultaneous_downloads_per_domain = inquirer.number(
         message="Maximum number of simultaneous downloads per domain:",
-        default=int(manager.config_manager.global_settings_data['Rate_Limiting_Options']['max_simultaneous_downloads_per_domain']),
+        default=int(manager.config_manager.global_settings_data['Rate_Limiting_Options'][
+                        'max_simultaneous_downloads_per_domain']),
         float_allowed=False,
         vi_mode=manager.vi_mode,
     ).execute()
@@ -198,12 +199,13 @@ def edit_rate_limiting_settings_prompt(manager: Manager) -> None:
     manager.config_manager.global_settings_data['Rate_Limiting_Options']['read_timeout'] = int(read_timeout)
     manager.config_manager.global_settings_data['Rate_Limiting_Options']['download_attempts'] = int(download_attempts)
     manager.config_manager.global_settings_data['Rate_Limiting_Options']['rate_limit'] = int(rate_limit)
-    manager.config_manager.global_settings_data['Rate_Limiting_Options']['download_speed_limit'] = int(download_speed_limit)
+    manager.config_manager.global_settings_data['Rate_Limiting_Options']['download_speed_limit'] = int(
+        download_speed_limit)
     manager.config_manager.global_settings_data['Rate_Limiting_Options']['download_delay'] = float(throttle)
-    manager.config_manager.global_settings_data['Rate_Limiting_Options']['max_simultaneous_downloads'] = int(max_simultaneous_downloads)
-    manager.config_manager.global_settings_data['Rate_Limiting_Options']['max_simultaneous_downloads_per_domain'] = int(max_simultaneous_downloads_per_domain)
-
-
+    manager.config_manager.global_settings_data['Rate_Limiting_Options']['max_simultaneous_downloads'] = int(
+        max_simultaneous_downloads)
+    manager.config_manager.global_settings_data['Rate_Limiting_Options']['max_simultaneous_downloads_per_domain'] = int(
+        max_simultaneous_downloads_per_domain)
 
 
 def edit_dupe_settings_prompt(manager: Manager) -> None:
@@ -214,35 +216,34 @@ def edit_dupe_settings_prompt(manager: Manager) -> None:
     delete_after = inquirer.select(
         message="Toggle duplicate files deletion using hashes:",
         default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_after_download'],
-        choices=[Choice(True,"True"),Choice(False,"False")],
+        choices=[Choice(True, "True"), Choice(False, "False")],
         vi_mode=manager.vi_mode,
     ).execute()
     hash_while_downloading = inquirer.select(
         message="Hash Files during downloading:",
         long_instruction=
-        
-"""
-Generate file hashes after each download, instead of batched
-together during deduplication process  
-""",
+
+        """
+        Generate file hashes after each download, instead of batched
+        together during deduplication process  
+        """,
         default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading'],
-        choices=[Choice(True,"True"),Choice(False,"False")],
+        choices=[Choice(True, "True"), Choice(False, "False")],
         vi_mode=manager.vi_mode,
     ).execute()
 
     dedupe_already_downloaded = inquirer.select(
         message="How to handle files already on system: ",
         default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['dedupe_already_downloaded'],
-        choices=[Choice(True,"Mark Existing Files as 'new'"),Choice(False,"Skip Existing Files")],
+        choices=[Choice(True, "Mark Existing Files as 'new'"), Choice(False, "Skip Existing Files")],
         vi_mode=manager.vi_mode,
     ).execute()
-
 
     keep_current = inquirer.select(
         message="What to do with new file when deduping: ",
         long_instruction="Keep a curent file. Current files are files that were either downloaded or a file was skipped for already existing when dedupe_already_downloaded is true",
         default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_new_download'],
-        choices=[Choice(True,"Keep a newfile"),Choice(False,"Delete all new files")],
+        choices=[Choice(True, "Keep a newfile"), Choice(False, "Delete all new files")],
         vi_mode=manager.vi_mode,
     ).execute()
 
@@ -250,25 +251,24 @@ together during deduplication process
         message="What to do with previous file(s) when deduping:",
         default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options'],
         long_instruction="Any file that is not in the list of current files with a matching hash",
-        choices=[Choice(True,"Keep a previous file "),Choice(False,"Delete all previous files")],
+        choices=[Choice(True, "Keep a previous file "), Choice(False, "Delete all previous files")],
         vi_mode=manager.vi_mode,
     ).execute()
 
     delete_off_disk = inquirer.select(
         message="How to handle removal of files: ",
         default=manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_off_disk'],
-        choices=[Choice(True,"Permanently Delete File"),Choice(False,"Send to Trash")],
+        choices=[Choice(True, "Permanently Delete File"), Choice(False, "Send to Trash")],
         vi_mode=manager.vi_mode,
     ).execute()
 
-
-
-   
-    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_after_download'] =  delete_after
-    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading'] = hash_while_downloading
+    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_after_download'] = delete_after
+    manager.config_manager.global_settings_data['Dupe_Cleanup_Options'][
+        'hash_while_downloading'] = hash_while_downloading
     manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download'] = keep_prev
     manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_new_download'] = keep_current
 
-    manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['dedupe_already_downloaded'] = dedupe_already_downloaded
+    manager.config_manager.global_settings_data['Dupe_Cleanup_Options'][
+        'dedupe_already_downloaded'] = dedupe_already_downloaded
 
     manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_off_disk'] = delete_off_disk

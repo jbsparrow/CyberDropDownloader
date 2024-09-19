@@ -1,25 +1,23 @@
 from __future__ import annotations
 
 from pathlib import Path
+from pydoc import pager
 from typing import TYPE_CHECKING
 
 from InquirerPy import inquirer
 from InquirerPy.validator import PathValidator
 from rich.console import Console
-from pydoc import pager
 
-from cyberdrop_dl import __version__
-from cyberdrop_dl.ui.prompts.settings_authentication_prompts import edit_authentication_values_prompt
-from cyberdrop_dl.ui.prompts.general_prompts import (
-    main_prompt, select_config_prompt, donations_prompt,
-    import_cyberdrop_v4_items_prompt, manage_configs_prompt)
-from cyberdrop_dl.ui.prompts.settings_global_prompts import edit_global_settings_prompt
-from cyberdrop_dl.ui.prompts.url_file_prompts import edit_urls_prompt
-from cyberdrop_dl.ui.prompts.settings_user_prompts import create_new_config_prompt, edit_config_values_prompt
-from cyberdrop_dl.ui.prompts.settings_hash_prompts import path_prompt
-from cyberdrop_dl.clients.hash_client import hash_directory_scanner
 import cyberdrop_dl.utils.changelog as Changelog
-
+from cyberdrop_dl import __version__
+from cyberdrop_dl.clients.hash_client import hash_directory_scanner
+from cyberdrop_dl.ui.prompts.general_prompts import (
+    main_prompt, select_config_prompt, import_cyberdrop_v4_items_prompt, manage_configs_prompt)
+from cyberdrop_dl.ui.prompts.settings_authentication_prompts import edit_authentication_values_prompt
+from cyberdrop_dl.ui.prompts.settings_global_prompts import edit_global_settings_prompt
+from cyberdrop_dl.ui.prompts.settings_hash_prompts import path_prompt
+from cyberdrop_dl.ui.prompts.settings_user_prompts import create_new_config_prompt, edit_config_values_prompt
+from cyberdrop_dl.ui.prompts.url_file_prompts import edit_urls_prompt
 
 console = Console()
 
@@ -49,12 +47,12 @@ def program_ui(manager: Manager):
         elif action == 3:
             manager.args_manager.retry_failed = True
             break
-            
+
         # Scanning folder to create hashes
         elif action == 4:
-            path=path_prompt(manager)
-            hash_directory_scanner(manager,path)
-        
+            path = path_prompt(manager)
+            hash_directory_scanner(manager, path)
+
         # Sort All Configs
         elif action == 5:
             manager.args_manager.sort_all_configs = True
@@ -63,7 +61,8 @@ def program_ui(manager: Manager):
 
         # Edit URLs
         elif action == 6:
-            input_file = manager.config_manager.settings_data['Files']['input_file'] if not manager.args_manager.input_file else manager.args_manager.input_file
+            input_file = manager.config_manager.settings_data['Files'][
+                'input_file'] if not manager.args_manager.input_file else manager.args_manager.input_file
             edit_urls_prompt(input_file, manager.vi_mode)
 
         # Select Config
