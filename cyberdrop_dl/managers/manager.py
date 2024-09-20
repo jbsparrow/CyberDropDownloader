@@ -143,7 +143,7 @@ class Manager:
         forum_credentials_provided = {}
 
         for forum in SupportedDomains.supported_forums_map.values():
-            if self.config_manager.authentication_data["Forums"][f"{forum}_xf_user_cookie"]:
+            if self.config_manager.authentication_data["Forums"][f"{forum}_xf_user_cookie"] and forum != "simpcity.su":
                 forum_xf_cookies_provided[f"{forum} XF Cookie Provided"] = True
             else:
                 forum_xf_cookies_provided[f"{forum} XF Cookie Provided"] = False
