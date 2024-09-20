@@ -13,3 +13,6 @@ venv
 .vscode
 # pycharm
 .idea
+
+# Compiled package
+/dist/
