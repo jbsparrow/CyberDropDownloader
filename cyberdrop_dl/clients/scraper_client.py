@@ -79,6 +79,12 @@ class ScraperClient:
             if status != "ok":
                 raise ScrapeFailure(status="DDOS-Guard", message="Failed to resolve URL with flaresolverr")
 
+            # Update cookies
+            for cookie in json_obj.get("solution").get("cookies"):
+                self.client_manager.cookies.update_cookies({cookie["name"]: cookie["value"]}, response_url=cookie["domain"])
+            # Update User-Agent for future requests
+            self._headers["User-Agent"] = json_obj.get("solution").get("userAgent")
+
             return json_obj.get("solution").get("response")
 
     @limiter
