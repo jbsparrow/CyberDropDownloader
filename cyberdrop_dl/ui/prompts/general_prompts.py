@@ -5,7 +5,7 @@ import os
 import pathlib
 from typing import TYPE_CHECKING
 
-from InquirerPy import inquirer
+from InquirerPy import inquirer, get_style
 from InquirerPy.base.control import Choice
 from InquirerPy.separator import Separator
 from InquirerPy.validator import EmptyInputValidator, PathValidator
@@ -25,24 +25,31 @@ console = Console()
 
 def main_prompt(manager: Manager) -> int:
     """Main prompt for the program"""
+    choices = [
+        Choice(1, "Download"),
+        Choice(2, "Download (All Configs)"),
+        Choice(3, "Retry Failed Downloads"),
+        Choice(4, "Create File Hashes"),
+        Choice(5, "Sort All Configs"),
+        Choice(6, "Edit URLs"),
+        Separator(),
+        Choice(7, f"Select Config (Current: {manager.config_manager.loaded_config})"),
+        Choice(8, "Change URLs.txt file and Download Location"),
+        Choice(9, "Edit Configs"),
+        Separator(),
+        Choice(10, "Import Cyberdrop_V4 Items"),
+        Choice(11, "View Changelog"),
+        Choice(12, "Exit"),
+    ]
+
+    simp_disclaimer_shown = manager.cache_manager.get("simp_disclaimer_shown")
+    if simp_disclaimer_shown == None:
+        choices = [Choice(-1, "!! VIEW DISCLAIMER !!")]
+
     action = inquirer.select(
         message="What would you like to do?",
-        choices=[
-            Choice(1, "Download"),
-            Choice(2, "Download (All Configs)"),
-            Choice(3, "Retry Failed Downloads"),
-            Choice(4, "Create File Hashes"),
-            Choice(5, "Sort All Configs"),
-            Choice(6, "Edit URLs"),
-            Separator(),
-            Choice(7, f"Select Config (Current: {manager.config_manager.loaded_config})"),
-            Choice(8, "Change URLs.txt file and Download Location"),
-            Choice(9, "Edit Configs"),
-            Separator(),
-            Choice(10, "Import Cyberdrop_V4 Items"),
-            Choice(11, "View Changelog"),
-            Choice(12, "Exit"),
-        ], long_instruction="ARROW KEYS: Navigate | ENTER: Select",
+        choices=choices, long_instruction="ARROW KEYS: Navigate | ENTER: Select",
+        style=get_style({"pointer": "#ff0000 bold"}) if simp_disclaimer_shown == None else None,
         vi_mode=manager.vi_mode,
     ).execute()
 
