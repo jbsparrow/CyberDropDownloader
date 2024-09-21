@@ -80,7 +80,6 @@ def program_ui(manager: Manager):
 
             input("Press Enter to continue...")
             manager.cache_manager.save('simp_disclaimer_shown', True)
-            exit(0)
 
         # Download
         if action == 1:
