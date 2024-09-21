@@ -10,6 +10,7 @@
 * [Transition from V4 to V5](transition-from-v4-to-v5.md)
 * [Frequently Asked Questions](frequently-asked-questions.md)
 * [Migration to Cyberdrop-DL-Patched](migration-to-cyberdrop-dl-patched.md)
+* [SimpCity Support Dropped](simpcity-support-dropped.md)
 
 ## Reference
 
