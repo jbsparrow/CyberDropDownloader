@@ -47,6 +47,7 @@ class SimpCityCrawler(Crawler):
         self.attachments_block_selector = "section[class=message-attachments]"
         self.attachments_selector = "a"
         self.attachments_attribute = "href"
+        self.label_selector = "a[class=label]"
         self.tag_selector = "a[class=tagItem]"
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
