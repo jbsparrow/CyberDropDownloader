@@ -4,8 +4,6 @@ description: Important Disclaimer Regarding SimpCity and Cyberdrop-DL
 
 # Important Disclaimer Regarding SimpCity
 
-## !! DISCLAIMER !!
-
 Due to the recent DDOS attacks on *SimpCity*, I have made some changes to *Cyberdrop-DL*.
 
 ### Removal of SimpCity Scraping Support
