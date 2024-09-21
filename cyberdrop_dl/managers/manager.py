@@ -68,7 +68,7 @@ class Manager:
 
         self.path_manager.startup()
         self.log_manager = LogManager(self)
-        
+
         # Adjust settings for SimpCity update
         simp_settings_adjusted = self.cache_manager.get("simp_settings_adjusted")
         if simp_settings_adjusted == None:

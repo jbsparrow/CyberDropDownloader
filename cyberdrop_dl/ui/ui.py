@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 from pydoc import pager
-from rich import print as rprint
 from textwrap import dedent
 from typing import TYPE_CHECKING
 
 from InquirerPy import inquirer
 from InquirerPy.validator import PathValidator
+from rich import print as rprint
 from rich.console import Console
 
 import cyberdrop_dl.utils.changelog as Changelog

@@ -21,7 +21,7 @@ class SupportedDomains:
     supported_forums: ClassVar[Tuple[str, ...]] = ("celebforum.to", "f95zone.to", "leakedmodels.com", "nudostar.com",
                                                    "forums.socialmediagirls.com", "xbunker.nu")
     supported_forums_map = {"celebforum.to": "celebforum", "f95zone.to": "f95zone", "leakedmodels.com": "leakedmodels",
-                            "nudostar.com": "nudostar", 
+                            "nudostar.com": "nudostar",
                             "forums.socialmediagirls.com": "socialmediagirls", "xbunker.nu": "xbunker"}
 
     sites: List[str]
