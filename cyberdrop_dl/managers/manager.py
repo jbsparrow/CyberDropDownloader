@@ -68,6 +68,22 @@ class Manager:
 
         self.path_manager.startup()
         self.log_manager = LogManager(self)
+        
+        # Adjust settings for SimpCity update
+        simp_settings_adjusted = self.cache_manager.get("simp_settings_adjusted")
+        if simp_settings_adjusted == None:
+            for config in self.config_manager.get_configs():
+                if config != self.config_manager.loaded_config:
+                    self.config_manager.change_config(config)
+                self.config_manager.settings_data['Runtime_Options']['update_last_forum_post'] = True
+                self.config_manager.write_updated_settings_config()
+            global_settings = self.config_manager.global_settings_data
+            if global_settings['Rate_Limiting_Options']['download_attempts'] >= 10:
+                global_settings['Rate_Limiting_Options']['download_attempts'] = 5
+            if global_settings['Rate_Limiting_Options']['max_simultaneous_downloads_per_domain'] > 15:
+                global_settings['Rate_Limiting_Options']['max_simultaneous_downloads_per_domain'] = 5
+            self.config_manager.write_updated_global_settings_config()
+        self.cache_manager.save('simp_settings_adjusted', True)
 
     def args_startup(self) -> None:
         """Start the args manager"""
