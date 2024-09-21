@@ -64,7 +64,6 @@ Brand new and improved! Cyberdrop-DL now has an updated paint job, fantastic new
   - rule34vault
   - saint
   - scrolller
-  - simpcity
   - socialmediagirls
   - toonily
   - xbunker

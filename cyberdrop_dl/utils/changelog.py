@@ -3,6 +3,16 @@
 ------------------------------------------------------------
 
 C\bCH\bHA\bAN\bNG\bGE\bEL\bLO\bOG\bG
+\tVersion 5.6.30
+
+
+S\bSI\bIM\bMP\bPC\bCI\bIT\bTY\bY H\bHA\bAS\bS B\bBE\bEE\bEN\bN R\bRE\bEM\bMO\bOV\bVE\bED\bD F\bFR\bRO\bOM\bM T\bTH\bHE\bE S\bSU\bUP\bPP\bPO\bOR\bRT\bTE\bED\bD W\bWE\bEB\bBS\bSI\bIT\bTE\bES\bS L\bLI\bIS\bST\bT.\b.
+
+T\bTO\bO S\bSE\bEE\bE W\bWH\bHY\bY,\b, V\bVI\bIS\bSI\bIT\bT T\bTH\bHE\bE W\bWI\bIK\bKI\bI:\b: https://script-ware.gitbook.io/cyberdrop-dl/simpcity-support-dropped
+
+------------------------------------------------------------
+
+C\bCH\bHA\bAN\bNG\bGE\bEL\bLO\bOG\bG
 \tVersion 5.6.20
 
 

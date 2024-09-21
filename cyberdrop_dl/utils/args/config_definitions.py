@@ -103,7 +103,7 @@ settings: Dict = {
         "skip_check_for_empty_folders": False,
         "delete_partial_files": False,
         "send_unsupported_to_jdownloader": False,
-        "update_last_forum_post": False,
+        "update_last_forum_post": True,
     },
     "Sorting": {
         "sort_downloads": False,
@@ -130,12 +130,12 @@ global_settings: Dict = {
     },
     "Rate_Limiting_Options": {
         "connection_timeout": 15,
-        "download_attempts": 10,
+        "download_attempts": 5,
         "read_timeout": 300,
         "rate_limit": 50,
         "download_delay": 0.5,
         "max_simultaneous_downloads": 15,
-        "max_simultaneous_downloads_per_domain": 5,
+        "max_simultaneous_downloads_per_domain": 3,
         "download_speed_limit": 0
     },
     "Dupe_Cleanup_Options":
