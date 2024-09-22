@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-import shutil
+from pathlib import Path
+from shutil import disk_usage
 from base64 import b64encode
 from typing import TYPE_CHECKING
 
@@ -69,9 +70,12 @@ class DownloadManager:
         token = b64encode(f"{username}:{password}".encode('utf-8')).decode("ascii")
         return f'Basic {token}'
 
-    async def check_free_space(self) -> bool:
+    async def check_free_space(self, folder: Path = None) -> bool:
         """Checks if there is enough free space on the drive to continue operating"""
-        free_space = shutil.disk_usage(self.manager.path_manager.download_dir.parent).free
+        if folder is None:
+            free_space = disk_usage(self.manager.path_manager.download_dir).free
+        else:
+            free_space = disk_usage(folder).free
         free_space_gb = free_space / 1024 ** 3
         return free_space_gb >= self.manager.config_manager.global_settings_data['General']['required_free_space']
 
