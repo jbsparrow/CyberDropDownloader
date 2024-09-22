@@ -139,19 +139,16 @@ class Manager:
 
     async def args_consolidation(self) -> None:
         """Consolidates runtime arguments with config values"""
+        cli_settings_groups = ["Download_Options","File_Size_Limits","Ignore_Options","Runtime_Options"]
         for arg in self.args_manager.parsed_args:
-            if arg in config_definitions.settings['Download_Options']:
-                if self.args_manager.parsed_args[arg] != config_definitions.settings['Download_Options'][arg]:
-                    self.config_manager.settings_data['Download_Options'][arg] = self.args_manager.parsed_args[arg]
-            elif arg in config_definitions.settings['File_Size_Limits']:
-                if self.args_manager.parsed_args[arg] != config_definitions.settings['File_Size_Limits'][arg]:
-                    self.config_manager.settings_data['File_Size_Limits'][arg] = self.args_manager.parsed_args[arg]
-            elif arg in config_definitions.settings['Ignore_Options']:
-                if self.args_manager.parsed_args[arg] != config_definitions.settings['Ignore_Options'][arg]:
-                    self.config_manager.settings_data['Ignore_Options'][arg] = self.args_manager.parsed_args[arg]
-            elif arg in config_definitions.settings['Runtime_Options']:
-                if self.args_manager.parsed_args[arg] != config_definitions.settings['Runtime_Options'][arg]:
-                    self.config_manager.settings_data['Runtime_Options'][arg] = self.args_manager.parsed_args[arg]
+            for cli_settings_group in cli_settings_groups:
+                if arg in config_definitions.settings[cli_settings_group]:
+                    if self.args_manager.parsed_args[arg] == config_definitions.settings[cli_settings_group][arg]:
+                        continue
+                    if arg in self.args_manager.additive_args:
+                        self.config_manager.settings_data[cli_settings_group][arg] += self.args_manager.parsed_args[arg]
+                    else:
+                        self.config_manager.settings_data[cli_settings_group][arg] = self.args_manager.parsed_args[arg]
 
     async def args_logging(self) -> None:
         """Logs the runtime arguments"""
