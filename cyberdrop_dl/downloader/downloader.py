@@ -163,12 +163,12 @@ class Downloader:
     async def check_file_can_download(self, media_item: MediaItem) -> bool:
         """Checks if the file can be downloaded"""
         if not await self.manager.download_manager.check_free_space(media_item.download_folder):
-            await log(f"Download Skip {media_item.url} due to insufficient free space", 10)
-            return False
+            await log(f"Download Failed {media_item.url} due to insufficient free space", 10)
+            return False, 0
         if not await self.manager.download_manager.check_allowed_filetype(media_item):
-            await log(f"Download Skip {media_item.url} due to filetype restrictions", 10)
-            return False
-        return True
+            await log(f"Download Skipped {media_item.url} due to filetype restrictions", 10)
+            return False, 1
+        return True, -1
 
     async def set_file_datetime(self, media_item: MediaItem, complete_file: Path) -> None:
         """Sets the file's datetime"""
@@ -196,16 +196,24 @@ class Downloader:
     @retry
     async def download(self, media_item: MediaItem) -> None:
         """Downloads the media item"""
-        if not await self.check_file_can_download(media_item):
-            await self.manager.progress_manager.download_progress.add_skipped()
+        can_download, reason = await self.check_file_can_download(media_item)
+        if not can_download:
+            if reason == 0:
+                await self.manager.progress_manager.download_progress.add_failed()
+            else:
+                await self.manager.progress_manager.download_progress.add_skipped()
             return
 
         try:
             if not isinstance(media_item.current_attempt, int):
                 media_item.current_attempt = 1
 
-            if not await self.check_file_can_download(media_item):
-                await self.manager.progress_manager.download_progress.add_skipped()
+            can_download, reason = await self.check_file_can_download(media_item)
+            if not can_download:
+                if reason == 0:
+                    await self.manager.progress_manager.download_progress.add_failed()
+                else:
+                    await self.manager.progress_manager.download_progress.add_skipped()
                 return
 
             downloaded = await self.client.download_file(self.manager, self.domain, media_item)
