@@ -3,6 +3,26 @@
 ------------------------------------------------------------
 
 C\bCH\bHA\bAN\bNG\bGE\bEL\bLO\bOG\bG
+\tVersion 5.6.32
+
+
+D\bDE\bES\bSC\bCR\bRI\bIP\bPT\bTI\bIO\bON\bN
+\tThis update introduces the following changes:
+\t\t1. Add new URLs categorization feature for the URLs.txt file.
+
+\tDetails:
+\t\t- You can now group links under one download folder by adding a category name above the links in the URLs.txt file.
+\t\t- The category name must be prefixed by three dashes (---) and must be on a new line.
+\t\t- The category name will be used as the folder name for the links that follow it.
+\t\t- To end a category, add three dashes (---) on a new line after the links.
+\t\t- You can have multiple categories in the URLs.txt file, and the links will be grouped accordingly.
+
+
+\tFor more details, visit the wiki: https://script-ware.gitbook.io
+
+------------------------------------------------------------
+
+C\bCH\bHA\bAN\bNG\bGE\bEL\bLO\bOG\bG
 \tVersion 5.6.30
 
 
