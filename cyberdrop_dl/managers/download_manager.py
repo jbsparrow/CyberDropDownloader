@@ -73,8 +73,14 @@ class DownloadManager:
     async def check_free_space(self, folder: Path = None) -> bool:
         """Checks if there is enough free space on the drive to continue operating"""
         if folder is None:
-            free_space = disk_usage(self.manager.path_manager.download_dir.drive).free
+            free_space = disk_usage(self.manager.path_manager.download_dir).free
         else:
+            folder = folder.resolve()
+            while not folder.is_dir() and folder.parents:
+                folder = folder.parent   
+            # check if we reached an anchor (root) that does not exists, ex: disconnected USB drive
+            if not folder.is_dir(): 
+                return False
             free_space = disk_usage(folder).free
         free_space_gb = free_space / 1024 ** 3
         return free_space_gb >= self.manager.config_manager.global_settings_data['General']['required_free_space']
