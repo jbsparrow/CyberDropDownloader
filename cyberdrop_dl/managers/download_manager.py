@@ -73,7 +73,7 @@ class DownloadManager:
     async def check_free_space(self, folder: Path = None) -> bool:
         """Checks if there is enough free space on the drive to continue operating"""
         if folder is None:
-            free_space = disk_usage(self.manager.path_manager.download_dir).free
+            free_space = disk_usage(self.manager.path_manager.download_dir.drive).free
         else:
             free_space = disk_usage(folder).free
         free_space_gb = free_space / 1024 ** 3
