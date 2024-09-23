@@ -3,6 +3,25 @@
 ------------------------------------------------------------
 
 C\bCH\bHA\bAN\bNG\bGE\bEL\bLO\bOG\bG
+\tVersion 5.6.33
+
+
+D\bDE\bES\bSC\bCR\bRI\bIP\bPT\bTI\bIO\bON\bN
+\tThis update introduces the following changes:
+\t\t1. Fix issues with checking how much free space is available on the disk.
+\t\t2. Skip clearing the console when running with the --no-ui flag.
+
+\tDetails:
+\t\t- Fixed an issue with free space not being properly checked when running with the --retry-failed flag.
+\t\t- Made error output more clear when there is not enough free space to download a file.
+\t\t- Skip clearing the console when running with the --no-ui flag to allow users to see the output of all runs done with --no-ui.
+
+
+\tFor more details, visit the wiki: https://script-ware.gitbook.io
+
+------------------------------------------------------------
+
+C\bCH\bHA\bAN\bNG\bGE\bEL\bLO\bOG\bG
 \tVersion 5.6.32
 
 
@@ -18,7 +37,7 @@ D\bDE\bES\bSC\bCR\bRI\bIP\bPT\bTI\bIO\bON\bN
 \t\t- You can have multiple categories in the URLs.txt file, and the links will be grouped accordingly.
 
 
-\tFor more details, visit the wiki: https://script-ware.gitbook.io
+\tFor more details, visit the wiki: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings#sorting
 
 ------------------------------------------------------------
 
