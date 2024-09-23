@@ -325,9 +325,11 @@ https://example.com/file7.jpg
 
 That file would be sorted as follows:
 
-
-
-
+| Loose Files | Test | Test 2 |
+|--------|--------|--------|
+| file1.jpg | file2.jpg | file5.jpg |
+| file4.jpg | file3.jpg | file6.jpg |
+| file7.jpg | | |
 
 ***
 
