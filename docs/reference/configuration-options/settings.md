@@ -301,9 +301,9 @@ Shared Path Flags:
 * filename - the files name (stem)
 * ext - the files extension
 
-It is possible to treat a list of URLs as a group, allowing them to be downloaded to a single folder.&#x20;
+It is possible to treat a list of URLs as a group, allowing them to be downloaded to a single folder.
 
-To define a group, put a title above the URLs you want to be in the group by doing the following: `--- {group name}` or `=== {group name}`.&#x20;
+To define a group, put a title above the URLs you want to be in the group by doing the following: `--- {group name}` or `=== {group name}`.
 
 To define the end of a group, insert an group with no name. (`---` or `===`)
 
@@ -323,13 +323,9 @@ https://example.com/file6.jpg
 https://example.com/file7.jpg
 ```
 
-That file would be sorted as follows:
+Those downloads would be sorted as follows:
 
-| Loose Files | Test | Test 2 |
-|--------|--------|--------|
-| file1.jpg | file2.jpg | file5.jpg |
-| file4.jpg | file3.jpg | file6.jpg |
-| file7.jpg | | |
+<img src="../../.gitbook/assets/Screen Shot 2024-09-23 at 11.09.50.png" alt="" data-size="original">
 
 ***
 
