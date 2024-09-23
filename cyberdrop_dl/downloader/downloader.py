@@ -196,14 +196,6 @@ class Downloader:
     @retry
     async def download(self, media_item: MediaItem) -> None:
         """Downloads the media item"""
-        can_download, reason = await self.check_file_can_download(media_item)
-        if not can_download:
-            if reason == 0:
-                await self.manager.progress_manager.download_progress.add_failed()
-            else:
-                await self.manager.progress_manager.download_progress.add_skipped()
-            return
-
         try:
             if not isinstance(media_item.current_attempt, int):
                 media_item.current_attempt = 1
@@ -211,6 +203,7 @@ class Downloader:
             can_download, reason = await self.check_file_can_download(media_item)
             if not can_download:
                 if reason == 0:
+                    await self.manager.progress_manager.download_stats_progress.add_failure("Insufficient Free Space")
                     await self.manager.progress_manager.download_progress.add_failed()
                 else:
                     await self.manager.progress_manager.download_progress.add_skipped()
