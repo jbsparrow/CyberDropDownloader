@@ -310,26 +310,41 @@ class ScrapeMapper:
         """Loads links from args / input file"""
         input_file = self.manager.path_manager.input_file
 
-        links = []
+        links = {'': []}
         if not self.manager.args_manager.other_links:
             block_quote = False
+            thread_title = ""
             async with aiofiles.open(input_file, "r", encoding="utf8") as f:
                 async for line in f:
                     assert isinstance(line, str)
-                    block_quote = not block_quote if line == "#\n" else block_quote
-                    if not block_quote:
-                        links.extend(await self.regex_links(line))
+
+                    if line.startswith("---") or line.startswith("==="):
+                        thread_title = line.replace("---", "").replace("===", "").strip()
+                        if thread_title:
+                            if thread_title not in links.keys():
+                                links[thread_title] = []
+
+                    if thread_title:
+                        links[thread_title].extend(await self.regex_links(line))
+                    else:
+                        block_quote = not block_quote if line == "#\n" else block_quote
+                        if not block_quote:
+                            links[''].extend(await self.regex_links(line))
         else:
-            links.extend(self.manager.args_manager.other_links)
-        links = list(filter(None, links))
+            links[''].extend(self.manager.args_manager.other_links)
+
+        links = {k: list(filter(None, v)) for k, v in links.items()}
         items = []
 
         if not links:
             await log("No valid links found.", 30)
-        for link in links:
-            item = self.get_item_from_link(link)
-            if await self.filter_items(item):
-                items.append(item)
+        for title in links:
+            for url in links[title]:
+                item = self.get_item_from_link(url)
+                await item.add_to_parent_title(title)
+                item.part_of_album = True
+                if await self.filter_items(item):
+                    items.append(item)
         for item in items:
             self.manager.task_group.create_task(self.add_item_to_group(item))
 
