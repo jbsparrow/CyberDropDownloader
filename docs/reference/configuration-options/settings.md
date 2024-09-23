@@ -296,11 +296,36 @@ You can use the shared path flags below in any part of the sorting schemas. You 
 Shared Path Flags:
 
 * sort\_dir - sort\_folder path
-* base\_dir - the highest level folder name inside the folder being scanned 'scan_folder' (model name / thread name)
+* base\_dir - the highest level folder name inside the folder being scanned 'scan\_folder' (model name / thread name)
 * parent\_dir - the folder name of where the file is (album name)
 * filename - the files name (stem)
 * ext - the files extension
 
+It is possible to treat a list of URLs as a group, allowing them to be downloaded to a single folder.
+
+To define a group, put a title above the URLs you want to be in the group by doing the following: `--- {group name}` or `=== {group name}`.
+
+To define the end of a group, insert an group with no name. (`---` or `===`)
+
+Here is an example URL file with two groups:
+
+```
+https://example.com/file1.jpg
+=== Test
+https://example.com/file2.jpg
+https://example.com/file3.jpg
+===
+https://example.com/file4.jpg
+--- Test 2
+https://example.com/file5.jpg
+https://example.com/file6.jpg
+===
+https://example.com/file7.jpg
+```
+
+Those downloads would be sorted as follows:
+
+<img src="../../.gitbook/assets/Screen Shot 2024-09-23 at 11.09.50.png" alt="" data-size="original">
 
 ***
 
@@ -308,9 +333,10 @@ Shared Path Flags:
 
 Sets the starting point for the file scan
 
-Each direct child of the scan_folder is recursively scanned ,and files are moved based on your settings
+Each direct child of the scan\_folder is recursively scanned ,and files are moved based on your settings
 
-If this is not set then the downloads_dir is used instead
+If this is not set then the downloads\_dir is used instead
+
 ***
 
 * sort\_downloads
@@ -321,7 +347,7 @@ Setting this to true will allow Cyberdrop-DL to sort downloads after a run is co
 
 * sort\_cdl\_only
 
-Setting this to true will sort only files that were downloaded by Cyberdrop-DL. sort_downloads must be true for this to work.
+Setting this to true will sort only files that were downloaded by Cyberdrop-DL. sort\_downloads must be true for this to work.
 
 ***
 

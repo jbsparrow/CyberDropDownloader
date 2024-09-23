@@ -8,7 +8,6 @@ description: >-
 
 ### Removal of SimpCity Scraping Support
 
-
 Support for scraping SimpCity has been removed temporarily. I understand this may disappoint some users, but hopefully after reading this, you will understand why I made this decision. Following the recent DDOS attacks, SimpCity has implemented the following security measures to protect their website:
 
 * SimpCity has implemented a DDOS-Guard browser check.
@@ -23,7 +22,9 @@ Cyberdrop-DL allows users to scrape a model’s entire thread quickly, downloadi
 * Such scraping puts a significant strain on SimpCity’s servers, particularly during DDOS attacks.
 * Scraping provides no direct benefit to SimpCity, and in light of these attacks, they have chosen not to support automated scraping.
 
-For these reasons, SimpCity has removed the Cyberdrop-DL thread, and I have disabled scraping for their site in order to reduce the strain on their servers.
+For these reasons, ~~SimpCity has removed the Cyberdrop-DL thread~~, and I have disabled scraping for their site in order to reduce the strain on their servers.
+
+The Cyberdrop-DL thread has been reinstated following the release of [Cyberdrop-DL version 5.6.30](https://pypi.org/project/cyberdrop-dl-patched/5.6.30/).
 
 ### How to Reduce the Impact of Cyberdrop-DL Usage
 
