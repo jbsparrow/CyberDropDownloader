@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import field
 from pathlib import Path
 from typing import Any, Dict, TYPE_CHECKING
+from aiohttp_client_cache import SQLiteBackend
 
 import yaml
 
@@ -27,6 +28,7 @@ class CacheManager:
     def __init__(self, manager: 'Manager'):
         self.manager = manager
 
+        self.request_cache: SQLiteBackend = field(init=False)
         self.cache_file: Path = field(init=False)
         self._cache = {}
 
@@ -41,8 +43,9 @@ class CacheManager:
             self.save('first_startup_completed', True)
 
     def load(self) -> None:
-        """Loads the cache file into memory"""
+        """Loads the cache files into memory"""
         self._cache = _load_yaml(self.cache_file)
+        self.request_cache = SQLiteBackend(cache_name=self.manager.path_manager.cache_db)
 
     def get(self, key: str) -> Any:
         """Returns the value of a key in the cache"""

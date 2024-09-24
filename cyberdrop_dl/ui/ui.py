@@ -177,20 +177,24 @@ def program_ui(manager: Manager):
                             vi_mode=manager.vi_mode,
                         ).execute()
 
-                # Edit Config
+                # Clear Request Cache
                 elif action == 4:
+                    manager.cache_manager.request_cache.clear()
+
+                # Edit Config
+                elif action == 5:
                     edit_config_values_prompt(manager)
 
                 # Edit Authentication Values
-                elif action == 5:
+                elif action == 6:
                     edit_authentication_values_prompt(manager)
 
                 # Edit Global Settings
-                elif action == 6:
+                elif action == 7:
                     edit_global_settings_prompt(manager)
 
                 # Done
-                elif action == 7:
+                elif action == 8:
                     break
 
         # Import Cyberdrop_V4 Items

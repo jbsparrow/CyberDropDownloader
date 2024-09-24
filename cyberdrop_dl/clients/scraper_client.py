@@ -6,7 +6,7 @@ from functools import wraps
 from typing import TYPE_CHECKING, Dict, Optional
 
 import aiohttp
-from aiohttp import ClientSession
+from aiohttp_client_cache import CachedSession as ClientSession
 from bs4 import BeautifulSoup
 from multidict import CIMultiDictProxy
 from yarl import URL
@@ -28,9 +28,9 @@ def limiter(func):
             await self._global_limiter.acquire()
             await domain_limiter.acquire()
 
-            async with aiohttp.ClientSession(headers=self._headers, raise_for_status=False,
+            async with ClientSession(headers=self._headers, raise_for_status=False,
                                              cookie_jar=self.client_manager.cookies, timeout=self._timeouts,
-                                             trace_configs=self.trace_configs) as client:
+                                             trace_configs=self.trace_configs, cache=self.manager.cache_manager.request_cache) as client:
                 kwargs['client_session'] = client
                 return await func(self, *args, **kwargs)
 

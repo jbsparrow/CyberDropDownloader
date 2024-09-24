@@ -37,6 +37,7 @@ class PathManager:
 
         self.input_file: Path = field(init=False)
         self.history_db: Path = field(init=False)
+        self.cache_db: Path = field(init=False)
 
         self.main_log: Path = field(init=False)
         self.last_post_log: Path = field(init=False)
@@ -73,6 +74,7 @@ class PathManager:
         self.input_file = self.manager.config_manager.settings_data['Files'][
             'input_file'] if not self.manager.args_manager.input_file else self.manager.args_manager.input_file
         self.history_db = self.cache_dir / "cyberdrop.db"
+        self.cache_db = self.cache_dir / "request_cache.db"
 
         self.main_log = self.log_dir / (self.manager.config_manager.settings_data['Logs']['main_log_filename']
                                         if not self.manager.args_manager.main_log_filename else self.manager.args_manager.main_log_filename)
@@ -93,6 +95,7 @@ class PathManager:
         if not self.input_file.is_file():
             self.input_file.touch(exist_ok=True)
         self.history_db.touch(exist_ok=True)
+        self.cache_db.touch(exist_ok=True)
 
     def add_completed(self, media_item: MediaItem):
         self._completed_downloads.add(media_item)
