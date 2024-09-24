@@ -45,7 +45,12 @@ class CacheManager:
     def load(self) -> None:
         """Loads the cache files into memory"""
         self._cache = _load_yaml(self.cache_file)
-        self.request_cache = SQLiteBackend(cache_name=self.manager.path_manager.cache_db)
+        self.request_cache = SQLiteBackend(
+            cache_name=self.manager.path_manager.cache_db, 
+            autoclose=True, 
+            allowed_codes=(200, 418), 
+            allowed_methods=['GET'], 
+        )
 
     def get(self, key: str) -> Any:
         """Returns the value of a key in the cache"""

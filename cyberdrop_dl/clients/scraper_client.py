@@ -30,7 +30,7 @@ def limiter(func):
 
             async with ClientSession(headers=self._headers, raise_for_status=False,
                                              cookie_jar=self.client_manager.cookies, timeout=self._timeouts,
-                                             trace_configs=self.trace_configs, cache=self.manager.cache_manager.request_cache) as client:
+                                             trace_configs=self.trace_configs, cache=self.client_manager.manager.cache_manager.request_cache) as client:
                 kwargs['client_session'] = client
                 return await func(self, *args, **kwargs)
 
