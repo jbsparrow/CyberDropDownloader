@@ -47,9 +47,10 @@ class CacheManager:
         self._cache = _load_yaml(self.cache_file)
         self.request_cache = SQLiteBackend(
             cache_name=self.manager.path_manager.cache_db, 
-            autoclose=True, 
+            autoclose=False, 
             allowed_codes=(200, 418), 
             allowed_methods=['GET'], 
+            expire_after=7 * 24 * 60 * 60
         )
 
     def get(self, key: str) -> Any:

@@ -4,7 +4,9 @@ import re
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
-from bs4 import Tag
+from bs4 import Tag, BeautifulSoup
+from aiohttp import ClientResponse
+import copy
 from yarl import URL
 
 from cyberdrop_dl.scraper.crawler import Crawler
@@ -34,6 +36,8 @@ class SimpCityCrawler(Crawler):
         self.posts_content_selector = "div[class*=message-userContent]"
         self.next_page_selector = "a[class*=pageNav-jump--next]"
         self.next_page_attribute = "href"
+        self.final_page_selector = "li[class=pageNav-page] a"
+        self.current_page_selector = "li.pageNav-page.pageNav-page--current a"
         self.links_selector = "a"
         self.links_attribute = "href"
         self.attachment_url_part = "attachments"
@@ -50,9 +54,28 @@ class SimpCityCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+
+    async def check_last_page(self, response: ClientResponse) -> bool:
+        """Checks if the last page has been reached"""
+        self.response_text = await response.text()
+        self.response_soup = BeautifulSoup(self.response_text, "html.parser")
+        last_page = int(self.response_soup.select_one(self.final_page_selector).text.split('page-')[-1])
+        current_page = int(self.response_soup.select_one(self.current_page_selector).text.split('page-')[-1])
+        await log(f"Current page: {current_page}, Last page: {last_page}, save to cache: {current_page != last_page}", 40)
+        return current_page != last_page
+
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url"""
         task_id = await self.scraping_progress.add_task(scrape_item.url)
+        
+        ddg1 = 'ANz6RzdnkLs8uv1H5X3p'
+        ddg2 = 'cetXlnh4HCbF4yfK'
+        ddg5 = 'bPilbvNm4qQDEd17'
+        ddg_id = 'M55pDtCCwDCWyZJD'
+        ddg_mark = '77DznUyqgKbF89FO'
+        kZJdisc_csrf = "CcRTBgBU-YcOQoC3"
+        
+        self.manager.client_manager.cookies.update_cookies({"__ddg1_": ddg1, "__ddg2_": ddg2, "__ddg5_": ddg5, "__ddgid_": ddg_id, "__ddgmark_": ddg_mark, "kZJdisc_csrf": kZJdisc_csrf}, response_url=URL("https://simpcity.su"))
 
         if not self.logged_in and self.login_attempts == 0:
             login_url = self.primary_base_domain / "login"
@@ -88,7 +111,7 @@ class SimpCityCrawler(Crawler):
         current_post_number = 0
         while True:
             async with self.request_limiter:
-                soup = await self.client.get_BS4(self.domain, thread_url)
+                soup = await self.client.get_BS4(self.domain, thread_url, fn_filter=self.check_last_page)
 
             title_block = soup.select_one(self.title_selector)
             for elem in title_block.find_all(self.title_trash_selector):
@@ -111,8 +134,6 @@ class SimpCityCrawler(Crawler):
                         pass
                     new_scrape_item = await self.create_scrape_item(scrape_item, thread_url, title, False, None, date)
 
-                    # for elem in post.find_all(self.quotes_selector):
-                    #     elem.decompose()
                     post_content = post.select_one(self.posts_content_selector)
                     await self.post(new_scrape_item, post_content, current_post_number)
 
