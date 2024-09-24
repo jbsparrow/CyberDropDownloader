@@ -26,7 +26,6 @@ class Manager:
     def __init__(self):
         self.args_manager: ArgsManager = ArgsManager()
         self.cache_manager: CacheManager = CacheManager(self)
-        self.simpcity_cache_manager: CacheManager = CacheManager(self,backend="json")
         self.path_manager: PathManager = field(init=False)
         self.config_manager: ConfigManager = field(init=False)
         self.hash_manager: HashManager = field(init=False)
@@ -62,7 +61,6 @@ class Manager:
         self.path_manager.pre_startup()
 
         self.cache_manager.startup(self.path_manager.cache_dir / "cache.yaml")
-        self.simpcity_cache_manager.startup(self.path_manager.cache_dir / "simpcity_cache.json")
         self.config_manager = ConfigManager(self)
         self.config_manager.startup()
         self.vi_mode = self.config_manager.global_settings_data['UI_Options'][

@@ -4,9 +4,8 @@ import re
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
-from bs4 import Tag, BeautifulSoup
+from bs4 import Tag
 from yarl import URL
-import json
 
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
@@ -100,68 +99,54 @@ class SimpCityCrawler(Crawler):
 
         current_post_number = 0
         while True:
-            posts_dict= self.manager.simpcity_cache_manager.get(str(thread_url))
-            if not posts_dict:
-                async with self.request_limiter:
-                    soup = await self.client.get_BS4(self.domain, thread_url)
-                title_block = soup.select_one(self.title_selector)
-                for elem in title_block.find_all(self.title_trash_selector):
-                    elem.decompose()
-                thread_id = thread_url.parts[2].split('.')[-1]
-                title = await self.create_title(title_block.text.replace("\n", ""), None, thread_id)
-                posts = soup.select(self.posts_selector)
-                post_content_array=[]
-                for post in posts:
-                    current_post_number = int(
-                        post.select_one(self.posts_number_selector).get(self.posts_number_attribute).split('/')[-1].split(
-                            'post-')[-1])
-                    scrape_post, continue_scraping = await self.check_post_number(post_number, current_post_number)
+            async with self.request_limiter:
+                soup = await self.client.get_BS4(self.domain, thread_url)
 
-                    if scrape_post:
-                        try:
-                            date = int(post.select_one(self.post_date_selector).get(self.post_date_attribute))
-                        except:
-                            pass
-                        new_scrape_item = await self.create_scrape_item(scrape_item, thread_url, title, False, None, date)
+            title_block = soup.select_one(self.title_selector)
+            for elem in title_block.find_all(self.title_trash_selector):
+                elem.decompose()
 
-                        # for elem in post.find_all(self.quotes_selector):
-                        #     elem.decompose()
-                        post_content = post.select_one(self.posts_content_selector)
-                        post_content_array.append({"data"   : str(post_content),"current_post_number":current_post_number})
+            thread_id = thread_url.parts[2].split('.')[-1]
+            title = await self.create_title(title_block.text.replace("\n", ""), None, thread_id)
 
-                        await self.post(new_scrape_item, post_content, current_post_number)
-                    simp_dict={"posts": post_content_array,"title": title,"date":date}
-                    self.manager.simpcity_cache_manager.save(str(thread_url),json.dumps(simp_dict))
-                    if not continue_scraping:
-                        break
+            posts = soup.select(self.posts_selector)
+            for post in posts:
+                current_post_number = int(
+                    post.select_one(self.posts_number_selector).get(self.posts_number_attribute).split('/')[-1].split(
+                        'post-')[-1])
+                scrape_post, continue_scraping = await self.check_post_number(post_number, current_post_number)
+
+                if scrape_post:
+                    try:
+                        date = int(post.select_one(self.post_date_selector).get(self.post_date_attribute))
+                    except:
+                        pass
+                    new_scrape_item = await self.create_scrape_item(scrape_item, thread_url, title, False, None, date)
+
+                    # for elem in post.find_all(self.quotes_selector):
+                    #     elem.decompose()
+                    post_content = post.select_one(self.posts_content_selector)
+                    await self.post(new_scrape_item, post_content, current_post_number)
+
+                if not continue_scraping:
+                    break
+
+            next_page = soup.select_one(self.next_page_selector)
+            if next_page and continue_scraping:
+                thread_url = next_page.get(self.next_page_attribute)
+                if thread_url:
+                    if thread_url.startswith("/"):
+                        thread_url = self.primary_base_domain / thread_url[1:]
+                    thread_url = URL(thread_url)
+                    continue
             else:
-                posts_dict=json.loads(posts_dict)
-                title =posts_dict.get("title")
-                posts= posts_dict.get("posts")
-                date = posts_dict.get("date")
-
-                for post in posts:
-                    current_post_number = post.get("current_post_number")
-                    scrape_post, continue_scraping = await self.check_post_number(post_number, current_post_number)
-
-                    if scrape_post:
-                        new_scrape_item = await self.create_scrape_item(scrape_item, thread_url, title, False, None, date)
-
-                        # for elem in post.find_all(self.quotes_selector):
-                        #     elem.decompose()
-                        post_content =BeautifulSoup(post.get("data"))
-    
-                        await self.post(new_scrape_item, post_content, current_post_number)
-                    if not continue_scraping:
-                        break
-
-
-            post_string = f"post-{current_post_number}"
-            if "page-" in scrape_item.url.raw_name or "post-" in scrape_item.url.raw_name:
-                last_post_url = scrape_item.url.parent / post_string
-            else:
-                last_post_url = scrape_item.url / post_string
-            await self.manager.log_manager.write_last_post_log(last_post_url)
+                break
+        post_string = f"post-{current_post_number}"
+        if "page-" in scrape_item.url.raw_name or "post-" in scrape_item.url.raw_name:
+            last_post_url = scrape_item.url.parent / post_string
+        else:
+            last_post_url = scrape_item.url / post_string
+        await self.manager.log_manager.write_last_post_log(last_post_url)
 
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem, post_content: Tag, post_number: int) -> None:
