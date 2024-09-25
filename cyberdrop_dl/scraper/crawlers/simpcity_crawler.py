@@ -64,9 +64,7 @@ class SimpCityCrawler(Crawler):
             current_page = int(self.response_soup.select_one(self.current_page_selector).text.split('page-')[-1])
         except AttributeError:
             await log(f"Last page not found for {response.url}. Assuming only one page.", 40)
-            last_page = 1
-            current_page = 1
-        await log(f"Current page: {current_page}, Last page: {last_page}, save to cache: {current_page != last_page}", 40)
+            return False
         return current_page != last_page
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
@@ -116,7 +114,7 @@ class SimpCityCrawler(Crawler):
         current_post_number = 0
         while True:
             async with self.request_limiter:
-                soup = await self.client.get_BS4(self.domain, thread_url, fn_filter=self.check_last_page)
+                soup = await self.client.get_BS4(self.domain, thread_url, filter_fn=self.check_last_page)
 
             title_block = soup.select_one(self.title_selector)
             for elem in title_block.find_all(self.title_trash_selector):
