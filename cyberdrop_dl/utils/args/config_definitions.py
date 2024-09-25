@@ -132,7 +132,9 @@ global_settings: Dict = {
         "download_delay": 0.5,
         "max_simultaneous_downloads": 15,
         "max_simultaneous_downloads_per_domain": 3,
-        "download_speed_limit": 0
+        "download_speed_limit": 0,
+        "forum_cache_length": 60 * 60 * 24 * 31,
+        "file_host_cache_length": 60 * 60 * 24 * 7,
     },
     "Dupe_Cleanup_Options":
         {
@@ -142,7 +144,6 @@ global_settings: Dict = {
             "keep_new_download": True,
             "dedupe_already_downloaded": False,
             "delete_off_disk": False
-
         },
 
     "UI_Options": {
