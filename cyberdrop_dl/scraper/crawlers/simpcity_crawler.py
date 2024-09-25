@@ -73,12 +73,12 @@ class SimpCityCrawler(Crawler):
         """Determines where to send the scrape item based on the url"""
         task_id = await self.scraping_progress.add_task(scrape_item.url)
         
-        ddg1 = 'ANz6RzdnkLs8uv1H5X3p'
-        ddg2 = 'cetXlnh4HCbF4yfK'
-        ddg5 = 'bPilbvNm4qQDEd17'
-        ddg_id = 'M55pDtCCwDCWyZJD'
-        ddg_mark = '77DznUyqgKbF89FO'
-        kZJdisc_csrf = "CcRTBgBU-YcOQoC3"
+        ddg1 = ''
+        ddg2 = ''
+        ddg5 = ''
+        ddg_id = ''
+        ddg_mark = ''
+        kZJdisc_csrf = ''
         
         self.manager.client_manager.cookies.update_cookies({"__ddg1_": ddg1, "__ddg2_": ddg2, "__ddg5_": ddg5, "__ddgid_": ddg_id, "__ddgmark_": ddg_mark, "kZJdisc_csrf": kZJdisc_csrf}, response_url=URL("https://simpcity.su"))
 
