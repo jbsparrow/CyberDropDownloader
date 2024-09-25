@@ -34,6 +34,9 @@ CONSOLE_DEBUG_VAR = False
 global LOG_OUTPUT_TEXT
 LOG_OUTPUT_TEXT = "```diff\n"
 
+RAR_MULTIPART_PATTERN = r'^part\d+'
+_7Z_FILE_EXTENSIONS = {"7z","tar","gz","bz2","zip"}
+
 FILE_FORMATS = {
     'Images': {
         '.jpg', '.jpeg', '.png', '.gif',
@@ -207,6 +210,12 @@ async def get_download_path(manager: Manager, scrape_item: ScrapeItem, domain: s
     else:
         return download_dir / f"Loose Files ({domain})"
 
+async def _is_number(ext: str):
+    try:
+        int(ext.rsplit(".", 1)[-1])
+        return True
+    except ValueError:
+        return False
 
 async def remove_id(manager: Manager, filename: str, ext: str) -> Tuple[str, str]:
     """Removes the additional string some websites adds to the end of every filename"""
@@ -215,6 +224,13 @@ async def remove_id(manager: Manager, filename: str, ext: str) -> Tuple[str, str
         original_filename = filename
         filename = filename.rsplit(ext, 1)[0]
         filename = filename.rsplit("-", 1)[0]
+        tail = filename.rsplit("-", 1)[-1]
+        if re.match(RAR_MULTIPART_PATTERN, tail) and ext == ".rar" and "-" in filename:
+            filename , part = filename.rsplit("-", 1)
+            filename = f"{filename}.{part}"
+        elif await _is_number(ext) and tail in _7Z_FILE_EXTENSIONS and "-" in filename:
+            filename , _7z_ext = filename.rsplit("-", 1)
+            filename = f"{filename}.{_7z_ext}"
         if ext not in filename:
             filename = filename + ext
     return original_filename, filename

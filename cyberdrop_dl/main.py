@@ -127,8 +127,12 @@ async def director(manager: Manager) -> None:
                 print_(traceback.format_exc())
                 exit(1)
 
-        clear_screen_proc = await asyncio.create_subprocess_shell('cls' if os.name == 'nt' else 'clear')
-        await clear_screen_proc.wait()
+        # Skip clearing console if running with no UI
+        if not manager.args_manager.no_ui:
+            clear_screen_proc = await asyncio.create_subprocess_shell('cls' if os.name == 'nt' else 'clear')
+            await clear_screen_proc.wait()
+        else:
+            print('\n\n')
 
         await log_with_color(f"Running Post-Download Processes For Config: {manager.config_manager.loaded_config}...", "green", 20)
         if isinstance(manager.args_manager.sort_downloads, bool):

@@ -58,6 +58,11 @@ Setting this to true will remove the "(DOMAIN)" portion of folder names on new d
 
 Setting this to true (or selecting it) will remove the alphanumeric ID added to the end of filenames on some websites (ex. Bunkrr).
 
+Multipart archives filenames will be fixed so they have the proper pattern of their format.
+
+Supported formats: `.rar` `.7z` `.tar` `.gz` `.bz2` `.zip`
+
+
 ***
 
 * scrape\_single\_forum\_post
