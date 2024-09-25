@@ -113,7 +113,7 @@ class ScraperClient:
             assert content_type is not None
             if not any(s in content_type.lower() for s in ("html", "text")):
                 raise InvalidContentTypeFailure(message=f"Received {content_type}, was expecting text")
-            text = await response.text()
+            text = await CachedStreamReader(await response.read()).read()
             return BeautifulSoup(text, 'html.parser'), URL(response.url)
 
     @limiter
@@ -143,7 +143,7 @@ class ScraperClient:
             except DDOSGuardFailure:
                 response_text = await self.flaresolverr(domain, url)
                 return response_text
-            text = await response.text()
+            text = await CachedStreamReader(await response.read()).read()
             return text
 
     @limiter
