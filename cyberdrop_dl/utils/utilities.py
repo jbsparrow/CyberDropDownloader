@@ -34,6 +34,8 @@ CONSOLE_DEBUG_VAR = False
 global LOG_OUTPUT_TEXT
 LOG_OUTPUT_TEXT = "```diff\n"
 
+RAR_MULTIPART_PATTERN = r'^part\d+'
+
 FILE_FORMATS = {
     'Images': {
         '.jpg', '.jpeg', '.png', '.gif',
@@ -215,6 +217,10 @@ async def remove_id(manager: Manager, filename: str, ext: str) -> Tuple[str, str
         original_filename = filename
         filename = filename.rsplit(ext, 1)[0]
         filename = filename.rsplit("-", 1)[0]
+        tail = filename.rsplit("-", 1)[-1]
+        if re.match(RAR_MULTIPART_PATTERN, tail) and ext == ".rar" and "-" in filename:
+            filename , part = filename.rsplit("-", 1)
+            filename = f"{filename}.{part}"
         if ext not in filename:
             filename = filename + ext
     return original_filename, filename
