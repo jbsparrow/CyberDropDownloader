@@ -29,7 +29,7 @@ def get_file_date_in_us_ca_formats(file: Path) -> tuple[str, str]:
 class Sorter:
     def __init__(self, manager: 'Manager'):
         self.manager = manager
-        self.download_dir = manager.path_manager.scan_dir or manager.path_manager.download_dir
+        self.download_dir = self.download_dir = manager.path_manager.scan_dir if manager.path_manager.scan_dir is not None else manager.path_manager.download_dir
         self.sorted_downloads = manager.path_manager.sorted_dir
         self.incrementer_format = manager.config_manager.settings_data['Sorting']['sort_incremementer_format']
         self.sort_cdl_only = manager.config_manager.settings_data['Sorting']['sort_cdl_only']
