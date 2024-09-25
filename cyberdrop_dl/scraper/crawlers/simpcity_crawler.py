@@ -57,11 +57,10 @@ class SimpCityCrawler(Crawler):
 
     async def check_last_page(self, response: ClientResponse) -> bool:
         """Checks if the last page has been reached"""
-        self.response_text = await response.text()
-        self.response_soup = BeautifulSoup(self.response_text, "html.parser")
+        soup = BeautifulSoup(await response.text(), "html.parser")
         try:
-            last_page = int(self.response_soup.select_one(self.final_page_selector).text.split('page-')[-1])
-            current_page = int(self.response_soup.select_one(self.current_page_selector).text.split('page-')[-1])
+            last_page = int(soup.select_one(self.final_page_selector).text.split('page-')[-1])
+            current_page = int(soup.select_one(self.current_page_selector).text.split('page-')[-1])
         except AttributeError:
             await log(f"Last page not found for {response.url}. Assuming only one page.", 40)
             return False
