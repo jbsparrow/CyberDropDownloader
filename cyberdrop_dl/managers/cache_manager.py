@@ -50,7 +50,10 @@ class CacheManager:
             autoclose=False, 
             allowed_codes=(200, 418), 
             allowed_methods=['GET'], 
-            expire_after=7 * 24 * 60 * 60
+            expire_after=7 * 24 * 60 * 60,
+            urls_expire_after={
+                '*.simpcity.su': 30 * 24 * 60 * 60,
+            }
         )
 
     def get(self, key: str) -> Any:
