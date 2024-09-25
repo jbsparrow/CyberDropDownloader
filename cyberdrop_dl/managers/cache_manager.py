@@ -67,3 +67,5 @@ class CacheManager:
         if key in self._cache:
             del self._cache[key]
             _save_yaml(self.cache_file, self._cache)
+    async def close(self):
+        await self.request_cache.close()

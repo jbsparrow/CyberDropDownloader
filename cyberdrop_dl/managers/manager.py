@@ -224,4 +224,7 @@ class Manager:
         """Closes the manager"""
         await self.db_manager.close()
         self.console_manager.close()
+        await self.cache_manager.close()
         self.db_manager: DBManager = field(init=False)
+        self.console_manager: ConsoleManager = field(init=False)
+        self.console_manager: CacheManager = field(init=False)
