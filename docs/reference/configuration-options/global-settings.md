@@ -119,7 +119,7 @@ Set to  0 or None to disable
 
 <details>
 
-<summary>UI Options</summary>
+<summary>Dupe Options</summary>
 
 These are options for enable/disable dupe clean up
 ***
