@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from InquirerPy import inquirer
 from InquirerPy.validator import PathValidator
 from rich import print as rprint
+import asyncio
 from rich.console import Console
 
 import cyberdrop_dl.utils.changelog as Changelog
@@ -179,7 +180,8 @@ def program_ui(manager: Manager):
 
                 # Clear Request Cache
                 elif action == 4:
-                    manager.cache_manager.request_cache.clear()
+                    # Clear the request cache using an async function
+                    asyncio.run(manager.cache_manager.request_cache.clear())
 
                 # Edit Config
                 elif action == 5:
@@ -206,4 +208,5 @@ def program_ui(manager: Manager):
 
         # Exit
         elif action == 12:
+            asyncio.run(manager.cache_manager.close())
             exit(0)
