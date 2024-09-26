@@ -262,9 +262,9 @@ Setting this to true will skip this check.
 
 * skip\_check\_for\_empty\_folders
 
-After a run is complete, the program will do a check (and remove) any empty folders in the download folder.
+After a run is complete, the program will do a check (and remove) any empty files and folders in the download and scan folder.
 
-Setting this to true will remove this functionality.
+Setting this to true will disable this functionality.
 
 ***
 
