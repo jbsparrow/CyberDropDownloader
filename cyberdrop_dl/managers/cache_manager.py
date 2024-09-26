@@ -57,7 +57,7 @@ class CacheManager:
         self.request_cache = SQLiteBackend(
             cache_name=self.manager.path_manager.cache_db, 
             autoclose=False, 
-            allowed_codes=(200, 418), 
+            allowed_codes=(200), 
             allowed_methods=['GET'], 
             expire_after=7 * 24 * 60 * 60,
             urls_expire_after=urls_expire_after
