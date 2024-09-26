@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import aiofiles
 
@@ -36,10 +36,10 @@ class LogManager:
         async with aiofiles.open(self.last_post_log, 'a') as f:
             await f.write(f"{url}\n")
 
-    async def write_unsupported_urls_log(self, url: 'URL') -> None:
+    async def write_unsupported_urls_log(self, url: 'URL', parent_url: Optional['URL'] = None ) -> None:
         """Writes to the unsupported urls log"""
         async with aiofiles.open(self.unsupported_urls_log, 'a') as f:
-            await f.write(f"{url}\n")
+            await f.write(f"{url} ; {parent_url}\n")
 
     async def write_download_error_log(self, url: 'URL', error_message: str) -> None:
         """Writes to the download error log"""

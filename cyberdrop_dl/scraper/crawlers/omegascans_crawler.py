@@ -61,7 +61,7 @@ class OmegaScansCrawler(Crawler):
 
             for chapter in JSON_Obj['data']:
                 chapter_url = scrape_item.url / chapter['chapter_slug']
-                new_scrape_item = await self.create_scrape_item(scrape_item, chapter_url, "", True)
+                new_scrape_item = await self.create_scrape_item(scrape_item, chapter_url, "", True, add_parent = scrape_item.url)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
             if JSON_Obj['meta']['current_page'] == JSON_Obj['meta']['last_page']:

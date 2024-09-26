@@ -141,7 +141,7 @@ class KemonoCrawler(Crawler):
         for link in yarl_links:
             if "kemono" in link.host:
                 continue
-            scrape_item = await self.create_scrape_item(scrape_item, link, "")
+            scrape_item = await self.create_scrape_item(scrape_item, link, "", add_parent = scrape_item.url.joinpath("post",post_id))
             await self.handle_external_links(scrape_item)
 
     @error_handling_wrapper

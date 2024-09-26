@@ -1,3 +1,8 @@
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from cyberdrop_dl.scraper.crawler import ScrapeItem
+
 class InvalidContentTypeFailure(Exception):
     """This error will be thrown when the content type isn't as expected"""
 
@@ -17,8 +22,9 @@ class NoExtensionFailure(Exception):
 class PasswordProtected(Exception):
     """This error will be thrown when a file is password protected"""
 
-    def __init__(self, *, message: str = "File/Folder is password protected"):
-        self.message = message
+    def __init__(self,/, scrape_item: 'ScrapeItem'):
+        self.message = "File/Folder is password protected"
+        self.scrape_item = scrape_item
         super().__init__(self.message)
 
 

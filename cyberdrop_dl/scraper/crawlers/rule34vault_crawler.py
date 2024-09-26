@@ -56,7 +56,7 @@ class Rule34VaultCrawler(Crawler):
                 link = f"{self.primary_base_url}{link}"
             link = URL(link)
             new_scrape_item = await self.create_scrape_item(
-                scrape_item, link, title, True)
+                scrape_item, link, title, True,add_parent = scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
         if not content:
             return
@@ -95,7 +95,7 @@ class Rule34VaultCrawler(Crawler):
                 link = f"{self.primary_base_url}{link}"
             link = URL(link)
             new_scrape_item = await self.create_scrape_item(
-                scrape_item, link, title, True)
+                scrape_item, link, title, True,add_parent = scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
         if not content:
             return

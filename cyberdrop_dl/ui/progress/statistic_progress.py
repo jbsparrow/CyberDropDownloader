@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Union
 
 from rich.console import Group
 from rich.panel import Panel
@@ -27,7 +27,7 @@ class DownloadStatsProgress:
         for key in self.failure_types:
             self.progress.update(self.failure_types[key], total=total)
 
-    async def add_failure(self, failure_type: [str, int]) -> None:
+    async def add_failure(self, failure_type: Union[str, int]) -> None:
         """Adds a failed file to the progress bar"""
         self.failed_files += 1
         if isinstance(failure_type, int):
@@ -70,7 +70,7 @@ class ScrapeStatsProgress:
         for key in self.failure_types:
             self.progress.update(self.failure_types[key], total=total)
 
-    async def add_failure(self, failure_type: [str, int]) -> None:
+    async def add_failure(self, failure_type: Union[str, int]) -> None:
         """Adds a failed site to the progress bar"""
         self.failed_files += 1
         if isinstance(failure_type, int):

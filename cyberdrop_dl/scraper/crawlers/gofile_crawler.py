@@ -70,7 +70,7 @@ class GoFileCrawler(Crawler):
         JSON_Resp = JSON_Resp['data']
 
         if "password" in JSON_Resp:
-            raise PasswordProtected()
+            raise PasswordProtected(scrape_item)
 
         if JSON_Resp["canAccess"] is False:
             raise ScrapeFailure(403, "Album is private")
@@ -83,7 +83,7 @@ class GoFileCrawler(Crawler):
             if content["type"] == "folder":
                 new_scrape_item = await self.create_scrape_item(scrape_item,
                                                                 self.primary_base_domain / "d" / content["code"], title,
-                                                                True)
+                                                                True, add_parent = scrape_item.url)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
                 continue
             if content["link"] == "overloaded":
