@@ -179,11 +179,9 @@ class ConfigManager:
             self.global_settings_data['Rate_Limiting_Options']['read_timeout'])
 
         self.global_settings_data['Rate_Limiting_Options']['file_host_cache_length'] = int(
-            self.global_settings_data['Rate_Limiting_Options']['file_host_cache_length']) if \
-                int(self.global_settings_data['Rate_Limiting_Options']['file_host_cache_length']) >= 259200 else 604800
+            self.global_settings_data['Rate_Limiting_Options']['file_host_cache_length'])
         self.global_settings_data['Rate_Limiting_Options']['forum_cache_length'] = int(
-            self.global_settings_data['Rate_Limiting_Options']['forum_cache_length']) if \
-                int(self.global_settings_data['Rate_Limiting_Options']['forum_cache_length']) >= 604800 else 2592000
+            self.global_settings_data['Rate_Limiting_Options']['forum_cache_length'])
 
 
         self.global_settings_data['Dupe_Cleanup_Options']['delete_after_download'] = \
