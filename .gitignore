@@ -3,6 +3,7 @@
 /Test-AppData-Dir/
 /AppData/
 /Downloads/
+**.log
 
 # Python cache
 __pycache__
