@@ -48,7 +48,7 @@ class CacheManager:
         self._cache = _load_yaml(self.cache_file)
 
     def load_request_cache(self) -> None:
-        urls_expire_after = {}
+        urls_expire_after = {'*.simpcity.su': self.manager.config_manager.global_settings_data['Rate_Limiting_Options']['file_host_cache_length']}
         for host in SupportedDomains.supported_hosts:
             urls_expire_after[f'*.{host}' if '.' in host else f'*.{host}.*'] = self.manager.config_manager.global_settings_data['Rate_Limiting_Options']['file_host_cache_length']
         for forum in SupportedDomains.supported_forums:
