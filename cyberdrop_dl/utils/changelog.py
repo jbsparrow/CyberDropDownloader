@@ -3,6 +3,24 @@
 ------------------------------------------------------------
 
 C\bCH\bHA\bAN\bNG\bGE\bEL\bLO\bOG\bG
+\tVersion 5.7.0
+
+
+D\bDE\bES\bSC\bCR\bRI\bIP\bPT\bTI\bIO\bON\bN
+\tThis update introduces the following changes:
+\t\t1. Added a caching system to prevent re-scraping of URLs.
+
+\tDetails:
+\t\t- Cyberdrop-DL will now cache responses from websites in order to prevent re-scraping.
+\t\t- The last page of a thread will not be cached in order to ensure that new content is properly fetched.
+\t\t- Forums will be cached for 30 days while file hosts will be cached for 7 days.
+
+
+\tFor more details, visit the wiki: https://script-ware.gitbook.io
+
+------------------------------------------------------------
+
+C\bCH\bHA\bAN\bNG\bGE\bEL\bLO\bOG\bG
 \tVersion 5.6.33
 
 
