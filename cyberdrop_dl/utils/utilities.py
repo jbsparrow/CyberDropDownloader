@@ -240,16 +240,18 @@ async def remove_id(manager: Manager, filename: str, ext: str) -> Tuple[str, str
 
 
 async def purge_dir_tree(dirname: Path) -> None:
-    """Purges empty directories"""
-    deleted = []
-    dir_tree = list(os.walk(dirname, topdown=False))
+    """Purges empty files and directories"""
 
-    for tree_element in dir_tree:
-        sub_dir = tree_element[0]
-        dir_count = len(os.listdir(sub_dir))
-        if dir_count == 0:
-            deleted.append(sub_dir)
-    list(map(os.rmdir, deleted))
+    for file in dirname.rglob('*'):
+        if file.is_file() and file.stat().st_size == 0:
+            file.unlink()
+
+    for parent, dirs, _ in dirname.walk(top_down=False):
+        for child_dir in dirs:
+            try:
+                (parent / child_dir).rmdir()
+            except OSError:
+                pass #skip if folder is not empty
 
 
 async def check_partials_and_empty_folders(manager: Manager):
