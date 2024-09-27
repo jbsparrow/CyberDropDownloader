@@ -69,15 +69,6 @@ class SimpCityCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url"""
         task_id = await self.scraping_progress.add_task(scrape_item.url)
-        
-        ddg1 = ''
-        ddg2 = ''
-        ddg5 = ''
-        ddg_id = ''
-        ddg_mark = ''
-        kZJdisc_csrf = ''
-        
-        self.manager.client_manager.cookies.update_cookies({"__ddg1_": ddg1, "__ddg2_": ddg2, "__ddg5_": ddg5, "__ddgid_": ddg_id, "__ddgmark_": ddg_mark, "kZJdisc_csrf": kZJdisc_csrf}, response_url=URL("https://simpcity.su"))
 
         if not self.logged_in and self.login_attempts == 0:
             login_url = self.primary_base_domain / "login"
