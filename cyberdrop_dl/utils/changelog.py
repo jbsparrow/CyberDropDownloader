@@ -3,6 +3,57 @@
 ------------------------------------------------------------
 
 C\bCH\bHA\bAN\bNG\bGE\bEL\bLO\bOG\bG
+\tVersion 5.6.36
+
+
+D\bDE\bES\bSC\bCR\bRI\bIP\bPT\bTI\bIO\bON\bN
+\tThis update introduces the following changes:
+\t\t1. Delete empty files after a successful run.
+\t\t2. Added a feature to save the origin of unsupported URLs
+
+\tDetails:
+\t\t- Empty files (0 bytes) inside download_dir will be deleted alongside empty folders after a successful run
+\t\t- Each unsupported URL will now be saved alongside the URL of the original item they came from (Unsupported_URLs.txt)
+\t\t- Origin is also saved for password protected links, allowing the user to visit the URL (ex. forum post) and retrieve the password if available
+
+
+\tFor more details, visit the wiki: https://script-ware.gitbook.io
+
+------------------------------------------------------------
+
+C\bCH\bHA\bAN\bNG\bGE\bEL\bLO\bOG\bG
+\tVersion 5.6.35
+
+
+D\bDE\bES\bSC\bCR\bRI\bIP\bPT\bTI\bIO\bON\bN
+\tThis update introduces the following changes:
+\t\t1. Small fixes for sorting system
+
+\tDetails:
+\t\t- Fixes scan_dir selection logic
+
+
+\tFor more details, visit the wiki: https://script-ware.gitbook.io
+
+------------------------------------------------------------
+
+C\bCH\bHA\bAN\bNG\bGE\bEL\bLO\bOG\bG
+\tVersion 5.6.34
+
+
+D\bDE\bES\bSC\bCR\bRI\bIP\bPT\bTI\bIO\bON\bN
+\tThis update introduces the following changes:
+\t\t1. Added a feature to fix the names of multipart archives.
+
+\tDetails:
+\t\t- Multipart archives will be renamed to have the proper naming format when the --remove-generated-id-from-filenames argument is passed.
+
+
+\tFor more details, visit the wiki: https://script-ware.gitbook.io
+
+------------------------------------------------------------
+
+C\bCH\bHA\bAN\bNG\bGE\bEL\bLO\bOG\bG
 \tVersion 5.6.33
 
 
