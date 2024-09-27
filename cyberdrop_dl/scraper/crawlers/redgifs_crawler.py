@@ -84,7 +84,7 @@ class RedGifsCrawler(Crawler):
         link = URL(links["hd"] if "hd" in links else links["sd"])
 
         filename, ext = await get_filename_and_ext(link.name)
-        new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, dateadd_parent = scrape_item.url, add_parent = scrape_item.url)
+        new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, date, add_parent = scrape_item.url, add_parent = scrape_item.url)
         await self.handle_file(link, new_scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
