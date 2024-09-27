@@ -61,7 +61,7 @@ class FapelloCrawler(Crawler):
         if next_page:
             next_page = next_page.get('href')
             if next_page:
-                new_scrape_item = ScrapeItem(URL(next_page), scrape_item.parent_title)
+                new_scrape_item = await self.create_scrape_item(scrape_item, URL(next_page), "")
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
