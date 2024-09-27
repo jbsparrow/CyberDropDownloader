@@ -1,4 +1,3 @@
-import traceback
 from contextlib import asynccontextmanager
 
 from rich.live import Live
@@ -26,8 +25,7 @@ class LiveManager:
             if stop:
                 self.live.stop()
         except Exception as e:
-            await log(f"Issue with rich live {e}", level=10)
-            await log(f"Issue with rich live {traceback.format_exc()}", level=10)
+            await log(f"Issue with rich live {e}", level=10, exc_info=True)
 
     @asynccontextmanager
     async def get_remove_file_via_hash_live(self, stop=False):
@@ -41,8 +39,7 @@ class LiveManager:
             if stop:
                 self.live.stop()
         except Exception as e:
-            await log(f"Issue with rich live {e}", level=10)
-            await log(f"Issue with rich live {traceback.format_exc()}", level=10)
+            await log(f"Issue with rich live {e}", level=10, exc_info=True)
 
     @asynccontextmanager
     async def get_hash_live(self, stop=False):
@@ -56,8 +53,7 @@ class LiveManager:
             if stop:
                 self.live.stop()
         except Exception as e:
-            await log(f"Issue with rich live {e}", level=10)
-            await log(f"Issue with rich live {traceback.format_exc()}", level=10)
+            await log(f"Issue with rich live {e}", level=10, exc_info=True)
 
     @asynccontextmanager
     async def get_sort_live(self, stop=False):
@@ -71,5 +67,4 @@ class LiveManager:
             if stop:
                 self.live.stop()
         except Exception as e:
-            await log(f"Issue with rich live {e}", level=10)
-            await log(f"Issue with rich live {traceback.format_exc()}", level=10)
+            await log(f"Issue with rich live {e}", level=10, exc_info=True)
