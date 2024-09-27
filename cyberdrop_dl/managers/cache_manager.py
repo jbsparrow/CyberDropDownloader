@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any, Dict, TYPE_CHECKING
 from aiohttp_client_cache import SQLiteBackend
 from datetime import timedelta
+from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
 
 import yaml
 
@@ -46,15 +47,21 @@ class CacheManager:
     def load(self) -> None:
         """Loads the cache files into memory"""
         self._cache = _load_yaml(self.cache_file)
+
+    def load_request_cache(self) -> None:
+        urls_expire_after = {'*.simpcity.su': self.manager.config_manager.global_settings_data['Rate_Limiting_Options']['file_host_cache_length']}
+        for host in SupportedDomains.supported_hosts:
+            urls_expire_after[f'*.{host}' if '.' in host else f'*.{host}.*'] = self.manager.config_manager.global_settings_data['Rate_Limiting_Options']['file_host_cache_length']
+        for forum in SupportedDomains.supported_forums:
+            urls_expire_after[f'{forum}'] = self.manager.config_manager.global_settings_data['Rate_Limiting_Options']['forum_cache_length']
+        
         self.request_cache = SQLiteBackend(
             cache_name=self.manager.path_manager.cache_db, 
             autoclose=False, 
-            allowed_codes=(200, 418), 
+            allowed_codes=(200, 404), 
             allowed_methods=['GET'], 
-            expire_after= timedelta(days=7),
-            urls_expire_after={
-                '*.simpcity.su': timedelta(days=30)
-            }
+            expire_after=timedelta(days=7),
+            urls_expire_after=urls_expire_after
         )
 
     def get(self, key: str) -> Any:
