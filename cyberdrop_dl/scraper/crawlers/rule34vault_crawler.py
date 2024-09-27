@@ -101,7 +101,7 @@ class Rule34VaultCrawler(Crawler):
             return
 
         if scrape_item.url.query:
-            page = scrape_item.url.query.get("page")
+            page = scrape_item.url.query.get("page", 0)
             next_page = scrape_item.url.with_query({"page": int(page) + 1})
         else:
             next_page = scrape_item.url.with_query({"page": 2})
