@@ -35,6 +35,7 @@ LOG_OUTPUT_TEXT = "```diff\n"
 
 RAR_MULTIPART_PATTERN = r'^part\d+'
 _7Z_FILE_EXTENSIONS = {"7z","tar","gz","bz2","zip"}
+TOTAL_REQUESTS = CACHED_RESPONSES = 0
 
 FILE_FORMATS = {
     'Images': {
@@ -134,6 +135,20 @@ async def log_with_color(message: str, style: str, level: int, *kwargs) -> None:
     rich.print(f"[{style}]{message}[/{style}]")
     LOG_OUTPUT_TEXT += f"[{style}]{message}\n"
 
+async def log_request_type(url: URL, from_cache:bool):
+    global TOTAL_REQUESTS, CACHED_RESPONSES 
+    TOTAL_REQUESTS +=1
+    msg = f"{url} fetched from the web"
+    if from_cache:
+        msg = f"{url} fetched from cache"
+        CACHED_RESPONSES +=1
+    if DEBUG_VAR:
+        logger_debug.log(10,msg)
+
+async def show_cached_request_summary():
+    global TOTAL_REQUESTS, CACHED_RESPONSES 
+    if DEBUG_VAR:
+        logger_debug.log(10,f"{TOTAL_REQUESTS = } {CACHED_RESPONSES = }")
 
 async def get_log_output_text() -> str:
     global LOG_OUTPUT_TEXT
