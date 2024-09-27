@@ -4,6 +4,7 @@ from dataclasses import field
 from pathlib import Path
 from typing import Any, Dict, TYPE_CHECKING
 from aiohttp_client_cache import SQLiteBackend
+from datetime import timedelta
 
 import yaml
 
@@ -50,9 +51,9 @@ class CacheManager:
             autoclose=False, 
             allowed_codes=(200, 418), 
             allowed_methods=['GET'], 
-            expire_after=7 * 24 * 60 * 60,
+            expire_after= timedelta(days=7),
             urls_expire_after={
-                '*.simpcity.su': 30 * 24 * 60 * 60,
+                '*.simpcity.su': timedelta(days=30)
             }
         )
 
