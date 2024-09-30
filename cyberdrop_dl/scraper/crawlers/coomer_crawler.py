@@ -86,7 +86,7 @@ class CoomerCrawler(Crawler):
         async def handle_file(file_obj):
             link = self.primary_base_domain / ("data" + file_obj['path'])
             link = link.with_query({"f": file_obj['name']})
-            await self.create_new_scrape_item(link, scrape_item, user_str, post_title, post_id, date)
+            await self.create_new_scrape_item(link, scrape_item, user_str, post_title, post_id, date, add_parent = scrape_item.url.joinpath("post", post_id))
 
         if post['file']:
             await handle_file(post['file'])

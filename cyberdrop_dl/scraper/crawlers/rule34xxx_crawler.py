@@ -54,7 +54,7 @@ class Rule34XXXCrawler(Crawler):
             if link.startswith("/"):
                 link = f"{self.primary_base_url}{link}"
             link = URL(link, encoded=True)
-            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True)
+            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True,add_parent = scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
         next_page = soup.select_one("a[alt=next]")

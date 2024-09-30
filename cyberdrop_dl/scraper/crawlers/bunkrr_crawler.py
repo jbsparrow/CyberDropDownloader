@@ -84,7 +84,7 @@ class BunkrrCrawler(Crawler):
                 src = src.with_query("download=true")
                 if file_ext.lower() not in FILE_FORMATS['Images']:
                     src = src.with_host(src.host.replace("i-", ""))
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, "", True, album_id, date)
+                new_scrape_item = await self.create_scrape_item(scrape_item, link, "", True, album_id, date, add_parent = scrape_item.url)
 
                 if "no-image" in src.name:
                     raise FileNotFoundError("No image found, reverting to parent")

@@ -51,7 +51,7 @@ class ToonilyCrawler(Crawler):
                 chapter_path = self.primary_base_domain / chapter_path[1:]
             else:
                 chapter_path = URL(chapter_path)
-            new_scrape_item = await self.create_scrape_item(scrape_item, chapter_path, "", True)
+            new_scrape_item = await self.create_scrape_item(scrape_item, chapter_path, "", True , add_parent = scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper

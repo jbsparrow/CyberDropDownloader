@@ -8,7 +8,7 @@ import traceback
 from enum import IntEnum
 from functools import wraps
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 import rich
 from yarl import URL
@@ -74,9 +74,10 @@ def error_handling_wrapper(func):
             await log(f"Scrape Failed: {link} (No File Extension)", 40)
             await self.manager.log_manager.write_scrape_error_log(link, " No File Extension")
             await self.manager.progress_manager.scrape_stats_progress.add_failure("No File Extension")
-        except PasswordProtected:
+        except PasswordProtected as e:
             await log(f"Scrape Failed: {link} (Password Protected)", 40)
-            await self.manager.log_manager.write_unsupported_urls_log(link)
+            parent_url = e.scrape_item.parents[0] if e.scrape_item.parents[0] else None
+            await self.manager.log_manager.write_unsupported_urls_log(link,parent_url)
             await self.manager.progress_manager.scrape_stats_progress.add_failure("Password Protected")
         except FailedLoginFailure:
             await log(f"Scrape Failed: {link} (Failed Login)", 40)
@@ -108,7 +109,7 @@ def error_handling_wrapper(func):
     return wrapper
 
 
-async def log(message: [str, Exception], level: int, sleep: int = None) -> None:
+async def log(message: Union [str, Exception], level: int, sleep: int = None) -> None:
     """Simple logging function"""
     logger.log(level, message)
     if DEBUG_VAR:
@@ -116,13 +117,13 @@ async def log(message: [str, Exception], level: int, sleep: int = None) -> None:
     log_console(level, message, sleep=sleep)
 
 
-async def log_debug(message: [str, Exception], level: int, sleep: int = None) -> None:
+async def log_debug(message: Union [str, Exception], level: int, sleep: int = None) -> None:
     """Simple logging function"""
     if DEBUG_VAR:
         logger_debug.log(level, message.encode('ascii', 'ignore').decode('ascii'))
 
 
-async def log_debug_console(message: [str, Exception], level: int, sleep: int = None):
+async def log_debug_console(message: Union [str, Exception], level: int, sleep: int = None):
     if CONSOLE_DEBUG_VAR:
         log_console(level, message.encode('ascii', 'ignore').decode('ascii'), sleep=sleep)
 
