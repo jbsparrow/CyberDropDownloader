@@ -250,7 +250,7 @@ async def purge_dir_tree(dirname: Path) -> None:
     for parent, dirs, _ in os.walk(dirname, topdown=False):
         for child_dir in dirs:
             try:
-                (parent / child_dir).rmdir()
+                (Path(parent) / child_dir).rmdir()
             except OSError:
                 pass #skip if folder is not empty
 
