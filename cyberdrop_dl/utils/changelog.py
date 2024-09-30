@@ -3,6 +3,21 @@
 ------------------------------------------------------------
 
 C\bCH\bHA\bAN\bNG\bGE\bEL\bLO\bOG\bG
+\tVersion 5.6.38
+
+
+D\bDE\bES\bSC\bCR\bRI\bIP\bPT\bTI\bIO\bON\bN
+\tThis update introduces the following changes:
+\t\t1. Fix scrape_items creation for kemono and coomer links
+
+\tDetails:
+\t\t- Fixes parents tracking for kemono and coomer links
+
+\tFor more details, visit the wiki: https://script-ware.gitbook.io
+
+------------------------------------------------------------
+
+C\bCH\bHA\bAN\bNG\bGE\bEL\bLO\bOG\bG
 \tVersion 5.6.37
 
 
