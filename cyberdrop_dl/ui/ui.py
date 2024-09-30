@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from pydoc import pager
+from rich.markdown import Markdown
 from textwrap import dedent
 from typing import TYPE_CHECKING
 
@@ -10,7 +10,10 @@ from InquirerPy.validator import PathValidator
 from rich import print as rprint
 from rich.console import Console
 
-import cyberdrop_dl.utils.changelog as Changelog
+import aiofiles
+from aiohttp import request
+import asyncio
+
 from cyberdrop_dl import __version__
 from cyberdrop_dl.clients.hash_client import hash_directory_scanner
 from cyberdrop_dl.ui.prompts.general_prompts import (
@@ -198,8 +201,31 @@ def program_ui(manager: Manager):
             import_cyberdrop_v4_items_prompt(manager)
 
         elif action == 11:
-            pager(Changelog.__doc__)
+            changelog_path = manager.path_manager.config_dir.parent / "CHANGELOG.md"
+            changelog_content = asyncio.run(_get_changelog(changelog_path))
+
+            with console.pager(links = True):
+                console.print(Markdown(changelog_content , justify = "left"))
 
         # Exit
         elif action == 12:
             exit(0)
+
+
+async def _get_changelog(changelog_path: Path):
+    url = "https://raw.githubusercontent.com/jbsparrow/CyberDropDownloader/refs/heads/master/CHANGELOG.md"
+    if not changelog_path.is_file():
+        try:
+            async with request("GET", url) as response:
+                response.raise_for_status()
+                async with aiofiles.open(changelog_path, 'wb') as f:   
+                    await f.write(await response.read())
+        except Exception:
+            return "UNABLE TO GET CHANGELOG INFORMATION"
+ 
+    changelog_lines = changelog_path.read_text(encoding="utf8").splitlines()
+    # remove keep_a_changelog disclaimer
+    changelog_content = "\n".join(changelog_lines[:4] + changelog_lines[6:])
+    
+    return changelog_content
+    
