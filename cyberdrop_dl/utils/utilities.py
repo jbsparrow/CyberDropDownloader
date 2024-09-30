@@ -247,7 +247,7 @@ async def purge_dir_tree(dirname: Path) -> None:
         if file.is_file() and file.stat().st_size == 0:
             file.unlink()
 
-    for parent, dirs, _ in dirname.walk(top_down=False):
+    for parent, dirs, _ in os.walk(dirname, topdown=False):
         for child_dir in dirs:
             try:
                 (parent / child_dir).rmdir()

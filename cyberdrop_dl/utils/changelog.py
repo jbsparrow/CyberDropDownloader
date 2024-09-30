@@ -3,6 +3,21 @@
 ------------------------------------------------------------
 
 C\bCH\bHA\bAN\bNG\bGE\bEL\bLO\bOG\bG
+\tVersion 5.6.37
+
+
+D\bDE\bES\bSC\bCR\bRI\bIP\bPT\bTI\bIO\bON\bN
+\tThis update introduces the following changes:
+\t\t1. Fixes empty folder cleanup on python 3.11
+
+\tDetails:
+\t\t- Fixes logic by walking the directory tree using os.walk to remain compatibility with python 3.11
+
+\tFor more details, visit the wiki: https://script-ware.gitbook.io
+
+------------------------------------------------------------
+
+C\bCH\bHA\bAN\bNG\bGE\bEL\bLO\bOG\bG
 \tVersion 5.6.36
 
 
