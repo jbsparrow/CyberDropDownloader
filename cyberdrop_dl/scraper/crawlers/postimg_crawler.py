@@ -50,7 +50,7 @@ class PostImgCrawler(Crawler):
             for image in JSON_Resp['images']:
                 link = URL(image[4])
                 filename, ext = image[2], image[3]
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True)
+                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent = scrape_item.url)
                 await self.handle_file(link, new_scrape_item, filename, ext)
 
             if not JSON_Resp['has_page_next']:

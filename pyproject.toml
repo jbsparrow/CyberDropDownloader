@@ -7,6 +7,7 @@ readme = "README.md"
 repository = "https://github.com/jbsparrow/CyberDropDownloader"
 documentation = "https://script-ware.gitbook.io/cyberdrop-dl/"
 packages = [{ include = "cyberdrop_dl" }]
+include = ["CHANGELOG.md"]
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -39,3 +40,6 @@ cyberdrop-dl = "cyberdrop_dl.main:main"
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.urls]
+Changelog = "https://github.com/jbsparrow/CyberDropDownloader/blob/master/CHANGELOG.md"

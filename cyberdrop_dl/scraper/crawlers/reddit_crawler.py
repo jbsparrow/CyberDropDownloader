@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import aiohttp
 from aiohttp_client_cache import CachedSession as ClientSession
@@ -108,14 +108,14 @@ class RedditCrawler(Crawler):
             filename, ext = await get_filename_and_ext(media_url.name)
 
         if "redd.it" in media_url.host:
-            new_scrape_item = await self.create_new_scrape_item(media_url, scrape_item, title, date)
+            new_scrape_item = await self.create_new_scrape_item(media_url, scrape_item, title, date, add_parent = scrape_item.url)
             await self.media(new_scrape_item, reddit)
         elif "gallery" in media_url.parts:
-            new_scrape_item = await self.create_new_scrape_item(media_url, scrape_item, title, date)
+            new_scrape_item = await self.create_new_scrape_item(media_url, scrape_item, title, date, add_parent = scrape_item.url)
             await self.gallery(new_scrape_item, submission, reddit)
         else:
             if "reddit.com" not in media_url.host:
-                new_scrape_item = await self.create_new_scrape_item(media_url, scrape_item, title, date)
+                new_scrape_item = await self.create_new_scrape_item(media_url, scrape_item, title, date, add_parent = scrape_item.url)
                 await self.handle_external_links(new_scrape_item)
 
     async def gallery(self, scrape_item: ScrapeItem, submission, reddit: asyncpraw.Reddit) -> None:
@@ -126,7 +126,7 @@ class RedditCrawler(Crawler):
         links = [URL(item["s"]["u"]).with_host("i.redd.it").with_query(None) for item in items]
         for link in links:
             new_scrape_item = await self.create_new_scrape_item(link, scrape_item, scrape_item.parent_title,
-                                                                scrape_item.possible_datetime)
+                                                                scrape_item.possible_datetime, add_parent = scrape_item.url)
             await self.media(new_scrape_item, reddit)
 
     @error_handling_wrapper
@@ -152,10 +152,10 @@ class RedditCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def create_new_scrape_item(self, link: URL, old_scrape_item: ScrapeItem, title: str, date: int) -> ScrapeItem:
+    async def create_new_scrape_item(self, link: URL, old_scrape_item: ScrapeItem, title: str, date: int, add_parent: Optional[URL] = None) -> ScrapeItem:
         """Creates a new scrape item with the same parent as the old scrape item"""
 
-        new_scrape_item = await self.create_scrape_item(old_scrape_item, link, "", True, None, date)
+        new_scrape_item = await self.create_scrape_item(old_scrape_item, link, "", True, None, date, add_parent= add_parent)
         if self.manager.config_manager.settings_data['Download_Options']['separate_posts']:
             await new_scrape_item.add_to_parent_title(title)
         return new_scrape_item

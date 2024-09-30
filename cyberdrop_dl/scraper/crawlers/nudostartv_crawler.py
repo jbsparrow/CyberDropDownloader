@@ -39,7 +39,7 @@ class NudoStarTVCrawler(Crawler):
         content = soup.select('div[id=list_videos_common_videos_list_items] div a')
         for page in content:
             link = URL(page.get('href'))
-            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True)
+            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent = scrape_item.url)
             await self.image(new_scrape_item)
         next_page = soup.select_one('li[class=next] a')
         if next_page:

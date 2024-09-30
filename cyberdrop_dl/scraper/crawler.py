@@ -4,7 +4,7 @@ import asyncio
 import copy
 from abc import ABC, abstractmethod
 from dataclasses import field
-from typing import TYPE_CHECKING, Optional, Union, Any
+from typing import TYPE_CHECKING, Optional, Union, Any, Tuple
 
 from bs4 import BeautifulSoup
 from yarl import URL
@@ -94,7 +94,7 @@ class Crawler(ABC):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def check_post_number(self, post_number: int, current_post_number: int) -> (bool, bool):
+    async def check_post_number(self, post_number: int, current_post_number: int) -> Tuple[bool, bool]:
         """Checks if the program should scrape the current post"""
         """Returns (scrape_post, continue_scraping)"""
         scrape_single_forum_post = self.manager.config_manager.settings_data['Download_Options'][
@@ -194,10 +194,12 @@ class Crawler(ABC):
 
     async def create_scrape_item(self, parent_scrape_item: ScrapeItem, url: URL, new_title_part: str,
                                  part_of_album: bool = False, album_id: Union[str, None] = None,
-                                 possible_datetime: Optional[int] = None) -> ScrapeItem:
+                                 possible_datetime: Optional[int] = None, add_parent: Optional[URL] = None) -> ScrapeItem:
         """Creates a scrape item"""
         scrape_item = copy.deepcopy(parent_scrape_item)
         scrape_item.url = url
+        if add_parent:
+            scrape_item.parents.append(add_parent)
         if new_title_part:
             await scrape_item.add_to_parent_title(new_title_part)
         scrape_item.part_of_album = part_of_album if part_of_album else scrape_item.part_of_album

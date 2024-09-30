@@ -7,7 +7,7 @@ import re
 from enum import IntEnum
 from functools import wraps
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 import rich
 from yarl import URL
@@ -74,9 +74,10 @@ def error_handling_wrapper(func):
             await log(f"Scrape Failed: {link} (No File Extension)", 40)
             await self.manager.log_manager.write_scrape_error_log(link, " No File Extension")
             await self.manager.progress_manager.scrape_stats_progress.add_failure("No File Extension")
-        except PasswordProtected:
+        except PasswordProtected as e:
             await log(f"Scrape Failed: {link} (Password Protected)", 40)
-            await self.manager.log_manager.write_unsupported_urls_log(link)
+            parent_url = e.scrape_item.parents[0] if e.scrape_item.parents[0] else None
+            await self.manager.log_manager.write_unsupported_urls_log(link,parent_url)
             await self.manager.progress_manager.scrape_stats_progress.add_failure("Password Protected")
         except FailedLoginFailure:
             await log(f"Scrape Failed: {link} (Failed Login)", 40)
@@ -253,16 +254,18 @@ async def remove_id(manager: Manager, filename: str, ext: str) -> Tuple[str, str
 
 
 async def purge_dir_tree(dirname: Path) -> None:
-    """Purges empty directories"""
-    deleted = []
-    dir_tree = list(os.walk(dirname, topdown=False))
+    """Purges empty files and directories"""
 
-    for tree_element in dir_tree:
-        sub_dir = tree_element[0]
-        dir_count = len(os.listdir(sub_dir))
-        if dir_count == 0:
-            deleted.append(sub_dir)
-    list(map(os.rmdir, deleted))
+    for file in dirname.rglob('*'):
+        if file.is_file() and file.stat().st_size == 0:
+            file.unlink()
+
+    for parent, dirs, _ in os.walk(dirname, topdown=False):
+        for child_dir in dirs:
+            try:
+                (parent / child_dir).rmdir()
+            except OSError:
+                pass #skip if folder is not empty
 
 
 async def check_partials_and_empty_folders(manager: Manager):

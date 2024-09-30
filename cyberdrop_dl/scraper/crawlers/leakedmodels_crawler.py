@@ -69,7 +69,7 @@ class LeakedModelsCrawler(Crawler):
                 await log("LeakedModels login failed. Skipping.", 40)
         else:
             await log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
-            await self.manager.log_manager.write_unsupported_urls_log(scrape_item.url)
+            await self.manager.log_manager.write_unsupported_urls_log(scrape_item.url, scrape_item.parents[0] if scrape_item.parents else None)
 
         await self.scraping_progress.remove_task(task_id)
 
@@ -107,7 +107,7 @@ class LeakedModelsCrawler(Crawler):
 
                 if scrape_post:
                     date = int(post.select_one(self.post_date_selector).get(self.post_date_attribute))
-                    new_scrape_item = await self.create_scrape_item(scrape_item, thread_url, title, False, None, date)
+                    new_scrape_item = await self.create_scrape_item(scrape_item, thread_url, title, False, None, date, add_parent = scrape_item.url.joinpath(f"post-{current_post_number}"))
 
                     for elem in post.find_all(self.quotes_selector):
                         elem.decompose()

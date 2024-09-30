@@ -47,7 +47,7 @@ class PimpAndHostCrawler(Crawler):
         files = soup.select('a[class*="image-wrapper center-cropped im-wr"]')
         for file in files:
             link = URL(file.get("href"))
-            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, None, date)
+            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, None, date, add_parent = scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
         next_page = soup.select_one("li[class=next] a")

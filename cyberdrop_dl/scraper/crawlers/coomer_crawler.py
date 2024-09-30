@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import calendar
 import datetime
-from typing import TYPE_CHECKING, Tuple, Dict
+from typing import TYPE_CHECKING, Tuple, Dict, Optional
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
@@ -92,7 +92,7 @@ class CoomerCrawler(Crawler):
         async def handle_file(file_obj):
             link = self.primary_base_domain / ("data" + file_obj['path'])
             link = link.with_query({"f": file_obj['name']})
-            await self.create_new_scrape_item(link, scrape_item, user_str, post_title, post_id, date)
+            await self.create_new_scrape_item(link, scrape_item, user_str, post_title, post_id, date, add_parent = scrape_item.url.joinpath("post", post_id))
 
         if post['file']:
             await handle_file(post['file'])
@@ -163,7 +163,7 @@ class CoomerCrawler(Crawler):
         return current_offset, maximum_offset
 
     async def create_new_scrape_item(self, link: URL, old_scrape_item: ScrapeItem, user: str, title: str, post_id: str,
-                                     date: str) -> None:
+                                     date: str, add_parent: Optional[URL] = None) -> None:
         """Creates a new scrape item with the same parent as the old scrape item"""
         post_title = None
         if self.manager.config_manager.settings_data['Download_Options']['separate_posts']:
@@ -173,6 +173,6 @@ class CoomerCrawler(Crawler):
 
         new_title = await self.create_title(user, None, None)
         new_scrape_item = await self.create_scrape_item(old_scrape_item, link, new_title, True, None,
-                                                        await self.parse_datetime(date))
+                                                        await self.parse_datetime(date), add_parent = add_parent)
         await new_scrape_item.add_to_parent_title(post_title)
         self.manager.task_group.create_task(self.run(new_scrape_item))

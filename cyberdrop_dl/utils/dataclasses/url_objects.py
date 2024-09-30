@@ -37,6 +37,8 @@ class ScrapeItem:
                  retry: bool = False, retry_path: Path = None):
         self.url: URL = url
         self.parent_title: str = parent_title
+        # WARNING: unsafe but deepcopy is used when a new child item is created
+        self.parents : list[URL] = []
         self.part_of_album: bool = part_of_album
         self.album_id: Union[str, None] = album_id
         self.possible_datetime: int = possible_datetime

@@ -72,7 +72,7 @@ class CyberfileCrawler(Crawler):
                     await log(f"Couldn't find folder or file id for {scrape_item.url} element", 30)
                     continue
 
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True)
+                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent = scrape_item.url)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
             page += 1
@@ -112,7 +112,7 @@ class CyberfileCrawler(Crawler):
                     await log(f"Couldn't find folder or file id for {scrape_item.url} element", 30)
                     continue
 
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True)
+                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent = scrape_item.url)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
             page += 1
