@@ -3,7 +3,7 @@ from __future__ import annotations
 import calendar
 import datetime
 import re
-from typing import TYPE_CHECKING, Tuple, Dict
+from typing import TYPE_CHECKING, Tuple, Dict, Optional
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
@@ -141,7 +141,7 @@ class KemonoCrawler(Crawler):
         for link in yarl_links:
             if "kemono" in link.host:
                 continue
-            scrape_item = await self.create_scrape_item(scrape_item, link, "")
+            scrape_item = await self.create_scrape_item(scrape_item, link, "", add_parent = scrape_item.url.joinpath("post",post_id))
             await self.handle_external_links(scrape_item)
 
     @error_handling_wrapper
@@ -193,7 +193,7 @@ class KemonoCrawler(Crawler):
         return service, user, post
 
     async def create_new_scrape_item(self, link: URL, old_scrape_item: ScrapeItem, user: str, title: str, post_id: str,
-                                     date: str) -> None:
+                                     date: str, add_parent: Optional[URL] = None) -> None:
         """Creates a new scrape item with the same parent as the old scrape item"""
         post_title = None
         if self.manager.config_manager.settings_data['Download_Options']['separate_posts']:
@@ -203,6 +203,6 @@ class KemonoCrawler(Crawler):
 
         new_title = await self.create_title(user, None, None)
         new_scrape_item = await self.create_scrape_item(old_scrape_item, link, new_title, True, None,
-                                                        await self.parse_datetime(date))
+                                                        await self.parse_datetime(date), add_parent = add_parent)
         await new_scrape_item.add_to_parent_title(post_title)
         self.manager.task_group.create_task(self.run(new_scrape_item))

@@ -22,7 +22,6 @@ class ArgsManager:
         self.retry_any = False
         self.retry_maintenance = False
         self.webhook_url = ""
-
         self.max_items = None
 
         self.immediate_download = False
@@ -30,6 +29,7 @@ class ArgsManager:
         self.load_config_from_args = False
         self.load_config_name = ""
         self.other_links: list = []
+        self.additive_args = ["skip_hosts","only_hosts"]
 
         # Files
         self.input_file = None

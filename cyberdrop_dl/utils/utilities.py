@@ -8,7 +8,7 @@ import traceback
 from enum import IntEnum
 from functools import wraps
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 import rich
 from yarl import URL
@@ -33,6 +33,9 @@ CONSOLE_DEBUG_VAR = False
 
 global LOG_OUTPUT_TEXT
 LOG_OUTPUT_TEXT = "```diff\n"
+
+RAR_MULTIPART_PATTERN = r'^part\d+'
+_7Z_FILE_EXTENSIONS = {"7z","tar","gz","bz2","zip"}
 
 FILE_FORMATS = {
     'Images': {
@@ -71,9 +74,10 @@ def error_handling_wrapper(func):
             await log(f"Scrape Failed: {link} (No File Extension)", 40)
             await self.manager.log_manager.write_scrape_error_log(link, " No File Extension")
             await self.manager.progress_manager.scrape_stats_progress.add_failure("No File Extension")
-        except PasswordProtected:
+        except PasswordProtected as e:
             await log(f"Scrape Failed: {link} (Password Protected)", 40)
-            await self.manager.log_manager.write_unsupported_urls_log(link)
+            parent_url = e.scrape_item.parents[0] if e.scrape_item.parents[0] else None
+            await self.manager.log_manager.write_unsupported_urls_log(link,parent_url)
             await self.manager.progress_manager.scrape_stats_progress.add_failure("Password Protected")
         except FailedLoginFailure:
             await log(f"Scrape Failed: {link} (Failed Login)", 40)
@@ -105,7 +109,7 @@ def error_handling_wrapper(func):
     return wrapper
 
 
-async def log(message: [str, Exception], level: int, sleep: int = None) -> None:
+async def log(message: Union [str, Exception], level: int, sleep: int = None) -> None:
     """Simple logging function"""
     logger.log(level, message)
     if DEBUG_VAR:
@@ -113,13 +117,13 @@ async def log(message: [str, Exception], level: int, sleep: int = None) -> None:
     log_console(level, message, sleep=sleep)
 
 
-async def log_debug(message: [str, Exception], level: int, sleep: int = None) -> None:
+async def log_debug(message: Union [str, Exception], level: int, sleep: int = None) -> None:
     """Simple logging function"""
     if DEBUG_VAR:
         logger_debug.log(level, message.encode('ascii', 'ignore').decode('ascii'))
 
 
-async def log_debug_console(message: [str, Exception], level: int, sleep: int = None):
+async def log_debug_console(message: Union [str, Exception], level: int, sleep: int = None):
     if CONSOLE_DEBUG_VAR:
         log_console(level, message.encode('ascii', 'ignore').decode('ascii'), sleep=sleep)
 
@@ -207,6 +211,12 @@ async def get_download_path(manager: Manager, scrape_item: ScrapeItem, domain: s
     else:
         return download_dir / f"Loose Files ({domain})"
 
+async def _is_number(ext: str):
+    try:
+        int(ext.rsplit(".", 1)[-1])
+        return True
+    except ValueError:
+        return False
 
 async def remove_id(manager: Manager, filename: str, ext: str) -> Tuple[str, str]:
     """Removes the additional string some websites adds to the end of every filename"""
@@ -215,6 +225,13 @@ async def remove_id(manager: Manager, filename: str, ext: str) -> Tuple[str, str
         original_filename = filename
         filename = filename.rsplit(ext, 1)[0]
         filename = filename.rsplit("-", 1)[0]
+        tail = filename.rsplit("-", 1)[-1]
+        if re.match(RAR_MULTIPART_PATTERN, tail) and ext == ".rar" and "-" in filename:
+            filename , part = filename.rsplit("-", 1)
+            filename = f"{filename}.{part}"
+        elif await _is_number(ext) and tail in _7Z_FILE_EXTENSIONS and "-" in filename:
+            filename , _7z_ext = filename.rsplit("-", 1)
+            filename = f"{filename}.{_7z_ext}"
         if ext not in filename:
             filename = filename + ext
     return original_filename, filename
@@ -224,16 +241,18 @@ async def remove_id(manager: Manager, filename: str, ext: str) -> Tuple[str, str
 
 
 async def purge_dir_tree(dirname: Path) -> None:
-    """Purges empty directories"""
-    deleted = []
-    dir_tree = list(os.walk(dirname, topdown=False))
+    """Purges empty files and directories"""
 
-    for tree_element in dir_tree:
-        sub_dir = tree_element[0]
-        dir_count = len(os.listdir(sub_dir))
-        if dir_count == 0:
-            deleted.append(sub_dir)
-    list(map(os.rmdir, deleted))
+    for file in dirname.rglob('*'):
+        if file.is_file() and file.stat().st_size == 0:
+            file.unlink()
+
+    for parent, dirs, _ in os.walk(dirname, topdown=False):
+        for child_dir in dirs:
+            try:
+                (parent / child_dir).rmdir()
+            except OSError:
+                pass #skip if folder is not empty
 
 
 async def check_partials_and_empty_folders(manager: Manager):

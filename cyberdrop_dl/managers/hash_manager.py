@@ -16,7 +16,7 @@ class HashManager:
     def _get_hasher(self):
         """Tries to import xxhash, otherwise falls back to hashlib.md5"""
         try:
-            import xxhash
+            import xxhash  # type: ignore
             return xxhash.xxh128
         except ImportError:
             import hashlib
