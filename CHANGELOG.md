@@ -5,6 +5,15 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.6.39] - 2024-09-30
+
+This update introduces the following changes:
+1. Adds external CHANGELOG file
+
+#### Details:
+- Project changes will documented on https://github.com/jbsparrow/CyberDropDownloader/blob/master/CHANGELOG.md for better tracking
+- Built-in viewer will fetch CHANGELOG history on first use
+
 ## [5.6.38] - 2024-09-30
 
 This update introduces the following changes:
