@@ -290,8 +290,7 @@ async def check_latest_pypi(log_to_console: bool = True) -> Tuple[str]:
     data = json.loads(contents)
     latest_version = data['info']['version']
 
-    if log_to_console:
-        if current_version != latest_version:
-            await log_with_color(f"New version of cyberdrop-dl available: {latest_version}", "bold_red", 30)
+    if log_to_console and current_version != latest_version:
+        await log_with_color(f"New version of cyberdrop-dl available: {latest_version}", "bold_red", 30)
 
     return current_version, latest_version

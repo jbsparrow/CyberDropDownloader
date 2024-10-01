@@ -23,7 +23,6 @@ from cyberdrop_dl.ui.prompts.settings_global_prompts import edit_global_settings
 from cyberdrop_dl.ui.prompts.settings_hash_prompts import path_prompt
 from cyberdrop_dl.ui.prompts.settings_user_prompts import create_new_config_prompt, edit_config_values_prompt
 from cyberdrop_dl.ui.prompts.url_file_prompts import edit_urls_prompt
-from cyberdrop_dl.utils.utilities import check_latest_pypi
 
 console = Console()
 
