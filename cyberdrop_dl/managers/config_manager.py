@@ -78,6 +78,8 @@ class ConfigManager:
         self.settings.parent.mkdir(parents=True, exist_ok=True)
         self.load_configs()
 
+        self.manager.cache_manager.load_request_cache()
+
     def load_configs(self) -> None:
         """Loads all the configs"""
         if self.authentication_settings.is_file():
@@ -175,6 +177,12 @@ class ConfigManager:
             self.global_settings_data['Rate_Limiting_Options']['download_speed_limit'])
         self.global_settings_data['Rate_Limiting_Options']['read_timeout'] = int(
             self.global_settings_data['Rate_Limiting_Options']['read_timeout'])
+
+        self.global_settings_data['Rate_Limiting_Options']['file_host_cache_length'] = int(
+            self.global_settings_data['Rate_Limiting_Options']['file_host_cache_length'])
+        self.global_settings_data['Rate_Limiting_Options']['forum_cache_length'] = int(
+            self.global_settings_data['Rate_Limiting_Options']['forum_cache_length'])
+
 
         self.global_settings_data['Dupe_Cleanup_Options']['delete_after_download'] = \
             self.global_settings_data['Dupe_Cleanup_Options']['delete_after_download']

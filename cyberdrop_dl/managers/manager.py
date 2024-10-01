@@ -19,7 +19,7 @@ from cyberdrop_dl.managers.progress_manager import ProgressManager
 from cyberdrop_dl.utils.args import config_definitions
 from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
 from cyberdrop_dl.utils.transfer.first_time_setup import TransitionManager
-from cyberdrop_dl.utils.utilities import log
+from cyberdrop_dl.utils.utilities import log, show_cached_request_summary
 
 
 class Manager:
@@ -223,6 +223,10 @@ class Manager:
 
     async def close(self) -> None:
         """Closes the manager"""
+        await show_cached_request_summary() 
         await self.db_manager.close()
         self.console_manager.close()
+        await self.cache_manager.close()
         self.db_manager: DBManager = field(init=False)
+        self.console_manager: ConsoleManager = field(init=False)
+        self.console_manager: CacheManager = field(init=False)

@@ -43,8 +43,8 @@ class ScrapeMapper:
                         "redd.it": self.reddit, "redgifs": self.redgifs, "rule34vault": self.rule34vault,
                         "rule34.xxx": self.rule34xxx,
                         "rule34.xyz": self.rule34xyz, "saint": self.saint, "scrolller": self.scrolller,
-                        "simpcity": self.simpcity, "socialmediagirls": self.socialmediagirls, "toonily": self.toonily,
-                        "xbunker": self.xbunker, "xbunkr": self.xbunkr, "bunkr": self.bunkrr}
+                        "socialmediagirls": self.socialmediagirls, "toonily": self.toonily,
+                        "xbunker": self.xbunker, "xbunkr": self.xbunkr, "bunkr": self.bunkrr, "simpcity": self.simpcity}
         self.existing_crawlers = {}
         self.no_crawler_downloader = Downloader(self.manager, "no_crawler")
         self.jdownloader = JDownloader(self.manager)

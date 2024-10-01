@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from InquirerPy import inquirer
 from InquirerPy.validator import PathValidator
 from rich import print as rprint
+import asyncio
 from rich.console import Console
 
 import aiofiles
@@ -180,20 +181,25 @@ def program_ui(manager: Manager):
                             vi_mode=manager.vi_mode,
                         ).execute()
 
-                # Edit Config
+                # Clear Request Cache
                 elif action == 4:
+                    # Clear the request cache using an async function
+                    asyncio.run(manager.cache_manager.request_cache.clear())
+
+                # Edit Config
+                elif action == 5:
                     edit_config_values_prompt(manager)
 
                 # Edit Authentication Values
-                elif action == 5:
+                elif action == 6:
                     edit_authentication_values_prompt(manager)
 
                 # Edit Global Settings
-                elif action == 6:
+                elif action == 7:
                     edit_global_settings_prompt(manager)
 
                 # Done
-                elif action == 7:
+                elif action == 8:
                     break
 
         # Import Cyberdrop_V4 Items
@@ -209,6 +215,7 @@ def program_ui(manager: Manager):
 
         # Exit
         elif action == 12:
+            asyncio.run(manager.cache_manager.close())
             exit(0)
 
 

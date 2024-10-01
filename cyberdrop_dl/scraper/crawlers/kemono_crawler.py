@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Tuple, Dict, Optional
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
+from aiohttp import ClientResponse
 
 from cyberdrop_dl.clients.errors import NoExtensionFailure
 from cyberdrop_dl.scraper.crawler import Crawler
@@ -25,7 +26,14 @@ class KemonoCrawler(Crawler):
         self.services = ['patreon', 'fanbox', 'fantia', 'afdian', 'boosty', 'dlsite', 'gumroad', 'subscribestar']
         self.request_limiter = AsyncLimiter(10, 1)
 
+        self.maximum_offset = None
+
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+    async def check_last_page(self, response: ClientResponse) -> bool:
+        """Checks if the response is the last page"""
+        current_offset = int(response.url.query.get("o", 0))
+        return current_offset != self.maximum_offset
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url"""
@@ -67,12 +75,12 @@ class KemonoCrawler(Crawler):
     @error_handling_wrapper
     async def discord(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile"""
-        offset = 0
+        offset, maximum_offset = await self.get_offsets(scrape_item)
         channel = scrape_item.url.raw_fragment
         api_call = self.api_url / "discord/channel" / channel
-        while True:
+        while offset <= maximum_offset:
             async with self.request_limiter:
-                JSON_Resp = await self.client.get_json(self.domain, api_call.with_query({"o": offset}))
+                JSON_Resp = await self.client.get_json(self.domain, api_call.with_query({"o": offset}), filter_fn=self.check_last_page)
                 offset += 150
                 if not JSON_Resp:
                     break
@@ -175,7 +183,7 @@ class KemonoCrawler(Crawler):
     async def get_user_str_from_profile(self, scrape_item: ScrapeItem) -> str:
         """Gets the user string from a scrape item"""
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup = await self.client.get_BS4(self.domain, scrape_item.url, filter_fn=lambda x: False)
         user = soup.select_one("span[itemprop=name]").text
         return user
 
@@ -191,6 +199,25 @@ class KemonoCrawler(Crawler):
         service = scrape_item.url.parts[1]
         post = scrape_item.url.parts[5]
         return service, user, post
+
+    async def get_maximum_offset(self, scrape_item: ScrapeItem) -> int:
+        """Gets the maximum offset for a scrape item"""
+        soup = await self.client.get_BS4(self.domain, scrape_item.url, filter_fn=lambda x: False)
+        menu = soup.select_one("menu")
+        if menu is None:
+            self.maximum_offset = 0
+            return 0
+        pagination_links = menu.find_all("a", href=True)
+        offsets = [int(x['href'].split('?o=')[-1]) for x in pagination_links]
+        offset = max(offsets)
+        self.maximum_offset = offset
+        return offset
+
+    async def get_offsets(self, scrape_item: ScrapeItem) -> int:
+        """Gets the offset for a scrape item"""
+        current_offset = int(scrape_item.url.query.get("o", 0))
+        maximum_offset = await self.get_maximum_offset(scrape_item)
+        return current_offset, maximum_offset
 
     async def create_new_scrape_item(self, link: URL, old_scrape_item: ScrapeItem, user: str, title: str, post_id: str,
                                      date: str, add_parent: Optional[URL] = None) -> None:

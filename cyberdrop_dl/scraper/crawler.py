@@ -137,7 +137,7 @@ class Crawler(ABC):
 
                 assert login_url.host is not None
 
-                text = await self.client.get_text(self.domain, login_url)
+                text = await self.client.get_text(self.domain, login_url, filter_fn=lambda x: False)
                 if '<span class="p-navgroup-user-linkText">' in text or "You are already logged in." in text:
                     self.logged_in = True
                     return
@@ -156,9 +156,9 @@ class Crawler(ABC):
                     "password": password,
                     "_xfRedirect": str(URL("https://" + login_url.host))
                 })
-                await self.client.post_data(self.domain, login_url / "login", data=data, req_resp=False)
+                await self.client.post_data(self.domain, login_url / "login", data=data, req_resp=False, filter_fn=lambda x: False)
                 await asyncio.sleep(wait_time)
-                text = await self.client.get_text(self.domain, login_url)
+                text = await self.client.get_text(self.domain, login_url, filter_fn=lambda x: False)
                 if '<span class="p-navgroup-user-linkText">' not in text or "You are already logged in." not in text:
                     continue
                 self.logged_in = True

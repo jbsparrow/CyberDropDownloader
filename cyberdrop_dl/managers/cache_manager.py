@@ -3,6 +3,9 @@ from __future__ import annotations
 from dataclasses import field
 from pathlib import Path
 from typing import Any, Dict, TYPE_CHECKING
+from aiohttp_client_cache import SQLiteBackend
+from datetime import timedelta
+from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
 
 import yaml
 
@@ -27,6 +30,7 @@ class CacheManager:
     def __init__(self, manager: 'Manager'):
         self.manager = manager
 
+        self.request_cache: SQLiteBackend = field(init=False)
         self.cache_file: Path = field(init=False)
         self._cache = {}
 
@@ -41,8 +45,24 @@ class CacheManager:
             self.save('first_startup_completed', True)
 
     def load(self) -> None:
-        """Loads the cache file into memory"""
+        """Loads the cache files into memory"""
         self._cache = _load_yaml(self.cache_file)
+
+    def load_request_cache(self) -> None:
+        urls_expire_after = {'*.simpcity.su': self.manager.config_manager.global_settings_data['Rate_Limiting_Options']['file_host_cache_length']}
+        for host in SupportedDomains.supported_hosts:
+            urls_expire_after[f'*.{host}' if '.' in host else f'*.{host}.*'] = self.manager.config_manager.global_settings_data['Rate_Limiting_Options']['file_host_cache_length']
+        for forum in SupportedDomains.supported_forums:
+            urls_expire_after[f'{forum}'] = self.manager.config_manager.global_settings_data['Rate_Limiting_Options']['forum_cache_length']
+        
+        self.request_cache = SQLiteBackend(
+            cache_name=self.manager.path_manager.cache_db, 
+            autoclose=False, 
+            allowed_codes=(200, 404), 
+            allowed_methods=['GET'], 
+            expire_after=timedelta(days=7),
+            urls_expire_after=urls_expire_after
+        )
 
     def get(self, key: str) -> Any:
         """Returns the value of a key in the cache"""
@@ -58,3 +78,6 @@ class CacheManager:
         if key in self._cache:
             del self._cache[key]
             _save_yaml(self.cache_file, self._cache)
+
+    async def close(self):
+        await self.request_cache.close()

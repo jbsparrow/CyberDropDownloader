@@ -37,6 +37,7 @@ class PathManager:
 
         self.input_file: Path = field(init=False)
         self.history_db: Path = field(init=False)
+        self.cache_db: Path = field(init=False)
 
         self.main_log: Path = field(init=False)
         self.last_post_log: Path = field(init=False)
@@ -58,6 +59,9 @@ class PathManager:
 
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.config_dir.mkdir(parents=True, exist_ok=True)
+        
+        self.cache_db = self.cache_dir / "request_cache.db"
+        self.cache_db.touch(exist_ok=True)
 
     def startup(self) -> None:
         """Startup process for the Directory Manager"""

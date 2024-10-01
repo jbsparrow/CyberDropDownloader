@@ -4,7 +4,6 @@ import asyncio
 import logging
 import os
 import re
-import traceback
 from enum import IntEnum
 from functools import wraps
 from pathlib import Path
@@ -18,7 +17,7 @@ from cyberdrop_dl.clients.errors import NoExtensionFailure, FailedLoginFailure, 
 from cyberdrop_dl.managers.console_manager import log as log_console
 
 if TYPE_CHECKING:
-    from typing import Tuple
+    from typing import Tuple, Union
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
@@ -36,6 +35,7 @@ LOG_OUTPUT_TEXT = "```diff\n"
 
 RAR_MULTIPART_PATTERN = r'^part\d+'
 _7Z_FILE_EXTENSIONS = {"7z","tar","gz","bz2","zip"}
+TOTAL_REQUESTS = CACHED_RESPONSES = 0
 
 FILE_FORMATS = {
     'Images': {
@@ -101,42 +101,55 @@ def error_handling_wrapper(func):
                     await self.manager.log_manager.write_scrape_error_log(link, f" {e.status}")
                 await self.manager.progress_manager.scrape_stats_progress.add_failure(e.status)
             else:
-                await log(f"Scrape Failed: {link} ({e})", 40)
-                await log(traceback.format_exc(), 40)
+                await log(f"Scrape Failed: {link} ({e})", 40, exc_info=True)
                 await self.manager.log_manager.write_scrape_error_log(link, " See Log for Details")
                 await self.manager.progress_manager.scrape_stats_progress.add_failure("Unknown")
 
     return wrapper
 
 
-async def log(message: Union [str, Exception], level: int, sleep: int = None) -> None:
+async def log(message: Union[str, Exception], level: int, sleep: int = None, **kwargs) -> None:
     """Simple logging function"""
-    logger.log(level, message)
+    logger.log(level, message, **kwargs)
     if DEBUG_VAR:
-        logger_debug.log(level, message)
+        logger_debug.log(level, message, **kwargs)
     log_console(level, message, sleep=sleep)
 
 
-async def log_debug(message: Union [str, Exception], level: int, sleep: int = None) -> None:
+async def log_debug(message: Union[str, Exception], level: int, sleep: int = None, *kwargs) -> None:
     """Simple logging function"""
     if DEBUG_VAR:
-        logger_debug.log(level, message.encode('ascii', 'ignore').decode('ascii'))
+        logger_debug.log(level, message.encode('ascii', 'ignore').decode('ascii'), *kwargs)
 
 
-async def log_debug_console(message: Union [str, Exception], level: int, sleep: int = None):
+async def log_debug_console(message: Union[str, Exception], level: int, sleep: int = None):
     if CONSOLE_DEBUG_VAR:
         log_console(level, message.encode('ascii', 'ignore').decode('ascii'), sleep=sleep)
 
 
-async def log_with_color(message: str, style: str, level: int) -> None:
+async def log_with_color(message: str, style: str, level: int, *kwargs) -> None:
     """Simple logging function with color"""
     global LOG_OUTPUT_TEXT
-    logger.log(level, message)
+    logger.log(level, message, *kwargs)
     if DEBUG_VAR:
-        logger_debug.log(level, message)
+        logger_debug.log(level, message, *kwargs)
     rich.print(f"[{style}]{message}[/{style}]")
     LOG_OUTPUT_TEXT += f"[{style}]{message}\n"
 
+async def log_request_type(url: URL, from_cache:bool):
+    global TOTAL_REQUESTS, CACHED_RESPONSES 
+    TOTAL_REQUESTS +=1
+    msg = f"{url} fetched from the web"
+    if from_cache:
+        msg = f"{url} fetched from cache"
+        CACHED_RESPONSES +=1
+    if DEBUG_VAR:
+        logger_debug.log(10,msg)
+
+async def show_cached_request_summary():
+    global TOTAL_REQUESTS, CACHED_RESPONSES 
+    if DEBUG_VAR:
+        logger_debug.log(10,f"{TOTAL_REQUESTS = } {CACHED_RESPONSES = }")
 
 async def get_log_output_text() -> str:
     global LOG_OUTPUT_TEXT

@@ -4,7 +4,8 @@ import re
 from typing import TYPE_CHECKING, Optional
 
 from aiolimiter import AsyncLimiter
-from bs4 import Tag
+from bs4 import Tag, BeautifulSoup
+from aiohttp import ClientResponse
 from yarl import URL
 
 from cyberdrop_dl.scraper.crawler import Crawler
@@ -33,6 +34,8 @@ class SocialMediaGirlsCrawler(Crawler):
         self.posts_content_selector = "div[class=bbWrapper]"
         self.next_page_selector = "a[class*=pageNav-jump--next]"
         self.next_page_attribute = "href"
+        self.final_page_selector = "li[class=pageNav-page] a"
+        self.current_page_selector = "li.pageNav-page.pageNav-page--current a"
         self.links_selector = "a"
         self.links_attribute = "href"
         self.attachment_url_part = "attachments"
@@ -48,6 +51,17 @@ class SocialMediaGirlsCrawler(Crawler):
         self.attachments_attribute = "href"
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+    async def check_last_page(self, response: ClientResponse) -> bool:
+        """Checks if the last page has been reached"""
+        soup = BeautifulSoup(await response.text(), "html.parser")
+        try:
+            last_page = int(soup.select_one(self.final_page_selector).text.split('page-')[-1])
+            current_page = int(soup.select_one(self.current_page_selector).text.split('page-')[-1])
+        except AttributeError:
+            await log(f"Last page not found for {response.url}. Assuming only one page.", 40)
+            return False
+        return current_page != last_page
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url"""
@@ -86,7 +100,7 @@ class SocialMediaGirlsCrawler(Crawler):
         current_post_number = 0
         while True:
             async with self.request_limiter:
-                soup = await self.client.get_BS4(self.domain, thread_url)
+                soup = await self.client.get_BS4(self.domain, thread_url, filter_fn=self.check_last_page)
 
             title_block = soup.select_one(self.title_selector)
             for elem in title_block.find_all(self.title_trash_selector):
