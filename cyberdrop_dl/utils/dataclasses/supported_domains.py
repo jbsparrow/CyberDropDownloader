@@ -15,13 +15,13 @@ class SupportedDomains:
                                                   "omegascans", "pimpandhost", "pixeldrain", "postimg", "realbooru",
                                                   "reddit", "redd.it", "redgifs", "rule34.xxx", "rule34.xyz",
                                                   "rule34vault", "saint",
-                                                  "scrolller", "socialmediagirls", "toonily", "xbunker",
+                                                  "scrolller", "simpcity", "socialmediagirls", "toonily", "xbunker",
                                                   "xbunkr")
 
     supported_forums: ClassVar[Tuple[str, ...]] = ("celebforum.to", "f95zone.to", "leakedmodels.com", "nudostar.com",
-                                                   "forums.socialmediagirls.com", "xbunker.nu")
+                                                   "simpcity.su", "forums.socialmediagirls.com", "xbunker.nu")
     supported_forums_map = {"celebforum.to": "celebforum", "f95zone.to": "f95zone", "leakedmodels.com": "leakedmodels",
-                            "nudostar.com": "nudostar",
+                            "nudostar.com": "nudostar", "simpcity.su": "simpcity",
                             "forums.socialmediagirls.com": "socialmediagirls", "xbunker.nu": "xbunker"}
 
     sites: List[str]

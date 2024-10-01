@@ -43,15 +43,33 @@ def get_forum_cookies(manager: Manager, browser: str) -> None:
     """Get the cookies for the forums"""
     auth_args: Dict = manager.config_manager.authentication_data
     for forum in SupportedDomains.supported_forums:
+        cookie = get_cookie(browser, forum)
+        if forum == 'simpcity.su':
+            auth_args['Forums']['simpcity_ddg_cookie_1'] = cookie._cookies['.' + forum]['/']['__ddg1_'].value
+            auth_args['Forums']['simpcity_ddg_cookie_2'] = cookie._cookies['.' + forum]['/']['__ddg2_'].value
+            auth_args['Forums']['simpcity_ddg_cookie_5'] = cookie._cookies['.' + forum]['/']['__ddg5_'].value
+            auth_args['Forums']['simpcity_ddg_id'] = cookie._cookies['.' + forum]['/']['__ddgid_'].value
+            auth_args['Forums']['simpcity_ddg_mark'] = cookie._cookies['.' + forum]['/']['__ddgmark_'].value
+        else:
+            try:
+                auth_args['Forums'][f'{SupportedDomains.supported_forums_map[forum]}_xf_user_cookie'] = \
+                    cookie._cookies[forum]['/']['xf_user'].value
+            except KeyError:
+                pass
         try:
-            cookie = get_cookie(browser, forum)
-            auth_args['Forums'][f'{SupportedDomains.supported_forums_map[forum]}_xf_user_cookie'] = \
-                cookie._cookies[forum]['/']['xf_user'].value
+            pass
         except KeyError:
             try:
                 cookie = get_cookie(browser, "www." + forum)
-                auth_args['Forums'][f'{SupportedDomains.supported_forums_map[forum]}_xf_user_cookie'] = \
-                    cookie._cookies["www." + forum]['/']['xf_user'].value
+                if forum == 'simpcity.su':
+                    auth_args['Forums']['simpcity_ddg_cookie_1'] = cookie._cookies["www." + forum]['/']['__ddg1_'].value
+                    auth_args['Forums']['simpcity_ddg_cookie_2'] = cookie._cookies["www." + forum]['/']['__ddg2_'].value
+                    auth_args['Forums']['simpcity_ddg_cookie_5'] = cookie._cookies["www." + forum]['/']['__ddg5_'].value
+                    auth_args['Forums']['simpcity_ddg_id'] = cookie._cookies["www." + forum]['/']['__ddgid_'].value
+                    auth_args['Forums']['simpcity_ddg_mark'] = cookie._cookies["www." + forum]['/']['__ddgmark_'].value
+                else:
+                    auth_args['Forums'][f'{SupportedDomains.supported_forums_map[forum]}_xf_user_cookie'] = \
+                        cookie._cookies["www." + forum]['/']['xf_user'].value
             except KeyError:
                 pass
 
