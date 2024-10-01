@@ -23,6 +23,7 @@ from cyberdrop_dl.ui.prompts.settings_global_prompts import edit_global_settings
 from cyberdrop_dl.ui.prompts.settings_hash_prompts import path_prompt
 from cyberdrop_dl.ui.prompts.settings_user_prompts import create_new_config_prompt, edit_config_values_prompt
 from cyberdrop_dl.ui.prompts.url_file_prompts import edit_urls_prompt
+from cyberdrop_dl.utils.utilities import check_latest_pypi
 
 console = Console()
 
@@ -214,7 +215,8 @@ def program_ui(manager: Manager):
 
 async def _get_changelog(changelog_path: Path):
     url = "https://raw.githubusercontent.com/jbsparrow/CyberDropDownloader/refs/heads/master/CHANGELOG.md"
-    if not changelog_path.is_file():
+    current_version, lastest_version = await check_latest_pypi(log_to_console = False)
+    if not changelog_path.is_file() or current_version != lastest_version :
         try:
             async with request("GET", url) as response:
                 response.raise_for_status()
