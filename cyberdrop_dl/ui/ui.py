@@ -202,7 +202,7 @@ def program_ui(manager: Manager):
             import_cyberdrop_v4_items_prompt(manager)
 
         elif action == 11:
-            changelog_path = manager.path_manager.config_dir.parent / "CHANGELOG.md"
+            changelog_path = manager.path_manager.config_dir.parent / f"CHANGELOG_{__version__}.md"
             changelog_content = asyncio.run(_get_changelog(changelog_path))
 
             with console.pager(links = True):
@@ -215,8 +215,7 @@ def program_ui(manager: Manager):
 
 async def _get_changelog(changelog_path: Path):
     url = "https://raw.githubusercontent.com/jbsparrow/CyberDropDownloader/refs/heads/master/CHANGELOG.md"
-    current_version, lastest_version = await check_latest_pypi(log_to_console = False)
-    if not changelog_path.is_file() or current_version != lastest_version :
+    if not changelog_path.is_file():
         try:
             async with request("GET", url) as response:
                 response.raise_for_status()
