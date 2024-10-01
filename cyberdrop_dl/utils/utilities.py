@@ -76,7 +76,7 @@ def error_handling_wrapper(func):
             await self.manager.progress_manager.scrape_stats_progress.add_failure("No File Extension")
         except PasswordProtected as e:
             await log(f"Scrape Failed: {link} (Password Protected)", 40)
-            parent_url = e.scrape_item.parents[0] if e.scrape_item.parents[0] else None
+            parent_url = e.scrape_item.parents[0] if e.scrape_item.parents else None
             await self.manager.log_manager.write_unsupported_urls_log(link,parent_url)
             await self.manager.progress_manager.scrape_stats_progress.add_failure("Password Protected")
         except FailedLoginFailure:
