@@ -279,7 +279,7 @@ async def check_partials_and_empty_folders(manager: Manager):
             await purge_dir_tree(manager.path_manager.sorted_dir)
 
 
-async def check_latest_pypi():
+async def check_latest_pypi(log_to_console: bool = True) -> Tuple[str]:
     """Checks if the current version is the latest version"""
     from cyberdrop_dl import __version__ as current_version
     import json
@@ -290,8 +290,8 @@ async def check_latest_pypi():
     data = json.loads(contents)
     latest_version = data['info']['version']
 
-    if current_version.split(".")[0] > latest_version.split(".")[0]:
-        return
+    if log_to_console:
+        if current_version != latest_version:
+            await log_with_color(f"New version of cyberdrop-dl available: {latest_version}", "bold_red", 30)
 
-    if current_version != latest_version:
-        await log_with_color(f"New version of cyberdrop-dl available: {latest_version}", "bold_red", 30)
+    return current_version, latest_version
