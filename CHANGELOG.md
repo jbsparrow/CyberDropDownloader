@@ -5,6 +5,27 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.6.41] - 2024-10-01
+
+This update introduces the following changes:
+1. Fixes crash when unsupported URLs have no parents
+2. Display new changelog if an update is available
+3. Updated supported sites in Wiki
+
+#### Details:
+
+- Fixes crash if an unsupported url have no parents
+- Always display an updated changelog if a new version has been released on Pypi
+- Remove Simpcity from supported websites on Wiki
+
+## [5.6.40] - 2024-10-01
+
+This update introduces the following changes:
+1. Fixes empty folder cleanup 
+
+#### Details:
+- Fixes incorrent path objects on post-runtime folder cleanup
+
 ## [5.6.39] - 2024-09-30
 
 This update introduces the following changes:
