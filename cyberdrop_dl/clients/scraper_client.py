@@ -72,13 +72,14 @@ class ScraperClient:
         headers = {**self._headers, **{"Content-Type": "application/json"}}
         data = {"cmd": "request.get", "url": str(url), "maxTimeout": 60000}
 
-        async with client_session.disabled().post(f"http://{self.client_manager.flaresolverr}/v1", headers=headers,
+        async with client_session.disabled():
+            async with client_session.post(f"http://{self.client_manager.flaresolverr}/v1", headers=headers,
                                        ssl=self.client_manager.ssl_context,
                                        proxy=self.client_manager.proxy, json=data) as response:
-            json_obj = await response.json()
-            status = json_obj.get("status")
-            if status != "ok":
-                raise ScrapeFailure(status="DDOS-Guard", message="Failed to resolve URL with flaresolverr")
+                json_obj = await response.json()
+                status = json_obj.get("status")
+                if status != "ok":
+                    raise ScrapeFailure(status="DDOS-Guard", message="Failed to resolve URL with flaresolverr")
 
             # Update cookies
             for cookie in json_obj.get("solution").get("cookies"):
