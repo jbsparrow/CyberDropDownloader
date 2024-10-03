@@ -83,6 +83,7 @@ class CelebForumCrawler(Crawler):
 
         current_post_number = 0
         while True:
+            thread_url = scrape_item.url if current_post_number == 0 else thread_url
             async with self.request_limiter:
                 soup = await self.client.get_BS4(self.domain, thread_url)
 
