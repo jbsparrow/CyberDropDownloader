@@ -4,6 +4,7 @@ from dataclasses import field
 from pathlib import Path
 from typing import Any, Dict, TYPE_CHECKING
 from aiohttp_client_cache import SQLiteBackend
+from http import HTTPStatus
 from datetime import timedelta
 from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
 
@@ -58,7 +59,7 @@ class CacheManager:
         self.request_cache = SQLiteBackend(
             cache_name=self.manager.path_manager.cache_db, 
             autoclose=False, 
-            allowed_codes=(200, 404), 
+            allowed_codes=(HTTPStatus.OK, HTTPStatus.NOT_FOUND),
             allowed_methods=['GET'], 
             expire_after=timedelta(days=7),
             urls_expire_after=urls_expire_after
