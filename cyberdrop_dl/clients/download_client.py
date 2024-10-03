@@ -242,6 +242,22 @@ class DownloadClient:
         expected_size = media_item.filesize if isinstance(media_item.filesize, int) else None
         proceed = True
         skip = False
+
+        if not skip and self.manager.config_manager.settings_data['Ignore_Options']['skip_hosts']:
+            for skip_host in self.manager.config_manager.settings_data['Ignore_Options']['skip_hosts']:
+                if media_item.url.host.find(skip_host) != -1:
+                    skip = True
+                    break
+                
+        if not skip and self.manager.config_manager.settings_data['Ignore_Options']['only_hosts']:
+            for only_host in self.manager.config_manager.settings_data['Ignore_Options']['only_hosts']:
+                if media_item.url.host.find(only_host) == -1:
+                    skip = True
+                    break
+
+        if skip:
+            return proceed, skip 
+
         while True:
             if expected_size:
                 file_size_check = await self.check_filesize_limits(media_item)
