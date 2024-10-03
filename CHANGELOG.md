@@ -5,6 +5,18 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.6.43] - 2024-10-03
+
+This update introduces the following changes:
+1. Removed the `--update-last-forum-post` CLI argument
+
+#### Details:
+
+- The `--update-last-forum-post` argument has been removed because it conflicts with the new default of having `update_last_forum_post` set to `True` in the config file. 
+- This means that the last forum post will always be updated by default, and the argument is no longer needed to set it to `True`. 
+- If you want to disable this feature, you can set `update_last_forum_post` to `False` in the config file. 
+- This also helps to clean up the CLI arguments.
+
 ## [5.6.42] -  2024-10-03
 
 This update introduces the following changes:

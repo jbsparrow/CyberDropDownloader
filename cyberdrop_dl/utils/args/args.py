@@ -118,8 +118,6 @@ def parse_args() -> argparse.Namespace:
                                  default=False)
     runtime_options.add_argument("--send-unsupported-to-jdownloader", action="store_true",
                                  help="send unsupported urls to jdownloader", default=False)
-    runtime_options.add_argument("--update-last-forum-post", action="store_true", help="update the last forum post",
-                                 default=False)
 
     sorting_options = parser.add_argument_group("Sorting")
     sorting_options.add_argument("--sort-downloads", action="store_true", help="sort downloads into folders",
