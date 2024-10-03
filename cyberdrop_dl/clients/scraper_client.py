@@ -23,7 +23,7 @@ def limiter(func):
     """Wrapper handles limits for scrape session"""
 
     @wraps(func)
-    async def wrapper(self, *args, **kwargs):
+    async def wrapper(self: ScraperClient, *args, **kwargs):
         domain_limiter = await self.client_manager.get_rate_limiter(args[0])
         async with self.client_manager.session_limit:
             await self._global_limiter.acquire()
@@ -72,8 +72,12 @@ class ScraperClient:
         headers = {**self._headers, **{"Content-Type": "application/json"}}
         data = {"cmd": "request.get", "url": str(url), "maxTimeout": 60000}
 
+        flaresolverr_server = URL(self.client_manager.flaresolverr)
+        if not flaresolverr_server.scheme:
+            flaresolverr_server = URL(f"http://{self.client_manager.flaresolverr}")
+
         async with client_session.disabled():
-            async with client_session.post(f"http://{self.client_manager.flaresolverr}/v1", headers=headers,
+            async with client_session.post(flaresolverr_server / "v1", headers=headers,
                                        ssl=self.client_manager.ssl_context,
                                        proxy=self.client_manager.proxy, json=data) as response:
                 json_obj = await response.json()
