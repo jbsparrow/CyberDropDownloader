@@ -8,14 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [5.6.43] - 2024-10-03
 
 This update introduces the following changes:
-1. Removed the `--update-last-forum-post` CLI argument
+1. Update True/False CLI args to integrate better with the config file.
 
 #### Details:
 
-- The `--update-last-forum-post` argument has been removed because it conflicts with the new default of having `update_last_forum_post` set to `True` in the config file. 
-- This means that the last forum post will always be updated by default, and the argument is no longer needed to set it to `True`. 
-- If you want to disable this feature, you can set `update_last_forum_post` to `False` in the config file. 
-- This also helps to clean up the CLI arguments.
+- CLI arguments that toggle settings to `True` or `False` can now be passed as either `--arg` or `--no-arg` to set the value to `True` or `False` respectively.
+- This also solves an issue where CLI arguments that toggle settings would override config file settings even if the CLI argument was never passed.
 
 ## [5.6.42] -  2024-10-03
 
