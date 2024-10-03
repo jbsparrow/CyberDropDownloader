@@ -143,7 +143,7 @@ class ScraperClient:
             except DDOSGuardFailure:
                 response_text = await self.flaresolverr(domain, url)
                 return response_text
-            text = await CachedStreamReader(await response.read()).read()
+            text = response.text()
             return text
 
     @limiter
