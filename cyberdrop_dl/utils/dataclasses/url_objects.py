@@ -9,6 +9,13 @@ if TYPE_CHECKING:
     from yarl import URL
 
 
+FORUM = 0
+FORUM_POST = 1
+FILE_HOST_PROFILE = 2
+FILE_HOST_ALBUM = 3
+
+SCRAPE_ITEM_TYPES = [FORUM, FORUM_POST, FILE_HOST_PROFILE, FILE_HOST_ALBUM]
+
 class MediaItem:
     def __init__(self, url: "URL", referer: "URL", album_id: Union[str, None], download_folder: Path, filename: str,
                 ext: str, original_filename: str, debrid_link: Optional['URL'] = None):
@@ -40,6 +47,9 @@ class ScrapeItem:
         self.parent_title: str = parent_title
         # WARNING: unsafe but deepcopy is used when a new child item is created
         self.parents : list[URL] = []
+        self.children : int = 0
+        self.children_limit: int = 0
+        self.type: Union[int, None] = None
         self.part_of_album: bool = part_of_album
         self.album_id: Union[str, None] = album_id
         self.possible_datetime: int = possible_datetime

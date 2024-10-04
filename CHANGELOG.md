@@ -83,6 +83,17 @@ This update introduces the following changes:
 - Using the flag `--skip-referer-seen-before` will skip downloading files from any referer that have been scraped before. The file (s) will always be skipped regardless of whether the referer was successfully scraped or not
 - Fixes album_id property not being saved to database on supported crawlers
 
+## [UNRELEASED]
+
+This update introduces the following changes:
+1. Adds the option to limit how many items are scraped 
+
+#### Details:
+
+- Users can limit the number of items to scrape by type, using the `--maximum-number-of-children` parameter.
+
+For more details on how to use this feature, visit the wiki: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings#download-options
+
 ## [5.6.50] - 2024-10-07
 
 This update introduces the following changes:

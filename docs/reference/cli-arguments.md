@@ -47,6 +47,7 @@ For items within Download Options, Ignore Options, Runtime Options, and Sorting 
 --separate-posts
 --skip-download-mark-completed
 --skip-referer-seen-before
+--maximum-number-of-children
 
 // File Size Limits
 --maximum-image-size <number>

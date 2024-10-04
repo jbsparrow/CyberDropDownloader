@@ -67,6 +67,7 @@ settings: Dict = {
         "separate_posts": False,
         "skip_download_mark_completed": False,
         "skip_referer_seen_before": False,
+        "maximum_number_of_children": []
     },
     "Files": {
         "input_file": str(APP_STORAGE / "Configs" / "{config}" / "URLs.txt"),

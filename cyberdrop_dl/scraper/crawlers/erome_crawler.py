@@ -6,8 +6,9 @@ from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
-from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wrapper
+from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem, FILE_HOST_PROFILE, FILE_HOST_ALBUM
+from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wrapper, log
+from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -40,10 +41,22 @@ class EromeCrawler(Crawler):
         title = await self.create_title(scrape_item.url.name, None, None)
         albums = soup.select('a[class=album-link]')
 
+        scrape_item.type = FILE_HOST_PROFILE
+        scrape_item.children = scrape_item.children_limit = 0
+
+        try:
+            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+        except (IndexError, TypeError):
+            pass
+
         for album in albums:
             link = URL(album['href'])
             new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent = scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
+            scrape_item.children += 1
+            if scrape_item.children_limit:
+                if scrape_item.children >= scrape_item.children_limit:
+                    raise ScrapeItemMaxChildrenReached(scrape_item)
 
         next_page = soup.select_one('a[rel="next"]')
         if next_page:
@@ -59,6 +72,13 @@ class EromeCrawler(Crawler):
         results = await self.get_album_results(album_id)
         scrape_item.album_id = album_id
         scrape_item.part_of_album = True
+        scrape_item.type = FILE_HOST_ALBUM
+        scrape_item.children = scrape_item.children_limit = 0
+        
+        try:
+            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+        except (IndexError, TypeError):
+            pass
 
         async with self.request_limiter:
             soup = await self.client.get_BS4(self.domain, scrape_item.url)
@@ -70,16 +90,16 @@ class EromeCrawler(Crawler):
         await scrape_item.add_to_parent_title(title)
 
         images = soup.select('img[class="img-front lasyload"]')
-        vidoes = soup.select('div[class=media-group] div[class=video-lg] video source')
+        videos = soup.select('div[class=media-group] div[class=video-lg] video source')
 
-        for image in images:
-            link = URL(image['data-src'])
+        image_links = [URL(image['data-src']) for image in images]
+        video_links = [URL(video['src']) for video in videos]
+
+        for link in image_links + video_links:
             filename, ext = await get_filename_and_ext(link.name)
             if not await self.check_album_results(link, results):
                 await self.handle_file(link, scrape_item, filename, ext)
-
-        for video in vidoes:
-            link = URL(video['src'])
-            filename, ext = await get_filename_and_ext(link.name)
-            if not await self.check_album_results(link, results):
-                await self.handle_file(link, scrape_item, filename, ext)
+            scrape_item.children += 1
+            if scrape_item.children_limit:
+                if scrape_item.children >= scrape_item.children_limit:
+                    raise ScrapeItemMaxChildrenReached(scrape_item)

@@ -10,8 +10,9 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import NoExtensionFailure
 from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
+from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem, FILE_HOST_PROFILE, FILE_HOST_ALBUM
 from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wrapper
+from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -54,6 +55,13 @@ class KemonoCrawler(Crawler):
         service, user = await self.get_service_and_user(scrape_item)
         user_str = await self.get_user_str_from_profile(scrape_item)
         api_call = self.api_url / service / "user" / user
+        scrape_item.type = FILE_HOST_PROFILE
+        scrape_item.children = scrape_item.children_limit = 0
+        
+        try:
+            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+        except (IndexError, TypeError):
+            pass
         while True:
             async with self.request_limiter:
                 JSON_Resp = await self.client.get_json(self.domain, api_call.with_query({"o": offset}))
@@ -63,6 +71,10 @@ class KemonoCrawler(Crawler):
 
             for post in JSON_Resp:
                 await self.handle_post_content(scrape_item, post, user, user_str)
+                scrape_item.children += 1
+                if scrape_item.children_limit:
+                    if scrape_item.children >= scrape_item.children_limit:
+                        raise ScrapeItemMaxChildrenReached(scrape_item)
 
     @error_handling_wrapper
     async def discord(self, scrape_item: ScrapeItem) -> None:
@@ -70,6 +82,13 @@ class KemonoCrawler(Crawler):
         offset = 0
         channel = scrape_item.url.raw_fragment
         api_call = self.api_url / "discord/channel" / channel
+        scrape_item.type = FILE_HOST_PROFILE
+        scrape_item.children = scrape_item.children_limit = 0
+        
+        try:
+            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+        except (IndexError, TypeError):
+            pass
         while True:
             async with self.request_limiter:
                 JSON_Resp = await self.client.get_json(self.domain, api_call.with_query({"o": offset}))
@@ -79,6 +98,10 @@ class KemonoCrawler(Crawler):
 
             for post in JSON_Resp:
                 await self.handle_post_content(scrape_item, post, channel, channel)
+                scrape_item.children += 1
+                if scrape_item.children_limit:
+                    if scrape_item.children >= scrape_item.children_limit:
+                        raise ScrapeItemMaxChildrenReached(scrape_item)
 
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem) -> None:
@@ -93,6 +116,15 @@ class KemonoCrawler(Crawler):
     @error_handling_wrapper
     async def handle_post_content(self, scrape_item: ScrapeItem, post: Dict, user: str, user_str: str) -> None:
         """Handles the content of a post"""
+
+        scrape_item.type = FILE_HOST_ALBUM
+        scrape_item.children = scrape_item.children_limit = 0
+        
+        try:
+            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+        except (IndexError, TypeError):
+            pass
+
         date = post["published"].replace("T", " ")
         post_id = post["id"]
         post_title = post.get("title", "")
@@ -102,22 +134,31 @@ class KemonoCrawler(Crawler):
 
         await self.get_content_links(scrape_item, post, user_str)
 
+        scrape_item.children += await self.get_content_links(scrape_item, post, user_str)
+
         async def handle_file(file_obj):
             link = self.primary_base_domain / ("data" + file_obj['path'])
             link = link.with_query({"f": file_obj['name']})
             await self.create_new_scrape_item(link, scrape_item, user_str, post_title, post_id, date)
 
-        if post.get('file'):
-            await handle_file(post['file'])
+        files = []
+        if post['file']:
+            files.append(post['file'])
 
-        for file in post['attachments']:
+        for file in files.extend(post['attachments']):
+            if scrape_item.children_limit:
+                if scrape_item.children >= scrape_item.children_limit:
+                    raise ScrapeItemMaxChildrenReached(scrape_item)
             await handle_file(file)
+            scrape_item.children += 1
 
     async def get_content_links(self, scrape_item: ScrapeItem, post: Dict, user: str) -> None:
         """Gets links out of content in post"""
         content = post.get("content", "")
         if not content:
             return
+        
+        new_children = 0
 
         date = post["published"].replace("T", " ")
         post_id = post["id"]
@@ -146,6 +187,11 @@ class KemonoCrawler(Crawler):
                 continue
             scrape_item = await self.create_scrape_item(scrape_item, link, "", add_parent = scrape_item.url.joinpath("post",post_id))
             await self.handle_external_links(scrape_item)
+            new_children += 1
+            if scrape_item.children_limit:
+                if (new_children + scrape_item.children) >= scrape_item.children_limit:
+                    break
+        return new_children
 
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:

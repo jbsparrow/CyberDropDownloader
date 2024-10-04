@@ -10,9 +10,10 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import NoExtensionFailure
 from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
+from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem, FILE_HOST_PROFILE, FILE_HOST_ALBUM
 from cyberdrop_dl.clients.errors import ScrapeFailure
 from cyberdrop_dl.utils.utilities import FILE_FORMATS, get_filename_and_ext, error_handling_wrapper
+from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -53,6 +54,13 @@ class BunkrrCrawler(Crawler):
         album_id = scrape_item.url.parts[2]
         scrape_item.album_id = album_id
         results = await self.get_album_results(album_id)
+        scrape_item.type = FILE_HOST_ALBUM
+        scrape_item.children = scrape_item.children_limit = 0
+        
+        try:
+            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+        except (IndexError, TypeError):
+            pass
 
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
@@ -97,6 +105,12 @@ class BunkrrCrawler(Crawler):
             except FileNotFoundError:
                 self.manager.task_group.create_task(
                     self.run(ScrapeItem(link, scrape_item.parent_title, True, album_id, date)))
+                
+            scrape_item.children += 1
+            if scrape_item.children_limit:
+                if scrape_item.children >= scrape_item.children_limit:
+                    raise ScrapeItemMaxChildrenReached(scrape_item)
+                
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:

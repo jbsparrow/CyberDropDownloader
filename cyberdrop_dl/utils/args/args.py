@@ -77,6 +77,8 @@ def parse_args() -> argparse.Namespace:
                                 help="skip download and mark as completed in history")
     download_options.add_argument("--skip-referer-seen-before", action=argparse.BooleanOptionalAction,
                                   help="skip download if referer has been seen before")
+    download_options.add_argument("--maximum-number-of-children", nargs="*", type=int,
+                                  help="max number of children an scrape item can have", default=[])
 
     file_size_limits = parser.add_argument_group("File_Size_Limits")
     file_size_limits.add_argument("--maximum-image-size", type=int,

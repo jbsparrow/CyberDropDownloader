@@ -10,8 +10,9 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeFailure, NoExtensionFailure
 from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
+from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem, FILE_HOST_ALBUM, FILE_HOST_PROFILE
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, log, get_filename_and_ext
+from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -88,9 +89,20 @@ class RedditCrawler(Crawler):
             raise ScrapeFailure(403, "Forbidden")
         except asyncprawcore.exceptions.NotFound:
             raise ScrapeFailure(404, "Not Found")
+        
+        scrape_item.type = FILE_HOST_PROFILE
+        scrape_item.children = scrape_item.children_limit = 0
+
+        try:
+            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+        except (IndexError, TypeError):
+            pass
 
         for submission in submissions:
             await self.post(scrape_item, submission, reddit)
+            if scrape_item.children_limit:
+                if scrape_item.children >= scrape_item.children_limit:
+                    raise ScrapeItemMaxChildrenReached(scrape_item)
 
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem, submission, reddit: asyncpraw.Reddit) -> None:
@@ -123,10 +135,21 @@ class RedditCrawler(Crawler):
             return
         items = [item for item in submission.media_metadata.values() if item["status"] == "valid"]
         links = [URL(item["s"]["u"]).with_host("i.redd.it").with_query(None) for item in items]
+        scrape_item.type = FILE_HOST_ALBUM
+        scrape_item.children = scrape_item.children_limit = 0
+        
+        try:
+            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+        except (IndexError, TypeError):
+            pass
         for link in links:
             new_scrape_item = await self.create_new_scrape_item(link, scrape_item, scrape_item.parent_title,
                                                                 scrape_item.possible_datetime, add_parent = scrape_item.url)
             await self.media(new_scrape_item, reddit)
+            scrape_item.children += 1
+            if scrape_item.children_limit:
+                if scrape_item.children >= scrape_item.children_limit:
+                    raise ScrapeItemMaxChildrenReached(scrape_item)
 
     @error_handling_wrapper
     async def media(self, scrape_item: ScrapeItem, reddit: asyncpraw.Reddit) -> None:
