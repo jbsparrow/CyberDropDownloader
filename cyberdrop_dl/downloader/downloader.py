@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import os
-import traceback
 from dataclasses import field, Field
 from functools import wraps
 from http import HTTPStatus
@@ -73,9 +72,8 @@ def retry(f):
             except DDOSGuardFailure as e:
                 media_item = args[0]
                 await self.attempt_task_removal(media_item)
-                await log(f"Download Failed: {media_item.url} with error {e}", 40)
+                await log(f"Download Failed: {media_item.url} with error {e}", 40, exc_info = True)
                 await self.manager.log_manager.write_download_error_log(media_item.url, " DDOSGuard")
-                await log(traceback.format_exc(), 40)
                 await self.manager.progress_manager.download_stats_progress.add_failure("DDOSGuard")
                 await self.manager.progress_manager.download_progress.add_failed()
                 break
@@ -92,9 +90,8 @@ def retry(f):
 
             except Exception as e:
                 media_item = args[0]
-                await log(f"Download Failed: {media_item.url} with error {e}", 40)
+                await log(f"Download Failed: {media_item.url} with error {e}", 40, exc_info = True)
                 await self.attempt_task_removal(media_item)
-                await log(traceback.format_exc(), 40)
                 await self.manager.log_manager.write_download_error_log(media_item.url, " See Log For Details")
                 await self.manager.progress_manager.download_stats_progress.add_failure("Unknown")
                 await self.manager.progress_manager.download_progress.add_failed()
@@ -148,8 +145,7 @@ class Downloader:
 
                     await self.download(media_item)
                 except Exception as e:
-                    await log(f"Download Failed: {media_item.url} with error {e}", 40)
-                    await log(traceback.format_exc(), 40)
+                    await log(f"Download Failed: {media_item.url} with error {e}", 40, exc_info = True)
                     await self.manager.progress_manager.download_stats_progress.add_failure("Unknown")
                     await self.manager.progress_manager.download_progress.add_failed()
                 else:
