@@ -449,6 +449,16 @@ class ScrapeMapper:
                 await log(f"Skipping {scrape_item.url} as it has already been downloaded", 10)
                 await self.manager.progress_manager.download_progress.add_previously_completed()
                 return
+
+            check_referer = False
+            if self.manager.config_manager.settings_data['Download_Options']['skip_referer_seen_before']:
+                check_referer = await self.manager.db_manager.history_table.check_referer(self.domain, url, scrape_item.url)
+
+            if check_referer:
+                await log(f"Skipping {url} as referer has been seen before", 10)
+                await self.manager.progress_manager.download_progress.add_skipped()
+                return
+
             await scrape_item.add_to_parent_title("Loose Files")
             scrape_item.part_of_album = True
             download_folder = await get_download_path(self.manager, scrape_item, "no_crawler")
