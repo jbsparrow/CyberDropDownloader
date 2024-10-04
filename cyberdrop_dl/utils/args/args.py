@@ -75,6 +75,8 @@ def parse_args() -> argparse.Namespace:
                                 help="separate posts into folders")
     download_options.add_argument("--skip-download-mark-completed", action=argparse.BooleanOptionalAction,
                                 help="skip download and mark as completed in history")
+    download_options.add_argument("--maximum-number-of-children",nargs="*", type=int,
+                                  help="max number of children a root scrape item can have. Use multi ttime to specify max children of descendants", default=[])
 
     file_size_limits = parser.add_argument_group("File_Size_Limits")
     file_size_limits.add_argument("--maximum-image-size", type=int,
