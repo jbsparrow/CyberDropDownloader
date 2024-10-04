@@ -38,6 +38,7 @@ class DBManager:
         self.temp_referer_table = TempRefererTable(self._db_conn)
 
         self.history_table.ignore_history = self.ignore_history
+        self.temp_referer_table.ignore_history = self.ignore_history
 
         await self._pre_allocate()
 

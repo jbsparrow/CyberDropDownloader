@@ -68,19 +68,6 @@ class HistoryTable:
                 await self.db_conn.commit()
             return True
         return False
-    
-    async def check_referer(self, referer: URL) -> bool:
-        """Checks whether an individual referer url has already been recorded in the database"""
-        if self.ignore_history:
-            return False
-
-        cursor = await self.db_conn.cursor()
-        result = await cursor.execute("""SELECT url_path FROM media WHERE referer = ? """,
-                                      (referer))
-        sql_referer_check = await result.fetchone()
-        if sql_referer_check:
-            return True
-        return False
 
     async def check_album(self, domain: str, album_id: str) -> bool | dict[Any, Any]:
         """Checks whether an album has completed given its domain and album id"""
