@@ -82,13 +82,15 @@ class GoFileCrawler(Crawler):
             raise ScrapeFailure(403, "Album is private")
 
         title = await self.create_title(JSON_Resp["name"], content_id, None)
-        self.type = FILE_HOST_ALBUM
-        scrape_item.children = scrape_item.children_limit = 0
+        #Do not reset nested folders
+        if scrape_item.type!= FILE_HOST_ALBUM:
+            scrape_item.type = FILE_HOST_ALBUM
+            scrape_item.children = scrape_item.children_limit = 0
 
-        try:
-            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
-        except (IndexError, TypeError):
-            pass
+            try:
+                scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+            except (IndexError, TypeError):
+                pass
 
         contents = JSON_Resp["children"]
         for content_id in contents:
@@ -104,6 +106,7 @@ class GoFileCrawler(Crawler):
                 link = URL(content["directLink"])
             else:
                 link = URL(content["link"])
+
             if link:
                 try:
                     filename, ext = await get_filename_and_ext(link.name)
@@ -116,6 +119,7 @@ class GoFileCrawler(Crawler):
                     await log(f"Scrape Failed: {link} (No File Extension)", 40)
                     await self.manager.log_manager.write_scrape_error_log(link, " No File Extension")
                     await self.manager.progress_manager.scrape_stats_progress.add_failure("No File Extension")
+            scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
                     raise ScrapeItemMaxChildrenReached(scrape_item)
