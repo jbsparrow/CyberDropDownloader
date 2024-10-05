@@ -81,6 +81,12 @@ Setting this to true (or selecting it) will separate content from forum posts in
 
 Setting this to true (or selecting it) will skip downloading files and mark them as downloaded in the database.
 
+***
+
+* skip\_referer\_seen\_before
+
+Setting this to true (or selecting it) will skip downloading files from any referer that have been scraped before.
+
 </details>
 
 <details>
