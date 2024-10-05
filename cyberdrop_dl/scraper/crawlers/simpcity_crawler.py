@@ -173,7 +173,7 @@ class SimpCityCrawler(Crawler):
                     raise ScrapeItemMaxChildrenReached(scrape_item)
 
     @error_handling_wrapper
-    async def links(self, scrape_item: ScrapeItem, post_content: Tag) -> None:
+    async def links(self, scrape_item: ScrapeItem, post_content: Tag) -> int:
         """Scrapes links from a post"""
         links = post_content.select(self.links_selector)
         new_children = 0
@@ -214,7 +214,7 @@ class SimpCityCrawler(Crawler):
         return new_children
 
     @error_handling_wrapper
-    async def images(self, scrape_item: ScrapeItem, post_content: Tag) -> None:
+    async def images(self, scrape_item: ScrapeItem, post_content: Tag) -> int:
         """Scrapes images from a post"""
         images = post_content.select(self.images_selector)
         new_children = 0
@@ -251,7 +251,7 @@ class SimpCityCrawler(Crawler):
         return new_children
 
     @error_handling_wrapper
-    async def videos(self, scrape_item: ScrapeItem, post_content: Tag) -> None:
+    async def videos(self, scrape_item: ScrapeItem, post_content: Tag) -> int:
         """Scrapes videos from a post"""
         videos = post_content.select(self.videos_selector)
         videos.extend(post_content.select(self.iframe_selector))
@@ -277,7 +277,7 @@ class SimpCityCrawler(Crawler):
         return new_children
 
     @error_handling_wrapper
-    async def embeds(self, scrape_item: ScrapeItem, post_content: Tag) -> None:
+    async def embeds(self, scrape_item: ScrapeItem, post_content: Tag) -> int:
         """Scrapes embeds from a post"""
         embeds = post_content.select(self.embeds_selector)
         new_children = 0
@@ -310,7 +310,7 @@ class SimpCityCrawler(Crawler):
         return new_children
 
     @error_handling_wrapper
-    async def attachments(self, scrape_item: ScrapeItem, post_content: Tag) -> None:
+    async def attachments(self, scrape_item: ScrapeItem, post_content: Tag) -> int:
         """Scrapes attachments from a post"""
         attachment_block = post_content.select_one(self.attachments_block_selector)
         if not attachment_block:
