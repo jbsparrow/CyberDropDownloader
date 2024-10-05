@@ -90,7 +90,7 @@ class RedditCrawler(Crawler):
         except asyncprawcore.exceptions.NotFound:
             raise ScrapeFailure(404, "Not Found")
         
-        self.type = FILE_HOST_PROFILE
+        scrape_item.type = FILE_HOST_PROFILE
         scrape_item.children = scrape_item.children_limit = 0
 
         try:

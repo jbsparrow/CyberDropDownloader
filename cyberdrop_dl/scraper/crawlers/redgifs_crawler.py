@@ -47,7 +47,7 @@ class RedGifsCrawler(Crawler):
         page = 1
         total_pages = 1
 
-        self.type = FILE_HOST_PROFILE
+        scrape_item.type = FILE_HOST_PROFILE
         scrape_item.children = scrape_item.children_limit = 0
 
         try:

@@ -41,7 +41,7 @@ class EromeCrawler(Crawler):
         title = await self.create_title(scrape_item.url.name, None, None)
         albums = soup.select('a[class=album-link]')
 
-        self.type = FILE_HOST_PROFILE
+        scrape_item.type = FILE_HOST_PROFILE
         scrape_item.children = scrape_item.children_limit = 0
 
         try:

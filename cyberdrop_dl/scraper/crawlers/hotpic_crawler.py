@@ -45,7 +45,7 @@ class HotPicCrawler(Crawler):
         title = await self.create_title(soup.select_one("title").text.rsplit(" - ")[0], scrape_item.url.parts[2], None)
         await scrape_item.add_to_parent_title(title)
         scrape_item.part_of_album = True
-        self.type = FILE_HOST_ALBUM
+        scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
 
         try:
