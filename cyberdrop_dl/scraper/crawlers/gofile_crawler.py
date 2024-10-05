@@ -11,8 +11,9 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeFailure, DownloadFailure, PasswordProtected, NoExtensionFailure
 from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
+from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem, FILE_HOST_ALBUM
 from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wrapper, log
+from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
 
 if TYPE_CHECKING:
     from cyberdrop_dl.clients.scraper_client import ScraperClient
@@ -81,32 +82,45 @@ class GoFileCrawler(Crawler):
             raise ScrapeFailure(403, "Album is private")
 
         title = await self.create_title(JSON_Resp["name"], content_id, None)
+        self.type = FILE_HOST_ALBUM
+        scrape_item.children = scrape_item.children_limit = 0
+
+        try:
+            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+        except (IndexError, TypeError):
+            pass
 
         contents = JSON_Resp["children"]
         for content_id in contents:
             content = contents[content_id]
+            link = None
             if content["type"] == "folder":
                 new_scrape_item = await self.create_scrape_item(scrape_item,
                                                                 self.primary_base_domain / "d" / content["code"], title,
                                                                 True, add_parent = scrape_item.url)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
-                continue
-            if content["link"] == "overloaded":
+            
+            elif content["link"] == "overloaded":
                 link = URL(content["directLink"])
             else:
                 link = URL(content["link"])
-            try:
-                filename, ext = await get_filename_and_ext(link.name)
-            except NoExtensionFailure:
-                await log(f"Scrape Failed: {link} (No File Extension)", 40)
-                await self.manager.log_manager.write_scrape_error_log(link, " No File Extension")
-                await self.manager.progress_manager.scrape_stats_progress.add_failure("No File Extension")
-                continue
-            duplicate_scrape_item = deepcopy(scrape_item)
-            duplicate_scrape_item.possible_datetime = content["createTime"]
-            duplicate_scrape_item.part_of_album = True
-            await duplicate_scrape_item.add_to_parent_title(title)
-            await self.handle_file(link, duplicate_scrape_item, filename, ext)
+            if link:
+                try:
+                    filename, ext = await get_filename_and_ext(link.name)
+                    duplicate_scrape_item = deepcopy(scrape_item)
+                    duplicate_scrape_item.possible_datetime = content["createTime"]
+                    duplicate_scrape_item.part_of_album = True
+                    await duplicate_scrape_item.add_to_parent_title(title)
+                    await self.handle_file(link, duplicate_scrape_item, filename, ext)
+                except NoExtensionFailure:
+                    await log(f"Scrape Failed: {link} (No File Extension)", 40)
+                    await self.manager.log_manager.write_scrape_error_log(link, " No File Extension")
+                    await self.manager.progress_manager.scrape_stats_progress.add_failure("No File Extension")
+            if scrape_item.children_limit:
+                if scrape_item.children >= scrape_item.children_limit:
+                    raise ScrapeItemMaxChildrenReached(scrape_item)
+                   
+                
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
