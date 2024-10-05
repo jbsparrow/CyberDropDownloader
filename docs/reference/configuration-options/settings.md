@@ -104,12 +104,12 @@ Limit FORUM scrape to 15 posts max, grab all links and media within those posts,
     --maximum-number-of-children 15 0 10
 
 
-Only grap the first link from each post in a forum, but that link will have no children_limit:
+Only grab the first link from each post in a forum, but that link will have no children_limit:
 
     --maximum-number-of-children 0 1
 
 
-Only grap the first POST/ALBUM from a FILE_HOST_PROFILE
+Only grab the first POST/ALBUM from a FILE_HOST_PROFILE
 
     --maximum-number-of-children 0 0 1
 
