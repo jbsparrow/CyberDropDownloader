@@ -85,7 +85,7 @@ Setting this to true (or selecting it) will skip downloading files and mark them
 
 * skip\_referer\_seen\_before
 
-Setting this to true (or selecting it) will skip downloading files from any referer that have been scraped before.
+Setting this to true (or selecting it) will skip downloading files from any referer that have been scraped before. The file (s) will always be skipped regardless of whether the referer was successfully scraped or not
 
 </details>
 
