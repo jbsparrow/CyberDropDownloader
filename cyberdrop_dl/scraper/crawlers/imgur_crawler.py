@@ -47,6 +47,8 @@ class ImgurCrawler(Crawler):
         await self.check_imgur_credits()
 
         album_id = scrape_item.url.parts[-1]
+        scrape_item.album_id = album_id 
+        scrape_item.part_of_album = True
 
         async with self.request_limiter:
             JSON_Obj = await self.client.get_json(self.domain, self.imgur_api / f"album/{album_id}",

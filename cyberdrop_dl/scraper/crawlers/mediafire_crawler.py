@@ -44,6 +44,9 @@ class MediaFireCrawler(Crawler):
 
         title = await self.create_title(folder_details['folder_info']['name'], folder_key, None)
 
+        scrape_item.album_id = folder_key
+        scrape_item.part_of_album = True
+
         chunk = 1
         chunk_size = 100
         while True:

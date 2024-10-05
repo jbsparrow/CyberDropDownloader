@@ -47,6 +47,7 @@ class Rule34XXXCrawler(Crawler):
 
         title_portion = scrape_item.url.query['tags'].strip()
         title = await self.create_title(title_portion, None, None)
+        scrape_item.part_of_album = True
 
         content = soup.select("div[class=image-list] span a")
         for file_page in content:

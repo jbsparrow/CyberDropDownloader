@@ -46,6 +46,8 @@ class GoFileCrawler(Crawler):
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
         content_id = scrape_item.url.name
+        scrape_item.album_id = content_id
+        scrape_item.part_of_album = True
 
         try:
             async with self.request_limiter:

@@ -39,8 +39,11 @@ class PimpAndHostCrawler(Crawler):
         async with self.request_limiter:
             soup = await self.client.get_BS4(self.domain, scrape_item.url)
 
+        scrape_item.album_id = scrape_item.url.parts[2]
+        scrape_item.part_of_album = True
+
         title = await self.create_title(soup.select_one("span[class=author-header__album-name]").get_text(),
-                                        scrape_item.url.parts[2], None)
+                                        scrape_item.album_id , None)
         date = soup.select_one("span[class=date-time]").get("title")
         date = await self.parse_datetime(date)
 
