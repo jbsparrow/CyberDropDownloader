@@ -118,10 +118,10 @@ class NudoStarCrawler(Crawler):
                     post_content = post.select_one(self.posts_content_selector)
                     await self.post(new_scrape_item, post_content, current_post_number)
 
-                scrape_item.children += 1
-                if scrape_item.children_limit:
-                    if scrape_item.children >= scrape_item.children_limit:
-                        raise ScrapeItemMaxChildrenReached(scrape_item)
+                    scrape_item.children += 1
+                    if scrape_item.children_limit:
+                        if scrape_item.children >= scrape_item.children_limit:
+                            raise ScrapeItemMaxChildrenReached(scrape_item)
 
                 if not continue_scraping:
                     break
@@ -301,9 +301,9 @@ class NudoStarCrawler(Crawler):
     async def attachments(self, scrape_item: ScrapeItem, post_content: Tag) -> int:
         """Scrapes attachments from a post"""
         attachment_block = post_content.select_one(self.attachments_block_selector)
-        if not attachment_block:
-            return
         new_children = 0
+        if not attachment_block:
+            return new_children
         attachments = attachment_block.select(self.attachments_selector)
         for attachment in attachments:
             link = attachment.get(self.attachments_attribute)

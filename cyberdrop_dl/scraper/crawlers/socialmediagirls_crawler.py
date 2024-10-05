@@ -193,7 +193,7 @@ class SocialMediaGirlsCrawler(Crawler):
             if "link-confirmation" in link.path:
                 link = await self.handle_link_confirmation(link)
             if link is None:
-                return
+                return new_children
             try:
                 if self.domain not in link.host:
                     new_scrape_item = await self.create_scrape_item(scrape_item, link, "")
@@ -312,9 +312,9 @@ class SocialMediaGirlsCrawler(Crawler):
     async def attachments(self, scrape_item: ScrapeItem, post_content: Tag) -> int:
         """Scrapes attachments from a post"""
         attachment_block = post_content.select_one(self.attachments_block_selector)
-        if not attachment_block:
-            return
         new_children = 0
+        if not attachment_block:
+            return new_children
         attachments = attachment_block.select(self.attachments_selector)
         for attachment in attachments:
             link = attachment.get(self.attachments_attribute)
