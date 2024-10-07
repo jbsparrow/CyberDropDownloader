@@ -74,8 +74,9 @@ class GoFileCrawler(Crawler):
 
         JSON_Resp = JSON_Resp['data']
 
+        await log (f"{JSON_Resp}",10)
         if "password" in JSON_Resp:
-            if 'passwordWrong' == JSON_Resp['password'] or not password:
+            if JSON_Resp['passwordStatus'] in {'passwordRequired','passwordWrong'} or not password:
                 raise PasswordProtected(scrape_item)
 
         if JSON_Resp["canAccess"] is False:
