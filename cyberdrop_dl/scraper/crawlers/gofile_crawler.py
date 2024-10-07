@@ -4,7 +4,6 @@ import http
 import re
 from copy import deepcopy
 from typing import TYPE_CHECKING
-from urllib.parse import parse_qs
 from hashlib import sha256
 
 from aiolimiter import AsyncLimiter
@@ -48,7 +47,7 @@ class GoFileCrawler(Crawler):
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
         content_id = scrape_item.url.name
-        password = parse_qs(scrape_item.url.raw_query_string, keep_blank_values=True).get("password",[""])[0]
+        password = scrape_item.url.query.get("password","")
         if password:
             password = sha256(password.encode()).hexdigest()
 
@@ -74,7 +73,6 @@ class GoFileCrawler(Crawler):
 
         JSON_Resp = JSON_Resp['data']
 
-        await log (f"{JSON_Resp}",10)
         if "password" in JSON_Resp:
             if JSON_Resp['passwordStatus'] in {'passwordRequired','passwordWrong'} or not password:
                 raise PasswordProtected(scrape_item)
