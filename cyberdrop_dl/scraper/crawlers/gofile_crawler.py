@@ -4,6 +4,8 @@ import http
 import re
 from copy import deepcopy
 from typing import TYPE_CHECKING
+from urllib.parse import parse_qs
+from hashlib import sha256
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
@@ -46,12 +48,15 @@ class GoFileCrawler(Crawler):
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
         content_id = scrape_item.url.name
+        password = parse_qs(scrape_item.url.raw_query_string, keep_blank_values=True).get("password",[""])[0]
+        if password:
+            password = sha256(password.encode()).hexdigest()
 
         try:
             async with self.request_limiter:
                 JSON_Resp = await self.client.get_json(self.domain,
                                                        (self.api_address / "contents" / content_id).with_query(
-                                                           {"wt": self.websiteToken}), headers_inc=self.headers)
+                                                           {"wt": self.websiteToken, "password": password }), headers_inc=self.headers)
         except DownloadFailure as e:
             if e.status == http.HTTPStatus.UNAUTHORIZED:
                 self.websiteToken = ""
@@ -60,17 +65,18 @@ class GoFileCrawler(Crawler):
                 async with self.request_limiter:
                     JSON_Resp = await self.client.get_json(self.domain,
                                                            (self.api_address / "contents" / content_id).with_query(
-                                                               {"wt": self.websiteToken}), headers_inc=self.headers)
+                                                               {"wt": self.websiteToken, "password": password}), headers_inc=self.headers)
             else:
                 raise ScrapeFailure(e.status, e.message)
-
+            
         if JSON_Resp["status"] == "error-notFound":
             raise ScrapeFailure(404, "Album not found")
 
         JSON_Resp = JSON_Resp['data']
 
         if "password" in JSON_Resp:
-            raise PasswordProtected(scrape_item)
+            if 'passwordWrong' in JSON_Resp or not password:
+                raise PasswordProtected(scrape_item)
 
         if JSON_Resp["canAccess"] is False:
             raise ScrapeFailure(403, "Album is private")
