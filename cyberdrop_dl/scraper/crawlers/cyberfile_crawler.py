@@ -10,8 +10,9 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import PasswordProtected, ScrapeFailure
 from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
+from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem, FILE_HOST_ALBUM
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, log, get_filename_and_ext
+from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -48,6 +49,15 @@ class CyberfileCrawler(Crawler):
         script_func = script_func.split('loadImages(')[-1]
         script_func = script_func.split(';')[0]
         nodeId = int(script_func.split(',')[1].replace("'", ""))
+        #Do not reset if nested folder
+        if scrape_item.type != FILE_HOST_ALBUM:
+            scrape_item.type = FILE_HOST_ALBUM
+            scrape_item.children = scrape_item.children_limit = 0
+            
+            try:
+                scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+            except (IndexError, TypeError):
+                pass
 
         page = 1
         while True:
@@ -63,17 +73,21 @@ class CyberfileCrawler(Crawler):
             for tile in tile_listings:
                 folder_id = tile.get('folderid')
                 file_id = tile.get('fileid')
-
+                link = None
                 if folder_id:
                     link = URL(tile.get('sharing-url'))
                 elif file_id:
                     link = URL(tile.get('dtfullurl'))
+                if link:
+                    new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent = scrape_item.url)
+                    self.manager.task_group.create_task(self.run(new_scrape_item))
                 else:
                     await log(f"Couldn't find folder or file id for {scrape_item.url} element", 30)
-                    continue
-
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent = scrape_item.url)
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+         
+                scrape_item.children += 1
+                if scrape_item.children_limit:
+                    if scrape_item.children >= scrape_item.children_limit:
+                        raise ScrapeItemMaxChildrenReached(scrape_item)
 
             page += 1
             if page > num_pages:
@@ -87,6 +101,15 @@ class CyberfileCrawler(Crawler):
 
         new_folders = []
         node_id = ''
+        #Do not reset if nested folder
+        if scrape_item.type != FILE_HOST_ALBUM:
+            scrape_item.type = FILE_HOST_ALBUM
+            scrape_item.children = scrape_item.children_limit = 0
+            
+            try:
+                scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+            except (IndexError, TypeError):
+                pass
 
         page = 1
         while True:
@@ -103,17 +126,24 @@ class CyberfileCrawler(Crawler):
                 folder_id = tile.get('folderid')
                 file_id = tile.get('fileid')
 
+                link = None
                 if folder_id:
                     new_folders.append(folder_id)
                     continue
                 elif file_id:
                     link = URL(tile.get('dtfullurl'))
+
+                if link:
+                    new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent = scrape_item.url)
+                    self.manager.task_group.create_task(self.run(new_scrape_item))
+
                 else:
                     await log(f"Couldn't find folder or file id for {scrape_item.url} element", 30)
-                    continue
-
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent = scrape_item.url)
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+         
+                scrape_item.children += 1
+                if scrape_item.children_limit:
+                    if scrape_item.children >= scrape_item.children_limit:
+                        raise ScrapeItemMaxChildrenReached(scrape_item)
 
             page += 1
             if page > num_pages and not new_folders:

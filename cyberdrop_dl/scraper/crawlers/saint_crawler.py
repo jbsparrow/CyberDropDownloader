@@ -14,6 +14,8 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
+# TODO: add saint.su album support
+
 class SaintCrawler(Crawler):
     def __init__(self, manager: Manager):
         super().__init__(manager, "saint", "Saint")
@@ -33,7 +35,7 @@ class SaintCrawler(Crawler):
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album"""
+        """Get file info before sending to downloader"""
         if await self.check_complete_from_referer(scrape_item):
             return
 
