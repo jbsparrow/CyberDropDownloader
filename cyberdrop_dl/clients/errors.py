@@ -27,6 +27,14 @@ class PasswordProtected(Exception):
         self.scrape_item = scrape_item
         super().__init__(self.message)
 
+class ScrapeItemMaxChildrenReached(Exception):
+    """This error will be thrown when an scrape item reaches its max number or children"""
+
+    def __init__(self,/, scrape_item: 'ScrapeItem'):
+        self.message = "Max number of children reached"
+        self.scrape_item = scrape_item
+        super().__init__(self.message)
+
 
 class DDOSGuardFailure(Exception):
     """This error will be thrown when DDoS-Guard is detected"""

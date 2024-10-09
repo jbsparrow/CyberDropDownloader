@@ -14,7 +14,7 @@ import rich
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import NoExtensionFailure, FailedLoginFailure, InvalidContentTypeFailure, \
-    PasswordProtected
+    PasswordProtected, ScrapeItemMaxChildrenReached
 from cyberdrop_dl.managers.console_manager import log as log_console
 
 if TYPE_CHECKING:
@@ -74,10 +74,14 @@ def error_handling_wrapper(func):
             await log(f"Scrape Failed: {link} (No File Extension)", 40)
             await self.manager.log_manager.write_scrape_error_log(link, " No File Extension")
             await self.manager.progress_manager.scrape_stats_progress.add_failure("No File Extension")
+        except ScrapeItemMaxChildrenReached as e:
+            await log(f"Scrape Stopped: {link} (Max number of children reached - {e.scrape_item.children_limit})", 40)
+            await self.manager.log_manager.write_scrape_error_log(link, " Max Children Reached")
+            await self.manager.progress_manager.scrape_stats_progress.add_failure("Max Children Reached")
         except PasswordProtected as e:
             await log(f"Scrape Failed: {link} (Password Protected)", 40)
             parent_url = e.scrape_item.parents[0] if e.scrape_item.parents else None
-            await self.manager.log_manager.write_unsupported_urls_log(link,parent_url)
+            await self.manager.log_manager.write_unsupported_urls_log(link, parent_url)
             await self.manager.progress_manager.scrape_stats_progress.add_failure("Password Protected")
         except FailedLoginFailure:
             await log(f"Scrape Failed: {link} (Failed Login)", 40)

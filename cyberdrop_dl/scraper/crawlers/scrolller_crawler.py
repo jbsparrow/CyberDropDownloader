@@ -7,8 +7,9 @@ from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
+from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem, FILE_HOST_ALBUM
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, log, get_filename_and_ext
+from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -42,6 +43,13 @@ class ScrolllerCrawler(Crawler):
         title = await self.create_title(subreddit, None, None)
         await scrape_item.add_to_parent_title(title)
         scrape_item.part_of_album = True
+        scrape_item.type = FILE_HOST_ALBUM
+        scrape_item.children = scrape_item.children_limit = 0
+        
+        try:
+            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+        except (IndexError, TypeError):
+            pass
 
         request_body = {
             "query": """
@@ -95,6 +103,9 @@ class ScrolllerCrawler(Crawler):
                         highest_res_image_url = URL(media_sources[-1]['url'])
                         filename, ext = await get_filename_and_ext(highest_res_image_url.name)
                         await self.handle_file(highest_res_image_url, scrape_item, filename, ext)
+                        if scrape_item.children_limit:
+                            if scrape_item.children >= scrape_item.children_limit:
+                                raise ScrapeItemMaxChildrenReached(scrape_item)
 
                 prev_iterator = iterator
                 iterator = data["data"]["getSubreddit"]["children"]["iterator"]
