@@ -50,6 +50,7 @@ class BunkrrCrawler(Crawler):
         """Scrapes an album"""
         scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path)
         album_id = scrape_item.url.parts[2]
+        scrape_item.album_id = album_id
         results = await self.get_album_results(album_id)
 
         async with self.request_limiter:

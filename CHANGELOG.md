@@ -5,6 +5,15 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [UNRELEASED]
+
+This update introduces the following changes:
+1. Fixes album_id not been saved to database
+
+#### Details:
+
+- Fixes album_id property not being save to database on supported crawlers
+
 ## [5.6.50] - 2024-10-07
 
 This update introduces the following changes:
@@ -14,6 +23,7 @@ This update introduces the following changes:
 
 1. Users can include the password as a query parameter in the input URL, adding `?password=<URL_PASSWORD>` to it.
  Example: https://gofile.io/d/xUprGg?password=1234
+
 
 ## [5.6.43] - 2024-10-03
 

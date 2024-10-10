@@ -97,6 +97,9 @@ class KemonoCrawler(Crawler):
         post_id = post["id"]
         post_title = post.get("title", "")
 
+        scrape_item.album_id = post_id 
+        scrape_item.part_of_album = True
+
         await self.get_content_links(scrape_item, post, user_str)
 
         async def handle_file(file_obj):

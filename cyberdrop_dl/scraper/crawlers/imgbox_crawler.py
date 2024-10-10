@@ -46,8 +46,11 @@ class ImgBoxCrawler(Crawler):
         async with self.request_limiter:
             soup = await self.client.get_BS4(self.domain, scrape_item.url)
 
+        scrape_item.album_id = scrape_item.url.parts[2]
+        scrape_item.part_of_album = True
+
         title = await self.create_title(
-            soup.select_one("div[id=gallery-view] h1").get_text().strip().rsplit(" - ", 1)[0], scrape_item.url.parts[2],
+            soup.select_one("div[id=gallery-view] h1").get_text().strip().rsplit(" - ", 1)[0], scrape_item.album_id ,
             None)
 
         scrape_item.part_of_album = True
