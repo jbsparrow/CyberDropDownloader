@@ -14,6 +14,17 @@ This update introduces the following changes:
 
 - Fixes album_id property not being save to database on supported crawlers
 
+## [5.6.50] - 2024-10-07
+
+This update introduces the following changes:
+1. Support for password protected GoFile links
+
+#### Details:
+
+1. Users can include the password as a query parameter in the input URL, adding `?password=<URL_PASSWORD>` to it.
+ Example: https://gofile.io/d/xUprGg?password=1234
+
+
 ## [5.6.43] - 2024-10-03
 
 This update introduces the following changes:
