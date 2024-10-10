@@ -5,7 +5,7 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [UNRELEASED]
+## [5.6.51] - 2024-10-10
 
 This update introduces the following changes:
 1. Skip file download by referer
