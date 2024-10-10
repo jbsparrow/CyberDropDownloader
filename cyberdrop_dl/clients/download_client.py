@@ -42,8 +42,8 @@ def limiter(func):
         await domain_limiter.acquire()
 
         async with aiohttp.ClientSession(headers=self._headers, raise_for_status=False,
-                                         cookie_jar=self.client_manager.cookies, timeout=self._timeouts,
-                                         trace_configs=self.trace_configs) as client:
+                                        cookie_jar=self.client_manager.cookies, timeout=self._timeouts,
+                                        trace_configs=self.trace_configs) as client:
             kwargs['client_session'] = client
             return await func(self, *args, **kwargs)
 
@@ -59,7 +59,7 @@ class DownloadClient:
 
         self._headers = {"user-agent": client_manager.user_agent}
         self._timeouts = aiohttp.ClientTimeout(total=client_manager.read_timeout + client_manager.connection_timeout,
-                                               connect=client_manager.connection_timeout)
+                                            connect=client_manager.connection_timeout)
         self._global_limiter = self.client_manager.global_rate_limiter
         self.trace_configs = []
         self._file_path = None
@@ -89,9 +89,9 @@ class DownloadClient:
         if domain == "pixeldrain":
             if self.manager.config_manager.authentication_data['PixelDrain']['pixeldrain_api_key']:
                 download_headers["Authorization"] = await self.manager.download_manager.basic_auth("Cyberdrop-DL",
-                                                                                                   self.manager.config_manager.authentication_data[
-                                                                                                       'PixelDrain'][
-                                                                                                       'pixeldrain_api_key'])
+                                                                                                self.manager.config_manager.authentication_data[
+                                                                                                    'PixelDrain'][
+                                                                                                    'pixeldrain_api_key'])
 
         downloaded_filename = await self.manager.db_manager.history_table.get_downloaded_filename(domain, media_item)
         download_dir = await self.get_download_dir(media_item)
@@ -105,7 +105,7 @@ class DownloadClient:
         await asyncio.sleep(self.client_manager.download_delay)
 
         async with client_session.get(media_item.url, headers=download_headers, ssl=self.client_manager.ssl_context,
-                                      proxy=self.client_manager.proxy) as resp:
+                                    proxy=self.client_manager.proxy) as resp:
             if resp.status == HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE:
                 media_item.partial_file.unlink()
 
@@ -175,7 +175,7 @@ class DownloadClient:
 
         async def save_content(content: aiohttp.StreamReader) -> None:
             await self._append_content(media_item, content,
-                                       partial(manager.progress_manager.file_progress.advance_file, media_item.task_id))
+                                    partial(manager.progress_manager.file_progress.advance_file, media_item.task_id))
 
         downloaded = await self._download(domain, manager, media_item, save_content)
         if downloaded:
@@ -275,7 +275,7 @@ class DownloadClient:
                 break
 
             downloaded_filename = await self.manager.db_manager.history_table.get_downloaded_filename(domain,
-                                                                                                      media_item)
+                                                                                                    media_item)
             if not downloaded_filename:
                 media_item.complete_file, media_item.partial_file = await self.iterate_filename(
                     media_item.complete_file, media_item)
