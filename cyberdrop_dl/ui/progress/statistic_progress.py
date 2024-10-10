@@ -10,9 +10,9 @@ class DownloadStatsProgress:
 
     def __init__(self):
         self.progress = Progress("[progress.description]{task.description}",
-                                 BarColumn(bar_width=None),
-                                 "[progress.percentage]{task.percentage:>3.2f}%",
-                                 "{task.completed} of {task.total} Files")
+                                BarColumn(bar_width=None),
+                                "[progress.percentage]{task.percentage:>3.2f}%",
+                                "{task.completed} of {task.total} Files")
         self.progress_group = Group(self.progress)
 
         self.failure_types: Dict[str, TaskID] = {}
@@ -37,7 +37,7 @@ class DownloadStatsProgress:
             self.progress.advance(self.failure_types[failure_type], 1)
         else:
             self.failure_types[failure_type] = self.progress.add_task(failure_type, total=self.failed_files,
-                                                                      completed=1)
+                                                                    completed=1)
         await self.update_total(self.failed_files)
 
     async def return_totals(self) -> Dict:
@@ -53,9 +53,9 @@ class ScrapeStatsProgress:
 
     def __init__(self):
         self.progress = Progress("[progress.description]{task.description}",
-                                 BarColumn(bar_width=None),
-                                 "[progress.percentage]{task.percentage:>3.2f}%",
-                                 "{task.completed} of {task.total} Files")
+                                BarColumn(bar_width=None),
+                                "[progress.percentage]{task.percentage:>3.2f}%",
+                                "{task.completed} of {task.total} Files")
         self.progress_group = Group(self.progress)
 
         self.failure_types: Dict[str, TaskID] = {}
@@ -80,7 +80,7 @@ class ScrapeStatsProgress:
             self.progress.advance(self.failure_types[failure_type], 1)
         else:
             self.failure_types[failure_type] = self.progress.add_task(failure_type, total=self.failed_files,
-                                                                      completed=1)
+                                                                    completed=1)
         await self.update_total(self.failed_files)
 
     async def return_totals(self) -> Dict:

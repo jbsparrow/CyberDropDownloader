@@ -122,7 +122,7 @@ class Sorter:
                         else:
                             await self.sort_other(file, folder.name)
                         await self.manager.progress_manager.sort_progress.advance_folder(task_id,
-                                                                                         1)  # advance folder progress by one file
+                                                                                        1)  # advance folder progress by one file
                     await purge_dir_tree(folder)
                 queue_length -= 1
                 await self.manager.progress_manager.sort_progress.set_queue_length(queue_length)  # update queue length
@@ -150,7 +150,7 @@ class Sorter:
                 if e.__class__ == ValueError:
                     continue
                 logger.log(40,
-                           f"Error: {e}\n\nfolder: {folder}\ndownload_dir: {self.download_dir}\nrelative_folder: {relative_folder}")
+                        f"Error: {e}\n\nfolder: {folder}\ndownload_dir: {self.download_dir}\nrelative_folder: {relative_folder}")
                 raise e
             if base_folder.exists():
                 existing_folders.append(base_folder)
@@ -178,8 +178,8 @@ class Sorter:
 
         new_file = Path(
             self.audio_format.format(sort_dir=self.sorted_downloads, base_dir=base_name, parent_dir=parent_name,
-                                     filename=filename, ext=ext, length=length, bitrate=bitrate,
-                                     sample_rate=sample_rate, file_date_us=file_date_us, file_date_ca=file_date_ca))
+                                    filename=filename, ext=ext, length=length, bitrate=bitrate,
+                                    sample_rate=sample_rate, file_date_us=file_date_us, file_date_ca=file_date_ca))
 
         await self.move_cd(file, new_file)
         await self.manager.progress_manager.sort_progress.increment_audio()
@@ -202,8 +202,8 @@ class Sorter:
 
         new_file = Path(
             self.image_format.format(sort_dir=self.sorted_downloads, base_dir=base_name, parent_dir=parent_name,
-                                     filename=filename, ext=ext, resolution=resolution, file_date_us=file_date_us,
-                                     file_date_ca=file_date_ca))
+                                    filename=filename, ext=ext, resolution=resolution, file_date_us=file_date_us,
+                                    file_date_ca=file_date_ca))
 
         await self.move_cd(file, new_file)
         await self.manager.progress_manager.sort_progress.increment_image()
@@ -233,8 +233,8 @@ class Sorter:
 
         new_file = Path(
             self.video_format.format(sort_dir=self.sorted_downloads, base_dir=base_name, parent_dir=parent_name,
-                                     filename=filename, ext=ext, resolution=resolution, fps=frames_per_sec,
-                                     codec=codec, file_date_us=file_date_us, file_date_ca=file_date_ca))
+                                    filename=filename, ext=ext, resolution=resolution, fps=frames_per_sec,
+                                    codec=codec, file_date_us=file_date_us, file_date_ca=file_date_ca))
 
         await self.move_cd(file, new_file)
         await self.manager.progress_manager.sort_progress.increment_video()
@@ -249,7 +249,7 @@ class Sorter:
 
         new_file = Path(
             self.other_format.format(sort_dir=self.sorted_downloads, base_dir=base_name, parent_dir=parent_name,
-                                     filename=filename, ext=ext, file_date_us=file_date_us, file_date_ca=file_date_ca))
+                                    filename=filename, ext=ext, file_date_us=file_date_us, file_date_ca=file_date_ca))
 
         await self.move_cd(file, new_file)
         await self.manager.progress_manager.sort_progress.increment_other()

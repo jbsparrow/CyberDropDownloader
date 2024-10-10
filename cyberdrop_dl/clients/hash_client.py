@@ -83,7 +83,7 @@ class HashClient:
         try:
             if self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading']:
                 await self.hash_item(media_item.complete_file, media_item.original_filename, media_item.referer
-                                     )
+                                    )
         except Exception as e:
             await log(f"After hash processing failed: {media_item.complete_file} with error {e}", 40)
 
@@ -125,7 +125,7 @@ class HashClient:
 
                     if selected_file:
                         size_dict[size] = {'selected': selected_file,
-                                           'others': list(map(lambda x: str(x.absolute()), files))}
+                                        'others': list(map(lambda x: str(x.absolute()), files))}
                     else:
                         del size_dict[size]
 
@@ -136,7 +136,7 @@ class HashClient:
 
                     # Get all matches from the database
                     all_matches = list(map(lambda x: pathlib.Path(x[0], x[1]),
-                                           await self.manager.db_manager.hash_table.get_files_with_hash_matches(hash,
+                                        await self.manager.db_manager.hash_table.get_files_with_hash_matches(hash,
                                                                                                                 size)))
 
                     # Filter out files with the same path as any file in other_files

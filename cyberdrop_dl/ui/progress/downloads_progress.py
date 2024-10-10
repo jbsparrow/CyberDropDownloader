@@ -14,9 +14,9 @@ class DownloadsProgress:
     def __init__(self, manager: 'Manager'):
         self.manager = manager
         self.progress = Progress("[progress.description]{task.description}",
-                                 BarColumn(bar_width=None),
-                                 "[progress.percentage]{task.percentage:>3.2f}%",
-                                 "{task.completed} of {task.total} Files")
+                                BarColumn(bar_width=None),
+                                "[progress.percentage]{task.percentage:>3.2f}%",
+                                "{task.completed} of {task.total} Files")
         self.progress_group = Group(self.progress)
 
         self.total_files = 0
@@ -32,7 +32,7 @@ class DownloadsProgress:
     async def get_progress(self) -> Panel:
         """Returns the progress bar"""
         return Panel(self.progress_group, title=f"Config: {self.manager.config_manager.loaded_config}",
-                     border_style="green", padding=(1, 1))
+                    border_style="green", padding=(1, 1))
 
     async def update_total(self) -> None:
         """Updates the total number of files to be downloaded"""

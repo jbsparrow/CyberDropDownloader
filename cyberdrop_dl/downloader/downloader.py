@@ -63,7 +63,7 @@ def retry(f):
                 if hasattr(e, "status"):
                     if hasattr(e, "message"):
                         await log(f"Download Failed: {media_item.url} with status {e.status} and message {e.message}",
-                                  40)
+                                40)
                     else:
                         await log(f"Download Failed: {media_item.url} with status {e.status}", 40)
                 else:
@@ -232,7 +232,7 @@ class Downloader:
                         if not e.message:
                             e.message = "Download Failed"
                         await log(f"Download failed: {media_item.url} with status {e.status} and message {e.message}",
-                                  40)
+                                40)
                         await self.manager.log_manager.write_download_error_log(media_item.url,
                                                                                 f" {e.status} - {e.message}")
                     else:

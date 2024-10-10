@@ -30,7 +30,7 @@ async def get_db_path(url: URL, referer: str = "") -> str:
 async def get_db_domain(domain: str) -> str:
     """Gets the domain to be put into the DB and checked from the DB"""
     if domain in ("img.kiwi", "jpg.church", "jpg.homes", "jpg.fish", "jpg.fishing", "jpg.pet", "jpeg.pet", "jpg1.su",
-                  "jpg2.su", "jpg3.su"):
+                "jpg2.su", "jpg3.su"):
         domain = "sharex"
     return domain
 
@@ -58,13 +58,13 @@ class HistoryTable:
         url_path = await get_db_path(url, domain)
         cursor = await self.db_conn.cursor()
         result = await cursor.execute("""SELECT referer, completed FROM media WHERE domain = ? and url_path = ?""",
-                                      (domain, url_path))
+                                    (domain, url_path))
         sql_file_check = await result.fetchone()
         if sql_file_check and sql_file_check[1] != 0:
             # Update the referer if it has changed so that check_complete_by_referer can work
             if str(referer) != sql_file_check[0]:
                 await cursor.execute("""UPDATE media SET referer = ? WHERE domain = ? and url_path = ?""",
-                                     (str(referer), domain, url_path))
+                                    (str(referer), domain, url_path))
                 await self.db_conn.commit()
             return True
         return False
@@ -77,7 +77,7 @@ class HistoryTable:
         domain = await get_db_domain(domain)
         cursor = await self.db_conn.cursor()
         result = await cursor.execute("""SELECT url_path, completed FROM media WHERE domain = ? and album_id = ?""",
-                                      (domain, album_id))
+                                    (domain, album_id))
         result = await result.fetchall()
         return {row[0]: row[1] for row in result}
 
@@ -86,7 +86,7 @@ class HistoryTable:
         domain = await get_db_domain(domain)
         url_path = await get_db_path(media_item.url, str(media_item.referer))
         await self.db_conn.execute("""UPDATE media SET album_id = ? WHERE domain = ? and url_path = ?""",
-                                   (media_item.album_id, domain, url_path))
+                                (media_item.album_id, domain, url_path))
         await self.db_conn.commit()
 
     async def check_complete_by_referer(self, domain: str, referer: URL) -> bool:
@@ -97,7 +97,7 @@ class HistoryTable:
         domain = await get_db_domain(domain)
         cursor = await self.db_conn.cursor()
         result = await cursor.execute("""SELECT completed FROM media WHERE domain = ? and referer = ?""",
-                                      (domain, str(referer)))
+                                    (domain, str(referer)))
         sql_file_check = await result.fetchone()
         return sql_file_check and sql_file_check[0] != 0
 
@@ -112,13 +112,13 @@ class HistoryTable:
                 (domain, media_item.album_id, url_path, str(media_item.referer)))
         except IntegrityError:
             await self.db_conn.execute("""DELETE FROM media WHERE domain = 'no_crawler' and url_path = ?""",
-                                       (url_path,))
+                                    (url_path,))
         await self.db_conn.execute(
             """INSERT OR IGNORE INTO media (domain, url_path, referer, album_id, download_path, download_filename, original_filename, completed, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)""",
             (domain, url_path, str(media_item.referer), media_item.album_id, str(media_item.download_folder),
-             download_filename, media_item.original_filename, 0))
+            download_filename, media_item.original_filename, 0))
         await self.db_conn.execute("""UPDATE media SET download_filename = ? WHERE domain = ? and url_path = ?""",
-                                   (download_filename, domain, url_path))
+                                (download_filename, domain, url_path))
         await self.db_conn.commit()
 
     async def mark_complete(self, domain: str, media_item: MediaItem) -> None:
@@ -136,7 +136,7 @@ class HistoryTable:
         url_path = await get_db_path(media_item.url, str(media_item.referer))
         file_size = pathlib.Path(media_item.complete_file).stat().st_size
         await self.db_conn.execute("""UPDATE media SET file_size=? WHERE domain = ? and url_path = ?""",
-                                   (file_size, domain, url_path))
+                                (file_size, domain, url_path))
         await self.db_conn.commit()
 
     async def check_filename_exists(self, filename: str) -> bool:
@@ -152,7 +152,7 @@ class HistoryTable:
         url_path = await get_db_path(media_item.url, str(media_item.referer))
         cursor = await self.db_conn.cursor()
         result = await cursor.execute("""SELECT download_filename FROM media WHERE domain = ? and url_path = ?""",
-                                      (domain, url_path))
+                                    (domain, url_path))
         sql_file_check = await result.fetchone()
         return sql_file_check[0] if sql_file_check else None
 
@@ -231,7 +231,7 @@ class HistoryTable:
             entry = list(entry)
             entry[0] = "bunkrr"
             await self.db_conn.execute("""INSERT or REPLACE INTO media VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)""",
-                                       entry)
+                                    entry)
         await self.db_conn.commit()
 
         await self.db_conn.execute("""DELETE FROM media WHERE domain = 'bunkr'""")

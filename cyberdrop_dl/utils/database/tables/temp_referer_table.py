@@ -47,7 +47,7 @@ class TempRefererTable:
 
         cursor = await self.db_conn.cursor()
         result = await cursor.execute("""SELECT url_path FROM media WHERE referer = ? """,
-                                      (referer,))
+                                    (referer,))
         sql_referer_check = await result.fetchone()
         sql_referer_check_current_run = await self._check_temp_referer(referer)
         if not sql_referer_check:
@@ -65,7 +65,7 @@ class TempRefererTable:
         referer = str(referer)
         cursor = await self.db_conn.cursor()
         result = await cursor.execute("""SELECT referer FROM temp_referer WHERE referer = ? """,
-                                      (referer,))
+                                    (referer,))
         sql_referer_check = await result.fetchone()
         if sql_referer_check:
             return True

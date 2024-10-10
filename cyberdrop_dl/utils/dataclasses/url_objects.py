@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 class MediaItem:
     def __init__(self, url: "URL", referer: "URL", album_id: Union[str, None], download_folder: Path, filename: str,
-                 ext: str, original_filename: str):
+                ext: str, original_filename: str):
         self.url: URL = url
         self.referer: URL = referer
         self.album_id: Union[str, None] = album_id
@@ -33,8 +33,8 @@ class MediaItem:
 
 class ScrapeItem:
     def __init__(self, url: "URL", parent_title: str, part_of_album: bool = False, album_id: Union[str, None] = None,
-                 possible_datetime: int = None,
-                 retry: bool = False, retry_path: Path = None):
+                possible_datetime: int = None,
+                retry: bool = False, retry_path: Path = None):
         self.url: URL = url
         self.parent_title: str = parent_title
         # WARNING: unsafe but deepcopy is used when a new child item is created
