@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from bs4 import Tag, BeautifulSoup
 from aiohttp import ClientResponse
-import copy
 from yarl import URL
 
 from cyberdrop_dl.scraper.crawler import Crawler
@@ -61,7 +60,7 @@ class SimpCityCrawler(Crawler):
         """Checks if the last page has been reached"""
         soup = BeautifulSoup(await response.text(), "html.parser")
         try:
-            last_page = int(soup.select_one(self.final_page_selector).text.split('page-')[-1])
+            last_page = int(soup.select(self.final_page_selector)[-1].text.split('page-')[-1])
             current_page = int(soup.select_one(self.current_page_selector).text.split('page-')[-1])
         except AttributeError:
             await log(f"Last page not found for {response.url}. Assuming only one page.", 40)
@@ -115,7 +114,6 @@ class SimpCityCrawler(Crawler):
 
         current_post_number = 0
         while True:
-            thread_url = scrape_item.url if current_post_number == 0 else thread_url
             async with self.request_limiter:
                 soup = await self.client.get_BS4(self.domain, thread_url, filter_fn=self.check_last_page)
 
