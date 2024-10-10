@@ -75,6 +75,8 @@ def parse_args() -> argparse.Namespace:
                                 help="separate posts into folders")
     download_options.add_argument("--skip-download-mark-completed", action=argparse.BooleanOptionalAction,
                                 help="skip download and mark as completed in history")
+    download_options.add_argument("--skip-referer-seen-before", action=argparse.BooleanOptionalAction,
+                                  help="skip download if referer has been seen before")
 
     file_size_limits = parser.add_argument_group("File_Size_Limits")
     file_size_limits.add_argument("--maximum-image-size", type=int,

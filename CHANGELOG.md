@@ -8,11 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [UNRELEASED]
 
 This update introduces the following changes:
-1. Fixes album_id not been saved to database
+1. Skip file download by referer
+2. Fixes album_id not been saved to database
 
 #### Details:
 
-- Fixes album_id property not being save to database on supported crawlers
+- Using the flag `--skip-referer-seen-before` will skip downloading files from any referer that have been scraped before. The file (s) will always be skipped regardless of whether the referer was successfully scraped or not
+- Fixes album_id property not being saved to database on supported crawlers
 
 ## [5.6.50] - 2024-10-07
 

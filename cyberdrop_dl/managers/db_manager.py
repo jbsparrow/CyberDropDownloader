@@ -7,6 +7,7 @@ import aiosqlite
 from cyberdrop_dl.utils.database.tables.hash_table import HashTable
 from cyberdrop_dl.utils.database.tables.history_table import HistoryTable
 from cyberdrop_dl.utils.database.tables.temp_table import TempTable
+from cyberdrop_dl.utils.database.tables.temp_referer_table import TempRefererTable
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -23,6 +24,7 @@ class DBManager:
         self.history_table: HistoryTable = field(init=False)
         self.hash_table: HashTable = field(init=False)
         self.temp_table: TempTable = field(init=False)
+        self.temp_referer_table: TempRefererTable = field(init=False)
 
     async def startup(self) -> None:
         """Startup process for the DBManager"""
@@ -33,17 +35,21 @@ class DBManager:
         self.history_table = HistoryTable(self._db_conn)
         self.hash_table = HashTable(self._db_conn)
         self.temp_table = TempTable(self._db_conn)
+        self.temp_referer_table = TempRefererTable(self._db_conn)
 
         self.history_table.ignore_history = self.ignore_history
+        self.temp_referer_table.ignore_history = self.ignore_history
 
         await self._pre_allocate()
 
         await self.history_table.startup()
         await self.hash_table.startup()
         await self.temp_table.startup()
+        await self.temp_referer_table.startup()
 
     async def close(self) -> None:
         """Close the DBManager"""
+        await self.temp_referer_table.sql_drop_temp_referers()
         await self._db_conn.close()
 
     async def _pre_allocate(self) -> None:
