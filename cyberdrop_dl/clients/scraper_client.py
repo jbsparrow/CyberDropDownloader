@@ -94,9 +94,8 @@ class ScraperClient:
             return json_obj.get("solution").get("response")
 
     @limiter
-    async def get_BS4(self, domain: str, url: URL, client_session: ClientSession, filter_fn: function = lambda x: True ) -> BeautifulSoup:
+    async def get_BS4(self, domain: str, url: URL, client_session: ClientSession ) -> BeautifulSoup:
         """Returns a BeautifulSoup object from the given URL"""
-        client_session.cache.filter_fn = filter_fn
         async with client_session.get(url, headers=self._headers, ssl=self.client_manager.ssl_context,
                                     proxy=self.client_manager.proxy) as response:
             await log_request_type(url,response.from_cache)
@@ -114,10 +113,9 @@ class ScraperClient:
             return bs4
 
     @limiter
-    async def get_BS4_and_return_URL(self, domain: str, url: URL, client_session: ClientSession, filter_fn: function = lambda x: True) -> tuple[
+    async def get_BS4_and_return_URL(self, domain: str, url: URL, client_session: ClientSession) -> tuple[
         BeautifulSoup, URL]:
         """Returns a BeautifulSoup object and response URL from the given URL"""
-        client_session.cache.filter_fn = filter_fn
         async with client_session.get(url, headers=self._headers, ssl=self.client_manager.ssl_context,
                                     proxy=self.client_manager.proxy) as response:
             await log_request_type(url,response.from_cache)
@@ -131,9 +129,8 @@ class ScraperClient:
 
     @limiter
     async def get_json(self, domain: str, url: URL, params: Optional[Dict] = None, headers_inc: Optional[Dict] = None,
-                    client_session: ClientSession = None, filter_fn: function = lambda x: True) -> Dict:
+                    client_session: ClientSession = None) -> Dict:
         """Returns a JSON object from the given URL"""
-        client_session.cache.filter_fn = filter_fn
         headers = {**self._headers, **headers_inc} if headers_inc else self._headers
 
         async with client_session.get(url, headers=headers, ssl=self.client_manager.ssl_context,
@@ -147,9 +144,8 @@ class ScraperClient:
             return await response.json()
 
     @limiter
-    async def get_text(self, domain: str, url: URL, client_session: ClientSession, filter_fn: function = lambda x: True) -> str:
+    async def get_text(self, domain: str, url: URL, client_session: ClientSession) -> str:
         """Returns a text object from the given URL"""
-        client_session.cache.filter_fn = filter_fn
         async with client_session.get(url, headers=self._headers, ssl=self.client_manager.ssl_context,
                                     proxy=self.client_manager.proxy) as response:
             await log_request_type(url,response.from_cache)
@@ -163,9 +159,8 @@ class ScraperClient:
 
     @limiter
     async def post_data(self, domain: str, url: URL, client_session: ClientSession, data: Dict,
-                        req_resp: bool = True, filter_fn: function = lambda x: True) -> Dict:
+                        req_resp: bool = True) -> Dict:
         """Returns a JSON object from the given URL when posting data"""
-        client_session.cache.filter_fn = filter_fn
         async with client_session.post(url, headers=self._headers, ssl=self.client_manager.ssl_context,
                                     proxy=self.client_manager.proxy, data=data) as response:
             await self.client_manager.check_http_status(response)
@@ -175,9 +170,8 @@ class ScraperClient:
                 return {}
 
     @limiter
-    async def get_head(self, domain: str, url: URL, client_session: ClientSession, filter_fn: function = lambda x: True) -> CIMultiDictProxy[str]:
+    async def get_head(self, domain: str, url: URL, client_session: ClientSession) -> CIMultiDictProxy[str]:
         """Returns the headers from the given URL"""
-        client_session.cache.filter_fn = filter_fn
         async with client_session.head(url, headers=self._headers, ssl=self.client_manager.ssl_context,
                                     proxy=self.client_manager.proxy) as response:
             return response.headers

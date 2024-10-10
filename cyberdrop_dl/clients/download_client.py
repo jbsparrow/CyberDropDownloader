@@ -16,8 +16,6 @@ from aiohttp_client_cache import CachedSession as ClientSession, CachedResponse
 from cyberdrop_dl.clients.errors import DownloadFailure, InvalidContentTypeFailure
 from cyberdrop_dl.utils.utilities import FILE_FORMATS, log
 
-HTTP_404_LIKE_STATUS = {HTTPStatus.NOT_FOUND , HTTPStatus.GONE, HTTPStatus.UNAVAILABLE_FOR_LEGAL_REASONS}
-
 if TYPE_CHECKING:
     from typing import Callable, Coroutine, Any
 
@@ -52,10 +50,6 @@ def limiter(func):
     return wrapper
 
 
-async def is_404_like(response: CachedResponse) -> bool:
-    if response.status in HTTP_404_LIKE_STATUS:
-        return True
-    return False
 
 class DownloadClient:
     """AIOHTTP operations for downloading"""
@@ -111,7 +105,6 @@ class DownloadClient:
 
         await asyncio.sleep(self.client_manager.download_delay)
 
-        client_session.cache.filter_fn = is_404_like
         async with client_session.get(media_item.url, headers=download_headers, ssl=self.client_manager.ssl_context,
                                       proxy=self.client_manager.proxy) as resp:
             if resp.status == HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE:

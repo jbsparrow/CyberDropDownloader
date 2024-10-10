@@ -1,14 +1,18 @@
 from __future__ import annotations
 
 from dataclasses import field
-from pathlib import Path
-from typing import Any, Dict, TYPE_CHECKING
-from aiohttp_client_cache import SQLiteBackend
-from http import HTTPStatus
 from datetime import timedelta
-from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
+from http import HTTPStatus
+from pathlib import Path
+from typing import Any, Dict, TYPE_CHECKING, Optional
 
 import yaml
+from aiohttp import ClientResponse
+from aiohttp_client_cache import SQLiteBackend
+from bs4 import BeautifulSoup
+
+from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
+from cyberdrop_dl.utils.utilities import log
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -35,6 +39,8 @@ class CacheManager:
         self.cache_file: Path = field(init=False)
         self._cache = {}
 
+        self.return_values = {}
+
     def startup(self, cache_file: Path) -> None:
         """Ensures that the cache file exists"""
         self.cache_file = cache_file
@@ -49,24 +55,71 @@ class CacheManager:
         """Loads the cache files into memory"""
         self._cache = _load_yaml(self.cache_file)
 
+    async def set_return_value(self, url: str, value: bool, pop: Optional[bool] = True) -> None:
+        """Sets a return value for a url"""
+        self.return_values[url] = (value, pop)
+
+    async def get_return_value(self, url: str) -> Optional[bool]:
+        """Gets a return value for a url"""
+        value, pop = self.return_values.get(url, None)
+        if pop:
+            self.return_values.pop(url, None)
+        return value
+
+    async def filter_fn(self, response: ClientResponse) -> False:
+        """Filter function for aiohttp_client_cache"""
+        HTTP_404_LIKE_STATUS = {HTTPStatus.NOT_FOUND, HTTPStatus.GONE, HTTPStatus.UNAVAILABLE_FOR_LEGAL_REASONS}
+
+        if response.status in HTTP_404_LIKE_STATUS:
+            return True
+
+        if response.url in self.return_values:
+            return self.return_values[response.url]
+
+        async def check_simpcity_page(self, response: ClientResponse):
+            """Checks if the last page has been reached"""
+
+            final_page_selector = "li.pageNav-page a"
+            current_page_selector = "li.pageNav-page.pageNav-page--current a"
+
+            soup = BeautifulSoup(await response.text(), "html.parser")
+            try:
+                last_page = int(soup.select(final_page_selector)[-1].text.split('page-')[-1])
+                current_page = int(soup.select_one(current_page_selector).text.split('page-')[-1])
+            except AttributeError:
+                await log(f"Last page not found for {response.url}. Assuming only one page.", 40)
+                return False
+            return current_page != last_page
+
+        filter_dict = {"simpcity.su": check_simpcity_page}
+
+        for host, filter_fn in filter_dict.items():
+            if host == response.url.host:
+                return await filter_fn(self, response)
+
+        return False
+
     def load_request_cache(self) -> None:
-        urls_expire_after = {'*.simpcity.su': self.manager.config_manager.global_settings_data['Rate_Limiting_Options']['file_host_cache_length']}
+        urls_expire_after = {'*.simpcity.su': self.manager.config_manager.global_settings_data['Rate_Limiting_Options'][
+            'file_host_cache_length']}
         for host in SupportedDomains.supported_hosts:
-            urls_expire_after[f'*.{host}' if '.' in host else f'*.{host}.*'] = self.manager.config_manager.global_settings_data['Rate_Limiting_Options']['file_host_cache_length']
+            urls_expire_after[f'*.{host}' if '.' in host else f'*.{host}.*'] = \
+            self.manager.config_manager.global_settings_data['Rate_Limiting_Options']['file_host_cache_length']
         for forum in SupportedDomains.supported_forums:
-            urls_expire_after[f'{forum}'] = self.manager.config_manager.global_settings_data['Rate_Limiting_Options']['forum_cache_length']
-        
+            urls_expire_after[f'{forum}'] = self.manager.config_manager.global_settings_data['Rate_Limiting_Options'][
+                'forum_cache_length']
         self.request_cache = SQLiteBackend(
-            cache_name=self.manager.path_manager.cache_db, 
-            autoclose=False, 
+            cache_name=self.manager.path_manager.cache_db,
+            autoclose=False,
             allowed_codes=(
-                HTTPStatus.OK, 
-                HTTPStatus.NOT_FOUND, 
-                HTTPStatus.GONE, 
+                HTTPStatus.OK,
+                HTTPStatus.NOT_FOUND,
+                HTTPStatus.GONE,
                 HTTPStatus.UNAVAILABLE_FOR_LEGAL_REASONS),
-            allowed_methods=['GET'], 
+            allowed_methods=['GET'],
             expire_after=timedelta(days=7),
-            urls_expire_after=urls_expire_after
+            urls_expire_after=urls_expire_after,
+            filter_fn=self.filter_fn
         )
 
     def get(self, key: str) -> Any:
