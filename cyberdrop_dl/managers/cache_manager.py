@@ -93,11 +93,8 @@ class CacheManager:
 
         filter_dict = {"simpcity.su": check_simpcity_page}
 
-        for host, filter_fn in filter_dict.items():
-            if host == response.url.host:
-                return await filter_fn(self, response)
-
-        return False
+        filter_fn=filter_dict.get(response.url.host)
+        return await filter_fn(self,response) if filter_fn else False
 
     def load_request_cache(self) -> None:
         urls_expire_after = {'*.simpcity.su': self.manager.config_manager.global_settings_data['Rate_Limiting_Options'][
