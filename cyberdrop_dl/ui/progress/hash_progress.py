@@ -15,14 +15,14 @@ class HashProgress:
     def __init__(self, manager: 'Manager'):
         self.manager = manager
         self.hash_progress = Progress("[progress.description]{task.description}",
-                                      BarColumn(bar_width=None),
-                                      "{task.completed} Files")
+                                    BarColumn(bar_width=None),
+                                    "{task.completed} Files")
         self.remove_progress = Progress("[progress.description]{task.description}",
                                         BarColumn(bar_width=None),
                                         "{task.completed} Files")
         self.match_progress = Progress("[progress.description]{task.description}",
-                                       BarColumn(bar_width=None),
-                                       "{task.completed} of {task.total} Files")
+                                    BarColumn(bar_width=None),
+                                    "{task.completed} of {task.total} Files")
 
         self.current_hashing_text = Progress("{task.description}")
 
@@ -42,14 +42,14 @@ class HashProgress:
         self.removed_prev_files = 0
         self.removed_progress_group = Group(self.match_progress, self.remove_progress)
         self.removed_files_task_id = self.remove_progress.add_task("[green]Removed From Currently Downloaded Files",
-                                                                   total=None)
+                                                                total=None)
         self.removed_prev_files_task_id = self.remove_progress.add_task(
             "[green]Removed From Previously Downloaded Files", total=None)
 
     async def get_hash_progress(self) -> Panel:
         """Returns the progress bar"""
         return Panel(self.hash_progress_group, title=f"Config: {self.manager.config_manager.loaded_config}",
-                     border_style="green", padding=(1, 1))
+                    border_style="green", padding=(1, 1))
 
     async def get_removed_progress(self) -> Panel:
         """Returns the progress bar"""
@@ -59,7 +59,7 @@ class HashProgress:
         self.current_hashing_text.update(self.currently_hashing_task_id, description=f"[blue]{file}")
 
         self.current_hashing_text.update(self.currently_hashing_size_task_id,
-                                         description=f"[blue]{format_size(file.stat().st_size)}")
+                                        description=f"[blue]{format_size(file.stat().st_size)}")
 
     async def add_new_completed_hash(self) -> None:
         """Adds a completed file to the progress bar"""
