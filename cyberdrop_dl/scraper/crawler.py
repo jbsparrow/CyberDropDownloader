@@ -86,6 +86,15 @@ class Crawler(ABC):
             await log(f"Skipping {url} as it has already been downloaded", 10)
             await self.manager.progress_manager.download_progress.add_previously_completed()
             return
+        
+        check_referer = False
+        if self.manager.config_manager.settings_data['Download_Options']['skip_referer_seen_before']:
+            check_referer = await self.manager.db_manager.temp_referer_table.check_referer(scrape_item.url)
+
+        if check_referer:
+            await log(f"Skipping {url} as referer has been seen before", 10)
+            await self.manager.progress_manager.download_progress.add_skipped()
+            return
 
         if await self.manager.download_manager.get_download_limit(self.domain) == 1:
             await self.downloader.run(media_item)

@@ -428,7 +428,7 @@ class ScrapeMapper:
         scrape_item.created_at = created_at
         return scrape_item
 
-    async def add_item_to_group(self, scrape_item):
+    async def add_item_to_group(self, scrape_item: ScrapeItem):
         if str(scrape_item.url).endswith("/"):
             if scrape_item.url.query_string:
                 query = scrape_item.url.query_string[:-1]
@@ -449,6 +449,18 @@ class ScrapeMapper:
                 await log(f"Skipping {scrape_item.url} as it has already been downloaded", 10)
                 await self.manager.progress_manager.download_progress.add_previously_completed()
                 return
+
+            if scrape_item.parents:
+                posible_referer = scrape_item.parents[-1]
+                check_referer = False
+                if self.manager.config_manager.settings_data['Download_Options']['skip_referer_seen_before']:
+                    check_referer = await self.manager.db_manager.temp_referer_table.check_referer(posible_referer)
+
+                if check_referer:
+                    await log(f"Skipping {scrape_item.url} as referer has been seen before", 10)
+                    await self.manager.progress_manager.download_progress.add_skipped()
+                    return
+
             await scrape_item.add_to_parent_title("Loose Files")
             scrape_item.part_of_album = True
             download_folder = await get_download_path(self.manager, scrape_item, "no_crawler")

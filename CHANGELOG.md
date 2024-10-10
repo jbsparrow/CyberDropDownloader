@@ -5,6 +5,38 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.6.51] - 2024-10-10
+
+This update introduces the following changes:
+1. Skip file download by referer
+2. Fixes album_id not been saved to database
+
+#### Details:
+
+- Using the flag `--skip-referer-seen-before` will skip downloading files from any referer that have been scraped before. The file (s) will always be skipped regardless of whether the referer was successfully scraped or not
+- Fixes album_id property not being saved to database on supported crawlers
+
+## [5.6.50] - 2024-10-07
+
+This update introduces the following changes:
+1. Support for password protected GoFile links
+
+#### Details:
+
+1. Users can include the password as a query parameter in the input URL, adding `?password=<URL_PASSWORD>` to it.
+ Example: https://gofile.io/d/xUprGg?password=1234
+
+
+## [5.6.43] - 2024-10-03
+
+This update introduces the following changes:
+1. Update True/False CLI args to integrate better with the config file.
+
+#### Details:
+
+- CLI arguments that toggle settings to `True` or `False` can now be passed as either `--arg` or `--no-arg` to set the value to `True` or `False` respectively.
+- This also solves an issue where CLI arguments that toggle settings would override config file settings even if the CLI argument was never passed.
+
 ## [5.6.42] -  2024-10-03
 
 This update introduces the following changes:

@@ -25,6 +25,8 @@ create_fixed_history = """CREATE TABLE IF NOT EXISTS media_copy (domain TEXT,
 
 create_temp = """CREATE TABLE IF NOT EXISTS temp (downloaded_filename TEXT);"""
 
+create_temp_referer = """CREATE TABLE IF NOT EXISTS temp_referer (referer TEXT);"""
+
 create_hash = """
 CREATE TABLE IF NOT EXISTS hash (
   folder TEXT,

@@ -148,7 +148,8 @@ class Manager:
                     if arg in self.args_manager.additive_args:
                         self.config_manager.settings_data[cli_settings_group][arg] += self.args_manager.parsed_args[arg]
                     else:
-                        self.config_manager.settings_data[cli_settings_group][arg] = self.args_manager.parsed_args[arg]
+                        if self.args_manager.parsed_args[arg] is not None:
+                            self.config_manager.settings_data[cli_settings_group][arg] = self.args_manager.parsed_args[arg]
 
     async def args_logging(self) -> None:
         """Logs the runtime arguments"""

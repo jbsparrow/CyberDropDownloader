@@ -64,6 +64,7 @@ settings: Dict = {
         "scrape_single_forum_post": False,
         "separate_posts": False,
         "skip_download_mark_completed": False,
+        "skip_referer_seen_before": False,
     },
     "Files": {
         "input_file": str(APP_STORAGE / "Configs" / "{config}" / "URLs.txt"),

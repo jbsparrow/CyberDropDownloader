@@ -10,6 +10,8 @@ Anything input as a CLI argument will take priority over config values.
 
 For items not explained below, you can find their counterparts in the Configuration options to see what they do, or use `cyberdrop-dl --help` in your command prompt to get a full print out.
 
+For items within Download Options, Ignore Options, Runtime Options, and Sorting Options, you can prefix the argument with `--no-` to negate the option. For example, `--no-exclude-videos` will include videos in the download.
+
 ```
 --config <name>                    : Name of the config file to load.
 --proxy                            : Proxy connection string
@@ -44,6 +46,7 @@ For items not explained below, you can find their counterparts in the Configurat
 --scrape-single-forum-post
 --separate-posts
 --skip-download-mark-completed
+--skip-referer-seen-before
 
 // File Size Limits
 --maximum-image-size <number>
