@@ -80,6 +80,9 @@ class CoomerCrawler(Crawler):
         date = post["published"].replace("T", " ")
         post_id = post["id"]
         post_title = post["title"]
+
+        scrape_item.album_id = post_id
+        scrape_item.part_of_album = True
         if not post_title:
             post_title = "Untitled"
 

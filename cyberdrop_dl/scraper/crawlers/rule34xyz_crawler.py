@@ -41,6 +41,7 @@ class Rule34XYZCrawler(Crawler):
             soup = await self.client.get_BS4(self.domain, scrape_item.url)
 
         title = await self.create_title(scrape_item.url.parts[1], None, None)
+        scrape_item.part_of_album = True
 
         content_block = soup.select_one('div[class="box-grid ng-star-inserted"]')
         content = content_block.select("a[class=boxInner]")

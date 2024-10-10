@@ -48,6 +48,8 @@ class CyberfileCrawler(Crawler):
         script_func = script_func.split('loadImages(')[-1]
         script_func = script_func.split(';')[0]
         nodeId = int(script_func.split(',')[1].replace("'", ""))
+        scrape_item.album_id = scrape_item.url.parts[2]
+        scrape_item.part_of_album = True
 
         page = 1
         while True:
@@ -55,7 +57,7 @@ class CyberfileCrawler(Crawler):
             async with self.request_limiter:
                 ajax_dict = await self.client.post_data(self.domain, self.api_files, data=data)
                 ajax_soup = BeautifulSoup(ajax_dict['html'].replace("\\", ""), 'html.parser')
-            title = await self.create_title(ajax_dict['page_title'], scrape_item.url.parts[2], None)
+            title = await self.create_title(ajax_dict['page_title'], scrape_item.album_id , None)
             num_pages = int(
                 ajax_soup.select("a[onclick*=loadImages]")[-1].get('onclick').split(',')[2].split(")")[0].strip())
 

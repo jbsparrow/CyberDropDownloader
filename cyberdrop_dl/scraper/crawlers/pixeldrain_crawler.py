@@ -39,6 +39,8 @@ class PixelDrainCrawler(Crawler):
     async def folder(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a folder"""
         album_id = scrape_item.url.parts[2]
+        scrape_item.album_id = album_id
+        scrape_item.part_of_album = True
         results = await self.get_album_results(album_id)
 
         async with self.request_limiter:
