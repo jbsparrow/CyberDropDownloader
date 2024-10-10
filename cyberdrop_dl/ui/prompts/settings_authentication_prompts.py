@@ -68,7 +68,7 @@ def edit_authentication_values_prompt(manager: Manager) -> None:
                 message="Enter the Imgur Client ID:",
                 default=auth["Imgur"]["imgur_client_id"],
                 long_instruction="You can create an app and get your client ID "
-                                 "from https://imgur.com/account/settings/apps",
+                                "from https://imgur.com/account/settings/apps",
                 vi_mode=manager.vi_mode,
             ).execute()
             auth["Imgur"]["imgur_client_id"] = imgur_client_id
