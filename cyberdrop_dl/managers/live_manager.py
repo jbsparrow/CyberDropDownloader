@@ -10,8 +10,8 @@ class LiveManager:
     def __init__(self, manager):
         self.manager = manager
         self.live = Live(auto_refresh=True,
-                         refresh_per_second=self.manager.config_manager.global_settings_data['UI_Options'][
-                             'refresh_rate'], console=console)
+                        refresh_per_second=self.manager.config_manager.global_settings_data['UI_Options'][
+                            'refresh_rate'], console=console)
 
     @asynccontextmanager
     async def get_main_live(self, stop=False):

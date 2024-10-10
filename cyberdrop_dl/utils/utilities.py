@@ -283,7 +283,7 @@ async def check_partials_and_empty_folders(manager: Manager):
         temp_downloads = any(Path(f).is_file() for f in await manager.db_manager.temp_table.get_temp_names())
         if temp_downloads:
             await log_with_color("There are partial downloads from the previous run, please re-run the program.",
-                                 "yellow", 20)
+                                "yellow", 20)
 
     if not manager.config_manager.settings_data['Runtime_Options']['skip_check_for_empty_folders']:
         await log_with_color("Checking for empty folders...", "yellow", 20)

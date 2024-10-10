@@ -40,10 +40,10 @@ class RedditCrawler(Crawler):
 
         async with ClientSession(cache=self.manager.cache_manager.request_cache) as reddit_session:
             reddit = asyncpraw.Reddit(client_id=self.reddit_personal_use_script,
-                                      client_secret=self.reddit_secret,
-                                      user_agent="CyberDrop-DL",
-                                      requestor_kwargs={"session": reddit_session},
-                                      check_for_updates=False)
+                                    client_secret=self.reddit_secret,
+                                    user_agent="CyberDrop-DL",
+                                    requestor_kwargs={"session": reddit_session},
+                                    check_for_updates=False)
 
             if "user" in scrape_item.url.parts or "u" in scrape_item.url.parts:
                 await self.user(scrape_item, reddit)

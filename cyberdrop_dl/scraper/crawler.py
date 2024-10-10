@@ -75,7 +75,7 @@ class Crawler(ABC):
 
         download_folder = await get_download_path(self.manager, scrape_item, self.folder_domain)
         media_item = MediaItem(url, scrape_item.url, scrape_item.album_id, download_folder, filename, ext,
-                               original_filename)
+                            original_filename)
         if scrape_item.possible_datetime:
             media_item.datetime = scrape_item.possible_datetime
 
@@ -128,11 +128,11 @@ class Crawler(ABC):
 
     @error_handling_wrapper
     async def forum_login(self, login_url: URL, session_cookie: str, username: str, password: str,
-                          wait_time: int = 0) -> None:
+                        wait_time: int = 0) -> None:
         """Logs into a forum"""
         if session_cookie:
             self.client.client_manager.cookies.update_cookies({"xf_user": session_cookie},
-                                                              response_url=URL("https://" + login_url.host))
+                                                            response_url=URL("https://" + login_url.host))
         if (not username or not password) and not session_cookie:
             await log(f"Login wasn't provided for {login_url.host}", 30)
             raise FailedLoginFailure(status=401, message="Login wasn't provided")
@@ -183,7 +183,7 @@ class Crawler(ABC):
     async def check_complete_from_referer(self, scrape_item: ScrapeItem) -> bool:
         """Checks if the scrape item has already been scraped"""
         check_complete = await self.manager.db_manager.history_table.check_complete_by_referer(self.domain,
-                                                                                               scrape_item.url)
+                                                                                            scrape_item.url)
         if check_complete:
             await log(f"Skipping {scrape_item.url} as it has already been downloaded", 10)
             await self.manager.progress_manager.download_progress.add_previously_completed()
@@ -205,8 +205,8 @@ class Crawler(ABC):
         return False
 
     async def create_scrape_item(self, parent_scrape_item: ScrapeItem, url: URL, new_title_part: str,
-                                 part_of_album: bool = False, album_id: Union[str, None] = None,
-                                 possible_datetime: Optional[int] = None, add_parent: Optional[URL] = None) -> ScrapeItem:
+                                part_of_album: bool = False, album_id: Union[str, None] = None,
+                                possible_datetime: Optional[int] = None, add_parent: Optional[URL] = None) -> ScrapeItem:
         """Creates a scrape item"""
         scrape_item = copy.deepcopy(parent_scrape_item)
         scrape_item.url = url

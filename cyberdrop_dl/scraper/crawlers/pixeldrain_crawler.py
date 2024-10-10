@@ -67,7 +67,7 @@ class PixelDrainCrawler(Crawler):
         """Scrapes a file"""
         async with self.request_limiter:
             JSON_Resp = await self.client.get_json(self.domain,
-                                                   self.api_address / "file" / scrape_item.url.parts[-1] / "info")
+                                                self.api_address / "file" / scrape_item.url.parts[-1] / "info")
 
         link = await self.create_download_link(JSON_Resp['id'])
         date = await self.parse_datetime(JSON_Resp['date_upload'].replace("T", " ").split(".")[0])

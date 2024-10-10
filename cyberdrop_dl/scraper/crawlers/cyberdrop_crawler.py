@@ -66,13 +66,13 @@ class CyberdropCrawler(Crawler):
 
         async with self.request_limiter:
             JSON_Resp = await self.client.get_json(self.domain,
-                                                   self.api_url / "file" / "info" / scrape_item.url.path[3:])
+                                                self.api_url / "file" / "info" / scrape_item.url.path[3:])
 
         filename, ext = await get_filename_and_ext(JSON_Resp["name"])
 
         async with self.request_limiter:
             JSON_Resp = await self.client.get_json(self.domain,
-                                                   self.api_url / "file" / "auth" / scrape_item.url.path[3:])
+                                                self.api_url / "file" / "auth" / scrape_item.url.path[3:])
 
         link = URL(JSON_Resp['url'])
         await self.handle_file(link, scrape_item, filename, ext)

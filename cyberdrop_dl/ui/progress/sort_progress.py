@@ -20,9 +20,9 @@ class SortProgress:
         self.manager = manager
         # Sorter to track the progress of folders being sorted, should work similar to the file_progress but for folders, with a percentage and progress bar for the files within the folders
         self.progress = Progress(SpinnerColumn(), "[progress.description]{task.description}",
-                                 BarColumn(bar_width=None), "[progress.percentage]{task.percentage:>3.2f}%",
-                                 "━", "{task.completed}/{task.total} files"
-                                 )
+                                BarColumn(bar_width=None), "[progress.percentage]{task.percentage:>3.2f}%",
+                                "━", "{task.completed}/{task.total} files"
+                                )
         self.overflow = Progress("[progress.description]{task.description}")
         self.queue = Progress("[progress.description]{task.description}")
         self.progress_group = Group(self.progress, self.overflow, self.queue)
@@ -53,8 +53,8 @@ class SortProgress:
     async def get_progress(self) -> Panel:
         """Returns the progress bar"""
         return Panel(self.progress_group,
-                     title=f"Sorting Downloads ━ Config: {self.manager.config_manager.loaded_config}",
-                     border_style="green", padding=(1, 1))
+                    title=f"Sorting Downloads ━ Config: {self.manager.config_manager.loaded_config}",
+                    border_style="green", padding=(1, 1))
 
     async def set_queue_length(self, length: int) -> None:
         self.queue_length = length
@@ -72,17 +72,17 @@ class SortProgress:
 
         if len(self.invisible_tasks) > 0:
             self.overflow.update(self.overflow_task_id, description=self.overflow_str.format(color=self.color,
-                                                                                             number=len(
-                                                                                                 self.invisible_tasks),
-                                                                                             type_str=self.type_str),
-                                 visible=True)
+                                                                                            number=len(
+                                                                                                self.invisible_tasks),
+                                                                                            type_str=self.type_str),
+                                visible=True)
         else:
             self.overflow.update(self.overflow_task_id, visible=False)
 
         queue_length = self.queue_length
         if queue_length > 0:
             self.queue.update(self.queue_task_id,
-                              description=self.queue_str.format(color=self.color, number=queue_length,
+                            description=self.queue_str.format(color=self.color, number=queue_length,
                                                                 type_str=self.type_str), visible=True)
         else:
             self.queue.update(self.queue_task_id, visible=False)
@@ -99,11 +99,11 @@ class SortProgress:
 
         if len(self.visible_tasks) >= self.tasks_visibility_limit:
             task_id = self.progress.add_task(self.progress_str.format(color=self.color, description=description),
-                                             total=expected_size, visible=False)
+                                            total=expected_size, visible=False)
             self.invisible_tasks.append(task_id)
         else:
             task_id = self.progress.add_task(self.progress_str.format(color=self.color, description=description),
-                                             total=expected_size)
+                                            total=expected_size)
             self.visible_tasks.append(task_id)
         await self.redraw()
         return task_id
