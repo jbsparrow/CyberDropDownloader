@@ -9,6 +9,7 @@ import yaml
 
 from cyberdrop_dl.managers.log_manager import LogManager
 from cyberdrop_dl.utils.args.config_definitions import authentication_settings, settings, global_settings
+from cyberdrop_dl.clients.errors import InvalidYamlConfig
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -32,9 +33,12 @@ def _save_yaml(file: Path, data: Dict) -> None:
 
 def _load_yaml(file: Path) -> Dict:
     """Loads a yaml file and returns it as a dict"""
-    with open(file, 'r') as yaml_file:
-        yaml_values = yaml.load(yaml_file.read(), Loader=yaml.FullLoader)
-        return yaml_values if yaml_values else {}
+    try:
+        with open(file, 'r') as yaml_file:
+            yaml_values = yaml.load(yaml_file.read(), Loader=yaml.FullLoader)
+            return yaml_values if yaml_values else {}
+    except yaml.constructor.ConstructorError as e:
+        raise InvalidYamlConfig(file, e)
 
 
 def get_keys(dl, keys=None) -> set:
