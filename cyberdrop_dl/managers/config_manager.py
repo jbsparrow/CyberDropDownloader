@@ -205,6 +205,7 @@ class ConfigManager:
         save_data['Logs']['log_folder'] = str(save_data['Logs']['log_folder'])
         save_data['Logs']['webhook_url'] = str(save_data['Logs']['webhook_url'])
         save_data['Sorting']['sort_folder'] = str(save_data['Sorting']['sort_folder'])
+        save_data['Sorting']['scan_folder'] = str(save_data['Sorting']['scan_folder'])
         _save_yaml(self.settings, save_data)
 
     def _verify_global_settings_config(self) -> None:
