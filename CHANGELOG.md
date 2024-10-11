@@ -5,6 +5,15 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.6.52] - 2024-10-10
+
+This update introduces the following changes:
+1. Fix scan_folder saved as invalid value
+
+#### Details:
+
+- Fixes issue that causes the config file to be corrupted with an invalid scan_folder value.
+
 ## [5.6.51] - 2024-10-10
 
 This update introduces the following changes:
