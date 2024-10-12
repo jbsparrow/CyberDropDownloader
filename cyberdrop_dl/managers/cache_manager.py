@@ -74,7 +74,7 @@ class CacheManager:
             return True
 
         if response.url in self.return_values:
-            return self.return_values[response.url]
+            return self.get_return_value(response.url)
 
         async def check_simpcity_page(self, response: ClientResponse):
             """Checks if the last page has been reached"""
@@ -91,10 +91,16 @@ class CacheManager:
                 return False
             return current_page != last_page
 
-        filter_dict = {"simpcity.su": check_simpcity_page}
+        async def check_coomer_page(self, response: ClientResponse):
+            """Checks if the last page has been reached"""
+            current_offset = int(response.url.query.get("o", 0))
+            maximum_offset = int(response.url.query.get("omax", 0))
+            return current_offset != maximum_offset
+
+        filter_dict = {"simpcity.su": check_simpcity_page, "coomer.su": check_coomer_page}
 
         filter_fn=filter_dict.get(response.url.host)
-        return await filter_fn(self,response) if filter_fn else False
+        return await filter_fn(self, response) if filter_fn else False
 
     def load_request_cache(self) -> None:
         urls_expire_after = {'*.simpcity.su': self.manager.config_manager.global_settings_data['Rate_Limiting_Options'][

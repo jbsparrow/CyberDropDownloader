@@ -28,11 +28,6 @@ class CoomerCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def check_last_page(self, response: ClientResponse) -> bool:
-        """Checks if the response is the last page"""
-        current_offset = int(response.url.query.get("o", 0))
-        return current_offset != self.maximum_offset
-
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url"""
         task_id = await self.scraping_progress.add_task(scrape_item.url)
@@ -60,7 +55,7 @@ class CoomerCrawler(Crawler):
         api_call = self.api_url / service / "user" / user
         while offset <= maximum_offset:
             async with self.request_limiter:
-                JSON_Resp = await self.client.get_json(self.domain, api_call.with_query({"o": offset}))
+                JSON_Resp = await self.client.get_json(self.domain, api_call.with_query({"o": offset, "omax": maximum_offset}))
                 offset += 50
 
             for post in JSON_Resp:
