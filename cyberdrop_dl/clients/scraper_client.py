@@ -98,7 +98,7 @@ class ScraperClient:
         """Returns a BeautifulSoup object from the given URL"""
         async with client_session.get(url, headers=self._headers, ssl=self.client_manager.ssl_context,
                                     proxy=self.client_manager.proxy) as response:
-            await log_request_type(url, response.from_cache)
+            await log_request_type(url, response.from_cache, response.save_content, response.save_content_reason)
             try:
                 await self.client_manager.check_http_status(response)
             except DDOSGuardFailure:
@@ -118,7 +118,7 @@ class ScraperClient:
         """Returns a BeautifulSoup object and response URL from the given URL"""
         async with client_session.get(url, headers=self._headers, ssl=self.client_manager.ssl_context,
                                     proxy=self.client_manager.proxy) as response:
-            await log_request_type(url, response.from_cache)
+            await log_request_type(url, response.from_cache, response.save_content, response.save_content_reason)
             await self.client_manager.check_http_status(response)
             content_type = response.headers.get('Content-Type')
             assert content_type is not None
@@ -135,7 +135,7 @@ class ScraperClient:
 
         async with client_session.get(url, headers=headers, ssl=self.client_manager.ssl_context,
                                     proxy=self.client_manager.proxy, params=params) as response:
-            await log_request_type(url, response.from_cache)
+            await log_request_type(url, response.from_cache, response.save_content, response.save_content_reason)
             await self.client_manager.check_http_status(response)
             content_type = response.headers.get('Content-Type')
             assert content_type is not None
@@ -148,7 +148,7 @@ class ScraperClient:
         """Returns a text object from the given URL"""
         async with client_session.get(url, headers=self._headers, ssl=self.client_manager.ssl_context,
                                     proxy=self.client_manager.proxy) as response:
-            await log_request_type(url, response.from_cache)
+            await log_request_type(url, response.from_cache, response.save_content, response.save_content_reason)
             try:
                 await self.client_manager.check_http_status(response)
             except DDOSGuardFailure:

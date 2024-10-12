@@ -103,6 +103,8 @@ class CacheManager:
 
         filter_fn=filter_dict.get(response.url.host)
         cache_response, reason = await filter_fn(response) if filter_fn else False, "No caching manager for host"
+        response.save_content = cache_response
+        response.save_content_reason = reason
         return cache_response
 
     def load_request_cache(self) -> None:
