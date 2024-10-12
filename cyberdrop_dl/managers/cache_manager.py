@@ -86,7 +86,7 @@ class CacheManager:
             try:
                 last_page = int(soup.select(final_page_selector)[-1].text.split('page-')[-1])
                 current_page = int(soup.select_one(current_page_selector).text.split('page-')[-1])
-            except AttributeError:
+            except (AttributeError, IndexError):
                 return False, "Last page not found, assuming only one page"
             return current_page != last_page, "Last page not reached" if current_page != last_page else "Last page reached"
 
