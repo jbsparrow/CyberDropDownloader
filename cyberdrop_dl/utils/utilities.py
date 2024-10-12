@@ -136,7 +136,7 @@ async def log_with_color(message: str, style: str, level: int, *kwargs) -> None:
     rich.print(f"[{style}]{message}[/{style}]")
     LOG_OUTPUT_TEXT += f"[{style}]{message}\n"
 
-async def log_request_type(url: URL, from_cache:bool):
+async def log_request_type(url: URL, from_cache: bool) -> None:
     global TOTAL_REQUESTS, CACHED_RESPONSES 
     TOTAL_REQUESTS +=1
     msg = f"{url} fetched from the web"

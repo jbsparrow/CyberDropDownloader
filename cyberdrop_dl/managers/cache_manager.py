@@ -12,7 +12,7 @@ from aiohttp_client_cache import SQLiteBackend
 from bs4 import BeautifulSoup
 
 from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
-from cyberdrop_dl.utils.utilities import log
+from cyberdrop_dl.utils.utilities import log, DEBUG_VAR
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -66,7 +66,7 @@ class CacheManager:
             self.return_values.pop(url, None)
         return value
 
-    async def filter_fn(self, response: ClientResponse) -> False:
+    async def filter_fn(self, response: ClientResponse) -> bool:
         """Filter function for aiohttp_client_cache"""
         HTTP_404_LIKE_STATUS = {HTTPStatus.NOT_FOUND, HTTPStatus.GONE, HTTPStatus.UNAVAILABLE_FOR_LEGAL_REASONS}
 
@@ -76,7 +76,7 @@ class CacheManager:
         if response.url in self.return_values:
             return self.get_return_value(response.url)
 
-        async def check_simpcity_page(self, response: ClientResponse):
+        async def check_simpcity_page(response: ClientResponse):
             """Checks if the last page has been reached"""
 
             final_page_selector = "li.pageNav-page a"
@@ -87,20 +87,23 @@ class CacheManager:
                 last_page = int(soup.select(final_page_selector)[-1].text.split('page-')[-1])
                 current_page = int(soup.select_one(current_page_selector).text.split('page-')[-1])
             except AttributeError:
-                await log(f"Last page not found for {response.url}. Assuming only one page.", 40)
-                return False
-            return current_page != last_page
+                return False, "Last page not found, assuming only one page"
+            return current_page != last_page, "Last page not reached" if current_page != last_page else "Last page reached"
 
-        async def check_coomer_page(self, response: ClientResponse):
+        async def check_coomer_page(response: ClientResponse):
             """Checks if the last page has been reached"""
+            url_part_responses = {'data': "Data page", "onlyfans": "Onlyfans page", "fansly": "Fansly page"}
+            if response.url.parts[1] in url_part_responses:
+                return False, url_part_responses[response.url.parts[1]]
             current_offset = int(response.url.query.get("o", 0))
             maximum_offset = int(response.url.query.get("omax", 0))
-            return current_offset != maximum_offset
+            return current_offset != maximum_offset, "Last page not reached" if current_offset != maximum_offset else "Last page reached"
 
         filter_dict = {"simpcity.su": check_simpcity_page, "coomer.su": check_coomer_page}
 
         filter_fn=filter_dict.get(response.url.host)
-        return await filter_fn(self, response) if filter_fn else False
+        cache_response, reason = await filter_fn(response) if filter_fn else False, "No caching manager for host"
+        return cache_response
 
     def load_request_cache(self) -> None:
         urls_expire_after = {'*.simpcity.su': self.manager.config_manager.global_settings_data['Rate_Limiting_Options'][
