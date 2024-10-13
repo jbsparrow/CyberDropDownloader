@@ -52,6 +52,7 @@ class CyberfileCrawler(Crawler):
         nodeId = int(script_func.split(',')[1].replace("'", ""))
         scrape_item.album_id = scrape_item.url.parts[2]
         scrape_item.part_of_album = True
+        password = scrape_item.url.query.get("password","")
 
         page = 1
         while True:
@@ -59,8 +60,14 @@ class CyberfileCrawler(Crawler):
             async with self.request_limiter:
                 ajax_dict: dict = await self.client.post_data(self.domain, self.api_files, data=data)
                 if 'Password Required' in ajax_dict['html']:
-                    raise PasswordProtected(scrape_item)
+                    password_data = {"folderPassword": password, "folderId": nodeId, "submitme": 1}
+                    password_response: dict = await self.client.post_data(self.domain, self.api_password_process, data=password_data)
+                    if not password_response.get('success'):
+                        raise PasswordProtected(scrape_item)
+                    ajax_dict: dict = await self.client.post_data(self.domain, self.api_files, data=data)
+
                 ajax_soup = BeautifulSoup(ajax_dict['html'].replace("\\", ""), 'html.parser')
+
             title = await self.create_title(ajax_dict['page_title'], scrape_item.album_id , None)
             num_pages = int(
                 ajax_soup.select("a[onclick*=loadImages]")[-1].get('onclick').split(',')[2].split(")")[0].strip())
