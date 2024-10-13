@@ -139,9 +139,16 @@ class CyberfileCrawler(Crawler):
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a file"""
+        password = scrape_item.url.query.get("password","")
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
-
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
+            if 'Enter File Password' in soup.text:
+                password_data = {"filePassword": password, "submitted": 1}
+                soup = BeautifulSoup (await self.client.post_data(
+                    self.domain, scrape_item.url, data=password_data, raw=True))
+                if "File password is invalid" in soup.text:
+                    raise PasswordProtected(scrape_item)
+            
         script_funcs = soup.select('script')
         for script in script_funcs:
             script_text = script.text
@@ -162,8 +169,7 @@ class CyberfileCrawler(Crawler):
             ajax_soup = BeautifulSoup(ajax_dict['html'].replace("\\", ""), 'html.parser')
 
         if "albumPasswordModel" in ajax_dict['html']:
-            await log(f"Album is password protected: {scrape_item.url}", 30)
-            raise PasswordProtected()
+            raise PasswordProtected(scrape_item)
 
         file_menu = ajax_soup.select_one('ul[class="dropdown-menu dropdown-info account-dropdown-resize-menu"] li a')
         file_button = ajax_soup.select_one('div[class="btn-group responsiveMobileMargin"] button')
