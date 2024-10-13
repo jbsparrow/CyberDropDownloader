@@ -5,25 +5,25 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [5.6.52] - 2024-10-10
+## [5.6.52] - 2024-10-12
 
 This update introduces the following changes:
-1. Fix scan_folder saved as invalid value
+1. Fix `scan_folder` saved as invalid value
 
 #### Details:
 
-- Fixes issue that causes the config file to be corrupted with an invalid scan_folder value.
+- Fixes issue that causes the config file to be corrupted with an invalid `scan_folder` value.
 
 ## [5.6.51] - 2024-10-10
 
 This update introduces the following changes:
-1. Skip file download by referer
-2. Fixes album_id not been saved to database
+1. Skip file downloads by referer
+2. Fixes `album_id` not been saved to database
 
 #### Details:
 
-- Using the flag `--skip-referer-seen-before` will skip downloading files from any referer that have been scraped before. The file (s) will always be skipped regardless of whether the referer was successfully scraped or not
-- Fixes album_id property not being saved to database on supported crawlers
+- Using the flag `--skip-referer-seen-before` will skip downloads if their referer (ex. album) has been scraped before. The file(s) will always be skipped, regardless of whether the referer was successfully scraped or not
+- Fixes `album_id` property not being saved to database on supported crawlers
 
 ## [5.6.50] - 2024-10-07
 
@@ -32,19 +32,20 @@ This update introduces the following changes:
 
 #### Details:
 
-1. Users can include the password as a query parameter in the input URL, adding `?password=<URL_PASSWORD>` to it.
+- Users can include the password as a query parameter in the input URL, adding `?password=<URL_PASSWORD>` to it.
  Example: https://gofile.io/d/xUprGg?password=1234
 
 
 ## [5.6.43] - 2024-10-03
 
 This update introduces the following changes:
-1. Update True/False CLI args to integrate better with the config file.
+1. Update `True`/`False` CLI args to integrate better with the config file.
 
 #### Details:
 
 - CLI arguments that toggle settings to `True` or `False` can now be passed as either `--arg` or `--no-arg` to set the value to `True` or `False` respectively.
 - This also solves an issue where CLI arguments that toggle settings would override config file settings even if the CLI argument was never passed.
+
 
 ## [5.6.42] -  2024-10-03
 
@@ -54,6 +55,7 @@ This update introduces the following changes:
 #### Details:
 
 - This allows the user to skip or only download from specific bunkr hosts
+
 
 ## [5.6.41] - 2024-10-01
 
@@ -68,12 +70,14 @@ This update introduces the following changes:
 - Always display an updated changelog if a new version has been released on Pypi
 - Remove Simpcity from supported websites on Wiki
 
+
 ## [5.6.40] - 2024-10-01
 
 This update introduces the following changes:
 1. Fixes empty folder cleanup 
 
 #### Details:
+
 - Fixes incorrent path objects on post-runtime folder cleanup
 
 ## [5.6.39] - 2024-09-30
@@ -82,8 +86,10 @@ This update introduces the following changes:
 1. Adds external CHANGELOG file
 
 #### Details:
-- Project changes will documented on https://github.com/jbsparrow/CyberDropDownloader/blob/master/CHANGELOG.md for better tracking
+
+- Project changes will be documented on https://github.com/jbsparrow/CyberDropDownloader/blob/master/CHANGELOG.md for better tracking
 - Built-in viewer will fetch CHANGELOG history on first use
+
 
 ## [5.6.38] - 2024-09-30
 
@@ -91,6 +97,7 @@ This update introduces the following changes:
 1. Fix `scrape_items` creation for kemono and coomer links
 
 #### Details:
+
 - Fixes parents tracking for kemono and coomer links
 
 
@@ -100,7 +107,8 @@ This update introduces the following changes:
 1. Fixes empty folder cleanup on python 3.11
 
 #### Details:
-- Fixes logic by walking the directory tree using os.walk to remain compatibility with python 3.11
+
+- Fixes logic by walking the directory tree using `os.walk` to remain compatible with python 3.11
 
 
 ## [5.6.36] - 2024-09-30
@@ -110,7 +118,8 @@ This update introduces the following changes:
 2. Added a feature to save the origin of unsupported URLs
 
 #### Details:
-- Empty files (0 bytes) inside download_dir will be deleted alongside empty folders after a successful run
+
+- Empty files `(0 bytes)` inside `download_dir` will be deleted alongside empty folders after a successful run
 - Each unsupported URL will now be saved alongside the URL of the original item they came from (`Unsupported_URLs.txt`)
 - Origin is also saved for password protected links, allowing the user to visit the URL (ex. forum post) and retrieve the password if available
 
@@ -121,6 +130,7 @@ This update introduces the following changes:
 1. Small fixes for sorting system
 
 #### Details:
+
 - Fixes `scan_dir` selection logic
 
 
@@ -130,13 +140,14 @@ This update introduces the following changes:
 1. Added a feature to fix the names of multipart archives.
 
 #### Details:
+
 - Multipart archives will be renamed to have the proper naming format when the `--remove-generated-id-from-filenames` argument is passed.
 
 
 ## [5.6.33] - 2024-09-25
 
 This update introduces the following changes:
-1. Fix issues with checking how much free space is available on the disk.
+1. Fix issues checking how much free space is available on the disk.
 2. Skip clearing the console when running with the `--no-ui` flag.
 
 #### Details:
@@ -168,6 +179,7 @@ For more details, visit the wiki: https://script-ware.gitbook.io/cyberdrop-dl/re
 **SIMPCITY HAS BEEN REMOVED FROM THE SUPPORTED WEBSITES LIST.**
 
 **TO SEE WHY, VISIT THE WIKI:** https://script-ware.gitbook.io/cyberdrop-dl/simpcity-support-dropped
+
 
 ## [5.6.20] - 2024-09-19
 
@@ -206,7 +218,7 @@ This update introduces the following changes:
 
 #### Details:
 
-- Private gofile folders will now raise an error when attempting to download them instead of crashing CDL
+- Private GoFile folders will now raise an error when attempting to download them instead of crashing CDL
 
 
 ## [5.6.1] - 2024-09-13
@@ -241,19 +253,19 @@ This update introduces the following changes:
 
 #### Details:
 
-- use `-` instead of `_` for new arguments
-- fix bug where `purge_dir` is called for each file, instead of each directory when done
+- Use `-` instead of `_` for new arguments
+- Fix bug where `purge_dir` is called for each file, instead of each directory when done
 
 
 ## [5.5.0] - 2024-09-12
 
 This update introduces the following changes:
 1. Finalizes new sorting feature
-2. add scanning directory for sorting
-3. adds progress bar for sorting
+2. Add scanning directory for sorting
+3. Add progress bar for sorting
 
 #### Details:
 
-- skips need to scan db if `sort_cdl_only` is false
-- progress bar for current progress of sorting files, incremented for each folder
-- allow for setting a different folder to scan that is independent of the download folder
+- Skips need to scan db if `sort_cdl_only` is false
+- Progress bar for current progress of sorting files, incremented for each folder
+- Allow for setting a different folder to scan that is independent of the download folder
