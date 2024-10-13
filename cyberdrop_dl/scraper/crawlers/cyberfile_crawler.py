@@ -22,6 +22,7 @@ class CyberfileCrawler(Crawler):
         super().__init__(manager, "cyberfile", "Cyberfile")
         self.api_files = URL('https://cyberfile.me/account/ajax/load_files')
         self.api_details = URL('https://cyberfile.me/account/ajax/file_details')
+        self.api_password_process = URL("https://cyberfile.me/ajax/folder_password_process")
         self.request_limiter = AsyncLimiter(5, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -43,7 +44,8 @@ class CyberfileCrawler(Crawler):
     async def folder(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a folder"""
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
+            
         script_func = soup.select('div[class*="page-container"] script')[-1].text
         script_func = script_func.split('loadImages(')[-1]
         script_func = script_func.split(';')[0]
@@ -55,7 +57,9 @@ class CyberfileCrawler(Crawler):
         while True:
             data = {"pageType": "folder", "nodeId": nodeId, "pageStart": page, "perPage": 0, "filterOrderBy": ""}
             async with self.request_limiter:
-                ajax_dict = await self.client.post_data(self.domain, self.api_files, data=data)
+                ajax_dict: dict = await self.client.post_data(self.domain, self.api_files, data=data)
+                if 'Password Required' in ajax_dict['html']:
+                    raise PasswordProtected(scrape_item)
                 ajax_soup = BeautifulSoup(ajax_dict['html'].replace("\\", ""), 'html.parser')
             title = await self.create_title(ajax_dict['page_title'], scrape_item.album_id , None)
             num_pages = int(
