@@ -5,6 +5,18 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.6.53] - 2024-10-14
+
+This update introduces the following changes:
+1. Support for password protected Cyberfile links
+
+#### Details:
+
+- Users can include the password as a query parameter in the input URL, adding `?password=<URL_PASSWORD>` to it.
+ Example: https://cyberfile.me/folder/xUGg?password=1234
+- Both folder and files URLs are supported.
+
+
 ## [5.6.52] - 2024-10-12
 
 This update introduces the following changes:
