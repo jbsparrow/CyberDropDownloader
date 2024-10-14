@@ -190,9 +190,6 @@ EDIT_AUTH_OPTIONS = {
 
 EDIT_AUTH_CHOICES = [Choice(index, option) for index, option in enumerate(EDIT_AUTH_OPTIONS,1)]
 
-EDIT_AUTH_ACTIONS = [Choice(index, option) for index, option in enumerate(EDIT_AUTH_OPTIONS,1)]
-
-
 def edit_authentication_values_prompt(manager: Manager) -> None:
     """Edit the authentication values"""
     auth = manager.config_manager.authentication_data
