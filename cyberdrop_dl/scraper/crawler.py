@@ -183,9 +183,23 @@ class Crawler(ABC):
     @error_handling_wrapper
     async def react_to_forum_post(self, scrape_item: ScrapeItem, reaction: Tag, post_number: int) -> None:
         """sets a reaction to a forum post"""
+        reaction_id = self.manager.config_manager.settings_data['Runtime_Options']['forum_post_reaction_id']
         post_url = scrape_item.url
         post_reaction_url = URL(f"https://{scrape_item.url.host}") / f"posts/{post_number}/react" 
         
+        if isinstance(reaction_id, dict):
+            reaction_id = reaction_id.get(self.domain)
+
+        if reaction_id in (0 , None):
+            return
+        
+        if not isinstance(reaction_id, int):
+            try:
+                reaction_id = int(reaction_id)
+            except ValueError:
+                await log(f"Unable to set reaction for {post_url} (Invalid reaction_id in config)", 40)
+                return
+
         if "has-reaction" in reaction.get("class", []):
             await log(f"Post {post_url} already has a reaction",10)
             return
@@ -197,7 +211,7 @@ class Crawler(ABC):
             "_xfResponseType": "json"
         }
 
-        JSONResp = await self.client.post_data(self.domain, post_reaction_url.with_query(reaction_id=1) , data=data)
+        JSONResp = await self.client.post_data(self.domain, post_reaction_url.with_query(reaction_id=reaction_id) , data=data)
         if 'errors' in JSONResp:
             await log(f"Unable to set reaction for {post_url}", 40)
 
