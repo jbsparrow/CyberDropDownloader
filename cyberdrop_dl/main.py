@@ -52,8 +52,21 @@ async def runtime(manager: Manager) -> None:
 async def post_runtime(manager: Manager) -> None:
     """Actions to complete after main runtime, and before ui shutdown"""
     #checking and removing dupes
-    await manager.hash_manager.hash_client.cleanup_dupes()
+    if not manager.args_manager.sort_all_configs:
+        await manager.hash_manager.hash_client.cleanup_dupes()
+    if isinstance(manager.args_manager.sort_downloads, bool):
+        if manager.args_manager.sort_downloads:
+            sorter = Sorter(manager)
+            await sorter.sort()
+    elif manager.config_manager.settings_data['Sorting']['sort_downloads'] and not manager.args_manager.retry_any:
+        sorter = Sorter(manager)
+        await sorter.sort()
+    await check_partials_and_empty_folders(manager)
     
+    if manager.config_manager.settings_data['Runtime_Options']['update_last_forum_post']:
+        await log("Updating Last Forum Post...", 20)
+        await manager.log_manager.update_last_forum_post()
+
 
 async def director(manager: Manager) -> None:
     """Runs the program and handles the UI"""
@@ -165,6 +178,12 @@ async def director(manager: Manager) -> None:
         except Exception as e:
             await log("\nAn error occurred, please report this to the developer:", 50, exc_info=True)
             exit(1)
+    await asyncio.sleep(5)
+    await log("Checking for Updates...", 20)
+    await check_latest_pypi()
+    await log("Closing Program...", 20)
+    await manager.close()
+    await log_with_color("\nFinished downloading. Enjoy :)", 'green', 20)
     await asyncio.sleep(5)
     await log("Checking for Updates...", 20)
     await check_latest_pypi()
