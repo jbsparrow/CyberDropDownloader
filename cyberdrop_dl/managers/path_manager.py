@@ -56,6 +56,7 @@ class PathManager:
 
         self.cache_dir = APP_STORAGE / "Cache"
         self.config_dir = APP_STORAGE / "Configs"
+        self.cookies_dir = APP_STORAGE / "Cookies"
 
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.config_dir.mkdir(parents=True, exist_ok=True)
