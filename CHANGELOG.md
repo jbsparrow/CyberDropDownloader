@@ -5,6 +5,19 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [UNRELEASED]
+
+This update introduces the following changes:
+1. Improve jdownloader intergration
+
+#### Details:
+
+- Add option to autostart downloads on jdownloader as soon as they are sent from CDL
+- Add option to set a `download_dir` for jdownloader, diferent from CDL's. Useful if jdownloader is not running on the same machine.
+- Now jdownloader will use the same download path that CDL would have used instead of downloading all the files in the same folder. This path will be relative to `download_dir`
+- Add whitelist domain filter for jdownloader
+
+
 ## [5.6.52] - 2024-10-10
 
 This update introduces the following changes:
