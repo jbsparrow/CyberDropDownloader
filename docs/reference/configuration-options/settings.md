@@ -274,6 +274,44 @@ Setting this to true will disable this functionality.
 
 ***
 
+* forum\_post\_reaction\_id
+
+Setting this option will tell CDL to leave a reaction after a post has been scraped. This setting have 3 types of configurations:
+
+1. A value of `0` or `null` will disable this functionality (CDL will _not_ leave a reaction). This is the default 
+
+2. A value of any integer other than `0` will enable it. The value is the `reaction_id` to use. The _like_ reaction (`reaction_id = 1`) is the only `reaction_id` that is always available on any forum. Using any other value may not work if the forum does not have a definition for that id.
+
+3. Setting it as `key: value` pairs, where `key` is the domain of the forum and `value` is the `reaction_id` to use for that forum. This is the recommended option to use if `reaction_id` will be other than `1`. If a forum is not specified, it will be assumed as `0` (reaction disabled)
+
+Examples:
+
+```yaml
+#Do not set a reaction to any scraped posts
+Runtime_Options:
+  forum_post_reaction_id: null
+```
+
+```yaml
+#Set the LIKE reaction to every posts on every forum
+Runtime_Options:
+  forum_post_reaction_id: 1
+```
+
+```yaml
+#Set the LIKE reaction on SimpCity and MEDAL reaction on SMG, but do not set a reaction on posts from any other forum
+Runtime_Options:
+  forum_post_reaction_id:
+    simpcity: 1
+    socialmediagirls: 9
+```
+
+To get the ids that a forum supports, hover over the reactions with your mouse. The `reaction_id` will be visible as a query parameter in the browser hiperlink tooltip
+
+<img src="../../.gitbook/assets/reaction_id_tooltip.gif" alt="reaction_id_tooltip" data-size="original">
+
+***
+
 * delete\_partial\_files
 
 The program will leave partial files alone as they will be used to resume downloads on subsequent runs.
