@@ -107,6 +107,7 @@ settings: Dict = {
         "send_unsupported_to_jdownloader": False,
         "jdownloader_download_dir": None,
         "jdownloader_autostart" : False,
+        "jdownloader_whitelist" : []
     },
     "Sorting": {
         "sort_downloads": False,
