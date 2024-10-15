@@ -491,6 +491,7 @@ class ScrapeMapper:
                 download_folder = await get_download_path(self.manager, scrape_item, "no_crawler")
                 relative_download_dir = download_folder.relative_to(self.manager.path_manager.download_dir)
                 await self.jdownloader.direct_unsupported_to_jdownloader(scrape_item.url, scrape_item.parent_title, relative_download_dir)
+                await self.manager.progress_manager.scrape_stats_progress.add_unsupported(sent_to_jdownloader=True)
             except JDownloaderFailure as e:
                 await log(f"Failed to send {scrape_item.url} to JDownloader", 40)
                 await log(e.message, 40)
@@ -499,6 +500,7 @@ class ScrapeMapper:
         else:
             await log(f"Unsupported URL: {scrape_item.url}", 30)
             await self.manager.log_manager.write_unsupported_urls_log(scrape_item.url, scrape_item.parents[0] if scrape_item.parents else None)
+            await self.manager.progress_manager.scrape_stats_progress.add_unsupported()
 
     async def filter_items(self, scrape_item: ScrapeItem) -> None:
         """Maps URLs to their respective handlers"""
