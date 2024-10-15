@@ -5,6 +5,18 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [UNRELEASED] 
+
+This update introduces the following changes:
+1. Add option to set a reaction when scraping a forum post
+
+#### Details:
+
+- Users have the option to set reactions to a post that has been scraped. This can be used as a visual indicator on the forum website to easily identify already scraped posts. 
+
+For more details on how to use this option, visit the wiki: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings#runtime-options
+
+
 ## [5.6.52] - 2024-10-10
 
 This update introduces the following changes:
