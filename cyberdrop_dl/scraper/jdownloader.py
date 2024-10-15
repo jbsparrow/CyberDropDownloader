@@ -41,11 +41,14 @@ class JDownloader:
             self.jdownloader_agent = jd.get_device(self.jdownloader_device)
             return
 
-        except (myjdapi.MYJDApiException, JDownloaderFailure) as e:
+        except JDownloaderFailure as e:
             msg = e.message
 
-        except myjdapi.MYJDDeviceNotFoundException as e:
+        except myjdapi.MYJDDeviceNotFoundException:
             msg = f"Device not found ({self.jdownloader_device})"
+
+        except myjdapi.MYJDApiException as e:
+            msg = e
 
         await log(f"Failed JDownloader setup: {msg}", 40)
         self.enabled = False
@@ -66,6 +69,5 @@ class JDownloader:
                 "destinationFolder": str(download_folder.resolve()),
                 "overwritePackagizerRules": True
             }])
-
-        except (JDownloaderFailure, AssertionError) as e:
-            await log(f"Failed to send {url} to JDownloader\n{e.message}", 40)
+        except (AssertionError, myjdapi.MYJDApiException) as e:
+            raise JDownloaderFailure(e) 
