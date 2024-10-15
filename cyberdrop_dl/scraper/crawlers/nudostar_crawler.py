@@ -4,7 +4,7 @@ import re
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
-from bs4 import Tag
+from bs4 import BeautifulSoup, Tag
 from yarl import URL
 
 from cyberdrop_dl.scraper.crawler import Crawler
@@ -85,7 +85,7 @@ class NudoStarCrawler(Crawler):
         current_post_number = 0
         while True:
             async with self.request_limiter:
-                soup = await self.client.get_BS4(self.domain, thread_url)
+                soup: BeautifulSoup = await self.client.get_BS4(self.domain, thread_url)
 
             title_block = soup.select_one(self.title_selector)
             for elem in title_block.find_all(self.title_trash_selector):
@@ -95,6 +95,10 @@ class NudoStarCrawler(Crawler):
             title = await self.create_title(title_block.text.replace("\n", ""), None, thread_id)
 
             posts = soup.select(self.posts_selector)
+            xf_token =  soup.select_one(self.xf_token_selector)
+            if xf_token.get("value") != self.xf_token:
+                self.xf_token = xf_token.get("value")
+
             for post in posts:
                 current_post_number = int(
                     post.select_one(self.posts_number_selector).get(self.posts_number_attribute).split('/')[-1].split(
@@ -108,7 +112,8 @@ class NudoStarCrawler(Crawler):
                     for elem in post.find_all(self.quotes_selector):
                         elem.decompose()
                     post_content = post.select_one(self.posts_content_selector)
-                    await self.post(new_scrape_item, post_content, current_post_number)
+                    reaction = post.select_one(self.reaction_selector)
+                    await self.post(new_scrape_item, post_content, current_post_number, reaction)
 
                 if not continue_scraping:
                     break
@@ -131,7 +136,7 @@ class NudoStarCrawler(Crawler):
         await self.manager.log_manager.write_last_post_log(last_post_url)
 
     @error_handling_wrapper
-    async def post(self, scrape_item: ScrapeItem, post_content: Tag, post_number: int) -> None:
+    async def post(self, scrape_item: ScrapeItem, post_content: Tag, post_number: int, reaction: Tag) -> None:
         """Scrapes a post"""
         if self.manager.config_manager.settings_data['Download_Options']['separate_posts']:
             scrape_item = await self.create_scrape_item(scrape_item, scrape_item.url, "")
@@ -142,6 +147,8 @@ class NudoStarCrawler(Crawler):
         await self.videos(scrape_item, post_content)
         await self.embeds(scrape_item, post_content)
         await self.attachments(scrape_item, post_content)
+
+        await self.react_to_forum_post(scrape_item, reaction, post_number)
 
     @error_handling_wrapper
     async def links(self, scrape_item: ScrapeItem, post_content: Tag) -> None:
