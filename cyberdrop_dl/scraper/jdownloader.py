@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from myjdapi import myjdapi
 from pathlib import Path
@@ -33,7 +33,7 @@ class JDownloader:
     async def jdownloader_setup(self) -> None:
         """Setup function for JDownloader"""
         try:
-            if not all (self.jdownloader_username, self.jdownloader_password, self.jdownloader_device):
+            if not all ((self.jdownloader_username, self.jdownloader_password, self.jdownloader_device)):
                 raise JDownloaderFailure("JDownloader credentials were not provided.")
             jd = myjdapi.Myjdapi()
             jd.set_app_key("CYBERDROP-DL")
@@ -45,22 +45,25 @@ class JDownloader:
             msg = e.message
 
         except myjdapi.MYJDDeviceNotFoundException as e:
-            msg = str(e)
+            msg = f"Device not found ({self.jdownloader_device})"
 
-        await log(f"Failed JDownloader setup\n{msg}", 40)
+        await log(f"Failed JDownloader setup: {msg}", 40)
         self.enabled = False
         time.sleep(20)
 
-    async def direct_unsupported_to_jdownloader(self, url: URL, title: str) -> None:
+    async def direct_unsupported_to_jdownloader(self, url: URL, title: str, relative_download_folder: Optional[Path] = None) -> None:
         """Sends links to JDownloader"""
         try:
             assert url.host is not None
             assert self.jdownloader_agent is not None
+            download_folder = self.jdownloader_download_dir
+            if relative_download_folder:
+                download_folder = download_folder / relative_download_folder
             self.jdownloader_agent.linkgrabber.add_links([{
                 "autostart": self.jdownloader_autostart ,
                 "links": str(url),
                 "packageName": title if title else "Cyberdrop-DL",
-                "destinationFolder": str(self.jdownloader_download_dir.resolve()),
+                "destinationFolder": str(download_folder.resolve()),
                 "overwritePackagizerRules": True
             }])
 
