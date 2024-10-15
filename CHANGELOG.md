@@ -5,6 +5,16 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [UNRELEASED] 
+
+This update introduces the following changes:
+1. Fix error handling for deleted imgbox albums
+
+#### Details:
+
+- Fixes error handling when imgbox returns `200 (OK)` instead of `404 (NOT FOUND)` even if the album was deleted
+
+
 ## [5.6.52] - 2024-10-10
 
 This update introduces the following changes:
