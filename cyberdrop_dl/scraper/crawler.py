@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from dataclasses import field
 from typing import TYPE_CHECKING, Optional, Union, Any, Tuple
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import FailedLoginFailure
@@ -32,6 +32,9 @@ class Crawler(ABC):
         self.folder_domain = folder_domain
 
         self.logged_in = field(init=False)
+        self.reaction_selector = "a[class*=actionBar-action--reaction]"
+        self.xf_token_selector = "input[type='hidden'][name='_xfToken']"
+        self.xf_token = None
 
         self.scraped_items: list = []
         self.waiting_items = 0
@@ -176,6 +179,41 @@ class Crawler(ABC):
                 continue
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+    @error_handling_wrapper
+    async def react_to_forum_post(self, scrape_item: ScrapeItem, reaction: Tag, post_number: int) -> None:
+        """sets a reaction to a forum post"""
+        reaction_id = self.manager.config_manager.settings_data['Runtime_Options']['forum_post_reaction_id']
+        post_url = scrape_item.url
+        post_reaction_url = URL(f"https://{scrape_item.url.host}") / f"posts/{post_number}/react" 
+        
+        if isinstance(reaction_id, dict):
+            reaction_id = reaction_id.get(self.domain)
+
+        if reaction_id in (0 , None):
+            return
+        
+        if not isinstance(reaction_id, int):
+            try:
+                reaction_id = int(reaction_id)
+            except ValueError:
+                await log(f"Unable to set reaction for {post_url} (Invalid reaction_id in config)", 40)
+                return
+
+        if "has-reaction" in reaction.get("class", []):
+            await log(f"Post {post_url} already has a reaction",10)
+            return
+        
+        data={  
+            "_xfRequestUri": scrape_item.url.path, 
+            "_xfWithData": 1,
+            "_xfToken": self.xf_token,
+            "_xfResponseType": "json"
+        }
+
+        JSONResp = await self.client.post_data(self.domain, post_reaction_url.with_query(reaction_id=reaction_id) , data=data)
+        if 'errors' in JSONResp:
+            await log(f"Unable to set reaction for {post_url}", 40)
 
     async def check_complete_from_referer(self, scrape_item: ScrapeItem) -> bool:
         """Checks if the scrape item has already been scraped"""
