@@ -66,9 +66,11 @@ class Crawler(ABC):
         """Director for scraping"""
         raise NotImplementedError("Must override in child class")
 
-    async def handle_file(self, url: URL, scrape_item: ScrapeItem, filename: str, ext: str) -> None:
+    async def handle_file(self, url: URL, scrape_item: ScrapeItem, filename: str, ext: str, custom_filename: Optional[str]= None) -> None:
         """Finishes handling the file and hands it off to the downloader"""
-        if self.domain in ['cyberdrop', 'bunkrr']:
+        if custom_filename:
+            original_filename, filename = filename + ext, custom_filename
+        elif self.domain in ['cyberdrop', 'bunkrr']:
             original_filename, filename = await remove_id(self.manager, filename, ext)
         else:
             original_filename = filename
