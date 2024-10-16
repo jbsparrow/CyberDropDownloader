@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, AsyncGenerator
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
@@ -13,7 +13,6 @@ from cyberdrop_dl.utils.utilities import log, get_filename_and_ext, error_handli
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
     from bs4 import BeautifulSoup
-
 
 class TokioMotionCrawler(Crawler):
     def __init__(self, manager: Manager):
@@ -102,16 +101,11 @@ class TokioMotionCrawler(Crawler):
         """Scrapes a video playlist"""
         title = 'favorites' if 'favorite' in scrape_item.url.parts else "videos" 
         user = scrape_item.url.parts[2]
-        page_url = scrape_item.url
         if user not in scrape_item.parent_title.split('/'):
             await scrape_item.add_to_parent_title(scrape_item.url.parts[2])
 
-        while True:
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_BS4(self.domain, page_url)
-
+        async for soup in self.web_pager(scrape_item.url):
             videos = soup.select(self.video_selector)
-            
             for video in videos:
                 link = video.get('href')
                 if not link:
@@ -124,7 +118,14 @@ class TokioMotionCrawler(Crawler):
                 new_scrape_item = await self.create_scrape_item(scrape_item, link, new_title_part=title, add_parent = scrape_item.url)
                 await self.video(new_scrape_item)
 
+    async def web_pager(self, url: URL) -> AsyncGenerator[BeautifulSoup]:
+        "Generator of website pages"
+        page_url = url
+        while True:
+            async with self.request_limiter:
+                soup: BeautifulSoup = await self.client.get_BS4(self.domain, page_url)
             next_page = soup.select_one(self.next_page_selector)
+            yield soup
             if next_page :
                 page_url = next_page.get(self.next_page_attribute)
                 if page_url:
@@ -132,4 +133,4 @@ class TokioMotionCrawler(Crawler):
                         page_url = self.primary_base_domain / page_url[1:]
                     page_url = URL(page_url)
                     continue
-            break
+                break
