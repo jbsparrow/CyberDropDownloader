@@ -20,9 +20,11 @@ class TokioMotionCrawler(Crawler):
         self.primary_base_domain = URL("https://www.tokyomotion.net")
         self.request_limiter = AsyncLimiter(10, 1)
         self.next_page_selector = 'a.prevnext'
-        self.title_selector = 'meta[property="og:title"]'
+        self.title_selector = "meta[property='og:title']"
         self.next_page_attribute = "href"
+        self.video_div_selector = "div[id^='video_']"
         self.video_selector = 'a[href^="/video/"]'
+        self.image_selector = "img[class='img-responsive-mw']"
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -105,11 +107,13 @@ class TokioMotionCrawler(Crawler):
             await scrape_item.add_to_parent_title(scrape_item.url.parts[2])
 
         async for soup in self.web_pager(scrape_item.url):
-            videos = soup.select(self.video_selector)
+            videos = soup.select(self.video_div_selector)
             for video in videos:
-                link = video.get('href')
+                link = video.select_one(self.video_selector)
                 if not link:
                     continue
+
+                link = link.get('href')
 
                 if link.startswith("/"):
                     link = self.primary_base_domain / link[1:]
@@ -133,4 +137,4 @@ class TokioMotionCrawler(Crawler):
                         page_url = self.primary_base_domain / page_url[1:]
                     page_url = URL(page_url)
                     continue
-                break
+            break
