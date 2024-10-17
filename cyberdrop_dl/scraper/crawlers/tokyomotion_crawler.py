@@ -8,7 +8,7 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import ScrapeFailure
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
-from cyberdrop_dl.utils.utilities import log, get_filename_and_ext, error_handling_wrapper
+from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -19,15 +19,16 @@ class TokioMotionCrawler(Crawler):
         super().__init__(manager, "tokyomotion", "Tokyomotion")
         self.primary_base_domain = URL("https://www.tokyomotion.net")
         self.request_limiter = AsyncLimiter(10, 1)
-        self.next_page_selector = 'a.prevnext'
-        self.title_selector = "meta[property='og:title']"
-        self.next_page_attribute = "href"
-        self.video_div_selector = "div[id^='video_']"
-        self.video_selector = 'a[href^="/video/"]'
+
+        self.album_selector = 'a[href^="/album/"]'
         self.image_div_selector = "div[id*='_photo_']"
         self.image_selector = 'a[href^="/photo/"]'
         self.image_thumb_selector = "img[id^='album_photo_']"
-        self.album_selector = 'a[href^="/album/"]'
+        self.next_page_attribute = "href"
+        self.next_page_selector = 'a.prevnext'
+        self.title_selector = "meta[property='og:title']"
+        self.video_div_selector = "div[id^='video_']"
+        self.video_selector = 'a[href^="/video/"]'
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -87,9 +88,12 @@ class TokioMotionCrawler(Crawler):
 
     @error_handling_wrapper
     async def albums(self, scrape_item: ScrapeItem) -> None:
+        """Scrapes user albums"""
         user = scrape_item.url.parts[2]
         user_title = await self.create_title(f"user {user}", scrape_item.album_id, None)
-        await scrape_item.add_to_parent_title(user_title)
+        if user_title not in scrape_item.parent_title.split('/'):
+            await scrape_item.add_to_parent_title(user_title)
+
         async for soup in self.web_pager(scrape_item.url):
             albums = soup.select(self.album_selector)
             for album in albums:
@@ -107,9 +111,7 @@ class TokioMotionCrawler(Crawler):
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
-
         title = scrape_item.url.parts[-1]
-        
         if 'user' in scrape_item.url.parts:
             user = scrape_item.url.parts[2]
             user_title = await self.create_title(f"user {user}", scrape_item.album_id, None)
@@ -137,7 +139,6 @@ class TokioMotionCrawler(Crawler):
                     continue
 
                 link = link.get('src')
-
                 if link.startswith("/"):
                     link = self.primary_base_domain / link[1:]
 
@@ -168,12 +169,22 @@ class TokioMotionCrawler(Crawler):
     
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album"""
-        raise NotImplementedError
+        """Scrapes an user profile"""
+        user = scrape_item.url.parts[2]
+        user_title = await self.create_title(f"user {user}", scrape_item.album_id, None)
+        if user_title not in scrape_item.parent_title.split('/'):
+            await scrape_item.add_to_parent_title(user_title)
+
+        new_parts = ['albums','favorite/photos', 'videos','favorite/videos']
+        scrapers = [ self.albums, self.album, self.playlist, self.playlist]
+        for part, scraper in zip(new_parts, scrapers):
+            link = scrape_item.url / part
+            new_scrape_item = await self.create_scrape_item(scrape_item, link, "", add_parent = scrape_item.url)
+            await scraper(new_scrape_item)
     
     @error_handling_wrapper
     async def search(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album"""
+        """Scrapes a search result"""
         raise NotImplementedError
     
     @error_handling_wrapper
@@ -181,14 +192,18 @@ class TokioMotionCrawler(Crawler):
         """Scrapes a video playlist"""
         title = scrape_item.url.parts[-1]
         user = scrape_item.url.parts[2]
-        if user not in scrape_item.parent_title.split('/'):
-            user_title = await self.create_title(f"user {user}", scrape_item.album_id, None)
+        user_title = await self.create_title(f"user {user}", scrape_item.album_id, None)
+        if user_title not in scrape_item.parent_title.split('/'):
             await scrape_item.add_to_parent_title(user_title)
 
         if 'favorite' in scrape_item.url.parts:
             await scrape_item.add_to_parent_title('favorite')
 
-        title = await self.create_title(title, scrape_item.album_id, None)
+        if self.folder_domain not in scrape_item.parent_title:
+            title = await self.create_title(title, scrape_item.album_id, None)
+
+        if title not in scrape_item.parent_title.split('/'):
+            await scrape_item.add_to_parent_title(title)
 
         async for soup in self.web_pager(scrape_item.url):
             videos = soup.select(self.video_div_selector)
@@ -198,12 +213,11 @@ class TokioMotionCrawler(Crawler):
                     continue
 
                 link = link.get('href')
-
                 if link.startswith("/"):
                     link = self.primary_base_domain / link[1:]
 
                 link = URL(link)
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, new_title_part=title, add_parent = scrape_item.url)
+                new_scrape_item = await self.create_scrape_item(scrape_item, link, "", add_parent = scrape_item.url)
                 await self.video(new_scrape_item)
 
     async def web_pager(self, url: URL) -> AsyncGenerator[BeautifulSoup]:
