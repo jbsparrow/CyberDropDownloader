@@ -94,7 +94,7 @@ class TokioMotionCrawler(Crawler):
     async def albums(self, scrape_item: ScrapeItem) -> None:
         """Scrapes user albums"""
         user = scrape_item.url.parts[2]
-        user_title = await self.create_title(f"user {user}", scrape_item.album_id, None)
+        user_title = await self.create_title(f"{user} [user]", scrape_item.album_id, None)
         if user_title not in scrape_item.parent_title.split('/'):
             await scrape_item.add_to_parent_title(user_title)
 
@@ -118,7 +118,7 @@ class TokioMotionCrawler(Crawler):
         title = scrape_item.url.parts[-1]
         if 'user' in scrape_item.url.parts:
             user = scrape_item.url.parts[2]
-            user_title = await self.create_title(f"user {user}", scrape_item.album_id, None)
+            user_title = await self.create_title(f"{user} [user]", scrape_item.album_id, None)
             if user_title not in scrape_item.parent_title.split('/'):
                 await scrape_item.add_to_parent_title(user_title)
 
@@ -177,7 +177,7 @@ class TokioMotionCrawler(Crawler):
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an user profile"""
         user = scrape_item.url.parts[2]
-        user_title = await self.create_title(f"user {user}", scrape_item.album_id, None)
+        user_title = await self.create_title(f"{user} [user]", scrape_item.album_id, None)
         if user_title not in scrape_item.parent_title.split('/'):
             await scrape_item.add_to_parent_title(user_title)
 
@@ -228,7 +228,7 @@ class TokioMotionCrawler(Crawler):
         """Scrapes a video playlist"""
         title = scrape_item.url.parts[-1]
         user = scrape_item.url.parts[2]
-        user_title = await self.create_title(f"user {user}", scrape_item.album_id, None)
+        user_title = await self.create_title(f"{user} [user]", scrape_item.album_id, None)
         if user_title not in scrape_item.parent_title.split('/'):
             await scrape_item.add_to_parent_title(user_title)
 
