@@ -78,7 +78,7 @@ class TokioMotionCrawler(Crawler):
             link = URL(src)
         except AttributeError:
             if "This is a private" in soup.text:
-                raise ScrapeFailure('Private Video', f"Private video: {scrape_item.url}")
+                raise ScrapeFailure(403, f"Private video: {scrape_item.url}")
             raise ScrapeFailure(404, f"Could not find video source for {scrape_item.url}")
         
         title = soup.select_one('title').text.rsplit(" - TOKYO Motion")[0].strip()
@@ -137,7 +137,7 @@ class TokioMotionCrawler(Crawler):
 
         async for soup in self.web_pager(scrape_item.url):
             if "This is a private" in soup.text:
-                raise ScrapeFailure('Private Album', f"Private album: {scrape_item.url}")
+                raise ScrapeFailure(403, f"Private album: {scrape_item.url}")
             images = soup.select(self.image_div_selector)
             for image in images:
                 link = image.select_one(self.image_thumb_selector)
@@ -167,7 +167,7 @@ class TokioMotionCrawler(Crawler):
             link = URL(src)
         except AttributeError:
             if "This is a private" in soup.text:
-                raise ScrapeFailure('Private Album', f"Private Photo: {scrape_item.url}")
+                raise ScrapeFailure(403, f"Private Photo: {scrape_item.url}")
             raise ScrapeFailure(404, f"Could not find image source for {scrape_item.url}")
         
         filename, ext = await get_filename_and_ext(link.name)
@@ -210,8 +210,7 @@ class TokioMotionCrawler(Crawler):
         async for soup in self.web_pager(scrape_item.url):
             results = soup.select(self.search_div_selector)
             for result in results:
-                if selector:
-                    link = result.select_one(selector)
+                link = result.select_one(selector)
                 if not link:
                     continue
 
@@ -243,7 +242,7 @@ class TokioMotionCrawler(Crawler):
 
         async for soup in self.web_pager(scrape_item.url):
             if "This is a private" in soup.text:
-                raise ScrapeFailure('Private Playlist', f"Private playlist: {scrape_item.url}")
+                raise ScrapeFailure(403, f"Private playlist: {scrape_item.url}")
             videos = soup.select(self.video_div_selector)
             for video in videos:
                 link = video.select_one(self.video_selector)
