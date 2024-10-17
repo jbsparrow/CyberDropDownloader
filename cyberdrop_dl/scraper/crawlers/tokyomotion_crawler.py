@@ -73,7 +73,7 @@ class TokioMotionCrawler(Crawler):
             src = (srcHD or srcSD).get('src')
             link = URL(src)
         except AttributeError:
-            if "This is a private video" in soup.text:
+            if "This is a private" in soup.text:
                 raise ScrapeFailure('Private Video', f"Private video: {scrape_item.url}")
             raise ScrapeFailure(404, f"Could not find video source for {scrape_item.url}")
         
@@ -132,6 +132,8 @@ class TokioMotionCrawler(Crawler):
             await scrape_item.add_to_parent_title(title)
 
         async for soup in self.web_pager(scrape_item.url):
+            if "This is a private" in soup.text:
+                raise ScrapeFailure('Private Album', f"Private album: {scrape_item.url}")
             images = soup.select(self.image_div_selector)
             for image in images:
                 link = image.select_one(self.image_thumb_selector)
@@ -160,7 +162,7 @@ class TokioMotionCrawler(Crawler):
             src = img.get('src')
             link = URL(src)
         except AttributeError:
-            if "This is a private album" in soup.text:
+            if "This is a private" in soup.text:
                 raise ScrapeFailure('Private Album', f"Private Photo: {scrape_item.url}")
             raise ScrapeFailure(404, f"Could not find image source for {scrape_item.url}")
         
@@ -206,6 +208,8 @@ class TokioMotionCrawler(Crawler):
             await scrape_item.add_to_parent_title(title)
 
         async for soup in self.web_pager(scrape_item.url):
+            if "This is a private" in soup.text:
+                raise ScrapeFailure('Private Playlist', f"Private playlist: {scrape_item.url}")
             videos = soup.select(self.video_div_selector)
             for video in videos:
                 link = video.select_one(self.video_selector)
