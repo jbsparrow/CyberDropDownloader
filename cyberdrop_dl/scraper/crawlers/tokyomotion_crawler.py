@@ -24,7 +24,10 @@ class TokioMotionCrawler(Crawler):
         self.next_page_attribute = "href"
         self.video_div_selector = "div[id^='video_']"
         self.video_selector = 'a[href^="/video/"]'
-        self.image_selector = "img[class='img-responsive-mw']"
+        self.image_div_selector = "div[id*='_photo_']"
+        self.image_selector = 'a[href^="/photo/"]'
+        self.image_thumb_selector = "img[id^='album_photo_']"
+        self.album_selector = 'a[href^="/album/"]'
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -40,10 +43,13 @@ class TokioMotionCrawler(Crawler):
             await self.playlist(scrape_item)
 
         elif 'photo' in scrape_item.url.parts:
-            await self.photo(scrape_item)
+            await self.image(scrape_item)
 
-        elif any(part in scrape_item.url.parts for part in ('albums','photos')):
+        elif any(part in scrape_item.url.parts for part in ('album','photos')):
             await self.album(scrape_item)
+
+        elif 'albums' in scrape_item.url.parts:
+            await self.albums(scrape_item)
 
         elif 'user' in scrape_item.url.parts:
             await self.profile(scrape_item)
@@ -78,15 +84,87 @@ class TokioMotionCrawler(Crawler):
         custom_file_name, _ = await get_filename_and_ext(f"{title} [{filename}]{ext}")
         await self.handle_file(link, scrape_item, filename, ext, custom_file_name)
 
+
+    @error_handling_wrapper
+    async def albums(self, scrape_item: ScrapeItem) -> None:
+        user = scrape_item.url.parts[2]
+        user_title = await self.create_title(f"user {user}", scrape_item.album_id, None)
+        await scrape_item.add_to_parent_title(user_title)
+        async for soup in self.web_pager(scrape_item.url):
+            albums = soup.select(self.album_selector)
+            for album in albums:
+                link = album.get('href')
+                if not link:
+                    continue
+
+                if link.startswith("/"):
+                    link = self.primary_base_domain / link[1:]
+
+                link = URL(link)
+                new_scrape_item = await self.create_scrape_item(scrape_item, link, "albums", add_parent = scrape_item.url)
+                await self.album(new_scrape_item)
+
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
-        raise NotImplementedError
+
+        title = scrape_item.url.parts[-1]
+        
+        if 'user' in scrape_item.url.parts:
+            user = scrape_item.url.parts[2]
+            user_title = await self.create_title(f"user {user}", scrape_item.album_id, None)
+            if user_title not in scrape_item.parent_title.split('/'):
+                await scrape_item.add_to_parent_title(user_title)
+
+        else:
+            scrape_item.album_id = scrape_item.url.parts[2]
+            scrape_item.part_of_album=True
+        
+        if self.folder_domain not in scrape_item.parent_title:
+            title = await self.create_title(title, scrape_item.album_id, None)
+
+        if 'favorite' in scrape_item.url.parts:
+            await scrape_item.add_to_parent_title('favorite')
+
+        if title not in scrape_item.parent_title.split('/'):
+            await scrape_item.add_to_parent_title(title)
+
+        async for soup in self.web_pager(scrape_item.url):
+            images = soup.select(self.image_div_selector)
+            for image in images:
+                link = image.select_one(self.image_thumb_selector)
+                if not link:
+                    continue
+
+                link = link.get('src')
+
+                if link.startswith("/"):
+                    link = self.primary_base_domain / link[1:]
+
+                link = URL(link)
+                link=link.with_path(link.path.replace("/tmb/", "/"))
+
+                filename, ext = await get_filename_and_ext(link.name)
+                await self.handle_file(link, scrape_item, filename, ext)
     
     @error_handling_wrapper
-    async def photo(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album"""
-        raise NotImplementedError
+    async def image(self, scrape_item: ScrapeItem) -> None:
+        """Scrapes an image"""
+        if await self.check_complete_from_referer(scrape_item):
+            return
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
+        try:
+            img = soup.select_one("img[class='img-responsive-mw']")
+            src = img.get('src')
+            link = URL(src)
+        except AttributeError:
+            if "This is a private album" in soup.text:
+                raise ScrapeFailure('Private Album', f"Private Photo: {scrape_item.url}")
+            raise ScrapeFailure(404, f"Could not find image source for {scrape_item.url}")
+        
+        filename, ext = await get_filename_and_ext(link.name)
+        await self.handle_file(link, scrape_item, filename, ext)
     
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
@@ -101,10 +179,16 @@ class TokioMotionCrawler(Crawler):
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a video playlist"""
-        title = 'favorites' if 'favorite' in scrape_item.url.parts else "videos" 
+        title = scrape_item.url.parts[-1]
         user = scrape_item.url.parts[2]
         if user not in scrape_item.parent_title.split('/'):
-            await scrape_item.add_to_parent_title(scrape_item.url.parts[2])
+            user_title = await self.create_title(f"user {user}", scrape_item.album_id, None)
+            await scrape_item.add_to_parent_title(user_title)
+
+        if 'favorite' in scrape_item.url.parts:
+            await scrape_item.add_to_parent_title('favorite')
+
+        title = await self.create_title(title, scrape_item.album_id, None)
 
         async for soup in self.web_pager(scrape_item.url):
             videos = soup.select(self.video_div_selector)
