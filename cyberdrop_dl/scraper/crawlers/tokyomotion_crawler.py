@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, AsyncGenerator
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
+from multidict import MultiDict
 
 from cyberdrop_dl.clients.errors import ScrapeFailure
 from cyberdrop_dl.scraper.crawler import Crawler
@@ -36,6 +37,9 @@ class TokioMotionCrawler(Crawler):
         """Determines where to send the scrape item based on the url"""
         task_id = await self.scraping_progress.add_task(scrape_item.url)
         scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path)
+        new_query = MultiDict(scrape_item.url.query)
+        new_query.pop('page', None)   
+        scrape_item.url = scrape_item.url.with_query(new_query)
 
         if 'video' in scrape_item.url.parts:
             await self.video(scrape_item)
