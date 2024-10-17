@@ -30,16 +30,16 @@ class TokioMotionCrawler(Crawler):
         self.title_selector = "meta[property='og:title']"
         self.video_div_selector = "div[id^='video_']"
         self.video_selector = 'a[href^="/video/"]'
+        self.search_div_selector = "div[class^='well']"
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url"""
         task_id = await self.scraping_progress.add_task(scrape_item.url)
-        scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path)
         new_query = MultiDict(scrape_item.url.query)
-        new_query.pop('page', None)   
-        scrape_item.url = scrape_item.url.with_query(new_query)
+        new_query.pop('page', None)  
+        scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path).with_query(new_query)
 
         if 'video' in scrape_item.url.parts:
             await self.video(scrape_item)
@@ -191,7 +191,37 @@ class TokioMotionCrawler(Crawler):
     @error_handling_wrapper
     async def search(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a search result"""
-        raise NotImplementedError
+        search_type = scrape_item.url.query.get('search_type')
+        if 'search' not in scrape_item.url.parts or search_type == 'users':
+            return 
+        
+        search_query = scrape_item.url.query.get('search_query')
+        search_title = await self.create_title(f"{search_query} [{search_type} search]", scrape_item.album_id, None)
+        if search_title not in scrape_item.parent_title.split('/'):
+            await scrape_item.add_to_parent_title(search_title)
+
+        selector = self.video_selector
+        scraper = self.video
+        
+        if search_type=='photos':
+            selector = self.album_selector
+            scraper = self.album
+
+        async for soup in self.web_pager(scrape_item.url):
+            results = soup.select(self.search_div_selector)
+            for result in results:
+                if selector:
+                    link = result.select_one(selector)
+                if not link:
+                    continue
+
+                link = link.get('href')
+                if link.startswith("/"):
+                    link = self.primary_base_domain / link[1:]
+
+                link = URL(link)
+                new_scrape_item = await self.create_scrape_item(scrape_item, link, "", add_parent = scrape_item.url)
+                await scraper(new_scrape_item)
     
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem) -> None:
