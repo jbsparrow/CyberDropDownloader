@@ -66,7 +66,7 @@ class Crawler(ABC):
         """Director for scraping"""
         raise NotImplementedError("Must override in child class")
 
-    async def handle_file(self, url: URL, scrape_item: ScrapeItem, filename: str, ext: str, custom_filename: Optional[str]= None) -> None:
+    async def handle_file(self, url: URL, scrape_item: ScrapeItem, filename: str, ext: str, debrid_link: Optional[URL]=None, custom_filename: Optional[str]= None) -> None:
         """Finishes handling the file and hands it off to the downloader"""
         if custom_filename:
             original_filename, filename = filename , custom_filename
@@ -77,7 +77,7 @@ class Crawler(ABC):
 
         download_folder = await get_download_path(self.manager, scrape_item, self.folder_domain)
         media_item = MediaItem(url, scrape_item.url, scrape_item.album_id, download_folder, filename, ext,
-                            original_filename)
+                            original_filename, debrid_link)
         if scrape_item.possible_datetime:
             media_item.datetime = scrape_item.possible_datetime
 
