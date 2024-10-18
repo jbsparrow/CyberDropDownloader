@@ -11,6 +11,7 @@ from cyberdrop_dl.managers.config_manager import ConfigManager
 from cyberdrop_dl.managers.console_manager import ConsoleManager
 from cyberdrop_dl.managers.db_manager import DBManager
 from cyberdrop_dl.managers.download_manager import DownloadManager
+from cyberdrop_dl.managers.realdebrid_manager import RealDebridManager
 from cyberdrop_dl.managers.hash_manager import HashManager
 from cyberdrop_dl.managers.live_manager import LiveManager
 from cyberdrop_dl.managers.log_manager import LogManager
@@ -29,6 +30,7 @@ class Manager:
         self.path_manager: PathManager = field(init=False)
         self.config_manager: ConfigManager = field(init=False)
         self.hash_manager: HashManager = field(init=False)
+        self.real_debrid_manager: RealDebridManager = field(init=False)
 
         self.log_manager: LogManager = field(init=False)
         self.db_manager: DBManager = field(init=False)

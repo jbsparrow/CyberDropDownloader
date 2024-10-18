@@ -284,12 +284,18 @@ class ScrapeMapper:
         if self.jdownloader.enabled and isinstance(self.jdownloader.jdownloader_agent, Field):
             await self.jdownloader.jdownloader_setup()
 
+    async def start_real_debrid(self) -> None:
+        """Starts RealDebrid"""
+        if self.manager.real_debrid_manager.enabled and isinstance(self.manager.real_debrid_manager.api, Field):
+            await self.manager.real_debrid_manager.startup()
+
     async def start(self) -> None:
         """Starts the orchestra"""
         self.manager.scrape_mapper = self
 
         await self.start_scrapers()
         await self.start_jdownloader()
+        await self.start_real_debrid()
 
         await self.no_crawler_downloader.startup()
 
