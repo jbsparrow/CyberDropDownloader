@@ -27,7 +27,7 @@ class ScrapeMapper:
 
     def __init__(self, manager: Manager):
         self.manager = manager
-        self.mapping = {"tokyomotion": self.tokyomotion, "bunkrr": self.bunkrr, "celebforum": self.celebforum, "coomer": self.coomer,
+        self.mapping = {"realdebrid": self.realdebrid, "tokyomotion": self.tokyomotion, "bunkrr": self.bunkrr, "celebforum": self.celebforum, "coomer": self.coomer,
                         "cyberdrop": self.cyberdrop, "cyberfile": self.cyberfile, "e-hentai": self.ehentai,
                         "erome": self.erome, "fapello": self.fapello, "f95zone": self.f95zone, "gofile": self.gofile,
                         "hotpic": self.hotpic, "ibb.co": self.imgbb, "imageban": self.imageban, "imgbox": self.imgbox,
@@ -198,6 +198,11 @@ class ScrapeMapper:
         """Creates a RealBooru Crawler instance"""
         from cyberdrop_dl.scraper.crawlers.realbooru_crawler import RealBooruCrawler
         self.existing_crawlers['realbooru'] = RealBooruCrawler(self.manager)
+
+    async def realdebrid(self) -> None:
+        """Creates a RealDebrid Crawler instance"""
+        from cyberdrop_dl.scraper.crawlers.realdebrid_crawler import RealDebridCrawler
+        self.existing_crawlers['realdebrid'] = RealDebridCrawler(self.manager)
 
     async def reddit(self) -> None:
         """Creates a Reddit Crawler instance"""
@@ -491,6 +496,10 @@ class ScrapeMapper:
             media_item = MediaItem(scrape_item.url, scrape_item.url, None, download_folder, filename, ext, filename)
             self.manager.task_group.create_task(self.no_crawler_downloader.run(media_item))
 
+        elif self.manager.real_debrid_manager.enabled and await self.manager.real_debrid_manager.is_supported(scrape_item.url):
+            await log(f"Using RealDebrid for unsupported URL: {scrape_item.url}", 10)
+            self.manager.task_group.create_task(self.realdebrid.run(scrape_item))
+
         elif self.jdownloader.enabled and jdownloader_whitelisted:
             await log(f"Sending unsupported URL to JDownloader: {scrape_item.url}", 10)
             success = False
@@ -568,6 +577,10 @@ class ScrapeMapper:
             filename, ext = await get_filename_and_ext(scrape_item.url.name)
             media_item = MediaItem(scrape_item.url, scrape_item.url, None, download_folder, filename, ext, filename)
             self.manager.task_group.create_task(self.no_crawler_downloader.run(media_item))
+
+        elif self.manager.real_debrid_manager.enabled and await self.manager.real_debrid_manager.is_supported(scrape_item.url):
+            await log(f"Using RealDebrid for unsupported URL: {scrape_item.url}", 10)
+            self.manager.task_group.create_task(self.realdebrid.run(scrape_item))
 
         elif self.jdownloader.enabled:
             await log(f"Sending unsupported URL to JDownloader: {scrape_item.url}", 10)
