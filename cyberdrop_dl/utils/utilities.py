@@ -14,6 +14,7 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import NoExtensionFailure, FailedLoginFailure, InvalidContentTypeFailure, \
     PasswordProtected
+from cyberdrop_dl.managers.real_debrid.errors import RealDebridError
 from cyberdrop_dl.managers.console_manager import log as log_console
 
 if TYPE_CHECKING:
@@ -78,6 +79,10 @@ def error_handling_wrapper(func):
             parent_url = e.scrape_item.parents[0] if e.scrape_item.parents else None
             await self.manager.log_manager.write_unsupported_urls_log(link,parent_url)
             await self.manager.progress_manager.scrape_stats_progress.add_failure("Password Protected")
+        except RealDebridError as e:
+            await log(f"Scrape Failed: {link} (RealDebridError)\n{e.error}", 40)
+            await self.manager.log_manager.write_scrape_error_log(link, f" {e.error}")
+            await self.manager.progress_manager.scrape_stats_progress.add_failure(f"RD - {e.error}")
         except FailedLoginFailure:
             await log(f"Scrape Failed: {link} (Failed Login)", 40)
             await self.manager.log_manager.write_scrape_error_log(link, " Failed Login")
