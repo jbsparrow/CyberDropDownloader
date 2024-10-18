@@ -16,6 +16,7 @@ MAGNET_PREFIX = 'magnet:?xt=urn:btih:'
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 DATE_ISO_FORMAT = "%Y-%m-%dT%H:%M:%S%z"
 DATE_JSON_FORMAT =  "%Y-%m-%dT%H:%M:%S.%fZ"
+RATE_LIMIT = 250 # per minute
 
 class RealDebridApi:
     """
@@ -33,7 +34,6 @@ class RealDebridApi:
     """
     API_ENTRYPOINT = URL('https://api.real-debrid.com/rest/1.0')
     API_OAUTH_ENTRYPOINT = URL("https://api.real-debrid.com/oauth/v2/")
-    RATE_LIMIT = 250 # per minute
 
     def __init__(self, api_token: Optional[str] = None, convert_special_types: bool= False):
         self._session = Session()
@@ -72,7 +72,7 @@ class RealDebridApi:
         self._api_token = new_token
         self._session.headers.update({'Authorization': f"Bearer {self._api_token}"})
 
-    def handle_response(self, response: Response) -> dict | str | None:
+    def handle_response(self, response: 'Response') -> dict | str | None:
         try:
             response.raise_for_status()
             JSONResp: dict = response.json()
@@ -87,7 +87,7 @@ class RealDebridApi:
         """Context manager to rate limit API requests
         
         Buffer is % of RATE_LIMIT"""
-        actual_rate_limit = self.RATE_LIMIT * ( 1 - buffer)
+        actual_rate_limit = RATE_LIMIT * ( 1 - buffer)
         elapsed = time.time() - self._last_request_time
         wait_time = max(0, (1 / actual_rate_limit ) - elapsed)
         time.sleep(wait_time)  

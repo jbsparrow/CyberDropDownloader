@@ -4,13 +4,12 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import ScrapeFailure, DownloadFailure, PasswordProtected, NoExtensionFailure
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
 from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wrapper, log
+from cyberdrop_dl.managers.realdebrid_manager import RATE_LIMIT
 
 if TYPE_CHECKING:
-    from cyberdrop_dl.clients.scraper_client import ScraperClient
     from cyberdrop_dl.managers.manager import Manager
 
 class RealDebridCrawler(Crawler):
@@ -18,7 +17,7 @@ class RealDebridCrawler(Crawler):
         super().__init__(manager, "real-debrid", "RealDebrid")
         self.headers = {}
         self.primary_base_domain = URL('https://real-debrid.com')
-        self.request_limiter = AsyncLimiter(self.manager.real_debrid_manager.api.RATE_LIMIT, 60)
+        self.request_limiter = AsyncLimiter(RATE_LIMIT, 60)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url"""

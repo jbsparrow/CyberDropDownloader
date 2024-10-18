@@ -112,6 +112,8 @@ class Manager:
             await self.hash_manager.startup()
         if not isinstance(self.live_manager, LiveManager):
             self.live_manager = LiveManager(self)
+        if not isinstance(self.real_debrid_manager, RealDebridManager):
+            self.real_debrid_manager = RealDebridManager(self)
         if not isinstance(self.console_manager, ConsoleManager):
             self.console_manager = ConsoleManager()
             self.console_manager.startup()

@@ -1,14 +1,14 @@
 from typing import TYPE_CHECKING, Optional
 
-from cyberdrop_dl.managers.real_debrid.api import RealDebridApi
+from cyberdrop_dl.managers.real_debrid.api import RealDebridApi, RATE_LIMIT
 from cyberdrop_dl.managers.real_debrid.errors import RealDebridError
 from cyberdrop_dl.utils.utilities import log
 import re
 from dataclasses import field
+from yarl import URL
+from re import Pattern
 
 if TYPE_CHECKING:
-    from yarl import URL
-    from re import Pattern
     from cyberdrop_dl.managers.manager import Manager
 
 FOLDER_AS_PART = {'folder','folders','dir'}
