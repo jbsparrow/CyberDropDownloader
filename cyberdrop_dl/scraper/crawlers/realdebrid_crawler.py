@@ -33,45 +33,45 @@ class RealDebridCrawler(Crawler):
     @error_handling_wrapper
     async def folder(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a folder"""
-        
+        await log ('scraping folder with RealDebrid',10)
         original_url = scrape_item.url
         folder_id = await self.manager.real_debrid_manager.guess_folder(original_url)
         scrape_item.album_id = folder_id
-        results = await self.get_album_results(folder_id)
+        scrape_item.part_of_album = True
 
-        scrape_item.url = self.primary_base_domain / original_url.host.lower() / original_url.path[1:]
-        scrape_item.url = scrape_item.url.with_query(original_url.query).with_fragment(original_url.fragment)
-
-        async with self.request_limiter:
-            links = await self.manager.real_debrid_manager.unrestrict_folder(original_url)
-        
         title = await self.create_title(f"{folder_id} [{original_url.host.lower()}]", None, None)
         await scrape_item.add_to_parent_title(title)
 
-        for debrid_link in links:
-            link = scrape_item.url / debrid_link.name
-            filename, ext = await get_filename_and_ext(link.name)
-            if not await self.check_album_results(link, results):
-                await self.handle_file(link, scrape_item, filename, ext, debrid_link)
+        async with self.request_limiter:
+            links = await self.manager.real_debrid_manager.unrestrict_folder(original_url)
+
+        for link in links:
+            new_scrape_item = await self.create_scrape_item(scrape_item, link, "", True, folder_id , add_parent = original_url )
+            await self.file(new_scrape_item)
+        
                 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a file"""
+        await log ('scraping file with RealDebrid',10)
         original_url = scrape_item.url
         password = original_url.query.get('password','')
         async with self.request_limiter:
             debrid_link = await self.manager.real_debrid_manager.unrestrict_link(original_url, password)
 
-        scrape_item.url = self.primary_base_domain / original_url.host.lower() / original_url.path[1:] / debrid_link.name
-        scrape_item.url = scrape_item.url.with_query(original_url.query).with_fragment(original_url.fragment)
-
+        await log (f"{debrid_link=}",10)
+        
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        link = scrape_item.url
-        filename, ext = await get_filename_and_ext(link.name)
+        if not scrape_item.part_of_album:
+            title = await self.create_title(f"files [{original_url.host.lower()}]", None, None)
+            await scrape_item.add_to_parent_title(title)
+
+        link = self.primary_base_domain / original_url.host.lower() / original_url.path[1:] / debrid_link.name
+        link = scrape_item.url.with_query(original_url.query).with_fragment(original_url.fragment.split('/')[0])
+        await log (f"{link=}",10)
+        filename, ext = await get_filename_and_ext(debrid_link.name)
         await self.handle_file(link, scrape_item, filename, ext, debrid_link)
 
 
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

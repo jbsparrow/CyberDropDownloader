@@ -52,6 +52,8 @@ class RealDebridError(BaseException):
         try:
             JSONResp: dict = response.json()
             self.code = JSONResp.get('error_code')
+            if self.code == 16:
+                self.code = 7
             self.error = ERROR_CODES.get(self.code, 'Unknown error')
             
         except AttributeError:

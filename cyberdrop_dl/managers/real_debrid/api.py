@@ -175,7 +175,7 @@ class Unrestrict:
         """Check if a file is downloadable on the concerned hoster. This request does not require authentication"""
         return self.api.post('unrestrict/check', link=link, password=password)
 
-    def link(self, link: URL, password: Optional[str] = None, remote: bool=None) -> dict:
+    def link(self, link: URL, password: Optional[str] = None, remote: bool=False) -> dict:
         """Unrestrict a hoster link and get a new unrestricted link"""
         JSONResp = self.api.post('unrestrict/link', link=link, password=password, remote=remote)
         if self.api._convert_special_types:
