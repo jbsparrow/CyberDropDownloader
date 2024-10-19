@@ -158,12 +158,6 @@ async def director(manager: Manager) -> None:
     await log("Closing Program...", 20)
     await manager.close()
     await log_with_color("\nFinished downloading. Enjoy :)", 'green', 20)
-    await asyncio.sleep(5)
-    await log("Checking for Updates...", 20)
-    await check_latest_pypi()
-    await log("Closing Program...", 20)
-    await manager.close()
-    await log_with_color("\nFinished downloading. Enjoy :)", 'green', 20)
 
 
 def main():
