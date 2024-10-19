@@ -309,11 +309,15 @@ class ScrapeMapper:
     async def load_links(self) -> None:
         """Loads links from args / input file"""
         input_file = self.manager.path_manager.input_file
+          # we need to touch the file just in case, purge_tree deletes it
+        input_file.touch(exist_ok=True)
 
         links = {'': []}
         if not self.manager.args_manager.other_links:
             block_quote = False
             thread_title = ""
+            # we need to touch the file just in case, purge_tree deletes it
+            input_file.touch(exist_ok=True)
             async with aiofiles.open(input_file, "r", encoding="utf8") as f:
                 async for line in f:
                     assert isinstance(line, str)

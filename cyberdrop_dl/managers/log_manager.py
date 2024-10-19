@@ -33,27 +33,37 @@ class LogManager:
 
     async def write_last_post_log(self, url: 'URL') -> None:
         """Writes to the last post log"""
+        # we need to touch the file just in case, purge_tree deletes it
+        self.last_post_log.touch(exist_ok=True)
         async with aiofiles.open(self.last_post_log, 'a') as f:
             await f.write(f"{url}\n")
 
     async def write_unsupported_urls_log(self, url: 'URL', parent_url: Optional['URL'] = None ) -> None:
         """Writes to the unsupported urls log"""
+        # we need to touch the file just in case, purge_tree deletes it
+        self.unsupported_urls_log.touch(exist_ok=True)
         async with aiofiles.open(self.unsupported_urls_log, 'a') as f:
             await f.write(f"{url} ; {parent_url}\n")
 
     async def write_download_error_log(self, url: 'URL', error_message: str) -> None:
         """Writes to the download error log"""
+         # we need to touch the file just in case, purge_tree deletes it
+        self.download_error_log.touch(exist_ok=True)
         async with aiofiles.open(self.download_error_log, 'a') as f:
             await f.write(f"{url},{error_message}\n")
 
     async def write_scrape_error_log(self, url: 'URL', error_message: str) -> None:
         """Writes to the scrape error log"""
+        # we need to touch the file just in case, purge_tree deletes it
+        self.scrape_error_log.touch(exist_ok=True)
         async with aiofiles.open(self.scrape_error_log, 'a') as f:
             await f.write(f"{url},{error_message}\n")
 
     async def update_last_forum_post(self) -> None:
         """Updates the last forum post"""
         input_file = self.manager.path_manager.input_file
+        # we need to touch the file just in case, purge_tree deletes it
+        input_file.touch(exist_ok=True)
         base_urls = []
 
         async with aiofiles.open(input_file, 'r') as f:
@@ -80,6 +90,7 @@ class LogManager:
             if url_temp in base_urls:
                 base_urls.remove(url_temp)
                 base_urls.append(url)
-
+        # we need to touch the file just in case, purge_tree deletes it
+        input_file.touch(exist_ok=True)
         async with aiofiles.open(input_file, 'w') as f:
             await f.writelines(base_urls)
