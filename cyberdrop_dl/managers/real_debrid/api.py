@@ -177,11 +177,17 @@ class Unrestrict:
 
     def link(self, link: URL, password: Optional[str] = None, remote: bool=None) -> dict:
         """Unrestrict a hoster link and get a new unrestricted link"""
-        return self.api.post('unrestrict/link', link=link, password=password, remote=remote)
+        JSONResp = self.api.post('unrestrict/link', link=link, password=password, remote=remote)
+        if self.api._convert_special_types:
+            JSONResp['download'] = URL(JSONResp['download'] )
+        return JSONResp
     
     def folder(self, link: URL) -> list:
         """Unrestrict a hoster folder link and get individual links, returns an empty array if no links found"""
-        return self.api.post('unrestrict/folder', link=link)
+        links = self.api.post('unrestrict/folder', link=link)
+        if self.api._convert_special_types:
+            links = [URL(link) for link in links]
+        return links
     
     def container_file(self, filepath: Path) -> dict:
         """Decrypt a container file (RSDF, CCF, CCF3, DLC)"""

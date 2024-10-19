@@ -39,7 +39,7 @@ class RealDebridCrawler(Crawler):
         scrape_item.album_id = folder_id
         results = await self.get_album_results(folder_id)
 
-        scrape_item.url = self.primary_base_domain / original_url.host.lower() / original_url.path 
+        scrape_item.url = self.primary_base_domain / original_url.host.lower() / original_url.path[1:]
         scrape_item.url = scrape_item.url.with_query(original_url.query).with_fragment(original_url.fragment)
 
         async with self.request_limiter:
@@ -62,7 +62,7 @@ class RealDebridCrawler(Crawler):
         async with self.request_limiter:
             debrid_link = await self.manager.real_debrid_manager.unrestrict_link(original_url, password)
 
-        scrape_item.url = self.primary_base_domain / original_url.host.lower() / original_url.path / debrid_link.name
+        scrape_item.url = self.primary_base_domain / original_url.host.lower() / original_url.path[1:] / debrid_link.name
         scrape_item.url = scrape_item.url.with_query(original_url.query).with_fragment(original_url.fragment)
 
         if await self.check_complete_from_referer(scrape_item):
