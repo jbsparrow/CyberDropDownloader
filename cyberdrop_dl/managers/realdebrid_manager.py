@@ -7,6 +7,9 @@ import re
 from dataclasses import field
 from yarl import URL
 from re import Pattern
+import warnings
+
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -32,25 +35,28 @@ class RealDebridManager:
         """Startup process for Real Debrid manager"""
         try:
             self.api = RealDebridApi(self.__api_token, True)
-            file_regex = "|".join(self.api.hosts.regex())
-            folder_regex = "|".join(self.api.hosts.regex_folder())
-            self.supported_regex = re.compile("|".join(folder_regex + file_regex))
-            self.file_regex = re.compile("|".join(file_regex))
-            self.folder_regex = re.compile("|".join(folder_regex))    
-        except RealDebridError:
-            await log("Failed RealDebrid setup", 40)
+            file_regex = [pattern[1:-1] for pattern in self.api.hosts.regex()]
+            folder_regex = [pattern[1:-1] for pattern in self.api.hosts.regex_folder()]
+            regex = "|".join(file_regex + folder_regex)
+            file_regex = "|".join(file_regex) 
+            folder_regex = "|".join(folder_regex)             
+            self.supported_regex = re.compile(regex)
+            self.file_regex = re.compile(file_regex)
+            self.folder_regex = re.compile(folder_regex)    
+        except RealDebridError as e:
+            await log(f"Failed RealDebrid setup: {e.error}", 40)
             self.enabled = False  
 
     async def is_supported_folder(self, url: URL) -> bool:
-        match = self.folder_regex.search(url)
+        match = self.folder_regex.search(str(url))
         return bool(match)
     
     async def is_supported_file(self, url: URL) -> bool:
-        match = self.file_regex.search(url)
+        match = self.file_regex.search(str(url))
         return bool(match)
 
     async def is_supported(self, url: URL) -> bool:
-        match = self.supported_regex.search(url)
+        match = self.supported_regex.search(str(url))
         return bool(match)
 
     async def unrestrict_link(self, url: URL, password: Optional[str] = None) -> URL:

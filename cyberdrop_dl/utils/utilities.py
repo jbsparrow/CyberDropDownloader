@@ -80,7 +80,7 @@ def error_handling_wrapper(func):
             await self.manager.log_manager.write_unsupported_urls_log(link,parent_url)
             await self.manager.progress_manager.scrape_stats_progress.add_failure("Password Protected")
         except RealDebridError as e:
-            await log(f"Scrape Failed: {link} (RealDebridError)\n{e.error}", 40)
+            await log(f"Scrape Failed: {link} (RealDebridError): {e.error}", 40)
             await self.manager.log_manager.write_scrape_error_log(link, f" {e.error}")
             await self.manager.progress_manager.scrape_stats_progress.add_failure(f"RD - {e.error}")
         except FailedLoginFailure:
