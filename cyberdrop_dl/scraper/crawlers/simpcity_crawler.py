@@ -73,24 +73,17 @@ class SimpCityCrawler(Crawler):
 
         if not self.logged_in and self.login_attempts == 0:
             login_url = self.primary_base_domain / "login"
+            host_cookies = self.client.client_manager.cookies._cookies.get((self.primary_base_domain.host,""), {})
+            session_cookie = host_cookies.get('xf_user').value if 'xf_user' in host_cookies else None
+            if not session_cookie:
+                session_cookie = self.manager.config_manager.authentication_data['Forums'].get('simpcity_xf_user_cookie')
+
             username = self.manager.config_manager.authentication_data['Forums']['simpcity_username']
             password = self.manager.config_manager.authentication_data['Forums']['simpcity_password']
             wait_time = 5
-            
-            try:
-                ddg1 = self.manager.config_manager.authentication_data['Forums']['simpcity_ddg_cookie_1']
-                ddg2 = self.manager.config_manager.authentication_data['Forums']['simpcity_ddg_cookie_2']
-                ddg5 = self.manager.config_manager.authentication_data['Forums']['simpcity_ddg_cookie_5']
-                ddg_id = self.manager.config_manager.authentication_data['Forums']['simpcity_ddg_id']
-                ddg_mark = self.manager.config_manager.authentication_data['Forums']['simpcity_ddg_mark']
-                self.manager.client_manager.cookies.update_cookies({"__ddg1_": ddg1, "__ddg2_": ddg2, "__ddg5_": ddg5, "__ddgid_": ddg_id, "__ddgmark_": ddg_mark}, response_url=URL("https://" + login_url.host))
-            except KeyError:
-                await log("SimpCity DDOS-Guard cookies not found. Skipping SimpCity.", 40)
-                return
 
-            if username and password:
-                self.login_attempts += 1
-                await self.forum_login(login_url, None, username, password, wait_time)
+            self.login_attempts += 1
+            await self.forum_login(login_url, session_cookie, username, password, wait_time)
 
         if not self.logged_in and self.login_attempts == 1:
             await log("SimpCity login failed. Scraping without an account.", 40)
@@ -114,6 +107,7 @@ class SimpCityCrawler(Crawler):
 
         current_post_number = 0
         while True:
+            thread_url = scrape_item.url if current_post_number == 0 else thread_url
             async with self.request_limiter:
                 soup = await self.client.get_BS4(self.domain, thread_url)
 
