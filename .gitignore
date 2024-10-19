@@ -7,13 +7,6 @@ cyberdrop_dl_debug.log
 
 # Python cache
 __pycache__
-# venv
-.venv
-venv
-# vscode
-.vscode
-# pycharm
-.idea
 
-# Compiled package
-/dist/
+.venv
+.vscode

@@ -16,6 +16,7 @@ from aiohttp import ClientSession
 from cyberdrop_dl.clients.errors import DownloadFailure, InvalidContentTypeFailure
 from cyberdrop_dl.utils.utilities import FILE_FORMATS, log
 
+
 if TYPE_CHECKING:
     from typing import Callable, Coroutine, Any
 
