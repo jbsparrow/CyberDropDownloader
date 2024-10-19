@@ -42,7 +42,11 @@ class ImgKiwiCrawler(Crawler):
         async with self.request_limiter:
             soup = await self.client.get_BS4(self.domain, scrape_item.url)
 
-        title = await self.create_title(soup.select_one("a[data-text=album-name]").get_text(), scrape_item.url.parts[2], None)
+        scrape_item.part_of_album = True
+        scrape_item.album_id = scrape_item.url.parts[2]
+
+        title = await self.create_title(soup.select_one("a[data-text=album-name]").get_text(), scrape_item.album_id ,
+                                        None)
         link_next = URL(soup.select_one("a[id=list-most-recent-link]").get("href"))
 
         while True:
@@ -51,7 +55,7 @@ class ImgKiwiCrawler(Crawler):
             links = soup.select("a[href*=image]")
             for link in links:
                 link = URL(link.get('href'))
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True)
+                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent = scrape_item.url)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
             link_next = soup.select_one('a[data-pagination=next]')

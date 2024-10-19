@@ -45,12 +45,14 @@ class PostImgCrawler(Crawler):
             async with self.request_limiter:
                 JSON_Resp = await self.client.post_data(self.domain, self.api_address, data=data)
 
-            title = await self.create_title(scrape_item.url.raw_name, scrape_item.url.parts[2], None)
+            scrape_item.part_of_album = True
+            scrape_item.album_id = scrape_item.url.parts[2]
+            title = await self.create_title(scrape_item.url.raw_name, scrape_item.album_id , None)
 
             for image in JSON_Resp['images']:
                 link = URL(image[4])
                 filename, ext = image[2], image[3]
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True)
+                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent = scrape_item.url)
                 await self.handle_file(link, new_scrape_item, filename, ext)
 
             if not JSON_Resp['has_page_next']:

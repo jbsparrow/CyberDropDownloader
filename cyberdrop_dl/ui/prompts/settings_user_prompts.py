@@ -99,35 +99,35 @@ def edit_download_options_prompt(manager: Manager, config: Dict) -> None:
         message="Select the download options you want to enable:",
         choices=[
             Choice(value="block_download_sub_folders",
-                   name="Block Download Sub Folders",
-                   enabled=config["Download_Options"]["block_download_sub_folders"]),
+                name="Block Download Sub Folders",
+                enabled=config["Download_Options"]["block_download_sub_folders"]),
             Choice(value="disable_download_attempt_limit",
-                   name="Disable Download Attempt Limit",
-                   enabled=config["Download_Options"]["disable_download_attempt_limit"]),
+                name="Disable Download Attempt Limit",
+                enabled=config["Download_Options"]["disable_download_attempt_limit"]),
             Choice(value="disable_file_timestamps",
-                   name="Disable File Timestamps Editing",
-                   enabled=config["Download_Options"]["disable_file_timestamps"]),
+                name="Disable File Timestamps Editing",
+                enabled=config["Download_Options"]["disable_file_timestamps"]),
             Choice(value="include_album_id_in_folder_name",
-                   name="Include Album ID In Folder Name",
-                   enabled=config["Download_Options"]["include_album_id_in_folder_name"]),
+                name="Include Album ID In Folder Name",
+                enabled=config["Download_Options"]["include_album_id_in_folder_name"]),
             Choice(value="include_thread_id_in_folder_name",
-                   name="Include Thread ID In Folder Name",
-                   enabled=config["Download_Options"]["include_album_id_in_folder_name"]),
+                name="Include Thread ID In Folder Name",
+                enabled=config["Download_Options"]["include_album_id_in_folder_name"]),
             Choice(value="remove_domains_from_folder_names",
-                   name="Remove Domains From Folder Names",
-                   enabled=config["Download_Options"]["remove_domains_from_folder_names"]),
+                name="Remove Domains From Folder Names",
+                enabled=config["Download_Options"]["remove_domains_from_folder_names"]),
             Choice(value="remove_generated_id_from_filenames",
-                   name="Remove Generated ID From Filenames",
-                   enabled=config["Download_Options"]["remove_generated_id_from_filenames"]),
+                name="Remove Generated ID From Filenames",
+                enabled=config["Download_Options"]["remove_generated_id_from_filenames"]),
             Choice(value="scrape_single_forum_post",
-                   name="Scrape Single Forum Post",
-                   enabled=config["Download_Options"]["scrape_single_forum_post"]),
+                name="Scrape Single Forum Post",
+                enabled=config["Download_Options"]["scrape_single_forum_post"]),
             Choice(value="separate_posts",
-                   name="Separate Posts Into Folders",
-                   enabled=config["Download_Options"]["separate_posts"]),
+                name="Separate Posts Into Folders",
+                enabled=config["Download_Options"]["separate_posts"]),
             Choice(value="skip_download_mark_completed",
-                   name="Skip Download and Mark it as Completed",
-                   enabled=config["Download_Options"]["skip_download_mark_completed"]),
+                name="Skip Download and Mark it as Completed",
+                enabled=config["Download_Options"]["skip_download_mark_completed"]),
         ], long_instruction="ARROW KEYS: Navigate | TAB: Select | ENTER: Confirm",
         vi_mode=manager.vi_mode,
     ).execute()
@@ -200,6 +200,11 @@ def edit_log_file_naming_path_prompt(manager: Manager, config: Dict) -> None:
         validate=EmptyInputValidator("Input should not be empty"),
         vi_mode=manager.vi_mode,
     ).execute()
+    webhook_url = inquirer.text(
+        message="Enter the Discord webhook url:",
+        default=config['Logs']['webhook_url'],
+        vi_mode=manager.vi_mode,
+    ).execute()
 
     config['Logs']['log_folder'] = Path(log_folder)
     config['Logs']['main_log_filename'] = main_log_filename
@@ -207,6 +212,7 @@ def edit_log_file_naming_path_prompt(manager: Manager, config: Dict) -> None:
     config['Logs']['unsupported_urls_filename'] = unsupported_urls_filename
     config['Logs']['download_error_urls_filename'] = download_error_urls_filename
     config['Logs']['scrape_error_urls_filename'] = scrape_error_urls_filename
+    config['Logs']['webhook_url'] = webhook_url
 
 
 def edit_file_size_limits_prompt(manager: Manager, config: Dict) -> None:
@@ -272,20 +278,20 @@ def edit_ignore_options_prompt(manager: Manager, config: Dict) -> None:
         message="Select the ignore options you want to enable:",
         choices=[
             Choice(value="exclude_videos",
-                   name="Don't download videos files",
-                   enabled=config["Ignore_Options"]["exclude_videos"]),
+                name="Don't download videos files",
+                enabled=config["Ignore_Options"]["exclude_videos"]),
             Choice(value="exclude_images",
-                   name="Don't download images files",
-                   enabled=config["Ignore_Options"]["exclude_images"]),
+                name="Don't download images files",
+                enabled=config["Ignore_Options"]["exclude_images"]),
             Choice(value="exclude_audio",
-                   name="Don't download audio files",
-                   enabled=config["Ignore_Options"]["exclude_audio"]),
+                name="Don't download audio files",
+                enabled=config["Ignore_Options"]["exclude_audio"]),
             Choice(value="exclude_other",
-                   name="Don't download other files",
-                   enabled=config["Ignore_Options"]["exclude_other"]),
+                name="Don't download other files",
+                enabled=config["Ignore_Options"]["exclude_other"]),
             Choice(value="ignore_coomer_ads",
-                   name="Ignore coomer ads when scraping",
-                   enabled=config["Ignore_Options"]["ignore_coomer_ads"]),
+                name="Ignore coomer ads when scraping",
+                enabled=config["Ignore_Options"]["ignore_coomer_ads"]),
         ], long_instruction="ARROW KEYS: Move | TAB: Select | ENTER: Confirm",
         vi_mode=manager.vi_mode,
     ).execute()
@@ -331,23 +337,23 @@ def edit_runtime_options_prompt(manager: Manager, config: Dict) -> None:
         message="Select the runtime options you want to enable:",
         choices=[
             Choice(value="ignore_history",
-                   name="Ignore the history (previously downloaded files)",
-                   enabled=config["Runtime_Options"]["ignore_history"]),
+                name="Ignore the history (previously downloaded files)",
+                enabled=config["Runtime_Options"]["ignore_history"]),
             Choice(value="skip_check_for_partial_files",
-                   name="Skip checking for partial files in the download folder",
-                   enabled=config["Runtime_Options"]["skip_check_for_partial_files"]),
+                name="Skip checking for partial files in the download folder",
+                enabled=config["Runtime_Options"]["skip_check_for_partial_files"]),
             Choice(value="skip_check_for_empty_folders",
-                   name="Skip checking for empty folders in the download folder",
-                   enabled=config["Runtime_Options"]["skip_check_for_empty_folders"]),
+                name="Skip checking for empty folders in the download folder",
+                enabled=config["Runtime_Options"]["skip_check_for_empty_folders"]),
             Choice(value="delete_partial_files",
-                   name="Delete partial files in the download folder",
-                   enabled=config["Runtime_Options"]["delete_partial_files"]),
+                name="Delete partial files in the download folder",
+                enabled=config["Runtime_Options"]["delete_partial_files"]),
             Choice(value="send_unsupported_to_jdownloader",
-                   name="Send unsupported urls to JDownloader to download",
-                   enabled=config["Runtime_Options"]["send_unsupported_to_jdownloader"]),
+                name="Send unsupported urls to JDownloader to download",
+                enabled=config["Runtime_Options"]["send_unsupported_to_jdownloader"]),
             Choice(value="update_last_forum_post",
-                   name="Update the last forum post after scraping",
-                   enabled=config["Runtime_Options"]["update_last_forum_post"]),
+                name="Update the last forum post after scraping",
+                enabled=config["Runtime_Options"]["update_last_forum_post"]),
         ], long_instruction="ARROW KEYS: Move | TAB: Select | ENTER: Confirm",
         vi_mode=manager.vi_mode,
     ).execute()
@@ -360,6 +366,14 @@ def edit_runtime_options_prompt(manager: Manager, config: Dict) -> None:
         vi_mode=manager.vi_mode,
     ).execute()
 
+    console_log_level = inquirer.number(
+        message="Enter the log level for console output:",
+        default=int(config['Runtime_Options']['console_log_level']),
+        validate=NumberValidator(),
+        long_instruction="100 is the default, and reserved for disabling (uses pythons logging numerical levels)",
+        vi_mode=manager.vi_mode,
+    ).execute()
+
     for key in config["Runtime_Options"]:
         config["Runtime_Options"][key] = False
 
@@ -367,6 +381,7 @@ def edit_runtime_options_prompt(manager: Manager, config: Dict) -> None:
         config["Runtime_Options"][key] = True
 
     config['Runtime_Options']['log_level'] = int(log_level)
+    config['Runtime_Options']['console_log_level'] = int(console_log_level)
 
 
 def edit_sort_options_prompt(manager: Manager, config: Dict) -> None:
@@ -374,12 +389,19 @@ def edit_sort_options_prompt(manager: Manager, config: Dict) -> None:
     console.clear()
     console.print("Editing Sort Options")
     config["Sorting"]["sort_downloads"] = False
-    sort_downloads = inquirer.confirm(message="Do you want Cyberdrop-DL to sort files for you?", vi_mode=manager.vi_mode).execute()
+    sort_downloads = inquirer.confirm(message="Do you want Cyberdrop-DL to sort files for you?",
+                                    vi_mode=manager.vi_mode).execute()
     if sort_downloads:
         config["Sorting"]["sort_downloads"] = True
         sort_folder = inquirer.filepath(
             message="Enter the folder you want to sort files into:",
             default=str(config['Sorting']['sort_folder']),
+            vi_mode=manager.vi_mode,
+        ).execute()
+
+        scan_folder = inquirer.filepath(
+            message="Enter the folder you want to scan for files",
+            default=str(config['Sorting']['scan_folder'] or config['Files']['download_folder']),
             validate=PathValidator(is_dir=True, message="Input is not a directory"),
             vi_mode=manager.vi_mode,
         ).execute()
@@ -415,6 +437,7 @@ def edit_sort_options_prompt(manager: Manager, config: Dict) -> None:
         ).execute()
 
         config['Sorting']['sort_folder'] = Path(sort_folder)
+        config['Sorting']['scan_folder'] = Path(scan_folder) if bool(scan_folder) else None
         config['Sorting']['sort_incremementer_format'] = sort_incremementer_format
         config['Sorting']['sorted_audio'] = sorted_audio
         config['Sorting']['sorted_video'] = sorted_video

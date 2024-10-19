@@ -4,7 +4,8 @@ from pathlib import Path
 from InquirerPy import inquirer
 from rich.console import Console
 
-console = Console()    
+console = Console()
+
 
 def edit_urls_prompt(URLs_File: Path, vi_mode: bool, fix_strings=True) -> None:
     """Edit the URLs file"""

@@ -47,19 +47,23 @@ class ImgurCrawler(Crawler):
         await self.check_imgur_credits()
 
         album_id = scrape_item.url.parts[-1]
+        scrape_item.album_id = album_id 
+        scrape_item.part_of_album = True
 
         async with self.request_limiter:
-            JSON_Obj = await self.client.get_json(self.domain, self.imgur_api / f"album/{album_id}", headers_inc=self.headers)
+            JSON_Obj = await self.client.get_json(self.domain, self.imgur_api / f"album/{album_id}",
+                                                headers_inc=self.headers)
         title_part = JSON_Obj["data"].get("title", album_id)
         title = await self.create_title(title_part, scrape_item.url.parts[2], None)
 
         async with self.request_limiter:
-            JSON_Obj = await self.client.get_json(self.domain, self.imgur_api / f"album/{album_id}/images", headers_inc=self.headers)
+            JSON_Obj = await self.client.get_json(self.domain, self.imgur_api / f"album/{album_id}/images",
+                                                headers_inc=self.headers)
 
         for image in JSON_Obj["data"]:
             link = URL(image["link"])
             date = image["datetime"]
-            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, date)
+            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, date, add_parent = scrape_item.url)
             await self.handle_direct(new_scrape_item)
 
     @error_handling_wrapper
@@ -72,7 +76,8 @@ class ImgurCrawler(Crawler):
 
         image_id = scrape_item.url.parts[-1]
         async with self.request_limiter:
-            JSON_Obj = await self.client.get_json(self.domain, self.imgur_api / f"image/{image_id}", headers_inc=self.headers)
+            JSON_Obj = await self.client.get_json(self.domain, self.imgur_api / f"image/{image_id}",
+                                                headers_inc=self.headers)
 
         date = JSON_Obj["data"]["datetime"]
         link = URL(JSON_Obj["data"]["link"])

@@ -6,8 +6,8 @@ from InquirerPy import inquirer
 from InquirerPy.base.control import Choice
 from rich.console import Console
 
-from cyberdrop_dl.utils.args.browser_cookie_extraction import get_forum_cookies
 from cyberdrop_dl.managers.manager import Manager
+from cyberdrop_dl.utils.args.browser_cookie_extraction import get_forum_cookies
 
 if TYPE_CHECKING:
     from typing import Dict
@@ -68,7 +68,7 @@ def edit_authentication_values_prompt(manager: Manager) -> None:
                 message="Enter the Imgur Client ID:",
                 default=auth["Imgur"]["imgur_client_id"],
                 long_instruction="You can create an app and get your client ID "
-                                 "from https://imgur.com/account/settings/apps",
+                                "from https://imgur.com/account/settings/apps",
                 vi_mode=manager.vi_mode,
             ).execute()
             auth["Imgur"]["imgur_client_id"] = imgur_client_id
@@ -224,7 +224,8 @@ def edit_forum_authentication_values_prompt(manager: Manager) -> None:
             manager.config_manager.authentication_data["Forums"]["leakedmodels_username"] = leakedmodels_username
             manager.config_manager.authentication_data["Forums"]["nudostar_username"] = nudostar_username
             manager.config_manager.authentication_data["Forums"]["simpcity_username"] = simpcity_username
-            manager.config_manager.authentication_data["Forums"]["socialmediagirls_username"] = socialmediagirls_username
+            manager.config_manager.authentication_data["Forums"][
+                "socialmediagirls_username"] = socialmediagirls_username
             manager.config_manager.authentication_data["Forums"]["xbunker_username"] = xbunker_username
 
             manager.config_manager.authentication_data["Forums"]["celebforum_password"] = celebforum_password
@@ -232,7 +233,8 @@ def edit_forum_authentication_values_prompt(manager: Manager) -> None:
             manager.config_manager.authentication_data["Forums"]["leakedmodels_password"] = leakedmodels_password
             manager.config_manager.authentication_data["Forums"]["nudostar_password"] = nudostar_password
             manager.config_manager.authentication_data["Forums"]["simpcity_password"] = simpcity_password
-            manager.config_manager.authentication_data["Forums"]["socialmediagirls_password"] = socialmediagirls_password
+            manager.config_manager.authentication_data["Forums"][
+                "socialmediagirls_password"] = socialmediagirls_password
             manager.config_manager.authentication_data["Forums"]["xbunker_password"] = xbunker_password
             return
         elif action == 3:

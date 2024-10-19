@@ -47,7 +47,9 @@ class RedGifsCrawler(Crawler):
         total_pages = 1
         while page <= total_pages:
             async with self.request_limiter:
-                JSON_Resp = await self.client.get_json(self.domain, (self.redgifs_api / "v2/users" / user_id / "search").with_query(f"order=new&count=40&page={page}"), headers_inc=self.headers)
+                JSON_Resp = await self.client.get_json(self.domain,
+                                                       (self.redgifs_api / "v2/users" / user_id / "search").with_query(
+                                                           f"order=new&count=40&page={page}"), headers_inc=self.headers)
             total_pages = JSON_Resp["pages"]
             gifs = JSON_Resp["gifs"]
             for gif in gifs:
@@ -61,7 +63,7 @@ class RedGifsCrawler(Crawler):
                     link = URL(links["sd"])
 
                 filename, ext = await get_filename_and_ext(link.name)
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, date)
+                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, date,add_parent = scrape_item.url)
                 await self.handle_file(link, new_scrape_item, filename, ext)
             page += 1
 
@@ -71,7 +73,8 @@ class RedGifsCrawler(Crawler):
         post_id = scrape_item.url.parts[-1].split(".")[0]
 
         async with self.request_limiter:
-            JSON_Resp = await self.client.get_json(self.domain, self.redgifs_api / "v2/gifs" / post_id, headers_inc=self.headers)
+            JSON_Resp = await self.client.get_json(self.domain, self.redgifs_api / "v2/gifs" / post_id,
+                                                headers_inc=self.headers)
 
         title_part = JSON_Resp["gif"].get("title", "Loose Files")
         title = await self.create_title(title_part, None, None)
@@ -81,7 +84,7 @@ class RedGifsCrawler(Crawler):
         link = URL(links["hd"] if "hd" in links else links["sd"])
 
         filename, ext = await get_filename_and_ext(link.name)
-        new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, date)
+        new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, date, add_parent = scrape_item.url)
         await self.handle_file(link, new_scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

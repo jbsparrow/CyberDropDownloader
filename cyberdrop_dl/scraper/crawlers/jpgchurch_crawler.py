@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 class JPGChurchCrawler(Crawler):
     def __init__(self, manager: Manager):
         super().__init__(manager, "jpg.church", "JPGChurch")
-        self.primary_base_domain = URL("https://jpg4.su")
+        self.primary_base_domain = URL("https://jpg5.su")
         self.request_limiter = AsyncLimiter(10, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -56,7 +56,7 @@ class JPGChurchCrawler(Crawler):
             links = soup.select("a[href*=img]")
             for link in links:
                 link = URL(link.get('href'))
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True)
+                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent = scrape_item.url)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
             link_next = soup.select_one('a[data-pagination=next]')
@@ -74,11 +74,14 @@ class JPGChurchCrawler(Crawler):
         """Scrapes an album"""
         album_id = scrape_item.url.parts[2]
         results = await self.get_album_results(album_id)
-        
+        scrape_item.album_id = album_id 
+        scrape_item.part_of_album = True
+
         async with self.request_limiter:
             soup = await self.client.get_BS4(self.domain, scrape_item.url / "sub")
 
-        title = await self.create_title(soup.select_one("a[data-text=album-name]").get_text(), scrape_item.url.parts[2], None)
+        title = await self.create_title(soup.select_one("a[data-text=album-name]").get_text(), scrape_item.url.parts[2],
+                                        None)
         albums = soup.select("a[class='image-container --media']")
         for album in albums:
             sub_album_link = URL(album.get('href'))
@@ -95,7 +98,7 @@ class JPGChurchCrawler(Crawler):
             links = soup.select("a[href*=img] img")
             for link in links:
                 link = URL(link.get('src'))
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, album_id)
+                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, album_id, add_parent = scrape_item.url)
                 if not await self.check_album_results(link, results):
                     await self.handle_direct_link(new_scrape_item)
 
@@ -145,7 +148,7 @@ class JPGChurchCrawler(Crawler):
 
     async def check_direct_link(self, url: URL) -> bool:
         """Determines if the url is a direct link or not"""
-        cdn_possibilities = r"^(?:(jpg.church\/images\/...)|(simp..jpg.church)|(jpg.fish\/images\/...)|(simp..jpg.fish)|(jpg.fishing\/images\/...)|(simp..jpg.fishing)|(simp..host.church))"
+        cdn_possibilities = r"^(?:(jpg.church\/images\/...)|(simp..jpg.church)|(jpg.fish\/images\/...)|(simp..jpg.fish)|(jpg.fishing\/images\/...)|(simp..jpg.fishing)|(simp..host.church)|(simp..jpg..su))"
         if not re.match(cdn_possibilities, url.host):
             return False
         return True

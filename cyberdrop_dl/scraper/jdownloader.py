@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from dataclasses import field
 from typing import TYPE_CHECKING
 
@@ -15,6 +16,7 @@ if TYPE_CHECKING:
 
 class JDownloader:
     """Class that handles connecting and passing links to JDownloader"""
+
     def __init__(self, manager: Manager):
         self.enabled = manager.config_manager.settings_data['Runtime_Options']['send_unsupported_to_jdownloader']
         self.jdownloader_device = manager.config_manager.authentication_data['JDownloader']['jdownloader_device']
@@ -36,6 +38,12 @@ class JDownloader:
             await log("Failed JDownloader setup", 40)
             await log(e.message, 40)
             self.enabled = False
+            time.sleep(20)
+        except myjdapi.MYJDDeviceNotFoundException as e:
+            await log("Failed JDownloader setup", 40)
+            await log(str(e), 40)
+            self.enabled = False
+            time.sleep(20)
 
     async def direct_unsupported_to_jdownloader(self, url: URL, title: str) -> None:
         """Sends links to JDownloader"""
@@ -48,7 +56,7 @@ class JDownloader:
                 "packageName": title if title else "Cyberdrop-DL",
                 "destinationFolder": str(self.download_directory.absolute()),
                 "overwritePackagizerRules": True
-                }])
+            }])
 
         except (JDownloaderFailure, AssertionError) as e:
             await log(f"Failed to send {url} to JDownloader", 40)

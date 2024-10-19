@@ -55,7 +55,8 @@ class LeakedModelsCrawler(Crawler):
         if "threads" in scrape_item.url.parts:
             if not self.logged_in:
                 login_url = self.primary_base_domain / "forum" / "login"
-                session_cookie = self.manager.config_manager.authentication_data['Forums']['leakedmodels_xf_user_cookie']
+                session_cookie = self.manager.config_manager.authentication_data['Forums'][
+                    'leakedmodels_xf_user_cookie']
                 username = self.manager.config_manager.authentication_data['Forums']['leakedmodels_username']
                 password = self.manager.config_manager.authentication_data['Forums']['leakedmodels_password']
                 wait_time = 5
@@ -68,7 +69,7 @@ class LeakedModelsCrawler(Crawler):
                 await log("LeakedModels login failed. Skipping.", 40)
         else:
             await log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
-            await self.manager.log_manager.write_unsupported_urls_log(scrape_item.url)
+            await self.manager.log_manager.write_unsupported_urls_log(scrape_item.url, scrape_item.parents[0] if scrape_item.parents else None)
 
         await self.scraping_progress.remove_task(task_id)
 
@@ -99,12 +100,14 @@ class LeakedModelsCrawler(Crawler):
 
             posts = soup.select(self.posts_selector)
             for post in posts:
-                current_post_number = int(post.select_one(self.posts_number_selector).get(self.posts_number_attribute).split('/')[-1].split('post-')[-1])
+                current_post_number = int(
+                    post.select_one(self.posts_number_selector).get(self.posts_number_attribute).split('/')[-1].split(
+                        'post-')[-1])
                 scrape_post, continue_scraping = await self.check_post_number(post_number, current_post_number)
 
                 if scrape_post:
                     date = int(post.select_one(self.post_date_selector).get(self.post_date_attribute))
-                    new_scrape_item = await self.create_scrape_item(scrape_item, thread_url, title, False, None, date)
+                    new_scrape_item = await self.create_scrape_item(scrape_item, thread_url, title, False, None, date, add_parent = scrape_item.url.joinpath(f"post-{current_post_number}"))
 
                     for elem in post.find_all(self.quotes_selector):
                         elem.decompose()

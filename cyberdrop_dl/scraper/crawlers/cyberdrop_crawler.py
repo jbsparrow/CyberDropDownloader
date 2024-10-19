@@ -42,7 +42,10 @@ class CyberdropCrawler(Crawler):
         async with self.request_limiter:
             soup = await self.client.get_BS4(self.domain, scrape_item.url)
 
-        title = await self.create_title(soup.select_one("h1[id=title]").text, scrape_item.url.parts[2], None)
+        scrape_item.album_id = scrape_item.url.parts[2]
+        scrape_item.part_of_album = True
+
+        title = await self.create_title(soup.select_one("h1[id=title]").text, scrape_item.album_id , None)
         date = await self.parse_datetime(soup.select("p[class=title]")[-1].text)
 
         links = soup.select("div[class*=image-container] a[class=image]")
@@ -52,7 +55,7 @@ class CyberdropCrawler(Crawler):
                 link = self.primary_base_url.with_path(link)
             link = URL(link)
 
-            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, None, date)
+            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, None, date, add_parent = scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -62,13 +65,15 @@ class CyberdropCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            JSON_Resp = await self.client.get_json(self.domain, self.api_url / "file" / "info" / scrape_item.url.path[3:])
+            JSON_Resp = await self.client.get_json(self.domain,
+                                                self.api_url / "file" / "info" / scrape_item.url.path[3:])
 
         filename, ext = await get_filename_and_ext(JSON_Resp["name"])
-        
+
         async with self.request_limiter:
-            JSON_Resp = await self.client.get_json(self.domain, self.api_url / "file" / "auth" / scrape_item.url.path[3:])
-        
+            JSON_Resp = await self.client.get_json(self.domain,
+                                                self.api_url / "file" / "auth" / scrape_item.url.path[3:])
+
         link = URL(JSON_Resp['url'])
         await self.handle_file(link, scrape_item, filename, ext)
 
@@ -78,4 +83,3 @@ class CyberdropCrawler(Crawler):
         """Parses a datetime string into a unix timestamp"""
         date = datetime.datetime.strptime(date, "%d.%m.%Y")
         return calendar.timegm(date.timetuple())
-

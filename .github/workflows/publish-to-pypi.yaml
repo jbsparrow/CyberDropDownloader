@@ -2,13 +2,18 @@ name: Publish To PyPi
 
 on:
   push:
+    branches:
+      - master
     tags:
       - '*.*.*'
 
 jobs:
   release:
-    name: Release
     runs-on: ubuntu-latest
+    environment: release
+    permissions:
+      id-token: write  # Required for OIDC authentication
+      contents: write
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -22,18 +27,66 @@ jobs:
         run: |
           curl -sSL https://install.python-poetry.org | python - -y
 
-      - name: Update PATH
-        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+      - name: Check Version
+        id: check-version
+        run: |
+          version=$(poetry version --short)
+          if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "version=$version" >> $GITHUB_ENV
+          else
+            echo "Not a valid version bump. Skipping tag creation."
+            exit 0
+          fi
+
+      - name: Check if Tag Exists
+        id: tag_exists
+        run: |
+          if git rev-parse "refs/tags/${{ env.version }}" >/dev/null 2>&1; then
+            echo "Tag ${{ env.version }} already exists."
+            echo "tag_exists=true" >> $GITHUB_ENV
+          else
+            echo "tag_exists=false" >> $GITHUB_ENV
+          fi
+      
+      - name: Create Tag
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/master' && env.tag_exists == 'false' }}
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git tag ${{ env.version }}
+          git push origin ${{ env.version }}
+
+      - name: Checkout Tag
+        if: ${{ github.ref == 'refs/heads/master' && env.version != '' }}
+        run: |
+          git fetch --tags
+          git checkout "refs/tags/${{ env.version }}"
+          echo "Checked out tag ${{ env.version }}"
 
       - name: Build project for distribution
         run: poetry build
 
-      - name: Check Version
-        id: check-version
+      - name: Mint API token
+        id: mint-token
         run: |
-          [[ "$(poetry version --short)" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || echo prerelease=true >> $GITHUB_OUTPUT
+          # retrieve the ambient OIDC token
+          resp=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=pypi")
+          oidc_token=$(jq -r '.value' <<< "${resp}")
 
-      - name: Publish to PyPI
+          # exchange the OIDC token for an API token
+          resp=$(curl -X POST https://pypi.org/_/oidc/mint-token -d "{\"token\": \"${oidc_token}\"}")
+          api_token=$(jq -r '.token' <<< "${resp}")
+
+          # mask the newly minted API token, so that we don't accidentally leak it
+          echo "::add-mask::${api_token}"
+
+          # see the next step in the workflow for an example of using this step output
+          echo "api-token=${api_token}" >> "${GITHUB_OUTPUT}"
+
+      - name: Publish to PyPI using minted token
         env:
-          POETRY_PYPI_TOKEN_PYPI: ${{ secrets.PYPI_TOKEN }}
-        run: poetry publish
+          POETRY_PYPI_TOKEN_PYPI: ${{ steps.mint-token.outputs.api-token }}
+        run: |
+          poetry config pypi-token.pypi ${{ steps.mint-token.outputs.api-token }}
+          poetry publish

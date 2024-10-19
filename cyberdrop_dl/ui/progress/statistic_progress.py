@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, Union
 
 from rich.console import Group
 from rich.panel import Panel
@@ -10,9 +10,9 @@ class DownloadStatsProgress:
 
     def __init__(self):
         self.progress = Progress("[progress.description]{task.description}",
-                                 BarColumn(bar_width=None),
-                                 "[progress.percentage]{task.percentage:>3.2f}%",
-                                 "{task.completed} of {task.total} Files")
+                                BarColumn(bar_width=None),
+                                "[progress.percentage]{task.percentage:>3.2f}%",
+                                "{task.completed} of {task.total} Files")
         self.progress_group = Group(self.progress)
 
         self.failure_types: Dict[str, TaskID] = {}
@@ -27,7 +27,7 @@ class DownloadStatsProgress:
         for key in self.failure_types:
             self.progress.update(self.failure_types[key], total=total)
 
-    async def add_failure(self, failure_type: [str, int]) -> None:
+    async def add_failure(self, failure_type: Union[str, int]) -> None:
         """Adds a failed file to the progress bar"""
         self.failed_files += 1
         if isinstance(failure_type, int):
@@ -36,7 +36,8 @@ class DownloadStatsProgress:
         if failure_type in self.failure_types:
             self.progress.advance(self.failure_types[failure_type], 1)
         else:
-            self.failure_types[failure_type] = self.progress.add_task(failure_type, total=self.failed_files, completed=1)
+            self.failure_types[failure_type] = self.progress.add_task(failure_type, total=self.failed_files,
+                                                                    completed=1)
         await self.update_total(self.failed_files)
 
     async def return_totals(self) -> Dict:
@@ -52,9 +53,9 @@ class ScrapeStatsProgress:
 
     def __init__(self):
         self.progress = Progress("[progress.description]{task.description}",
-                                 BarColumn(bar_width=None),
-                                 "[progress.percentage]{task.percentage:>3.2f}%",
-                                 "{task.completed} of {task.total} Files")
+                                BarColumn(bar_width=None),
+                                "[progress.percentage]{task.percentage:>3.2f}%",
+                                "{task.completed} of {task.total} Files")
         self.progress_group = Group(self.progress)
 
         self.failure_types: Dict[str, TaskID] = {}
@@ -69,7 +70,7 @@ class ScrapeStatsProgress:
         for key in self.failure_types:
             self.progress.update(self.failure_types[key], total=total)
 
-    async def add_failure(self, failure_type: [str, int]) -> None:
+    async def add_failure(self, failure_type: Union[str, int]) -> None:
         """Adds a failed site to the progress bar"""
         self.failed_files += 1
         if isinstance(failure_type, int):
@@ -78,7 +79,8 @@ class ScrapeStatsProgress:
         if failure_type in self.failure_types:
             self.progress.advance(self.failure_types[failure_type], 1)
         else:
-            self.failure_types[failure_type] = self.progress.add_task(failure_type, total=self.failed_files, completed=1)
+            self.failure_types[failure_type] = self.progress.add_task(failure_type, total=self.failed_files,
+                                                                    completed=1)
         await self.update_total(self.failed_files)
 
     async def return_totals(self) -> Dict:

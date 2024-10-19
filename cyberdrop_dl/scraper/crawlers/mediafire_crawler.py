@@ -44,11 +44,15 @@ class MediaFireCrawler(Crawler):
 
         title = await self.create_title(folder_details['folder_info']['name'], folder_key, None)
 
+        scrape_item.album_id = folder_key
+        scrape_item.part_of_album = True
+
         chunk = 1
         chunk_size = 100
         while True:
             try:
-                folder_contents = self.api.folder_get_content(folder_key=folder_key, content_type='files', chunk=chunk, chunk_size=chunk_size)
+                folder_contents = self.api.folder_get_content(folder_key=folder_key, content_type='files', chunk=chunk,
+                                                            chunk_size=chunk_size)
             except api.MediaFireConnectionError:
                 raise ScrapeFailure(500, "MediaFire connection closed")
             files = folder_contents['folder_content']['files']
@@ -56,7 +60,7 @@ class MediaFireCrawler(Crawler):
             for file in files:
                 date = await self.parse_datetime(file['created'])
                 link = URL(file['links']['normal_download'])
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, None, date)
+                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, None, date, add_parent = scrape_item.url)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
             if folder_contents["folder_content"]["more_chunks"] == "yes":
@@ -80,6 +84,7 @@ class MediaFireCrawler(Crawler):
         await self.handle_file(link, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
     async def parse_datetime(self, date: str) -> int:
         """Parses a datetime string into a unix timestamp"""
         date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")

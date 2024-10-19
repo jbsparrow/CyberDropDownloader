@@ -39,7 +39,10 @@ class XBunkrCrawler(Crawler):
         async with self.request_limiter:
             soup = await self.client.get_BS4(self.domain, scrape_item.url)
 
-        title = await self.create_title(soup.select_one("h1[id=title]").text, scrape_item.url.parts[2], None)
+        scrape_item.album_id = scrape_item.url.parts[2]
+        scrape_item.part_of_album = True
+
+        title = await self.create_title(soup.select_one("h1[id=title]").text, scrape_item.album_id , None)
 
         links = soup.select("a[class=image]")
         for link in links:
@@ -49,5 +52,5 @@ class XBunkrCrawler(Crawler):
             except NoExtensionFailure:
                 await log(f"Couldn't get extension for {str(link)}", 30)
                 continue
-            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True)
+            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent = scrape_item.url)
             await self.handle_file(link, new_scrape_item, filename, ext)

@@ -95,12 +95,14 @@ class CelebForumCrawler(Crawler):
 
             posts = soup.select(self.posts_selector)
             for post in posts:
-                current_post_number = int(post.select_one(self.posts_number_selector).get(self.posts_number_attribute).split('/')[-1].split('post-')[-1])
+                current_post_number = int(
+                    post.select_one(self.posts_number_selector).get(self.posts_number_attribute).split('/')[-1].split(
+                        'post-')[-1])
                 scrape_post, continue_scraping = await self.check_post_number(post_number, current_post_number)
 
                 if scrape_post:
                     date = int(post.select_one(self.post_date_selector).get(self.post_date_attribute))
-                    new_scrape_item = await self.create_scrape_item(scrape_item, thread_url, title, False, None, date)
+                    new_scrape_item = await self.create_scrape_item(scrape_item, thread_url, title, False, None, date, add_parent= thread_url.joinpath(f"post-{current_post_number}"))
 
                     for elem in post.find_all(self.quotes_selector):
                         elem.decompose()

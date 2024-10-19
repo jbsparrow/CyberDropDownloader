@@ -16,19 +16,20 @@ async def adjust_title(s: str, length: int = 40, placeholder: str = "...") -> st
 
 class FileProgress:
     """Class that manages the download progress of individual files"""
+
     def __init__(self, visible_tasks_limit: int, manager: 'Manager'):
         self.manager = manager
 
         self.progress = Progress(SpinnerColumn(),
-                                 "[progress.description]{task.description}",
-                                 BarColumn(bar_width=None),
-                                 "[progress.percentage]{task.percentage:>3.2f}%",
-                                 "━",
-                                 DownloadColumn(),
-                                 "━",
-                                 TransferSpeedColumn(),
-                                 "━",
-                                 TimeRemainingColumn())
+                                "[progress.description]{task.description}",
+                                BarColumn(bar_width=None),
+                                "[progress.percentage]{task.percentage:>3.2f}%",
+                                "━",
+                                DownloadColumn(),
+                                "━",
+                                TransferSpeedColumn(),
+                                "━",
+                                TimeRemainingColumn())
         self.overflow = Progress("[progress.description]{task.description}")
         self.queue = Progress("[progress.description]{task.description}")
         self.progress_group = Group(self.progress, self.overflow, self.queue)
@@ -38,8 +39,10 @@ class FileProgress:
         self.progress_str = "[{color}]{description}"
         self.overflow_str = "[{color}]... And {number} Other {type_str}"
         self.queue_str = "[{color}]... And {number} {type_str} In Download Queue"
-        self.overflow_task_id = self.overflow.add_task(self.overflow_str.format(color=self.color, number=0, type_str=self.type_str), visible=False)
-        self.queue_task_id = self.queue.add_task(self.queue_str.format(color=self.color, number=0, type_str=self.type_str), visible=False)
+        self.overflow_task_id = self.overflow.add_task(
+            self.overflow_str.format(color=self.color, number=0, type_str=self.type_str), visible=False)
+        self.queue_task_id = self.queue.add_task(
+            self.queue_str.format(color=self.color, number=0, type_str=self.type_str), visible=False)
 
         self.visible_tasks: List[TaskID] = []
         self.invisible_tasks: List[TaskID] = []
@@ -72,16 +75,22 @@ class FileProgress:
             self.progress.update(task_id, visible=True)
 
         if len(self.invisible_tasks) > 0:
-            self.overflow.update(self.overflow_task_id, description=self.overflow_str.format(color=self.color, number=len(self.invisible_tasks), type_str=self.type_str), visible=True)
+            self.overflow.update(self.overflow_task_id, description=self.overflow_str.format(color=self.color,
+                                                                                            number=len(
+                                                                                                self.invisible_tasks),
+                                                                                            type_str=self.type_str),
+                                visible=True)
         else:
             self.overflow.update(self.overflow_task_id, visible=False)
 
         queue_length = await self.get_queue_length()
         if queue_length > 0:
-            self.queue.update(self.queue_task_id, description=self.queue_str.format(color=self.color, number=queue_length, type_str=self.type_str), visible=True)
+            self.queue.update(self.queue_task_id,
+                            description=self.queue_str.format(color=self.color, number=queue_length,
+                                                                type_str=self.type_str), visible=True)
         else:
             self.queue.update(self.queue_task_id, visible=False)
-        
+
         if not passed:
             await self.manager.progress_manager.scraping_progress.redraw(True)
 
@@ -92,10 +101,12 @@ class FileProgress:
         description = await adjust_title(description)
 
         if len(self.visible_tasks) >= self.tasks_visibility_limit:
-            task_id = self.progress.add_task(self.progress_str.format(color=self.color, description=description), total=expected_size, visible=False)
+            task_id = self.progress.add_task(self.progress_str.format(color=self.color, description=description),
+                                            total=expected_size, visible=False)
             self.invisible_tasks.append(task_id)
         else:
-            task_id = self.progress.add_task(self.progress_str.format(color=self.color, description=description), total=expected_size)
+            task_id = self.progress.add_task(self.progress_str.format(color=self.color, description=description),
+                                            total=expected_size)
             self.visible_tasks.append(task_id)
         await self.redraw()
         return task_id
@@ -113,16 +124,6 @@ class FileProgress:
             raise ValueError("Task ID not found")
         await self.redraw()
 
-    async def mark_task_completed(self, task_id: TaskID) -> None:
-        """Marks the given task as completed"""
-        self.progress.update(task_id, visible=False)
-        if task_id in self.visible_tasks:
-            self.visible_tasks.remove(task_id)
-        elif task_id in self.invisible_tasks:
-            self.invisible_tasks.remove(task_id)
-        await self.redraw()
-        self.completed_tasks.append(task_id)
-
     async def advance_file(self, task_id: TaskID, amount: int) -> None:
         """Advances the progress of the given task by the given amount"""
         if task_id in self.uninitiated_tasks:
@@ -130,15 +131,3 @@ class FileProgress:
             self.invisible_tasks.append(task_id)
             await self.redraw()
         self.progress.advance(task_id, amount)
-
-    async def update_file_length(self, task_id: TaskID, total: int) -> None:
-        """Updates the total number of bytes to be downloaded for the given task"""
-        if task_id in self.invisible_tasks:
-            self.progress.update(task_id, total=total, visible=False)
-        elif task_id in self.visible_tasks:
-            self.progress.update(task_id, total=total, visible=True)
-        elif task_id in self.uninitiated_tasks:
-            self.progress.update(task_id, total=total, visible=False)
-            self.uninitiated_tasks.remove(task_id)
-            self.invisible_tasks.append(task_id)
-            await self.redraw()

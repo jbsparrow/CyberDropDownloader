@@ -48,6 +48,8 @@ class CyberfileCrawler(Crawler):
         script_func = script_func.split('loadImages(')[-1]
         script_func = script_func.split(';')[0]
         nodeId = int(script_func.split(',')[1].replace("'", ""))
+        scrape_item.album_id = scrape_item.url.parts[2]
+        scrape_item.part_of_album = True
 
         page = 1
         while True:
@@ -55,8 +57,9 @@ class CyberfileCrawler(Crawler):
             async with self.request_limiter:
                 ajax_dict = await self.client.post_data(self.domain, self.api_files, data=data)
                 ajax_soup = BeautifulSoup(ajax_dict['html'].replace("\\", ""), 'html.parser')
-            title = await self.create_title(ajax_dict['page_title'], scrape_item.url.parts[2], None)
-            num_pages = int(ajax_soup.select("a[onclick*=loadImages]")[-1].get('onclick').split(',')[2].split(")")[0].strip())
+            title = await self.create_title(ajax_dict['page_title'], scrape_item.album_id , None)
+            num_pages = int(
+                ajax_soup.select("a[onclick*=loadImages]")[-1].get('onclick').split(',')[2].split(")")[0].strip())
 
             tile_listings = ajax_soup.select("div[class=fileListing] div[class*=fileItem]")
             for tile in tile_listings:
@@ -71,7 +74,7 @@ class CyberfileCrawler(Crawler):
                     await log(f"Couldn't find folder or file id for {scrape_item.url} element", 30)
                     continue
 
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True)
+                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent = scrape_item.url)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
             page += 1
@@ -89,7 +92,8 @@ class CyberfileCrawler(Crawler):
 
         page = 1
         while True:
-            data = {"pageType": "nonaccountshared", "nodeId": node_id, "pageStart": page, "perPage": 0, "filterOrderBy": ""}
+            data = {"pageType": "nonaccountshared", "nodeId": node_id, "pageStart": page, "perPage": 0,
+                    "filterOrderBy": ""}
             async with self.request_limiter:
                 ajax_dict = await self.client.post_data("cyberfile", self.api_files, data=data)
                 ajax_soup = BeautifulSoup(ajax_dict['html'].replace("\\", ""), 'html.parser')
@@ -110,7 +114,7 @@ class CyberfileCrawler(Crawler):
                     await log(f"Couldn't find folder or file id for {scrape_item.url} element", 30)
                     continue
 
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True)
+                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent = scrape_item.url)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
             page += 1
@@ -145,7 +149,7 @@ class CyberfileCrawler(Crawler):
         async with self.request_limiter:
             ajax_dict = await self.client.post_data(self.domain, self.api_details, data=data)
             ajax_soup = BeautifulSoup(ajax_dict['html'].replace("\\", ""), 'html.parser')
-            
+
         if "albumPasswordModel" in ajax_dict['html']:
             await log(f"Album is password protected: {scrape_item.url}", 30)
             raise PasswordProtected()

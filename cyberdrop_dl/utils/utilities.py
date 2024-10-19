@@ -8,13 +8,14 @@ import traceback
 from enum import IntEnum
 from functools import wraps
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 import rich
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import NoExtensionFailure, FailedLoginFailure, InvalidContentTypeFailure, \
     PasswordProtected
+from cyberdrop_dl.managers.console_manager import log as log_console
 
 if TYPE_CHECKING:
     from typing import Tuple
@@ -28,6 +29,13 @@ logger_debug = logging.getLogger("cyberdrop_dl_debug")
 MAX_NAME_LENGTHS = {"FILE": 95, "FOLDER": 60}
 
 DEBUG_VAR = False
+CONSOLE_DEBUG_VAR = False
+
+global LOG_OUTPUT_TEXT
+LOG_OUTPUT_TEXT = "```diff\n"
+
+RAR_MULTIPART_PATTERN = r'^part\d+'
+_7Z_FILE_EXTENSIONS = {"7z","tar","gz","bz2","zip"}
 
 FILE_FORMATS = {
     'Images': {
@@ -55,6 +63,7 @@ FILE_FORMATS = {
 
 def error_handling_wrapper(func):
     """Wrapper handles errors for url scraping"""
+
     @wraps(func)
     async def wrapper(self, *args, **kwargs):
         link = args[0] if isinstance(args[0], URL) else args[0].url
@@ -65,9 +74,10 @@ def error_handling_wrapper(func):
             await log(f"Scrape Failed: {link} (No File Extension)", 40)
             await self.manager.log_manager.write_scrape_error_log(link, " No File Extension")
             await self.manager.progress_manager.scrape_stats_progress.add_failure("No File Extension")
-        except PasswordProtected:
+        except PasswordProtected as e:
             await log(f"Scrape Failed: {link} (Password Protected)", 40)
-            await self.manager.log_manager.write_unsupported_urls_log(link)
+            parent_url = e.scrape_item.parents[0] if e.scrape_item.parents else None
+            await self.manager.log_manager.write_unsupported_urls_log(link,parent_url)
             await self.manager.progress_manager.scrape_stats_progress.add_failure("Password Protected")
         except FailedLoginFailure:
             await log(f"Scrape Failed: {link} (Failed Login)", 40)
@@ -95,28 +105,42 @@ def error_handling_wrapper(func):
                 await log(traceback.format_exc(), 40)
                 await self.manager.log_manager.write_scrape_error_log(link, " See Log for Details")
                 await self.manager.progress_manager.scrape_stats_progress.add_failure("Unknown")
+
     return wrapper
 
 
-async def log(message: [str, Exception], level: int) -> None:
+async def log(message: Union [str, Exception], level: int, sleep: int = None) -> None:
     """Simple logging function"""
     logger.log(level, message)
     if DEBUG_VAR:
         logger_debug.log(level, message)
+    log_console(level, message, sleep=sleep)
 
 
-async def log_debug(message: [str, Exception], level: int) -> None:
+async def log_debug(message: Union [str, Exception], level: int, sleep: int = None) -> None:
     """Simple logging function"""
     if DEBUG_VAR:
         logger_debug.log(level, message.encode('ascii', 'ignore').decode('ascii'))
 
 
+async def log_debug_console(message: Union [str, Exception], level: int, sleep: int = None):
+    if CONSOLE_DEBUG_VAR:
+        log_console(level, message.encode('ascii', 'ignore').decode('ascii'), sleep=sleep)
+
+
 async def log_with_color(message: str, style: str, level: int) -> None:
     """Simple logging function with color"""
+    global LOG_OUTPUT_TEXT
     logger.log(level, message)
     if DEBUG_VAR:
         logger_debug.log(level, message)
     rich.print(f"[{style}]{message}[/{style}]")
+    LOG_OUTPUT_TEXT += f"[{style}]{message}\n"
+
+
+async def get_log_output_text() -> str:
+    global LOG_OUTPUT_TEXT
+    return LOG_OUTPUT_TEXT + "```"
 
 
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -165,7 +189,8 @@ async def get_filename_and_ext(filename: str, forum: bool = False) -> Tuple[str,
     if len(filename_parts[-1]) > 5:
         raise NoExtensionFailure()
     ext = "." + filename_parts[-1].lower()
-    filename = filename_parts[0][:MAX_NAME_LENGTHS['FILE']] if len(filename_parts[0]) > MAX_NAME_LENGTHS['FILE'] else filename_parts[0]
+    filename = filename_parts[0][:MAX_NAME_LENGTHS['FILE']] if len(filename_parts[0]) > MAX_NAME_LENGTHS['FILE'] else \
+        filename_parts[0]
     filename = filename.strip()
     filename = filename.rstrip(".")
     filename = await sanitize(filename + ext)
@@ -186,6 +211,12 @@ async def get_download_path(manager: Manager, scrape_item: ScrapeItem, domain: s
     else:
         return download_dir / f"Loose Files ({domain})"
 
+async def _is_number(ext: str):
+    try:
+        int(ext.rsplit(".", 1)[-1])
+        return True
+    except ValueError:
+        return False
 
 async def remove_id(manager: Manager, filename: str, ext: str) -> Tuple[str, str]:
     """Removes the additional string some websites adds to the end of every filename"""
@@ -194,6 +225,13 @@ async def remove_id(manager: Manager, filename: str, ext: str) -> Tuple[str, str
         original_filename = filename
         filename = filename.rsplit(ext, 1)[0]
         filename = filename.rsplit("-", 1)[0]
+        tail = filename.rsplit("-", 1)[-1]
+        if re.match(RAR_MULTIPART_PATTERN, tail) and ext == ".rar" and "-" in filename:
+            filename , part = filename.rsplit("-", 1)
+            filename = f"{filename}.{part}"
+        elif await _is_number(ext) and tail in _7Z_FILE_EXTENSIONS and "-" in filename:
+            filename , _7z_ext = filename.rsplit("-", 1)
+            filename = f"{filename}.{_7z_ext}"
         if ext not in filename:
             filename = filename + ext
     return original_filename, filename
@@ -202,17 +240,19 @@ async def remove_id(manager: Manager, filename: str, ext: str) -> Tuple[str, str
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
 
-async def purge_dir(dirname: Path) -> None:
-    """Purges empty directories"""
-    deleted = []
-    dir_tree = list(os.walk(dirname, topdown=False))
+async def purge_dir_tree(dirname: Path) -> None:
+    """Purges empty files and directories"""
 
-    for tree_element in dir_tree:
-        sub_dir = tree_element[0]
-        dir_count = len(os.listdir(sub_dir))
-        if dir_count == 0:
-            deleted.append(sub_dir)
-    list(map(os.rmdir, deleted))
+    for file in dirname.rglob('*'):
+        if file.is_file() and file.stat().st_size == 0:
+            file.unlink()
+
+    for parent, dirs, _ in os.walk(dirname, topdown=False):
+        for child_dir in dirs:
+            try:
+                (Path(parent) / child_dir).rmdir()
+            except OSError:
+                pass #skip if folder is not empty
 
 
 async def check_partials_and_empty_folders(manager: Manager):
@@ -229,16 +269,17 @@ async def check_partials_and_empty_folders(manager: Manager):
             await log_with_color("There are partial downloads in the downloads folder", "yellow", 20)
         temp_downloads = any(Path(f).is_file() for f in await manager.db_manager.temp_table.get_temp_names())
         if temp_downloads:
-            await log_with_color("There are partial downloads from the previous run, please re-run the program.", "yellow", 20)
+            await log_with_color("There are partial downloads from the previous run, please re-run the program.",
+                                "yellow", 20)
 
     if not manager.config_manager.settings_data['Runtime_Options']['skip_check_for_empty_folders']:
         await log_with_color("Checking for empty folders...", "yellow", 20)
-        await purge_dir(manager.path_manager.download_dir)
+        await purge_dir_tree(manager.path_manager.download_dir)
         if isinstance(manager.path_manager.sorted_dir, Path):
-            await purge_dir(manager.path_manager.sorted_dir)
+            await purge_dir_tree(manager.path_manager.sorted_dir)
 
 
-async def check_latest_pypi():
+async def check_latest_pypi(log_to_console: bool = True) -> Tuple[str]:
     """Checks if the current version is the latest version"""
     from cyberdrop_dl import __version__ as current_version
     import json
@@ -249,8 +290,7 @@ async def check_latest_pypi():
     data = json.loads(contents)
     latest_version = data['info']['version']
 
-    if current_version.split(".")[0] > latest_version.split(".")[0]:
-        return
-
-    if current_version != latest_version:
+    if log_to_console and current_version != latest_version:
         await log_with_color(f"New version of cyberdrop-dl available: {latest_version}", "bold_red", 30)
+
+    return current_version, latest_version
