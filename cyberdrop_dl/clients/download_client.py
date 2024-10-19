@@ -182,13 +182,8 @@ class DownloadClient:
         downloaded = await self._download(domain, manager, media_item, save_content)
         if downloaded:
             media_item.partial_file.rename(media_item.complete_file)
-<<<<<<< HEAD
-            await self.mark_completed(media_item,domain)
-            await self.process_hash(media_item, domain)
-=======
             await self.process_completed(media_item, domain)
             await  self.handle_media_item_completion(media_item, downloaded=True)
->>>>>>> 839f98a54acb029a0090d269d5253929a5b0f38b
         return downloaded
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -364,15 +359,6 @@ class DownloadClient:
             if max_other_filesize and media.filesize > max_other_filesize:
                 return False
         return True
-<<<<<<< HEAD
-    async def process_hash(self, domain, media_item):
-        hash=Hasher().hash_file(media_item.complete_file)
-        await self.mark_hash(domain, media_item,hash)
-    async def mark_hash(self,domain, media_item,hash):
-        await self.manager.db_manager.history_table.mark_hash(domain, media_item,hash)
-    
-    
-=======
 
     @property
     def file_path(self) -> List[str]:
@@ -381,4 +367,3 @@ class DownloadClient:
     @file_path.setter
     def file_path(self, media_item: MediaItem):
         self._file_path = media_item.filename
->>>>>>> 839f98a54acb029a0090d269d5253929a5b0f38b

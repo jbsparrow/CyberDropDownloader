@@ -100,7 +100,7 @@ class HistoryTable:
                                     (domain, str(referer)))
         sql_file_check = await result.fetchone()
         return sql_file_check and sql_file_check[0] != 0
-    
+
     async def insert_incompleted(self, domain: str, media_item: MediaItem) -> None:
         """Inserts an uncompleted file into the database"""
         domain = await get_db_domain(domain)
@@ -125,10 +125,6 @@ class HistoryTable:
         """Mark a download as completed in the database"""
         domain = await get_db_domain(domain)
         url_path = await get_db_path(media_item.url, str(media_item.referer))
-<<<<<<< HEAD
-        await self.db_conn.execute("""UPDATE media SET completed = 1, completed_at = CURRENT_TIMESTAMP WHERE domain = ? and url_path = ?""",
-        (domain, url_path))
-=======
         await self.db_conn.execute(
             """UPDATE media SET completed = 1, completed_at = CURRENT_TIMESTAMP WHERE domain = ? and url_path = ?""",
             (domain, url_path))
@@ -141,16 +137,7 @@ class HistoryTable:
         file_size = pathlib.Path(media_item.complete_file).stat().st_size
         await self.db_conn.execute("""UPDATE media SET file_size=? WHERE domain = ? and url_path = ?""",
                                 (file_size, domain, url_path))
->>>>>>> 839f98a54acb029a0090d269d5253929a5b0f38b
         await self.db_conn.commit()
-    async def mark_hash(self, domain: str, media_item: MediaItem,hash:str):
-        """add hash """
-        domain = await get_db_domain(domain)
-        url_path = await get_db_path(media_item.url, str(media_item.referer))
-        await self.db_conn.execute("""UPDATE media SET hash= ? WHERE domain = ? and url_path = ?""",
-        (hash,domain, url_path,))
-        await self.db_conn.commit()
-   
 
     async def check_filename_exists(self, filename: str) -> bool:
         """Checks whether a downloaded filename exists in the database"""
@@ -158,11 +145,6 @@ class HistoryTable:
         result = await cursor.execute("""SELECT EXISTS(SELECT 1 FROM media WHERE download_filename = ?)""", (filename,))
         sql_file_check = await result.fetchone()
         return sql_file_check == 1
-    async def check_hash_exists(self, hash: str) -> bool:
-        cursor = await self.db_conn.cursor()
-        result = await cursor.execute("""SELECT EXISTS(SELECT 1 FROM media WHERE hash = ?)""", (hash,))
-        sql_file_check = await result.fetchone()
-        return sql_file_check[1] == 1
 
     async def get_downloaded_filename(self, domain: str, media_item: MediaItem) -> str:
         """Returns the downloaded filename from the database"""
@@ -248,18 +230,8 @@ class HistoryTable:
         for entry in bunkr_entries:
             entry = list(entry)
             entry[0] = "bunkrr"
-<<<<<<< HEAD
-            result=await self.db_conn.execute(
-                "SELECT CASE WHEN EXISTS (SELECT 1 FROM PRAGMA_TABLE_INFO('media') WHERE name = 'hash') THEN 1 ELSE 0 END AS hash;"
-            )
-            if (await result.fetchone())[0]:
-                await self.db_conn.execute("""INSERT or REPLACE INTO media VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)""", entry)
-            else:
-                await self.db_conn.execute("""INSERT INTO media VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?,?)""", entry)
-=======
             await self.db_conn.execute("""INSERT or REPLACE INTO media VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)""",
                                     entry)
->>>>>>> 839f98a54acb029a0090d269d5253929a5b0f38b
         await self.db_conn.commit()
 
         await self.db_conn.execute("""DELETE FROM media WHERE domain = 'bunkr'""")
@@ -302,12 +274,6 @@ class HistoryTable:
             await self.db_conn.execute("""ALTER TABLE media ADD COLUMN completed_at TIMESTAMP""")
             await self.db_conn.commit()
 
-<<<<<<< HEAD
-        if "hash" not in current_cols:
-            await self.db_conn.execute("""ALTER TABLE media ADD COLUMN hash TEXT""")
-            await self.db_conn.commit()
-=======
         if "file_size" not in current_cols:
             await self.db_conn.execute("""ALTER TABLE media ADD COLUMN file_size INT""")
             await self.db_conn.commit()
->>>>>>> 839f98a54acb029a0090d269d5253929a5b0f38b

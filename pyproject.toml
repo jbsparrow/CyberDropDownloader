@@ -29,13 +29,10 @@ mediafire = "^0.6.1"
 mutagen = "^1.47.0"
 pillow = "^10.2.0"
 get-video-properties = "^0.1.1"
-<<<<<<< HEAD
 xxhash = "^3.4.1"
-=======
 humanfriendly = "^10.0"
 send2trash = "^1.8.3"
 arrow = "^1.3.0"
->>>>>>> 839f98a54acb029a0090d269d5253929a5b0f38b
 
 [tool.poetry.scripts]
 cyberdrop-dl = "cyberdrop_dl.main:main"
