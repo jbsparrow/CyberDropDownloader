@@ -286,7 +286,31 @@ Setting this to true will remove any partial downloads from the download folder.
 
 By default the program will not send unsupported links to jdownloader.
 
-Setting this to true, will send unsupported links over.
+Setting this to `true`, will send unsupported links over.
+
+***
+
+* jdownloader\_autostart
+
+Defaults to `false`. Setting this to `true` will make jdownloader start downloads as soon as they are sent.
+
+This option has no effect unless `send_unsupported_to_jdownloader` is `true`
+
+***
+
+* jdownloader\_download_dir:
+
+The `download_dir` jdownloader will use. A `null` value (the default) will make jdownloader use the same `download_dir` as CDL. Use this option as path mapping when jdownloader is running on a diferent host / docker.
+
+This option has no effect unless `send_unsupported_to_jdownloader` is `true`
+
+***
+
+* jdownloader\_whitelist
+
+List of domain names. An unsupported URL will only be sent to jdownloader if its host is found in on the list. An empty whitelist (the default) will disable this funtionality, sending any unsupported URL to jdownloader
+
+This option has no effect unless `send_unsupported_to_jdownloader` is `true`
 
 ***
 
