@@ -67,6 +67,7 @@ class Sorter:
         except FileExistsError:
             if file.stat().st_size == dest.stat().st_size:
                 file.unlink()
+                return
             for i in itertools.count(1):
                 dest_make = dest.parent / f"{dest.stem}{self.incrementer_format.format(i=i)}{dest.suffix}"
                 if not dest_make.is_file():
