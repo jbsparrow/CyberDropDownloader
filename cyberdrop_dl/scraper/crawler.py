@@ -69,7 +69,7 @@ class Crawler(ABC):
     async def handle_file(self, url: URL, scrape_item: ScrapeItem, filename: str, ext: str, custom_filename: Optional[str]= None) -> None:
         """Finishes handling the file and hands it off to the downloader"""
         if custom_filename:
-            original_filename, filename = filename + ext, custom_filename
+            original_filename, filename = filename , custom_filename
         elif self.domain in ['cyberdrop', 'bunkrr']:
             original_filename, filename = await remove_id(self.manager, filename, ext)
         else:

@@ -5,6 +5,9 @@ from typing import TYPE_CHECKING, AsyncGenerator
 from aiolimiter import AsyncLimiter
 from yarl import URL
 from multidict import MultiDict
+from datetime import datetime, timedelta
+import re
+from calendar import timegm
 
 from cyberdrop_dl.clients.errors import ScrapeFailure
 from cyberdrop_dl.scraper.crawler import Crawler
@@ -14,6 +17,8 @@ from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wr
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
     from bs4 import BeautifulSoup
+
+DATE_PATTERN = re.compile(r"(\d+)\s*(weeks?|days?|hours?|minutes?|seconds?)", re.IGNORECASE)
 
 class TokioMotionCrawler(Crawler):
     def __init__(self, manager: Manager):
@@ -69,8 +74,18 @@ class TokioMotionCrawler(Crawler):
         """Scrapes a video"""
         if await self.check_complete_from_referer(scrape_item):
             return
+        
+        video_id = scrape_item.url.parts[2]
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
+
+        try:
+            relative_date_str = soup.select_one("div.pull-right.big-views-xs.visible-xs > span.text-white").text.strip()
+            date = await self.parse_relative_date(relative_date_str)
+            scrape_item.possible_datetime = date
+        except AttributeError:
+            pass
+            
         try:
             srcSD = soup.select_one('source[title="SD"]')
             srcHD = soup.select_one('source[title="HD"]')
@@ -85,10 +100,9 @@ class TokioMotionCrawler(Crawler):
        
         # NOTE: hardcoding the extension to prevent quering the final server URL
         # final server URL is always diferent so it can not be saved to db.
-        filename, ext = scrape_item.url.parts[2], '.mp4'
-        custom_file_name, _ = await get_filename_and_ext(f"{title} [{filename}]{ext}")
+        filename, ext = f"{video_id}.mp4", '.mp4'
+        custom_file_name, _ = await get_filename_and_ext(f"{title} [{video_id}]{ext}")
         await self.handle_file(link, scrape_item, filename, ext, custom_file_name)
-
 
     @error_handling_wrapper
     async def albums(self, scrape_item: ScrapeItem) -> None:
@@ -273,3 +287,22 @@ class TokioMotionCrawler(Crawler):
                     page_url = URL(page_url)
                     continue
             break
+
+    async def parse_relative_date(self, relative_date: timedelta|str) -> int:
+        """Parses `datetime.timedelta` or `string` in a timedelta format. Returns `now() - parsed_timedelta` as an unix timestamp"""
+        if isinstance(relative_date,str):
+            time_str = relative_date.casefold()
+            matches: list[str] = re.findall(DATE_PATTERN, time_str)
+
+            # Assume today
+            time_dict = {'days':0}
+
+            for value, unit in matches:
+                value = int(value)
+                unit = unit.lower()
+                time_dict[unit] = value
+
+            relative_date = timedelta (**time_dict)
+
+        date = datetime.now() - relative_date
+        return timegm(date.timetuple())
