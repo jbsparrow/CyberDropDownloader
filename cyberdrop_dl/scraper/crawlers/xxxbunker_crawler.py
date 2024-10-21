@@ -47,34 +47,21 @@ class XXXBunkerCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item):
             return
         
-        video_id = scrape_item.url.parts[1]
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
+
+        video_id = soup.select_one("iframe#player").get('data-realid')
+        title = soup.select_one('title').text.rsplit(" : XXXBunker.com")[0].strip()
+
+        async with self.request_limiter:
             video_iframe: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url.with_path(f"player/{video_id}"))
 
-        title = soup.select_one('title').text.rsplit(" : XXXBunker.com")[0].strip()
-        # WARNING: just for testing, needs to be removed on final implementation
-        PHPSESSID = ''
-        self.client.client_manager.cookies.update_cookies({"PHPSESSID": PHPSESSID},
-                                                            response_url=self.primary_base_domain)
         try:
             src = video_iframe.select_one('source')
-            src_url = URL(src.get('src'))
+            link = URL(src.get('src'))
             relative_date_str = soup.select_one("div.video-details").find('li', string='Date Added').find_next('li').text.strip()
             date = await self.parse_relative_date(relative_date_str)
             scrape_item.possible_datetime = date
-            internal_id = src_url.query.get('id')
-
-            if 'internal' in src_url.parts:
-                internal_id = video_id
-
-            data = ({'internalid': internal_id })
-
-            async with self.request_limiter:
-                ajax_dict = await self.client.post_data(self.domain, self.api_download, data=data)
-                ajax_soup = BeautifulSoup(ajax_dict['floater'], 'html.parser')
-            
-            link = URL(ajax_soup.select_one('a#download-download').get('href'))
  
         except AttributeError:
             if "This is a private" in soup.text:
