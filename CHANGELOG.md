@@ -5,6 +5,28 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.6.54] - 2024-10-21
+
+This update introduces the following changes:
+1. Fix error on some bunkr videos
+
+#### Details:
+
+- Fix error when downloading videos with no thumbnail (bunkr)
+- Update posible CDNs (bunkr)
+- Better error handling (bunkr)
+
+
+## [5.6.53] - 2024-10-20
+
+This update introduces the following changes:
+1. Update bunkr crawler
+
+#### Details:
+
+- Update bunkr crawler to work on the new site design
+
+
 ## [5.6.52] - 2024-10-10
 
 This update introduces the following changes:
