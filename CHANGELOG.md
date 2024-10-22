@@ -15,6 +15,28 @@ This update introduces the following changes:
 - Adds download support for saint2.su album URLs
 
 
+## [5.6.54] - 2024-10-21
+
+This update introduces the following changes:
+1. Fix error on some bunkr videos
+
+#### Details:
+
+- Fix error when downloading videos with no thumbnail (bunkr)
+- Update posible CDNs (bunkr)
+- Better error handling (bunkr)
+
+
+## [5.6.53] - 2024-10-20
+
+This update introduces the following changes:
+1. Update bunkr crawler
+
+#### Details:
+
+- Update bunkr crawler to work on the new site design
+
+
 ## [5.6.52] - 2024-10-10
 
 This update introduces the following changes:
