@@ -38,10 +38,11 @@ class XXXBunkerCrawler(Crawler):
         """Determines where to send the scrape item based on the url"""
         task_id = await self.scraping_progress.add_task(scrape_item.url)
 
-        # modify URL to always start on page 1
+        # Old behavior, not worth it with such a bad rate_limit: modify URL to always start on page 1
+        '''
         new_parts = [part for part in scrape_item.url.parts[1:] if "page-" not in part]
         scrape_item.url = scrape_item.url.with_path("/".join(new_parts)).with_query(scrape_item.url.query)
-
+        '''
         if any(part in scrape_item.url.parts for part in ('search','categories','favoritevideos')):
             await self.playlist(scrape_item)
         else:
@@ -152,6 +153,7 @@ class XXXBunkerCrawler(Crawler):
         while True:
             attempt = 1
             rate_limited = True
+            await log (f"Current page: {page_url}", 10)
             while rate_limited and attempt<= MAX_RETRIES:
                 async with self.request_limiter:
                     soup: BeautifulSoup = await self.client.get_BS4(self.domain, page_url)
@@ -172,7 +174,7 @@ class XXXBunkerCrawler(Crawler):
                 raise ScrapeFailure(429, f"Too many request: {url}")
 
             next_page = soup.select_one("div.page-list")
-            next_page = next_page.find('a', string='next') if next_page else None
+            next_page = next_page.find('a', string='Next') if next_page else None
             yield soup
             if next_page:
                 page_url = next_page.get('href')
