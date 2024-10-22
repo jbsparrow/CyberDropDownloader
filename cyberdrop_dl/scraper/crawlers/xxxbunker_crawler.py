@@ -101,10 +101,8 @@ class XXXBunkerCrawler(Crawler):
         # NOTE: hardcoding the extension to prevent quering the final server URL
         # final server URL is always different so it can not be saved to db.
         filename, ext = f"{video_id}.mp4" , '.mp4'
-        
-        # TODO: add custom filename param to handle_file 
-        #custom_file_name, _ = await get_filename_and_ext(f"{title} [{filename}]{ext}")
-        await self.handle_file(link, scrape_item, filename, ext) #, custom_file_name)
+        custom_file_name, _ = await get_filename_and_ext(f"{title} [{video_id}]{ext}")
+        await self.handle_file(link, scrape_item, filename, ext, custom_file_name)
           
 
     @error_handling_wrapper
