@@ -2,6 +2,7 @@ import os
 from dataclasses import field
 from pathlib import Path
 from typing import TYPE_CHECKING
+from datetime import datetime
 
 from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem
 
@@ -74,20 +75,22 @@ class PathManager:
             'input_file'] if not self.manager.args_manager.input_file else self.manager.args_manager.input_file
         self.history_db = self.cache_dir / "cyberdrop.db"
 
-        self.main_log = self.log_dir / (self.manager.config_manager.settings_data['Logs']['main_log_filename']
-                                        if not self.manager.args_manager.main_log_filename else self.manager.args_manager.main_log_filename)
-        self.last_post_log = self.log_dir / (
-            self.manager.config_manager.settings_data['Logs']['last_forum_post_filename']
-            if not self.manager.args_manager.last_forum_post_filename else self.manager.args_manager.last_forum_post_filename)
-        self.unsupported_urls_log = self.log_dir / (
-            self.manager.config_manager.settings_data['Logs']['unsupported_urls_filename']
-            if not self.manager.args_manager.unsupported_urls_filename else self.manager.args_manager.unsupported_urls_filename)
-        self.download_error_log = self.log_dir / (
-            self.manager.config_manager.settings_data['Logs']['download_error_urls_filename']
-            if not self.manager.args_manager.download_error_urls_filename else self.manager.args_manager.download_error_urls_filename)
-        self.scrape_error_log = self.log_dir / (
-            self.manager.config_manager.settings_data['Logs']['scrape_error_urls_filename']
-            if not self.manager.args_manager.scrape_error_urls_filename else self.manager.args_manager.scrape_error_urls_filename)
+        current_time_iso = datetime.now().strftime('%Y%m%d_%H%M%S')
+        log_settings_config = self.manager.config_manager.settings_data['Logs']
+        log_args_config = self.manager.args_manager
+        log_options_map = {
+            'main_log_filename': 'main_log',
+            'last_forum_post_filename': 'last_post_log',
+            'unsupported_urls_filename':  'unsupported_urls_log',
+            'download_error_urls_filename': 'download_error_log',
+            'scrape_error_urls_filename': 'scrape_error_log'
+        }
+
+        for log_config_name, log_internal_name in log_options_map.items():
+            file_name = Path(getattr(log_args_config, log_config_name, None) or log_settings_config[log_config_name])
+            if log_settings_config['rotate_logs']:
+                file_name = file_name.with_name(f"{file_name.stem}__{current_time_iso}{file_name.suffix}")
+            setattr(self, log_internal_name, self.log_dir / file_name)
 
         self.log_dir.mkdir(parents=True, exist_ok=True)
         if not self.input_file.is_file():
