@@ -49,6 +49,10 @@ def startup() -> Manager:
 
         return manager
 
+    except InvalidYamlConfig as e:
+        print_ (e.message_rich)
+        exit (1)
+
     except KeyboardInterrupt:
         print_("\nExiting...")
         exit(0)
@@ -204,6 +208,7 @@ def main():
     with contextlib.suppress(RuntimeError):
         try:
             asyncio.run(director(manager))
+        
         except KeyboardInterrupt:
             print_("\nTrying to Exit...")
             with contextlib.suppress(Exception):

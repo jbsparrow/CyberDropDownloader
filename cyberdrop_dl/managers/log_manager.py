@@ -54,6 +54,9 @@ class LogManager:
     async def update_last_forum_post(self) -> None:
         """Updates the last forum post"""
         input_file = self.manager.path_manager.input_file
+        # we need to touch the file just in case, purge_tree deletes it
+        if not input_file.exists():
+            return
         base_urls = []
 
         async with aiofiles.open(input_file, 'r') as f:
@@ -80,6 +83,7 @@ class LogManager:
             if url_temp in base_urls:
                 base_urls.remove(url_temp)
                 base_urls.append(url)
-
+        # we need to touch the file just in case, purge_tree deletes it
+        input_file.touch(exist_ok=True)
         async with aiofiles.open(input_file, 'w') as f:
             await f.writelines(base_urls)

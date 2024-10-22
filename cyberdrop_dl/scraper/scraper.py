@@ -27,7 +27,7 @@ class ScrapeMapper:
 
     def __init__(self, manager: Manager):
         self.manager = manager
-        self.mapping = {"bunkrr": self.bunkrr, "celebforum": self.celebforum, "coomer": self.coomer,
+        self.mapping = {"tokyomotion": self.tokyomotion, "bunkrr": self.bunkrr, "celebforum": self.celebforum, "coomer": self.coomer,
                         "cyberdrop": self.cyberdrop, "cyberfile": self.cyberfile, "e-hentai": self.ehentai,
                         "erome": self.erome, "fapello": self.fapello, "f95zone": self.f95zone, "gofile": self.gofile,
                         "hotpic": self.hotpic, "ibb.co": self.imgbb, "imageban": self.imageban, "imgbox": self.imgbox,
@@ -44,7 +44,7 @@ class ScrapeMapper:
                         "rule34.xxx": self.rule34xxx,
                         "rule34.xyz": self.rule34xyz, "saint": self.saint, "scrolller": self.scrolller,
                         "socialmediagirls": self.socialmediagirls, "toonily": self.toonily,
-                        "xbunker": self.xbunker, "xbunkr": self.xbunkr, "bunkr": self.bunkrr, "simpcity": self.simpcity}
+                        "xxxbunker": self.xxxbunker, "xbunker": self.xbunker, "xbunkr": self.xbunkr, "bunkr": self.bunkrr, "simpcity": self.simpcity}
         self.existing_crawlers = {}
         self.no_crawler_downloader = Downloader(self.manager, "no_crawler")
         self.jdownloader = JDownloader(self.manager)
@@ -244,6 +244,11 @@ class ScrapeMapper:
         from cyberdrop_dl.scraper.crawlers.socialmediagirls_crawler import SocialMediaGirlsCrawler
         self.existing_crawlers['socialmediagirls'] = SocialMediaGirlsCrawler(self.manager)
 
+    async def tokyomotion(self) -> None:
+        """Creates a Tokyomotion Crawler instance"""
+        from cyberdrop_dl.scraper.crawlers.tokyomotion_crawler import TokioMotionCrawler
+        self.existing_crawlers['tokyomotion'] = TokioMotionCrawler(self.manager)
+        
     async def toonily(self) -> None:
         """Creates a Toonily Crawler instance"""
         from cyberdrop_dl.scraper.crawlers.toonily_crawler import ToonilyCrawler
@@ -258,6 +263,11 @@ class ScrapeMapper:
         """Creates a XBunkr Crawler instance"""
         from cyberdrop_dl.scraper.crawlers.xbunkr_crawler import XBunkrCrawler
         self.existing_crawlers['xbunkr'] = XBunkrCrawler(self.manager)
+
+    async def xxxbunker(self) -> None:
+        """Creates a XXXBunker Crawler instance"""
+        from cyberdrop_dl.scraper.crawlers.xxxbunker_crawler import XXXBunkerCrawler
+        self.existing_crawlers['xxxbunker'] = XXXBunkerCrawler(self.manager)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -309,6 +319,8 @@ class ScrapeMapper:
     async def load_links(self) -> None:
         """Loads links from args / input file"""
         input_file = self.manager.path_manager.input_file
+          # we need to touch the file just in case, purge_tree deletes it
+        input_file.touch(exist_ok=True)
 
         links = {'': []}
         if not self.manager.args_manager.other_links:
