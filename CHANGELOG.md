@@ -5,6 +5,16 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [UNRELEASED]
+
+This update introduces the following changes:
+1. Add support for saint2.su albums 
+
+#### Details:
+
+- Adds download support for saint2.su album URLs
+
+
 ## [5.6.54] - 2024-10-21
 
 This update introduces the following changes:
