@@ -27,7 +27,7 @@ class ScrapeMapper:
 
     def __init__(self, manager: Manager):
         self.manager = manager
-        self.mapping = {"bunkrr": self.bunkrr, "celebforum": self.celebforum, "coomer": self.coomer,
+        self.mapping = {"tokyomotion": self.tokyomotion, "bunkrr": self.bunkrr, "celebforum": self.celebforum, "coomer": self.coomer,
                         "cyberdrop": self.cyberdrop, "cyberfile": self.cyberfile, "e-hentai": self.ehentai,
                         "erome": self.erome, "fapello": self.fapello, "f95zone": self.f95zone, "gofile": self.gofile,
                         "hotpic": self.hotpic, "ibb.co": self.imgbb, "imageban": self.imageban, "imgbox": self.imgbox,
@@ -244,6 +244,11 @@ class ScrapeMapper:
         from cyberdrop_dl.scraper.crawlers.socialmediagirls_crawler import SocialMediaGirlsCrawler
         self.existing_crawlers['socialmediagirls'] = SocialMediaGirlsCrawler(self.manager)
 
+    async def tokyomotion(self) -> None:
+        """Creates a Tokyomotion Crawler instance"""
+        from cyberdrop_dl.scraper.crawlers.tokyomotion_crawler import TokioMotionCrawler
+        self.existing_crawlers['tokyomotion'] = TokioMotionCrawler(self.manager)
+        
     async def toonily(self) -> None:
         """Creates a Toonily Crawler instance"""
         from cyberdrop_dl.scraper.crawlers.toonily_crawler import ToonilyCrawler
