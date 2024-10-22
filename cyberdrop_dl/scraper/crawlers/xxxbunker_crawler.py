@@ -4,10 +4,11 @@ from typing import TYPE_CHECKING, AsyncGenerator
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
+import asyncio
 
-from cyberdrop_dl.clients.errors import ScrapeFailure
+from cyberdrop_dl.clients.errors import ScrapeFailure, DownloadFailure
 from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wrapper
+from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wrapper, log
 from datetime import datetime, timedelta
 from calendar import timegm
 import re
@@ -24,7 +25,8 @@ class XXXBunkerCrawler(Crawler):
         super().__init__(manager, "xxxbunker", "XXXBunker")
         self.primary_base_domain = URL("https://xxxbunker.com")
         self.api_download = URL('https://xxxbunker.com/ajax/downloadpopup')
-        self.request_limiter = AsyncLimiter(10, 1)
+        self.rate_limit = 5
+        self.request_limiter = AsyncLimiter( self.rate_limit , 30)
 
     
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -37,7 +39,10 @@ class XXXBunkerCrawler(Crawler):
         new_parts = [part for part in scrape_item.url.parts[1:] if "page-" not in part]
         scrape_item.url = scrape_item.url.with_path("/".join(new_parts)).with_query(scrape_item.url.query)
 
-        await self.video(scrape_item)
+        if any(part in scrape_item.url.parts for part in ('search','categories','favoritevideos')):
+            await self.playlist(scrape_item)
+        else:
+            await self.video(scrape_item)
 
         await self.scraping_progress.remove_task(task_id)
 
@@ -50,22 +55,47 @@ class XXXBunkerCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
 
-        video_id = soup.select_one("iframe#player").get('data-realid')
         title = soup.select_one('title').text.rsplit(" : XXXBunker.com")[0].strip()
-
-        async with self.request_limiter:
-            video_iframe: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url.with_path(f"player/{video_id}"))
-
         try:
-            src = video_iframe.select_one('source')
-            link = URL(src.get('src'))
             relative_date_str = soup.select_one("div.video-details").find('li', string='Date Added').find_next('li').text.strip()
             date = await self.parse_relative_date(relative_date_str)
             scrape_item.possible_datetime = date
- 
         except AttributeError:
-            if "This is a private" in soup.text:
-                raise ScrapeFailure(403, f"Private video: {scrape_item.url}")
+            pass
+
+        PHPSESSID = ''
+        self.client.client_manager.cookies.update_cookies({"PHPSESSID": PHPSESSID},
+                                                            response_url=self.primary_base_domain)
+        
+        try:
+            video_iframe = soup.select_one("div.player-frame iframe")
+            video_iframe_url = URL(video_iframe.get('data-src'))
+            video_id = video_iframe_url.parts[-1]
+            async with self.request_limiter:
+                video_iframe_soup: BeautifulSoup = await self.client.get_BS4(self.domain, video_iframe_url)
+
+            src = video_iframe_soup.select_one('source')
+            src_url = URL(src.get('src'))
+            internal_id = src_url.query.get('id')
+
+            if 'internal' in src_url.parts:
+                internal_id = video_id
+
+            data = ({'internalid': internal_id })
+
+            async with self.request_limiter:
+                ajax_dict = await self.client.post_data(self.domain, self.api_download, data=data)
+            
+            ajax_soup = BeautifulSoup(ajax_dict['floater'], 'html.parser')
+            link = URL(ajax_soup.select_one('a#download-download').get('href'))
+
+ 
+        except (AttributeError, TypeError):
+            if "TRAFFIC VERIFICATION" in soup.text:
+                await asyncio.sleep(10)
+                self.rate_limit = max (self.rate_limit *0.8, 4)
+                self.request_limiter = AsyncLimiter(self.rate_limit, 60)
+                raise ScrapeFailure(429, f"Too many request: {scrape_item.url}")
             raise ScrapeFailure(404, f"Could not find video source for {scrape_item.url}")
         
         # NOTE: hardcoding the extension to prevent quering the final server URL
@@ -75,17 +105,55 @@ class XXXBunkerCrawler(Crawler):
         # TODO: add custom filename param to handle_file 
         #custom_file_name, _ = await get_filename_and_ext(f"{title} [{filename}]{ext}")
         await self.handle_file(link, scrape_item, filename, ext) #, custom_file_name)
+          
 
+    @error_handling_wrapper
+    async def playlist(self, scrape_item: ScrapeItem) -> None:
+        """Scrapes a playlist"""
+        
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
+
+        if 'favoritevideos' in scrape_item.url.parts:
+            title = await self.create_title(f"user {scrape_item.url.parts[2]} [favorites]", None,None)
+
+        elif 'search' in scrape_item.url.parts:
+            title = await self.create_title(f"{scrape_item.url.parts[2].replace('+',' ')} [search]", None,None)
+
+        elif len(scrape_item.url.parts) >= 2:
+            title = await self.create_title(f"{scrape_item.url.parts[2]} [categorie]", None,None)
+        
+        # Not a valid URL
+        else:
+            raise ScrapeFailure(404, f"Could not find video source for {scrape_item.url}")
+            
+        scrape_item.part_of_album = True
+
+        async for soup in self.web_pager(scrape_item.url):
+            videos = soup.select("a[data-anim='4']")
+            for video in videos:
+                link = video.get('href')
+                if not link:
+                    continue
+
+                if link.startswith("/"):
+                    link = self.primary_base_domain / link[1:]
+
+                link = URL(link)
+                new_scrape_item = await self.create_scrape_item(scrape_item, link, title , add_parent = scrape_item.url)
+                await self.video(new_scrape_item)
 
     async def web_pager(self, url: URL) -> AsyncGenerator[BeautifulSoup]:
         "Generator of website pages"
         page_url = url
         while True:
+            await log(f"scraping page {page_url}",10)
             async with self.request_limiter:
                 soup: BeautifulSoup = await self.client.get_BS4(self.domain, page_url)
-            next_page = soup.select_one("div.page-list").find('a', string='next')
+            next_page = soup.select_one("div.page-list")
+            next_page = next_page.find('a', string='next') if next_page else None
             yield soup
-            if next_page :
+            if next_page:
                 page_url = next_page.get('href')
                 if page_url:
                     if page_url.startswith("/"):
