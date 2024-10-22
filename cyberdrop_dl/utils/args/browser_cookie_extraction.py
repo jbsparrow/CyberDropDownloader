@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from functools import wraps
 from typing import TYPE_CHECKING
+from pathlib import Path
 
 import browser_cookie3
 from InquirerPy import inquirer
 from rich.console import Console
+from http.cookiejar import MozillaCookieJar
 
 from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
 
@@ -39,39 +41,18 @@ def cookie_wrapper(func):
 
 # noinspection PyProtectedMember
 @cookie_wrapper
-def get_forum_cookies(manager: Manager, browser: str) -> None:
-    """Get the cookies for the forums"""
-    auth_args: Dict = manager.config_manager.authentication_data
-    for forum in SupportedDomains.supported_forums:
-        cookie = get_cookie(browser, forum)
-        if forum == 'simpcity.su':
-            auth_args['Forums']['simpcity_ddg_cookie_1'] = cookie._cookies['.' + forum]['/']['__ddg1_'].value
-            auth_args['Forums']['simpcity_ddg_cookie_2'] = cookie._cookies['.' + forum]['/']['__ddg2_'].value
-            auth_args['Forums']['simpcity_ddg_cookie_5'] = cookie._cookies['.' + forum]['/']['__ddg5_'].value
-            auth_args['Forums']['simpcity_ddg_id'] = cookie._cookies['.' + forum]['/']['__ddgid_'].value
-            auth_args['Forums']['simpcity_ddg_mark'] = cookie._cookies['.' + forum]['/']['__ddgmark_'].value
-        else:
-            try:
-                auth_args['Forums'][f'{SupportedDomains.supported_forums_map[forum]}_xf_user_cookie'] = \
-                    cookie._cookies[forum]['/']['xf_user'].value
-            except KeyError:
-                pass
-        try:
-            pass
-        except KeyError:
-            try:
-                cookie = get_cookie(browser, "www." + forum)
-                if forum == 'simpcity.su':
-                    auth_args['Forums']['simpcity_ddg_cookie_1'] = cookie._cookies["www." + forum]['/']['__ddg1_'].value
-                    auth_args['Forums']['simpcity_ddg_cookie_2'] = cookie._cookies["www." + forum]['/']['__ddg2_'].value
-                    auth_args['Forums']['simpcity_ddg_cookie_5'] = cookie._cookies["www." + forum]['/']['__ddg5_'].value
-                    auth_args['Forums']['simpcity_ddg_id'] = cookie._cookies["www." + forum]['/']['__ddgid_'].value
-                    auth_args['Forums']['simpcity_ddg_mark'] = cookie._cookies["www." + forum]['/']['__ddgmark_'].value
-                else:
-                    auth_args['Forums'][f'{SupportedDomains.supported_forums_map[forum]}_xf_user_cookie'] = \
-                        cookie._cookies["www." + forum]['/']['xf_user'].value
-            except KeyError:
-                pass
+def get_cookies_from_browser(manager: Manager, browser: str, domains: list) -> None:
+    """Get the cookies for the supported sites"""
+    manager.path_manager.cookies_dir.mkdir(exist_ok=True)
+    for domain in domains:
+        cookies = get_cookie(browser, domain)
+        cookie_jar = MozillaCookieJar()
+        cookie_file_path = manager.path_manager.cookies_dir / f"{domain}.txt"
+
+        for cookie in cookies:
+            cookie_jar.set_cookie(cookie)
+
+        cookie_jar.save(cookie_file_path, ignore_discard=True, ignore_expires=True)
 
     manager.cache_manager.save("browser", browser)
 

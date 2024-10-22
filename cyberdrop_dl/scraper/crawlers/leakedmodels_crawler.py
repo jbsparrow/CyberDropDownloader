@@ -19,6 +19,7 @@ class LeakedModelsCrawler(Crawler):
         super().__init__(manager, "leakedmodels", "LeakedModels")
         self.primary_base_domain = URL("https://LeakedModels.com")
         self.logged_in = False
+        self.login_attempts = 0
         self.request_limiter = AsyncLimiter(10, 1)
 
         self.title_selector = "h1[class=p-title-value]"
@@ -53,14 +54,18 @@ class LeakedModelsCrawler(Crawler):
         task_id = await self.scraping_progress.add_task(scrape_item.url)
 
         if "threads" in scrape_item.url.parts:
-            if not self.logged_in:
+            if not self.logged_in and self.login_attempts == 0:
                 login_url = self.primary_base_domain / "forum" / "login"
-                session_cookie = self.manager.config_manager.authentication_data['Forums'][
+                host_cookies = self.client.client_manager.cookies._cookies.get((self.primary_base_domain.host,""), {})
+                session_cookie = host_cookies.get('xf_user').value if 'xf_user' in host_cookies else None
+                if not session_cookie:
+                    session_cookie = self.manager.config_manager.authentication_data['Forums'][
                     'leakedmodels_xf_user_cookie']
                 username = self.manager.config_manager.authentication_data['Forums']['leakedmodels_username']
                 password = self.manager.config_manager.authentication_data['Forums']['leakedmodels_password']
                 wait_time = 5
 
+                self.login_attempts += 1
                 await self.forum_login(login_url, session_cookie, username, password, wait_time)
 
             if self.logged_in:
