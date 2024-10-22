@@ -184,7 +184,7 @@ class XXXBunkerCrawler(Crawler):
             break
 
     async def parse_relative_date(self, relative_date: timedelta|str) -> int:
-        """Parses `datetime.timedelta` or `string` in a timedelta format. Returns `today() - parsed_timedelta` as an unix timestamp"""
+        """Parses `datetime.timedelta` or `string` in a timedelta format. Returns `now() - parsed_timedelta` as an unix timestamp"""
         if isinstance(relative_date,str):
             time_str = relative_date.casefold()
             matches: list[str] = re.findall(DATE_PATTERN, time_str)
@@ -199,5 +199,5 @@ class XXXBunkerCrawler(Crawler):
 
             relative_date = timedelta (**time_dict)
 
-        date = datetime.today() - relative_date
+        date = datetime.now() - relative_date
         return timegm(date.timetuple())
