@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 DATE_PATTERN = re.compile(r"(\d+)\s*(weeks?|days?|hours?|minutes?|seconds?)", re.IGNORECASE)
 MIN_RATE_LIMIT = 4 #per minute
 MAX_WAIT = 120 #seconds
+MAX_RETRIES = 3
 
 class XXXBunkerCrawler(Crawler):
     def __init__(self, manager: Manager):
@@ -147,10 +148,29 @@ class XXXBunkerCrawler(Crawler):
     async def web_pager(self, url: URL) -> AsyncGenerator[BeautifulSoup]:
         "Generator of website pages"
         page_url = url
+        rate_limited = True
         while True:
-            await log(f"scraping page {page_url}",10)
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_BS4(self.domain, page_url)
+            attempt = 1
+            rate_limited = True
+            while rate_limited and attempt<= MAX_RETRIES:
+                async with self.request_limiter:
+                    soup: BeautifulSoup = await self.client.get_BS4(self.domain, page_url)
+                await asyncio.sleep(self.wait_time)
+        
+                if not "TRAFFIC VERIFICATION" in soup.text:
+                    rate_limited = False
+                    break
+
+                self.wait_time = min (self.wait_time + 10, MAX_WAIT)
+                self.rate_limit = max (self.rate_limit *0.8, MIN_RATE_LIMIT)
+                self.request_limiter = AsyncLimiter(self.rate_limit, 60)
+                await log (f"Rate limited: {page_url}, retrying in {self.wait_time} seconds")
+                attempt +=1
+                await asyncio.sleep(self.wait_time)
+
+            if rate_limited:
+                raise ScrapeFailure(429, f"Too many request: {url}")
+
             next_page = soup.select_one("div.page-list")
             next_page = next_page.find('a', string='next') if next_page else None
             yield soup
