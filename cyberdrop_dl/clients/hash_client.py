@@ -94,9 +94,72 @@ class HashClient:
                         hashes_dict[hash][size].append(item)
                 except Exception as e:
                     await log(f"After hash processing failed: {item} with error {e}", 40)
-
         async with self.manager.live_manager.get_remove_file_via_hash_live():
             # #remove downloaded files, so each group only has the first downloaded file
+            final_dict=await self.get_candiate_per_group(hashes_dict)
+
+            for hash, size_dict in final_dict.items():
+                for size, data in size_dict.items():
+                    selected_file = data['selected']
+                    other_files = data['others']
+
+                    # Get all matches from the database
+                    all_matches = list(map(lambda x: pathlib.Path(x[0], x[1]),
+                                           await self.manager.db_manager.hash_table.get_files_with_hash_matches(hash,
+                                                                                                                size)))
+
+                    # Filter out files with the same path as any file in other_files
+                    other_matches = [match for match in all_matches if str(match) not in other_files]
+                    # Filter files based  on if the file exists
+                    existing_other_matches = list(filter(lambda x: x.exists(), other_matches))
+
+                    # skip if both true
+                    if self.keep_all_files:
+                        return
+                    
+                    # keep a previous downloads
+                    if self.keep_one_prev_download_only:
+                        for ele in existing_other_matches[1:]:
+                            if not ele.exists():
+                                continue
+                            try:
+                                self.send2trash(ele)
+                                await log(f"Sent prev download: {str(ele)} to trash with hash {hash}", 10)
+                                await self.manager.progress_manager.hash_progress.add_removed_prev_file()
+                            except OSError:
+                                continue
+                        return
+                    #delete all prev files
+                    else :
+                        for ele in existing_other_matches:
+                            if not ele.exists():
+                                continue
+                            try:
+                                self.send2trash(ele)
+                                await log(f"Sent prev download: {str(ele)} to trash with hash {hash}", 10)
+                                await self.manager.progress_manager.hash_progress.add_removed_prev_file()
+                            except OSError:
+                                continue
+                    #keep current download
+                    if self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_new_download']:
+                        continue
+                    elif hash not in self.prev_hashes:
+                        continue
+                    elif selected_file in self.manager.path_manager.prev_downloads_paths:
+                        continue
+                    # delete current download
+                    else:
+                        try:
+                            if ele.exists():
+                                self.send2trash(ele)
+                                await log(f"Sent new download:{str(ele)} to trash with hash {hash}", 10)
+                                await self.manager.progress_manager.hash_progress.add_removed_file()
+
+                        except OSError:
+
+                            pass
+        pass
+    async def get_candiate_per_group(self,hashes_dict):
             for hash, size_dict in hashes_dict.items():
                 for size, files in size_dict.items():
                     selected_file = None
