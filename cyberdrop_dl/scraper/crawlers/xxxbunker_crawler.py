@@ -19,14 +19,16 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
 
 DATE_PATTERN = re.compile(r"(\d+)\s*(weeks?|days?|hours?|minutes?|seconds?)", re.IGNORECASE)
+MIN_RATE_LIMIT = 4 #per minute
+MAX_WAIT = 120 #seconds
 
 class XXXBunkerCrawler(Crawler):
     def __init__(self, manager: Manager):
         super().__init__(manager, "xxxbunker", "XXXBunker")
         self.primary_base_domain = URL("https://xxxbunker.com")
         self.api_download = URL('https://xxxbunker.com/ajax/downloadpopup')
-        self.rate_limit = 5
-        self.request_limiter = AsyncLimiter( self.rate_limit , 30)
+        self.rate_limit = self.wait_time = 10
+        self.request_limiter = AsyncLimiter( self.rate_limit , 60)
 
     
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -92,8 +94,9 @@ class XXXBunkerCrawler(Crawler):
  
         except (AttributeError, TypeError):
             if "TRAFFIC VERIFICATION" in soup.text:
-                await asyncio.sleep(10)
-                self.rate_limit = max (self.rate_limit *0.8, 4)
+                await asyncio.sleep(self.wait_time)
+                self.wait_time = min (self.wait_time + 10, MAX_WAIT)
+                self.rate_limit = max (self.rate_limit *0.8, MIN_RATE_LIMIT)
                 self.request_limiter = AsyncLimiter(self.rate_limit, 60)
                 raise ScrapeFailure(429, f"Too many request: {scrape_item.url}")
             raise ScrapeFailure(404, f"Could not find video source for {scrape_item.url}")
