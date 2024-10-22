@@ -6,7 +6,7 @@ from aiolimiter import AsyncLimiter
 from yarl import URL
 import asyncio
 
-from cyberdrop_dl.clients.errors import ScrapeFailure, DownloadFailure
+from cyberdrop_dl.clients.errors import ScrapeFailure
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wrapper, log
 from datetime import datetime, timedelta
@@ -97,6 +97,9 @@ class XXXBunkerCrawler(Crawler):
 
  
         except (AttributeError, TypeError):
+            if "You must be registered to download this video" in ajax_soup.text:
+                raise ScrapeFailure(403, f"Invalid PHPSESSID: {scrape_item.url}")
+
             if "TRAFFIC VERIFICATION" in soup.text:
                 await asyncio.sleep(self.wait_time)
                 self.wait_time = min (self.wait_time + 10, MAX_WAIT)
@@ -132,7 +135,7 @@ class XXXBunkerCrawler(Crawler):
         
         # Not a valid URL
         else:
-            raise ScrapeFailure(404, f"Could not find video source for {scrape_item.url}")
+            raise ScrapeFailure(400, f"Unsupported URL format: {scrape_item.url}")
             
         scrape_item.part_of_album = True
 
