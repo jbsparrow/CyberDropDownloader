@@ -125,7 +125,7 @@ class HashTable:
                 (hash_value, file_size, download_filename, folder, original_filename, referer))
             await self.db_conn.commit()
             return True
-        except IntegrityError:
+        except IntegrityError as _:
             # Handle potential duplicate key (assuming a unique constraint on hash, filename, and folder)
             await cursor.execute("""UPDATE hash
     SET file_size = ?,

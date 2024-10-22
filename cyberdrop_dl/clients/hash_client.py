@@ -7,6 +7,7 @@ from send2trash import send2trash
 
 from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem
 from cyberdrop_dl.utils.utilities import log
+from cyberdrop_dl.ui.prompts.continue_prompt import enter_to_continue
 
 
 @asynccontextmanager
@@ -18,11 +19,16 @@ async def hash_scan_directory_context(manager):
 
 def hash_directory_scanner(manager, path):
     asyncio.run(_hash_directory_scanner_helper(manager, path))
+    enter_to_continue()
 
 
 async def _hash_directory_scanner_helper(manager, path):
     async with hash_scan_directory_context(manager):
         await manager.hash_manager.hash_client.hash_directory(path)
+        await manager.progress_manager.print_stats()
+       
+        
+
 
 
 class HashClient:
@@ -65,7 +71,8 @@ class HashClient:
                 await self.manager.progress_manager.hash_progress.add_new_completed_hash()
             else:
                 await self.manager.progress_manager.hash_progress.add_prev_hash()
-                await self.manager.db_manager.hash_table.insert_or_update_hash_db(hash, file, original_filename, refer)
+                await self.manager.db_manager.hash_table.insert_or_update_hash_db(hash
+                , file, original_filename, refer)
         except Exception as e:
             await log(f"Error hashing {file} : {e}", 40)
         self.hashes[key] = hash
