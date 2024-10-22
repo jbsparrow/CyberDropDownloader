@@ -30,7 +30,7 @@ class XXXBunkerCrawler(Crawler):
         self.api_download = URL('https://xxxbunker.com/ajax/downloadpopup')
         self.rate_limit = self.wait_time = 10
         self.request_limiter = AsyncLimiter( self.rate_limit , 60)
-
+        self.session_cookie = None
     
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -43,6 +43,9 @@ class XXXBunkerCrawler(Crawler):
         new_parts = [part for part in scrape_item.url.parts[1:] if "page-" not in part]
         scrape_item.url = scrape_item.url.with_path("/".join(new_parts)).with_query(scrape_item.url.query)
         '''
+        if self.session_cookie is None:
+            await self.check_session_cookie()
+
         if any(part in scrape_item.url.parts for part in ('search','categories','favoritevideos')):
             await self.playlist(scrape_item)
         else:
@@ -56,6 +59,9 @@ class XXXBunkerCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item):
             return
         
+        if not self.session_cookie:
+            raise ScrapeFailure(401, "No cookies provided")
+        
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
 
@@ -66,10 +72,6 @@ class XXXBunkerCrawler(Crawler):
             scrape_item.possible_datetime = date
         except AttributeError:
             pass
-
-        PHPSESSID = ''
-        self.client.client_manager.cookies.update_cookies({"PHPSESSID": PHPSESSID},
-                                                            response_url=self.primary_base_domain)
         
         try:
             video_iframe = soup.select_one("div.player-frame iframe")
@@ -113,6 +115,8 @@ class XXXBunkerCrawler(Crawler):
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a playlist"""
+        if not self.session_cookie:
+            raise ScrapeFailure(401, "No cookies provided")
         
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
@@ -203,3 +207,13 @@ class XXXBunkerCrawler(Crawler):
 
         date = datetime.now() - relative_date
         return timegm(date.timetuple())
+    
+    async def check_session_cookie(self) -> None:
+        '''Get Cookie from config file'''
+        self.session_cookie = self.manager.config_manager.authentication_data['XXXBunker']['PHPSESSID']
+        if not self.session_cookie:
+            self.session_cookie = ''
+            return
+        
+        self.client.client_manager.cookies.update_cookies({"PHPSESSID": self.session_cookie},
+                                                            response_url=self.primary_base_domain)
