@@ -56,8 +56,6 @@ class HashClient:
     async def hash_item(self, file, original_filename, refer):
         key = self._get_key_from_file(file)
         file = pathlib.Path(file)
-        refer = str(refer)
-        original_filename = str(original_filename)
         if not file.is_file():
             return
         elif self.hashes[key]:
