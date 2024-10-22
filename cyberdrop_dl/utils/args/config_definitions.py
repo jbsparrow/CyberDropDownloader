@@ -28,6 +28,9 @@ authentication_settings: Dict = {
         "xbunker_username": "",
         "xbunker_password": "",
     },
+    "XXXBunker": {
+        "PHPSESSID": "",
+    },
     "GoFile": {
         "gofile_api_key": "",
     },

@@ -49,7 +49,7 @@ class DownloadManager:
 
         self.file_lock = FileLock()
 
-        self.download_limits = {'bunkr': 1, 'bunkrr': 1, 'cyberdrop': 1, 'cyberfile': 1, "pixeldrain": 2}
+        self.download_limits = {'bunkr': 1, 'bunkrr': 1, 'cyberdrop': 1, 'cyberfile': 1, "pixeldrain": 2, 'xxxbunker': 2}
 
     async def get_download_limit(self, key: str) -> int:
         """Returns the download limit for a domain"""

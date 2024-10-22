@@ -44,7 +44,7 @@ class ScrapeMapper:
                         "rule34.xxx": self.rule34xxx,
                         "rule34.xyz": self.rule34xyz, "saint": self.saint, "scrolller": self.scrolller,
                         "socialmediagirls": self.socialmediagirls, "toonily": self.toonily,
-                        "xbunker": self.xbunker, "xbunkr": self.xbunkr, "bunkr": self.bunkrr}
+                        "xxxbunker":self.xxxbunker,"xbunker": self.xbunker, "xbunkr": self.xbunkr, "bunkr": self.bunkrr}
         self.existing_crawlers = {}
         self.no_crawler_downloader = Downloader(self.manager, "no_crawler")
         self.jdownloader = JDownloader(self.manager)
@@ -258,6 +258,11 @@ class ScrapeMapper:
         """Creates a XBunkr Crawler instance"""
         from cyberdrop_dl.scraper.crawlers.xbunkr_crawler import XBunkrCrawler
         self.existing_crawlers['xbunkr'] = XBunkrCrawler(self.manager)
+
+    async def xxxbunker(self) -> None:
+        """Creates a XXXBunker Crawler instance"""
+        from cyberdrop_dl.scraper.crawlers.xxxbunker_crawler import XXXBunkerCrawler
+        self.existing_crawlers['xxxbunker'] = XXXBunkerCrawler(self.manager)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
