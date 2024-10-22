@@ -33,24 +33,16 @@ class HashClient:
         self.hashes = defaultdict(lambda: None)
         self.prev_hashes = None
 
-    @asynccontextmanager
-    async def _manager_context(self):
-        await self.manager.async_db_hash_startup()
-        yield
-        await self.manager.close()
 
     async def startup(self):
         self.prev_hashes = set(await self.manager.db_manager.hash_table.get_all_unique_hashes())
 
     async def hash_directory(self, path):
-        async with self._manager_context():
-            async with self.manager.live_manager.get_hash_live(stop=True):
-                # force start live  manager for db connection
-                self.manager.startup()
-                if not pathlib.Path(path).is_dir():
-                    raise Exception("Path is not a directory")
-                for file in pathlib.Path(path).glob("**/*"):
-                    await self.hash_item(file, None, None)
+        async with self.manager.live_manager.get_hash_live(stop=True):
+            if not pathlib.Path(path).is_dir():
+                raise Exception("Path is not a directory")
+            for file in pathlib.Path(path).glob("**/*"):
+                await self.hash_item(file, None, None)
 
     def _get_key_from_file(self, file):
         return str(pathlib.Path(file).absolute())
