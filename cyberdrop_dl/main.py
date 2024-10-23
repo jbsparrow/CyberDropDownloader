@@ -13,25 +13,7 @@ from cyberdrop_dl.utils.sorting import Sorter
 from cyberdrop_dl.utils.utilities import check_latest_pypi, log_with_color, check_partials_and_empty_folders, log
 from cyberdrop_dl.managers.console_manager import print_
 from cyberdrop_dl.clients.errors import InvalidYamlConfig
-from rich.console import Console
-from rich.logging import RichHandler
 
-DEFAULT_CONSOLE_WIDTH = 160
-
-RICH_HANDLER_CONFIG = { 
-    "show_time": True, 
-    "rich_tracebacks": True, 
-    "tracebacks_show_locals": False
-}
-
-RICH_HANDLER_DEBUG_CONFIG = {
-    "show_time": True, 
-    "rich_tracebacks": True, 
-    "tracebacks_show_locals": True,
-    "locals_max_string": DEFAULT_CONSOLE_WIDTH,
-    "tracebacks_extra_lines": 2,
-    "locals_max_length": 20
-}
 
 def startup() -> Manager:
     """
