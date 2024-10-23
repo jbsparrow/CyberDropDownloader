@@ -28,6 +28,9 @@ authentication_settings: Dict = {
         "xbunker_username": "",
         "xbunker_password": "",
     },
+    "XXXBunker": {
+        "PHPSESSID": "",
+    },
     "GoFile": {
         "gofile_api_key": "",
     },
@@ -74,6 +77,7 @@ settings: Dict = {
         "unsupported_urls_filename": "Unsupported_URLs.txt",
         "download_error_urls_filename": "Download_Error_URLs.csv",
         "scrape_error_urls_filename": "Scrape_Error_URLs.csv",
+        "rotate_logs": False
     },
     "File_Size_Limits": {
         "maximum_image_size": 0,

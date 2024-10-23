@@ -11,12 +11,14 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import NoExtensionFailure
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
+from cyberdrop_dl.clients.errors import ScrapeFailure
 from cyberdrop_dl.utils.utilities import FILE_FORMATS, get_filename_and_ext, error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
     from bs4 import BeautifulSoup, Tag
 
+CDN_POSSIBILITIES = re.compile(r"^(?:(?:(?:media-files|cdn|c|pizza|cdn-burger|cdn-nugget|burger|taquito|pizza|fries|meatballs|milkshake|kebab|nachos|ramen|wiener)[0-9]{0,2})|(?:(?:big-taco-|cdn-pizza|cdn-meatballs|cdn-milkshake|i.kebab|i.fries|i-nugget|i-milkshake|i-nachos|i-ramen|i-wiener)[0-9]{0,2}(?:redir)?))\.bunkr?\.[a-z]{2,3}$")
 
 class BunkrrCrawler(Crawler):
     def __init__(self, manager: Manager):
@@ -100,7 +102,6 @@ class BunkrrCrawler(Crawler):
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a file"""
         scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path)
-
         if await self.check_complete_from_referer(scrape_item):
             return
 
@@ -108,18 +109,24 @@ class BunkrrCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
 
         # try video
-        link_container = soup.select_one("video")
+        link_container = soup.select_one('video > source')
         src_selector = "src"
         
         # try image
         if not link_container:
             link_container = soup.select_one("img.max-h-full.w-auto.object-cover.relative")
-            
-        # fallback for evething else
+
+        # fallback for everything else
         if not link_container:
             link_container = soup.select_one("a.btn.ic-download-01")
             src_selector = "href"
-        link = URL(link_container.get(src_selector))
+    
+        link = link_container.get(src_selector) if link_container else None
+
+        if not link:
+            raise ScrapeFailure(404, f"Could not find source for: {scrape_item.url}")
+        
+        link = URL(link)
 
         try:
             filename, ext = await get_filename_and_ext(link.name)
@@ -150,11 +157,14 @@ class BunkrrCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    async def is_cdn(self, url:URL) -> bool:
+        """Checks if a given URL is from a CDN"""
+        return bool(re.match(CDN_POSSIBILITIES, url.host))
+
     async def get_stream_link(self, url: URL) -> URL:
         """Gets the stream link for a given url"""
-        cdn_possibilities = r"^(?:(?:(?:media-files|cdn|c|pizza|cdn-burger|cdn-nugget|burger|taquito|pizza|fries|meatballs|milkshake|kebab)[0-9]{0,2})|(?:(?:big-taco-|cdn-pizza|cdn-meatballs|cdn-milkshake|i.kebab|i.fries|i-nugget|i-milkshake)[0-9]{0,2}(?:redir)?))\.bunkr?\.[a-z]{2,3}$"
-
-        if not re.match(cdn_possibilities, url.host):
+        
+        if not await self.is_cdn(url):
             return url
 
         ext = url.suffix.lower()
