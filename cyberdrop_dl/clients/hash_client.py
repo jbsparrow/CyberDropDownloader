@@ -88,21 +88,13 @@ class HashClient:
         async with self.manager.live_manager.get_hash_live():
             if not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_after_download']:
                 return
-            hashes_dict = defaultdict(lambda: defaultdict(list))
-            # first compare downloads to each other
-            for media_item in list(self.manager.path_manager.completed_downloads):
-                hash = await self.hash_item(media_item.complete_file, media_item.original_filename, media_item.referer)
-                item = media_item.complete_file.absolute()
-                try:
-                    size = item.stat().st_size
-                    if hash:
-                        hashes_dict[hash][size].append(item)
-                except Exception as e:
-                    await log(f"After hash processing failed: {item} with error {e}", 40)
+            hashes_dict=await self.get_hashes_dict()
         async with self.manager.live_manager.get_remove_file_via_hash_live():
             # #remove downloaded files, so each group only has the first downloaded file
             final_dict=await self.get_candiate_per_group(hashes_dict)
+            await self.final_cleanup(final_dict)
 
+    async def final_cleanup(self,final_dict):
             for hash, size_dict in final_dict.items():
                 for size, data in size_dict.items():
                     selected_file = pathlib.Path(data['selected'])
@@ -149,9 +141,21 @@ class HashClient:
                                 await self.manager.progress_manager.hash_progress.add_removed_file()
 
                         except OSError:
-
                             pass
-        pass
+    async def get_hashes_dict(self):
+            hashes_dict = defaultdict(lambda: defaultdict(list))
+            # first compare downloads to each other
+            for media_item in list(self.manager.path_manager.completed_downloads):
+                hash = await self.hash_item(media_item.complete_file, media_item.original_filename, media_item.referer)
+                item = media_item.complete_file.absolute()
+                try:
+                    size = item.stat().st_size
+                    if hash:
+                        hashes_dict[hash][size].append(item)
+                except Exception as e:
+                    await log(f"After hash processing failed: {item} with error {e}", 40)
+            return hashes_dict
+    
     async def get_candiate_per_group(self,hashes_dict):
             for hash, size_dict in hashes_dict.items():
                 for size, files in size_dict.items():
