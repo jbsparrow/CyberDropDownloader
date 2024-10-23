@@ -38,6 +38,7 @@ This update introduces the following changes:
 - Fix an issue where CDL would delete URLs input file
 - Move functions for after download to `post_runtime` 
 - Fix handling of deleted imgbox albums if they return `HTTP 200`
+- Fix cyberfile deleted folders not being correctly scraped
 
 
 ## [5.6.54] - 2024-10-21

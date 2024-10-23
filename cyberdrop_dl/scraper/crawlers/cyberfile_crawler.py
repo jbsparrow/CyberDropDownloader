@@ -45,7 +45,11 @@ class CyberfileCrawler(Crawler):
         """Scrapes a folder"""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
-            
+
+        login = soup.select_one('form[id=form_login]')
+        if login:
+            raise ScrapeFailure(404, "Folder has been deleted")
+
         script_func = soup.select('div[class*="page-container"] script')[-1].text
         script_func = script_func.split('loadImages(')[-1]
         script_func = script_func.split(';')[0]
