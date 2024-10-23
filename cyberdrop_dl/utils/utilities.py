@@ -4,7 +4,6 @@ import asyncio
 import logging
 import os
 import re
-import traceback
 from enum import IntEnum
 from functools import wraps
 from pathlib import Path
@@ -278,51 +277,61 @@ async def check_partials_and_empty_folders(manager: Manager):
             await purge_dir_tree(manager.path_manager.sorted_dir)
 
 
-async def check_latest_pypi(log_to_console: bool = True) -> Tuple[str]:
+async def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -> Tuple[str]:
     """Checks if the current version is the latest version"""
     from cyberdrop_dl import __version__ as current_version
     import json
     import urllib.request
 
-    # retrieve info on latest version
     contents = urllib.request.urlopen('https://pypi.org/pypi/cyberdrop-dl-patched/json').read()
     data = json.loads(contents)
     latest_version = data['info']['version']
     releases = data['releases'].keys()
 
 
-    # If the current version is not in the releases, it is being worked on and shouldn't be checked
     if current_version not in releases:
+        message = "You are on an unreleased version, skipping version check"
+        if call_from_ui:
+            rich.print(message)
+        elif log_to_console:
+            await log_with_color(message, "bold_yellow", 30)
         return current_version, latest_version
 
-    # Check if the current version is a testing version
-    tags = {'dev': 'Development', 'pre': 'Pre-Release', 'post': 'Post-Release', 'rc': 'Release Candidate',
-                    'a': 'Alpha', 'b': 'Beta'}
-    if any(tag in current_version for tag in tags.keys()):
-        if any(tag in current_version for tag in ['a', 'b', 'rc']):
-            major_version, minor_version, patch_version = current_version.split(".")
-            test_tag = re.sub(r'\d', '', patch_version)
-            patch_version = patch_version.split(test_tag)[0]
 
-            rough_matches = [release for release in releases if f"{major_version}.{minor_version}.{patch_version}{test_tag}" in release]
-            latest_testing_version = max(rough_matches, key=lambda x: int(x.split(".")[2].replace(f"{patch_version}{test_tag}", "")))
-            
-            if log_to_console and current_version != latest_testing_version:
-                tag_type = tags[test_tag].lower()
-                await log_with_color(f"New {tag_type} version of cyberdrop-dl available: {latest_testing_version}", "bold_red", 30)
+    tags = {'dev': 'Development', 'pre': 'Pre-Release', 'post': 'Post-Release', 
+            'rc': 'Release Candidate', 'a': 'Alpha', 'b': 'Beta'}
+
+    for tag in tags:
+        if tag in current_version:
+            match = re.match(r'(\d+)\.(\d+)\.(\d+)(?:\.([a-z]+)\d+|([a-z]+)\d+)', current_version)
+            if match:
+                major_version, minor_version, patch_version, dot_tag, no_dot_tag = match.groups()
+                test_tag = dot_tag if dot_tag else no_dot_tag
+
+                rough_matches = [release for release in releases 
+                                if re.match(rf'{major_version}\.{minor_version}\.{patch_version}(\.{test_tag}\d+|{test_tag}\d+)', release)]
+                latest_testing_version = max(rough_matches, key=lambda x: int(re.search(r'(\d+)$', x).group()))
+
+                if current_version != latest_testing_version:
+                    message = f"A new {tags.get(test_tag, 'Testing').lower()} version of Cyberdrop-DL is available: [b cyan]{latest_testing_version}[/b cyan]"
+                    if call_from_ui:
+                        rich.print(message)
+                    elif log_to_console:
+                        await log_with_color(message, "bold_red", 30)
+                else:
+                    if call_from_ui:
+                        rich.print(f"You are currently on the latest {tags.get(test_tag, 'Testing').lower()} version of [b cyan]{major_version}.{minor_version}.{patch_version}[/b cyan]")
+
                 return current_version, latest_testing_version
-        major_version, minor_version, patch_version, test_tag = current_version.split(".")
-        test_tag_name = re.sub(r'\d', '', test_tag)
 
-        rough_matches = [release for release in releases if f"{major_version}.{minor_version}.{patch_version}.{test_tag_name}" in release]
-        latest_testing_version = max(rough_matches, key=lambda x: int(x.split(".")[3].replace(test_tag_name, "")))
-        if log_to_console and current_version != latest_testing_version:
-            tag_type = tags[test_tag_name].lower()
-            await log_with_color(f"New {tag_type} version of cyberdrop-dl available: {latest_testing_version}", "bold_red", 30)
-
-        return current_version, latest_testing_version
-
-    if log_to_console and current_version != latest_version:
-        await log_with_color(f"New version of cyberdrop-dl available: {latest_version}", "bold_red", 30)
+    if current_version != latest_version:
+        message = f"A new version of Cyberdrop-DL is available: [b cyan]{latest_version}[/b cyan]"
+        if call_from_ui:
+            rich.print(message)
+        elif log_to_console:
+            await log_with_color(message, "bold_red", 30)
+    else:
+        if call_from_ui:
+            rich.print("You are currently on the latest version of Cyberdrop-DL")
 
     return current_version, latest_version

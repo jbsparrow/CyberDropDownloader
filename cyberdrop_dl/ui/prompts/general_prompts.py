@@ -37,9 +37,10 @@ def main_prompt(manager: Manager) -> int:
         Choice(8, "Change URLs.txt file and Download Location"),
         Choice(9, "Edit Configs"),
         Separator(),
-        Choice(10, "Import Cyberdrop_V4 Items"),
-        Choice(11, "View Changelog"),
-        Choice(12, "Exit"),
+        Choice(10, "Check for Updates"),
+        Choice(11, "Import Cyberdrop_V4 Items"),
+        Choice(12, "View Changelog"),
+        Choice(13, "Exit"),
     ]
 
     simp_disclaimer_shown = manager.cache_manager.get("simp_disclaimer_shown")
