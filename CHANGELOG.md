@@ -5,14 +5,37 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [UNRELEASED]
+## [5.7.0] - 2024-10-23
 
 This update introduces the following changes:
-1. Add support for saint2.su albums 
+1. Rotating log files 
+2. Overhaul hashing functions
+3. Add support for https://tokyomotion.net URLs
+4. Add support for https://xxxbunker.com URLs
+5. Add support for https://saint2.su albums
+6. Add support for password protected Cyberfile URLs
+7. Simplify some UI elements
+8. Improve jdownloader intergration
+9. Implement rich logger
+10. General bug fixes
+
 
 #### Details:
 
-- Adds download support for saint2.su album URLs
+- Add option to rotate log file names. If enabled, current `date-time` will be used as a suffix for each log file, in the format `YYMMDD_HHMMSS`. This will prevent overriding old log files
+- Refactor hashing funtioncs and logic
+- Add support for videos, photos, albums, playlist, profiles and search results of tokyomotion.net
+- Add support for playlists, search results and video downloads on xxxbunker.com
+- Add support for saint2.su album URLs
+- Add support for both password protected files and folders on Cyberfile. Users can include the password as a query parameter in the input URL, adding `?password=<URL_PASSWORD>` to it. Example: `https://cyberfile.me/folder/xUGg?password=1234`
+- Replace built-in log file handler with rich handler for better error reports
+- UI changes: remove redundant 'X of Y files' from every progress bar, sort scrape and download error by reverse frequency, use equal height for top row UI, fix padding issues, show unsupported URLs stats at the end
+- Add `whitelist` filter, `autostart` and custom `download_dir` options for jdownloader. For more details, visit the wiki: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings#runtime-options
+- Fix error during program exit when referers table no longer exists
+- Prevents crashes when there are insufficient permissions to move a file
+- Fix an issue where CDL would delete URLs input file
+- Move functions for after download to `post_runtime` 
+- Fix handling of deleted imgbox albums if they return `HTTP 200`
 
 
 ## [5.6.54] - 2024-10-21
