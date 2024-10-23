@@ -14,9 +14,10 @@ class DownloadsProgress:
     def __init__(self, manager: 'Manager'):
         self.manager = manager
         self.progress = Progress("[progress.description]{task.description}",
-                                BarColumn(bar_width=None),
-                                "[progress.percentage]{task.percentage:>3.2f}%",
-                                "{task.completed} of {task.total} Files")
+                                 BarColumn(bar_width=None),
+                                 "[progress.percentage]{task.percentage:>6.2f}%",
+                                 "━",
+                                 "{task.completed}")
         self.progress_group = Group(self.progress)
 
         self.total_files = 0
@@ -28,11 +29,12 @@ class DownloadsProgress:
         self.skipped_files = 0
         self.failed_files_task_id = self.progress.add_task("[red]Failed", total=0)
         self.failed_files = 0
+        self.panel = Panel(self.progress_group, title=f"Config: {self.manager.config_manager.loaded_config}",
+                     border_style="green", padding=(1, 1), subtitle=f"Total Files: [white]{self.total_files}")
 
     async def get_progress(self) -> Panel:
         """Returns the progress bar"""
-        return Panel(self.progress_group, title=f"Config: {self.manager.config_manager.loaded_config}",
-                    border_style="green", padding=(1, 1))
+        return self.panel
 
     async def update_total(self) -> None:
         """Updates the total number of files to be downloaded"""
@@ -41,6 +43,7 @@ class DownloadsProgress:
         self.progress.update(self.previously_completed_files_task_id, total=self.total_files)
         self.progress.update(self.skipped_files_task_id, total=self.total_files)
         self.progress.update(self.failed_files_task_id, total=self.total_files)
+        self.panel.subtitle = f"Total Files: [white]{self.total_files}"
 
     async def add_completed(self) -> None:
         """Adds a completed file to the progress bar"""

@@ -231,3 +231,5 @@ class Manager:
         self.db_manager: DBManager = field(init=False)
         self.console_manager: ConsoleManager = field(init=False)
         self.console_manager: CacheManager = field(init=False)
+        self.hash_manager: HashManager = field(init=False)
+

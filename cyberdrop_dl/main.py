@@ -5,7 +5,6 @@ import os
 import sys
 from pathlib import Path
 
-
 from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.scraper.scraper import ScrapeMapper
 from cyberdrop_dl.ui.ui import program_ui
@@ -14,6 +13,7 @@ from cyberdrop_dl.utils.utilities import check_latest_pypi, log_with_color, chec
 from cyberdrop_dl.managers.console_manager import print_
 
 from cyberdrop_dl.clients.errors import InvalidYamlConfig
+
 
 from rich.console import Console
 from rich.logging import RichHandler
@@ -72,9 +72,30 @@ async def runtime(manager: Manager) -> None:
     
 async def post_runtime(manager: Manager) -> None:
     """Actions to complete after main runtime, and before ui shutdown"""
+
+     # Skip clearing console if running with no UI
+    if not manager.args_manager.no_ui:
+        clear_screen_proc = await asyncio.create_subprocess_shell('cls' if os.name == 'nt' else 'clear')
+        await clear_screen_proc.wait()
+    else:
+        print('\n\n')
+    await log_with_color(f"Running Post-Download Processes For Config: {manager.config_manager.loaded_config}...", "green", 20)
     #checking and removing dupes
-    await manager.hash_manager.hash_client.cleanup_dupes()
+    if not manager.args_manager.sort_all_configs:
+        await manager.hash_manager.hash_client.cleanup_dupes()
+    if isinstance(manager.args_manager.sort_downloads, bool):
+        if manager.args_manager.sort_downloads:
+            sorter = Sorter(manager)
+            await sorter.sort()
+    elif manager.config_manager.settings_data['Sorting']['sort_downloads'] and not manager.args_manager.retry_any:
+        sorter = Sorter(manager)
+        await sorter.sort()
+    await check_partials_and_empty_folders(manager)
     
+    if manager.config_manager.settings_data['Runtime_Options']['update_last_forum_post']:
+        await log("Updating Last Forum Post...", 20)
+        await manager.log_manager.update_last_forum_post()
+
 
 async def director(manager: Manager) -> None:
     """Runs the program and handles the UI"""
@@ -97,7 +118,6 @@ async def director(manager: Manager) -> None:
         logger_debug.setLevel(manager.config_manager.settings_data['Runtime_Options']['log_level'])
         if os.getenv("PYCHARM_HOSTED") is not None or 'TERM_PROGRAM' in os.environ.keys() and os.environ['TERM_PROGRAM'] == 'vscode':
             debug_log_file_path = Path(__file__).parents[1] / "cyberdrop_dl_debug.log"
-            
         else:
             debug_log_file_path = Path(__file__).parent / "cyberdrop_dl_debug.log"
 
@@ -107,9 +127,8 @@ async def director(manager: Manager) -> None:
                             width = DEFAULT_CONSOLE_WIDTH), 
             level = manager.config_manager.settings_data['Runtime_Options']['log_level']
         )
-       
-        logger_debug.addHandler(rich_file_handler_debug)
 
+        logger_debug.addHandler(rich_file_handler_debug)
         # aiosqlite_log = logging.getLogger("aiosqlite")
         # aiosqlite_log.setLevel(manager.config_manager.settings_data['Runtime_Options']['log_level'])
         # aiosqlite_log.addHandler(file_handler_debug)
@@ -131,10 +150,9 @@ async def director(manager: Manager) -> None:
                 old_file_handler.close()
 
         logger.setLevel(manager.config_manager.settings_data['Runtime_Options']['log_level'])
-
+        
         if cyberdrop_dl.utils.utilities.DEBUG_VAR:
             manager.config_manager.settings_data['Runtime_Options']['log_level'] = 10
-
         rich_file_handler = RichHandler(
             **RICH_HANDLER_CONFIG, 
             console=Console(file=manager.path_manager.main_log.open("w", encoding="utf8"),
@@ -191,14 +209,11 @@ async def director(manager: Manager) -> None:
         await log("Checking for Program End...", 20)
         if not manager.args_manager.all_configs or not list(set(configs) - set(configs_ran)):
             break
-        await asyncio.sleep(5)
 
     await log("Checking for Updates...", 20)
     await check_latest_pypi()
-
     await log("Closing Program...", 20)
     await manager.close()
-
     await log_with_color("\nFinished downloading. Enjoy :)", 'green', 20)
 
 

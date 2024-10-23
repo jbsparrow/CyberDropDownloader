@@ -18,3 +18,4 @@ def path_prompt(manager: Manager):
         validate=PathValidator(is_dir=True, message="Input is not a directory"),
     ).execute()
     return hash_path
+

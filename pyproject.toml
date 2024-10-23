@@ -10,7 +10,7 @@ packages = [{ include = "cyberdrop_dl" }]
 include = ["CHANGELOG.md"]
 
 [tool.poetry.dependencies]
-python = "^3.11"
+python = ">=3.11,<3.13"
 aiohttp = "3.10.5"
 aiolimiter = "^1.1.0"
 inquirerpy = "^0.3.4"
