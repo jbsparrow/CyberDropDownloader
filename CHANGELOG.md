@@ -17,7 +17,8 @@ This update introduces the following changes:
 7. Simplify some UI elements
 8. Improve jdownloader intergration
 9. Implement rich logger
-10. General bug fixes
+10. Add a "Check for Updates" UI option
+11. General bug fixes
 
 
 #### Details:
@@ -31,6 +32,7 @@ This update introduces the following changes:
 - Replace built-in log file handler with rich handler for better error reports
 - UI changes: remove redundant 'X of Y files' from every progress bar, sort scrape and download error by reverse frequency, use equal height for top row UI, fix padding issues, show unsupported URLs stats at the end
 - Add `whitelist` filter, `autostart` and custom `download_dir` options for jdownloader. For more details, visit the wiki: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings#runtime-options
+- Added a "Check for Updates" UI option and improved the update check logic to check for new testing versions.
 - Fix error during program exit when referers table no longer exists
 - Prevents crashes when there are insufficient permissions to move a file
 - Fix an issue where CDL would delete URLs input file
