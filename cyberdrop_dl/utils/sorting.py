@@ -62,6 +62,8 @@ class Sorter:
         try:
             dest.parent.mkdir(parents=True, exist_ok=True)
             file.rename(dest)
+        except PermissionError:
+            return False
         except FileExistsError:
             if file.stat().st_size == dest.stat().st_size:
                 file.unlink()
@@ -181,8 +183,8 @@ class Sorter:
                                     filename=filename, ext=ext, length=length, bitrate=bitrate,
                                     sample_rate=sample_rate, file_date_us=file_date_us, file_date_ca=file_date_ca))
 
-        await self.move_cd(file, new_file)
-        await self.manager.progress_manager.sort_progress.increment_audio()
+        if await self.move_cd(file, new_file) is not False:
+            await self.manager.progress_manager.sort_progress.increment_audio()
 
     async def sort_image(self, file: Path, base_name: str) -> None:
         """Sorts an image file into the sorted image folder"""
@@ -205,8 +207,8 @@ class Sorter:
                                     filename=filename, ext=ext, resolution=resolution, file_date_us=file_date_us,
                                     file_date_ca=file_date_ca))
 
-        await self.move_cd(file, new_file)
-        await self.manager.progress_manager.sort_progress.increment_image()
+        if await self.move_cd(file, new_file) is not False:
+            await self.manager.progress_manager.sort_progress.increment_image()
 
     async def sort_video(self, file: Path, base_name: str) -> None:
         """Sorts a video file into the sorted video folder"""
@@ -236,8 +238,8 @@ class Sorter:
                                     filename=filename, ext=ext, resolution=resolution, fps=frames_per_sec,
                                     codec=codec, file_date_us=file_date_us, file_date_ca=file_date_ca))
 
-        await self.move_cd(file, new_file)
-        await self.manager.progress_manager.sort_progress.increment_video()
+        if await self.move_cd(file, new_file) is not False:
+            await self.manager.progress_manager.sort_progress.increment_video()
 
     async def sort_other(self, file: Path, base_name: str) -> None:
         """Sorts an other file into the sorted other folder"""
@@ -251,5 +253,5 @@ class Sorter:
             self.other_format.format(sort_dir=self.sorted_downloads, base_dir=base_name, parent_dir=parent_name,
                                     filename=filename, ext=ext, file_date_us=file_date_us, file_date_ca=file_date_ca))
 
-        await self.move_cd(file, new_file)
-        await self.manager.progress_manager.sort_progress.increment_other()
+        if await self.move_cd(file, new_file) is not False:
+            await self.manager.progress_manager.sort_progress.increment_other()
