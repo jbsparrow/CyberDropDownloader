@@ -13,6 +13,8 @@ from cyberdrop_dl.utils.sorting import Sorter
 from cyberdrop_dl.utils.utilities import check_latest_pypi, log_with_color, check_partials_and_empty_folders, log
 from cyberdrop_dl.managers.console_manager import print_
 
+from cyberdrop_dl.clients.errors import InvalidYamlConfig
+
 from rich.console import Console
 from rich.logging import RichHandler
 
