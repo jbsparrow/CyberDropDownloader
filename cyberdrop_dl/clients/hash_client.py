@@ -88,10 +88,10 @@ class HashClient:
         async with self.manager.live_manager.get_hash_live():
             if not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_after_download']:
                 return
-            hashes_dict=await self.get_hashes_dict()
+            file_hashes_dict=await self.get_hashes_dict()
         async with self.manager.live_manager.get_remove_file_via_hash_live():
-            final_dict=await self.get_candiate_per_group(hashes_dict)
-            await self.final_cleanup(final_dict)
+            final_candiates_dict=await self.get_candiate_per_group(file_hashes_dict)
+            await self.final_cleanup(final_candiates_dict)
 
     async def final_cleanup(self,final_dict):
             for hash, size_dict in final_dict.items():
