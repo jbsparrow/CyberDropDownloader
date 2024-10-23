@@ -208,9 +208,7 @@ async def director(manager: Manager) -> None:
         await log("Checking for Program End...", 20)
         if not manager.args_manager.all_configs or not list(set(configs) - set(configs_ran)):
             break
-        await asyncio.sleep(5)
 
-    await asyncio.sleep(5)
     await log("Checking for Updates...", 20)
     await check_latest_pypi()
     await log("Closing Program...", 20)

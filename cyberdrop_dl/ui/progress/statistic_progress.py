@@ -103,6 +103,9 @@ class ScrapeStatsProgress:
 
         self.failure_types: Dict[str, TaskID] = {}
         self.failed_files = 0
+        self.unsupported_urls = 0
+        self.sent_to_jdownloader = 0
+        self.unsupported_urls_skipped = 0
         self.panel = Panel(self.progress_group, title="Scrape Failures", border_style="green", padding=(1, 1), subtitle = f"Total Scrape Failures: [white]{self.failed_files}")
 
     async def get_progress(self) -> Panel:
