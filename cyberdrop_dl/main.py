@@ -160,24 +160,11 @@ async def director(manager: Manager) -> None:
         await manager.async_startup()
 
         await log("Starting UI...", 20)
-<<<<<<< HEAD
-        if not manager.args_manager.sort_all_configs:
-            try:
-                async with manager.live_manager.get_main_live(stop=True) :
-                    await runtime(manager)
-                    await post_runtime(manager)
-            except Exception as e:
-                print_("\nAn error occurred, please report this to the developer")
-                print_(e)
-                print_(traceback.format_exc())
-                exit(1)
-=======
         try:
             async with manager.live_manager.get_main_live(stop=True) :
                 await runtime(manager)
                 await post_runtime(manager)
                  # add the stuff here)
->>>>>>> 810fc57e (fix create hash)
 
             await log("Checking for Program End...", 20)
             if not manager.args_manager.all_configs or not list(set(configs) - set(configs_ran)):
