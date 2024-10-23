@@ -45,7 +45,7 @@ class ProgressManager:
         """Startup process for the progress manager"""
         progress_layout = Layout()
         progress_layout.split_column(
-            Layout(name="upper", ratio=1, minimum_size=8),
+            Layout(name="upper", ratio=2, minimum_size=8),
             Layout(renderable=await self.scraping_progress.get_progress(), name="Scraping", ratio=2),
             Layout(renderable=await self.file_progress.get_progress(), name="Downloads", ratio=2),
         )
@@ -88,6 +88,9 @@ class ProgressManager:
 
         scrape_failures = await self.scrape_stats_progress.return_totals()
         await log_with_color("\nScrape Failures:", "cyan", 20)
+        await log_with_color(f"Unsupported URLs, Sent to Jdownloader: {self.scrape_stats_progress.sent_to_jdownloader}", "yellow", 20)
+        await log_with_color(f"Unsupported URLs, Skipped: {self.scrape_stats_progress.unsupported_urls_skipped}", "yellow", 20)
+        await log_with_color(f"Unsupported URLs, Total: {self.scrape_stats_progress.unsupported_urls}", "yellow", 20)
         for key, value in scrape_failures.items():
             await log_with_color(f"Scrape Failures ({key}): {value}", "red", 20)
 

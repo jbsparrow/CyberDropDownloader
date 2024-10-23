@@ -3,8 +3,7 @@ import contextlib
 import logging
 import os
 import sys
-import traceback
-
+from pathlib import Path
 
 from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.scraper.scraper import ScrapeMapper
@@ -14,6 +13,26 @@ from cyberdrop_dl.utils.utilities import check_latest_pypi, log_with_color, chec
 from cyberdrop_dl.managers.console_manager import print_
 from cyberdrop_dl.clients.errors import InvalidYamlConfig
 
+
+from rich.console import Console
+from rich.logging import RichHandler
+
+DEFAULT_CONSOLE_WIDTH = 160
+
+RICH_HANDLER_CONFIG = { 
+    "show_time": True, 
+    "rich_tracebacks": True, 
+    "tracebacks_show_locals": False
+}
+
+RICH_HANDLER_DEBUG_CONFIG = {
+    "show_time": True, 
+    "rich_tracebacks": True, 
+    "tracebacks_show_locals": True,
+    "locals_max_string": DEFAULT_CONSOLE_WIDTH,
+    "tracebacks_extra_lines": 2,
+    "locals_max_length": 20
+}
 
 def startup() -> Manager:
     """
@@ -97,14 +116,18 @@ async def director(manager: Manager) -> None:
     if cyberdrop_dl.utils.utilities.DEBUG_VAR:
         logger_debug.setLevel(manager.config_manager.settings_data['Runtime_Options']['log_level'])
         if os.getenv("PYCHARM_HOSTED") is not None or 'TERM_PROGRAM' in os.environ.keys() and os.environ['TERM_PROGRAM'] == 'vscode':
-            file_handler_debug = logging.FileHandler("../cyberdrop_dl_debug.log", mode="w")
+            debug_log_file_path = Path(__file__).parents[1] / "cyberdrop_dl_debug.log"
         else:
-            file_handler_debug = logging.FileHandler("./cyberdrop_dl_debug.log", mode="w")
-        file_handler_debug.setLevel(manager.config_manager.settings_data['Runtime_Options']['log_level'])
-        formatter = logging.Formatter("%(levelname)-8s : %(asctime)s : %(filename)s:%(lineno)d : %(message)s")
-        file_handler_debug.setFormatter(formatter)
-        logger_debug.addHandler(file_handler_debug)
+            debug_log_file_path = Path(__file__).parent / "cyberdrop_dl_debug.log"
 
+        rich_file_handler_debug = RichHandler(
+            **RICH_HANDLER_DEBUG_CONFIG, 
+            console=Console(file = debug_log_file_path.open("w", encoding="utf8"), 
+                            width = DEFAULT_CONSOLE_WIDTH), 
+            level = manager.config_manager.settings_data['Runtime_Options']['log_level']
+        )
+
+        logger_debug.addHandler(rich_file_handler_debug)
         # aiosqlite_log = logging.getLogger("aiosqlite")
         # aiosqlite_log.setLevel(manager.config_manager.settings_data['Runtime_Options']['log_level'])
         # aiosqlite_log.addHandler(file_handler_debug)
@@ -126,36 +149,66 @@ async def director(manager: Manager) -> None:
                 old_file_handler.close()
 
         logger.setLevel(manager.config_manager.settings_data['Runtime_Options']['log_level'])
-        file_handler = logging.FileHandler(manager.path_manager.main_log, mode="w")
         
         if cyberdrop_dl.utils.utilities.DEBUG_VAR:
             manager.config_manager.settings_data['Runtime_Options']['log_level'] = 10
-        file_handler.setLevel(manager.config_manager.settings_data['Runtime_Options']['log_level'])
+        rich_file_handler = RichHandler(
+            **RICH_HANDLER_CONFIG, 
+            console=Console(file=manager.path_manager.main_log.open("w", encoding="utf8"),
+                            width = DEFAULT_CONSOLE_WIDTH),
+            level = manager.config_manager.settings_data['Runtime_Options']['log_level']
+        )
 
-        formatter = logging.Formatter("%(levelname)-8s : %(asctime)s : %(filename)s:%(lineno)d : %(message)s")
-        file_handler.setFormatter(formatter)
-        logger.addHandler(file_handler)
+        logger.addHandler(rich_file_handler)
         import cyberdrop_dl.managers.console_manager
         cyberdrop_dl.managers.console_manager.LEVEL=manager.config_manager.settings_data['Runtime_Options']['console_log_level']
 
+        await log(f"Using Debug Log: {debug_log_file_path.resolve() if cyberdrop_dl.utils.utilities.DEBUG_VAR else None}", 10)
         await log("Starting Async Processes...", 20)
         await manager.async_startup()
 
         await log("Starting UI...", 20)
-        try:
-            async with manager.live_manager.get_main_live(stop=True) :
-                await runtime(manager)
-                await post_runtime(manager)
-                 # add the stuff here)
+        if not manager.args_manager.sort_all_configs:
+            try:
+                async with manager.live_manager.get_main_live(stop=True) :
+                    await runtime(manager)
+                    await post_runtime(manager)
+            except Exception as e:
+                await log("\nAn error occurred, please report this to the developer:", 50, exc_info=True)
+                exit(1)
 
-            await log("Checking for Program End...", 20)
-            if not manager.args_manager.all_configs or not list(set(configs) - set(configs_ran)):
-                break
-        except Exception as e:
-            await log("\nAn error occurred, please report this to the developer:", 50, exc_info=True)
-            exit(1)
-    await log("Printing Stats...", 20)
-    await manager.progress_manager.print_stats()
+        # Skip clearing console if running with no UI
+        if not manager.args_manager.no_ui:
+            clear_screen_proc = await asyncio.create_subprocess_shell('cls' if os.name == 'nt' else 'clear')
+            await clear_screen_proc.wait()
+        else:
+            print('\n\n')
+
+        await log_with_color(f"Running Post-Download Processes For Config: {manager.config_manager.loaded_config}...", "green", 20)
+        if isinstance(manager.args_manager.sort_downloads, bool):
+            if manager.args_manager.sort_downloads:
+                sorter = Sorter(manager)
+                await sorter.sort()
+        elif manager.config_manager.settings_data['Sorting']['sort_downloads'] and not manager.args_manager.retry_any:
+            sorter = Sorter(manager)
+            await sorter.sort()
+        await check_partials_and_empty_folders(manager)
+        
+        if manager.config_manager.settings_data['Runtime_Options']['update_last_forum_post']:
+            await log("Updating Last Forum Post...", 20)
+            await manager.log_manager.update_last_forum_post()
+            
+        
+        # add the stuff here
+
+        
+        await log("Printing Stats...", 20)
+        await manager.progress_manager.print_stats()
+
+        await log("Checking for Program End...", 20)
+        if not manager.args_manager.all_configs or not list(set(configs) - set(configs_ran)):
+            break
+        await asyncio.sleep(5)
 
     await asyncio.sleep(5)
     await log("Checking for Updates...", 20)
