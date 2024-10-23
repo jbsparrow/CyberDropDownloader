@@ -90,7 +90,6 @@ class HashClient:
                 return
             hashes_dict=await self.get_hashes_dict()
         async with self.manager.live_manager.get_remove_file_via_hash_live():
-            # #remove downloaded files, so each group only has the first downloaded file
             final_dict=await self.get_candiate_per_group(hashes_dict)
             await self.final_cleanup(final_dict)
 
@@ -157,6 +156,7 @@ class HashClient:
             return hashes_dict
     
     async def get_candiate_per_group(self,hashes_dict):
+            #remove downloaded files, so each group only has the one previously downloaded file or the first downloaded file
             for hash, size_dict in hashes_dict.items():
                 for size, files in size_dict.items():
                     selected_file = None
