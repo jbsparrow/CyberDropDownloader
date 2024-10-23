@@ -107,8 +107,11 @@ settings: Dict = {
         "skip_check_for_partial_files": False,
         "skip_check_for_empty_folders": False,
         "delete_partial_files": False,
-        "send_unsupported_to_jdownloader": False,
         "update_last_forum_post": True,
+        "send_unsupported_to_jdownloader": False,
+        "jdownloader_download_dir": None,
+        "jdownloader_autostart" : False,
+        "jdownloader_whitelist" : []
     },
     "Sorting": {
         "sort_downloads": False,

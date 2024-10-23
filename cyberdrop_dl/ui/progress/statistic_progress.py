@@ -60,6 +60,9 @@ class ScrapeStatsProgress:
 
         self.failure_types: Dict[str, TaskID] = {}
         self.failed_files = 0
+        self.unsupported_urls = 0
+        self.sent_to_jdownloader = 0
+        self.unsupported_urls_skipped = 0
 
     async def get_progress(self) -> Panel:
         """Returns the progress bar"""
@@ -82,6 +85,14 @@ class ScrapeStatsProgress:
             self.failure_types[failure_type] = self.progress.add_task(failure_type, total=self.failed_files,
                                                                     completed=1)
         await self.update_total(self.failed_files)
+
+    async def add_unsupported(self, sent_to_jdownloader: bool = False) -> None:
+        """Adds an unsupported url to the progress bar"""
+        self.unsupported_urls += 1
+        if sent_to_jdownloader:
+            self.sent_to_jdownloader += 1
+        else:
+            self.unsupported_urls_skipped += 1
 
     async def return_totals(self) -> Dict:
         """Returns the total number of failed sites and reasons"""
