@@ -203,11 +203,15 @@ def program_ui(manager: Manager):
                 elif action == 8:
                     break
 
-        # Import Cyberdrop_V4 Items
         elif action == 10:
+            asyncio.run(check_latest_pypi(log_to_console=True, call_from_ui=True))
+            exit(0)
+
+        # Import Cyberdrop_V4 Items
+        elif action == 11:
             import_cyberdrop_v4_items_prompt(manager)
 
-        elif action == 11:
+        elif action == 12:
             changelog_path = manager.path_manager.config_dir.parent / "CHANGELOG.md"
             changelog_content = asyncio.run(_get_changelog(changelog_path))
 
@@ -215,8 +219,7 @@ def program_ui(manager: Manager):
                 console.print(Markdown(changelog_content , justify = "left"))
 
         # Exit
-        elif action == 12:
-            asyncio.run(manager.cache_manager.close())
+        elif action == 13:
             exit(0)
 
 
@@ -235,7 +238,7 @@ async def _get_changelog(changelog_path: Path):
                     await f.write(await response.read())
         except Exception:
             return "UNABLE TO GET CHANGELOG INFORMATION"
- 
+
     changelog_lines = latest_changelog.read_text(encoding="utf8").splitlines()
     # remove keep_a_changelog disclaimer
     changelog_content = "\n".join(changelog_lines[:4] + changelog_lines[6:])
