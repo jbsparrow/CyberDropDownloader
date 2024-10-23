@@ -288,6 +288,39 @@ async def check_latest_pypi(log_to_console: bool = True) -> Tuple[str]:
     contents = urllib.request.urlopen('https://pypi.org/pypi/cyberdrop-dl-patched/json').read()
     data = json.loads(contents)
     latest_version = data['info']['version']
+    releases = data['releases'].keys()
+
+
+    # If the current version is not in the releases, it is being worked on and shouldn't be checked
+    if current_version not in releases:
+        return current_version, latest_version
+
+    # Check if the current version is a testing version
+    tags = {'dev': 'Development', 'pre': 'Pre-Release', 'post': 'Post-Release', 'rc': 'Release Candidate',
+                    'a': 'Alpha', 'b': 'Beta'}
+    if any(tag in current_version for tag in tags.keys()):
+        if any(tag in current_version for tag in ['a', 'b', 'rc']):
+            major_version, minor_version, patch_version = current_version.split(".")
+            test_tag = re.sub(r'\d', '', patch_version)
+            patch_version = patch_version.split(test_tag)[0]
+
+            rough_matches = [release for release in releases if f"{major_version}.{minor_version}.{patch_version}{test_tag}" in release]
+            latest_testing_version = max(rough_matches, key=lambda x: int(x.split(".")[2].replace(f"{patch_version}{test_tag}", "")))
+            
+            if log_to_console and current_version != latest_testing_version:
+                tag_type = tags[test_tag].lower()
+                await log_with_color(f"New {tag_type} version of cyberdrop-dl available: {latest_testing_version}", "bold_red", 30)
+                return current_version, latest_testing_version
+        major_version, minor_version, patch_version, test_tag = current_version.split(".")
+        test_tag_name = re.sub(r'\d', '', test_tag)
+
+        rough_matches = [release for release in releases if f"{major_version}.{minor_version}.{patch_version}.{test_tag_name}" in release]
+        latest_testing_version = max(rough_matches, key=lambda x: int(x.split(".")[3].replace(test_tag_name, "")))
+        if log_to_console and current_version != latest_testing_version:
+            tag_type = tags[test_tag_name].lower()
+            await log_with_color(f"New {tag_type} version of cyberdrop-dl available: {latest_testing_version}", "bold_red", 30)
+
+        return current_version, latest_testing_version
 
     if log_to_console and current_version != latest_version:
         await log_with_color(f"New version of cyberdrop-dl available: {latest_version}", "bold_red", 30)
