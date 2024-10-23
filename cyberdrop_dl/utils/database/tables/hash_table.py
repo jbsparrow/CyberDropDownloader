@@ -110,12 +110,13 @@ class HashTable:
         Returns:
             True if the record was inserted or updated successfully, False otherwise.
         """
-
+        referer = str(referer) if referer else referer
         cursor = await self.db_conn.cursor()
         full_path = pathlib.Path(file).absolute()
         file_size = full_path.stat().st_size
 
         download_filename = full_path.name
+        original_filename=referer or download_filename
         folder = str(full_path.parent)
 
         # Assuming a table named 'file_info' with columns: id (primary key), hash, size, filename, folder
@@ -125,7 +126,7 @@ class HashTable:
                 (hash_value, file_size, download_filename, folder, original_filename, referer))
             await self.db_conn.commit()
             return True
-        except IntegrityError:
+        except IntegrityError as _:
             # Handle potential duplicate key (assuming a unique constraint on hash, filename, and folder)
             await cursor.execute("""UPDATE hash
     SET file_size = ?,
