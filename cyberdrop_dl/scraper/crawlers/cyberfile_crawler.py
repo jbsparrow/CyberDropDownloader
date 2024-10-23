@@ -22,6 +22,7 @@ class CyberfileCrawler(Crawler):
         super().__init__(manager, "cyberfile", "Cyberfile")
         self.api_files = URL('https://cyberfile.me/account/ajax/load_files')
         self.api_details = URL('https://cyberfile.me/account/ajax/file_details')
+        self.api_password_process = URL("https://cyberfile.me/ajax/folder_password_process")
         self.request_limiter = AsyncLimiter(5, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -43,20 +44,30 @@ class CyberfileCrawler(Crawler):
     async def folder(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a folder"""
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
+            
         script_func = soup.select('div[class*="page-container"] script')[-1].text
         script_func = script_func.split('loadImages(')[-1]
         script_func = script_func.split(';')[0]
         nodeId = int(script_func.split(',')[1].replace("'", ""))
         scrape_item.album_id = scrape_item.url.parts[2]
         scrape_item.part_of_album = True
+        password = scrape_item.url.query.get("password","")
 
         page = 1
         while True:
             data = {"pageType": "folder", "nodeId": nodeId, "pageStart": page, "perPage": 0, "filterOrderBy": ""}
             async with self.request_limiter:
-                ajax_dict = await self.client.post_data(self.domain, self.api_files, data=data)
+                ajax_dict: dict = await self.client.post_data(self.domain, self.api_files, data=data)
+                if 'Password Required' in ajax_dict['html']:
+                    password_data = {"folderPassword": password, "folderId": nodeId, "submitme": 1}
+                    password_response: dict = await self.client.post_data(self.domain, self.api_password_process, data=password_data)
+                    if not password_response.get('success'):
+                        raise PasswordProtected(scrape_item)
+                    ajax_dict: dict = await self.client.post_data(self.domain, self.api_files, data=data)
+
                 ajax_soup = BeautifulSoup(ajax_dict['html'].replace("\\", ""), 'html.parser')
+
             title = await self.create_title(ajax_dict['page_title'], scrape_item.album_id , None)
             num_pages = int(
                 ajax_soup.select("a[onclick*=loadImages]")[-1].get('onclick').split(',')[2].split(")")[0].strip())
@@ -128,9 +139,16 @@ class CyberfileCrawler(Crawler):
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a file"""
+        password = scrape_item.url.query.get("password","")
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
-
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
+            if 'Enter File Password' in soup.text:
+                password_data = {"filePassword": password, "submitted": 1}
+                soup = BeautifulSoup (await self.client.post_data(
+                    self.domain, scrape_item.url, data=password_data, raw=True))
+                if "File password is invalid" in soup.text:
+                    raise PasswordProtected(scrape_item)
+            
         script_funcs = soup.select('script')
         for script in script_funcs:
             script_text = script.text
@@ -151,8 +169,7 @@ class CyberfileCrawler(Crawler):
             ajax_soup = BeautifulSoup(ajax_dict['html'].replace("\\", ""), 'html.parser')
 
         if "albumPasswordModel" in ajax_dict['html']:
-            await log(f"Album is password protected: {scrape_item.url}", 30)
-            raise PasswordProtected()
+            raise PasswordProtected(scrape_item)
 
         file_menu = ajax_soup.select_one('ul[class="dropdown-menu dropdown-info account-dropdown-resize-menu"] li a')
         file_button = ajax_soup.select_one('div[class="btn-group responsiveMobileMargin"] button')

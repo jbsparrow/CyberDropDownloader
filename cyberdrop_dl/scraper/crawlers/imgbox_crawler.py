@@ -8,11 +8,13 @@ from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.clients.errors import ScrapeFailure
 from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
+    from bs4 import BeautifulSoup
 
 
 class ImgBoxCrawler(Crawler):
@@ -44,8 +46,11 @@ class ImgBoxCrawler(Crawler):
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
 
+        if "The specified gallery could not be found" in soup.text:
+            raise ScrapeFailure(404, f"Gallery not found: {scrape_item.url}")
+        
         scrape_item.album_id = scrape_item.url.parts[2]
         scrape_item.part_of_album = True
 

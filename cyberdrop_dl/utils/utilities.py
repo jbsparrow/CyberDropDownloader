@@ -101,26 +101,25 @@ def error_handling_wrapper(func):
                     await self.manager.log_manager.write_scrape_error_log(link, f" {e.status}")
                 await self.manager.progress_manager.scrape_stats_progress.add_failure(e.status)
             else:
-                await log(f"Scrape Failed: {link} ({e})", 40)
-                await log(traceback.format_exc(), 40)
+                await log(f"Scrape Failed: {link} ({e})", 40, exc_info=True)
                 await self.manager.log_manager.write_scrape_error_log(link, " See Log for Details")
                 await self.manager.progress_manager.scrape_stats_progress.add_failure("Unknown")
 
     return wrapper
 
 
-async def log(message: Union [str, Exception], level: int, sleep: int = None) -> None:
+async def log(message: Union[str, Exception], level: int, sleep: int = None, **kwargs) -> None:
     """Simple logging function"""
-    logger.log(level, message)
+    logger.log(level, message, **kwargs)
     if DEBUG_VAR:
-        logger_debug.log(level, message)
+        logger_debug.log(level, message, **kwargs)
     log_console(level, message, sleep=sleep)
 
 
-async def log_debug(message: Union [str, Exception], level: int, sleep: int = None) -> None:
+async def log_debug(message: Union[str, Exception], level: int, sleep: int = None, *kwargs) -> None:
     """Simple logging function"""
     if DEBUG_VAR:
-        logger_debug.log(level, message.encode('ascii', 'ignore').decode('ascii'))
+        logger_debug.log(level, message.encode('ascii', 'ignore').decode('ascii'), *kwargs)
 
 
 async def log_debug_console(message: Union [str, Exception], level: int, sleep: int = None):
@@ -128,12 +127,12 @@ async def log_debug_console(message: Union [str, Exception], level: int, sleep: 
         log_console(level, message.encode('ascii', 'ignore').decode('ascii'), sleep=sleep)
 
 
-async def log_with_color(message: str, style: str, level: int) -> None:
+async def log_with_color(message: str, style: str, level: int, *kwargs) -> None:
     """Simple logging function with color"""
     global LOG_OUTPUT_TEXT
-    logger.log(level, message)
+    logger.log(level, message, *kwargs)
     if DEBUG_VAR:
-        logger_debug.log(level, message)
+        logger_debug.log(level, message, *kwargs)
     rich.print(f"[{style}]{message}[/{style}]")
     LOG_OUTPUT_TEXT += f"[{style}]{message}\n"
 

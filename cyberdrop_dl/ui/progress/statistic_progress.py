@@ -139,6 +139,14 @@ class ScrapeStatsProgress:
                                                                     completed=1)
         await self.update_total(self.failed_files)
 
+    async def add_unsupported(self, sent_to_jdownloader: bool = False) -> None:
+        """Adds an unsupported url to the progress bar"""
+        self.unsupported_urls += 1
+        if sent_to_jdownloader:
+            self.sent_to_jdownloader += 1
+        else:
+            self.unsupported_urls_skipped += 1
+
     async def return_totals(self) -> Dict:
         """Returns the total number of failed sites and reasons"""
         failures = {}
