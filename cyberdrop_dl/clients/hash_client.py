@@ -118,24 +118,8 @@ class HashClient:
                     # Filter files based  on if the file exists
                     existing_other_matches = list(filter(lambda x: x.exists(), other_matches))
 
-                    # skip if both true
-                    if self.keep_all_files:
-                        return
-                    
-                    # keep a previous downloads
-                    if self.keep_one_prev_download_only:
-                        for ele in existing_other_matches[1:]:
-                            if not ele.exists():
-                                continue
-                            try:
-                                self.send2trash(ele)
-                                await log(f"Sent prev download: {str(ele)} to trash with hash {hash}", 10)
-                                await self.manager.progress_manager.hash_progress.add_removed_prev_file()
-                            except OSError:
-                                continue
-                        return
                     #delete all prev files
-                    else :
+                    if self.delete_all_prev_download() :
                         for ele in existing_other_matches:
                             if not ele.exists():
                                 continue
@@ -145,21 +129,24 @@ class HashClient:
                                 await self.manager.progress_manager.hash_progress.add_removed_prev_file()
                             except OSError:
                                 continue
-                    #keep current download
-                    if self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_new_download']:
-                        continue
-                    elif hash not in self.prev_hashes:
-                        continue
-                    elif selected_file in self.manager.path_manager.prev_downloads_paths:
-                        continue
-                    # delete current download
+                    # keep a previous downloads
                     else:
+                        for ele in existing_other_matches[1:]:
+                            if not ele.exists():
+                                continue
+                            try:
+                                self.send2trash(ele)
+                                await log(f"Sent prev download: {str(ele)} to trash with hash {hash}", 10)
+                                await self.manager.progress_manager.hash_progress.add_removed_prev_file()
+                            except OSError:
+                                continue
+                    # delete current download
+                    if self.delete_current_download(hash,selected_file):
                         try:
                             if ele.exists():
                                 self.send2trash(ele)
                                 await log(f"Sent new download:{str(ele)} to trash with hash {hash}", 10)
                                 await self.manager.progress_manager.hash_progress.add_removed_file()
-
                         except OSError:
 
                             pass
@@ -255,3 +242,17 @@ class HashClient:
             pathlib.Path(path).unlink(missing_ok=True)
         else:
             send2trash(path)
+
+    def delete_all_prev_download(self):
+        return not self.keep_prev_file()
+    def delete_current_download(self,hash,selected_file):
+        return not self.keep_new_download(hash,selected_file)
+    def keep_new_download(self,hash,selected_file):
+        if self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_new_download']:
+            return True
+        elif hash not in self.prev_hashes:
+            return True
+        elif selected_file in self.manager.path_manager.prev_downloads_paths:
+            return True
+    def keep_prev_file(self):
+        return (self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download'])
