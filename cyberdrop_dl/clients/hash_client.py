@@ -88,12 +88,12 @@ class HashClient:
         async with self.manager.live_manager.get_hash_live():
             if not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_after_download']:
                 return
-            file_hashes_dict=await self.get_hashes_dict()
+            file_hashes_dict=await self.get_file_hashes_dict()
         async with self.manager.live_manager.get_remove_file_via_hash_live():
             final_candiates_dict=await self.get_candiate_per_group(file_hashes_dict)
-            await self.final_cleanup(final_candiates_dict)
+            await self.final_dupe_cleanup(final_candiates_dict)
 
-    async def final_cleanup(self,final_dict):
+    async def final_dupe_cleanup(self,final_dict):
             for hash, size_dict in final_dict.items():
                 for size, data in size_dict.items():
                     selected_file = pathlib.Path(data['selected'])
@@ -141,7 +141,7 @@ class HashClient:
 
                         except OSError:
                             pass
-    async def get_hashes_dict(self):
+    async def get_file_hashes_dict(self):
             hashes_dict = defaultdict(lambda: defaultdict(list))
             # first compare downloads to each other
             for media_item in list(self.manager.path_manager.completed_downloads):
