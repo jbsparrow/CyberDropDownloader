@@ -136,7 +136,7 @@ class Downloader:
             self.processed_items.append(media_item.url.path)
             await self.manager.progress_manager.download_progress.update_total()
 
-            await log(f"Download Starting: {media_item.url}", 20)
+            await log(f"Download Starting: {media_item.url}" if self.domain != 'no_crawler' else f"Download Starting (No Crawler): {media_item.url}", 20)
             async with self.manager.client_manager.download_session_limit:
                 try:
                     if isinstance(media_item.file_lock_reference_name, Field):

@@ -39,6 +39,7 @@ This update introduces the following changes:
 - Move functions for after download to `post_runtime` 
 - Fix handling of deleted imgbox albums if they return `HTTP 200`
 - Fix cyberfile deleted folders not being correctly scraped
+- Update logging to include when a file is being downloaded with no crawler
 
 
 ## [5.6.54] - 2024-10-21
