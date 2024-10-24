@@ -25,12 +25,12 @@ def retry(f):
     """This function is a wrapper that handles retrying for failed downloads"""
 
     @wraps(f)
-    async def wrapper(self, *args, **kwargs):
+    async def wrapper(self: Downloader, *args, **kwargs):
         while True:
             try:
                 return await f(self, *args, **kwargs)
             except DownloadFailure as e:
-                media_item = args[0]
+                media_item: MediaItem = args[0]
                 await self.attempt_task_removal(media_item)
 
                 if e.status != 999:
@@ -44,35 +44,35 @@ def retry(f):
                             await self.manager.progress_manager.download_stats_progress.add_failure(e.status)
                             if hasattr(e, "message"):
                                 await log(
-                                    f"Download Failed: {media_item.url} with status {e.status} and message {e.message}",
+                                    f"{self.log_prefix} failed: {media_item.url} with status {e.status} and message {e.message}",
                                     40)
                                 await self.manager.log_manager.write_download_error_log(media_item.url,
                                                                                         f" {e.status} - {e.message}")
                             else:
-                                await log(f"Download Failed: {media_item.url} with status {e.status}", 40)
+                                await log(f"{self.log_prefix} failed: {media_item.url} with status {e.status}", 40)
                                 await self.manager.log_manager.write_download_error_log(media_item.url, f" {e.status}")
                         else:
                             await self.manager.progress_manager.download_stats_progress.add_failure("Unknown")
                             await self.manager.log_manager.write_download_error_log(media_item.url,
                                                                                     " See Log for Details")
-                            await log(f"Download Failed: {media_item.url} with error {e}", 40)
+                            await log(f"{self.log_prefix} failed: {media_item.url} with error {e}", 40)
                         await self.manager.progress_manager.download_progress.add_failed()
                         break
 
                 if hasattr(e, "status"):
                     if hasattr(e, "message"):
-                        await log(f"Download Failed: {media_item.url} with status {e.status} and message {e.message}",
+                        await log(f"{self.log_prefix} failed: {media_item.url} with status {e.status} and message {e.message}",
                                 40)
                     else:
-                        await log(f"Download Failed: {media_item.url} with status {e.status}", 40)
+                        await log(f"{self.log_prefix} failed: {media_item.url} with status {e.status}", 40)
                 else:
-                    await log(f"Download Failed: {media_item.url} with error {e}", 40)
-                await log(f"Download Retrying: {media_item.url} with attempt {media_item.current_attempt}", 20)
+                    await log(f"{self.log_prefix} failed: {media_item.url} with error {e}", 40)
+                await log(f"Retrying {self.log_prefix.lower()}: {media_item.url} , attempt {media_item.current_attempt}", 20)
 
             except DDOSGuardFailure as e:
                 media_item = args[0]
                 await self.attempt_task_removal(media_item)
-                await log(f"Download Failed: {media_item.url} with error {e}", 40, exc_info = True)
+                await log(f"{self.log_prefix} failed: {media_item.url} with error {e}", 40, exc_info = True)
                 await self.manager.log_manager.write_download_error_log(media_item.url, " DDOSGuard")
                 await self.manager.progress_manager.download_stats_progress.add_failure("DDOSGuard")
                 await self.manager.progress_manager.download_progress.add_failed()
@@ -81,16 +81,15 @@ def retry(f):
             except InvalidContentTypeFailure as e:
                 media_item = args[0]
                 await self.attempt_task_removal(media_item)
-                await log(f"Download Failed: {media_item.url} received Invalid Content", 40)
-                await self.manager.log_manager.write_download_error_log(media_item.url, "Invalid Content Received")
-                await log(e.message, 40)
+                await log(f"{self.log_prefix} failed: {media_item.url} received Invalid Content. {e.message}", 40)
+                await self.manager.log_manager.write_download_error_log(media_item.url, " Invalid Content Received")
                 await self.manager.progress_manager.download_stats_progress.add_failure("Invalid Content Type")
                 await self.manager.progress_manager.download_progress.add_failed()
                 break
 
             except Exception as e:
                 media_item = args[0]
-                await log(f"Download Failed: {media_item.url} with error {e}", 40, exc_info = True)
+                await log(f"{self.log_prefix} failed: {media_item.url} with error {e}", 40, exc_info = True)
                 await self.attempt_task_removal(media_item)
                 await self.manager.log_manager.write_download_error_log(media_item.url, " See Log For Details")
                 await self.manager.progress_manager.download_stats_progress.add_failure("Unknown")
@@ -115,6 +114,7 @@ class Downloader:
         self.processed_items: list = []
         self.waiting_items = 0
         self._current_attempt_filesize = {}
+        self.log_prefix = "Download attempt (unsupported domain)" if domain == 'no_crawler' else 'Download'
 
     async def startup(self) -> None:
         """Starts the downloader"""
@@ -136,7 +136,7 @@ class Downloader:
             self.processed_items.append(media_item.url.path)
             await self.manager.progress_manager.download_progress.update_total()
 
-            await log(f"Download Starting: {media_item.url}", 20)
+            await log(f"{self.log_prefix} starting: {media_item.url}", 20)
             async with self.manager.client_manager.download_session_limit:
                 try:
                     if isinstance(media_item.file_lock_reference_name, Field):
@@ -145,11 +145,11 @@ class Downloader:
 
                     await self.download(media_item)
                 except Exception as e:
-                    await log(f"Download Failed: {media_item.url} with error {e}", 40, exc_info = True)
+                    await log(f"{self.log_prefix} failed: {media_item.url} with error {e}", 40, exc_info = True)
                     await self.manager.progress_manager.download_stats_progress.add_failure("Unknown")
                     await self.manager.progress_manager.download_progress.add_failed()
                 else:
-                    await log(f"Download Finished: {media_item.url}", 20)
+                    await log(f"{self.log_prefix} finished: {media_item.url}", 20)
                 finally:
                     await self._file_lock.release_lock(media_item.file_lock_reference_name)
         self._semaphore.release()
@@ -159,10 +159,10 @@ class Downloader:
     async def check_file_can_download(self, media_item: MediaItem) -> bool:
         """Checks if the file can be downloaded"""
         if not await self.manager.download_manager.check_free_space(media_item.download_folder):
-            await log(f"Download Failed {media_item.url} due to insufficient free space", 10)
+            await log(f"{self.log_prefix} failed {media_item.url} due to insufficient free space", 10)
             return False, 0
         if not await self.manager.download_manager.check_allowed_filetype(media_item):
-            await log(f"Download Skipped {media_item.url} due to filetype restrictions", 10)
+            await log(f"{self.log_prefix} skipped {media_item.url} due to filetype restrictions", 10)
             return False, 1
         return True, -1
 
@@ -226,13 +226,13 @@ class Downloader:
                     await self.attempt_task_removal(media_item)
                     if hasattr(e, "message"):
                         if not e.message:
-                            e.message = "Download Failed"
-                        await log(f"Download failed: {media_item.url} with status {e.status} and message {e.message}",
+                            e.message = f"{self.log_prefix} failed"
+                        await log(f"{self.log_prefix} failed: {media_item.url} with status {e.status} and message {e.message}",
                                 40)
                         await self.manager.log_manager.write_download_error_log(media_item.url,
                                                                                 f" {e.status} - {e.message}")
                     else:
-                        await log(f"Download Failed: {media_item.url} with status {e.status}", 40)
+                        await log(f"{self.log_prefix} failed: {media_item.url} with status {e.status}", 40)
                         await self.manager.log_manager.write_download_error_log(media_item.url, f" {e.status}")
                     return
 
@@ -240,9 +240,10 @@ class Downloader:
                 size = media_item.partial_file.stat().st_size
                 if media_item.filename in self._current_attempt_filesize and self._current_attempt_filesize[
                     media_item.filename] >= size:
-                    raise DownloadFailure(status=getattr(e, "status", type(e).__name__), message="Download failed")
+                    raise DownloadFailure(status=getattr(e, "status", type(e).__name__), message=f"{self.log_prefix} failed")
                 self._current_attempt_filesize[media_item.filename] = size
                 media_item.current_attempt = 0
                 raise DownloadFailure(status=999, message="Download timeout reached, retrying")
 
-            raise DownloadFailure(status=getattr(e, "status", type(e).__name__), message=repr(e))
+            message = e.message if hasattr(e, "message") else repr(e)
+            raise DownloadFailure(status=getattr(e, "status", type(e).__name__), message=message)
