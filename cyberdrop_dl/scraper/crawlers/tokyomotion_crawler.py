@@ -33,7 +33,7 @@ class TokioMotionCrawler(Crawler):
         self.next_page_attribute = "href"
         self.next_page_selector = 'a.prevnext'
         self.title_selector = "meta[property='og:title']"
-        self.video_div_selector = "div[id^='video_']"
+        self.video_div_selector = "div[id*='video_']"
         self.video_selector = 'a[href^="/video/"]'
         self.search_div_selector = "div[class^='well']"
 
