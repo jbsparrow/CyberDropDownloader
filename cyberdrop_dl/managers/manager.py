@@ -156,45 +156,21 @@ class Manager:
         forum_xf_cookies_provided = {}
         forum_credentials_provided = {}
 
+        auth_data_forums = self.config_manager.authentication_data['Forums']
+        auth_data_others = self.config_manager.authentication_data.copy()
+        auth_data_others.pop('Forums',None)
+
         for forum in SupportedDomains.supported_forums_map.values():
-            if self.config_manager.authentication_data["Forums"][f"{forum}_xf_user_cookie"]:
-                forum_xf_cookies_provided[f"{forum} XF Cookie Provided"] = True
-            else:
-                forum_xf_cookies_provided[f"{forum} XF Cookie Provided"] = False
-
-            if self.config_manager.authentication_data["Forums"][f"{forum}_username"] and \
-                    self.config_manager.authentication_data["Forums"][f"{forum}_password"]:
-                forum_credentials_provided[f"{forum} Credentials Provided"] = True
-            else:
-                forum_credentials_provided[f"{forum} Credentials Provided"] = False
-
-        gofile_credentials_provided = bool(self.config_manager.authentication_data["GoFile"]["gofile_api_key"])
-
-        imgur_credentials_provided = bool(self.config_manager.authentication_data["Imgur"]["imgur_client_id"])
-        jdownloader_credentials_provided = False
-
-        if self.config_manager.authentication_data["JDownloader"]['jdownloader_username'] and \
-                self.config_manager.authentication_data["JDownloader"]['jdownloader_password'] and \
-                self.config_manager.authentication_data["JDownloader"]['jdownloader_device']:
-            jdownloader_credentials_provided = True
-
-        pixeldrain_credentials_provided = bool(
-            self.config_manager.authentication_data["PixelDrain"]["pixeldrain_api_key"])
-        reddit_credentials_provided = False
-
-        if self.config_manager.authentication_data["Reddit"]['reddit_personal_use_script'] and \
-                self.config_manager.authentication_data["Reddit"]['reddit_secret']:
-            reddit_credentials_provided = True
+            forum_xf_cookies_provided[forum] = bool(auth_data_forums[f"{forum}_xf_user_cookie"])
+            forum_credentials_provided[forum] =  bool(auth_data_forums[f"{forum}_username"] and auth_data_forums[f"{forum}_password"])
 
         auth_provided = {
             "Forums Credentials": forum_credentials_provided,
             "Forums XF Cookies": forum_xf_cookies_provided,
-            "GoFile Provided": gofile_credentials_provided,
-            "Imgur Provided": imgur_credentials_provided,
-            "JDownloader Provided": jdownloader_credentials_provided,
-            "PixelDrain Provided": pixeldrain_credentials_provided,
-            "Reddit Provided": reddit_credentials_provided
         }
+
+        for site, auth_entries in auth_data_others.items():
+            auth_provided[site] = all([value for value in auth_entries.values()])
 
         print_settings = copy.deepcopy(self.config_manager.settings_data)
         print_settings['Files']['input_file'] = str(print_settings['Files']['input_file'])
