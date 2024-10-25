@@ -470,6 +470,10 @@ class ScrapeMapper:
             self.manager.task_group.create_task(scraper.run(scrape_item))
             return
 
+        elif self.manager.real_debrid_manager.enabled and await self.manager.real_debrid_manager.is_supported(scrape_item.url):
+            await log(f"Using RealDebrid for unsupported URL: {scrape_item.url}", 10)
+            self.manager.task_group.create_task(self.existing_crawlers['realdebrid'].run(scrape_item))
+
         elif await self.extension_check(scrape_item.url):
             check_complete = await self.manager.db_manager.history_table.check_complete("no_crawler", scrape_item.url,
                                                                                         scrape_item.url)
@@ -495,10 +499,6 @@ class ScrapeMapper:
             filename, ext = await get_filename_and_ext(scrape_item.url.name)
             media_item = MediaItem(scrape_item.url, scrape_item.url, None, download_folder, filename, ext, filename)
             self.manager.task_group.create_task(self.no_crawler_downloader.run(media_item))
-
-        elif self.manager.real_debrid_manager.enabled and await self.manager.real_debrid_manager.is_supported(scrape_item.url):
-            await log(f"Using RealDebrid for unsupported URL: {scrape_item.url}", 10)
-            self.manager.task_group.create_task(self.existing_crawlers['realdebrid'].run(scrape_item))
 
         elif self.jdownloader.enabled and jdownloader_whitelisted:
             await log(f"Sending unsupported URL to JDownloader: {scrape_item.url}", 10)
