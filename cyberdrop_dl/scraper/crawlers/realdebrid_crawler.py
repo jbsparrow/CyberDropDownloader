@@ -7,7 +7,7 @@ from multidict import MultiDict
 
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
-from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wrapper, log, log_debug
+from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wrapper, log
 from cyberdrop_dl.managers.realdebrid_manager import RATE_LIMIT
 
 if TYPE_CHECKING:
@@ -55,46 +55,44 @@ class RealDebridCrawler(Crawler):
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a file"""
-        original_url = scrape_item.url
+        original_url = database_url = debrid_url = scrape_item.url
         password = original_url.query.get('password','')
-        debrid_link = original_url
-        self_hosted = await self.is_self_hosted(scrape_item.url)
-        if not self_hosted:
-            async with self.request_limiter:
-                debrid_link = await self.manager.real_debrid_manager.unrestrict_link(original_url, password)
-        
-        if await self.check_complete_from_referer(scrape_item):
+
+        if await self.check_complete_from_referer(original_url):
             return
         
-        await log (f'scraping file with RealDebrid: {original_url}',10)
-        await log_debug(f'original url: {original_url}  -  debrid_url: {debrid_link}',10)
+        self_hosted = await self.is_self_hosted(original_url)
 
-        if not scrape_item.part_of_album:
+        if not self_hosted:
             title = await self.create_title(f"files [{original_url.host.lower()}]", None, None)
+            scrape_item.part_of_album = True
             await scrape_item.add_to_parent_title(title)
+            async with self.request_limiter:
+                debrid_url = await self.manager.real_debrid_manager.unrestrict_link(original_url, password)
+        
+        if await self.check_complete_from_referer(debrid_url):
+            return
+        
+        await log(f'Real Debrid:\n  Original URL: {original_url}\n  Debrid URL: {debrid_url}',10)            
 
-        link = original_url
         if not self_hosted:
             # Some hosts use query params or fragment as id or password (ex: mega.nz)
             # This save the query and fragment as parts of the URL path since DB lookups only use url_path 
-            link = self.primary_base_domain / original_url.host.lower() / original_url.path[1:] / debrid_link.name
+            database_url = self.primary_base_domain / original_url.host.lower() / original_url.path[1:]
             if original_url.query:
                 query_params_list = [item for pair in original_url.query.items() for item in pair]
-                link = link / 'query' / "/".join(query_params_list)
+                database_url = database_url / 'query' / "/".join(query_params_list)
 
             if original_url.fragment:
-                link = link / 'frag'/ original_url.fragment
+                database_url = database_url / 'frag'/ original_url.fragment
 
-        filename, ext = await get_filename_and_ext(debrid_link.name)
-        await self.handle_file(link, scrape_item, filename, ext, debrid_link = debrid_link)
+        filename, ext = await get_filename_and_ext(debrid_url.name)
+        await self.handle_file(database_url, scrape_item, filename, ext, debrid_link = debrid_url)
 
     async def is_self_hosted(self, url: URL):
-        return any ({subdomain in url.host for subdomain in ('download.', 'my.')})
+        return any ({subdomain in url.host for subdomain in ('download.', 'my.')}) and self.domain in url.host
 
     async def get_original_url(self, scrape_item: ScrapeItem) -> URL:
-        if self.domain not in scrape_item.url.host:
-            return scrape_item.url
-        
         if await self.is_self_hosted(scrape_item.url):
             return scrape_item.url
         
