@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
+from multidict import MultiDict
 
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
@@ -22,6 +23,7 @@ class RealDebridCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url"""
         task_id = await self.scraping_progress.add_task(scrape_item.url)
+        scrape_item.url = await self.get_original_url(scrape_item)
 
         if await self.manager.real_debrid_manager.is_supported_folder(scrape_item.url):
             await self.folder(scrape_item)
@@ -55,8 +57,11 @@ class RealDebridCrawler(Crawler):
         """Scrapes a file"""
         original_url = scrape_item.url
         password = original_url.query.get('password','')
-        async with self.request_limiter:
-            debrid_link = await self.manager.real_debrid_manager.unrestrict_link(original_url, password)
+        debrid_link = original_url
+        self_hosted = await self.is_self_hosted(scrape_item.url)
+        if not self_hosted:
+            async with self.request_limiter:
+                debrid_link = await self.manager.real_debrid_manager.unrestrict_link(original_url, password)
         
         if await self.check_complete_from_referer(scrape_item):
             return
@@ -68,17 +73,54 @@ class RealDebridCrawler(Crawler):
             title = await self.create_title(f"files [{original_url.host.lower()}]", None, None)
             await scrape_item.add_to_parent_title(title)
 
-        # Some hosts use query params or fragment as id or password (ex: mega.nz)
-        # This save the query and fragment as parts of the URL path since DB lookups only use url_path 
-        link = self.primary_base_domain / original_url.host.lower() / original_url.path[1:] / debrid_link.name
-        if original_url.query:
-            query_params_list = [item for pair in original_url.query.items() for item in pair]
-            link = link / 'query' / "/".join(query_params_list)
+        link = original_url
+        if not self_hosted:
+            # Some hosts use query params or fragment as id or password (ex: mega.nz)
+            # This save the query and fragment as parts of the URL path since DB lookups only use url_path 
+            link = self.primary_base_domain / original_url.host.lower() / original_url.path[1:] / debrid_link.name
+            if original_url.query:
+                query_params_list = [item for pair in original_url.query.items() for item in pair]
+                link = link / 'query' / "/".join(query_params_list)
 
-        if original_url.fragment:
-            link = link / 'frag'/ original_url.fragment
+            if original_url.fragment:
+                link = link / 'frag'/ original_url.fragment
 
         filename, ext = await get_filename_and_ext(debrid_link.name)
-        await self.handle_file(link, scrape_item, filename, ext, debrid_link)
+        await self.handle_file(link, scrape_item, filename, ext, debrid_link = debrid_link)
+
+    async def is_self_hosted(self, url: URL):
+        return any ({subdomain in url.host for subdomain in ('download.', 'my.')})
+
+    async def get_original_url(self, scrape_item: ScrapeItem) -> URL:
+        if self.domain not in scrape_item.url.host:
+            return scrape_item.url
+        
+        if await self.is_self_hosted(scrape_item.url):
+            return scrape_item.url
+        
+        parts_dict = {'parts': [] , 'query': [], 'frag': []}
+        key = 'parts'
+
+        original_domain = scrape_item.url.parts[1]
+        for part in scrape_item.url.parts[2:]:
+            if part == 'query':
+                key = part
+                continue
+            elif part == 'frag':
+                key = part
+                continue
+            parts_dict[key].append(part)
+
+        path = '/'.join(parts_dict['parts'])
+        query = MultiDict()
+
+        for i in range(0, parts_dict['query'], 2):
+            query[parts_dict[i]] = parts_dict[i+1]
+
+        frag = parts_dict['frag'] if parts_dict['frag'] else None
+
+        original_url = URL(f'https://{original_domain}').with_path(path).with_query(query).with_fragment(frag)
+        return original_url
+
 
 

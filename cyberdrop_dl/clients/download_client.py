@@ -104,9 +104,6 @@ class DownloadClient:
 
         await asyncio.sleep(self.client_manager.download_delay)
 
-        if domain == 'real-debrid' and not media_item.debrid_link:
-            media_item.debrid_link = await manager.real_debrid_manager.unrestrict_link(media_item.url)
-
         download_url = media_item.debrid_link or media_item.url
         async with client_session.get(download_url, headers=download_headers, ssl=self.client_manager.ssl_context,
                                     proxy=self.client_manager.proxy) as resp:
