@@ -179,12 +179,13 @@ class Crawler(ABC):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def check_complete_from_referer(self, scrape_item: ScrapeItem) -> bool:
+    async def check_complete_from_referer(self, scrape_item: ScrapeItem| URL) -> bool:
         """Checks if the scrape item has already been scraped"""
+        url = scrape_item if isinstance(scrape_item, URL) else scrape_item.url
         check_complete = await self.manager.db_manager.history_table.check_complete_by_referer(self.domain,
-                                                                                            scrape_item.url)
+                                                                                            url)
         if check_complete:
-            await log(f"Skipping {scrape_item.url} as it has already been downloaded", 10)
+            await log(f"Skipping {url} as it has already been downloaded", 10)
             await self.manager.progress_manager.download_progress.add_previously_completed()
             return True
         return False
