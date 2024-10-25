@@ -23,7 +23,7 @@ CDN_POSSIBILITIES = re.compile(r"^(?:(?:(?:media-files|cdn|c|pizza|cdn-burger|cd
 class BunkrrCrawler(Crawler):
     def __init__(self, manager: Manager):
         super().__init__(manager, "bunkrr", "Bunkrr")
-        self.primary_base_domain = URL("https://bunkr.pk")
+        self.primary_base_domain = URL("https://bunkr.site")
         self.request_limiter = AsyncLimiter(10, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
