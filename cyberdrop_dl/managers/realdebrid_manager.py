@@ -57,7 +57,7 @@ class RealDebridManager:
 
     async def is_supported(self, url: URL) -> bool:
         match = self.supported_regex.search(str(url))
-        return bool(match)
+        return bool(match) or 'real-debrid' in url.host.lower()
 
     async def unrestrict_link(self, url: URL, password: Optional[str] = None) -> URL:
         return self.api.unrestrict.link(url, password).get('download')
