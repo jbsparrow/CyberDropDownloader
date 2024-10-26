@@ -26,7 +26,7 @@ class RealDebridApi:
     
     Unless specified otherwise, all API methods require authentication.
 
-    The API is limited to 250 requests per minute. Use `rate_limiter` content manager to auto limit the requests being made
+    The API is limited to 250 requests per minute. Use `rate_limiter` context manager to auto limit the requests being made
 
     Dates are formatted according to the Javascript method `date.toJSON`. 
     Use `convert_special_types` to convert response values to `datetime.date`, `datetime.datetime`, `datetime.timedelta` and `yarl.URL` when applicable
@@ -39,7 +39,7 @@ class RealDebridApi:
         self._session = Session()
         self._last_request_time = 0
         self._convert_special_types = convert_special_types
-        #self.auth = OAuth(self)
+        self.auth = OAuth(self)
         self.system = System(self)
         self.user = User(self)
         self.unrestrict = Unrestrict(self)
@@ -51,21 +51,21 @@ class RealDebridApi:
         self.settings = Settings(self)
         self.update_token(api_token)
        
-    def get(self, path: str, **query_params):
-        response = self._session.get(url = self.API_ENTRYPOINT / path, params= query_params)
+    def get(self, path: str, /, entrypoint: URL = API_ENTRYPOINT, **query_params):
+        response = self._session.get(url = entrypoint / path, params= query_params)
         return self.handle_response(response)
 
-    def post(self, path: str, **data):
-        response = self._session.post(self.API_ENTRYPOINT / path, data=data)
+    def post(self, path: str, /, entrypoint: URL = API_ENTRYPOINT, **data):
+        response = self._session.post(entrypoint / path, data=data)
         return self.handle_response(response)
     
-    def put(self, path:str, filepath: Path, **query_params):
+    def put(self, path:str, filepath: Path, /,  entrypoint: URL = API_ENTRYPOINT, **query_params):
         with open(filepath, 'rb') as file:
-            response = self._session.put(self.API_ENTRYPOINT / path, data=file, params=query_params)
+            response = self._session.put(entrypoint/ path, data=file, params=query_params)
         return self.handle_response(response, path)
 
-    def delete(self, path: str):
-        request = self._session.delete(self.API_ENTRYPOINT / path)
+    def delete(self, path: str, /, entrypoint: URL = API_ENTRYPOINT):
+        request = self._session.delete(entrypoint / path)
         return self.handle_response(request)
             
     def update_token(self, new_token: str) -> None:
@@ -100,12 +100,11 @@ class OAuth:
 
     def __init__(self, api: RealDebridApi):
         self.api = api
-        self.api.API_ENTRYPOINT = self.api.API_OAUTH_ENTRYPOINT 
         self.grant_type = 'http://oauth.net/grant_type/device/1.0'
 
     def get_devide_code(self,  client_id: str, new_credentials:bool=False) -> dict:
         """Get authentication data"""
-        JSONResp = self.api.get('device/code', client_id= client_id, new_credentials=new_credentials)
+        JSONResp = self.api.get('device/code', entrypoint=self.api.API_OAUTH_ENTRYPOINT, client_id= client_id, new_credentials=new_credentials)
         if self.api._convert_special_types:
             JSONResp['expires_in'] = timedelta(seconds=JSONResp['expires_in'])
             JSONResp['verification_url'] = URL(JSONResp['verification_url'])
@@ -113,11 +112,11 @@ class OAuth:
 
     def get_credentials(self, client_id: str, device_code: str):
         """Verify authentication data and get credentials"""
-        return self.api.get('device/credentials', client_id = client_id, code=device_code)
+        return self.api.get('device/credentials', entrypoint=self.api.API_OAUTH_ENTRYPOINT, client_id = client_id, code=device_code)
     
     def get_token(self, client_id: str, client_secret: str, device_code: str):
         """Get token from credentials"""
-        JSONResp = self.api.post('token', client_id= client_id, client_secret=client_secret, code=device_code, grant_type = self.grant_type)
+        JSONResp = self.api.post('token', entrypoint=self.api.API_OAUTH_ENTRYPOINT, client_id= client_id, client_secret=client_secret, code=device_code, grant_type = self.grant_type)
         if self.api._convert_special_types:
             JSONResp['expires_in'] = timedelta(seconds=JSONResp['expires_in'])
         self.api.update_token(JSONResp['access_token'])
