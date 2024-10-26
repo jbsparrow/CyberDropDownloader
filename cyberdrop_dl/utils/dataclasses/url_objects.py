@@ -1,6 +1,6 @@
 from dataclasses import field
 from pathlib import Path
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Union, Optional
 
 from cyberdrop_dl.utils.utilities import sanitize_folder
 
@@ -11,9 +11,10 @@ if TYPE_CHECKING:
 
 class MediaItem:
     def __init__(self, url: "URL", referer: "URL", album_id: Union[str, None], download_folder: Path, filename: str,
-                ext: str, original_filename: str):
+                ext: str, original_filename: str, debrid_link: Optional['URL'] = None):
         self.url: URL = url
         self.referer: URL = referer
+        self.debrid_link: URL = debrid_link
         self.album_id: Union[str, None] = album_id
         self.download_folder: Path = download_folder
         self.filename: str = filename

@@ -66,7 +66,7 @@ class Crawler(ABC):
         """Director for scraping"""
         raise NotImplementedError("Must override in child class")
 
-    async def handle_file(self, url: URL, scrape_item: ScrapeItem, filename: str, ext: str, custom_filename: Optional[str]= None) -> None:
+    async def handle_file(self, url: URL, scrape_item: ScrapeItem, filename: str, ext: str, custom_filename: Optional[str]= None, debrid_link: Optional[URL]=None) -> None:
         """Finishes handling the file and hands it off to the downloader"""
         if custom_filename:
             original_filename, filename = filename , custom_filename
@@ -77,7 +77,7 @@ class Crawler(ABC):
 
         download_folder = await get_download_path(self.manager, scrape_item, self.folder_domain)
         media_item = MediaItem(url, scrape_item.url, scrape_item.album_id, download_folder, filename, ext,
-                            original_filename)
+                            original_filename, debrid_link)
         if scrape_item.possible_datetime:
             media_item.datetime = scrape_item.possible_datetime
 
@@ -179,12 +179,13 @@ class Crawler(ABC):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def check_complete_from_referer(self, scrape_item: ScrapeItem) -> bool:
+    async def check_complete_from_referer(self, scrape_item: ScrapeItem| URL) -> bool:
         """Checks if the scrape item has already been scraped"""
+        url = scrape_item if isinstance(scrape_item, URL) else scrape_item.url
         check_complete = await self.manager.db_manager.history_table.check_complete_by_referer(self.domain,
-                                                                                            scrape_item.url)
+                                                                                            url)
         if check_complete:
-            await log(f"Skipping {scrape_item.url} as it has already been downloaded", 10)
+            await log(f"Skipping {url} as it has already been downloaded", 10)
             await self.manager.progress_manager.download_progress.add_previously_completed()
             return True
         return False
