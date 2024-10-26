@@ -17,7 +17,7 @@ from cyberdrop_dl.clients.errors import InvalidYamlConfig
 from rich.console import Console
 from rich.logging import RichHandler
 
-DEFAULT_CONSOLE_WIDTH = 160
+DEFAULT_CONSOLE_WIDTH = 240
 
 RICH_HANDLER_CONFIG = { 
     "show_time": True, 

@@ -301,6 +301,8 @@ async def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = Fa
     tags = {'dev': 'Development', 'pre': 'Pre-Release', 'post': 'Post-Release', 
             'rc': 'Release Candidate', 'a': 'Alpha', 'b': 'Beta'}
 
+    latest_version_rich = f"[b cyan]{latest_version}[/b cyan]"
+    
     for tag in tags:
         if tag in current_version:
             match = re.match(r'(\d+)\.(\d+)\.(\d+)(?:\.([a-z]+)\d+|([a-z]+)\d+)', current_version)
@@ -311,13 +313,14 @@ async def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = Fa
                 rough_matches = [release for release in releases 
                                 if re.match(rf'{major_version}\.{minor_version}\.{patch_version}(\.{test_tag}\d+|{test_tag}\d+)', release)]
                 latest_testing_version = max(rough_matches, key=lambda x: int(re.search(r'(\d+)$', x).group()))
+                latest_testing_version_rich = f"[b cyan]{latest_testing_version}[/b cyan]"
 
                 if current_version != latest_testing_version:
-                    message = f"A new {tags.get(test_tag, 'Testing').lower()} version of Cyberdrop-DL is available: [b cyan]{latest_testing_version}[/b cyan]"
+                    message = f"A new {tags.get(test_tag, 'Testing').lower()} version of Cyberdrop-DL is available: "
                     if call_from_ui:
-                        rich.print(message)
+                        rich.print(f"{message}{latest_testing_version_rich}")
                     elif log_to_console:
-                        await log_with_color(message, "bold_red", 30)
+                        await log_with_color(f"{message}{latest_testing_version}", "bold_red", 30)
                 else:
                     if call_from_ui:
                         rich.print(f"You are currently on the latest {tags.get(test_tag, 'Testing').lower()} version of [b cyan]{major_version}.{minor_version}.{patch_version}[/b cyan]")
@@ -325,11 +328,11 @@ async def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = Fa
                 return current_version, latest_testing_version
 
     if current_version != latest_version:
-        message = f"A new version of Cyberdrop-DL is available: [b cyan]{latest_version}[/b cyan]"
+        message = f"A new version of Cyberdrop-DL is available: "
         if call_from_ui:
-            rich.print(message)
+            rich.print(f"{message}{latest_version_rich}")
         elif log_to_console:
-            await log_with_color(message, "bold_red", 30)
+            await log_with_color(f"{message}{latest_version}", "bold_red", 30)
     else:
         if call_from_ui:
             rich.print("You are currently on the latest version of Cyberdrop-DL")
