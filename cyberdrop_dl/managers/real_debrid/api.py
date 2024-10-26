@@ -51,20 +51,20 @@ class RealDebridApi:
         self.settings = Settings(self)
         self.update_token(api_token)
        
-    def get(self, path: str, /, entrypoint: URL = API_ENTRYPOINT, **query_params):
+    def get(self, path: str, *, entrypoint: URL = API_ENTRYPOINT, **query_params):
         response = self._session.get(url = entrypoint / path, params= query_params)
         return self.handle_response(response)
 
-    def post(self, path: str, /, entrypoint: URL = API_ENTRYPOINT, **data):
+    def post(self, path: str, *, entrypoint: URL = API_ENTRYPOINT, **data):
         response = self._session.post(entrypoint / path, data=data)
         return self.handle_response(response)
     
-    def put(self, path:str, filepath: Path, /,  entrypoint: URL = API_ENTRYPOINT, **query_params):
+    def put(self, path:str, filepath: Path, *,  entrypoint: URL = API_ENTRYPOINT, **query_params):
         with open(filepath, 'rb') as file:
             response = self._session.put(entrypoint/ path, data=file, params=query_params)
         return self.handle_response(response, path)
 
-    def delete(self, path: str, /, entrypoint: URL = API_ENTRYPOINT):
+    def delete(self, path: str, *, entrypoint: URL = API_ENTRYPOINT):
         request = self._session.delete(entrypoint / path)
         return self.handle_response(request)
             
