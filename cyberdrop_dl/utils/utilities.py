@@ -230,7 +230,7 @@ async def remove_id(manager: Manager, filename: str, ext: str) -> Tuple[str, str
         elif await _is_number(ext) and tail in _7Z_FILE_EXTENSIONS and "-" in filename:
             filename , _7z_ext = filename.rsplit("-", 1)
             filename = f"{filename}.{_7z_ext}"
-        if ext not in filename:
+        if not filename.endswith(ext):
             filename = filename + ext
     return original_filename, filename
 
