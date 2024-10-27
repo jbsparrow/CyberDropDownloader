@@ -15,7 +15,7 @@ class CDLBaseException(Exception):
         self.ui_message = ui_message
         self.message = message if message else ui_message
         self.origin = origin 
-        if not isinstance(origin, (URL, Path)): 
+        if origin and not isinstance(origin, (URL, Path)): 
             self.origin = origin.parents[0] if origin.parents else None
         super().__init__(self.message)
         if status:
@@ -52,13 +52,19 @@ class DDOSGuardFailure(CDLBaseException):
 class DownloadFailure(CDLBaseException):
     def __init__(self, status: int, message: Optional[str] = "Download Failure" , origin: Optional[ScrapeItem | URL] = None):
         """This error will be thrown when a request fails"""
-        ui_message = f"{status} {HTTPStatus(status).phrase}" if isinstance (status, int) else status
+        try:
+            ui_message = f"{status} {HTTPStatus(status).phrase}" if isinstance (status, int) else status
+        except ValueError:
+            ui_message = status
         super().__init__(ui_message, message = message, status = status, origin=origin)
 
 class ScrapeFailure(CDLBaseException):
     def __init__(self, status: int, message: Optional[str] = "Scrape Failure" , origin: Optional[ScrapeItem | URL] = None):
         """This error will be thrown when a scrape fails"""
-        ui_message = f"{status} {HTTPStatus(status).phrase}" if isinstance (status, int) else status
+        try:
+            ui_message = f"{status} {HTTPStatus(status).phrase}" if isinstance (status, int) else status
+        except ValueError:
+            ui_message = status
         super().__init__(ui_message, message = message, status = status, origin=origin)
 
 class FailedLoginFailure(CDLBaseException):

@@ -73,7 +73,10 @@ class DownloadStatsProgress:
         """Adds a failed file to the progress bar"""
         self.failed_files += 1
         if isinstance(failure_type, int):
-            failure_type = f"{failure_type} {HTTPStatus(failure_type).phrase}"
+            try:
+                failure_type = f"{failure_type} {HTTPStatus(failure_type).phrase}"
+            except ValueError:
+                failure_type = f"{failure_type} HTTP Error"
 
         if failure_type in self.failure_types:
             self.progress.advance(self.failure_types[failure_type], 1)
