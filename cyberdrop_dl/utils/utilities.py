@@ -12,16 +12,15 @@ from typing import TYPE_CHECKING, Union
 import rich
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import NoExtensionFailure, FailedLoginFailure, InvalidContentTypeFailure, \
-    PasswordProtected
+from cyberdrop_dl.clients.errors import NoExtensionFailure, CDLBaseException
 from cyberdrop_dl.managers.real_debrid.errors import RealDebridError
 from cyberdrop_dl.managers.console_manager import log as log_console
 
 if TYPE_CHECKING:
     from typing import Tuple
-
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
+    from cyberdrop_dl.scraper.crawler import Crawler
 
 logger = logging.getLogger("cyberdrop_dl")
 logger_debug = logging.getLogger("cyberdrop_dl_debug")
@@ -60,54 +59,36 @@ FILE_FORMATS = {
     }
 }
 
-
 def error_handling_wrapper(func):
     """Wrapper handles errors for url scraping"""
 
     @wraps(func)
-    async def wrapper(self, *args, **kwargs):
+    async def wrapper(self: Crawler, *args, **kwargs):
         link = args[0] if isinstance(args[0], URL) else args[0].url
-
+        e_origin = exc_info = None
         try:
             return await func(self, *args, **kwargs)
-        except NoExtensionFailure:
-            await log(f"Scrape Failed: {link} (No File Extension)", 40)
-            await self.manager.log_manager.write_scrape_error_log(link, " No File Extension")
-            await self.manager.progress_manager.scrape_stats_progress.add_failure("No File Extension")
-        except PasswordProtected as e:
-            await log(f"Scrape Failed: {link} (Password Protected)", 40)
-            parent_url = e.scrape_item.parents[0] if e.scrape_item.parents else None
-            await self.manager.log_manager.write_unsupported_urls_log(link,parent_url)
-            await self.manager.progress_manager.scrape_stats_progress.add_failure("Password Protected")
-        except RealDebridError as e:
-            await log(f"Scrape Failed: {link} (RealDebridError): {e.error}", 40)
-            await self.manager.log_manager.write_scrape_error_log(link, f" {e.error}")
-            await self.manager.progress_manager.scrape_stats_progress.add_failure(f"RD - {e.error}")
-        except FailedLoginFailure:
-            await log(f"Scrape Failed: {link} (Failed Login)", 40)
-            await self.manager.log_manager.write_scrape_error_log(link, " Failed Login")
-            await self.manager.progress_manager.scrape_stats_progress.add_failure("Failed Login")
-        except InvalidContentTypeFailure:
-            await log(f"Scrape Failed: {link} (Invalid Content Type Received)", 40)
-            await self.manager.log_manager.write_scrape_error_log(link, " Invalid Content Type Received")
-            await self.manager.progress_manager.scrape_stats_progress.add_failure("Invalid Content Type")
+        except CDLBaseException as err:
+            e_log_detail = e_ui_failure = err.ui_message
+            e_log_message = err.message
+            e_origin = err.origin
+        except RealDebridError as err:
+            e_log_detail = e_log_message  = f"RealDebridError - {err.error}"
+            e_ui_failure = f"RD - {err.error}"
         except asyncio.TimeoutError:
-            await log(f"Scrape Failed: {link} (Timeout)", 40)
-            await self.manager.log_manager.write_scrape_error_log(link, " Timeout")
-            await self.manager.progress_manager.scrape_stats_progress.add_failure("Timeout")
-        except Exception as e:
-            if hasattr(e, 'status'):
-                if hasattr(e, 'message'):
-                    await log(f"Scrape Failed: {link} ({e.status} - {e.message})", 40)
-                    await self.manager.log_manager.write_scrape_error_log(link, f" {e.status} - {e.message}")
-                else:
-                    await log(f"Scrape Failed: {link} ({e.status})", 40)
-                    await self.manager.log_manager.write_scrape_error_log(link, f" {e.status}")
-                await self.manager.progress_manager.scrape_stats_progress.add_failure(e.status)
+            e_log_detail = e_log_message = e_ui_failure = "Timeout"
+        except Exception as err:
+            exc_info = True
+            if hasattr(err, 'status') and hasattr(err, 'message'):
+                e_log_detail = e_log_message = e_ui_failure = f"{err.status} - {err.message}"
             else:
-                await log(f"Scrape Failed: {link} ({e})", 40, exc_info=True)
-                await self.manager.log_manager.write_scrape_error_log(link, " See Log for Details")
-                await self.manager.progress_manager.scrape_stats_progress.add_failure("Unknown")
+                e_log_detail = str(err)
+                e_log_message = "See Log for Details"
+                e_ui_failure = "Unknown"
+                 
+        await log(f"Scrape Failed: {link} ({e_log_detail})", 40, exc_info = exc_info)
+        await self.manager.log_manager.write_scrape_error_log(link, e_log_message, e_origin )
+        await self.manager.progress_manager.scrape_stats_progress.add_failure(e_ui_failure)
 
     return wrapper
 
