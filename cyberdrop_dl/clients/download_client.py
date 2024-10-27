@@ -146,10 +146,10 @@ class DownloadClient:
             await save_content(resp.content)
             return True
 
-    async def _append_content(self, media_item, content: aiohttp.StreamReader, update_progress: partial) -> None:
+    async def _append_content(self, media_item: MediaItem, content: aiohttp.StreamReader, update_progress: partial) -> None:
         """Appends content to a file"""
         if not await self.client_manager.manager.download_manager.check_free_space(media_item.download_folder):
-            raise DownloadFailure(status="No Free Space", message="Not enough free space")
+            raise DownloadFailure(status="Insufficient Free Space", message="Not enough free space")
 
         media_item.partial_file.parent.mkdir(parents=True, exist_ok=True)
         if not media_item.partial_file.is_file():
