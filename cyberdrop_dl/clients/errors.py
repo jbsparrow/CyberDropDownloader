@@ -57,7 +57,7 @@ class DownloadFailure(CDLBaseException):
 class ScrapeFailure(CDLBaseException):
     def __init__(self, status: int, message: Optional[str] = "Scrape Failure" , origin: Optional[ScrapeItem | URL] = None):
         """This error will be thrown when a scrape fails"""
-        ui_message = f"{status} {HTTPStatus(status).phrase}"
+        ui_message = f"{status} {HTTPStatus(status).phrase}" if isinstance (status, int) else status
         super().__init__(ui_message, message = message, status = status, origin=origin)
 
 class FailedLoginFailure(CDLBaseException):

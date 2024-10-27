@@ -48,7 +48,7 @@ class CyberfileCrawler(Crawler):
 
         login = soup.select_one('form[id=form_login]')
         if login:
-            raise ScrapeFailure(404, "Folder has been deleted")
+            raise ScrapeFailure(404, "Folder has been deleted", origin = scrape_item)
 
         script_func = soup.select('div[class*="page-container"] script')[-1].text
         script_func = script_func.split('loadImages(')[-1]
@@ -184,7 +184,7 @@ class CyberfileCrawler(Crawler):
                 html_download_text = file_button.get("onclick")
         except AttributeError:
             await log(f"Couldn't find download button for {scrape_item.url}", 30)
-            raise ScrapeFailure(422, "Couldn't find download button")
+            raise ScrapeFailure(422, "Couldn't find download button", origin= scrape_item)
         link = URL(html_download_text.split("'")[1])
 
         file_detail_table = ajax_soup.select('table[class="table table-bordered table-striped"]')[-1]

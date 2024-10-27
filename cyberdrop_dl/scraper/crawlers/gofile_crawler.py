@@ -69,10 +69,10 @@ class GoFileCrawler(Crawler):
                                                         (self.api_address / "contents" / content_id).with_query(
                                                             {"wt": self.websiteToken, "password": password}), headers_inc=self.headers)
             else:
-                raise ScrapeFailure(e.status, e.message)
+                raise ScrapeFailure(e.status, e.message, origin= scrape_item)
             
         if JSON_Resp["status"] == "error-notFound":
-            raise ScrapeFailure(404, "Album not found")
+            raise ScrapeFailure(404, "Album not found", origin= scrape_item)
 
         JSON_Resp = JSON_Resp['data']
 
@@ -81,7 +81,7 @@ class GoFileCrawler(Crawler):
                 raise PasswordProtected(scrape_item)
 
         if JSON_Resp["canAccess"] is False:
-            raise ScrapeFailure(403, "Album is private")
+            raise ScrapeFailure(403, "Album is private", origin= scrape_item)
 
         title = await self.create_title(JSON_Resp["name"], content_id, None)
 

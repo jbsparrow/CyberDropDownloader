@@ -49,7 +49,7 @@ class ImgBoxCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
 
         if "The specified gallery could not be found" in soup.text:
-            raise ScrapeFailure(404, f"Gallery not found: {scrape_item.url}")
+            raise ScrapeFailure(404, f"Gallery not found: {scrape_item.url}", origin= scrape_item)
         
         scrape_item.album_id = scrape_item.url.parts[2]
         scrape_item.part_of_album = True

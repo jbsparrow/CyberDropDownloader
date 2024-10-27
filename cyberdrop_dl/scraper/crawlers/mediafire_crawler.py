@@ -54,7 +54,7 @@ class MediaFireCrawler(Crawler):
                 folder_contents = self.api.folder_get_content(folder_key=folder_key, content_type='files', chunk=chunk,
                                                             chunk_size=chunk_size)
             except api.MediaFireConnectionError:
-                raise ScrapeFailure(500, "MediaFire connection closed")
+                raise ScrapeFailure(500, "MediaFire connection closed", origin= scrape_item)
             files = folder_contents['folder_content']['files']
 
             for file in files:

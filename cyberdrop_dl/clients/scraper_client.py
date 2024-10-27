@@ -66,7 +66,7 @@ class ScraperClient:
     async def flaresolverr(self, domain: str, url: URL, client_session: ClientSession) -> str:
         """Returns the resolved URL from the given URL"""
         if not self.client_manager.flaresolverr:
-            raise ScrapeFailure(status="DDOS-Guard", message="FlareSolverr is not configured")
+            raise DDOSGuardFailure(message="FlareSolverr is not configured")
 
         headers = {**self._headers, **{"Content-Type": "application/json"}}
         data = {"cmd": "request.get", "url": str(url), "maxTimeout": 60000}
@@ -77,7 +77,7 @@ class ScraperClient:
             json_obj = await response.json()
             status = json_obj.get("status")
             if status != "ok":
-                raise ScrapeFailure(status="DDOS-Guard", message="Failed to resolve URL with flaresolverr")
+                raise DDOSGuardFailure(message="Failed to resolve URL with flaresolverr")
 
             return json_obj.get("solution").get("response")
 

@@ -60,7 +60,7 @@ class XXXBunkerCrawler(Crawler):
             return
         
         if not self.session_cookie:
-            raise ScrapeFailure(401, "No cookies provided")
+            raise ScrapeFailure(401, "No cookies provided", origin= scrape_item)
         
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
@@ -98,15 +98,15 @@ class XXXBunkerCrawler(Crawler):
  
         except (AttributeError, TypeError):
             if "You must be registered to download this video" in ajax_soup.text:
-                raise ScrapeFailure(403, f"Invalid PHPSESSID: {scrape_item.url}")
+                raise ScrapeFailure(403, f"Invalid PHPSESSID: {scrape_item.url}", origin= scrape_item)
 
             if "TRAFFIC VERIFICATION" in soup.text:
                 await asyncio.sleep(self.wait_time)
                 self.wait_time = min (self.wait_time + 10, MAX_WAIT)
                 self.rate_limit = max (self.rate_limit *0.8, MIN_RATE_LIMIT)
                 self.request_limiter = AsyncLimiter(self.rate_limit, 60)
-                raise ScrapeFailure(429, f"Too many request: {scrape_item.url}")
-            raise ScrapeFailure(404, f"Could not find video source for {scrape_item.url}")
+                raise ScrapeFailure(429, f"Too many request: {scrape_item.url}", origin= scrape_item)
+            raise ScrapeFailure(404, f"Could not find video source for {scrape_item.url}", origin= scrape_item)
         
         # NOTE: hardcoding the extension to prevent quering the final server URL
         # final server URL is always different so it can not be saved to db.
@@ -119,7 +119,7 @@ class XXXBunkerCrawler(Crawler):
     async def playlist(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a playlist"""
         if not self.session_cookie:
-            raise ScrapeFailure(401, "No cookies provided")
+            raise ScrapeFailure(401, "No cookies provided", origin= scrape_item)
         
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
@@ -135,7 +135,7 @@ class XXXBunkerCrawler(Crawler):
         
         # Not a valid URL
         else:
-            raise ScrapeFailure(400, f"Unsupported URL format: {scrape_item.url}")
+            raise ScrapeFailure(400, f"Unsupported URL format: {scrape_item.url}", origin= scrape_item)
             
         scrape_item.part_of_album = True
 
@@ -178,7 +178,7 @@ class XXXBunkerCrawler(Crawler):
                 await asyncio.sleep(self.wait_time)
 
             if rate_limited:
-                raise ScrapeFailure(429, f"Too many request: {url}")
+                raise ScrapeFailure(429, f"Too many request: {url}", origin= scrape_item)
 
             next_page = soup.select_one("div.page-list")
             next_page = next_page.find('a', string='Next') if next_page else None

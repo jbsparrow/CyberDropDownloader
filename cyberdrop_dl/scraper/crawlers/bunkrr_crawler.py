@@ -124,7 +124,7 @@ class BunkrrCrawler(Crawler):
         link = link_container.get(src_selector) if link_container else None
 
         if not link:
-            raise ScrapeFailure(404, f"Could not find source for: {scrape_item.url}")
+            raise ScrapeFailure(404, f"Could not find source for: {scrape_item.url}", origin=scrape_item)
         
         link = URL(link)
 
