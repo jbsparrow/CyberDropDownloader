@@ -193,6 +193,7 @@ class Downloader:
             if not can_download:
                 if reason == 0:
                     await self.manager.progress_manager.download_stats_progress.add_failure("Insufficient Free Space")
+                    await self.manager.log_manager.write_download_error_log(media_item.url,"Insufficient Free Space", media_item.referer)
                     await self.manager.progress_manager.download_progress.add_failed()
                 else:
                     await self.manager.progress_manager.download_progress.add_skipped()
