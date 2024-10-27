@@ -43,7 +43,7 @@ def retry(f):
                     media_item.current_attempt += 1
 
                 if hasattr(e, "status") and hasattr(e, "message"):
-                    e_log_detail = f"with status {e.status} and message {e.message}"
+                    e_log_detail = f"with status {e.status} and message: {e.message}"
                 elif hasattr(e, "status"):
                     e_log_detail = f"with status {e.status}"
                 else:
@@ -57,7 +57,7 @@ def retry(f):
                     await self.manager.progress_manager.download_progress.add_failed()
                     break
 
-                await log(f"Retrying {self.log_prefix.lower()}: {media_item.url} , attempt {media_item.current_attempt}", 20)
+                await log(f"Retrying {self.log_prefix.lower()}: {media_item.url} ,retry attempt: {media_item.current_attempt+1}", 20)
                 continue
 
 
@@ -238,7 +238,7 @@ class Downloader:
                 media_item.current_attempt = 0
                 raise DownloadFailure(status=999, message="Download timeout reached, retrying")
 
-            message = err.message if hasattr(err, "message") else repr(err)
+            message = err.message if hasattr(err, "message") else str(err)
             raise DownloadFailure(status=getattr(err, "status", type(err).__name__), message=message)
 
     async def is_failed(self, status: int):
