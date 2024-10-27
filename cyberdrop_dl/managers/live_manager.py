@@ -1,4 +1,3 @@
-import traceback
 from contextlib import asynccontextmanager
 
 from rich.live import Live
