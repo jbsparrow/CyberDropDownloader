@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 from multidict import CIMultiDictProxy
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import InvalidContentTypeFailure, DDOSGuardFailure, ScrapeFailure
+from cyberdrop_dl.clients.errors import InvalidContentTypeFailure, DDOSGuardFailure
 from cyberdrop_dl.utils.utilities import log
 
 if TYPE_CHECKING:

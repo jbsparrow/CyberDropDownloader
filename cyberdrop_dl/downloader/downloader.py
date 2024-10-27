@@ -79,8 +79,11 @@ def retry(f):
                     e_log_message = "See Log for Details"
                     e_ui_failure = "Unknown"
 
+                await log(f"{self.log_prefix} failed: {media_item.url} with error: {e_log_detail}", 40, exc_info = exc_info)
+
+            if not exc_info:
+                await log(f"{self.log_prefix} failed: {media_item.url} with error: {e_log_detail}", 40)
             await self.attempt_task_removal(media_item)
-            await log(f"{self.log_prefix} failed: {media_item.url} with error: {e_log_detail}", 40, exc_info = exc_info)
             await self.manager.log_manager.write_download_error_log(media_item.url, e_log_message, e_origin)
             await self.manager.progress_manager.download_stats_progress.add_failure(e_ui_failure)
             await self.manager.progress_manager.download_progress.add_failed()
@@ -238,5 +241,5 @@ class Downloader:
             raise DownloadFailure(status=getattr(err, "status", type(err).__name__), message=message)
 
     async def is_failed(self, status: int):
-        return any((await is_4xx_client_error(status) and status != HTTPStatus.TOO_MANY_REQUESTS),
-                    status in (HTTPStatus.SERVICE_UNAVAILABLE, HTTPStatus.BAD_GATEWAY, CustomHTTPStatus.WEB_SERVER_IS_DOWN))
+        return any((await is_4xx_client_error(status) and status != HTTPStatus.TOO_MANY_REQUESTS,
+                    status in (HTTPStatus.SERVICE_UNAVAILABLE, HTTPStatus.BAD_GATEWAY, CustomHTTPStatus.WEB_SERVER_IS_DOWN)))

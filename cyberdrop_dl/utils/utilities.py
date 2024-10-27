@@ -85,8 +85,10 @@ def error_handling_wrapper(func):
                 e_log_detail = str(err)
                 e_log_message = "See Log for Details"
                 e_ui_failure = "Unknown"
-                 
-        await log(f"Scrape Failed: {link} ({e_log_detail})", 40, exc_info = exc_info)
+            await log(f"Scrape Failed: {link} ({e_log_detail})", 40, exc_info = True)
+
+        if not exc_info:
+            await log(f"Scrape Failed: {link} ({e_log_detail})", 40)    
         await self.manager.log_manager.write_scrape_error_log(link, e_log_message, e_origin )
         await self.manager.progress_manager.scrape_stats_progress.add_failure(e_ui_failure)
 

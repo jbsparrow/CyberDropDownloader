@@ -1,11 +1,12 @@
+from __future__ import annotations
 from typing import TYPE_CHECKING, Optional
 from http import HTTPStatus
+from yarl import URL
+from pathlib import Path
 
 if TYPE_CHECKING:
-    from cyberdrop_dl.scraper.crawler import ScrapeItem
     from yaml.constructor import ConstructorError
-    from yarl import URL
-    from pathlib import Path
+    from cyberdrop_dl.scraper.crawler import ScrapeItem
 
 class CDLBaseException(Exception):
     """Base exception for cyberdrop-dl errors"""
@@ -14,7 +15,7 @@ class CDLBaseException(Exception):
         self.ui_message = ui_message
         self.message = message if message else ui_message
         self.origin = origin 
-        if isinstance(origin, ScrapeItem): 
+        if not isinstance(origin, (URL, Path)): 
             self.origin = origin.parents[0] if origin.parents else None
         super().__init__(self.message)
         if status:
