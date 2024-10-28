@@ -203,7 +203,10 @@ class NekohouseCrawler(Crawler):
         if menu is None:
             self.maximum_offset = 0
             return 0
-        max_tabs = ((int(soup.select_one("div[id=paginator-top] small").text.strip().split(" ")[-1]) + 49) // 50) * 50
+        try:
+            max_tabs = ((int(soup.select_one("div[id=paginator-top] small").text.strip().split(" ")[-1]) + 49) // 50) * 50
+        except AttributeError:
+            max_tabs = 0
         pagination_links = menu.find_all("a", href=True)
         offsets = [int(x['href'].split('?o=')[-1]) for x in pagination_links]
         offset = max(offsets)
