@@ -23,54 +23,65 @@ class CDLBaseException(Exception):
             super().__init__(self.status)
 
 class InvalidContentTypeFailure(CDLBaseException):
-    def __init__(self, *, message: str = "Invalid Content Type", origin: Optional[ScrapeItem | URL] = None):
+    def __init__(self, *, message: Optional [str] = None, origin: Optional[ScrapeItem | URL] = None):
         """This error will be thrown when the content type isn't as expected"""
         ui_message = "Invalid Content Type"
+        message = message or ui_message
         super().__init__(ui_message, message = message, origin=origin)
 
 class NoExtensionFailure(CDLBaseException):
-    def __init__(self, *, message: str = "No File Extension", origin: Optional[ScrapeItem | URL] = None):
+    def __init__(self, *, message: Optional [str] = None, origin: Optional[ScrapeItem | URL] = None):
         """This error will be thrown when no extension is given for a file"""
         ui_message = "No File Extension"
+        message = message or ui_message
         super().__init__(ui_message, message = message, origin=origin)
 
 
 class PasswordProtected(CDLBaseException):
-    def __init__(self, *, message: str = "File/Folder is password protected", origin: Optional[ScrapeItem | URL] = None ):
+    def __init__(self, *, message: Optional[str] = None, origin: Optional[ScrapeItem | URL] = None ):
         """This error will be thrown when a file is password protected"""
         ui_message = "Password Protected"
+        message = message or "File/Folder is password protected"
         super().__init__(ui_message, message = message, origin=origin)
 
 
 class DDOSGuardFailure(CDLBaseException):
-    def __init__(self, *, message: str = "DDoS-Guard detected", origin: Optional[ScrapeItem | URL] = None):
+    def __init__(self, *, message: Optional[str] = None, origin: Optional[ScrapeItem | URL] = None):
         """This error will be thrown when DDoS-Guard is detected"""
         ui_message = "DDoS-Guard"
+        message = message or "DDoS-Guard detected"
         super().__init__(ui_message, message = message, origin=origin)
 
 
 class DownloadFailure(CDLBaseException):
-    def __init__(self, status: int, message: Optional[str] = "Download Failure" , origin: Optional[ScrapeItem | URL] = None):
-        """This error will be thrown when a request fails"""
-        try:
-            ui_message = f"{status} {HTTPStatus(status).phrase}" if isinstance (status, int) else status
-        except ValueError:
-            ui_message = status
+    def __init__(self, status: int, message: Optional[str] = None , origin: Optional[ScrapeItem | URL] = None):
+        """This error will be thrown when a download fails"""
+        ui_message = status
+        if isinstance (status, int):
+            try:
+                ui_message = f"{status} {HTTPStatus(status).phrase}"
+            except ValueError:
+                ui_message = f"{status} HTTP Error"
+        message = message or ui_message
         super().__init__(ui_message, message = message, status = status, origin=origin)
 
 class ScrapeFailure(CDLBaseException):
-    def __init__(self, status: int, message: Optional[str] = "Scrape Failure" , origin: Optional[ScrapeItem | URL] = None):
+    def __init__(self, status: int, message: Optional[str] = None, origin: Optional[ScrapeItem | URL] = None):
         """This error will be thrown when a scrape fails"""
-        try:
-            ui_message = f"{status} {HTTPStatus(status).phrase}" if isinstance (status, int) else status
-        except ValueError:
-            ui_message = status
+        ui_message = status
+        if isinstance (status, int):
+            try:
+                ui_message = f"{status} {HTTPStatus(status).phrase}"
+            except ValueError:
+                ui_message = f"{status} HTTP Error"
+        message = message or ui_message
         super().__init__(ui_message, message = message, status = status, origin=origin)
 
 class FailedLoginFailure(CDLBaseException):
-    def __init__(self, *, message: str = "Failed Login", origin: Optional[ScrapeItem | URL] = None):
+    def __init__(self, *, message: Optional[str] = None , origin: Optional[ScrapeItem | URL] = None):
         """This error will be thrown when the login fails for a site"""
         ui_message = "Failed Login"
+        message = message or ui_message
         super().__init__(ui_message, message = message, origin=origin)
 
 
