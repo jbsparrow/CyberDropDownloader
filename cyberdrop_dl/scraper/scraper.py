@@ -37,14 +37,14 @@ class ScrapeMapper:
                         "jpg2.su": self.jpgchurch, "jpg3.su": self.jpgchurch, "jpg4.su": self.jpgchurch,
                         "jpg5.su": self.jpgchurch,
                         "host.church": self.jpgchurch, "kemono": self.kemono, "leakedmodels": self.leakedmodels,
-                        "mediafire": self.mediafire, "nudostar.com": self.nudostar, "nudostar.tv": self.nudostartv,
+                        "mediafire": self.mediafire, "nekohouse": self.nekohouse, "nudostar.com": self.nudostar, "nudostar.tv": self.nudostartv,
                         "omegascans": self.omegascans, "pimpandhost": self.pimpandhost, "pixeldrain": self.pixeldrain,
                         "postimg": self.postimg, "realbooru": self.realbooru, "reddit": self.reddit,
                         "redd.it": self.reddit, "redgifs": self.redgifs, "rule34vault": self.rule34vault,
                         "rule34.xxx": self.rule34xxx,
                         "rule34.xyz": self.rule34xyz, "saint": self.saint, "scrolller": self.scrolller,
                         "socialmediagirls": self.socialmediagirls, "toonily": self.toonily,
-                        "xxxbunker":self.xxxbunker,"xbunker": self.xbunker, "xbunkr": self.xbunkr, "bunkr": self.bunkrr, "nekohouse": self.nekohouse}
+                        "xxxbunker":self.xxxbunker,"xbunker": self.xbunker, "xbunkr": self.xbunkr, "bunkr": self.bunkrr}
         self.existing_crawlers = {}
         self.no_crawler_downloader = Downloader(self.manager, "no_crawler")
         self.jdownloader = JDownloader(self.manager)
@@ -164,6 +164,11 @@ class ScrapeMapper:
         from cyberdrop_dl.scraper.crawlers.mediafire_crawler import MediaFireCrawler
         self.existing_crawlers['mediafire'] = MediaFireCrawler(self.manager)
 
+    async def nekohouse(self) -> None:
+        """Creates a Nekohouse Crawler instance"""
+        from cyberdrop_dl.scraper.crawlers.nekohouse_crawler import NekohouseCrawler
+        self.existing_crawlers['nekohouse'] = NekohouseCrawler(self.manager)
+
     async def nudostar(self) -> None:
         """Creates a NudoStar Crawler instance"""
         from cyberdrop_dl.scraper.crawlers.nudostar_crawler import NudoStarCrawler
@@ -274,11 +279,6 @@ class ScrapeMapper:
         """Creates a XXXBunker Crawler instance"""
         from cyberdrop_dl.scraper.crawlers.xxxbunker_crawler import XXXBunkerCrawler
         self.existing_crawlers['xxxbunker'] = XXXBunkerCrawler(self.manager)
-
-    async def nekohouse(self) -> None:
-        """Creates a Nekohouse Crawler instance"""
-        from cyberdrop_dl.scraper.crawlers.nekohouse_crawler import NekohouseCrawler
-        self.existing_crawlers['nekohouse'] = NekohouseCrawler(self.manager)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
