@@ -15,6 +15,7 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_an
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
+    from bs4 import BeautifulSoup
 
 
 class MediaFireCrawler(Crawler):
@@ -75,7 +76,7 @@ class MediaFireCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
 
         date = await self.parse_datetime(soup.select('ul[class=details] li span')[-1].get_text())
         scrape_item.possible_datetime = date

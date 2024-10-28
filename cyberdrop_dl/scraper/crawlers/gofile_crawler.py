@@ -58,7 +58,7 @@ class GoFileCrawler(Crawler):
             async with self.request_limiter:
                 JSON_Resp = await self.client.get_json(self.domain,
                                                     (self.api_address / "contents" / content_id).with_query(
-                                                        {"wt": self.websiteToken, "password": password }), headers_inc=self.headers)
+                                                        {"wt": self.websiteToken, "password": password }), headers_inc=self.headers, origin = scrape_item)
         except DownloadFailure as e:
             if e.status == http.HTTPStatus.UNAUTHORIZED:
                 self.websiteToken = ""
@@ -67,7 +67,7 @@ class GoFileCrawler(Crawler):
                 async with self.request_limiter:
                     JSON_Resp = await self.client.get_json(self.domain,
                                                         (self.api_address / "contents" / content_id).with_query(
-                                                            {"wt": self.websiteToken, "password": password}), headers_inc=self.headers)
+                                                            {"wt": self.websiteToken, "password": password}), headers_inc=self.headers, origin = scrape_item)
             else:
                 raise ScrapeFailure(e.status, e.message, origin= scrape_item)
             

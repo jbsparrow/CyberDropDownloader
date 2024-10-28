@@ -63,7 +63,7 @@ class XXXBunkerCrawler(Crawler):
             raise ScrapeFailure(401, "No cookies provided", origin= scrape_item)
         
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
 
         title = soup.select_one('title').text.rsplit(" : XXXBunker.com")[0].strip()
         try:
@@ -78,7 +78,7 @@ class XXXBunkerCrawler(Crawler):
             video_iframe_url = URL(video_iframe.get('data-src'))
             video_id = video_iframe_url.parts[-1]
             async with self.request_limiter:
-                video_iframe_soup: BeautifulSoup = await self.client.get_BS4(self.domain, video_iframe_url)
+                video_iframe_soup: BeautifulSoup = await self.client.get_BS4(self.domain, video_iframe_url, origin = scrape_item)
 
             src = video_iframe_soup.select_one('source')
             src_url = URL(src.get('src'))
@@ -90,7 +90,7 @@ class XXXBunkerCrawler(Crawler):
             data = ({'internalid': internal_id })
 
             async with self.request_limiter:
-                ajax_dict = await self.client.post_data(self.domain, self.api_download, data=data)
+                ajax_dict = await self.client.post_data(self.domain, self.api_download, data=data, origin = scrape_item)
             
             ajax_soup = BeautifulSoup(ajax_dict['floater'], 'html.parser')
             link = URL(ajax_soup.select_one('a#download-download').get('href'))
@@ -122,7 +122,7 @@ class XXXBunkerCrawler(Crawler):
             raise ScrapeFailure(401, "No cookies provided", origin= scrape_item)
         
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
 
         if 'favoritevideos' in scrape_item.url.parts:
             title = await self.create_title(f"user {scrape_item.url.parts[2]} [favorites]", None,None)
@@ -178,7 +178,7 @@ class XXXBunkerCrawler(Crawler):
                 await asyncio.sleep(self.wait_time)
 
             if rate_limited:
-                raise ScrapeFailure(429, f"Too many request: {url}", origin= scrape_item)
+                raise ScrapeFailure(429, f"Too many request: {url}")
 
             next_page = soup.select_one("div.page-list")
             next_page = next_page.find('a', string='Next') if next_page else None

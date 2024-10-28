@@ -13,6 +13,7 @@ from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wr
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
+    from bs4 import BeautifulSoup
 
 
 class CoomerCrawler(Crawler):
@@ -52,7 +53,7 @@ class CoomerCrawler(Crawler):
         api_call = self.api_url / service / "user" / user
         while True:
             async with self.request_limiter:
-                JSON_Resp = await self.client.get_json(self.domain, api_call.with_query({"o": offset}))
+                JSON_Resp = await self.client.get_json(self.domain, api_call.with_query({"o": offset}), origin = scrape_item)
                 offset += 50
                 if not JSON_Resp:
                     break
@@ -67,7 +68,7 @@ class CoomerCrawler(Crawler):
         user_str = await self.get_user_str_from_post(scrape_item)
         api_call = self.api_url / service / "user" / user / "post" / post_id
         async with self.request_limiter:
-            post = await self.client.get_json(self.domain, api_call)
+            post = await self.client.get_json(self.domain, api_call, origin = scrape_item)
         await self.handle_post_content(scrape_item, post, user, user_str)
 
     @error_handling_wrapper
@@ -116,14 +117,14 @@ class CoomerCrawler(Crawler):
     async def get_user_str_from_post(self, scrape_item: ScrapeItem) -> str:
         """Gets the user string from a scrape item"""
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
         user = soup.select_one("a[class=post__user-name]").text
         return user
 
     async def get_user_str_from_profile(self, scrape_item: ScrapeItem) -> str:
         """Gets the user string from a scrape item"""
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
         user = soup.select_one("span[itemprop=name]").text
         return user
 
