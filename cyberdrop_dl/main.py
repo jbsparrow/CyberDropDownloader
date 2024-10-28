@@ -70,10 +70,6 @@ async def runtime(manager: Manager) -> None:
 async def post_runtime(manager: Manager) -> None:
     """Actions to complete after main runtime, and before ui shutdown"""
 
-     # Skip clearing console if running with no UI
-    if not manager.args_manager.no_ui:
-        Console().clear()
-        
     await log_spacer(20)
     await log_with_color(f"Running Post-Download Processes For Config: {manager.config_manager.loaded_config}...\n", "green", 20)
     #checking and removing dupes
@@ -91,8 +87,6 @@ async def post_runtime(manager: Manager) -> None:
     if manager.config_manager.settings_data['Runtime_Options']['update_last_forum_post']:
         await manager.log_manager.update_last_forum_post()
     
-    await manager.progress_manager.print_stats()
-
 
 async def director(manager: Manager) -> None:
     """Runs the program and handles the UI"""
@@ -175,15 +169,18 @@ async def director(manager: Manager) -> None:
             except Exception:
                 await log("\nAn error occurred, please report this to the developer:", 50, exc_info=True)
                 exit(1)
-
+        
+        await log_spacer(20)
+        await manager.progress_manager.print_stats()
         if not manager.args_manager.all_configs or not list(set(configs) - set(configs_ran)):
             break
 
+    await log_spacer(20)
     await log("Checking for Updates...", 20)
     await check_latest_pypi()
+    await log_spacer(20)
     await log("Closing Program...", 20)
     await manager.close()
-    await log_spacer(20)
     await log_with_color("Finished downloading. Enjoy :)", 'green', 20)
 
 
