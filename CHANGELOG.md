@@ -13,12 +13,13 @@ This update introduces the following changes:
 3. Add support for https://tokyomotion.net URLs
 4. Add support for https://xxxbunker.com URLs
 5. Add support for https://saint2.su albums
-6. Add support for password protected Cyberfile URLs
-7. Simplify some UI elements
-8. Improve jdownloader intergration
-9. Implement rich logger
-10. Add a "Check for Updates" UI option
-11. General bug fixes
+6. Add integration to handle downloads supported by https://real-debrid.com/
+7. Add support for password protected Cyberfile URLs
+8. Simplify some UI elements
+9. Improve jdownloader intergration
+10. Implement rich logger
+11. Add a "Check for Updates" UI option
+12. General bug fixes
 
 
 #### Details:
@@ -40,6 +41,7 @@ This update introduces the following changes:
 - Fix handling of deleted imgbox albums if they return `HTTP 200`
 - Fix cyberfile deleted folders not being correctly scraped
 - Update logging to include when a file is being downloaded with no crawler
+- Add real-debrid API key to authentication file in order to allow downloads from websites that real-debrid supports
 
 ## [5.6.54] - 2024-10-21
 
