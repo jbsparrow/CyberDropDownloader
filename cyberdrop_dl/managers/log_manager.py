@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Optional
 import aiofiles
 import csv
 from pathlib import Path
-from cyberdrop_dl.utils.utilities import log
+from cyberdrop_dl.utils.utilities import log, log_spacer
 
 if TYPE_CHECKING:
     from yarl import URL
@@ -62,14 +62,17 @@ class LogManager:
         if not input_file.is_file() or not self.last_post_log.is_file():
             return
         
+        await log_spacer(20)
+        await log("Updating Last Forum Posts...\n", 20)
+
         current_urls, current_base_urls, new_urls, new_base_urls = [], [], [], []
 
         async with aiofiles.open(input_file, 'r', encoding="utf8") as f:
             async for line in f:
-                url = base_url = line.strip()
+                url = base_url = line.strip().removesuffix('/')
            
-                if "https" in url and "post-" in url:
-                    base_url = url.rsplit("/", 1)[0]
+                if "https" in url and "/post-" in url:
+                    base_url = url.rsplit("/post", 1)[0]
 
                 # only keep 1 url of the same thread
                 if base_url not in current_base_urls:
@@ -79,23 +82,29 @@ class LogManager:
         async with aiofiles.open(self.last_post_log, 'r', encoding="utf8") as f:
             reader = csv.DictReader(await f.readlines())
             for row in reader:
-                url = base_url = row.get(URL).strip()
+                new_url = base_url = row.get("url").strip().removesuffix('/')
            
-                if "https" in url and "post-" in url:
-                    base_url = url.rsplit("/", 1)[0]
+                if "https" in new_url and "/post-" in new_url:
+                    base_url = new_url.rsplit("/post", 1)[0]
 
                 # only keep 1 url of the same thread
-                if base_url not in current_base_urls:
-                    new_urls.append(url)
+                if base_url not in new_base_urls:
+                    new_urls.append(new_url)
                     new_base_urls.append(base_url)
 
+        
         updated_urls = current_urls.copy()
-        for url, base in zip(new_urls, new_base_urls):
+        for new_url, base in zip(new_urls, new_base_urls):
             if base in current_base_urls:
                 index = current_base_urls.index(base)
-                updated_urls[index] = url  
+                old_url = current_urls[index]
+                if old_url == new_url:
+                    continue
+                await log(f"Updating {base}\n  {old_url = }\n  {new_url = }",20)
+                updated_urls[index] = new_url  
 
         if updated_urls == current_urls:
+            await log("No URLs updated", 20)
             return
 
         async with aiofiles.open(input_file, 'w', encoding="utf8") as f:
