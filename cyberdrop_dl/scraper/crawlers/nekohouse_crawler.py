@@ -2,28 +2,37 @@ from __future__ import annotations
 
 import calendar
 import datetime
-import re
 from typing import TYPE_CHECKING, Tuple, Dict, Optional
 
 from aiolimiter import AsyncLimiter
+from bs4 import BeautifulSoup, Tag
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import NoExtensionFailure
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
-from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wrapper
+from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wrapper, log
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
-class KemonoCrawler(Crawler):
+class NekohouseCrawler(Crawler):
     def __init__(self, manager: Manager):
-        super().__init__(manager, "kemono", "Kemono")
-        self.primary_base_domain = URL("https://kemono.su")
-        self.api_url = URL("https://kemono.su/api/v1")
-        self.services = ['afdian', 'boosty', 'dlsite', 'fanbox', 'fantia', 'gumroad', 'patreon', 'subscribestar']
+        super().__init__(manager, "nekohouse", "Nekohouse")
+        self.primary_base_domain = URL("https://nekohouse.su")
+        self.services = ['fanbox', 'fantia', 'fantia_products', 'subscribestar', 'twitter']
         self.request_limiter = AsyncLimiter(10, 1)
+        
+        self.post_selector = "article.post-card a"
+        self.post_content_selector = "div[class=scrape__files]"
+        self.file_downloads_selector = "a[class=scrape__attachment-link]"
+        self.post_images_selector = "div[class=fileThumb]"
+        self.post_videos_selector = "video[class=post__video] source"
+        self.post_timestamp_selector = "time[class=timestamp ]"
+        self.post_title_selector = "h1[class=scrape__title] span"
+        self.post_content_selector = "div[class=scrape__content]"
+        self.post_author_username_selector = "a[class=scrape__user-name]"
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -36,8 +45,6 @@ class KemonoCrawler(Crawler):
             link = URL(f"https://{scrape_item.url.host}/{'/'.join(parts)}")
             scrape_item.url = link
             await self.handle_direct_link(scrape_item)
-        elif "discord" in scrape_item.url.parts:
-            await self.discord(scrape_item)
         elif "post" in scrape_item.url.parts:
             await self.post(scrape_item)
         elif any(x in scrape_item.url.parts for x in self.services):
@@ -50,45 +57,81 @@ class KemonoCrawler(Crawler):
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile"""
-        offset = 0
+        soup = await self.client.get_BS4(self.domain, scrape_item.url)
+        offset, maximum_offset = await self.get_offsets(scrape_item, soup)
         service, user = await self.get_service_and_user(scrape_item)
-        user_str = await self.get_user_str_from_profile(scrape_item)
-        api_call = self.api_url / service / "user" / user
-        while True:
+        user_str = await self.get_user_str_from_profile(soup)
+        service_call = self.primary_base_domain / service / "user" / user
+        while offset <= maximum_offset:
             async with self.request_limiter:
-                JSON_Resp = await self.client.get_json(self.domain, api_call.with_query({"o": offset}))
+                soup: BeautifulSoup = await self.client.get_BS4(self.domain, service_call.with_query({"o": offset}))
                 offset += 50
-                if not JSON_Resp:
+                
+                posts = soup.select(self.post_selector)
+                if not posts:
                     break
-
-            for post in JSON_Resp:
-                await self.handle_post_content(scrape_item, post, user, user_str)
-
-    @error_handling_wrapper
-    async def discord(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a profile"""
-        offset = 0
-        channel = scrape_item.url.raw_fragment
-        api_call = self.api_url / "discord/channel" / channel
-        while True:
-            async with self.request_limiter:
-                JSON_Resp = await self.client.get_json(self.domain, api_call.with_query({"o": offset}))
-                offset += 150
-                if not JSON_Resp:
-                    break
-
-            for post in JSON_Resp:
-                await self.handle_post_content(scrape_item, post, channel, channel)
+                for post in posts:
+                    # Create a new scrape item for each post
+                    post_id = post.get("href", "").split("/")[-1]
+                    if post_id == "":
+                        continue
+                    post_url = self.primary_base_domain / service / "user" / user / "post" / post_id
+                    # Call on self.post to scrape the post by creating a new scrape item
+                    new_scrape_item = await self.create_scrape_item(scrape_item, post_url, "", add_parent=self.primary_base_domain / service / "user" / user)
+                    await self.post(new_scrape_item)
 
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a post"""
         service, user, post_id = await self.get_service_user_and_post(scrape_item)
-        user_str = await self.get_user_str_from_post(scrape_item)
-        api_call = self.api_url / service / "user" / user / "post" / post_id
+        await self.get_post_content(scrape_item, post_id, user, service)
+
+    @error_handling_wrapper
+    async def get_post_content(self, scrape_item: ScrapeItem, post: int, user: str, service: str) -> None:
+        """Gets the content of a post and handles collected links"""
+        if post == 0:
+            return
+
+        post_url = self.primary_base_domain / service / "user" / user / "post" / str(post)
         async with self.request_limiter:
-            post = await self.client.get_json(self.domain, api_call)
-        await self.handle_post_content(scrape_item, post, user, user_str)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, post_url)
+            data = {
+                "id": post,
+                "user": user,
+                "service": service,
+                "title": soup.select_one(self.post_title_selector).text.strip(),
+                "content": soup.select_one(self.post_content_selector).text.strip(),
+                "user_str": soup.select_one(self.post_author_username_selector).text.strip(),
+                "published": soup.select_one(self.post_timestamp_selector).text.strip(),
+                "file": [],
+                "attachments": []
+            }
+
+            for file in soup.select(self.post_images_selector):
+                attachment = {
+                    "path": file['href'].replace('/data/', 'data/'),
+                    "name": file['href'].split("?f=")[-1] if "?f=" in file['href'] else file['href'].split("/")[-1].split("?")[0]
+                }
+                data["attachments"].append(attachment)
+
+            for file in soup.select(self.post_videos_selector):
+                attachment = {
+                    "path": file['src'].replace('/data/', 'data/'),
+                    "name": file['src'].split("?f=")[-1] if "?f=" in file['src'] else file['src'].split("/")[-1].split("?")[0]
+                }
+                data["attachments"].append(attachment)
+
+            for file in soup.select(self.file_downloads_selector):
+                attachment = {
+                    "path": file['href'].replace('/data/', 'data/'),
+                    "name": file['href'].split("?f=")[-1] if "?f=" in file['href'] else file['href'].split("/")[-1].split("?")[0]
+                }
+                data["file"].append(attachment)
+
+        user_str = data["user_str"]
+
+        await self.handle_post_content(scrape_item, data, user, user_str)
+
 
     @error_handling_wrapper
     async def handle_post_content(self, scrape_item: ScrapeItem, post: Dict, user: str, user_str: str) -> None:
@@ -100,52 +143,13 @@ class KemonoCrawler(Crawler):
         scrape_item.album_id = post_id 
         scrape_item.part_of_album = True
 
-        await self.get_content_links(scrape_item, post, user_str)
-
         async def handle_file(file_obj):
-            link = self.primary_base_domain / ("data" + file_obj['path'])
+            link = self.primary_base_domain / file_obj['path']
             link = link.with_query({"f": file_obj['name']})
             await self.create_new_scrape_item(link, scrape_item, user_str, post_title, post_id, date)
 
-        if post.get('file'):
-            await handle_file(post['file'])
-
         for file in post['attachments']:
             await handle_file(file)
-
-    async def get_content_links(self, scrape_item: ScrapeItem, post: Dict, user: str) -> None:
-        """Gets links out of content in post"""
-        content = post.get("content", "")
-        if not content:
-            return
-
-        date = post["published"].replace("T", " ")
-        post_id = post["id"]
-        title = post.get("title", "")
-
-        post_title = None
-        if self.manager.config_manager.settings_data['Download_Options']['separate_posts']:
-            post_title = f"{date} - {title}"
-            if self.manager.config_manager.settings_data['Download_Options']['include_album_id_in_folder_name']:
-                post_title = post_id + " - " + post_title
-
-        new_title = await self.create_title(user, None, None)
-        scrape_item = await self.create_scrape_item(scrape_item, scrape_item.url, new_title, True, None,
-                                                    await self.parse_datetime(date))
-        await scrape_item.add_to_parent_title(post_title)
-        await scrape_item.add_to_parent_title("Loose Files")
-
-        yarl_links = []
-        all_links = [x.group().replace(".md.", ".") for x in
-                    re.finditer(r"(?:http.*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]|</a>|</p>))", content)]
-        for link in all_links:
-            yarl_links.append(URL(link))
-
-        for link in yarl_links:
-            if "kemono" in link.host:
-                continue
-            scrape_item = await self.create_scrape_item(scrape_item, link, "", add_parent = scrape_item.url.joinpath("post",post_id))
-            await self.handle_external_links(scrape_item)
 
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:
@@ -171,14 +175,12 @@ class KemonoCrawler(Crawler):
         """Gets the user string from a scrape item"""
         async with self.request_limiter:
             soup = await self.client.get_BS4(self.domain, scrape_item.url)
-        user = soup.select_one("a[class=post__user-name]").text
+        user = soup.select_one("a[class=scrape__user-name]").text
         return user
 
     @error_handling_wrapper
-    async def get_user_str_from_profile(self, scrape_item: ScrapeItem) -> str:
+    async def get_user_str_from_profile(self, soup: BeautifulSoup) -> str:
         """Gets the user string from a scrape item"""
-        async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
         user = soup.select_one("span[itemprop=name]").text
         return user
 
@@ -194,6 +196,27 @@ class KemonoCrawler(Crawler):
         service = scrape_item.url.parts[1]
         post = scrape_item.url.parts[5]
         return service, user, post
+
+    async def get_maximum_offset(self, soup: BeautifulSoup) -> int:
+        """Gets the maximum offset for a scrape item"""
+        menu = soup.select_one("menu")
+        if menu is None:
+            self.maximum_offset = 0
+            return 0
+        max_tabs = ((int(soup.select_one("div[id=paginator-top] small").text.strip().split(" ")[-1]) + 49) // 50) * 50
+        pagination_links = menu.find_all("a", href=True)
+        offsets = [int(x['href'].split('?o=')[-1]) for x in pagination_links]
+        offset = max(offsets)
+        if max_tabs > offset:
+            offset = max_tabs
+        self.maximum_offset = offset
+        return offset
+
+    async def get_offsets(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> int:
+        """Gets the offset for a scrape item"""
+        current_offset = int(scrape_item.url.query.get("o", 0))
+        maximum_offset = await self.get_maximum_offset(soup)
+        return current_offset, maximum_offset
 
     async def create_new_scrape_item(self, link: URL, old_scrape_item: ScrapeItem, user: str, title: str, post_id: str,
                                     date: str, add_parent: Optional[URL] = None) -> None:

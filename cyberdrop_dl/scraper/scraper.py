@@ -44,7 +44,7 @@ class ScrapeMapper:
                         "rule34.xxx": self.rule34xxx,
                         "rule34.xyz": self.rule34xyz, "saint": self.saint, "scrolller": self.scrolller,
                         "socialmediagirls": self.socialmediagirls, "toonily": self.toonily,
-                        "xxxbunker":self.xxxbunker,"xbunker": self.xbunker, "xbunkr": self.xbunkr, "bunkr": self.bunkrr}
+                        "xxxbunker":self.xxxbunker,"xbunker": self.xbunker, "xbunkr": self.xbunkr, "bunkr": self.bunkrr, "nekohouse": self.nekohouse}
         self.existing_crawlers = {}
         self.no_crawler_downloader = Downloader(self.manager, "no_crawler")
         self.jdownloader = JDownloader(self.manager)
@@ -274,6 +274,11 @@ class ScrapeMapper:
         """Creates a XXXBunker Crawler instance"""
         from cyberdrop_dl.scraper.crawlers.xxxbunker_crawler import XXXBunkerCrawler
         self.existing_crawlers['xxxbunker'] = XXXBunkerCrawler(self.manager)
+
+    async def nekohouse(self) -> None:
+        """Creates a Nekohouse Crawler instance"""
+        from cyberdrop_dl.scraper.crawlers.nekohouse_crawler import NekohouseCrawler
+        self.existing_crawlers['nekohouse'] = NekohouseCrawler(self.manager)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
