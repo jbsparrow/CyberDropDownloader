@@ -16,6 +16,8 @@ from cyberdrop_dl.clients.errors import NoExtensionFailure, CDLBaseException
 from cyberdrop_dl.managers.real_debrid.errors import RealDebridError
 from cyberdrop_dl.managers.console_manager import log as log_console
 
+DEFAULT_CONSOLE_WIDTH = 240
+
 if TYPE_CHECKING:
     from typing import Tuple
     from cyberdrop_dl.managers.manager import Manager
@@ -128,6 +130,14 @@ async def get_log_output_text() -> str:
     global LOG_OUTPUT_TEXT
     return LOG_OUTPUT_TEXT + "```"
 
+async def log_spacer(level: int) -> None:
+    global LOG_OUTPUT_TEXT
+    spacer = "-" * min(DEFAULT_CONSOLE_WIDTH / 2, 50)
+    rich.print(f"")
+    LOG_OUTPUT_TEXT += "\n"
+    logger.log(level,spacer)
+    if DEBUG_VAR:
+        logger_debug.log(level,spacer)
 
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
