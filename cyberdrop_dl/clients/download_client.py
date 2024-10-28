@@ -110,7 +110,7 @@ class DownloadClient:
             if resp.status == HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE:
                 media_item.partial_file.unlink()
 
-            await self.client_manager.check_http_status(resp, download=True)
+            await self.client_manager.check_http_status(resp, download=True, origin = media_item.url)
             content_type = resp.headers.get('Content-Type')
 
             media_item.filesize = int(resp.headers.get('Content-Length', '0'))

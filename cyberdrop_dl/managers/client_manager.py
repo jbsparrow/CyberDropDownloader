@@ -87,14 +87,14 @@ class ClientManager:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def check_http_status(self, response: ClientResponse, download: bool = False, scrape_item: Optional[ScrapeItem | URL]= None) -> None:
+    async def check_http_status(self, response: ClientResponse, download: bool = False, origin: Optional[ScrapeItem | URL]= None) -> None:
         """Checks the HTTP status code and raises an exception if it's not acceptable"""
         status = response.status
         headers = response.headers
 
         if download and headers.get('ETag') in DOWNLOAD_ERROR_ETAGS:
             message = DOWNLOAD_ERROR_ETAGS.get(headers.get('ETag'))
-            raise DownloadFailure(HTTPStatus.NOT_FOUND, message=message, origin = scrape_item)
+            raise DownloadFailure(HTTPStatus.NOT_FOUND, message=message, origin = origin)
 
         if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
             return
@@ -104,20 +104,20 @@ class ClientManager:
                 JSON_Resp: dict = await response.json()
                 if "status" in JSON_Resp:
                     if "notFound" in JSON_Resp["status"]:
-                        raise ScrapeFailure(HTTPStatus.NOT_FOUND, origin = scrape_item)
+                        raise ScrapeFailure(HTTPStatus.NOT_FOUND, origin = origin)
                     if JSON_Resp.get('data') and 'error' in JSON_Resp['data']:
-                        raise ScrapeFailure(JSON_Resp['status'], JSON_Resp['data']['error'], origin = scrape_item)
+                        raise ScrapeFailure(JSON_Resp['status'], JSON_Resp['data']['error'], origin = origin)
             except ContentTypeError:
                 pass
 
         response_text = await response.text()
         if "<title>DDoS-Guard</title>" in response_text:
-            raise DDOSGuardFailure(origin = scrape_item)
+            raise DDOSGuardFailure(origin = origin)
 
         if not headers.get('Content-Type'):
-            raise DownloadFailure(status=CustomHTTPStatus.IM_A_TEAPOT, message="No content-type in response header", origin = scrape_item)
+            raise DownloadFailure(status=CustomHTTPStatus.IM_A_TEAPOT, message="No content-type in response header", origin = origin)
 
-        raise DownloadFailure(status=status, origin = scrape_item )
+        raise DownloadFailure(status=status, origin = origin )
 
     async def check_bunkr_maint(self, headers):
         if headers.get('Content-Length') == "322509" and headers.get('Content-Type') == "video/mp4":
