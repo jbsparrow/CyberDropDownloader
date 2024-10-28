@@ -5,7 +5,7 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [5.7.0] - 2024-10-23
+## [5.7.0] - 2024-10-28
 
 This update introduces the following changes:
 1. Rotating log files 
@@ -13,7 +13,7 @@ This update introduces the following changes:
 3. Add support for https://tokyomotion.net URLs
 4. Add support for https://xxxbunker.com URLs
 5. Add support for https://saint2.su albums
-6. Add integration to handle downloads supported by https://real-debrid.com/
+6. Add integration to handle downloads supported by https://real-debrid.com
 7. Add support for password protected Cyberfile URLs
 8. Simplify some UI elements
 9. Improve jdownloader intergration
