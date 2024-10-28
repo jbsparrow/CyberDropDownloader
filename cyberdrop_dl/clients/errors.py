@@ -13,7 +13,7 @@ class CDLBaseException(Exception):
    
     def __init__(self, ui_message: str = "Something went wrong", *, message: Optional[str] = None , status: Optional[int]=None, origin: Optional[ScrapeItem | URL | Path] = None):
         self.ui_message = ui_message
-        self.message = message if message else ui_message
+        self.message = message or ui_message
         self.origin = origin 
         if origin and not isinstance(origin, (URL, Path)): 
             self.origin = origin.parents[0] if origin.parents else None
@@ -26,14 +26,12 @@ class InvalidContentTypeFailure(CDLBaseException):
     def __init__(self, *, message: Optional [str] = None, origin: Optional[ScrapeItem | URL] = None):
         """This error will be thrown when the content type isn't as expected"""
         ui_message = "Invalid Content Type"
-        message = message or ui_message
         super().__init__(ui_message, message = message, origin=origin)
 
 class NoExtensionFailure(CDLBaseException):
     def __init__(self, *, message: Optional [str] = None, origin: Optional[ScrapeItem | URL] = None):
         """This error will be thrown when no extension is given for a file"""
         ui_message = "No File Extension"
-        message = message or ui_message
         super().__init__(ui_message, message = message, origin=origin)
 
 
@@ -62,7 +60,6 @@ class DownloadFailure(CDLBaseException):
                 ui_message = f"{status} {HTTPStatus(status).phrase}"
             except ValueError:
                 ui_message = f"{status} HTTP Error"
-        message = message or ui_message
         super().__init__(ui_message, message = message, status = status, origin=origin)
 
 class ScrapeFailure(CDLBaseException):
@@ -74,14 +71,12 @@ class ScrapeFailure(CDLBaseException):
                 ui_message = f"{status} {HTTPStatus(status).phrase}"
             except ValueError:
                 ui_message = f"{status} HTTP Error"
-        message = message or ui_message
         super().__init__(ui_message, message = message, status = status, origin=origin)
 
 class FailedLoginFailure(CDLBaseException):
     def __init__(self, *, message: Optional[str] = None , origin: Optional[ScrapeItem | URL] = None):
         """This error will be thrown when the login fails for a site"""
         ui_message = "Failed Login"
-        message = message or ui_message
         super().__init__(ui_message, message = message, origin=origin)
 
 
