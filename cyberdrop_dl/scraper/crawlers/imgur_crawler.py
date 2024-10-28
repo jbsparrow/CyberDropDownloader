@@ -43,7 +43,7 @@ class ImgurCrawler(Crawler):
         """Scrapes an album"""
         if self.imgur_client_id == "":
             await log("To scrape imgur content, you need to provide a client id", 30)
-            raise FailedLoginFailure(status=401, message="No Imgur Client ID provided")
+            raise FailedLoginFailure(message="No Imgur Client ID provided")
         await self.check_imgur_credits()
 
         album_id = scrape_item.url.parts[-1]
@@ -71,7 +71,7 @@ class ImgurCrawler(Crawler):
         """Scrapes an image"""
         if self.imgur_client_id == "":
             await log("To scrape imgur content, you need to provide a client id", 30)
-            raise FailedLoginFailure(status=401, message="No Imgur Client ID provided")
+            raise FailedLoginFailure(message="No Imgur Client ID provided")
         await self.check_imgur_credits()
 
         image_id = scrape_item.url.parts[-1]
