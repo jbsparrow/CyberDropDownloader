@@ -130,9 +130,9 @@ async def get_log_output_text() -> str:
     global LOG_OUTPUT_TEXT
     return LOG_OUTPUT_TEXT + "```"
 
-async def log_spacer(level: int) -> None:
+async def log_spacer(level: int, char: str = "-") -> None:
     global LOG_OUTPUT_TEXT
-    spacer = "-" * min(DEFAULT_CONSOLE_WIDTH / 2, 50)
+    spacer = char * min(DEFAULT_CONSOLE_WIDTH / 2, 50)
     rich.print(f"")
     LOG_OUTPUT_TEXT += "\n"
     logger.log(level,spacer)

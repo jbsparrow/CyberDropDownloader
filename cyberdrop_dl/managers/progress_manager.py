@@ -65,7 +65,6 @@ class ProgressManager:
 
     async def print_stats(self) -> None:
         """Prints the stats of the program"""
-        await log_spacer(20)
         await log("Printing Stats...\n", 20)
         await log_with_color("Download Stats:", "cyan", 20)
         await log_with_color(f"  Downloaded {self.download_progress.completed_files} files", "green", 20)
@@ -74,12 +73,12 @@ class ProgressManager:
         await log_with_color(f"  Skipped By Config {self.download_progress.skipped_files} files", "yellow", 20)
         await log_with_color(f"  Failed {self.download_stats_progress.failed_files} files", "red", 20)
 
-        await log_spacer(20)
+        await log_spacer(20,'')
         await log_with_color("Unsupported URLs Stats:", "cyan", 20)
         await log_with_color(f"  Sent to Jdownloader: {self.scrape_stats_progress.sent_to_jdownloader}", "yellow", 20)
         await log_with_color(f"  Skipped: {self.scrape_stats_progress.unsupported_urls_skipped}", "yellow", 20)
 
-        await log_spacer(20)
+        await log_spacer(20,'')
         await log_with_color("Dupe Stats:", "cyan", 20)
         await log_with_color(f"  Previously Hashed {self.hash_progress.prev_hashed_files} files", "yellow", 20)
         await log_with_color(f"  Newly Hashed {self.hash_progress.hashed_files} files", "yellow", 20)
@@ -87,7 +86,7 @@ class ProgressManager:
         await log_with_color(f"  Removed From Previous Downloads {self.hash_progress.removed_prev_files} files", "yellow",
                             20)
 
-        await log_spacer(20)
+        await log_spacer(20,'')
         await log_with_color("Sort Stats:", "cyan", 20)
         await log_with_color(f"  Organized: {self.sort_progress.audio_count} Audios", "green", 20)
         await log_with_color(f"  Organized: {self.sort_progress.image_count} Images", "green", 20)
@@ -95,18 +94,17 @@ class ProgressManager:
         await log_with_color(f"  Organized: {self.sort_progress.other_count} Other Files", "green", 20)
 
         scrape_failures = await self.scrape_stats_progress.return_totals()
-        await log_spacer(20)
+        await log_spacer(20,'')
         await log_with_color("Scrape Failures:", "cyan", 20)
         for key, value in scrape_failures.items():
             await log_with_color(f"  Scrape Failures ({key}): {value}", "red", 20)
 
         download_failures = await self.download_stats_progress.return_totals()
-        await log_spacer(20)
+        await log_spacer(20,'')
         await log_with_color("Download Failures:", "cyan", 20)
         for key, value in download_failures.items():
             await log_with_color(f"  Download Failures ({key}): {value}", "red", 20)
 
-        await log_spacer(20)
         await self.send_webhook_message(self.manager.config_manager.settings_data['Logs']['webhook_url'])
 
     async def send_webhook_message(self, webhook_url: str) -> None:
