@@ -79,7 +79,7 @@ class GoFileCrawler(Crawler):
 
         if "password" in JSON_Resp:
             if JSON_Resp['passwordStatus'] in {'passwordRequired','passwordWrong'} or not password:
-                raise PasswordProtected(scrape_item)
+                raise PasswordProtected(origin = scrape_item)
 
         if JSON_Resp["canAccess"] is False:
             raise ScrapeFailure(403, "Album is private", origin= scrape_item)

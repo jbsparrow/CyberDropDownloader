@@ -67,7 +67,7 @@ class CyberfileCrawler(Crawler):
                     password_data = {"folderPassword": password, "folderId": nodeId, "submitme": 1}
                     password_response: dict = await self.client.post_data(self.domain, self.api_password_process, data=password_data, origin = scrape_item)
                     if not password_response.get('success'):
-                        raise PasswordProtected(scrape_item)
+                        raise PasswordProtected(origin = scrape_item)
                     ajax_dict: dict = await self.client.post_data(self.domain, self.api_files, data=data, origin = scrape_item)
 
                 ajax_soup = BeautifulSoup(ajax_dict['html'].replace("\\", ""), 'html.parser')
@@ -152,7 +152,7 @@ class CyberfileCrawler(Crawler):
                 soup = BeautifulSoup (await self.client.post_data(
                     self.domain, scrape_item.url, data=password_data, raw=True, origin = scrape_item))
                 if "File password is invalid" in soup.text:
-                    raise PasswordProtected(scrape_item)
+                    raise PasswordProtected(origin =scrape_item)
             
         script_funcs = soup.select('script')
         for script in script_funcs:
@@ -174,7 +174,7 @@ class CyberfileCrawler(Crawler):
             ajax_soup = BeautifulSoup(ajax_dict['html'].replace("\\", ""), 'html.parser')
 
         if "albumPasswordModel" in ajax_dict['html']:
-            raise PasswordProtected(scrape_item)
+            raise PasswordProtected(origin = scrape_item)
 
         file_menu = ajax_soup.select_one('ul[class="dropdown-menu dropdown-info account-dropdown-resize-menu"] li a')
         file_button = ajax_soup.select_one('div[class="btn-group responsiveMobileMargin"] button')
