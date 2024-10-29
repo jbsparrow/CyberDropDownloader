@@ -136,11 +136,16 @@ class KemonoCrawler(Crawler):
         await scrape_item.add_to_parent_title(post_title)
         await scrape_item.add_to_parent_title("Loose Files")
 
-        yarl_links = []
+        yarl_links: list[URL] = []
         all_links = [x.group().replace(".md.", ".") for x in
-                    re.finditer(r"(?:http.*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]|</a>|</p>))", content)]
+                    re.finditer(r"(?:http(?!.*\.\.)[^ ]*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]|</|'))", content)]
+        
         for link in all_links:
-            yarl_links.append(URL(link))
+            try:
+                url = URL(link)
+                yarl_links.append(url)
+            except ValueError:
+                pass
 
         for link in yarl_links:
             if "kemono" in link.host:
