@@ -110,9 +110,12 @@ class ClientManager:
             except ContentTypeError:
                 pass
 
-        response_text = await response.text()
-        if "<title>DDoS-Guard</title>" in response_text:
-            raise DDOSGuardFailure(origin = origin)
+        try:
+            response_text = await response.text()
+            if "<title>DDoS-Guard</title>" in response_text:
+                raise DDOSGuardFailure(origin = origin)
+        except UnicodeDecodeError:
+            pass
 
         if not headers.get('Content-Type'):
             raise DownloadFailure(status=CustomHTTPStatus.IM_A_TEAPOT, message="No content-type in response header", origin = origin)
