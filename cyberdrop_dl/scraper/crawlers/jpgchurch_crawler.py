@@ -17,11 +17,26 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
     from bs4 import BeautifulSoup
 
+CDN_PATTERNS = {
+    'jpg.church': r"^(?:(jpg.church\/images\/...)|(simp..jpg.church)|(jpg.fish\/images\/...)|(simp..jpg.fish)|(jpg.fishing\/images\/...)|(simp..jpg.fishing)|(simp..host.church)|(simp..jpg..su))",
+    'imagepond.net': r"(media.imagepond.net)"
+}
 
-class JPGChurchCrawler(Crawler):
-    def __init__(self, manager: Manager):
-        super().__init__(manager, "jpg.church", "JPGChurch")
-        self.primary_base_domain = URL("https://jpg5.su")
+CDN_POSSIBILITIES = re.compile("|".join(CDN_PATTERNS.values()))
+
+class CheveretoCrawler(Crawler):
+    JPG_CHURCH_DOMAINS = {
+            'jpg.homes','jpg.church','jpg.fish','jpg.fishing','jpg.pet','jpeg.pet',
+            'jpg1.su','jpg2.su','jpg3.su','jpg4.su','jpg5.su','host.church'}
+
+    PRIMARY_BASE_DOMAINS = {'imagepond.net': URL("https://imagepond.net"), 'jpg.church': URL("https://jpg5.su")}
+    FOLDER_DOMAINS = {'imagepond.net': "ImagePond", 'jpg.church': 'JPGChurch' }
+
+    DOMAINS = set(PRIMARY_BASE_DOMAINS.keys()) |  JPG_CHURCH_DOMAINS
+    
+    def __init__(self, manager: Manager, domain: str = "jpg.church"):
+        super().__init__(manager, domain, self.FOLDER_DOMAINS.get(domain, "Chevereto"))
+        self.primary_base_domain = self.PRIMARY_BASE_DOMAINS.get(domain, URL("https://{domain}"))
         self.request_limiter = AsyncLimiter(10, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -153,7 +168,7 @@ class JPGChurchCrawler(Crawler):
 
     async def check_direct_link(self, url: URL) -> bool:
         """Determines if the url is a direct link or not"""
-        cdn_possibilities = r"^(?:(jpg.church\/images\/...)|(simp..jpg.church)|(jpg.fish\/images\/...)|(simp..jpg.fish)|(jpg.fishing\/images\/...)|(simp..jpg.fishing)|(simp..host.church)|(simp..jpg..su))"
-        if not re.match(cdn_possibilities, url.host):
+        
+        if not re.match(CDN_POSSIBILITIES, url.host):
             return False
         return True

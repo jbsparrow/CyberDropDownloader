@@ -59,7 +59,10 @@ class FileProgress:
         total = 0
 
         for scraper in self.manager.scrape_mapper.existing_crawlers.values():
-            total += scraper.downloader.waiting_items
+            try:
+                total += scraper.downloader.waiting_items
+            except AttributeError:
+                pass
 
         return total
 

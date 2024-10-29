@@ -18,7 +18,7 @@ from cyberdrop_dl.utils.utilities import log, get_filename_and_ext, get_download
 
 if TYPE_CHECKING:
     from typing import List
-
+    from cyberdrop_dl.scraper.crawler import Crawler
     from cyberdrop_dl.managers.manager import Manager
 
 
@@ -27,32 +27,27 @@ class ScrapeMapper:
 
     def __init__(self, manager: Manager):
         self.manager = manager
-        self.mapping = {"realdebrid": self.realdebrid, "tokyomotion": self.tokyomotion, "bunkrr": self.bunkrr, "celebforum": self.celebforum, "coomer": self.coomer,
+        self.mapping = {"bunkr": self.bunkr, "celebforum": self.celebforum, "coomer": self.coomer,
                         "cyberdrop": self.cyberdrop, "cyberfile": self.cyberfile, "e-hentai": self.ehentai,
                         "erome": self.erome, "fapello": self.fapello, "f95zone": self.f95zone, "gofile": self.gofile,
                         "hotpic": self.hotpic, "ibb.co": self.imgbb, "imageban": self.imageban, "imgbox": self.imgbox,
-                        "imgur": self.imgur, "img.kiwi": self.imgwiki, "jpg.church": self.jpgchurch,
-                        "jpg.homes": self.jpgchurch, "jpg.fish": self.jpgchurch, "jpg.fishing": self.jpgchurch,
-                        "jpg.pet": self.jpgchurch, "jpeg.pet": self.jpgchurch, "jpg1.su": self.jpgchurch,
-                        "jpg2.su": self.jpgchurch, "jpg3.su": self.jpgchurch, "jpg4.su": self.jpgchurch,
-                        "jpg5.su": self.jpgchurch,
-                        "host.church": self.jpgchurch, "kemono": self.kemono, "leakedmodels": self.leakedmodels,
+                        "imgur": self.imgur, "img.kiwi": self.imgwiki, "jpg.church": self.chevereto, "kemono": self.kemono, "leakedmodels": self.leakedmodels,
                         "mediafire": self.mediafire, "nudostar.com": self.nudostar, "nudostar.tv": self.nudostartv,
                         "omegascans": self.omegascans, "pimpandhost": self.pimpandhost, "pixeldrain": self.pixeldrain,
-                        "postimg": self.postimg, "realbooru": self.realbooru, "reddit": self.reddit,
+                        "postimg": self.postimg, "realbooru": self.realbooru, "realdebrid": self.realdebrid, "reddit": self.reddit,
                         "redd.it": self.reddit, "redgifs": self.redgifs, "rule34vault": self.rule34vault,
                         "rule34.xxx": self.rule34xxx,
                         "rule34.xyz": self.rule34xyz, "saint": self.saint, "scrolller": self.scrolller,
-                        "socialmediagirls": self.socialmediagirls, "toonily": self.toonily,
-                        "xxxbunker":self.xxxbunker,"xbunker": self.xbunker, "xbunkr": self.xbunkr, "bunkr": self.bunkrr}
-        self.existing_crawlers = {}
+                        "socialmediagirls": self.socialmediagirls, "tokyomotion": self.tokyomotion, "toonily": self.toonily,
+                        "xxxbunker":self.xxxbunker,"xbunker": self.xbunker, "xbunkr": self.xbunkr}
+        self.existing_crawlers: dict[str,Crawler] = {}
         self.no_crawler_downloader = Downloader(self.manager, "no_crawler")
         self.jdownloader = JDownloader(self.manager)
         self.jdownloader_whitelist = self.manager.config_manager.settings_data["Runtime_Options"]["jdownloader_whitelist"]
         self.lock = asyncio.Lock()
         self.count = 0
 
-    async def bunkrr(self) -> None:
+    async def bunkr(self) -> None:
         """Creates a Bunkr Crawler instance"""
         from cyberdrop_dl.scraper.crawlers.bunkrr_crawler import BunkrrCrawler
         self.existing_crawlers['bunkrr'] = BunkrrCrawler(self.manager)
@@ -133,21 +128,15 @@ class ScrapeMapper:
         from cyberdrop_dl.scraper.crawlers.imgkiwi_crawler import ImgKiwiCrawler
         self.existing_crawlers['img.kiwi'] = ImgKiwiCrawler(self.manager)
 
-    async def jpgchurch(self) -> None:
-        """Creates a JPGChurch Crawler instance"""
-        from cyberdrop_dl.scraper.crawlers.jpgchurch_crawler import JPGChurchCrawler
-        self.existing_crawlers['jpg.church'] = JPGChurchCrawler(self.manager)
-        self.existing_crawlers['jpg.homes'] = self.existing_crawlers['jpg.church']
-        self.existing_crawlers['jpg.fish'] = self.existing_crawlers['jpg.church']
-        self.existing_crawlers['jpg.fishing'] = self.existing_crawlers['jpg.church']
-        self.existing_crawlers['jpg.pet'] = self.existing_crawlers['jpg.church']
-        self.existing_crawlers['jpeg.pet'] = self.existing_crawlers['jpg.church']
-        self.existing_crawlers['jpg1.su'] = self.existing_crawlers['jpg.church']
-        self.existing_crawlers['jpg2.su'] = self.existing_crawlers['jpg.church']
-        self.existing_crawlers['jpg3.su'] = self.existing_crawlers['jpg.church']
-        self.existing_crawlers['jpg4.su'] = self.existing_crawlers['jpg.church']
-        self.existing_crawlers['jpg5.su'] = self.existing_crawlers['jpg.church']
-        self.existing_crawlers['host.church'] = self.existing_crawlers['jpg.church']
+    async def chevereto(self) -> None:
+        """Creates a Chevereto Crawler instance"""
+        from cyberdrop_dl.scraper.crawlers.jpgchurch_crawler import CheveretoCrawler
+        self.existing_crawlers['jpg.church'] = CheveretoCrawler(self.manager)
+        for domain in CheveretoCrawler.DOMAINS:
+            if domain in CheveretoCrawler.JPG_CHURCH_DOMAINS:
+                self.existing_crawlers[domain] = self.existing_crawlers['jpg.church']
+            else:
+                self.existing_crawlers[domain] = CheveretoCrawler(self.manager, domain)        
 
     async def kemono(self) -> None:
         """Creates a Kemono Crawler instance"""
@@ -281,8 +270,10 @@ class ScrapeMapper:
         """Starts all scrapers"""
         for key in self.mapping:
             await self.mapping[key]()
-            crawler = self.existing_crawlers[key]
-            await crawler.startup()
+
+        for crawler in self.existing_crawlers.values():
+            if isinstance(crawler.client, Field):
+                await crawler.startup()
 
     async def start_jdownloader(self) -> None:
         """Starts JDownloader"""
@@ -461,7 +452,7 @@ class ScrapeMapper:
             else:
                 scrape_item.url = scrape_item.url.with_path(scrape_item.url.path[:-1])
 
-        key = next((key for key in self.mapping if key in scrape_item.url.host.lower()), None)
+        key = next((key for key in self.existing_crawlers if key in scrape_item.url.host.lower()), None)
         jdownloader_whitelisted = True 
         if self.jdownloader_whitelist:
             jdownloader_whitelisted = next((domain for domain in self.jdownloader_whitelist if domain in scrape_item.url.host.lower()), False)
