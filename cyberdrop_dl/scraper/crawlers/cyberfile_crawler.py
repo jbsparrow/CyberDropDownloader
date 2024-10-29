@@ -144,6 +144,7 @@ class CyberfileCrawler(Crawler):
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a file"""
         password = scrape_item.url.query.get("password","")
+        scrape_item.url = scrape_item.url.with_query(None)
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
             if 'Enter File Password' in soup.text:

@@ -51,6 +51,7 @@ class GoFileCrawler(Crawler):
         scrape_item.part_of_album = True
 
         password = scrape_item.url.query.get("password","")
+        scrape_item.url = scrape_item.url.with_query(None)
         if password:
             password = sha256(password.encode()).hexdigest()
 
