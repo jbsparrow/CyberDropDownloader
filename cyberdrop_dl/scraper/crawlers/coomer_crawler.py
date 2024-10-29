@@ -78,7 +78,8 @@ class CoomerCrawler(Crawler):
             'ignore_coomer_ads']:
             return
 
-        date = post["published"].replace("T", " ")
+        date = post.get("published") or post.get("added")
+        date = date.replace("T", " ")
         post_id = post["id"]
         post_title = post["title"]
 
