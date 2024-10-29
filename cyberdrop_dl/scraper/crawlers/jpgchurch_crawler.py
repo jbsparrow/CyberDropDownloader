@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, AsyncGenerator
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
+from bs4 import BeautifulSoup
 
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
@@ -15,7 +16,6 @@ from cyberdrop_dl.clients.errors import PasswordProtected, ScrapeFailure
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
-    from bs4 import BeautifulSoup
 
 CDN_PATTERNS = {
     'jpg.church': r"^(?:(jpg.church\/images\/...)|(simp..jpg.church)|(jpg.fish\/images\/...)|(simp..jpg.fish)|(jpg.fishing\/images\/...)|(simp..jpg.fishing)|(simp..host.church)|(simp..jpg..su))",
@@ -53,7 +53,7 @@ class CheveretoCrawler(Crawler):
         if await self.check_direct_link(scrape_item.url):
             await self.handle_direct_link(scrape_item)
         else:
-            scrape_item.url = self.primary_base_domain / scrape_item.url.path[1:]
+            scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path[1:]).with_query(scrape_item.url.query)
             if "a" in scrape_item.url.parts or "album" in scrape_item.url.parts:
                 await self.album(scrape_item)
             elif any((part in scrape_item.url.parts for part in ('image', 'img', 'images'))):
@@ -89,12 +89,20 @@ class CheveretoCrawler(Crawler):
         results = await self.get_album_results(album_id)
         scrape_item.album_id = album_id 
         scrape_item.part_of_album = True
+        password = scrape_item.url.query.get("password","")
+        scrape_item.url = scrape_item.url.with_query(None)
 
         async with self.request_limiter:
             sub_albums_soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url / "sub", origin = scrape_item)
 
+        if 'This content is password protected' in sub_albums_soup.text and password:
+            password_data = {"content-password": password}
+            async with self.request_limiter:
+                sub_albums_soup = BeautifulSoup (await self.client.post_data(
+                    self.domain, scrape_item.url, data=password_data, raw=True, origin = scrape_item))
+           
         if "This content is password protected" in sub_albums_soup.text:
-            raise PasswordProtected(origin = scrape_item)
+            raise PasswordProtected(message = "Wrong password" if password else None, origin =scrape_item)
 
         title = await self.create_title(sub_albums_soup.select_one(self.album_title_selector).get_text(), album_id ,None)
 
