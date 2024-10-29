@@ -131,7 +131,7 @@ class ScrapeMapper:
 
     async def chevereto(self) -> None:
         """Creates a Chevereto Crawler instance"""
-        from cyberdrop_dl.scraper.crawlers.jpgchurch_crawler import CheveretoCrawler
+        from cyberdrop_dl.scraper.crawlers.chevereto_crawler import CheveretoCrawler
         self.existing_crawlers['jpg.church'] = CheveretoCrawler(self.manager, 'jpg.church')
         for domain in CheveretoCrawler.DOMAINS:
             if domain in CheveretoCrawler.JPG_CHURCH_DOMAINS:
