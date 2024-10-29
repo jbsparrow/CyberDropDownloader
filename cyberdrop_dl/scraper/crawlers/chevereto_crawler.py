@@ -19,7 +19,8 @@ if TYPE_CHECKING:
 
 CDN_PATTERNS = {
     'jpg.church': r"^(?:(jpg.church\/images\/...)|(simp..jpg.church)|(jpg.fish\/images\/...)|(simp..jpg.fish)|(jpg.fishing\/images\/...)|(simp..jpg.fishing)|(simp..host.church)|(simp..jpg..su))",
-    'imagepond.net': r"(media.imagepond.net)"
+    'imagepond.net': r"(media.imagepond.net)",
+    'img.kiwi': r'^(?:(img.kiwi\/images\/)'
 }
 
 CDN_POSSIBILITIES = re.compile("|".join(CDN_PATTERNS.values()))
@@ -29,8 +30,13 @@ class CheveretoCrawler(Crawler):
             'jpg.homes','jpg.church','jpg.fish','jpg.fishing','jpg.pet','jpeg.pet',
             'jpg1.su','jpg2.su','jpg3.su','jpg4.su','jpg5.su','host.church'}
 
-    PRIMARY_BASE_DOMAINS = {'imagepond.net': URL("https://imagepond.net"), 'jpg.church': URL("https://jpg5.su")}
-    FOLDER_DOMAINS = {'imagepond.net': "ImagePond", 'jpg.church': 'JPGChurch' }
+    PRIMARY_BASE_DOMAINS = {
+        'imagepond.net': URL("https://imagepond.net"), 
+        'jpg.church': URL("https://jpg5.su"),
+        "img.kiwi": URL("https://img.kiwi")
+    }
+
+    FOLDER_DOMAINS = {'imagepond.net': "ImagePond", 'jpg.church': 'JPGChurch', 'img.kiwi': 'ImgKiwi' }
 
     DOMAINS = PRIMARY_BASE_DOMAINS.keys() |  JPG_CHURCH_DOMAINS
     

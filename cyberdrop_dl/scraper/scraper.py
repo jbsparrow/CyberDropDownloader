@@ -31,7 +31,7 @@ class ScrapeMapper:
                         "cyberdrop": self.cyberdrop, "cyberfile": self.cyberfile, "e-hentai": self.ehentai,
                         "erome": self.erome, "fapello": self.fapello, "f95zone": self.f95zone, "gofile": self.gofile,
                         "hotpic": self.hotpic, "ibb.co": self.imgbb, "imageban": self.imageban, "imgbox": self.imgbox,
-                        "imgur": self.imgur, "img.kiwi": self.imgwiki, "jpg.church": self.chevereto, "kemono": self.kemono, 
+                        "imgur": self.imgur, "jpg.church": self.chevereto, "kemono": self.kemono, 
                         "leakedmodels": self.leakedmodels, "mediafire": self.mediafire, "nudostar.com": self.nudostar, 
                         "nudostar.tv": self.nudostartv, "omegascans": self.omegascans, "pimpandhost": self.pimpandhost, 
                         "pixeldrain": self.pixeldrain, "postimg": self.postimg, "realbooru": self.realbooru, 
@@ -123,11 +123,6 @@ class ScrapeMapper:
         """Creates a Imgur Crawler instance"""
         from cyberdrop_dl.scraper.crawlers.imgur_crawler import ImgurCrawler
         self.existing_crawlers['imgur'] = ImgurCrawler(self.manager)
-
-    async def imgwiki(self) -> None:
-        """Creates a ImgWiki Crawler instance"""
-        from cyberdrop_dl.scraper.crawlers.imgkiwi_crawler import ImgKiwiCrawler
-        self.existing_crawlers['img.kiwi'] = ImgKiwiCrawler(self.manager)
 
     async def chevereto(self) -> None:
         """Creates a Chevereto Crawler instance"""
