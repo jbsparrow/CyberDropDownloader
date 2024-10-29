@@ -31,15 +31,16 @@ class ScrapeMapper:
                         "cyberdrop": self.cyberdrop, "cyberfile": self.cyberfile, "e-hentai": self.ehentai,
                         "erome": self.erome, "fapello": self.fapello, "f95zone": self.f95zone, "gofile": self.gofile,
                         "hotpic": self.hotpic, "ibb.co": self.imgbb, "imageban": self.imageban, "imgbox": self.imgbox,
-                        "imgur": self.imgur, "img.kiwi": self.imgwiki, "jpg.church": self.chevereto, "kemono": self.kemono, "leakedmodels": self.leakedmodels,
-                        "mediafire": self.mediafire, "nudostar.com": self.nudostar, "nudostar.tv": self.nudostartv,
-                        "omegascans": self.omegascans, "pimpandhost": self.pimpandhost, "pixeldrain": self.pixeldrain,
-                        "postimg": self.postimg, "realbooru": self.realbooru, "realdebrid": self.realdebrid, "reddit": self.reddit,
-                        "redd.it": self.reddit, "redgifs": self.redgifs, "rule34vault": self.rule34vault,
-                        "rule34.xxx": self.rule34xxx,
-                        "rule34.xyz": self.rule34xyz, "saint": self.saint, "scrolller": self.scrolller,
-                        "socialmediagirls": self.socialmediagirls, "tokyomotion": self.tokyomotion, "toonily": self.toonily,
+                        "imgur": self.imgur, "img.kiwi": self.imgwiki, "jpg.church": self.chevereto, "kemono": self.kemono, 
+                        "leakedmodels": self.leakedmodels, "mediafire": self.mediafire, "nudostar.com": self.nudostar, 
+                        "nudostar.tv": self.nudostartv, "omegascans": self.omegascans, "pimpandhost": self.pimpandhost, 
+                        "pixeldrain": self.pixeldrain, "postimg": self.postimg, "realbooru": self.realbooru, 
+                        "reddit": self.reddit, "redgifs": self.redgifs, "rule34vault": self.rule34vault, 
+                        "rule34.xxx": self.rule34xxx, "rule34.xyz": self.rule34xyz, "saint": self.saint, 
+                        "scrolller": self.scrolller, "socialmediagirls": self.socialmediagirls, 
+                        "tokyomotion": self.tokyomotion, "toonily": self.toonily, 
                         "xxxbunker":self.xxxbunker,"xbunker": self.xbunker, "xbunkr": self.xbunkr}
+        
         self.existing_crawlers: dict[str,Crawler] = {}
         self.no_crawler_downloader = Downloader(self.manager, "no_crawler")
         self.jdownloader = JDownloader(self.manager)
@@ -131,7 +132,7 @@ class ScrapeMapper:
     async def chevereto(self) -> None:
         """Creates a Chevereto Crawler instance"""
         from cyberdrop_dl.scraper.crawlers.jpgchurch_crawler import CheveretoCrawler
-        self.existing_crawlers['jpg.church'] = CheveretoCrawler(self.manager)
+        self.existing_crawlers['jpg.church'] = CheveretoCrawler(self.manager, 'jpg.church')
         for domain in CheveretoCrawler.DOMAINS:
             if domain in CheveretoCrawler.JPG_CHURCH_DOMAINS:
                 self.existing_crawlers[domain] = self.existing_crawlers['jpg.church']
@@ -191,7 +192,7 @@ class ScrapeMapper:
     async def realdebrid(self) -> None:
         """Creates a RealDebrid Crawler instance"""
         from cyberdrop_dl.scraper.crawlers.realdebrid_crawler import RealDebridCrawler
-        self.existing_crawlers['realdebrid'] = RealDebridCrawler(self.manager)
+        self.existing_crawlers['real-debrid'] = RealDebridCrawler(self.manager)
 
     async def reddit(self) -> None:
         """Creates a Reddit Crawler instance"""
@@ -283,6 +284,7 @@ class ScrapeMapper:
     async def start_real_debrid(self) -> None:
         """Starts RealDebrid"""
         if self.manager.real_debrid_manager.enabled and isinstance(self.manager.real_debrid_manager.api, Field):
+            await self.realdebrid()
             await self.manager.real_debrid_manager.startup()
 
     async def start(self) -> None:
@@ -464,7 +466,7 @@ class ScrapeMapper:
 
         elif self.manager.real_debrid_manager.enabled and await self.manager.real_debrid_manager.is_supported(scrape_item.url):
             await log(f"Using RealDebrid for unsupported URL: {scrape_item.url}", 10)
-            self.manager.task_group.create_task(self.existing_crawlers['realdebrid'].run(scrape_item))
+            self.manager.task_group.create_task(self.existing_crawlers['real-debrid'].run(scrape_item))
 
         elif await self.extension_check(scrape_item.url):
             check_complete = await self.manager.db_manager.history_table.check_complete("no_crawler", scrape_item.url,
@@ -572,7 +574,7 @@ class ScrapeMapper:
 
         elif self.manager.real_debrid_manager.enabled and await self.manager.real_debrid_manager.is_supported(scrape_item.url):
             await log(f"Using RealDebrid for unsupported URL: {scrape_item.url}", 10)
-            self.manager.task_group.create_task(self.existing_crawlers['realdebrid'].run(scrape_item))
+            self.manager.task_group.create_task(self.existing_crawlers['real-debrid'].run(scrape_item))
 
         elif self.jdownloader.enabled:
             await log(f"Sending unsupported URL to JDownloader: {scrape_item.url}", 10)

@@ -11,7 +11,7 @@ from yarl import URL
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
-from cyberdrop_dl.clients.errors import PasswordProtected
+from cyberdrop_dl.clients.errors import PasswordProtected, ScrapeFailure
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -32,11 +32,11 @@ class CheveretoCrawler(Crawler):
     PRIMARY_BASE_DOMAINS = {'imagepond.net': URL("https://imagepond.net"), 'jpg.church': URL("https://jpg5.su")}
     FOLDER_DOMAINS = {'imagepond.net': "ImagePond", 'jpg.church': 'JPGChurch' }
 
-    DOMAINS = set(PRIMARY_BASE_DOMAINS.keys()) |  JPG_CHURCH_DOMAINS
+    DOMAINS = PRIMARY_BASE_DOMAINS.keys() |  JPG_CHURCH_DOMAINS
     
-    def __init__(self, manager: Manager, domain: str = "jpg.church"):
+    def __init__(self, manager: Manager, domain: str):
         super().__init__(manager, domain, self.FOLDER_DOMAINS.get(domain, "Chevereto"))
-        self.primary_base_domain = self.PRIMARY_BASE_DOMAINS.get(domain, URL("https://{domain}"))
+        self.primary_base_domain = self.PRIMARY_BASE_DOMAINS.get(domain, URL(f"https://{domain}"))
         self.request_limiter = AsyncLimiter(10, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -141,11 +141,22 @@ class CheveretoCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
 
-        link = URL(soup.select_one("div[id=image-viewer-container] img").get('src'))
-        link = link.with_name(link.name.replace('.md.', '.').replace('.th.', '.'))
-        date = soup.select_one("p[class*=description-meta] span").get("title")
-        date = await self.parse_datetime(date)
-        scrape_item.possible_datetime = date
+        try:
+            link = URL(soup.select_one("div[id=image-viewer] img").get('src'))
+            link = link.with_name(link.name.replace('.md.', '.').replace('.th.', '.'))
+        except AttributeError:
+            raise ScrapeFailure(404 , f"Could not find img source for {scrape_item.url}", origin= scrape_item)
+
+        desc_rows = soup.select("p[class*=description-meta]")
+        date = None
+        for row in desc_rows:
+            if 'uploaded' in row.text.casefold():
+                date = row.select_one('span').get("title")
+                break
+
+        if date:
+            date = await self.parse_datetime(date)
+            scrape_item.possible_datetime = date
 
         filename, ext = await get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
