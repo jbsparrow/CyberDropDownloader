@@ -3,7 +3,7 @@ from __future__ import annotations
 import calendar
 import datetime
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, AsyncGenerator
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
@@ -38,6 +38,11 @@ class CheveretoCrawler(Crawler):
         super().__init__(manager, domain, self.FOLDER_DOMAINS.get(domain, "Chevereto"))
         self.primary_base_domain = self.PRIMARY_BASE_DOMAINS.get(domain, URL(f"https://{domain}"))
         self.request_limiter = AsyncLimiter(10, 1)
+        self.next_page_selector = 'a[data-pagination=next]'
+        self.album_title_selector = "a[data-text=album-name]"
+        self.album_img_selector = "a[class='image-container --media'] img"
+        self.profile_item_selector = "a[class='image-container --media']"
+        self.profile_title_selector = 'meta[property="og:title"]'
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -51,7 +56,7 @@ class CheveretoCrawler(Crawler):
             scrape_item.url = self.primary_base_domain / scrape_item.url.path[1:]
             if "a" in scrape_item.url.parts or "album" in scrape_item.url.parts:
                 await self.album(scrape_item)
-            elif 'image' in scrape_item.url.parts or 'img' in scrape_item.url.parts or 'images' in scrape_item.url.parts:
+            elif any((part in scrape_item.url.parts for part in ('image', 'img', 'images'))):
                 await self.image(scrape_item)
             else:
                 await self.profile(scrape_item)
@@ -60,31 +65,22 @@ class CheveretoCrawler(Crawler):
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a user profile"""
+        """Scrapes an user profile"""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
 
-        title = await self.create_title(soup.select_one('meta[property="og:title"]').get("content"), None, None)
-        link_next = URL(soup.select_one("a[id=list-most-recent-link]").get("href"))
+        title = await self.create_title(soup.select_one(self.profile_title_selector).get("content"), None, None)
 
-        while True:
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_BS4(self.domain, link_next, origin = scrape_item)
-            links = soup.select("a[href*=img]")
+        async for soup in self.web_pager(scrape_item.url):
+            links = soup.select(self.profile_item_selector)
             for link in links:
-                link = URL(link.get('href'))
+                link = link.get('href')
+                if link.startswith('/'):
+                    link = self.primary_base_domain / link [1:]
+                link = URL(link)
                 new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent = scrape_item.url)
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                await self.handle_direct_link(new_scrape_item)
 
-            link_next = soup.select_one('a[data-pagination=next]')
-            if link_next is not None:
-                link_next = link_next.get('href')
-                if link_next is not None:
-                    link_next = URL(link_next)
-                else:
-                    break
-            else:
-                break
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
@@ -95,42 +91,33 @@ class CheveretoCrawler(Crawler):
         scrape_item.part_of_album = True
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url / "sub", origin = scrape_item)
+            sub_albums_soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url / "sub", origin = scrape_item)
 
-        if "This content is password protected" in soup.text:
+        if "This content is password protected" in sub_albums_soup.text:
             raise PasswordProtected(origin = scrape_item)
 
-        title = await self.create_title(soup.select_one("a[data-text=album-name]").get_text(), scrape_item.url.parts[2],
-                                        None)
-        albums = soup.select("a[class='image-container --media']")
-        for album in albums:
-            sub_album_link = URL(album.get('href'))
-            new_scrape_item = await self.create_scrape_item(scrape_item, sub_album_link, title, True)
+        title = await self.create_title(sub_albums_soup.select_one(self.album_title_selector).get_text(), album_id ,None)
+
+        sub_albums = sub_albums_soup.select(self.profile_item_selector)
+        for album in sub_albums:
+            sub_album_link = album.get('href')
+            if sub_album_link.startswith("/"):
+                sub_album_link = self.primary_base_domain / sub_album_link [1:]
+
+            sub_album_link = URL(sub_album_link)
+            new_scrape_item = await self.create_scrape_item(scrape_item, sub_album_link, "", True)
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url / "sub", origin = scrape_item)
-        link_next = URL(soup.select_one("a[id=list-most-recent-link]").get("href"))
-
-        while True:
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_BS4(self.domain, link_next, origin = scrape_item)
-            links = soup.select("a[href*=img] img")
+        async for soup in self.web_pager(scrape_item.url):
+            links = soup.select(self.album_img_selector)
             for link in links:
-                link = URL(link.get('src'))
+                link = link.get('src')
+                if link.startswith('/'):
+                    link = self.primary_base_domain / link [1:]
+                link = URL(link)
                 new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, album_id, add_parent = scrape_item.url)
                 if not await self.check_album_results(link, results):
                     await self.handle_direct_link(new_scrape_item)
-
-            link_next = soup.select_one('a[data-pagination=next]')
-            if link_next is not None:
-                link_next = link_next.get('href')
-                if link_next is not None:
-                    link_next = URL(link_next)
-                else:
-                    break
-            else:
-                break
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
@@ -171,6 +158,26 @@ class CheveretoCrawler(Crawler):
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+    async def get_sort_by_new_url (self, url: URL) -> URL:
+        return url.with_query({'sort':'date_desc', 'page':1})
+
+    async def web_pager(self, url: URL) -> AsyncGenerator[BeautifulSoup]:
+        "Generator of website pages"
+        page_url = await self.get_sort_by_new_url(url)
+        while True:
+            async with self.request_limiter:
+                soup: BeautifulSoup = await self.client.get_BS4(self.domain, page_url)
+            next_page = soup.select_one(self.next_page_selector)
+            yield soup
+            if next_page :
+                page_url = next_page.get('href')
+                if page_url:
+                    if page_url.startswith("/"):
+                        page_url = self.primary_base_domain / page_url[1:]
+                    page_url = URL(page_url)
+                    continue
+            break
 
     async def parse_datetime(self, date: str) -> int:
         """Parses a datetime string into a unix timestamp"""
