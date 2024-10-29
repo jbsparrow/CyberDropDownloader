@@ -11,6 +11,7 @@ from yarl import URL
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.clients.errors import PasswordProtected
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -80,6 +81,9 @@ class JPGChurchCrawler(Crawler):
 
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url / "sub", origin = scrape_item)
+
+        if "This content is password protected" in soup.text:
+            raise PasswordProtected(origin = scrape_item)
 
         title = await self.create_title(soup.select_one("a[data-text=album-name]").get_text(), scrape_item.url.parts[2],
                                         None)
