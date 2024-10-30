@@ -9,7 +9,7 @@ from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.scraper.scraper import ScrapeMapper
 from cyberdrop_dl.ui.ui import program_ui
 from cyberdrop_dl.utils.sorting import Sorter
-from cyberdrop_dl.utils.utilities import check_latest_pypi, log_with_color, check_partials_and_empty_folders, log, log_spacer, DEFAULT_CONSOLE_WIDTH
+from cyberdrop_dl.utils.utilities import check_latest_pypi, log_with_color, check_partials_and_empty_folders, log, log_spacer, DEFAULT_CONSOLE_WIDTH, sent_appraise_notifications
 from cyberdrop_dl.managers.console_manager import print_
 from cyberdrop_dl.clients.errors import InvalidYamlConfig
 
@@ -182,6 +182,7 @@ async def director(manager: Manager) -> None:
     await log("Closing Program...", 20)
     await manager.close()
     await log_with_color("Finished downloading. Enjoy :)", 'green', 20)
+    await sent_appraise_notifications(manager)
 
 
 def main():

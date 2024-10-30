@@ -336,3 +336,21 @@ async def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = Fa
             rich.print("You are currently on the latest version of Cyberdrop-DL")
 
     return current_version, latest_version
+
+async def sent_appraise_notifications(manager: Manager) -> None:
+    config_file = manager.path_manager.config_dir / manager.config_manager.loaded_config / 'appraise.txt'
+    if not config_file.is_file():
+        return
+
+    print ('appraise')
+    import apprise
+    apobj = apprise.Apprise()
+    config = apprise.AppriseConfig()
+
+    apobj.add(config.add(config_file))
+
+    apobj.notify(
+        body = await get_log_output_text(),
+        title = 'Cyberdrop-DL',
+        attach = manager.path_manager.main_log
+    )
