@@ -4,6 +4,8 @@ import logging
 import os
 import sys
 from pathlib import Path
+import time
+from datetime import timedelta
 
 from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.scraper.scraper import ScrapeMapper
@@ -31,6 +33,8 @@ RICH_HANDLER_DEBUG_CONFIG = {
     "tracebacks_extra_lines": 2,
     "locals_max_length": 20
 }
+
+start_time = 0
 
 def startup() -> Manager:
     """
@@ -170,11 +174,13 @@ async def director(manager: Manager) -> None:
                 await log("\nAn error occurred, please report this to the developer:", 50, exc_info=True)
                 exit(1)
         
-        await log_spacer(20)
-        await manager.progress_manager.print_stats()
         if not manager.args_manager.all_configs or not list(set(configs) - set(configs_ran)):
             break
-
+    
+    await log_spacer(20)
+    end_time = time.perf_counter()
+    total_time = timedelta(seconds = int(end_time - start_time))
+    await manager.progress_manager.print_stats(total_time)
     await log_spacer(20)
     await log("Checking for Updates...", 20)
     await check_latest_pypi()
@@ -186,6 +192,8 @@ async def director(manager: Manager) -> None:
 
 
 def main():
+    global start_time
+    start_time = time.perf_counter()
     manager = startup()
 
     loop = asyncio.new_event_loop()

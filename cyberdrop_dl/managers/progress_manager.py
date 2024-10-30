@@ -1,3 +1,4 @@
+from __future__ import annotations
 from dataclasses import field
 from typing import TYPE_CHECKING
 
@@ -14,10 +15,11 @@ from cyberdrop_dl.utils.utilities import log_with_color, get_log_output_text, lo
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
+    from datetime import timedelta
 
 
 class ProgressManager:
-    def __init__(self, manager: 'Manager'):
+    def __init__(self, manager: Manager):
         # File Download Bars
         self.manager = manager
         self.file_progress: FileProgress = FileProgress(
@@ -63,9 +65,10 @@ class ProgressManager:
         self.hash_layout = await self.hash_progress.get_hash_progress()
         self.sort_layout = await self.sort_progress.get_progress()
 
-    async def print_stats(self) -> None:
+    async def print_stats(self, total_time: timedelta) -> None:
         """Prints the stats of the program"""
         await log("Printing Stats...\n", 20)
+        await log_with_color(f"Total Runtime: {total_time}", "white", 20)
         await log_with_color("Download Stats:", "cyan", 20)
         await log_with_color(f"  Downloaded {self.download_progress.completed_files} files", "green", 20)
         await log_with_color(f"  Previously Downloaded {self.download_progress.previously_completed_files} files",
