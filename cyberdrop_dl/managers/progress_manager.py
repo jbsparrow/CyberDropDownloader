@@ -2,12 +2,9 @@ from __future__ import annotations
 from dataclasses import field
 from typing import TYPE_CHECKING
 
-from aiohttp import ClientSession, FormData
 from rich.layout import Layout
 import time
 from datetime import timedelta
-import aiofiles
-from yarl import URL
 
 from cyberdrop_dl.ui.progress.downloads_progress import DownloadsProgress
 from cyberdrop_dl.ui.progress.file_progress import FileProgress
@@ -20,7 +17,6 @@ from cyberdrop_dl.utils.utilities import log_with_color, get_log_output_text, lo
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
     from datetime import timedelta
-    from rich.text import Text
 
 
 class ProgressManager:
@@ -121,39 +117,3 @@ class ProgressManager:
         await log_with_color("Download Failures:", "cyan", 20)
         for key, value in download_failures.items():
             await log_with_color(f"  Download Failures ({key}): {value}", "red", 20)
-
-        await self.send_webhook_message(self.manager.config_manager.settings_data['Logs']['webhook_url'])
-
-    async def send_webhook_message(self, webhook_url: str) -> None:
-        """Outputs the stats to a code block for webhook messages"""
-
-        if not webhook_url:
-            return
-
-        url = URL(webhook_url)
-        attach_logs = url.query.get('attach_logs')
-        url = url.without_query_params('attach_logs')
-        text: Text = await get_log_output_text()
-        plain_text = parse_rich_text_by_style(text, STYLE_TO_DIFF_FORMAT_MAP)
-
-        form = FormData()
-        
-        main_log = self.manager.path_manager.main_log
-        if attach_logs and main_log.is_file():
-            if main_log.stat().st_size <= 25 * 1024 * 1024:
-                async with aiofiles.open(main_log, "rb") as f:
-                    form.add_field("file", await f.read() , filename=main_log.name)
-
-            else:
-                plain_text += '\n\nWARNING: log file too large to send as attachment\n'
-
-        form.add_fields(
-            ("content", f"```diff\n{plain_text}```"),
-            ("username", "CyberDrop-DL"),
-        )
-            
-        # Make an asynchronous POST request to the webhook
-        async with ClientSession() as session:
-            async with session.post(url, data=form) as response:
-                await response.text()
-

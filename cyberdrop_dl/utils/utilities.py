@@ -12,6 +12,8 @@ from typing import TYPE_CHECKING, Union
 import rich
 from rich.text import Text
 from yarl import URL
+from aiohttp import ClientSession, FormData
+import aiofiles
 
 from cyberdrop_dl.clients.errors import NoExtensionFailure, CDLBaseException
 from cyberdrop_dl.managers.real_debrid.errors import RealDebridError
@@ -379,3 +381,38 @@ STYLE_TO_DIFF_FORMAT_MAP = {
         'red': "-   {}",
         'yellow': "*** {}",
     }
+
+async def send_webhook_message( manager: Manager) -> None:
+    """Outputs the stats to a code block for webhook messages"""
+
+    webhook_url = manager.config_manager.settings_data['Logs']['webhook_url']
+
+    if not webhook_url:
+        return
+
+    url = URL(webhook_url)
+    attach_logs = url.query.get('attach_logs')
+    url = url.without_query_params('attach_logs')
+    text: Text = await get_log_output_text()
+    plain_text = parse_rich_text_by_style(text, STYLE_TO_DIFF_FORMAT_MAP)
+
+    form = FormData()
+    
+    main_log = manager.path_manager.main_log
+    if attach_logs and main_log.is_file():
+        if main_log.stat().st_size <= 25 * 1024 * 1024:
+            async with aiofiles.open(main_log, "rb") as f:
+                form.add_field("file", await f.read() , filename=main_log.name)
+
+        else:
+            plain_text += '\n\nWARNING: log file too large to send as attachment\n'
+
+    form.add_fields(
+        ("content", f"```diff\n{plain_text}```"),
+        ("username", "CyberDrop-DL"),
+    )
+        
+    # Make an asynchronous POST request to the webhook
+    async with ClientSession() as session:
+        async with session.post(url, data=form) as response:
+            await response.text()
