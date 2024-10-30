@@ -49,7 +49,7 @@ class RedGifsCrawler(Crawler):
             async with self.request_limiter:
                 JSON_Resp = await self.client.get_json(self.domain,
                                                        (self.redgifs_api / "v2/users" / user_id / "search").with_query(
-                                                           f"order=new&count=40&page={page}"), headers_inc=self.headers)
+                                                           f"order=new&count=40&page={page}"), headers_inc=self.headers, origin = scrape_item)
             total_pages = JSON_Resp["pages"]
             gifs = JSON_Resp["gifs"]
             for gif in gifs:
@@ -74,7 +74,7 @@ class RedGifsCrawler(Crawler):
 
         async with self.request_limiter:
             JSON_Resp = await self.client.get_json(self.domain, self.redgifs_api / "v2/gifs" / post_id,
-                                                headers_inc=self.headers)
+                                                headers_inc=self.headers, origin = scrape_item)
 
         title_part = JSON_Resp["gif"].get("title", "Loose Files")
         title = await self.create_title(title_part, None, None)

@@ -13,6 +13,7 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_an
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
+    from bs4 import BeautifulSoup
 
 
 class ToonilyCrawler(Crawler):
@@ -40,7 +41,7 @@ class ToonilyCrawler(Crawler):
     async def series(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
 
         chapters = soup.select("li[class*=wp-manga-chapter] a")
         for chapter in chapters:
@@ -58,7 +59,7 @@ class ToonilyCrawler(Crawler):
     async def chapter(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image"""
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
 
         title_parts = soup.select_one("title").get_text().split(" - ")
         series_name = title_parts[0]

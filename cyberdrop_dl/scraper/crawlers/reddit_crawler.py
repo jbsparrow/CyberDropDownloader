@@ -15,6 +15,7 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper, log, get_filena
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
+    import asyncpraw.models
 
 
 class RedditCrawler(Crawler):
@@ -59,24 +60,24 @@ class RedditCrawler(Crawler):
     @error_handling_wrapper
     async def user(self, scrape_item: ScrapeItem, reddit: asyncpraw.Reddit) -> None:
         """Scrapes user pages"""
-        username = scrape_item.url.name
+        username = scrape_item.url.name or scrape_item.url.parts[-2]
         title = await self.create_title(username, None, None)
         await scrape_item.add_to_parent_title(title)
         scrape_item.part_of_album = True
 
-        user = await reddit.redditor(username)
+        user: asyncpraw.models.Redditor = await reddit.redditor(username)
         submissions = user.submissions.new(limit=None)
         await self.get_posts(scrape_item, submissions, reddit)
 
     @error_handling_wrapper
     async def subreddit(self, scrape_item: ScrapeItem, reddit: asyncpraw.Reddit) -> None:
         """Scrapes subreddit pages"""
-        subreddit = scrape_item.url.name
+        subreddit = scrape_item.url.name or scrape_item.url.parts[-2]
         title = await self.create_title(subreddit, None, None)
         await scrape_item.add_to_parent_title(title)
         scrape_item.part_of_album = True
 
-        subreddit = await reddit.subreddit(subreddit)
+        subreddit: asyncpraw.models.Subreddit = await reddit.subreddit(subreddit)
         submissions = subreddit.new(limit=None)
         await self.get_posts(scrape_item, submissions, reddit)
 
@@ -85,9 +86,9 @@ class RedditCrawler(Crawler):
         try:
             submissions = [submission async for submission in submissions]
         except asyncprawcore.exceptions.Forbidden:
-            raise ScrapeFailure(403, "Forbidden")
+            raise ScrapeFailure(403, "Forbidden", origin= scrape_item)
         except asyncprawcore.exceptions.NotFound:
-            raise ScrapeFailure(404, "Not Found")
+            raise ScrapeFailure(404, "Not Found", origin= scrape_item)
 
         for submission in submissions:
             await self.post(scrape_item, submission, reddit)
@@ -140,9 +141,9 @@ class RedditCrawler(Crawler):
             try:
                 post = await reddit.submission(url=head['location'])
             except asyncprawcore.exceptions.Forbidden:
-                raise ScrapeFailure(403, "Forbidden")
+                raise ScrapeFailure(403, "Forbidden", origin= scrape_item)
             except asyncprawcore.exceptions.NotFound:
-                raise ScrapeFailure(404, "Not Found")
+                raise ScrapeFailure(404, "Not Found", origin= scrape_item)
 
             await self.post(scrape_item, post, reddit)
             return

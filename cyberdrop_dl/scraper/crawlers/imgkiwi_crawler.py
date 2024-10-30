@@ -14,6 +14,7 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_an
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
+    from bs4 import BeautifulSoup
 
 
 class ImgKiwiCrawler(Crawler):
@@ -40,7 +41,7 @@ class ImgKiwiCrawler(Crawler):
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
 
         scrape_item.part_of_album = True
         scrape_item.album_id = scrape_item.url.parts[2]
@@ -51,7 +52,7 @@ class ImgKiwiCrawler(Crawler):
 
         while True:
             async with self.request_limiter:
-                soup = await self.client.get_BS4(self.domain, link_next)
+                soup: BeautifulSoup = await self.client.get_BS4(self.domain, link_next, origin = scrape_item)
             links = soup.select("a[href*=image]")
             for link in links:
                 link = URL(link.get('href'))
@@ -75,7 +76,7 @@ class ImgKiwiCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
 
         link = soup.select_one("div[id=image-viewer-container] img").get('src')
         link = URL(link.replace(".md.", ".").replace(".th.", "."))

@@ -13,6 +13,7 @@ from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wr
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
+    from bs4 import BeautifulSoup
 
 
 class Rule34XYZCrawler(Crawler):
@@ -38,7 +39,7 @@ class Rule34XYZCrawler(Crawler):
     async def tag(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
 
         title = await self.create_title(scrape_item.url.parts[1], None, None)
         scrape_item.part_of_album = True
@@ -67,7 +68,7 @@ class Rule34XYZCrawler(Crawler):
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image"""
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
 
         date = await self.parse_datetime(
             soup.select_one('div[class="posted ng-star-inserted"]').text.split("(")[1].split(")")[0])

@@ -13,6 +13,7 @@ from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wr
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
+    from bs4 import BeautifulSoup
 
 
 class SocialMediaGirlsCrawler(Crawler):
@@ -86,7 +87,7 @@ class SocialMediaGirlsCrawler(Crawler):
         current_post_number = 0
         while True:
             async with self.request_limiter:
-                soup = await self.client.get_BS4(self.domain, thread_url)
+                soup: BeautifulSoup = await self.client.get_BS4(self.domain, thread_url, origin = scrape_item)
 
             title_block = soup.select_one(self.title_selector)
             for elem in title_block.find_all(self.title_trash_selector):
@@ -307,7 +308,7 @@ class SocialMediaGirlsCrawler(Crawler):
     async def handle_link_confirmation(self, link: URL) -> Optional[URL]:
         """Handles link confirmation"""
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, link)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, link)
         confirm_button = soup.select_one("a[class*=button--cta]")
         if confirm_button:
             return_link = URL(confirm_button.get("href"))

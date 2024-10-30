@@ -55,7 +55,7 @@ class BunkrrCrawler(Crawler):
         results = await self.get_album_results(album_id)
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
         title = soup.select_one('title').text.rsplit(" | Bunkr")[0].strip()
 
         title = await self.create_title(title, scrape_item.url.parts[2], None)
@@ -106,7 +106,7 @@ class BunkrrCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
 
         # try video
         link_container = soup.select_one('video > source')
@@ -124,7 +124,7 @@ class BunkrrCrawler(Crawler):
         link = link_container.get(src_selector) if link_container else None
 
         if not link:
-            raise ScrapeFailure(404, f"Could not find source for: {scrape_item.url}")
+            raise ScrapeFailure(404, f"Could not find source for: {scrape_item.url}", origin=scrape_item)
         
         link = URL(link)
 
@@ -146,7 +146,7 @@ class BunkrrCrawler(Crawler):
         """Gets the download link for a given reinforced URL"""
         """get.bunkr.su"""
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, url)
 
         try:
             link_container = soup.select('a[download*=""]')[-1]
