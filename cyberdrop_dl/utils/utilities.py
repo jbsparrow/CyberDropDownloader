@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Union
 
 import rich
+from rich.text import Text
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import NoExtensionFailure, CDLBaseException
@@ -33,7 +34,7 @@ DEBUG_VAR = False
 CONSOLE_DEBUG_VAR = False
 
 global LOG_OUTPUT_TEXT
-LOG_OUTPUT_TEXT = "```diff\n"
+LOG_OUTPUT_TEXT = Text('')
 
 RAR_MULTIPART_PATTERN = r'^part\d+'
 _7Z_FILE_EXTENSIONS = {"7z","tar","gz","bz2","zip"}
@@ -120,21 +121,22 @@ async def log_with_color(message: str, style: str, level: int, *kwargs) -> None:
     """Simple logging function with color"""
     global LOG_OUTPUT_TEXT
     logger.log(level, message, *kwargs)
+    text = Text (message, style = style)
     if DEBUG_VAR:
         logger_debug.log(level, message, *kwargs)
-    rich.print(f"[{style}]{message}[/{style}]")
-    LOG_OUTPUT_TEXT += f"[{style}]{message}\n"
+    rich.print(text)
+    LOG_OUTPUT_TEXT.append_text(text.append('\n'))
 
 
 async def get_log_output_text() -> str:
     global LOG_OUTPUT_TEXT
-    return LOG_OUTPUT_TEXT + "```"
+    return LOG_OUTPUT_TEXT
 
 async def log_spacer(level: int, char: str = "-") -> None:
     global LOG_OUTPUT_TEXT
     spacer = char * min(DEFAULT_CONSOLE_WIDTH / 2, 50)
     rich.print(f"")
-    LOG_OUTPUT_TEXT += "\n"
+    LOG_OUTPUT_TEXT.append("\n", style = 'black')
     logger.log(level,spacer)
     if DEBUG_VAR:
         logger_debug.log(level,spacer)
@@ -342,7 +344,6 @@ async def sent_appraise_notifications(manager: Manager) -> None:
     if not config_file.is_file():
         return
 
-    print ('appraise')
     import apprise
     apobj = apprise.Apprise()
     config = apprise.AppriseConfig()
@@ -361,3 +362,20 @@ def parse_bytes(size: int) -> Tuple[int, str]:
             return size , unit
         size /= 1024
     return size , "YB"
+
+def parse_rich_text_by_style(text: Text, style_map : dict, default_style_map_key: str = 'default'):
+    plain_text = ""
+    for span in text.spans:
+        span_text = text.plain[span.start:span.end].rstrip('\n')
+        plain_line: str = style_map.get(span.style) or style_map.get(default_style_map_key)
+        if plain_line:
+            plain_text += plain_line.format(span_text) + '\n'
+
+    return plain_text
+
+STYLE_TO_DIFF_FORMAT_MAP = {
+        'default': "{}",
+        'green': "+   {}",
+        'red': "-   {}",
+        'yellow': "*** {}",
+    }
