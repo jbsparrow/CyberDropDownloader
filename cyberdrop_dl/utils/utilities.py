@@ -408,21 +408,25 @@ STYLE_TO_DIFF_FORMAT_MAP = {
 async def send_webhook_message( manager: Manager) -> None:
     """Outputs the stats to a code block for webhook messages"""
 
-    webhook_url = manager.config_manager.settings_data['Logs']['webhook_url']
+    webhook_url: str = manager.config_manager.settings_data['Logs']['webhook_url']
 
     if not webhook_url:
         return
 
-    url = URL(webhook_url)
-    attach_logs = url.query.get('attach_logs')
-    url = url.without_query_params('attach_logs')
+    url = parts = webhook_url.strip().split('=', 1)
+    tags = ['no_logs']
+    if len(parts) == 2:
+        tags, url = parts
+        tags = tags.split(',')
+
+    url = URL(url)
     text: Text = await get_log_output_text()
     plain_text = parse_rich_text_by_style(text, STYLE_TO_DIFF_FORMAT_MAP)
+    main_log = manager.path_manager.main_log
 
     form = FormData()
     
-    main_log = manager.path_manager.main_log
-    if attach_logs and main_log.is_file():
+    if 'attach_logs' in tags and main_log.is_file():
         if main_log.stat().st_size <= 25 * 1024 * 1024:
             async with aiofiles.open(main_log, "rb") as f:
                 form.add_field("file", await f.read() , filename=main_log.name)
