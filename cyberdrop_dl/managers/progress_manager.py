@@ -2,10 +2,12 @@ from __future__ import annotations
 from dataclasses import field
 from typing import TYPE_CHECKING
 
-from aiohttp import ClientSession
+from aiohttp import ClientSession, FormData
 from rich.layout import Layout
 import time
 from datetime import timedelta
+import aiofiles
+from yarl import URL
 
 from cyberdrop_dl.ui.progress.downloads_progress import DownloadsProgress
 from cyberdrop_dl.ui.progress.file_progress import FileProgress
@@ -13,11 +15,12 @@ from cyberdrop_dl.ui.progress.hash_progress import HashProgress
 from cyberdrop_dl.ui.progress.scraping_progress import ScrapingProgress
 from cyberdrop_dl.ui.progress.sort_progress import SortProgress
 from cyberdrop_dl.ui.progress.statistic_progress import DownloadStatsProgress, ScrapeStatsProgress
-from cyberdrop_dl.utils.utilities import log_with_color, get_log_output_text, log, log_spacer, parse_bytes
+from cyberdrop_dl.utils.utilities import log_with_color, get_log_output_text, log, log_spacer, parse_bytes, parse_rich_text_by_style, STYLE_TO_DIFF_FORMAT_MAP
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
     from datetime import timedelta
+    from rich.text import Text
 
 
 class ProgressManager:
@@ -123,17 +126,34 @@ class ProgressManager:
 
     async def send_webhook_message(self, webhook_url: str) -> None:
         """Outputs the stats to a code block for webhook messages"""
-        log = await get_log_output_text()
-        log_message = log.replace('[cyan]', '').replace('[cyan]\n', '\n')
-        log_message = log_message.replace('[green]', '+ ').replace('[green]\n', '\n+ ')
-        log_message = log_message.replace('[red]', '- ').replace('[red]\n', '\n- ')
-        log_message = log_message.replace('[yellow]', '*** ').replace('[yellow]\n', '\n*** ')
-        data = {
-            "content": log_message,
-            "username": "CyberDrop-DL",
-        }
+
+        if not webhook_url:
+            return
+
+        url = URL(webhook_url)
+        attach_logs = url.query.get('attach_logs')
+        url = url.without_query_params('attach_logs')
+        text: Text = await get_log_output_text()
+        plain_text = parse_rich_text_by_style(text, STYLE_TO_DIFF_FORMAT_MAP)
+
+        form = FormData()
+        
+        main_log = self.manager.path_manager.main_log
+        if attach_logs and main_log.is_file():
+            if main_log.stat().st_size <= 25 * 1024 * 1024:
+                async with aiofiles.open(main_log, "rb") as f:
+                    form.add_field("file", await f.read() , filename=main_log.name)
+
+            else:
+                plain_text += '\n\nWARNING: log file too large to send as attachment\n'
+
+        form.add_fields(
+            ("content", f"```diff\n{plain_text}```"),
+            ("username", "CyberDrop-DL"),
+        )
+            
         # Make an asynchronous POST request to the webhook
-        if webhook_url:
-            async with ClientSession() as session:
-                async with session.post(webhook_url, json=data) as response:
-                    await response.text()
+        async with ClientSession() as session:
+            async with session.post(url, data=form) as response:
+                await response.text()
+
