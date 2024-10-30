@@ -354,3 +354,10 @@ async def sent_appraise_notifications(manager: Manager) -> None:
         title = 'Cyberdrop-DL',
         attach = manager.path_manager.main_log
     )
+
+def parse_bytes(size: int) -> Tuple[int, str]:
+    for unit in ["B", "KB", "MB", "GB", "TB", "PB", "EB"]:
+        if size < 1024:
+            return size , unit
+        size /= 1024
+    return size , "YB"

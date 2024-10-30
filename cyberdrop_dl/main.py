@@ -5,7 +5,6 @@ import os
 import sys
 from pathlib import Path
 import time
-from datetime import timedelta
 
 from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.scraper.scraper import ScrapeMapper
@@ -178,9 +177,7 @@ async def director(manager: Manager) -> None:
             break
     
     await log_spacer(20)
-    end_time = time.perf_counter()
-    total_time = timedelta(seconds = int(end_time - start_time))
-    await manager.progress_manager.print_stats(total_time)
+    await manager.progress_manager.print_stats(start_time)
     await log_spacer(20)
     await log("Checking for Updates...", 20)
     await check_latest_pypi()
