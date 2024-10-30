@@ -354,8 +354,7 @@ async def sent_appraise_notifications(manager: Manager) -> None:
         return
     
     async with aiofiles.open(apprise_file, mode='r', encoding='utf8') as file:
-        async with aiofiles.open(apprise_file, mode='r') as file:
-            lines = await file.readlines() 
+        lines = await file.readlines() 
         lines = [line.strip() for line in lines]
 
     if not lines:
@@ -363,10 +362,11 @@ async def sent_appraise_notifications(manager: Manager) -> None:
     
     apprise_obj = apprise.Apprise()
     for line in lines:
-        url = parts = line.strip().split('=', 1)
+        parts = line.split("://",1)[0].split('=', 1)
+        url = line
         tags = 'no_logs'
         if len(parts) == 2:
-            tags, url = parts
+            tags, url = line.split("=",1)
             tags = tags.split(',')
         apprise_obj.add(url, tag = tags) 
     
@@ -417,10 +417,11 @@ async def send_webhook_message( manager: Manager) -> None:
     if not webhook_url:
         return
 
-    url = parts = webhook_url.strip().split('=', 1)
+    url = webhook_url.strip()
+    parts = url.split("://",1)[0].split('=', 1)
     tags = ['no_logs']
     if len(parts) == 2:
-        tags, url = parts
+        tags, url = url.split('=',1)
         tags = tags.split(',')
 
     url = URL(url)
