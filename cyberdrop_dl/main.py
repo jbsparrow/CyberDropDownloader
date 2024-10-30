@@ -187,7 +187,7 @@ async def director(manager: Manager) -> None:
     await log_spacer(20)
     await log("Closing Program...", 20)
     await manager.close()
-    await log_with_color("Finished downloading. Enjoy :)", 'green', 20)
+    await log_with_color("Finished downloading. Enjoy :)", 'green', 20, show_in_stats = False)
     await send_webhook_message(manager)
     await sent_appraise_notifications(manager)
 

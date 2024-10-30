@@ -14,6 +14,7 @@ from rich.text import Text
 from yarl import URL
 from aiohttp import ClientSession, FormData
 import aiofiles
+import apprise
 
 from cyberdrop_dl.clients.errors import NoExtensionFailure, CDLBaseException
 from cyberdrop_dl.managers.real_debrid.errors import RealDebridError
@@ -119,7 +120,7 @@ async def log_debug_console(message: Union [str, Exception], level: int, sleep: 
         log_console(level, message.encode('ascii', 'ignore').decode('ascii'), sleep=sleep)
 
 
-async def log_with_color(message: str, style: str, level: int, *kwargs) -> None:
+async def log_with_color(message: str, style: str, level: int, show_in_stats: bool = True, *kwargs) -> None:
     """Simple logging function with color"""
     global LOG_OUTPUT_TEXT
     logger.log(level, message, *kwargs)
@@ -127,7 +128,8 @@ async def log_with_color(message: str, style: str, level: int, *kwargs) -> None:
     if DEBUG_VAR:
         logger_debug.log(level, message, *kwargs)
     rich.print(text)
-    LOG_OUTPUT_TEXT.append_text(text.append('\n'))
+    if show_in_stats:
+        LOG_OUTPUT_TEXT.append_text(text.append('\n'))
 
 
 async def get_log_output_text() -> str:
@@ -342,20 +344,41 @@ async def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = Fa
     return current_version, latest_version
 
 async def sent_appraise_notifications(manager: Manager) -> None:
-    config_file = manager.path_manager.config_dir / manager.config_manager.loaded_config / 'appraise.txt'
-    if not config_file.is_file():
+    apprise_file = manager.path_manager.config_dir / manager.config_manager.loaded_config / 'appraise.txt'
+
+    if not apprise_file.is_file():
         return
+    
+    async with aiofiles.open(apprise_file, mode='r', encoding='utf8') as file:
+        async with aiofiles.open(apprise_file, mode='r') as file:
+            lines = await file.readlines() 
+        lines = [line.strip() for line in lines]
 
-    import apprise
-    apobj = apprise.Apprise()
-    config = apprise.AppriseConfig()
+    if not lines:
+        return
+    
+    apprise_obj = apprise.Apprise()
+    for line in lines:
+        url = parts = line.strip().split('=', 1)
+        tags = 'no_logs'
+        if len(parts) == 2:
+            tags, url = parts
+            tags = tags.split(',')
+        apprise_obj.add(url, tag = tags) 
+    
+    text: Text = await get_log_output_text()
 
-    apobj.add(config.add(config_file))
-
-    apobj.notify(
-        body = await get_log_output_text(),
+    apprise_obj.notify(
+        body = text.plain,
         title = 'Cyberdrop-DL',
-        attach = manager.path_manager.main_log
+        tag = 'no_logs'
+    )
+
+    apprise_obj.notify(
+        body = text.plain,
+        title = 'Cyberdrop-DL',
+        attach = str(manager.path_manager.main_log.resolve()),
+        tag = 'attach_logs'
     )
 
 def parse_bytes(size: int) -> Tuple[int, str]:
