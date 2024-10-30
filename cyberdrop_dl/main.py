@@ -12,7 +12,7 @@ from cyberdrop_dl.ui.ui import program_ui
 from cyberdrop_dl.utils.sorting import Sorter
 from cyberdrop_dl.utils.utilities import check_latest_pypi, log_with_color, \
     check_partials_and_empty_folders, log, log_spacer, send_webhook_message, \
-    DEFAULT_CONSOLE_WIDTH, sent_appraise_notifications
+    DEFAULT_CONSOLE_WIDTH, sent_appraise_notifications, set_log_output_text
 
 from cyberdrop_dl.managers.console_manager import print_
 from cyberdrop_dl.clients.errors import InvalidYamlConfig
@@ -130,7 +130,8 @@ async def director(manager: Manager) -> None:
         # aiosqlite_log.setLevel(manager.config_manager.settings_data['Runtime_Options']['log_level'])
         # aiosqlite_log.addHandler(file_handler_debug)
 
-    while True:
+    is_last_config = False
+    while not is_last_config:
         logger = logging.getLogger("cyberdrop_dl")
         if manager.args_manager.all_configs:
             if len(logger.handlers) > 0:
@@ -176,20 +177,24 @@ async def director(manager: Manager) -> None:
                 await log("\nAn error occurred, please report this to the developer:", 50, exc_info=True)
                 exit(1)
         
-        if not manager.args_manager.all_configs or not list(set(configs) - set(configs_ran)):
-            break
-    
-    await log_spacer(20)
-    await manager.progress_manager.print_stats(start_time)
-    await log_spacer(20)
-    await log("Checking for Updates...", 20)
-    await check_latest_pypi()
-    await log_spacer(20)
-    await log("Closing Program...", 20)
-    await manager.close()
-    await log_with_color("Finished downloading. Enjoy :)", 'green', 20, show_in_stats = False)
-    await send_webhook_message(manager)
-    await sent_appraise_notifications(manager)
+        await log_spacer(20)
+        await manager.progress_manager.print_stats(start_time)
+
+        is_last_config = not manager.args_manager.all_configs or not list(set(configs) - set(configs_ran))
+        
+        if is_last_config:
+            await log_spacer(20)
+            await log("Checking for Updates...", 20)
+            await check_latest_pypi()
+            await log_spacer(20)
+            await log("Closing Program...", 20)
+            await manager.close()
+            await log_with_color("Finished downloading. Enjoy :)", 'green', 20, show_in_stats = False)
+           
+        await send_webhook_message(manager)
+        await sent_appraise_notifications(manager)
+        await set_log_output_text("")
+
 
 
 def main():

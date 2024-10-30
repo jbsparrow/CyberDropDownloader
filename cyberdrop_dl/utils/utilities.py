@@ -136,6 +136,10 @@ async def get_log_output_text() -> str:
     global LOG_OUTPUT_TEXT
     return LOG_OUTPUT_TEXT
 
+async def set_log_output_text( text = str) -> str:
+    global LOG_OUTPUT_TEXT
+    LOG_OUTPUT_TEXT = text
+
 async def log_spacer(level: int, char: str = "-") -> None:
     global LOG_OUTPUT_TEXT
     spacer = char * min(DEFAULT_CONSOLE_WIDTH / 2, 50)
