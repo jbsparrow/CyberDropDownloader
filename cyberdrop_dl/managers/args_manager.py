@@ -29,7 +29,7 @@ class ArgsManager:
         self.load_config_from_args = False
         self.load_config_name = ""
         self.other_links: list = []
-        self.additive_args = ["skip_hosts","only_hosts"]
+        self.additive_args = ["skip_hosts", "only_hosts"]
 
         # Files
         self.input_file = None
