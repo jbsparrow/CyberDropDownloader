@@ -142,7 +142,7 @@ class NekohouseCrawler(Crawler):
                     data["file"].append(attachment)
         else:
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_BS4(self.domain, post_url)
+                soup: BeautifulSoup = await self.client.get_BS4(self.domain, post_url, origin = scrape_item)
                 # Published as current time to avoid errors.
                 data = {
                     "id": post,
