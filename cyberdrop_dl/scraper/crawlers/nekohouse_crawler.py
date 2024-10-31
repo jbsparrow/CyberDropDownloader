@@ -57,7 +57,7 @@ class NekohouseCrawler(Crawler):
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile"""
-        soup = await self.client.get_BS4(self.domain, scrape_item.url)
+        soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
         offset, maximum_offset = await self.get_offsets(scrape_item, soup)
         service, user = await self.get_service_and_user(scrape_item)
         user_str = await self.get_user_str_from_profile(soup)
