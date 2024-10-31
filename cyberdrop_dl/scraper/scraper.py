@@ -278,9 +278,12 @@ class ScrapeMapper:
 
     async def start_real_debrid(self) -> None:
         """Starts RealDebrid"""
-        if self.manager.real_debrid_manager.enabled and isinstance(self.manager.real_debrid_manager.api, Field):
-            await self.realdebrid()
+        if isinstance(self.manager.real_debrid_manager.api, Field):
             await self.manager.real_debrid_manager.startup()
+            
+        if self.manager.real_debrid_manager.enabled:
+            await self.realdebrid()
+            await self.existing_crawlers['real-debrid'].startup()
 
     async def start(self) -> None:
         """Starts the orchestra"""
