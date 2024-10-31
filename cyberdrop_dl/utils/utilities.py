@@ -350,6 +350,9 @@ async def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = Fa
 async def sent_appraise_notifications(manager: Manager) -> None:
     apprise_file = manager.path_manager.config_dir / manager.config_manager.loaded_config / 'apprise.txt'
 
+    text: Text = await get_log_output_text()
+    await set_log_output_text("")
+
     if not apprise_file.is_file():
         return
     
@@ -370,8 +373,7 @@ async def sent_appraise_notifications(manager: Manager) -> None:
             tags = tags.split(',')
         apprise_obj.add(url, tag = tags) 
     
-    text: Text = await get_log_output_text()
-
+    
     apprise_obj.notify(
         body = text.plain,
         title = 'Cyberdrop-DL',
