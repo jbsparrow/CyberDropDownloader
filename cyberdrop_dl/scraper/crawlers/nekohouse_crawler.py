@@ -71,7 +71,7 @@ class NekohouseCrawler(Crawler):
         service_call = self.primary_base_domain / service / "user" / user
         while offset <= maximum_offset:
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_BS4(self.domain, service_call.with_query({"o": offset}))
+                soup: BeautifulSoup = await self.client.get_BS4(self.domain, service_call.with_query({"o": offset}), origin = scrape_item)
                 offset += 50
                 
                 posts = soup.select(self.post_selector)
