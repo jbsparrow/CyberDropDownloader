@@ -365,6 +365,7 @@ async def sent_appraise_notifications(manager: Manager) -> None:
     if not lines:
         return
     
+    rich.print ('\nSending notifications.. ')
     apprise_obj = apprise.Apprise()
     for line in lines:
         parts = line.split("://",1)[0].split('=', 1)
@@ -375,19 +376,39 @@ async def sent_appraise_notifications(manager: Manager) -> None:
             tags = tags.split(',')
         apprise_obj.add(url, tag = tags) 
     
-    
-    apprise_obj.notify(
+    results = []
+
+    result = apprise_obj.notify(
         body = text.plain,
         title = 'Cyberdrop-DL',
+        body_format=apprise.NotifyFormat.TEXT,
         tag = 'no_logs'
     )
 
-    apprise_obj.notify(
+    if result is not None:
+        results += [result]
+
+    result = apprise_obj.notify(
         body = text.plain,
         title = 'Cyberdrop-DL',
+        body_format=apprise.NotifyFormat.TEXT,
         attach = str(manager.path_manager.main_log.resolve()),
         tag = 'attach_logs'
     )
+
+    if result is not None:
+        results += [result]
+
+    if not results:
+         result = Text('No notifications sent', 'yellow')
+    if all (results):
+        result = Text('Success', 'green')
+    elif any (results):
+        result = Text('Partial Success', 'yellow')
+    else:
+        result= Text('Failed','bold red')
+        
+    rich.print('Apprise notifications results:', result)
 
 def parse_bytes(size: int) -> Tuple[int, str]:
     for unit in ["B", "KB", "MB", "GB", "TB", "PB", "EB"]:

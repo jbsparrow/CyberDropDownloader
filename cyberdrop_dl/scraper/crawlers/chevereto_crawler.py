@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 CDN_PATTERNS = {
     'jpg.church': r"^(?:(jpg.church\/images\/...)|(simp..jpg.church)|(jpg.fish\/images\/...)|(simp..jpg.fish)|(jpg.fishing\/images\/...)|(simp..jpg.fishing)|(simp..host.church)|(simp..jpg..su))",
     'imagepond.net': r"(media.imagepond.net)",
-    'img.kiwi': r'^(?:(img.kiwi\/images\/)'
+    'img.kiwi': r'^(?:(img.kiwi\/images\/...))'
 }
 
 CDN_POSSIBILITIES = re.compile("|".join(CDN_PATTERNS.values()))
