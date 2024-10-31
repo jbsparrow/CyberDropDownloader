@@ -107,7 +107,7 @@ class NekohouseCrawler(Crawler):
         post_url = scrape_item.url
         if unlinked_post is True:
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_BS4(self.domain, post_url)
+                soup: BeautifulSoup = await self.client.get_BS4(self.domain, post_url, origin = scrape_item)
                 data = {
                     "id": post,
                     "user": user,
