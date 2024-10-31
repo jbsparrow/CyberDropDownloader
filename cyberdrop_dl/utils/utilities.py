@@ -348,7 +348,7 @@ async def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = Fa
     return current_version, latest_version
 
 async def sent_appraise_notifications(manager: Manager) -> None:
-    apprise_file = manager.path_manager.config_dir / manager.config_manager.loaded_config / 'appraise.txt'
+    apprise_file = manager.path_manager.config_dir / manager.config_manager.loaded_config / 'apprise.txt'
 
     if not apprise_file.is_file():
         return
