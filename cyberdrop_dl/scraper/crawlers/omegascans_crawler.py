@@ -43,7 +43,7 @@ class OmegaScansCrawler(Crawler):
     async def series(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         scripts = soup.select("script")
         for script in scripts:
@@ -56,13 +56,14 @@ class OmegaScansCrawler(Crawler):
         while True:
             api_url = URL(self.api_url.format(page_number, number_per_page, series_id))
             async with self.request_limiter:
-                JSON_Obj = await self.client.get_json(self.domain, api_url, origin = scrape_item)
+                JSON_Obj = await self.client.get_json(self.domain, api_url, origin=scrape_item)
             if not JSON_Obj:
                 break
 
             for chapter in JSON_Obj['data']:
                 chapter_url = scrape_item.url / chapter['chapter_slug']
-                new_scrape_item = await self.create_scrape_item(scrape_item, chapter_url, "", True, add_parent = scrape_item.url)
+                new_scrape_item = await self.create_scrape_item(scrape_item, chapter_url, "", True,
+                                                                add_parent=scrape_item.url)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
             if JSON_Obj['meta']['current_page'] == JSON_Obj['meta']['last_page']:
@@ -73,11 +74,11 @@ class OmegaScansCrawler(Crawler):
     async def chapter(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         if "This chapter is premium" in soup.get_text():
             await log("Scrape Failed: This chapter is premium", 40)
-            raise ScrapeFailure(401, "This chapter is premium", origin= scrape_item)
+            raise ScrapeFailure(401, "This chapter is premium", origin=scrape_item)
 
         title_parts = soup.select_one("title").get_text().split(" - ")
         series_name = title_parts[0]

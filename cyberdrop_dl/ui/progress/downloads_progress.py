@@ -30,7 +30,7 @@ class DownloadsProgress:
         self.failed_files_task_id = self.progress.add_task("[red]Failed", total=0)
         self.failed_files = 0
         self.panel = Panel(self.progress_group, title=f"Config: {self.manager.config_manager.loaded_config}",
-                     border_style="green", padding=(1, 1), subtitle=f"Total Files: [white]{self.total_files}")
+                           border_style="green", padding=(1, 1), subtitle=f"Total Files: [white]{self.total_files}")
 
     async def get_progress(self) -> Panel:
         """Returns the progress bar"""

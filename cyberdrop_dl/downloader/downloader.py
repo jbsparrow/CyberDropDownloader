@@ -35,7 +35,8 @@ def retry(f):
             except DownloadFailure as e:
                 await self.attempt_task_removal(media_item)
 
-                max_attempts = self.manager.config_manager.global_settings_data['Rate_Limiting_Options']['download_attempts']
+                max_attempts = self.manager.config_manager.global_settings_data['Rate_Limiting_Options'][
+                    'download_attempts']
                 if self.manager.config_manager.settings_data['Download_Options']['disable_download_attempt_limit']:
                     max_attempts = 1
 
@@ -49,25 +50,28 @@ def retry(f):
                 else:
                     e_log_detail = f"with error {e}"
 
-                await log(f"{self.log_prefix} failed: {media_item.url} {e_log_detail}",40)
+                await log(f"{self.log_prefix} failed: {media_item.url} {e_log_detail}", 40)
 
                 if media_item.current_attempt >= max_attempts:
                     await self.manager.progress_manager.download_stats_progress.add_failure(e.ui_message)
-                    await self.manager.log_manager.write_download_error_log(media_item.url, e.message, media_item.referer)
+                    await self.manager.log_manager.write_download_error_log(media_item.url, e.message,
+                                                                            media_item.referer)
                     await self.manager.progress_manager.download_progress.add_failed()
                     break
 
-                await log(f"Retrying {self.log_prefix.lower()}: {media_item.url} ,retry attempt: {media_item.current_attempt+1}", 20)
+                await log(
+                    f"Retrying {self.log_prefix.lower()}: {media_item.url} ,retry attempt: {media_item.current_attempt + 1}",
+                    20)
                 continue
 
 
             except CDLBaseException as err:
-                e_log_detail =  e_log_message = err.message
+                e_log_detail = e_log_message = err.message
                 e_ui_failure = err.ui_message
                 e_origin = err.origin
-               
+
             except RealDebridError as err:
-                e_log_detail = e_log_message  = f"RealDebridError - {err.error}"
+                e_log_detail = e_log_message = f"RealDebridError - {err.error}"
                 e_ui_failure = f"RD - {err.error}"
 
             except Exception as err:
@@ -79,7 +83,8 @@ def retry(f):
                     e_log_message = "See Log for Details"
                     e_ui_failure = "Unknown"
 
-                await log(f"{self.log_prefix} failed: {media_item.url} with error: {e_log_detail}", 40, exc_info = exc_info)
+                await log(f"{self.log_prefix} failed: {media_item.url} with error: {e_log_detail}", 40,
+                          exc_info=exc_info)
 
             if not exc_info:
                 await log(f"{self.log_prefix} failed: {media_item.url} with error: {e_log_detail}", 40)
@@ -138,7 +143,7 @@ class Downloader:
 
                     await self.download(media_item)
                 except Exception as e:
-                    await log(f"{self.log_prefix} failed: {media_item.url} with error {e}", 40, exc_info = True)
+                    await log(f"{self.log_prefix} failed: {media_item.url} with error {e}", 40, exc_info=True)
                     await self.manager.progress_manager.download_stats_progress.add_failure("Unknown")
                     await self.manager.progress_manager.download_progress.add_failed()
                 else:
@@ -193,7 +198,8 @@ class Downloader:
             if not can_download:
                 if reason == 0:
                     await self.manager.progress_manager.download_stats_progress.add_failure("Insufficient Free Space")
-                    await self.manager.log_manager.write_download_error_log(media_item.url,"Insufficient Free Space", media_item.referer)
+                    await self.manager.log_manager.write_download_error_log(media_item.url, "Insufficient Free Space",
+                                                                            media_item.referer)
                     await self.manager.progress_manager.download_progress.add_failed()
                 else:
                     await self.manager.progress_manager.download_progress.add_skipped()
@@ -210,18 +216,18 @@ class Downloader:
         except (aiohttp.ClientPayloadError, aiohttp.ClientOSError, aiohttp.ClientResponseError, ConnectionResetError,
                 DownloadFailure, FileNotFoundError, PermissionError, aiohttp.ServerDisconnectedError,
                 asyncio.TimeoutError, aiohttp.ServerTimeoutError) as err:
-            
+
             e_origin = media_item.referer
-            
+
             if hasattr(err, "status") and await self.is_failed(err.status):
                 e_ui_failure = err.ui_message if isinstance(err, CDLBaseException) else err.status
-          
+
                 if hasattr(err, 'message'):
                     e_log_detail = e_log_message = f"{err.status} - {err.message}"
                 else:
                     e_log_detail = str(err)
                     e_log_message = f"{err.status}"
-                    
+
                 await log(f"{self.log_prefix} failed: {media_item.url} with error: {e_log_detail}", 40)
                 await self.manager.log_manager.write_download_error_log(media_item.url, e_log_message, e_origin)
                 await self.manager.progress_manager.download_stats_progress.add_failure(e_ui_failure)
@@ -233,7 +239,8 @@ class Downloader:
                 size = media_item.partial_file.stat().st_size
                 if media_item.filename in self._current_attempt_filesize and self._current_attempt_filesize[
                     media_item.filename] >= size:
-                    raise DownloadFailure(status=getattr(err, "status", type(err).__name__), message=f"{self.log_prefix} failed")
+                    raise DownloadFailure(status=getattr(err, "status", type(err).__name__),
+                                          message=f"{self.log_prefix} failed")
                 self._current_attempt_filesize[media_item.filename] = size
                 media_item.current_attempt = 0
                 raise DownloadFailure(status=999, message="Download timeout reached, retrying")
@@ -243,4 +250,5 @@ class Downloader:
 
     async def is_failed(self, status: int):
         return any((await is_4xx_client_error(status) and status != HTTPStatus.TOO_MANY_REQUESTS,
-                    status in (HTTPStatus.SERVICE_UNAVAILABLE, HTTPStatus.BAD_GATEWAY, CustomHTTPStatus.WEB_SERVER_IS_DOWN)))
+                    status in (
+                    HTTPStatus.SERVICE_UNAVAILABLE, HTTPStatus.BAD_GATEWAY, CustomHTTPStatus.WEB_SERVER_IS_DOWN)))

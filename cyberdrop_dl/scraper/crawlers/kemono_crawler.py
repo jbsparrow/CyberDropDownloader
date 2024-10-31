@@ -57,7 +57,8 @@ class KemonoCrawler(Crawler):
         api_call = self.api_url / service / "user" / user
         while True:
             async with self.request_limiter:
-                JSON_Resp = await self.client.get_json(self.domain, api_call.with_query({"o": offset}), origin = scrape_item)
+                JSON_Resp = await self.client.get_json(self.domain, api_call.with_query({"o": offset}),
+                                                       origin=scrape_item)
                 offset += 50
                 if not JSON_Resp:
                     break
@@ -73,7 +74,8 @@ class KemonoCrawler(Crawler):
         api_call = self.api_url / "discord/channel" / channel
         while True:
             async with self.request_limiter:
-                JSON_Resp = await self.client.get_json(self.domain, api_call.with_query({"o": offset}), origin = scrape_item)
+                JSON_Resp = await self.client.get_json(self.domain, api_call.with_query({"o": offset}),
+                                                       origin=scrape_item)
                 offset += 150
                 if not JSON_Resp:
                     break
@@ -88,7 +90,7 @@ class KemonoCrawler(Crawler):
         user_str = await self.get_user_str_from_post(scrape_item)
         api_call = self.api_url / service / "user" / user / "post" / post_id
         async with self.request_limiter:
-            post = await self.client.get_json(self.domain, api_call, origin = scrape_item)
+            post = await self.client.get_json(self.domain, api_call, origin=scrape_item)
         await self.handle_post_content(scrape_item, post, user, user_str)
 
     @error_handling_wrapper
@@ -99,7 +101,7 @@ class KemonoCrawler(Crawler):
         post_id = post["id"]
         post_title = post.get("title", "")
 
-        scrape_item.album_id = post_id 
+        scrape_item.album_id = post_id
         scrape_item.part_of_album = True
 
         await self.get_content_links(scrape_item, post, user_str)
@@ -139,8 +141,9 @@ class KemonoCrawler(Crawler):
 
         yarl_links: list[URL] = []
         all_links = [x.group().replace(".md.", ".") for x in
-                    re.finditer(r"(?:http(?!.*\.\.)[^ ]*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]|</|'))", content)]
-        
+                     re.finditer(r"(?:http(?!.*\.\.)[^ ]*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]|</|'))",
+                                 content)]
+
         for link in all_links:
             try:
                 url = URL(link)
@@ -151,7 +154,8 @@ class KemonoCrawler(Crawler):
         for link in yarl_links:
             if "kemono" in link.host:
                 continue
-            scrape_item = await self.create_scrape_item(scrape_item, link, "", add_parent = scrape_item.url.joinpath("post",post_id))
+            scrape_item = await self.create_scrape_item(scrape_item, link, "",
+                                                        add_parent=scrape_item.url.joinpath("post", post_id))
             await self.handle_external_links(scrape_item)
 
     @error_handling_wrapper
@@ -177,7 +181,7 @@ class KemonoCrawler(Crawler):
     async def get_user_str_from_post(self, scrape_item: ScrapeItem) -> str:
         """Gets the user string from a scrape item"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
         user = soup.select_one("a[class=post__user-name]").text
         return user
 
@@ -185,7 +189,7 @@ class KemonoCrawler(Crawler):
     async def get_user_str_from_profile(self, scrape_item: ScrapeItem) -> str:
         """Gets the user string from a scrape item"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
         user = soup.select_one("span[itemprop=name]").text
         return user
 
@@ -203,7 +207,7 @@ class KemonoCrawler(Crawler):
         return service, user, post
 
     async def create_new_scrape_item(self, link: URL, old_scrape_item: ScrapeItem, user: str, title: str, post_id: str,
-                                    date: str, add_parent: Optional[URL] = None) -> None:
+                                     date: str, add_parent: Optional[URL] = None) -> None:
         """Creates a new scrape item with the same parent as the old scrape item"""
         post_title = None
         if self.manager.config_manager.settings_data['Download_Options']['separate_posts']:
@@ -213,6 +217,6 @@ class KemonoCrawler(Crawler):
 
         new_title = await self.create_title(user, None, None)
         new_scrape_item = await self.create_scrape_item(old_scrape_item, link, new_title, True, None,
-                                                        await self.parse_datetime(date), add_parent = add_parent)
+                                                        await self.parse_datetime(date), add_parent=add_parent)
         await new_scrape_item.add_to_parent_title(post_title)
         self.manager.task_group.create_task(self.run(new_scrape_item))

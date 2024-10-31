@@ -6,13 +6,13 @@ import re
 from typing import TYPE_CHECKING, AsyncGenerator
 
 from aiolimiter import AsyncLimiter
-from yarl import URL
 from bs4 import BeautifulSoup
+from yarl import URL
 
+from cyberdrop_dl.clients.errors import PasswordProtected, ScrapeFailure
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
-from cyberdrop_dl.clients.errors import PasswordProtected, ScrapeFailure
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -25,21 +25,22 @@ CDN_PATTERNS = {
 
 CDN_POSSIBILITIES = re.compile("|".join(CDN_PATTERNS.values()))
 
+
 class CheveretoCrawler(Crawler):
     JPG_CHURCH_DOMAINS = {
-            'jpg.homes','jpg.church','jpg.fish','jpg.fishing','jpg.pet','jpeg.pet',
-            'jpg1.su','jpg2.su','jpg3.su','jpg4.su','jpg5.su','host.church'}
+        'jpg.homes', 'jpg.church', 'jpg.fish', 'jpg.fishing', 'jpg.pet', 'jpeg.pet',
+        'jpg1.su', 'jpg2.su', 'jpg3.su', 'jpg4.su', 'jpg5.su', 'host.church'}
 
     PRIMARY_BASE_DOMAINS = {
-        'imagepond.net': URL("https://imagepond.net"), 
+        'imagepond.net': URL("https://imagepond.net"),
         'jpg.church': URL("https://jpg5.su"),
         "img.kiwi": URL("https://img.kiwi")
     }
 
-    FOLDER_DOMAINS = {'imagepond.net': "ImagePond", 'jpg.church': 'JPGChurch', 'img.kiwi': 'ImgKiwi' }
+    FOLDER_DOMAINS = {'imagepond.net': "ImagePond", 'jpg.church': 'JPGChurch', 'img.kiwi': 'ImgKiwi'}
 
-    DOMAINS = PRIMARY_BASE_DOMAINS.keys() |  JPG_CHURCH_DOMAINS
-    
+    DOMAINS = PRIMARY_BASE_DOMAINS.keys() | JPG_CHURCH_DOMAINS
+
     def __init__(self, manager: Manager, domain: str):
         super().__init__(manager, domain, self.FOLDER_DOMAINS.get(domain, "Chevereto"))
         self.primary_base_domain = self.PRIMARY_BASE_DOMAINS.get(domain, URL(f"https://{domain}"))
@@ -59,7 +60,8 @@ class CheveretoCrawler(Crawler):
         if await self.check_direct_link(scrape_item.url):
             await self.handle_direct_link(scrape_item)
         else:
-            scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path[1:]).with_query(scrape_item.url.query)
+            scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path[1:]).with_query(
+                scrape_item.url.query)
             if "a" in scrape_item.url.parts or "album" in scrape_item.url.parts:
                 await self.album(scrape_item)
             elif any((part in scrape_item.url.parts for part in ('image', 'img', 'images'))):
@@ -73,7 +75,7 @@ class CheveretoCrawler(Crawler):
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an user profile"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         title = await self.create_title(soup.select_one(self.profile_title_selector).get("content"), None, None)
 
@@ -82,41 +84,43 @@ class CheveretoCrawler(Crawler):
             for link in links:
                 link = link.get('href')
                 if link.startswith('/'):
-                    link = self.primary_base_domain / link [1:]
+                    link = self.primary_base_domain / link[1:]
                 link = URL(link)
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent = scrape_item.url)
+                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True,
+                                                                add_parent=scrape_item.url)
                 await self.handle_direct_link(new_scrape_item)
-
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
         album_id = scrape_item.url.parts[2]
         results = await self.get_album_results(album_id)
-        scrape_item.album_id = album_id 
+        scrape_item.album_id = album_id
         scrape_item.part_of_album = True
-        password = scrape_item.url.query.get("password","")
+        password = scrape_item.url.query.get("password", "")
         scrape_item.url = scrape_item.url.with_query(None)
 
         async with self.request_limiter:
-            sub_albums_soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url / "sub", origin = scrape_item)
+            sub_albums_soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url / "sub",
+                                                                       origin=scrape_item)
 
         if 'This content is password protected' in sub_albums_soup.text and password:
             password_data = {"content-password": password}
             async with self.request_limiter:
-                sub_albums_soup = BeautifulSoup (await self.client.post_data(
-                    self.domain, scrape_item.url, data=password_data, raw=True, origin = scrape_item))
-           
-        if "This content is password protected" in sub_albums_soup.text:
-            raise PasswordProtected(message = "Wrong password" if password else None, origin =scrape_item)
+                sub_albums_soup = BeautifulSoup(await self.client.post_data(
+                    self.domain, scrape_item.url, data=password_data, raw=True, origin=scrape_item))
 
-        title = await self.create_title(sub_albums_soup.select_one(self.album_title_selector).get_text(), album_id ,None)
+        if "This content is password protected" in sub_albums_soup.text:
+            raise PasswordProtected(message="Wrong password" if password else None, origin=scrape_item)
+
+        title = await self.create_title(sub_albums_soup.select_one(self.album_title_selector).get_text(), album_id,
+                                        None)
 
         sub_albums = sub_albums_soup.select(self.profile_item_selector)
         for album in sub_albums:
             sub_album_link = album.get('href')
             if sub_album_link.startswith("/"):
-                sub_album_link = self.primary_base_domain / sub_album_link [1:]
+                sub_album_link = self.primary_base_domain / sub_album_link[1:]
 
             sub_album_link = URL(sub_album_link)
             new_scrape_item = await self.create_scrape_item(scrape_item, sub_album_link, "", True)
@@ -127,9 +131,10 @@ class CheveretoCrawler(Crawler):
             for link in links:
                 link = link.get('src')
                 if link.startswith('/'):
-                    link = self.primary_base_domain / link [1:]
+                    link = self.primary_base_domain / link[1:]
                 link = URL(link)
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, album_id, add_parent = scrape_item.url)
+                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, album_id,
+                                                                add_parent=scrape_item.url)
                 if not await self.check_album_results(link, results):
                     await self.handle_direct_link(new_scrape_item)
 
@@ -140,13 +145,13 @@ class CheveretoCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         try:
             link = URL(soup.select_one("div[id=image-viewer] img").get('src'))
             link = link.with_name(link.name.replace('.md.', '.').replace('.th.', '.'))
         except AttributeError:
-            raise ScrapeFailure(404 , f"Could not find img source for {scrape_item.url}", origin= scrape_item)
+            raise ScrapeFailure(404, f"Could not find img source for {scrape_item.url}", origin=scrape_item)
 
         desc_rows = soup.select("p[class*=description-meta]")
         date = None
@@ -173,8 +178,8 @@ class CheveretoCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def get_sort_by_new_url (self, url: URL) -> URL:
-        return url.with_query({'sort':'date_desc', 'page':1})
+    async def get_sort_by_new_url(self, url: URL) -> URL:
+        return url.with_query({'sort': 'date_desc', 'page': 1})
 
     async def web_pager(self, url: URL) -> AsyncGenerator[BeautifulSoup]:
         "Generator of website pages"
@@ -184,7 +189,7 @@ class CheveretoCrawler(Crawler):
                 soup: BeautifulSoup = await self.client.get_BS4(self.domain, page_url)
             next_page = soup.select_one(self.next_page_selector)
             yield soup
-            if next_page :
+            if next_page:
                 page_url = next_page.get('href')
                 if page_url:
                     if page_url.startswith("/"):
@@ -200,7 +205,7 @@ class CheveretoCrawler(Crawler):
 
     async def check_direct_link(self, url: URL) -> bool:
         """Determines if the url is a direct link or not"""
-        
+
         if not re.match(CDN_POSSIBILITIES, url.host):
             return False
         return True

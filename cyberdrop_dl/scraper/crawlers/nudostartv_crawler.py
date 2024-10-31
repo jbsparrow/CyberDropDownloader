@@ -34,13 +34,13 @@ class NudoStarTVCrawler(Crawler):
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         title = await self.create_title(soup.select_one('title').get_text().split("/")[0], None, None)
         content = soup.select('div[id=list_videos_common_videos_list_items] div a')
         for page in content:
             link = URL(page.get('href'))
-            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent = scrape_item.url)
+            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent=scrape_item.url)
             await self.image(new_scrape_item)
         next_page = soup.select_one('li[class=next] a')
         if next_page:
@@ -52,7 +52,7 @@ class NudoStarTVCrawler(Crawler):
     async def image(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
         content = soup.select('div[class=block-video] a img')
         for image in content:
             link = URL(image.get('src'))

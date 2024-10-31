@@ -42,8 +42,8 @@ def limiter(func):
         await domain_limiter.acquire()
 
         async with aiohttp.ClientSession(headers=self._headers, raise_for_status=False,
-                                        cookie_jar=self.client_manager.cookies, timeout=self._timeouts,
-                                        trace_configs=self.trace_configs) as client:
+                                         cookie_jar=self.client_manager.cookies, timeout=self._timeouts,
+                                         trace_configs=self.trace_configs) as client:
             kwargs['client_session'] = client
             return await func(self, *args, **kwargs)
 
@@ -59,7 +59,7 @@ class DownloadClient:
 
         self._headers = {"user-agent": client_manager.user_agent}
         self._timeouts = aiohttp.ClientTimeout(total=client_manager.read_timeout + client_manager.connection_timeout,
-                                            connect=client_manager.connection_timeout)
+                                               connect=client_manager.connection_timeout)
         self._global_limiter = self.client_manager.global_rate_limiter
         self.trace_configs = []
         self._file_path = None
@@ -89,9 +89,9 @@ class DownloadClient:
         if domain == "pixeldrain":
             if self.manager.config_manager.authentication_data['PixelDrain']['pixeldrain_api_key']:
                 download_headers["Authorization"] = await self.manager.download_manager.basic_auth("Cyberdrop-DL",
-                                                                                                self.manager.config_manager.authentication_data[
-                                                                                                    'PixelDrain'][
-                                                                                                    'pixeldrain_api_key'])
+                                                                                                   self.manager.config_manager.authentication_data[
+                                                                                                       'PixelDrain'][
+                                                                                                       'pixeldrain_api_key'])
 
         downloaded_filename = await self.manager.db_manager.history_table.get_downloaded_filename(domain, media_item)
         download_dir = await self.get_download_dir(media_item)
@@ -106,11 +106,11 @@ class DownloadClient:
 
         download_url = media_item.debrid_link or media_item.url
         async with client_session.get(download_url, headers=download_headers, ssl=self.client_manager.ssl_context,
-                                    proxy=self.client_manager.proxy) as resp:
+                                      proxy=self.client_manager.proxy) as resp:
             if resp.status == HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE:
                 media_item.partial_file.unlink()
 
-            await self.client_manager.check_http_status(resp, download=True, origin = media_item.url)
+            await self.client_manager.check_http_status(resp, download=True, origin=media_item.url)
             content_type = resp.headers.get('Content-Type')
 
             media_item.filesize = int(resp.headers.get('Content-Length', '0'))
@@ -146,7 +146,8 @@ class DownloadClient:
             await save_content(resp.content)
             return True
 
-    async def _append_content(self, media_item: MediaItem, content: aiohttp.StreamReader, update_progress: partial) -> None:
+    async def _append_content(self, media_item: MediaItem, content: aiohttp.StreamReader,
+                              update_progress: partial) -> None:
         """Appends content to a file"""
         if not await self.client_manager.manager.download_manager.check_free_space(media_item.download_folder):
             raise DownloadFailure(status="Insufficient Free Space", message="Not enough free space")
@@ -176,7 +177,7 @@ class DownloadClient:
 
         async def save_content(content: aiohttp.StreamReader) -> None:
             await self._append_content(media_item, content,
-                                    partial(manager.progress_manager.file_progress.advance_file, media_item.task_id))
+                                       partial(manager.progress_manager.file_progress.advance_file, media_item.task_id))
 
         downloaded = await self._download(domain, manager, media_item, save_content)
         if downloaded:
@@ -249,7 +250,7 @@ class DownloadClient:
                 if media_item.url.host.find(skip_host) != -1:
                     skip = True
                     break
-                
+
         if not skip and self.manager.config_manager.settings_data['Ignore_Options']['only_hosts']:
             for only_host in self.manager.config_manager.settings_data['Ignore_Options']['only_hosts']:
                 if media_item.url.host.find(only_host) == -1:
@@ -257,7 +258,7 @@ class DownloadClient:
                     break
 
         if skip:
-            return proceed, skip 
+            return proceed, skip
 
         while True:
             if expected_size:
@@ -276,7 +277,7 @@ class DownloadClient:
                 break
 
             downloaded_filename = await self.manager.db_manager.history_table.get_downloaded_filename(domain,
-                                                                                                    media_item)
+                                                                                                      media_item)
             if not downloaded_filename:
                 media_item.complete_file, media_item.partial_file = await self.iterate_filename(
                     media_item.complete_file, media_item)

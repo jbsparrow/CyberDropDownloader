@@ -44,8 +44,7 @@ class MediaFireCrawler(Crawler):
         try:
             folder_details = self.api.folder_get_info(folder_key=folder_key)
         except api.MediaFireApiError as e:
-            raise ScrapeFailure(f"MF - {e.message}", origin = scrape_item)
-
+            raise ScrapeFailure(f"MF - {e.message}", origin=scrape_item)
 
         title = await self.create_title(folder_details['folder_info']['name'], folder_key, None)
 
@@ -57,16 +56,17 @@ class MediaFireCrawler(Crawler):
         while True:
             try:
                 folder_contents = self.api.folder_get_content(folder_key=folder_key, content_type='files', chunk=chunk,
-                                                            chunk_size=chunk_size)
+                                                              chunk_size=chunk_size)
             except api.MediaFireApiError as e:
-                raise ScrapeFailure(f"MF - {e.message}", origin = scrape_item)
-            
+                raise ScrapeFailure(f"MF - {e.message}", origin=scrape_item)
+
             files = folder_contents['folder_content']['files']
 
             for file in files:
                 date = await self.parse_datetime(file['created'])
                 link = URL(file['links']['normal_download'])
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, None, date, add_parent = scrape_item.url)
+                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, None, date,
+                                                                add_parent=scrape_item.url)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
             if folder_contents["folder_content"]["more_chunks"] == "yes":
@@ -81,7 +81,7 @@ class MediaFireCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         date = await self.parse_datetime(soup.select('ul[class=details] li span')[-1].get_text())
         scrape_item.possible_datetime = date
