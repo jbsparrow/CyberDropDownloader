@@ -21,11 +21,11 @@ if TYPE_CHECKING:
     from cyberdrop_dl.scraper.crawler import ScrapeItem
     from yarl import URL
 
-
 DOWNLOAD_ERROR_ETAGS = {
     "d835884373f4d6c8f24742ceabe74946": "Imgur image has been removed",
-    "65b7753c-528a":"SC Scrape Image"
+    "65b7753c-528a": "SC Scrape Image"
 }
+
 
 class ClientManager:
     """Creates a 'client' that can be referenced by scraping or download sessions"""
@@ -87,40 +87,42 @@ class ClientManager:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def check_http_status(self, response: ClientResponse, download: bool = False, origin: Optional[ScrapeItem | URL]= None) -> None:
+    async def check_http_status(self, response: ClientResponse, download: bool = False,
+                                origin: Optional[ScrapeItem | URL] = None) -> None:
         """Checks the HTTP status code and raises an exception if it's not acceptable"""
         status = response.status
         headers = response.headers
 
         if download and headers.get('ETag') in DOWNLOAD_ERROR_ETAGS:
             message = DOWNLOAD_ERROR_ETAGS.get(headers.get('ETag'))
-            raise DownloadFailure(HTTPStatus.NOT_FOUND, message=message, origin = origin)
+            raise DownloadFailure(HTTPStatus.NOT_FOUND, message=message, origin=origin)
 
         if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
             return
-        
-        if any({domain in response.url.host.lower() for domain in ("gofile","imgur")}):
+
+        if any({domain in response.url.host.lower() for domain in ("gofile", "imgur")}):
             try:
                 JSON_Resp: dict = await response.json()
                 if "status" in JSON_Resp:
                     if "notFound" in JSON_Resp["status"]:
-                        raise ScrapeFailure(HTTPStatus.NOT_FOUND, origin = origin)
+                        raise ScrapeFailure(HTTPStatus.NOT_FOUND, origin=origin)
                     if JSON_Resp.get('data') and 'error' in JSON_Resp['data']:
-                        raise ScrapeFailure(JSON_Resp['status'], JSON_Resp['data']['error'], origin = origin)
+                        raise ScrapeFailure(JSON_Resp['status'], JSON_Resp['data']['error'], origin=origin)
             except ContentTypeError:
                 pass
 
         try:
             response_text = await response.text()
             if "<title>DDoS-Guard</title>" in response_text:
-                raise DDOSGuardFailure(origin = origin)
+                raise DDOSGuardFailure(origin=origin)
         except UnicodeDecodeError:
             pass
 
         if not headers.get('Content-Type'):
-            raise DownloadFailure(status=CustomHTTPStatus.IM_A_TEAPOT, message="No content-type in response header", origin = origin)
+            raise DownloadFailure(status=CustomHTTPStatus.IM_A_TEAPOT, message="No content-type in response header",
+                                  origin=origin)
 
-        raise DownloadFailure(status=status, origin = origin )
+        raise DownloadFailure(status=status, origin=origin)
 
     async def check_bunkr_maint(self, headers):
         if headers.get('Content-Length') == "322509" and headers.get('Content-Type') == "video/mp4":
