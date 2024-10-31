@@ -10,7 +10,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Union
 
 import rich
+from rich.text import Text
 from yarl import URL
+from aiohttp import ClientSession, FormData
+import aiofiles
+import apprise
 
 from cyberdrop_dl.clients.errors import NoExtensionFailure, CDLBaseException
 from cyberdrop_dl.managers.real_debrid.errors import RealDebridError
@@ -33,7 +37,7 @@ DEBUG_VAR = False
 CONSOLE_DEBUG_VAR = False
 
 global LOG_OUTPUT_TEXT
-LOG_OUTPUT_TEXT = "```diff\n"
+LOG_OUTPUT_TEXT = Text('')
 
 RAR_MULTIPART_PATTERN = r'^part\d+'
 _7Z_FILE_EXTENSIONS = {"7z","tar","gz","bz2","zip"}
@@ -116,25 +120,33 @@ async def log_debug_console(message: Union [str, Exception], level: int, sleep: 
         log_console(level, message.encode('ascii', 'ignore').decode('ascii'), sleep=sleep)
 
 
-async def log_with_color(message: str, style: str, level: int, *kwargs) -> None:
+async def log_with_color(message: str, style: str, level: int, show_in_stats: bool = True, *kwargs) -> None:
     """Simple logging function with color"""
     global LOG_OUTPUT_TEXT
     logger.log(level, message, *kwargs)
+    text = Text (message, style = style)
     if DEBUG_VAR:
         logger_debug.log(level, message, *kwargs)
-    rich.print(f"[{style}]{message}[/{style}]")
-    LOG_OUTPUT_TEXT += f"[{style}]{message}\n"
+    rich.print(text)
+    if show_in_stats:
+        LOG_OUTPUT_TEXT.append_text(text.append('\n'))
 
 
 async def get_log_output_text() -> str:
     global LOG_OUTPUT_TEXT
-    return LOG_OUTPUT_TEXT + "```"
+    return LOG_OUTPUT_TEXT
+
+async def set_log_output_text( text = Text | str) -> str:
+    global LOG_OUTPUT_TEXT
+    if isinstance(text, str):
+        text = Text(text)
+    LOG_OUTPUT_TEXT = text
 
 async def log_spacer(level: int, char: str = "-") -> None:
     global LOG_OUTPUT_TEXT
     spacer = char * min(DEFAULT_CONSOLE_WIDTH / 2, 50)
     rich.print(f"")
-    LOG_OUTPUT_TEXT += "\n"
+    LOG_OUTPUT_TEXT.append("\n", style = 'black')
     logger.log(level,spacer)
     if DEBUG_VAR:
         logger_debug.log(level,spacer)
@@ -336,3 +348,128 @@ async def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = Fa
             rich.print("You are currently on the latest version of Cyberdrop-DL")
 
     return current_version, latest_version
+
+async def sent_appraise_notifications(manager: Manager) -> None:
+    apprise_file = manager.path_manager.config_dir / manager.config_manager.loaded_config / 'apprise.txt'
+
+    text: Text = await get_log_output_text()
+    await set_log_output_text("")
+
+    if not apprise_file.is_file():
+        return
+    
+    async with aiofiles.open(apprise_file, mode='r', encoding='utf8') as file:
+        lines = await file.readlines() 
+        lines = [line.strip() for line in lines]
+
+    if not lines:
+        return
+    
+    rich.print ('\nSending notifications.. ')
+    apprise_obj = apprise.Apprise()
+    for line in lines:
+        parts = line.split("://",1)[0].split('=', 1)
+        url = line
+        tags = 'no_logs'
+        if len(parts) == 2:
+            tags, url = line.split("=",1)
+            tags = tags.split(',')
+        apprise_obj.add(url, tag = tags) 
+    
+    results = []
+
+    result = apprise_obj.notify(
+        body = text.plain,
+        title = 'Cyberdrop-DL',
+        body_format=apprise.NotifyFormat.TEXT,
+        tag = 'no_logs'
+    )
+
+    if result is not None:
+        results += [result]
+
+    result = apprise_obj.notify(
+        body = text.plain,
+        title = 'Cyberdrop-DL',
+        body_format=apprise.NotifyFormat.TEXT,
+        attach = str(manager.path_manager.main_log.resolve()),
+        tag = 'attach_logs'
+    )
+
+    if result is not None:
+        results += [result]
+
+    if not results:
+         result = Text('No notifications sent', 'yellow')
+    if all (results):
+        result = Text('Success', 'green')
+    elif any (results):
+        result = Text('Partial Success', 'yellow')
+    else:
+        result= Text('Failed','bold red')
+        
+    rich.print('Apprise notifications results:', result)
+
+def parse_bytes(size: int) -> Tuple[int, str]:
+    for unit in ["B", "KB", "MB", "GB", "TB", "PB", "EB"]:
+        if size < 1024:
+            return size , unit
+        size /= 1024
+    return size , "YB"
+
+def parse_rich_text_by_style(text: Text, style_map : dict, default_style_map_key: str = 'default'):
+    plain_text = ""
+    for span in text.spans:
+        span_text = text.plain[span.start:span.end].rstrip('\n')
+        plain_line: str = style_map.get(span.style) or style_map.get(default_style_map_key)
+        if plain_line:
+            plain_text += plain_line.format(span_text) + '\n'
+
+    return plain_text
+
+STYLE_TO_DIFF_FORMAT_MAP = {
+        'default': "{}",
+        'green': "+   {}",
+        'red': "-   {}",
+        'yellow': "*** {}",
+    }
+
+async def send_webhook_message( manager: Manager) -> None:
+    """Outputs the stats to a code block for webhook messages"""
+
+    webhook_url: str = manager.config_manager.settings_data['Logs']['webhook_url']
+
+    if not webhook_url:
+        return
+
+    url = webhook_url.strip()
+    parts = url.split("://",1)[0].split('=', 1)
+    tags = ['no_logs']
+    if len(parts) == 2:
+        tags, url = url.split('=',1)
+        tags = tags.split(',')
+
+    url = URL(url)
+    text: Text = await get_log_output_text()
+    plain_text = parse_rich_text_by_style(text, STYLE_TO_DIFF_FORMAT_MAP)
+    main_log = manager.path_manager.main_log
+
+    form = FormData()
+    
+    if 'attach_logs' in tags and main_log.is_file():
+        if main_log.stat().st_size <= 25 * 1024 * 1024:
+            async with aiofiles.open(main_log, "rb") as f:
+                form.add_field("file", await f.read() , filename=main_log.name)
+
+        else:
+            plain_text += '\n\nWARNING: log file too large to send as attachment\n'
+
+    form.add_fields(
+        ("content", f"```diff\n{plain_text}```"),
+        ("username", "CyberDrop-DL"),
+    )
+        
+    # Make an asynchronous POST request to the webhook
+    async with ClientSession() as session:
+        async with session.post(url, data=form) as response:
+            await response.text()

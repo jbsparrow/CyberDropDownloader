@@ -1,8 +1,10 @@
+from __future__ import annotations
 from dataclasses import field
 from typing import TYPE_CHECKING
 
-from aiohttp import ClientSession
 from rich.layout import Layout
+import time
+from datetime import timedelta
 
 from cyberdrop_dl.ui.progress.downloads_progress import DownloadsProgress
 from cyberdrop_dl.ui.progress.file_progress import FileProgress
@@ -10,14 +12,15 @@ from cyberdrop_dl.ui.progress.hash_progress import HashProgress
 from cyberdrop_dl.ui.progress.scraping_progress import ScrapingProgress
 from cyberdrop_dl.ui.progress.sort_progress import SortProgress
 from cyberdrop_dl.ui.progress.statistic_progress import DownloadStatsProgress, ScrapeStatsProgress
-from cyberdrop_dl.utils.utilities import log_with_color, get_log_output_text, log, log_spacer
+from cyberdrop_dl.utils.utilities import log_with_color, get_log_output_text, log, log_spacer, parse_bytes, parse_rich_text_by_style, STYLE_TO_DIFF_FORMAT_MAP
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
+    from datetime import timedelta
 
 
 class ProgressManager:
-    def __init__(self, manager: 'Manager'):
+    def __init__(self, manager: Manager):
         # File Download Bars
         self.manager = manager
         self.file_progress: FileProgress = FileProgress(
@@ -63,9 +66,19 @@ class ProgressManager:
         self.hash_layout = await self.hash_progress.get_hash_progress()
         self.sort_layout = await self.sort_progress.get_progress()
 
-    async def print_stats(self) -> None:
+    async def print_stats(self, start_time: timedelta) -> None:
         """Prints the stats of the program"""
+
+        end_time = time.perf_counter()
+        total_time = timedelta(seconds = int(end_time - start_time))
+        downloaded_data , unit = parse_bytes (self.file_progress.downloaded_data)
+
         await log("Printing Stats...\n", 20)
+        await log_with_color("Run Stats:", "cyan", 20)
+        await log_with_color(f"  Total Runtime: {total_time}", "yellow", 20)
+        await log_with_color(f"  Total Downloaded Data: {downloaded_data:.2f} {unit}", "yellow", 20)
+
+        await log_spacer(20,'')
         await log_with_color("Download Stats:", "cyan", 20)
         await log_with_color(f"  Downloaded {self.download_progress.completed_files} files", "green", 20)
         await log_with_color(f"  Previously Downloaded {self.download_progress.previously_completed_files} files",
@@ -96,30 +109,15 @@ class ProgressManager:
         scrape_failures = await self.scrape_stats_progress.return_totals()
         await log_spacer(20,'')
         await log_with_color("Scrape Failures:", "cyan", 20)
+        if not scrape_failures:
+            await log_with_color(f"  None", "green", 20)
         for key, value in scrape_failures.items():
-            await log_with_color(f"  Scrape Failures ({key}): {value}", "red", 20)
+            await log_with_color(f"  ({key}): {value}", "red", 20)
 
         download_failures = await self.download_stats_progress.return_totals()
         await log_spacer(20,'')
         await log_with_color("Download Failures:", "cyan", 20)
+        if not download_failures:
+            await log_with_color(f"  None", "green", 20)
         for key, value in download_failures.items():
-            await log_with_color(f"  Download Failures ({key}): {value}", "red", 20)
-
-        await self.send_webhook_message(self.manager.config_manager.settings_data['Logs']['webhook_url'])
-
-    async def send_webhook_message(self, webhook_url: str) -> None:
-        """Outputs the stats to a code block for webhook messages"""
-        log = await get_log_output_text()
-        log_message = log.replace('[cyan]', '').replace('[cyan]\n', '\n')
-        log_message = log_message.replace('[green]', '+ ').replace('[green]\n', '\n+ ')
-        log_message = log_message.replace('[red]', '- ').replace('[red]\n', '\n- ')
-        log_message = log_message.replace('[yellow]', '*** ').replace('[yellow]\n', '\n*** ')
-        data = {
-            "content": log_message,
-            "username": "CyberDrop-DL",
-        }
-        # Make an asynchronous POST request to the webhook
-        if webhook_url:
-            async with ClientSession() as session:
-                async with session.post(webhook_url, json=data) as response:
-                    await response.text()
+            await log_with_color(f"  ({key}): {value}", "red", 20)
