@@ -11,6 +11,7 @@ from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wr
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
+    from bs4 import BeautifulSoup
 
 
 class NudoStarTVCrawler(Crawler):
@@ -33,7 +34,7 @@ class NudoStarTVCrawler(Crawler):
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile"""
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
 
         title = await self.create_title(soup.select_one('title').get_text().split("/")[0], None, None)
         content = soup.select('div[id=list_videos_common_videos_list_items] div a')
@@ -51,7 +52,7 @@ class NudoStarTVCrawler(Crawler):
     async def image(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
         content = soup.select('div[class=block-video] a img')
         for image in content:
             link = URL(image.get('src'))

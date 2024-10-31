@@ -11,6 +11,7 @@ from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wr
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
+    from bs4 import BeautifulSoup
 
 
 class Rule34XXXCrawler(Crawler):
@@ -43,7 +44,7 @@ class Rule34XXXCrawler(Crawler):
     async def tag(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
 
         title_portion = scrape_item.url.query['tags'].strip()
         title = await self.create_title(title_portion, None, None)
@@ -73,7 +74,7 @@ class Rule34XXXCrawler(Crawler):
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image"""
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
         image = soup.select_one("img[id=image]")
         if image:
             link = URL(image.get('src'))

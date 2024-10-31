@@ -15,6 +15,7 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_an
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
+    from bs4 import BeautifulSoup
 
 
 class MediaFireCrawler(Crawler):
@@ -40,7 +41,11 @@ class MediaFireCrawler(Crawler):
     async def folder(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a folder of media"""
         folder_key = scrape_item.url.parts[2]
-        folder_details = self.api.folder_get_info(folder_key=folder_key)
+        try:
+            folder_details = self.api.folder_get_info(folder_key=folder_key)
+        except api.MediaFireApiError as e:
+            raise ScrapeFailure(f"MF - {e.message}", origin = scrape_item)
+
 
         title = await self.create_title(folder_details['folder_info']['name'], folder_key, None)
 
@@ -53,8 +58,9 @@ class MediaFireCrawler(Crawler):
             try:
                 folder_contents = self.api.folder_get_content(folder_key=folder_key, content_type='files', chunk=chunk,
                                                             chunk_size=chunk_size)
-            except api.MediaFireConnectionError:
-                raise ScrapeFailure(500, "MediaFire connection closed")
+            except api.MediaFireApiError as e:
+                raise ScrapeFailure(f"MF - {e.message}", origin = scrape_item)
+            
             files = folder_contents['folder_content']['files']
 
             for file in files:
@@ -75,7 +81,7 @@ class MediaFireCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
 
         date = await self.parse_datetime(soup.select('ul[class=details] li span')[-1].get_text())
         scrape_item.possible_datetime = date

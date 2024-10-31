@@ -44,11 +44,11 @@ class CyberfileCrawler(Crawler):
     async def folder(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a folder"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
 
         login = soup.select_one('form[id=form_login]')
         if login:
-            raise ScrapeFailure(404, "Folder has been deleted")
+            raise ScrapeFailure(404, "Folder has been deleted", origin = scrape_item)
 
         script_func = soup.select('div[class*="page-container"] script')[-1].text
         script_func = script_func.split('loadImages(')[-1]
@@ -62,13 +62,13 @@ class CyberfileCrawler(Crawler):
         while True:
             data = {"pageType": "folder", "nodeId": nodeId, "pageStart": page, "perPage": 0, "filterOrderBy": ""}
             async with self.request_limiter:
-                ajax_dict: dict = await self.client.post_data(self.domain, self.api_files, data=data)
+                ajax_dict: dict = await self.client.post_data(self.domain, self.api_files, data=data, origin = scrape_item)
                 if 'Password Required' in ajax_dict['html']:
                     password_data = {"folderPassword": password, "folderId": nodeId, "submitme": 1}
-                    password_response: dict = await self.client.post_data(self.domain, self.api_password_process, data=password_data)
+                    password_response: dict = await self.client.post_data(self.domain, self.api_password_process, data=password_data, origin = scrape_item)
                     if not password_response.get('success'):
-                        raise PasswordProtected(scrape_item)
-                    ajax_dict: dict = await self.client.post_data(self.domain, self.api_files, data=data)
+                        raise PasswordProtected(origin = scrape_item)
+                    ajax_dict: dict = await self.client.post_data(self.domain, self.api_files, data=data, origin = scrape_item)
 
                 ajax_soup = BeautifulSoup(ajax_dict['html'].replace("\\", ""), 'html.parser')
 
@@ -100,7 +100,7 @@ class CyberfileCrawler(Crawler):
     async def shared(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a shared folder"""
         async with self.request_limiter:
-            await self.client.get_BS4(self.domain, scrape_item.url)
+            await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
 
         new_folders = []
         node_id = ''
@@ -110,7 +110,7 @@ class CyberfileCrawler(Crawler):
             data = {"pageType": "nonaccountshared", "nodeId": node_id, "pageStart": page, "perPage": 0,
                     "filterOrderBy": ""}
             async with self.request_limiter:
-                ajax_dict = await self.client.post_data("cyberfile", self.api_files, data=data)
+                ajax_dict = await self.client.post_data("cyberfile", self.api_files, data=data, origin = scrape_item)
                 ajax_soup = BeautifulSoup(ajax_dict['html'].replace("\\", ""), 'html.parser')
             title = await self.create_title(ajax_dict['page_title'], scrape_item.url.parts[2], None)
             num_pages = int(ajax_soup.select_one('input[id=rspTotalPages]').get('value'))
@@ -144,14 +144,15 @@ class CyberfileCrawler(Crawler):
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a file"""
         password = scrape_item.url.query.get("password","")
+        scrape_item.url = scrape_item.url.with_query(None)
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
             if 'Enter File Password' in soup.text:
                 password_data = {"filePassword": password, "submitted": 1}
                 soup = BeautifulSoup (await self.client.post_data(
-                    self.domain, scrape_item.url, data=password_data, raw=True))
+                    self.domain, scrape_item.url, data=password_data, raw=True, origin = scrape_item))
                 if "File password is invalid" in soup.text:
-                    raise PasswordProtected(scrape_item)
+                    raise PasswordProtected(origin =scrape_item)
             
         script_funcs = soup.select('script')
         for script in script_funcs:
@@ -169,11 +170,11 @@ class CyberfileCrawler(Crawler):
         """Scrapes a file using the content id"""
         data = {"u": contentId}
         async with self.request_limiter:
-            ajax_dict = await self.client.post_data(self.domain, self.api_details, data=data)
+            ajax_dict = await self.client.post_data(self.domain, self.api_details, data=data, origin = scrape_item)
             ajax_soup = BeautifulSoup(ajax_dict['html'].replace("\\", ""), 'html.parser')
 
         if "albumPasswordModel" in ajax_dict['html']:
-            raise PasswordProtected(scrape_item)
+            raise PasswordProtected(origin = scrape_item)
 
         file_menu = ajax_soup.select_one('ul[class="dropdown-menu dropdown-info account-dropdown-resize-menu"] li a')
         file_button = ajax_soup.select_one('div[class="btn-group responsiveMobileMargin"] button')
@@ -184,7 +185,7 @@ class CyberfileCrawler(Crawler):
                 html_download_text = file_button.get("onclick")
         except AttributeError:
             await log(f"Couldn't find download button for {scrape_item.url}", 30)
-            raise ScrapeFailure(422, "Couldn't find download button")
+            raise ScrapeFailure(422, "Couldn't find download button", origin= scrape_item)
         link = URL(html_download_text.split("'")[1])
 
         file_detail_table = ajax_soup.select('table[class="table table-bordered table-striped"]')[-1]

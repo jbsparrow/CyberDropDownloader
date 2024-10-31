@@ -49,6 +49,7 @@ class FileProgress:
         self.completed_tasks: List[TaskID] = []
         self.uninitiated_tasks: List[TaskID] = []
         self.tasks_visibility_limit = visible_tasks_limit
+        self.downloaded_data = 0
 
     async def get_progress(self) -> Panel:
         """Returns the progress bar"""
@@ -59,7 +60,10 @@ class FileProgress:
         total = 0
 
         for scraper in self.manager.scrape_mapper.existing_crawlers.values():
-            total += scraper.downloader.waiting_items
+            try:
+                total += scraper.downloader.waiting_items
+            except AttributeError:
+                pass
 
         return total
 
@@ -126,6 +130,7 @@ class FileProgress:
 
     async def advance_file(self, task_id: TaskID, amount: int) -> None:
         """Advances the progress of the given task by the given amount"""
+        self.downloaded_data += amount
         if task_id in self.uninitiated_tasks:
             self.uninitiated_tasks.remove(task_id)
             self.invisible_tasks.append(task_id)

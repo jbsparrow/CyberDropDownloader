@@ -15,6 +15,7 @@ from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wr
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
+    from bs4 import BeautifulSoup
 
 
 class KemonoCrawler(Crawler):
@@ -56,7 +57,7 @@ class KemonoCrawler(Crawler):
         api_call = self.api_url / service / "user" / user
         while True:
             async with self.request_limiter:
-                JSON_Resp = await self.client.get_json(self.domain, api_call.with_query({"o": offset}))
+                JSON_Resp = await self.client.get_json(self.domain, api_call.with_query({"o": offset}), origin = scrape_item)
                 offset += 50
                 if not JSON_Resp:
                     break
@@ -72,7 +73,7 @@ class KemonoCrawler(Crawler):
         api_call = self.api_url / "discord/channel" / channel
         while True:
             async with self.request_limiter:
-                JSON_Resp = await self.client.get_json(self.domain, api_call.with_query({"o": offset}))
+                JSON_Resp = await self.client.get_json(self.domain, api_call.with_query({"o": offset}), origin = scrape_item)
                 offset += 150
                 if not JSON_Resp:
                     break
@@ -87,13 +88,14 @@ class KemonoCrawler(Crawler):
         user_str = await self.get_user_str_from_post(scrape_item)
         api_call = self.api_url / service / "user" / user / "post" / post_id
         async with self.request_limiter:
-            post = await self.client.get_json(self.domain, api_call)
+            post = await self.client.get_json(self.domain, api_call, origin = scrape_item)
         await self.handle_post_content(scrape_item, post, user, user_str)
 
     @error_handling_wrapper
     async def handle_post_content(self, scrape_item: ScrapeItem, post: Dict, user: str, user_str: str) -> None:
         """Handles the content of a post"""
-        date = post["published"].replace("T", " ")
+        date = post.get("published") or post.get("added")
+        date = date.replace("T", " ")
         post_id = post["id"]
         post_title = post.get("title", "")
 
@@ -135,11 +137,16 @@ class KemonoCrawler(Crawler):
         await scrape_item.add_to_parent_title(post_title)
         await scrape_item.add_to_parent_title("Loose Files")
 
-        yarl_links = []
+        yarl_links: list[URL] = []
         all_links = [x.group().replace(".md.", ".") for x in
-                    re.finditer(r"(?:http.*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]|</a>|</p>))", content)]
+                    re.finditer(r"(?:http(?!.*\.\.)[^ ]*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]|</|'))", content)]
+        
         for link in all_links:
-            yarl_links.append(URL(link))
+            try:
+                url = URL(link)
+                yarl_links.append(url)
+            except ValueError:
+                pass
 
         for link in yarl_links:
             if "kemono" in link.host:
@@ -170,7 +177,7 @@ class KemonoCrawler(Crawler):
     async def get_user_str_from_post(self, scrape_item: ScrapeItem) -> str:
         """Gets the user string from a scrape item"""
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
         user = soup.select_one("a[class=post__user-name]").text
         return user
 
@@ -178,7 +185,7 @@ class KemonoCrawler(Crawler):
     async def get_user_str_from_profile(self, scrape_item: ScrapeItem) -> str:
         """Gets the user string from a scrape item"""
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
         user = soup.select_one("span[itemprop=name]").text
         return user
 

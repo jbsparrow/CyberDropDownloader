@@ -13,6 +13,7 @@ from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wr
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
+    from bs4 import BeautifulSoup
 
 
 class EHentaiCrawler(Crawler):
@@ -43,7 +44,7 @@ class EHentaiCrawler(Crawler):
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
 
         title = await self.create_title(soup.select_one("h1[id=gn]").get_text(), None, None)
         date = await self.parse_datetime(soup.select_one("td[class=gdt2]").get_text())
@@ -73,7 +74,7 @@ class EHentaiCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
         image = soup.select_one("img[id=img]")
         link = URL(image.get('src'))
         filename, ext = await get_filename_and_ext(link.name)
@@ -94,4 +95,4 @@ class EHentaiCrawler(Crawler):
         self.warnings_set = True
         async with self.request_limiter:
             scrape_item.url = URL(str(scrape_item.url) + "/").update_query("nw=session")
-            await self.client.get_BS4(self.domain, scrape_item.url)
+            await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)

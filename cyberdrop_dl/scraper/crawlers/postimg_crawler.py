@@ -12,6 +12,7 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_an
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
+    from bs4 import BeautifulSoup
 
 
 class PostImgCrawler(Crawler):
@@ -43,7 +44,7 @@ class PostImgCrawler(Crawler):
         for i in itertools.count(1):
             data["page"] = i
             async with self.request_limiter:
-                JSON_Resp = await self.client.post_data(self.domain, self.api_address, data=data)
+                JSON_Resp = await self.client.post_data(self.domain, self.api_address, data=data, origin = scrape_item)
 
             scrape_item.part_of_album = True
             scrape_item.album_id = scrape_item.url.parts[2]
@@ -65,7 +66,7 @@ class PostImgCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
 
         link = URL(soup.select_one("a[id=download]").get('href').replace("?dl=1", ""))
         filename, ext = await get_filename_and_ext(link.name)

@@ -180,6 +180,7 @@ class Manager:
         print_settings['Files']['input_file'] = str(print_settings['Files']['input_file'])
         print_settings['Files']['download_folder'] = str(print_settings['Files']['download_folder'])
         print_settings["Logs"]["log_folder"] = str(print_settings["Logs"]["log_folder"])
+        print_settings["Logs"]["webhook_url"] = bool(print_settings["Logs"]["webhook_url"])
         print_settings['Sorting']['sort_folder'] = str(print_settings['Sorting']['sort_folder'])
         print_settings['Sorting']['scan_folder'] = str(print_settings['Sorting']['scan_folder']) if str(
             print_settings['Sorting']['scan_folder']) else ""

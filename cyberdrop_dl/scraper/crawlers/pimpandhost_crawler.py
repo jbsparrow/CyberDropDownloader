@@ -13,6 +13,7 @@ from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wr
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
+    from bs4 import BeautifulSoup
 
 
 class PimpAndHostCrawler(Crawler):
@@ -37,7 +38,7 @@ class PimpAndHostCrawler(Crawler):
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
 
         scrape_item.album_id = scrape_item.url.parts[2]
         scrape_item.part_of_album = True
@@ -65,7 +66,7 @@ class PimpAndHostCrawler(Crawler):
     async def image(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image"""
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
 
         link = soup.select_one('.main-image-wrapper')
         link = link.get('data-src')
