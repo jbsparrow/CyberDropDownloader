@@ -32,7 +32,7 @@ class ScrapeMapper:
                         "erome": self.erome, "fapello": self.fapello, "f95zone": self.f95zone, "gofile": self.gofile,
                         "hotpic": self.hotpic, "ibb.co": self.imgbb, "imageban": self.imageban, "imgbox": self.imgbox,
                         "imgur": self.imgur, "jpg.church": self.chevereto, "kemono": self.kemono, 
-                        "leakedmodels": self.leakedmodels, "mediafire": self.mediafire, "nudostar.com": self.nudostar, 
+                        "leakedmodels": self.leakedmodels, "mediafire": self.mediafire, "nekohouse": self.nekohouse, "nudostar.com": self.nudostar, 
                         "nudostar.tv": self.nudostartv, "omegascans": self.omegascans, "pimpandhost": self.pimpandhost, 
                         "pixeldrain": self.pixeldrain, "postimg": self.postimg, "realbooru": self.realbooru, 
                         "reddit": self.reddit, "redgifs": self.redgifs, "rule34vault": self.rule34vault, 
