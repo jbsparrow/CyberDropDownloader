@@ -51,7 +51,7 @@ class NekohouseCrawler(Crawler):
                 post_id = scrape_item.url.parts[-1]
                 service = "Unknown"
                 user_str = "Unknown"
-                await self.post(scrape_item, post_id, user, service, user_str)
+                await self.post(scrape_item, post_id, user, service, user_str, unlinked_post=True)
             else:
                 await self.post(scrape_item)
         elif any(x in scrape_item.url.parts for x in self.services):
@@ -91,12 +91,12 @@ class NekohouseCrawler(Crawler):
                     await self.post(new_scrape_item, post_id, user, service, user_str)
 
     @error_handling_wrapper
-    async def post(self, scrape_item: ScrapeItem, post_id: int = None, user: str = None, service: str = None, user_str: str = None) -> None:
+    async def post(self, scrape_item: ScrapeItem, post_id: int = None, user: str = None, service: str = None, user_str: str = None, unlinked_post: bool = False) -> None:
         """Scrapes a post"""
         if any(x is None for x in (post_id, user, service, user_str)):
             service, user, post_id = await self.get_service_user_and_post(scrape_item)
             user_str = await self.get_user_str_from_post(scrape_item)
-        await self.get_post_content(scrape_item, post_id, user, service, user_str)
+        await self.get_post_content(scrape_item, post_id, user, service, user_str, unlinked_post)
 
     @error_handling_wrapper
     async def get_post_content(self, scrape_item: ScrapeItem, post: int, user: str, service: str, user_str: str, unlinked_post: bool = False) -> None:
@@ -105,7 +105,7 @@ class NekohouseCrawler(Crawler):
             return
 
         post_url = scrape_item.url
-        if unlinked_post:
+        if unlinked_post is True:
             async with self.request_limiter:
                 soup: BeautifulSoup = await self.client.get_BS4(self.domain, post_url)
                 data = {
