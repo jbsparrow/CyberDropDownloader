@@ -1,10 +1,11 @@
-from typing import TYPE_CHECKING   
 from http import HTTPStatus
+from typing import TYPE_CHECKING
+
 from yarl import URL
 
 if TYPE_CHECKING:
     from requests import Response
-    
+
 ERROR_CODES = {
     -1: "Internal error",
     1: "Missing parameter",
@@ -45,8 +46,10 @@ ERROR_CODES = {
     36: "Fair Usage Limit"
 }
 
+
 class RealDebridError(BaseException):
     """Base RealDebrid API error"""
+
     def __init__(self, response: 'Response'):
         self.path = URL(response.url).path
         try:
@@ -55,10 +58,10 @@ class RealDebridError(BaseException):
             if self.code == 16:
                 self.code = 7
             self.error = ERROR_CODES.get(self.code, 'Unknown error')
-            
+
         except AttributeError:
             self.code = response.status_code
             self.error = f"{self.code} - {HTTPStatus(self.code).phrase}"
-            
+
         self.msg = f'{self.code}: {self.error} at {self.path}'
         super().__init__(self.msg)
