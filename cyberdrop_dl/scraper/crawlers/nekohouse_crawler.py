@@ -46,7 +46,14 @@ class NekohouseCrawler(Crawler):
             scrape_item.url = link
             await self.handle_direct_link(scrape_item)
         elif "post" in scrape_item.url.parts:
-            await self.post(scrape_item)
+            if "user" not in scrape_item.url.parts:
+                user = "Unknown"
+                post_id = scrape_item.url.parts[-1]
+                service = "Unknown"
+                user_str = "Unknown"
+                await self.post(scrape_item, post_id, user, service, user_str)
+            else:
+                await self.post(scrape_item)
         elif any(x in scrape_item.url.parts for x in self.services):
             await self.profile(scrape_item)
         else:
@@ -84,53 +91,77 @@ class NekohouseCrawler(Crawler):
                     await self.post(new_scrape_item, post_id, user, service, user_str)
 
     @error_handling_wrapper
-    async def post(self, scrape_item: ScrapeItem, post_id, user, service, user_str) -> None:
+    async def post(self, scrape_item: ScrapeItem, post_id: int = None, user: str = None, service: str = None, user_str: str = None) -> None:
         """Scrapes a post"""
+        if any(x is None for x in (post_id, user, service, user_str)):
+            service, user, post_id = await self.get_service_user_and_post(scrape_item)
+            user_str = await self.get_user_str_from_post(scrape_item)
         await self.get_post_content(scrape_item, post_id, user, service, user_str)
 
     @error_handling_wrapper
-    async def get_post_content(self, scrape_item: ScrapeItem, post: int, user: str, service: str, user_str) -> None:
+    async def get_post_content(self, scrape_item: ScrapeItem, post: int, user: str, service: str, user_str: str, unlinked_post: bool = False) -> None:
         """Gets the content of a post and handles collected links"""
         if post == 0:
             return
 
         post_url = scrape_item.url
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, post_url)
-            data = {
-                "id": post,
-                "user": user,
-                "service": service,
-                "title": soup.select_one(self.post_title_selector).text.strip(),
-                "content": soup.select_one(self.post_content_selector).text.strip(),
-                "user_str": user_str,
-                "published": soup.select_one(self.post_timestamp_selector).text.strip(),
-                "file": [],
-                "attachments": []
-            }
-
-            for file in soup.select(self.post_images_selector):
-                attachment = {
-                    "path": file['href'].replace('/data/', 'data/'),
-                    "name": file['href'].split("?f=")[-1] if "?f=" in file['href'] else file['href'].split("/")[-1].split("?")[0]
+        if unlinked_post:
+            async with self.request_limiter:
+                soup: BeautifulSoup = await self.client.get_BS4(self.domain, post_url)
+                data = {
+                    "id": post,
+                    "user": user,
+                    "service": service,
+                    "title": soup.select_one(self.post_title_selector).text.strip(),
+                    "content": soup.select_one(self.post_content_selector).text.strip(),
+                    "user_str": user_str,
+                    "published": soup.select_one(self.post_timestamp_selector).text.strip(),
+                    "file": [],
+                    "attachments": []
                 }
-                data["attachments"].append(attachment)
 
-            for file in soup.select(self.post_videos_selector):
-                attachment = {
-                    "path": file['src'].replace('/data/', 'data/'),
-                    "name": file['src'].split("?f=")[-1] if "?f=" in file['src'] else file['src'].split("/")[-1].split("?")[0]
+                for file in soup.select(self.post_images_selector):
+                    attachment = {
+                        "path": file['href'].replace('/data/', 'data/'),
+                        "name": file['href'].split("?f=")[-1] if "?f=" in file['href'] else file['href'].split("/")[-1].split("?")[0]
+                    }
+                    data["attachments"].append(attachment)
+
+                for file in soup.select(self.post_videos_selector):
+                    attachment = {
+                        "path": file['src'].replace('/data/', 'data/'),
+                        "name": file['src'].split("?f=")[-1] if "?f=" in file['src'] else file['src'].split("/")[-1].split("?")[0]
+                    }
+                    data["attachments"].append(attachment)
+
+                for file in soup.select(self.file_downloads_selector):
+                    attachment = {
+                        "path": file['href'].replace('/data/', 'data/'),
+                        "name": file['href'].split("?f=")[-1] if "?f=" in file['href'] else file['href'].split("/")[-1].split("?")[0]
+                    }
+                    data["file"].append(attachment)
+        else:
+            async with self.request_limiter:
+                soup: BeautifulSoup = await self.client.get_BS4(self.domain, post_url)
+                # Published as current time to avoid errors.
+                data = {
+                    "id": post,
+                    "user": user,
+                    "service": service,
+                    "title": soup.select_one('title').text.strip(),
+                    "content": "Unknown",
+                    "user_str": user_str,
+                    "published": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "file": [],
+                    "attachments": []
                 }
-                data["attachments"].append(attachment)
-
-            for file in soup.select(self.file_downloads_selector):
-                attachment = {
-                    "path": file['href'].replace('/data/', 'data/'),
-                    "name": file['href'].split("?f=")[-1] if "?f=" in file['href'] else file['href'].split("/")[-1].split("?")[0]
-                }
-                data["file"].append(attachment)
-
-        user_str = data["user_str"]
+                
+                for file in soup.select("a[class=post__attachment-link]"):
+                    attachment = {
+                        "path": file['href'].replace('/data/', 'data/'),
+                        "name": file['href'].split("?f=")[-1] if "?f=" in file['href'] else file['href'].split("/")[-1].split("?")[0]
+                    }
+                    data["attachments"].append(attachment)
 
         await self.handle_post_content(scrape_item, data, user, user_str)
 
