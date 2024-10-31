@@ -41,7 +41,7 @@ class ToonilyCrawler(Crawler):
     async def series(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         chapters = soup.select("li[class*=wp-manga-chapter] a")
         for chapter in chapters:
@@ -52,14 +52,15 @@ class ToonilyCrawler(Crawler):
                 chapter_path = self.primary_base_domain / chapter_path[1:]
             else:
                 chapter_path = URL(chapter_path)
-            new_scrape_item = await self.create_scrape_item(scrape_item, chapter_path, "", True , add_parent = scrape_item.url)
+            new_scrape_item = await self.create_scrape_item(scrape_item, chapter_path, "", True,
+                                                            add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def chapter(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         title_parts = soup.select_one("title").get_text().split(" - ")
         series_name = title_parts[0]
