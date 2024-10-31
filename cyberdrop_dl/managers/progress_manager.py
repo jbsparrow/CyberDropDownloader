@@ -109,11 +109,15 @@ class ProgressManager:
         scrape_failures = await self.scrape_stats_progress.return_totals()
         await log_spacer(20,'')
         await log_with_color("Scrape Failures:", "cyan", 20)
+        if not scrape_failures:
+            await log_with_color(f"  None", "green", 20)
         for key, value in scrape_failures.items():
-            await log_with_color(f"  Scrape Failures ({key}): {value}", "red", 20)
+            await log_with_color(f"  ({key}): {value}", "red", 20)
 
         download_failures = await self.download_stats_progress.return_totals()
         await log_spacer(20,'')
         await log_with_color("Download Failures:", "cyan", 20)
+        if not download_failures:
+            await log_with_color(f"  None", "green", 20)
         for key, value in download_failures.items():
-            await log_with_color(f"  Download Failures ({key}): {value}", "red", 20)
+            await log_with_color(f"  ({key}): {value}", "red", 20)
