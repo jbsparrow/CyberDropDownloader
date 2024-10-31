@@ -72,27 +72,29 @@ class NekohouseCrawler(Crawler):
                     break
                 for post in posts:
                     # Create a new scrape item for each post
-                    post_id = post.get("href", "").split("/")[-1]
-                    if post_id == "":
+                    post_url = post.get("href", "")
+                    if post_url[0] == "/":
+                        post_url = post_url[1:]
+                    post_id = post_url.split("/")[-1]
+                    if post_url == "":
                         continue
-                    post_url = self.primary_base_domain / service / "user" / user / "post" / post_id
+                    post_link = self.primary_base_domain / post_url
                     # Call on self.post to scrape the post by creating a new scrape item
-                    new_scrape_item = await self.create_scrape_item(scrape_item, post_url, "", add_parent=self.primary_base_domain / service / "user" / user)
-                    await self.post(new_scrape_item)
+                    new_scrape_item = await self.create_scrape_item(scrape_item, post_link, "", add_parent=self.primary_base_domain / service / "user" / user)
+                    await self.post(new_scrape_item, post_id, user, service, user_str)
 
     @error_handling_wrapper
-    async def post(self, scrape_item: ScrapeItem) -> None:
+    async def post(self, scrape_item: ScrapeItem, post_id, user, service, user_str) -> None:
         """Scrapes a post"""
-        service, user, post_id = await self.get_service_user_and_post(scrape_item)
-        await self.get_post_content(scrape_item, post_id, user, service)
+        await self.get_post_content(scrape_item, post_id, user, service, user_str)
 
     @error_handling_wrapper
-    async def get_post_content(self, scrape_item: ScrapeItem, post: int, user: str, service: str) -> None:
+    async def get_post_content(self, scrape_item: ScrapeItem, post: int, user: str, service: str, user_str) -> None:
         """Gets the content of a post and handles collected links"""
         if post == 0:
             return
 
-        post_url = self.primary_base_domain / service / "user" / user / "post" / str(post)
+        post_url = scrape_item.url
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_BS4(self.domain, post_url)
             data = {
@@ -101,7 +103,7 @@ class NekohouseCrawler(Crawler):
                 "service": service,
                 "title": soup.select_one(self.post_title_selector).text.strip(),
                 "content": soup.select_one(self.post_content_selector).text.strip(),
-                "user_str": soup.select_one(self.post_author_username_selector).text.strip(),
+                "user_str": user_str,
                 "published": soup.select_one(self.post_timestamp_selector).text.strip(),
                 "file": [],
                 "attachments": []
