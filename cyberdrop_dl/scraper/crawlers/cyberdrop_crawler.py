@@ -41,12 +41,12 @@ class CyberdropCrawler(Crawler):
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         scrape_item.album_id = scrape_item.url.parts[2]
         scrape_item.part_of_album = True
 
-        title = await self.create_title(soup.select_one("h1[id=title]").text, scrape_item.album_id , None)
+        title = await self.create_title(soup.select_one("h1[id=title]").text, scrape_item.album_id, None)
         date = await self.parse_datetime(soup.select("p[class=title]")[-1].text)
 
         links = soup.select("div[class*=image-container] a[class=image]")
@@ -56,7 +56,8 @@ class CyberdropCrawler(Crawler):
                 link = self.primary_base_url.with_path(link)
             link = URL(link)
 
-            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, None, date, add_parent = scrape_item.url)
+            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, None, date,
+                                                            add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -67,13 +68,15 @@ class CyberdropCrawler(Crawler):
 
         async with self.request_limiter:
             JSON_Resp = await self.client.get_json(self.domain,
-                                                self.api_url / "file" / "info" / scrape_item.url.path[3:], origin = scrape_item)
+                                                   self.api_url / "file" / "info" / scrape_item.url.path[3:],
+                                                   origin=scrape_item)
 
         filename, ext = await get_filename_and_ext(JSON_Resp["name"])
 
         async with self.request_limiter:
             JSON_Resp = await self.client.get_json(self.domain,
-                                                self.api_url / "file" / "auth" / scrape_item.url.path[3:], origin = scrape_item)
+                                                   self.api_url / "file" / "auth" / scrape_item.url.path[3:],
+                                                   origin=scrape_item)
 
         link = URL(JSON_Resp['url'])
         await self.handle_file(link, scrape_item, filename, ext)
