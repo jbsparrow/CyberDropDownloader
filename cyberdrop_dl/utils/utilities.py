@@ -136,8 +136,10 @@ async def get_log_output_text() -> str:
     global LOG_OUTPUT_TEXT
     return LOG_OUTPUT_TEXT
 
-async def set_log_output_text( text = str) -> str:
+async def set_log_output_text( text = Text | str) -> str:
     global LOG_OUTPUT_TEXT
+    if isinstance(text, str):
+        text = Text(text)
     LOG_OUTPUT_TEXT = text
 
 async def log_spacer(level: int, char: str = "-") -> None:
