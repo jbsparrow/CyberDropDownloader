@@ -53,7 +53,8 @@ class CoomerCrawler(Crawler):
         api_call = self.api_url / service / "user" / user
         while True:
             async with self.request_limiter:
-                JSON_Resp = await self.client.get_json(self.domain, api_call.with_query({"o": offset}), origin = scrape_item)
+                JSON_Resp = await self.client.get_json(self.domain, api_call.with_query({"o": offset}),
+                                                       origin=scrape_item)
                 offset += 50
                 if not JSON_Resp:
                     break
@@ -68,7 +69,7 @@ class CoomerCrawler(Crawler):
         user_str = await self.get_user_str_from_post(scrape_item)
         api_call = self.api_url / service / "user" / user / "post" / post_id
         async with self.request_limiter:
-            post = await self.client.get_json(self.domain, api_call, origin = scrape_item)
+            post = await self.client.get_json(self.domain, api_call, origin=scrape_item)
         await self.handle_post_content(scrape_item, post, user, user_str)
 
     @error_handling_wrapper
@@ -91,7 +92,8 @@ class CoomerCrawler(Crawler):
         async def handle_file(file_obj):
             link = self.primary_base_domain / ("data" + file_obj['path'])
             link = link.with_query({"f": file_obj['name']})
-            await self.create_new_scrape_item(link, scrape_item, user_str, post_title, post_id, date, add_parent = scrape_item.url.joinpath("post", post_id))
+            await self.create_new_scrape_item(link, scrape_item, user_str, post_title, post_id, date,
+                                              add_parent=scrape_item.url.joinpath("post", post_id))
 
         if post['file']:
             await handle_file(post['file'])
@@ -118,14 +120,14 @@ class CoomerCrawler(Crawler):
     async def get_user_str_from_post(self, scrape_item: ScrapeItem) -> str:
         """Gets the user string from a scrape item"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
         user = soup.select_one("a[class=post__user-name]").text
         return user
 
     async def get_user_str_from_profile(self, scrape_item: ScrapeItem) -> str:
         """Gets the user string from a scrape item"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
         user = soup.select_one("span[itemprop=name]").text
         return user
 
@@ -143,7 +145,7 @@ class CoomerCrawler(Crawler):
         return service, user, post
 
     async def create_new_scrape_item(self, link: URL, old_scrape_item: ScrapeItem, user: str, title: str, post_id: str,
-                                    date: str, add_parent: Optional[URL] = None) -> None:
+                                     date: str, add_parent: Optional[URL] = None) -> None:
         """Creates a new scrape item with the same parent as the old scrape item"""
         post_title = None
         if self.manager.config_manager.settings_data['Download_Options']['separate_posts']:
@@ -153,6 +155,6 @@ class CoomerCrawler(Crawler):
 
         new_title = await self.create_title(user, None, None)
         new_scrape_item = await self.create_scrape_item(old_scrape_item, link, new_title, True, None,
-                                                        await self.parse_datetime(date), add_parent = add_parent)
+                                                        await self.parse_datetime(date), add_parent=add_parent)
         await new_scrape_item.add_to_parent_title(post_title)
         self.manager.task_group.create_task(self.run(new_scrape_item))
