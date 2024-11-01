@@ -65,7 +65,7 @@ class ScraperClient:
 
     @limiter
     async def flaresolverr(self, domain: str, url: URL, client_session: ClientSession,
-                           origin: Optional[ScrapeItem | URL] = None) -> str:
+                           origin: Optional[ScrapeItem | URL] = None, with_response_url: bool = False) -> str:
         """Returns the resolved URL from the given URL"""
         if not self.client_manager.flaresolverr:
             raise DDOSGuardFailure(message="FlareSolverr is not configured", origin=origin)
@@ -81,40 +81,41 @@ class ScraperClient:
             if status != "ok":
                 raise DDOSGuardFailure(message="Failed to resolve URL with flaresolverr", origin=origin)
 
-            return json_obj.get("solution").get("response")
+            response = json_obj.get("solution").get("response")
+            response_url = json_obj.get("solution").get("url")
+            if with_response_url:
+                return response , URL(response_url)
+            return response
+
 
     @limiter
     async def get_BS4(self, domain: str, url: URL, client_session: ClientSession,
-                      origin: Optional[ScrapeItem | URL] = None) -> BeautifulSoup:
+                      origin: Optional[ScrapeItem | URL] = None, with_response_url: bool = False) -> BeautifulSoup:
         """Returns a BeautifulSoup object from the given URL"""
         async with client_session.get(url, headers=self._headers, ssl=self.client_manager.ssl_context,
                                       proxy=self.client_manager.proxy) as response:
             try:
                 await self.client_manager.check_http_status(response, origin=origin)
             except DDOSGuardFailure:
-                response_text = await self.flaresolverr(domain, url, origin=origin)
-                return BeautifulSoup(response_text, 'html.parser')
+                response = await self.flaresolverr(domain, url, origin=origin, with_response_url=with_response_url)
+                if with_response_url:
+                    return BeautifulSoup(response[0], 'html.parser'), response[1]
+                return BeautifulSoup(response, 'html.parser')
+            
             content_type = response.headers.get('Content-Type')
             assert content_type is not None
             if not any(s in content_type.lower() for s in ("html", "text")):
                 raise InvalidContentTypeFailure(message=f"Received {content_type}, was expecting text", origin=origin)
             text = await response.text()
+            if with_response_url:
+                return BeautifulSoup(text, 'html.parser'), URL(response.url)
             return BeautifulSoup(text, 'html.parser')
 
-    @limiter
-    async def get_BS4_and_return_URL(self, domain: str, url: URL, client_session: ClientSession,
+    async def get_BS4_and_return_URL(self, domain: str, url: URL,
                                      origin: Optional[ScrapeItem | URL] = None) -> tuple[
         BeautifulSoup, URL]:
         """Returns a BeautifulSoup object and response URL from the given URL"""
-        async with client_session.get(url, headers=self._headers, ssl=self.client_manager.ssl_context,
-                                      proxy=self.client_manager.proxy) as response:
-            await self.client_manager.check_http_status(response, origin=origin)
-            content_type = response.headers.get('Content-Type')
-            assert content_type is not None
-            if not any(s in content_type.lower() for s in ("html", "text")):
-                raise InvalidContentTypeFailure(message=f"Received {content_type}, was expecting text", origin=origin)
-            text = await response.text()
-            return BeautifulSoup(text, 'html.parser'), URL(response.url)
+        return await self.get_BS4(domain, url, origin = origin, with_response_url = True)
 
     @limiter
     async def get_json(self, domain: str, url: URL, params: Optional[Dict] = None, headers_inc: Optional[Dict] = None,
