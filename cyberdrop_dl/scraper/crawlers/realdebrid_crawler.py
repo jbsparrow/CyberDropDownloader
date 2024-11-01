@@ -6,7 +6,7 @@ from aiolimiter import AsyncLimiter
 from multidict import MultiDict
 from yarl import URL
 
-from cyberdrop_dl.managers.realdebrid_manager import RATE_LIMIT
+from cyberdrop_dl.managers.real_debrid.api import RATE_LIMIT
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
 from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wrapper, log

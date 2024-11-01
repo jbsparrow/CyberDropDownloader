@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import time
 from dataclasses import field
+from datetime import timedelta
 from typing import TYPE_CHECKING
 
 from rich.layout import Layout
@@ -16,7 +17,6 @@ from cyberdrop_dl.utils.utilities import log_with_color, log, log_spacer, parse_
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
-    from datetime import timedelta
 
 
 class ProgressManager:
