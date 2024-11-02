@@ -317,7 +317,8 @@ class ScrapeMapper:
         all_links = [x.group().replace(".md.", ".") for x in re.finditer(
             r"(?:http.*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]))", line)]
         for link in all_links:
-            yarl_links.append(URL(link))
+            encoded = "%" in link
+            yarl_links.append(URL(link, encoded = encoded))
         return yarl_links
 
     async def load_links(self) -> None:
