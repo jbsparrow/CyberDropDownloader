@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Tuple, Dict, Optional
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
+from cyberdrop_dl.clients.errors import ScrapeFailure
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
 from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wrapper
@@ -39,10 +40,31 @@ class CoomerCrawler(Crawler):
             await self.post(scrape_item)
         elif "onlyfans" in scrape_item.url.parts or "fansly" in scrape_item.url.parts:
             await self.profile(scrape_item)
+        elif "favorites" in scrape_item.url.parts:
+            await self.favorites(scrape_item)
         else:
             await self.handle_direct_link(scrape_item)
 
         await self.scraping_progress.remove_task(task_id)
+
+    @error_handling_wrapper
+    async def favorites(self, scrape_item: ScrapeItem) -> None:
+        """Scrapes the users' favourites and creates scrape items for each artist found"""
+        if not self.manager.config_manager.authentication_data['Coomer']['session']:
+            raise ScrapeFailure(401, message = "No session cookie found in the config file, cannot scrape favorites", origin = scrape_item)
+        async with self.request_limiter:
+            # Use the session cookie to get the user's favourites
+            self.client.client_manager.cookies.update_cookies({"session": self.manager.config_manager.authentication_data['Coomer']['session']}, response_url=self.primary_base_domain)
+            favourites_api_url = (self.api_url / "account/favorites").with_query({"type": "artist"})
+            JSON_Resp = await self.client.get_json(self.domain, favourites_api_url, origin=scrape_item)
+            self.client.client_manager.cookies.update_cookies({"session": ""}, response_url=self.primary_base_domain)
+            for user in JSON_Resp:
+                id = user['id']
+                name = user['name']
+                service = user['service']
+                url = self.primary_base_domain / service / "user" / id
+                new_scrape_item = await self.create_scrape_item(scrape_item, url, None, True, None, None)
+                self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
@@ -54,7 +76,7 @@ class CoomerCrawler(Crawler):
         while True:
             async with self.request_limiter:
                 JSON_Resp = await self.client.get_json(self.domain, api_call.with_query({"o": offset}),
-                                                       origin=scrape_item)
+                                                    origin=scrape_item)
                 offset += 50
                 if not JSON_Resp:
                     break
@@ -93,7 +115,7 @@ class CoomerCrawler(Crawler):
             link = self.primary_base_domain / ("data" + file_obj['path'])
             link = link.with_query({"f": file_obj['name']})
             await self.create_new_scrape_item(link, scrape_item, user_str, post_title, post_id, date,
-                                              add_parent=scrape_item.url.joinpath("post", post_id))
+                                            add_parent=scrape_item.url.joinpath("post", post_id))
 
         if post['file']:
             await handle_file(post['file'])
