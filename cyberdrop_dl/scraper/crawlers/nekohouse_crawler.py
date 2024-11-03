@@ -8,7 +8,7 @@ from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup, Tag
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import NoExtensionFailure
+from cyberdrop_dl.clients.errors import NoExtensionFailure, ScrapeFailure
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
 from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wrapper, log
@@ -112,13 +112,26 @@ class NekohouseCrawler(Crawler):
                     "id": post,
                     "user": user,
                     "service": service,
-                    "title": soup.select_one(self.post_title_selector).text.strip(),
-                    "content": soup.select_one(self.post_content_selector).text.strip(),
+                    "title": "",
+                    "content": "",
                     "user_str": user_str,
-                    "published": soup.select_one(self.post_timestamp_selector).text.strip(),
+                    "published": "",
                     "file": [],
                     "attachments": []
                 }
+                
+                try:
+                    data["title"] = soup.select_one(self.post_title_selector).text.strip()
+                except AttributeError:
+                    raise ScrapeFailure("Failed to scrape post title.")
+                try:
+                    data["content"] = soup.select_one(self.post_content_selector).text.strip()
+                except AttributeError:
+                    raise ScrapeFailure("Failed to scrape post content.")
+                try:
+                    data["published"] = soup.select_one(self.post_timestamp_selector).text.strip()
+                except AttributeError:
+                    raise ScrapeFailure("Failed to scrape post timestamp.")
 
                 for file in soup.select(self.post_images_selector):
                     attachment = {
@@ -148,13 +161,18 @@ class NekohouseCrawler(Crawler):
                     "id": post,
                     "user": user,
                     "service": service,
-                    "title": soup.select_one('title').text.strip(),
+                    "title": "",
                     "content": "Unknown",
                     "user_str": user_str,
                     "published": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     "file": [],
                     "attachments": []
                 }
+                
+                try:
+                    data["title"] = soup.select_one('title').text.strip()
+                except AttributeError:
+                    raise ScrapeFailure("Failed to scrape post title.")
                 
                 for file in soup.select("a[class=post__attachment-link]"):
                     attachment = {
