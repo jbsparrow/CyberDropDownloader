@@ -37,6 +37,36 @@ apprise = "^1.9.0"
 [tool.poetry.scripts]
 cyberdrop-dl = "cyberdrop_dl.main:main"
 
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^4.0.1"
+ruff = "^0.7.2"
+
+[tool.ruff]
+line-length = 120
+fix = true
+
+[tool.ruff.lint]
+select = [
+    "E",  # pycodestyle errors
+    "W",  # pycodestyle warnings
+    "F",  # pyflakes
+    "I",  # isort
+    "B",  # flake8-bugbear
+    "C4", # flake8-comprehensions
+    "UP", # pyupgrade
+    "N",  # PEP8 naming conventions
+]
+
+ignore = [
+    "N806", # Uppercase variables in functions
+    "E501", # Suppress line-too-long, let formatter decide
+]
+
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
