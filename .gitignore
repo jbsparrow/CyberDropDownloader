@@ -17,3 +17,6 @@ venv
 
 # Compiled package
 /dist/
+
+# MacOS system files
+**.DS_Store
