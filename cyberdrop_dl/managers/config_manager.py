@@ -7,9 +7,9 @@ from typing import Dict, List, TYPE_CHECKING
 
 import yaml
 
+from cyberdrop_dl.clients.errors import InvalidYamlConfig
 from cyberdrop_dl.managers.log_manager import LogManager
 from cyberdrop_dl.utils.args.config_definitions import authentication_settings, settings, global_settings
-from cyberdrop_dl.clients.errors import InvalidYamlConfig
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -136,7 +136,7 @@ class ConfigManager:
         self.settings_data['Logs']['webhook_url'] = str(self.settings_data['Logs']['webhook_url'])
         self.settings_data['Sorting']['sort_folder'] = Path(self.settings_data['Sorting']['sort_folder'])
         self.settings_data['Sorting']['scan_folder'] = Path(self.settings_data['Sorting']['scan_folder']) if \
-        self.settings_data['Sorting']['scan_folder'] else None
+            self.settings_data['Sorting']['scan_folder'] else None
 
         # change to ints
         self.settings_data['File_Size_Limits']['maximum_image_size'] = int(
@@ -234,7 +234,7 @@ class ConfigManager:
         settings_data['Logs']['webhook_url'] = str(settings_data['Logs']['webhook_url'])
         settings_data['Sorting']['sort_folder'] = str(settings_data['Sorting']['sort_folder'])
         settings_data['Sorting']['scan_folder'] = str(settings_data['Sorting']['scan_folder']) if \
-        settings_data['Sorting']['scan_folder'] else None
+            settings_data['Sorting']['scan_folder'] else None
         _save_yaml(new_settings, settings_data)
 
     def write_updated_authentication_config(self) -> None:

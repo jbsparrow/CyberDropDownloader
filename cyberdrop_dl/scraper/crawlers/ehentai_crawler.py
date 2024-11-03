@@ -44,7 +44,7 @@ class EHentaiCrawler(Crawler):
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         title = await self.create_title(soup.select_one("h1[id=gn]").get_text(), None, None)
         date = await self.parse_datetime(soup.select_one("td[class=gdt2]").get_text())
@@ -52,7 +52,8 @@ class EHentaiCrawler(Crawler):
         images = soup.select("div[class=gdtm] div a")
         for image in images:
             link = URL(image.get('href'))
-            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, None, date, add_parent = scrape_item.url)
+            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, None, date,
+                                                            add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
         next_page_opts = soup.select('td[onclick="document.location=this.firstChild.href"]')
@@ -74,7 +75,7 @@ class EHentaiCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
         image = soup.select_one("img[id=img]")
         link = URL(image.get('src'))
         filename, ext = await get_filename_and_ext(link.name)
@@ -95,4 +96,4 @@ class EHentaiCrawler(Crawler):
         self.warnings_set = True
         async with self.request_limiter:
             scrape_item.url = URL(str(scrape_item.url) + "/").update_query("nw=session")
-            await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
+            await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)

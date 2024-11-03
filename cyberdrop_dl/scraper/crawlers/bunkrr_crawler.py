@@ -9,16 +9,18 @@ from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import NoExtensionFailure
+from cyberdrop_dl.clients.errors import ScrapeFailure
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
-from cyberdrop_dl.clients.errors import ScrapeFailure
 from cyberdrop_dl.utils.utilities import FILE_FORMATS, get_filename_and_ext, error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
     from bs4 import BeautifulSoup, Tag
 
-CDN_POSSIBILITIES = re.compile(r"^(?:(?:(?:media-files|cdn|c|pizza|cdn-burger|cdn-nugget|burger|taquito|pizza|fries|meatballs|milkshake|kebab|nachos|ramen|wiener)[0-9]{0,2})|(?:(?:big-taco-|cdn-pizza|cdn-meatballs|cdn-milkshake|i.kebab|i.fries|i-nugget|i-milkshake|i-nachos|i-ramen|i-wiener)[0-9]{0,2}(?:redir)?))\.bunkr?\.[a-z]{2,3}$")
+CDN_POSSIBILITIES = re.compile(
+    r"^(?:(?:(?:media-files|cdn|c|pizza|cdn-burger|cdn-nugget|burger|taquito|pizza|fries|meatballs|milkshake|kebab|nachos|ramen|wiener)[0-9]{0,2})|(?:(?:big-taco-|cdn-pizza|cdn-meatballs|cdn-milkshake|i.kebab|i.fries|i-nugget|i-milkshake|i-nachos|i-ramen|i-wiener)[0-9]{0,2}(?:redir)?))\.bunkr?\.[a-z]{2,3}$")
+
 
 class BunkrrCrawler(Crawler):
     def __init__(self, manager: Manager):
@@ -55,7 +57,7 @@ class BunkrrCrawler(Crawler):
         results = await self.get_album_results(album_id)
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
         title = soup.select_one('title').text.rsplit(" | Bunkr")[0].strip()
 
         title = await self.create_title(title, scrape_item.url.parts[2], None)
@@ -88,7 +90,8 @@ class BunkrrCrawler(Crawler):
                 if "no-image" in src.name:
                     raise FileNotFoundError("No image found, reverting to parent")
 
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, "", True, album_id, date, add_parent = scrape_item.url)
+                new_scrape_item = await self.create_scrape_item(scrape_item, link, "", True, album_id, date,
+                                                                add_parent=scrape_item.url)
 
                 filename, ext = await get_filename_and_ext(src.name)
                 if not await self.check_album_results(src, results):
@@ -106,12 +109,12 @@ class BunkrrCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         # try video
         link_container = soup.select_one('video > source')
         src_selector = "src"
-        
+
         # try image
         if not link_container:
             link_container = soup.select_one("img.max-h-full.w-auto.object-cover.relative")
@@ -120,12 +123,12 @@ class BunkrrCrawler(Crawler):
         if not link_container:
             link_container = soup.select_one("a.btn.ic-download-01")
             src_selector = "href"
-    
+
         link = link_container.get(src_selector) if link_container else None
 
         if not link:
             raise ScrapeFailure(404, f"Could not find source for: {scrape_item.url}", origin=scrape_item)
-        
+
         link = URL(link)
 
         try:
@@ -157,13 +160,13 @@ class BunkrrCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def is_cdn(self, url:URL) -> bool:
+    async def is_cdn(self, url: URL) -> bool:
         """Checks if a given URL is from a CDN"""
         return bool(re.match(CDN_POSSIBILITIES, url.host))
 
     async def get_stream_link(self, url: URL) -> URL:
         """Gets the stream link for a given url"""
-        
+
         if not await self.is_cdn(url):
             return url
 

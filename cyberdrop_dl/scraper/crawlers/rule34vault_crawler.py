@@ -44,7 +44,7 @@ class Rule34VaultCrawler(Crawler):
     async def tag(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         title = await self.create_title(scrape_item.url.parts[1], None, None)
         scrape_item.part_of_album = True
@@ -58,7 +58,7 @@ class Rule34VaultCrawler(Crawler):
                 link = f"{self.primary_base_url}{link}"
             link = URL(link)
             new_scrape_item = await self.create_scrape_item(
-                scrape_item, link, title, True,add_parent = scrape_item.url)
+                scrape_item, link, title, True, add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
         if not content:
             return
@@ -68,7 +68,7 @@ class Rule34VaultCrawler(Crawler):
                 scrape_item.url.parts[1].split("page=")[-1].split("&")[0])
             next_page = scrape_item.url.with_path(
                 f"/{scrape_item.url.parts[1]}".replace(f"page={page}",
-                                                    f"page={page + 1}"),
+                                                       f"page={page + 1}"),
                 encoded=True,
             )
         else:
@@ -82,12 +82,12 @@ class Rule34VaultCrawler(Crawler):
     async def playlist(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a playlist"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         title_str = soup.select_one("div[class*=title]").text
         scrape_item.part_of_album = True
         scrape_item.album_id = scrape_item.url.parts[-1]
-        title = await self.create_title(title_str, scrape_item.album_id , None)
+        title = await self.create_title(title_str, scrape_item.album_id, None)
 
         content_block = soup.select_one(
             'div[class="box-grid ng-star-inserted"]')
@@ -98,7 +98,7 @@ class Rule34VaultCrawler(Crawler):
                 link = f"{self.primary_base_url}{link}"
             link = URL(link)
             new_scrape_item = await self.create_scrape_item(
-                scrape_item, link, title, True,add_parent = scrape_item.url)
+                scrape_item, link, title, True, add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
         if not content:
             return
@@ -116,7 +116,7 @@ class Rule34VaultCrawler(Crawler):
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         date = await self.parse_datetime(
             soup.select_one(

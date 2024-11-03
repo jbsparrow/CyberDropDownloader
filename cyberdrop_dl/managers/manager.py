@@ -11,12 +11,12 @@ from cyberdrop_dl.managers.config_manager import ConfigManager
 from cyberdrop_dl.managers.console_manager import ConsoleManager
 from cyberdrop_dl.managers.db_manager import DBManager
 from cyberdrop_dl.managers.download_manager import DownloadManager
-from cyberdrop_dl.managers.realdebrid_manager import RealDebridManager
 from cyberdrop_dl.managers.hash_manager import HashManager
 from cyberdrop_dl.managers.live_manager import LiveManager
 from cyberdrop_dl.managers.log_manager import LogManager
 from cyberdrop_dl.managers.path_manager import PathManager
 from cyberdrop_dl.managers.progress_manager import ProgressManager
+from cyberdrop_dl.managers.realdebrid_manager import RealDebridManager
 from cyberdrop_dl.utils.args import config_definitions
 from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
 from cyberdrop_dl.utils.transfer.first_time_setup import TransitionManager
@@ -143,7 +143,7 @@ class Manager:
 
     async def args_consolidation(self) -> None:
         """Consolidates runtime arguments with config values"""
-        cli_settings_groups = ["Download_Options","File_Size_Limits","Ignore_Options","Runtime_Options"]
+        cli_settings_groups = ["Download_Options", "File_Size_Limits", "Ignore_Options", "Runtime_Options"]
         for arg in self.args_manager.parsed_args:
             for cli_settings_group in cli_settings_groups:
                 if arg in config_definitions.settings[cli_settings_group]:
@@ -153,7 +153,8 @@ class Manager:
                         self.config_manager.settings_data[cli_settings_group][arg] += self.args_manager.parsed_args[arg]
                     else:
                         if self.args_manager.parsed_args[arg] is not None:
-                            self.config_manager.settings_data[cli_settings_group][arg] = self.args_manager.parsed_args[arg]
+                            self.config_manager.settings_data[cli_settings_group][arg] = self.args_manager.parsed_args[
+                                arg]
 
     async def args_logging(self) -> None:
         """Logs the runtime arguments"""
@@ -162,11 +163,12 @@ class Manager:
 
         auth_data_forums = self.config_manager.authentication_data['Forums']
         auth_data_others = self.config_manager.authentication_data.copy()
-        auth_data_others.pop('Forums',None)
+        auth_data_others.pop('Forums', None)
 
         for forum in SupportedDomains.supported_forums_map.values():
             forum_xf_cookies_provided[forum] = bool(auth_data_forums[f"{forum}_xf_user_cookie"])
-            forum_credentials_provided[forum] =  bool(auth_data_forums[f"{forum}_username"] and auth_data_forums[f"{forum}_password"])
+            forum_credentials_provided[forum] = bool(
+                auth_data_forums[f"{forum}_username"] and auth_data_forums[f"{forum}_password"])
 
         auth_provided = {
             "Forums Credentials": forum_credentials_provided,
@@ -210,4 +212,3 @@ class Manager:
         self.console_manager: ConsoleManager = field(init=False)
         self.console_manager: CacheManager = field(init=False)
         self.hash_manager: HashManager = field(init=False)
-

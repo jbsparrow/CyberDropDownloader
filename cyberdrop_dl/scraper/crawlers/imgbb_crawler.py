@@ -45,12 +45,12 @@ class ImgBBCrawler(Crawler):
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url / "sub", origin = scrape_item)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url / "sub", origin=scrape_item)
 
         scrape_item.album_id = scrape_item.url.parts[2]
         scrape_item.part_of_album = True
 
-        title = await self.create_title(soup.select_one("a[data-text=album-name]").get_text(), scrape_item.album_id ,
+        title = await self.create_title(soup.select_one("a[data-text=album-name]").get_text(), scrape_item.album_id,
                                         None)
         albums = soup.select("a[class='image-container --media']")
         for album in albums:
@@ -59,7 +59,7 @@ class ImgBBCrawler(Crawler):
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url / "sub", origin = scrape_item)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url / "sub", origin=scrape_item)
         link_next = URL(soup.select_one("a[id=list-most-recent-link]").get("href"))
 
         while True:
@@ -68,7 +68,8 @@ class ImgBBCrawler(Crawler):
             links = soup.select("a[class*=image-container]")
             for link in links:
                 link = URL(link.get('href'))
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent = scrape_item.url)
+                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True,
+                                                                add_parent=scrape_item.url)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
             link_next = soup.select_one('a[data-pagination=next]')
@@ -88,7 +89,7 @@ class ImgBBCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin= scrape_item)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         link = URL(soup.select_one("div[id=image-viewer-container] img").get('src'))
         date = soup.select_one("p[class*=description-meta] span").get("title")

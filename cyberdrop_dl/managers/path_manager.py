@@ -1,8 +1,8 @@
 import os
 from dataclasses import field
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
-from datetime import datetime
 
 from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem
 
@@ -81,7 +81,7 @@ class PathManager:
         log_options_map = {
             'main_log_filename': 'main_log',
             'last_forum_post_filename': 'last_post_log',
-            'unsupported_urls_filename':  'unsupported_urls_log',
+            'unsupported_urls_filename': 'unsupported_urls_log',
             'download_error_urls_filename': 'download_error_log',
             'scrape_error_urls_filename': 'scrape_error_log'
         }
