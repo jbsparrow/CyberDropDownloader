@@ -44,7 +44,7 @@ class CoomerCrawler(Crawler):
             if self.manager.config_manager.authentication_data['Coomer']['session']:
                 await self.favorites(scrape_item)
             else:
-                raise ScrapeFailure("No session cookie found in the config file, cannot scrape favorites.")
+                raise ScrapeFailure(401, message = "No session cookie found in the config file, cannot scrape favorites", origin = scrape_item)
         else:
             await self.handle_direct_link(scrape_item)
 
