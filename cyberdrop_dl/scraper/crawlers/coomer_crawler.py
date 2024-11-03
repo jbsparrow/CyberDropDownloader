@@ -41,10 +41,7 @@ class CoomerCrawler(Crawler):
         elif "onlyfans" in scrape_item.url.parts or "fansly" in scrape_item.url.parts:
             await self.profile(scrape_item)
         elif "favorites" in scrape_item.url.parts:
-            if self.manager.config_manager.authentication_data['Coomer']['session']:
-                await self.favorites(scrape_item)
-            else:
-                raise ScrapeFailure(401, message = "No session cookie found in the config file, cannot scrape favorites", origin = scrape_item)
+            await self.favorites(scrape_item)
         else:
             await self.handle_direct_link(scrape_item)
 
@@ -53,6 +50,8 @@ class CoomerCrawler(Crawler):
     @error_handling_wrapper
     async def favorites(self, scrape_item: ScrapeItem) -> None:
         """Scrapes the users' favourites and creates scrape items for each artist found"""
+        if not self.manager.config_manager.authentication_data['Coomer']['session']:
+            raise ScrapeFailure(401, message = "No session cookie found in the config file, cannot scrape favorites", origin = scrape_item)
         async with self.request_limiter:
             # Use the session cookie to get the user's favourites
             self.client.client_manager.cookies.update_cookies({"session": self.manager.config_manager.authentication_data['Coomer']['session']}, response_url=self.primary_base_domain)
@@ -116,7 +115,7 @@ class CoomerCrawler(Crawler):
             link = self.primary_base_domain / ("data" + file_obj['path'])
             link = link.with_query({"f": file_obj['name']})
             await self.create_new_scrape_item(link, scrape_item, user_str, post_title, post_id, date,
-                                              add_parent=scrape_item.url.joinpath("post", post_id))
+                                            add_parent=scrape_item.url.joinpath("post", post_id))
 
         if post['file']:
             await handle_file(post['file'])
