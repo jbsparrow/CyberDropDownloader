@@ -83,13 +83,6 @@ class EHentaiCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def parse_datetime(self, date: str) -> int:
-        """Parses a datetime string into a unix timestamp"""
-        if date.count(":") == 1:
-            date = date + ":00"
-        date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
-        return calendar.timegm(date.timetuple())
-
     @error_handling_wrapper
     async def set_no_warnings(self, scrape_item) -> None:
         """Sets the no warnings cookie"""
@@ -97,3 +90,11 @@ class EHentaiCrawler(Crawler):
         async with self.request_limiter:
             scrape_item.url = URL(str(scrape_item.url) + "/").update_query("nw=session")
             await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+
+    @staticmethod
+    async def parse_datetime(date: str) -> int:
+        """Parses a datetime string into a unix timestamp"""
+        if date.count(":") == 1:
+            date = date + ":00"
+        date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+        return calendar.timegm(date.timetuple())
