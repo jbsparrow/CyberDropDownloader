@@ -23,7 +23,7 @@ class KemonoCrawler(Crawler):
         super().__init__(manager, "kemono", "Kemono")
         self.primary_base_domain = URL("https://kemono.su")
         self.api_url = URL("https://kemono.su/api/v1")
-        self.services = ['patreon', 'fanbox', 'fantia', 'afdian', 'boosty', 'dlsite', 'gumroad', 'subscribestar']
+        self.services = ['afdian', 'boosty', 'dlsite', 'fanbox', 'fantia', 'gumroad', 'patreon', 'subscribestar']
         self.request_limiter = AsyncLimiter(10, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

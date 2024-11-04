@@ -31,8 +31,9 @@ class ScrapeMapper:
                         "cyberdrop": self.cyberdrop, "cyberfile": self.cyberfile, "e-hentai": self.ehentai,
                         "erome": self.erome, "fapello": self.fapello, "f95zone": self.f95zone, "gofile": self.gofile,
                         "hotpic": self.hotpic, "ibb.co": self.imgbb, "imageban": self.imageban, "imgbox": self.imgbox,
+
                         "imgur": self.imgur, "jpg.church": self.chevereto, "kemono": self.kemono,
-                        "leakedmodels": self.leakedmodels, "mediafire": self.mediafire, "nudostar.com": self.nudostar,
+                        "leakedmodels": self.leakedmodels, "mediafire": self.mediafire, "nekohouse": self.nekohouse, "nudostar.com": self.nudostar,
                         "nudostar.tv": self.nudostartv, "omegascans": self.omegascans, "pimpandhost": self.pimpandhost,
                         "pixeldrain": self.pixeldrain, "postimg": self.postimg, "realbooru": self.realbooru,
                         "reddit": self.reddit, "redgifs": self.redgifs, "rule34vault": self.rule34vault,
@@ -149,6 +150,11 @@ class ScrapeMapper:
         """Creates a MediaFire Crawler instance"""
         from cyberdrop_dl.scraper.crawlers.mediafire_crawler import MediaFireCrawler
         self.existing_crawlers['mediafire'] = MediaFireCrawler(self.manager)
+
+    async def nekohouse(self) -> None:
+        """Creates a Nekohouse Crawler instance"""
+        from cyberdrop_dl.scraper.crawlers.nekohouse_crawler import NekohouseCrawler
+        self.existing_crawlers['nekohouse'] = NekohouseCrawler(self.manager)
 
     async def nudostar(self) -> None:
         """Creates a NudoStar Crawler instance"""

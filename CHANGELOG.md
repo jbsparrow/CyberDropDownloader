@@ -17,10 +17,12 @@ This update introduces the following changes:
 
 This update introduces the following changes:
 1. Add integration to handle downloads supported by https://real-debrid.com
-2. General logging improvements & bug fixes
+2. Add support for https://nekohouse.su profiles and posts
+3. General logging improvements & bug fixes
 
 #### Details:
 - Add real-debrid API key to authentication file in order to allow downloads from websites that real-debrid supports
+- Nekohouse URLs can now be scraped and downloaded by CDL
 - Update how bunkr file extensions are scraped to prevent errors
 - Remove console markdown data from log files
 
