@@ -167,7 +167,7 @@ class CoomerCrawler(Crawler):
         return service, user, post
 
     async def create_new_scrape_item(self, link: URL, old_scrape_item: ScrapeItem, user: str, title: str, post_id: str,
-                                     date: str, add_parent: Optional[URL] = None) -> None:
+                                    date: str, add_parent: Optional[URL] = None) -> None:
         """Creates a new scrape item with the same parent as the old scrape item"""
         post_title = None
         if self.manager.config_manager.settings_data['Download_Options']['separate_posts']:
