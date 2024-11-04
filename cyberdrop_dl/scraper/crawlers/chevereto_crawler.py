@@ -178,9 +178,6 @@ class CheveretoCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def get_sort_by_new_url(self, url: URL) -> URL:
-        return url.with_query({'sort': 'date_desc', 'page': 1})
-
     async def web_pager(self, url: URL) -> AsyncGenerator[BeautifulSoup]:
         "Generator of website pages"
         page_url = await self.get_sort_by_new_url(url)
@@ -198,12 +195,18 @@ class CheveretoCrawler(Crawler):
                     continue
             break
 
-    async def parse_datetime(self, date: str) -> int:
+    @staticmethod
+    async def get_sort_by_new_url(url: URL) -> URL:
+        return url.with_query({'sort': 'date_desc', 'page': 1})
+
+    @staticmethod
+    async def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp"""
         date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
         return calendar.timegm(date.timetuple())
 
-    async def check_direct_link(self, url: URL) -> bool:
+    @staticmethod
+    async def check_direct_link(url: URL) -> bool:
         """Determines if the url is a direct link or not"""
 
         if not re.match(CDN_POSSIBILITIES, url.host):

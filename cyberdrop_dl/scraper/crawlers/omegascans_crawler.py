@@ -122,12 +122,14 @@ class OmegaScansCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def parse_datetime_standard(self, date: str) -> int:
+    @staticmethod
+    async def parse_datetime_standard(date: str) -> int:
         """Parses a datetime string into a unix timestamp"""
         date = datetime.datetime.strptime(date, "%m/%d/%Y")
         return calendar.timegm(date.timetuple())
 
-    async def parse_datetime_other(self, date: str) -> int:
+    @staticmethod
+    async def parse_datetime_other(date: str) -> int:
         """Parses a datetime string into a unix timestamp"""
         date = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
         return calendar.timegm(date.timetuple())

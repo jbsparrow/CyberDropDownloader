@@ -205,7 +205,8 @@ class Crawler(ABC):
                 return True
         return False
 
-    async def create_scrape_item(self, parent_scrape_item: ScrapeItem, url: URL, new_title_part: str,
+    @staticmethod
+    async def create_scrape_item(parent_scrape_item: ScrapeItem, url: URL, new_title_part: str,
                                 part_of_album: bool = False, album_id: Union[str, None] = None,
                                 possible_datetime: Optional[int] = None,
                                 add_parent: Optional[URL] = None) -> ScrapeItem:

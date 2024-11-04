@@ -168,7 +168,7 @@ class XXXBunkerCrawler(Crawler):
                     soup: BeautifulSoup = await self.client.get_BS4(self.domain, page_url)
                 await asyncio.sleep(self.wait_time)
 
-                if not "TRAFFIC VERIFICATION" in soup.text:
+                if "TRAFFIC VERIFICATION" not in soup.text:
                     rate_limited = False
                     break
 
@@ -194,7 +194,8 @@ class XXXBunkerCrawler(Crawler):
                     continue
             break
 
-    async def parse_relative_date(self, relative_date: timedelta | str) -> int:
+    @staticmethod
+    async def parse_relative_date(relative_date: timedelta | str) -> int:
         """Parses `datetime.timedelta` or `string` in a timedelta format. Returns `now() - parsed_timedelta` as an unix timestamp"""
         if isinstance(relative_date, str):
             time_str = relative_date.casefold()

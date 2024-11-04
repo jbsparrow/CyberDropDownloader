@@ -289,7 +289,8 @@ class TokioMotionCrawler(Crawler):
                     continue
             break
 
-    async def parse_relative_date(self, relative_date: timedelta | str) -> int:
+    @staticmethod
+    async def parse_relative_date(relative_date: timedelta | str) -> int:
         """Parses `datetime.timedelta` or `string` in a timedelta format. Returns `now() - parsed_timedelta` as an unix timestamp"""
         if isinstance(relative_date, str):
             time_str = relative_date.casefold()

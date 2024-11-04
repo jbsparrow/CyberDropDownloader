@@ -82,7 +82,8 @@ class PimpAndHostCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def parse_datetime(self, date: str) -> int:
+    @staticmethod
+    async def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp"""
         date = datetime.strptime(date, '%A, %B %d, %Y %I:%M:%S%p %Z')
         return calendar.timegm(date.timetuple())

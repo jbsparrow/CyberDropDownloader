@@ -52,7 +52,7 @@ class CyberdropCrawler(Crawler):
         scrape_item.album_id = scrape_item.url.parts[2]
         scrape_item.part_of_album = True
         date = title = None
-   
+
         try:
             title = await self.create_title(soup.select_one("h1[id=title]").text, scrape_item.album_id, None)
         except AttributeError:
@@ -98,10 +98,6 @@ class CyberdropCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    def is_cdn(self, url: URL) -> bool:
-        """Checks if a given URL is from a CDN"""
-        return bool(re.match(CDN_POSSIBILITIES, url.host))
-
     async def get_stream_link(self, url: URL) -> URL:
         """Gets the stream link for a given URL
         
@@ -119,8 +115,13 @@ class CyberdropCrawler(Crawler):
     
         return streaming_url
 
-    
-    async def parse_datetime(self, date: str) -> int:
+    @staticmethod
+    def is_cdn(url: URL) -> bool:
+        """Checks if a given URL is from a CDN"""
+        return bool(re.match(CDN_POSSIBILITIES, url.host))
+
+    @staticmethod
+    async def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp"""
         date = datetime.datetime.strptime(date, "%d.%m.%Y")
         return calendar.timegm(date.timetuple())

@@ -313,7 +313,8 @@ class ScrapeMapper:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def regex_links(self, line: str) -> List:
+    @staticmethod
+    async def regex_links(line: str) -> List:
         """Regex grab the links from the URLs.txt file
         This allows code blocks or full paragraphs to be copy and pasted into the URLs.txt"""
         yarl_links = []
@@ -415,7 +416,8 @@ class ScrapeMapper:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def extension_check(self, url: URL) -> bool:
+    @staticmethod
+    async def extension_check(url: URL) -> bool:
         """Checks if the URL has a valid extension"""
         try:
             filename, ext = await get_filename_and_ext(url.name)
@@ -433,13 +435,15 @@ class ScrapeMapper:
         if await self.filter_items(scrape_item):
             await self.add_item_to_group(scrape_item)
 
-    def get_item_from_link(self, link):
+    @staticmethod
+    def get_item_from_link(link):
         item = ScrapeItem(url=link, parent_title="")
         item.completed_at = None
         item.created_at = None
         return item
 
-    def get_item_from_entry(self, entry):
+    @staticmethod
+    def get_item_from_entry(entry):
         link = URL(entry[0])
         retry_path = Path(entry[1])
         scrape_item = ScrapeItem(link, parent_title="",

@@ -160,7 +160,8 @@ class BunkrrCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def is_cdn(self, url: URL) -> bool:
+    @staticmethod
+    async def is_cdn(url: URL) -> bool:
         """Checks if a given URL is from a CDN"""
         return bool(re.match(CDN_POSSIBILITIES, url.host))
 
@@ -183,7 +184,8 @@ class BunkrrCrawler(Crawler):
 
         return url
 
-    async def parse_datetime(self, date: str) -> int:
+    @staticmethod
+    async def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp"""
         date = datetime.datetime.strptime(date, "%H:%M:%S %d/%m/%Y")
         return calendar.timegm(date.timetuple())

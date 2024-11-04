@@ -108,12 +108,14 @@ class ImgBBCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def parse_datetime(self, date: str) -> int:
+    @staticmethod
+    async def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp"""
         date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
         return calendar.timegm(date.timetuple())
 
-    async def check_direct_link(self, url: URL) -> bool:
+    @staticmethod
+    async def check_direct_link(url: URL) -> bool:
         """Determines if the url is a direct link or not"""
         mapping_direct = [r'i.ibb.co', ]
         return any(re.search(domain, str(url)) for domain in mapping_direct)

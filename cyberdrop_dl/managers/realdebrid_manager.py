@@ -67,7 +67,8 @@ class RealDebridManager:
     async def unrestrict_folder(self, url: URL) -> list[URL]:
         return self.api.unrestrict.folder(url)
 
-    async def _guess_folder_by_part(self, url: URL):
+    @staticmethod
+    async def _guess_folder_by_part(url: URL):
         folder = None
         for word in FOLDER_AS_PART:
             if word in url.parts:
@@ -76,7 +77,8 @@ class RealDebridManager:
                     return url.parts[index + 1]
         return folder
 
-    async def _guess_folder_by_query(self, url: URL):
+    @staticmethod
+    async def _guess_folder_by_query(url: URL):
         for word in FOLDER_AS_QUERY:
             folder = url.query.get(word)
             if folder:

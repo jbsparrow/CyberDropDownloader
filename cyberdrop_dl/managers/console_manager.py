@@ -46,7 +46,8 @@ class ConsoleManager:
         # if self.thread:
         #     self.thread.join()
 
-    def flush_buffer_thread(self):
+    @staticmethod
+    def flush_buffer_thread():
         max_entries = 10
         while True:
             log_rends = []
