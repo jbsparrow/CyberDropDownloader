@@ -102,7 +102,7 @@ class CheveretoCrawler(Crawler):
 
         async with self.request_limiter:
             sub_albums_soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url / "sub",
-                                                                       origin=scrape_item)
+                                                                    origin=scrape_item)
 
         if 'This content is password protected' in sub_albums_soup.text and password:
             password_data = {"content-password": password}
