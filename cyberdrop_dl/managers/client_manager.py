@@ -87,7 +87,8 @@ class ClientManager:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def check_http_status(self, response: ClientResponse, download: bool = False,
+    @staticmethod
+    async def check_http_status(response: ClientResponse, download: bool = False,
                                 origin: Optional[ScrapeItem | URL] = None) -> None:
         """Checks the HTTP status code and raises an exception if it's not acceptable"""
         status = response.status
@@ -124,7 +125,8 @@ class ClientManager:
 
         raise DownloadFailure(status=status, origin=origin)
 
-    async def check_bunkr_maint(self, headers):
+    @staticmethod
+    async def check_bunkr_maint(headers):
         if headers.get('Content-Length') == "322509" and headers.get('Content-Type') == "video/mp4":
             raise DownloadFailure(status="Bunkr Maintenance", message="Bunkr under maintenance")
 
