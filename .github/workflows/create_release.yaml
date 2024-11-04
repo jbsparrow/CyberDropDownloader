@@ -1,0 +1,49 @@
+name: Create Release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  create_release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check for tag
+        id: check_tag
+        run: |
+          if [ -z "${GITHUB_REF##*/}" ]; then
+            echo "Error: No tag provided. Please provide a tag to run this workflow."
+            exit 1
+          fi
+
+      - name: Extract version number
+        id: extract_version
+        run: |
+          TAG_NAME=${GITHUB_REF##*/}
+          VERSION_NUMBER=$(echo "$TAG_NAME" | grep -o '[0-9]' | head -n 1)
+          if [ -z "$VERSION_NUMBER" ]; then
+            echo "Error: No numeric version found in tag name."
+            exit 1
+          fi
+          echo "VERSION_NUMBER=$VERSION_NUMBER" >> $GITHUB_ENV
+
+      - name: Create zip from subfolder
+        run: |
+          cd scripts/release
+          zip -r ../../Cyberdrop-DL.v${VERSION_NUMBER}.zip .
+
+      - name: Create release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Cyberdrop-DL V${VERSION_NUMBER} Start Files
+          body: |
+            If you install and run the program with PIP yourself, you do not need anything here.
+            Download the Cyberdrop-DL zip file below, you do not need to download the source code zip files.
+            The zip file contains start files that will download and install Cyberdrop-DL and keep it up to date. 
+          files: Cyberdrop-DL.v${VERSION_NUMBER}.zip 
