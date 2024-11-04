@@ -5,6 +5,14 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [UNRELEASED] - 2024-10-31
+
+This update introduces the following changes:
+1. Add support for scraping a users' coomer favourites
+
+#### Details:
+- Add support for scraping a users' coomer favourites by allowing the user to pass the coomer favourites page URL as an input URL (https://coomer.su/favorites). This requires them to have their coomer session token in the `authentication.yaml` file.
+
 ## [5.7.1] - 2024-10-28
 
 This update introduces the following changes:

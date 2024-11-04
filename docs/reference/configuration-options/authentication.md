@@ -6,6 +6,16 @@ description: These are all of the configuration options for Authentication.
 
 <details>
 
+<summary>Coomer</summary>
+
+In order to scrape your favorites from coomer, you need to provide Cyberdrop-DL with your coomer `session` cookie.
+
+Once you have put your `session` cookie into the authentication file, you can add `https://coomer.su/favorites` to the URLs file, and Cyberdrop-DL will scrape your favorites.
+
+</details>
+
+<details>
+
 <summary>Forums</summary>
 
 In order to scrape links/content from forums, you need to provide Cyberdrop-DL with your login details so it can access the website. This section also includes cookies for the support forums.
