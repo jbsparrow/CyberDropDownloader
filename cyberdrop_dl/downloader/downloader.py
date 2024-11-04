@@ -248,7 +248,8 @@ class Downloader:
             message = err.message if hasattr(err, "message") else str(err)
             raise DownloadFailure(status=getattr(err, "status", type(err).__name__), message=message)
 
-    async def is_failed(self, status: int):
+    @staticmethod
+    async def is_failed(status: int):
         return any((await is_4xx_client_error(status) and status != HTTPStatus.TOO_MANY_REQUESTS,
                     status in (
                     HTTPStatus.SERVICE_UNAVAILABLE, HTTPStatus.BAD_GATEWAY, CustomHTTPStatus.WEB_SERVER_IS_DOWN)))
