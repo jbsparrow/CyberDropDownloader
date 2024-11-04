@@ -30,7 +30,8 @@ class LogManager:
             if isinstance(var, Path):
                 var.unlink(missing_ok=True)
 
-    async def write_to_csv(self, file: Path, **kwargs):
+    @staticmethod
+    async def write_to_csv(file: Path, **kwargs):
         "Write to the specified csv file. kwargs are columns for the CSV "
         # padding of 1 to the left
         row = {key: f"{value} " for key, value in kwargs.items()}
