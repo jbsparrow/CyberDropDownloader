@@ -85,7 +85,7 @@ class ScrolllerCrawler(Crawler):
         while True:
             request_body["variables"]["iterator"] = iterator
             data = await self.client.post_data(self.domain, self.scrolller_api, data=json.dumps(request_body),
-                                               origin=scrape_item)
+                                            origin=scrape_item)
 
             if data:
                 items = data["data"]["getSubreddit"]["children"]["items"]
