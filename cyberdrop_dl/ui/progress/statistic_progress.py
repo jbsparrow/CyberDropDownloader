@@ -38,10 +38,10 @@ class DownloadStatsProgress:
 
     def __init__(self):
         self.progress = Progress("[progress.description]{task.description}",
-                                 BarColumn(bar_width=None),
-                                 "[progress.percentage]{task.percentage:>6.2f}%",
-                                 "━",
-                                 "{task.completed}")
+                                BarColumn(bar_width=None),
+                                "[progress.percentage]{task.percentage:>6.2f}%",
+                                "━",
+                                "{task.completed}")
         self.progress_group = Group(self.progress)
 
         self.failure_types: Dict[str, TaskID] = {}
@@ -50,7 +50,7 @@ class DownloadStatsProgress:
         self.sent_to_jdownloader = 0
         self.unsupported_urls_skipped = 0
         self.panel = Panel(self.progress_group, title="Download Failures", border_style="green", padding=(1, 1),
-                           subtitle=f"Total Download Failures: [white]{self.failed_files}")
+                        subtitle=f"Total Download Failures: [white]{self.failed_files}")
 
     async def get_progress(self) -> Panel:
         """Returns the progress bar"""
@@ -71,7 +71,7 @@ class DownloadStatsProgress:
 
             for task in tasks_sorted:
                 self.failure_types[task.description] = self.progress.add_task(task.description, total=task.total,
-                                                                              completed=task.completed)
+                                                                            completed=task.completed)
 
     async def add_failure(self, failure_type: Union[str, int]) -> None:
         """Adds a failed file to the progress bar"""
@@ -86,7 +86,7 @@ class DownloadStatsProgress:
             self.progress.advance(self.failure_types[failure_type], 1)
         else:
             self.failure_types[failure_type] = self.progress.add_task(failure_type, total=self.failed_files,
-                                                                      completed=1)
+                                                                    completed=1)
         await self.update_total(self.failed_files)
 
     async def return_totals(self) -> Dict:
@@ -103,10 +103,10 @@ class ScrapeStatsProgress:
 
     def __init__(self):
         self.progress = Progress("[progress.description]{task.description}",
-                                 BarColumn(bar_width=None),
-                                 "[progress.percentage]{task.percentage:>6.2f}%",
-                                 "━",
-                                 "{task.completed}")
+                                BarColumn(bar_width=None),
+                                "[progress.percentage]{task.percentage:>6.2f}%",
+                                "━",
+                                "{task.completed}")
         self.progress_group = Group(self.progress)
 
         self.failure_types: Dict[str, TaskID] = {}
@@ -115,7 +115,7 @@ class ScrapeStatsProgress:
         self.sent_to_jdownloader = 0
         self.unsupported_urls_skipped = 0
         self.panel = Panel(self.progress_group, title="Scrape Failures", border_style="green", padding=(1, 1),
-                           subtitle=f"Total Scrape Failures: [white]{self.failed_files}")
+                        subtitle=f"Total Scrape Failures: [white]{self.failed_files}")
 
     async def get_progress(self) -> Panel:
         """Returns the progress bar"""
@@ -136,7 +136,7 @@ class ScrapeStatsProgress:
 
             for task in tasks_sorted:
                 self.failure_types[task.description] = self.progress.add_task(task.description, total=task.total,
-                                                                              completed=task.completed)
+                                                                            completed=task.completed)
 
     async def add_failure(self, failure_type: Union[str, int]) -> None:
         """Adds a failed site to the progress bar"""
@@ -148,7 +148,7 @@ class ScrapeStatsProgress:
             self.progress.advance(self.failure_types[failure_type], 1)
         else:
             self.failure_types[failure_type] = self.progress.add_task(failure_type, total=self.failed_files,
-                                                                      completed=1)
+                                                                    completed=1)
         await self.update_total(self.failed_files)
 
     async def add_unsupported(self, sent_to_jdownloader: bool = False) -> None:
