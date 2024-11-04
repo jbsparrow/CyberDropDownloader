@@ -246,16 +246,17 @@ class DownloadClient:
         skip = False
 
         if not skip and self.manager.config_manager.settings_data['Ignore_Options']['skip_hosts']:
-            for skip_host in self.manager.config_manager.settings_data['Ignore_Options']['skip_hosts']:
-                if media_item.url.host.find(skip_host) != -1:
-                    skip = True
-                    break
+            skip_hosts = self.manager.config_manager.settings_data['Ignore_Options']['skip_hosts']
+            if any ((media_item.url.host.find(skip_host) != -1 for skip_host in skip_hosts)):                
+                await log(f"Download Skip {media_item.url} due to skip_hosts config", 10)
+                skip = True
+
 
         if not skip and self.manager.config_manager.settings_data['Ignore_Options']['only_hosts']:
-            for only_host in self.manager.config_manager.settings_data['Ignore_Options']['only_hosts']:
-                if media_item.url.host.find(only_host) == -1:
-                    skip = True
-                    break
+            only_hosts = self.manager.config_manager.settings_data['Ignore_Options']['only_hosts']
+            if not any((media_item.url.host.find(only_host) != -1 for only_host in only_hosts)):
+                await log(f"Download Skip {media_item.url} due to only_hosts config", 10)
+                skip = True
 
         if skip:
             return proceed, skip
