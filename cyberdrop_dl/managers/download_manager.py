@@ -66,7 +66,8 @@ class DownloadManager:
                 'max_simultaneous_downloads_per_domain']
         return instances
 
-    async def basic_auth(self, username, password) -> str:
+    @staticmethod
+    async def basic_auth(username, password) -> str:
         """Returns a basic auth token"""
         token = b64encode(f"{username}:{password}".encode('utf-8')).decode("ascii")
         return f'Basic {token}'
