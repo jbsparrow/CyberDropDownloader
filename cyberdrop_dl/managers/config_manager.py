@@ -226,7 +226,8 @@ class ConfigManager:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    def create_new_config(self, new_settings: Path, settings_data: Dict) -> None:
+    @staticmethod
+    def create_new_config(new_settings: Path, settings_data: Dict) -> None:
         """Creates a new settings config file"""
         settings_data['Files']['input_file'] = str(settings_data['Files']['input_file'])
         settings_data['Files']['download_folder'] = str(settings_data['Files']['download_folder'])
