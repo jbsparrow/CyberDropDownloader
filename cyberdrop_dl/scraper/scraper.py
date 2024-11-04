@@ -443,7 +443,7 @@ class ScrapeMapper:
         link = URL(entry[0])
         retry_path = Path(entry[1])
         scrape_item = ScrapeItem(link, parent_title="",
-                                 part_of_album=True, retry=True, retry_path=retry_path)
+                                part_of_album=True, retry=True, retry_path=retry_path)
         completed_at = entry[2]
         created_at = entry[3]
         if not isinstance(scrape_item.url, URL):
@@ -509,7 +509,7 @@ class ScrapeMapper:
                 download_folder = await get_download_path(self.manager, scrape_item, "jdownloader")
                 relative_download_dir = download_folder.relative_to(self.manager.path_manager.download_dir)
                 await self.jdownloader.direct_unsupported_to_jdownloader(scrape_item.url, scrape_item.parent_title,
-                                                                         relative_download_dir)
+                                                                        relative_download_dir)
                 success = True
             except JDownloaderFailure as e:
                 await log(f"Failed to send {scrape_item.url} to JDownloader\n{e.message}", 40)

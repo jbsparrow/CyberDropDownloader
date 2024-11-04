@@ -56,7 +56,7 @@ class MediaFireCrawler(Crawler):
         while True:
             try:
                 folder_contents = self.api.folder_get_content(folder_key=folder_key, content_type='files', chunk=chunk,
-                                                              chunk_size=chunk_size)
+                                                            chunk_size=chunk_size)
             except api.MediaFireApiError as e:
                 raise ScrapeFailure(f"MF - {e.message}", origin=scrape_item)
 

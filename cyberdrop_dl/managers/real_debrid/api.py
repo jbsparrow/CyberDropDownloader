@@ -121,7 +121,7 @@ class OAuth:
     def get_token(self, client_id: str, client_secret: str, device_code: str):
         """Get token from credentials"""
         JSONResp = self.api.post('token', entrypoint=self.api.API_OAUTH_ENTRYPOINT, client_id=client_id,
-                                 client_secret=client_secret, code=device_code, grant_type=self.grant_type)
+                                client_secret=client_secret, code=device_code, grant_type=self.grant_type)
         if self.api._convert_special_types:
             JSONResp['expires_in'] = timedelta(seconds=JSONResp['expires_in'])
         self.api.update_token(JSONResp['access_token'])
@@ -256,7 +256,7 @@ class Torrents:
     def __init__(self, api: RealDebridApi):
         self.api = api
         self.POSIBLE_STATUS = ['magnet_error', 'magnet_conversion', 'waiting_files_selection', 'queued', 'downloading',
-                               'downloaded', 'error', 'virus', 'compressing', 'uploading', 'dead']
+                            'downloaded', 'error', 'virus', 'compressing', 'uploading', 'dead']
 
     def get(self, offset: int = None, page: int = None, limit: int = None, filter: str = None):
         """Get user torrents list"""

@@ -77,7 +77,7 @@ async def post_runtime(manager: Manager) -> None:
 
     await log_spacer(20)
     await log_with_color(f"Running Post-Download Processes For Config: {manager.config_manager.loaded_config}...\n",
-                         "green", 20)
+                        "green", 20)
     # checking and removing dupes
     if not manager.args_manager.sort_all_configs:
         await manager.hash_manager.hash_client.cleanup_dupes()

@@ -15,7 +15,7 @@ class CDLBaseException(Exception):
     """Base exception for cyberdrop-dl errors"""
 
     def __init__(self, ui_message: str = "Something went wrong", *, message: Optional[str] = None,
-                 status: Optional[int] = None, origin: Optional[ScrapeItem | URL | Path] = None):
+                status: Optional[int] = None, origin: Optional[ScrapeItem | URL | Path] = None):
         self.ui_message = ui_message
         self.message = message or ui_message
         self.origin = origin

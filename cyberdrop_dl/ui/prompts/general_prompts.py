@@ -163,10 +163,10 @@ def donations_prompt(manager: Manager) -> None:
     console.print("[bold]Donations[/bold]")
     console.print("")
     console.print("I started making this program around three years ago at this point,"
-                  "\nIt has grown larger than I could've imagined and I'm very proud of it."
-                  "\nI have put a lot of time and effort into this program and I'm glad that people are using it."
-                  "\nThanks to everyone that have supported me, "
-                  "it keeps me motivated to continue working on this program.")
+                "\nIt has grown larger than I could've imagined and I'm very proud of it."
+                "\nI have put a lot of time and effort into this program and I'm glad that people are using it."
+                "\nThanks to everyone that have supported me, "
+                "it keeps me motivated to continue working on this program.")
     console.print("")
     console.print("If you'd like to support me and my work, you can donate to me via the following methods:")
     console.print("BuyMeACoffee: https://www.buymeacoffee.com/jbsparrow")

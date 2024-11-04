@@ -63,15 +63,15 @@ class CyberfileCrawler(Crawler):
             data = {"pageType": "folder", "nodeId": nodeId, "pageStart": page, "perPage": 0, "filterOrderBy": ""}
             async with self.request_limiter:
                 ajax_dict: dict = await self.client.post_data(self.domain, self.api_files, data=data,
-                                                              origin=scrape_item)
+                                                            origin=scrape_item)
                 if 'Password Required' in ajax_dict['html']:
                     password_data = {"folderPassword": password, "folderId": nodeId, "submitme": 1}
                     password_response: dict = await self.client.post_data(self.domain, self.api_password_process,
-                                                                          data=password_data, origin=scrape_item)
+                                                                        data=password_data, origin=scrape_item)
                     if not password_response.get('success'):
                         raise PasswordProtected(origin=scrape_item)
                     ajax_dict: dict = await self.client.post_data(self.domain, self.api_files, data=data,
-                                                                  origin=scrape_item)
+                                                                origin=scrape_item)
 
                 ajax_soup = BeautifulSoup(ajax_dict['html'].replace("\\", ""), 'html.parser')
 

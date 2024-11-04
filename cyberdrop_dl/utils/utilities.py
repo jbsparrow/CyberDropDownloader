@@ -284,7 +284,7 @@ async def check_partials_and_empty_folders(manager: Manager):
         temp_downloads = any(Path(f).is_file() for f in await manager.db_manager.temp_table.get_temp_names())
         if temp_downloads:
             await log_with_color("There are partial downloads from the previous run, please re-run the program.",
-                                 "yellow", 20)
+                                "yellow", 20)
 
     if not manager.config_manager.settings_data['Runtime_Options']['skip_check_for_empty_folders']:
         await log_with_color("Checking for empty folders...", "yellow", 20)
@@ -325,7 +325,7 @@ async def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = Fa
                 test_tag = dot_tag if dot_tag else no_dot_tag
 
                 rough_matches = [release for release in releases
-                                 if re.match(
+                                if re.match(
                         rf'{major_version}\.{minor_version}\.{patch_version}(\.{test_tag}\d+|{test_tag}\d+)', release)]
                 latest_testing_version = max(rough_matches, key=lambda x: int(re.search(r'(\d+)$', x).group()))
                 latest_testing_version_rich = f"[b cyan]{latest_testing_version}[/b cyan]"

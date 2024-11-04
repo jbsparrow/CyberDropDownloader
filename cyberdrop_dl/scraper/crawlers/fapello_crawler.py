@@ -40,7 +40,7 @@ class FapelloCrawler(Crawler):
         """Scrapes a profile"""
         async with self.request_limiter:
             soup, response_url = await self.client.get_BS4_and_return_URL(self.domain, scrape_item.url,
-                                                                          origin=scrape_item)
+                                                                        origin=scrape_item)
             if response_url != scrape_item.url:
                 return
 

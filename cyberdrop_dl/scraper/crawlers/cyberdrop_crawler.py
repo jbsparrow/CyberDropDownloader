@@ -83,15 +83,15 @@ class CyberdropCrawler(Crawler):
 
         async with self.request_limiter:
             JSON_Resp = await self.client.get_json(self.domain,
-                                                   self.api_url / "file" / "info" / scrape_item.url.path[3:],
-                                                   origin=scrape_item)
+                                                self.api_url / "file" / "info" / scrape_item.url.path[3:],
+                                                origin=scrape_item)
 
         filename, ext = await get_filename_and_ext(JSON_Resp["name"])
 
         async with self.request_limiter:
             JSON_Resp = await self.client.get_json(self.domain,
-                                                   self.api_url / "file" / "auth" / scrape_item.url.path[3:],
-                                                   origin=scrape_item)
+                                                self.api_url / "file" / "auth" / scrape_item.url.path[3:],
+                                                origin=scrape_item)
 
         link = URL(JSON_Resp['url'])
         await self.handle_file(link, scrape_item, filename, ext)
@@ -116,7 +116,7 @@ class CyberdropCrawler(Crawler):
             return self.primary_base_domain / "f" / url.parts[-1]
             
         _ , streaming_url = await self.client.get_BS4_and_return_URL(self.domain, url)
-      
+    
         return streaming_url
 
     

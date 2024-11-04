@@ -45,7 +45,7 @@ class PixelDrainCrawler(Crawler):
 
         async with self.request_limiter:
             JSON_Resp = await self.client.get_json(self.domain, self.api_address / "list" / scrape_item.url.parts[-1],
-                                                   origin=scrape_item)
+                                                origin=scrape_item)
 
         title = await self.create_title(JSON_Resp['title'], scrape_item.url.parts[2], None)
 
@@ -69,8 +69,8 @@ class PixelDrainCrawler(Crawler):
         """Scrapes a file"""
         async with self.request_limiter:
             JSON_Resp = await self.client.get_json(self.domain,
-                                                   self.api_address / "file" / scrape_item.url.parts[-1] / "info",
-                                                   origin=scrape_item)
+                                                self.api_address / "file" / scrape_item.url.parts[-1] / "info",
+                                                origin=scrape_item)
 
         link = await self.create_download_link(JSON_Resp['id'])
         date = await self.parse_datetime(JSON_Resp['date_upload'].replace("T", " ").split(".")[0])
@@ -81,8 +81,8 @@ class PixelDrainCrawler(Crawler):
                 await scrape_item.add_to_parent_title(f"{JSON_Resp['name']} (Pixeldrain)")
                 async with self.request_limiter:
                     text = await self.client.get_text(self.domain,
-                                                      self.api_address / "file" / scrape_item.url.parts[-1],
-                                                      origin=scrape_item)
+                                                    self.api_address / "file" / scrape_item.url.parts[-1],
+                                                    origin=scrape_item)
                 lines = text.split("\n")
                 for line in lines:
                     link = URL(line)
