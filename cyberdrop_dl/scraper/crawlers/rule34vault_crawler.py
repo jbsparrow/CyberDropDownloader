@@ -68,7 +68,7 @@ class Rule34VaultCrawler(Crawler):
                 scrape_item.url.parts[1].split("page=")[-1].split("&")[0])
             next_page = scrape_item.url.with_path(
                 f"/{scrape_item.url.parts[1]}".replace(f"page={page}",
-                                                       f"page={page + 1}"),
+                                                    f"page={page + 1}"),
                 encoded=True,
             )
         else:
