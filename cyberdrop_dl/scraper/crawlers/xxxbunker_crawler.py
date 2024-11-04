@@ -81,7 +81,7 @@ class XXXBunkerCrawler(Crawler):
             video_id = video_iframe_url.parts[-1]
             async with self.request_limiter:
                 video_iframe_soup: BeautifulSoup = await self.client.get_BS4(self.domain, video_iframe_url,
-                                                                             origin=scrape_item)
+                                                                            origin=scrape_item)
 
             src = video_iframe_soup.select_one('source')
             src_url = URL(src.get('src'))
@@ -221,4 +221,4 @@ class XXXBunkerCrawler(Crawler):
             return
 
         self.client.client_manager.cookies.update_cookies({"PHPSESSID": self.session_cookie},
-                                                          response_url=self.primary_base_domain)
+                                                        response_url=self.primary_base_domain)
