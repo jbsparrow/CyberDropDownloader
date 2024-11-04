@@ -120,7 +120,7 @@ class ClientManager:
 
         if not headers.get('Content-Type'):
             raise DownloadFailure(status=CustomHTTPStatus.IM_A_TEAPOT, message="No content-type in response header",
-                                  origin=origin)
+                                origin=origin)
 
         raise DownloadFailure(status=status, origin=origin)
 
