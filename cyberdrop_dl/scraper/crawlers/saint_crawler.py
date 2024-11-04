@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
-import re
 
 from cyberdrop_dl.clients.errors import ScrapeFailure
 from cyberdrop_dl.scraper.crawler import Crawler
@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
     from bs4 import BeautifulSoup
     from re import Match
+
 
 class SaintCrawler(Crawler):
     def __init__(self, manager: Manager):
@@ -45,16 +46,16 @@ class SaintCrawler(Crawler):
         scrape_item.part_of_album = True
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         title_portion = soup.select_one('title').text.rsplit(" - Saint Video Hosting")[0].strip()
         if not title_portion:
             title_portion = scrape_item.url.name
-        title = await self.create_title(title_portion, album_id , None)
+        title = await self.create_title(title_portion, album_id, None)
         await scrape_item.add_to_parent_title(title)
 
         videos = soup.select('a.btn-primary.action.download')
-       
+
         for video in videos:
             match: Match = re.search(r"\('(.+?)'\)", video.get('onclick'))
             link = URL(match.group(1)) if match else None
@@ -69,10 +70,10 @@ class SaintCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
         try:
             link = URL(soup.select_one('video[id=main-video] source').get('src'))
         except AttributeError:
-            raise ScrapeFailure(404, f"Could not find video source for {scrape_item.url}")
+            raise ScrapeFailure(404, f"Could not find video source for {scrape_item.url}", origin=scrape_item)
         filename, ext = await get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)

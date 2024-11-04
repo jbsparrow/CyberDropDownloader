@@ -208,10 +208,10 @@ Files that will be rotated:
 | option                       | default_filename              |
 |------------------------------|-------------------------------|
 | download_error_urls_filename |  Download_Error_URLs.csv      |
-| last_forum_post_filename     |  Last_Scraped_Forum_Posts.txt |
+| last_forum_post_filename     |  Last_Scraped_Forum_Posts.csv |
 | main_log_filename            |  downloader.log               |
 | scrape_error_urls_filename   |  Scrape_Error_URLs.csv        |
-| unsupported_urls_filename    |  Unsupported_URLs.txt         |
+| unsupported_urls_filename    |  Unsupported_URLs.csv         |
 
 </details>
 

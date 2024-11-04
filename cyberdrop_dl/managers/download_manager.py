@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+from base64 import b64encode
 from pathlib import Path
 from shutil import disk_usage
-from base64 import b64encode
 from typing import TYPE_CHECKING
 
 from cyberdrop_dl.utils.utilities import FILE_FORMATS, log_debug
@@ -49,7 +49,8 @@ class DownloadManager:
 
         self.file_lock = FileLock()
 
-        self.download_limits = {'bunkr': 1, 'bunkrr': 1, 'cyberdrop': 1, 'cyberfile': 1, "pixeldrain": 2, 'xxxbunker': 2}
+        self.download_limits = {'bunkr': 1, 'bunkrr': 1, 'cyberdrop': 1, 'cyberfile': 1, "pixeldrain": 2,
+                                'xxxbunker': 2}
 
     async def get_download_limit(self, key: str) -> int:
         """Returns the download limit for a domain"""
@@ -65,7 +66,8 @@ class DownloadManager:
                 'max_simultaneous_downloads_per_domain']
         return instances
 
-    async def basic_auth(self, username, password) -> str:
+    @staticmethod
+    async def basic_auth(username, password) -> str:
         """Returns a basic auth token"""
         token = b64encode(f"{username}:{password}".encode('utf-8')).decode("ascii")
         return f'Basic {token}'
@@ -77,9 +79,9 @@ class DownloadManager:
         else:
             folder = folder.resolve()
             while not folder.is_dir() and folder.parents:
-                folder = folder.parent   
-            # check if we reached an anchor (root) that does not exists, ex: disconnected USB drive
-            if not folder.is_dir(): 
+                folder = folder.parent
+                # check if we reached an anchor (root) that does not exists, ex: disconnected USB drive
+            if not folder.is_dir():
                 return False
             free_space = disk_usage(folder).free
         free_space_gb = free_space / 1024 ** 3

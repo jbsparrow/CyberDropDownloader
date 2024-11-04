@@ -72,7 +72,8 @@ class TransitionManager:
         self.update_cache(APP_STORAGE / "Cache" / "cache.yaml")
         pass
 
-    def check_cache_for_moved(self, cache_file: Path) -> bool:
+    @staticmethod
+    def check_cache_for_moved(cache_file: Path) -> bool:
         """Checks the cache for moved files"""
         with open(cache_file, 'r') as yaml_file:
             cache = yaml.load(yaml_file.read(), Loader=yaml.FullLoader)
@@ -83,7 +84,8 @@ class TransitionManager:
         moved = bool(cache.get("first_startup_completed", False))
         return moved
 
-    def update_cache(self, cache_file: Path) -> None:
+    @staticmethod
+    def update_cache(cache_file: Path) -> None:
         """Updates the cache to reflect the new location"""
         cache_file.parent.mkdir(parents=True, exist_ok=True)
         cache_file.touch(exist_ok=True)
@@ -95,7 +97,8 @@ class TransitionManager:
         with open(cache_file, 'w') as yaml_file:
             yaml.dump(cache, yaml_file)
 
-    def update_default_config(self, cache_file: Path, config_name: str) -> None:
+    @staticmethod
+    def update_default_config(cache_file: Path, config_name: str) -> None:
         """Updates the default config in the cache"""
         cache_file.parent.mkdir(parents=True, exist_ok=True)
         cache_file.touch(exist_ok=True)
@@ -107,7 +110,8 @@ class TransitionManager:
         with open(cache_file, 'w') as yaml_file:
             yaml.dump(cache, yaml_file)
 
-    def transfer_v4_config(self, old_config_path: Path, new_config_name: str) -> None:
+    @staticmethod
+    def transfer_v4_config(old_config_path: Path, new_config_name: str) -> None:
         """Transfers a V4 config into V5 possession"""
         from cyberdrop_dl.utils.args.config_definitions import settings, authentication_settings, global_settings
         new_auth_data = copy.deepcopy(authentication_settings)

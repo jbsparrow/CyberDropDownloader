@@ -12,6 +12,7 @@ from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
+    from bs4 import BeautifulSoup
 
 
 class EromeCrawler(Crawler):
@@ -36,7 +37,7 @@ class EromeCrawler(Crawler):
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile"""
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         title = await self.create_title(scrape_item.url.name, None, None)
         albums = soup.select('a[class=album-link]')
@@ -51,12 +52,12 @@ class EromeCrawler(Crawler):
 
         for album in albums:
             link = URL(album['href'])
-            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent = scrape_item.url)
+            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(scrape_item)
+                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
 
         next_page = soup.select_one('a[rel="next"]')
         if next_page:
@@ -81,7 +82,7 @@ class EromeCrawler(Crawler):
             pass
 
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         title_portion = soup.select_one('title').text.rsplit(" - Porn")[0].strip()
         if not title_portion:
@@ -102,4 +103,4 @@ class EromeCrawler(Crawler):
             scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(scrape_item)
+                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)

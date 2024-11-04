@@ -14,6 +14,7 @@ from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
+    from bs4 import BeautifulSoup
 
 
 class ImageBanCrawler(Crawler):
@@ -42,13 +43,13 @@ class ImageBanCrawler(Crawler):
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a gallery"""
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         scrape_item.album_id = scrape_item.url.parts[2]
         scrape_item.part_of_album = True
 
         title = await self.create_title(soup.select_one("title").get_text().replace("Просмотр альбома: ", ""),
-                                        scrape_item.album_id , None)
+                                        scrape_item.album_id, None)
         content_block = soup.select_one('div[class="row text-center"]')
         images = content_block.select("a")
         scrape_item.type = FILE_HOST_ALBUM
@@ -71,12 +72,12 @@ class ImageBanCrawler(Crawler):
             else:
                 link = URL(link_path)
 
-            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent = scrape_item.url)
+            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(scrape_item)
+                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
 
         next_page = soup.select_one('a[class*="page-link next"]')
         if next_page:
@@ -92,7 +93,7 @@ class ImageBanCrawler(Crawler):
     async def compilation(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a compilation"""
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         title = await self.create_title(soup.select_one("blockquote").get_text(), scrape_item.url.parts[2], None)
         await scrape_item.add_to_parent_title(title)
@@ -115,7 +116,7 @@ class ImageBanCrawler(Crawler):
             scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(scrape_item)
+                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
@@ -124,7 +125,7 @@ class ImageBanCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         date = await self.parse_datetime(
             f"{(scrape_item.url.parts[2])}-{(scrape_item.url.parts[3])}-{(scrape_item.url.parts[4])}")
@@ -144,7 +145,8 @@ class ImageBanCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def parse_datetime(self, date: str) -> int:
+    @staticmethod
+    async def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp"""
         date = datetime.datetime.strptime(date, "%Y-%m-%d")
         return calendar.timegm(date.timetuple())

@@ -3,8 +3,8 @@ from __future__ import annotations
 import http
 import re
 from copy import deepcopy
-from typing import TYPE_CHECKING
 from hashlib import sha256
+from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
@@ -51,7 +51,8 @@ class GoFileCrawler(Crawler):
         scrape_item.album_id = content_id
         scrape_item.part_of_album = True
 
-        password = scrape_item.url.query.get("password","")
+        password = scrape_item.url.query.get("password", "")
+        scrape_item.url = scrape_item.url.with_query(None)
         if password:
             password = sha256(password.encode()).hexdigest()
 
@@ -59,7 +60,8 @@ class GoFileCrawler(Crawler):
             async with self.request_limiter:
                 JSON_Resp = await self.client.get_json(self.domain,
                                                     (self.api_address / "contents" / content_id).with_query(
-                                                        {"wt": self.websiteToken, "password": password }), headers_inc=self.headers)
+                                                        {"wt": self.websiteToken, "password": password}),
+                                                    headers_inc=self.headers, origin=scrape_item)
         except DownloadFailure as e:
             if e.status == http.HTTPStatus.UNAUTHORIZED:
                 self.websiteToken = ""
@@ -68,21 +70,22 @@ class GoFileCrawler(Crawler):
                 async with self.request_limiter:
                     JSON_Resp = await self.client.get_json(self.domain,
                                                         (self.api_address / "contents" / content_id).with_query(
-                                                            {"wt": self.websiteToken, "password": password}), headers_inc=self.headers)
+                                                            {"wt": self.websiteToken, "password": password}),
+                                                        headers_inc=self.headers, origin=scrape_item)
             else:
-                raise ScrapeFailure(e.status, e.message)
-            
+                raise ScrapeFailure(e.status, e.message, origin=scrape_item)
+
         if JSON_Resp["status"] == "error-notFound":
-            raise ScrapeFailure(404, "Album not found")
+            raise ScrapeFailure(404, "Album not found", origin=scrape_item)
 
         JSON_Resp = JSON_Resp['data']
 
         if "password" in JSON_Resp:
-            if JSON_Resp['passwordStatus'] in {'passwordRequired','passwordWrong'} or not password:
-                raise PasswordProtected(scrape_item)
+            if JSON_Resp['passwordStatus'] in {'passwordRequired', 'passwordWrong'} or not password:
+                raise PasswordProtected(origin=scrape_item)
 
         if JSON_Resp["canAccess"] is False:
-            raise ScrapeFailure(403, "Album is private")
+            raise ScrapeFailure(403, "Album is private", origin=scrape_item)
 
         title = await self.create_title(JSON_Resp["name"], content_id, None)
         #Do not reset nested folders
@@ -102,7 +105,7 @@ class GoFileCrawler(Crawler):
             if content["type"] == "folder":
                 new_scrape_item = await self.create_scrape_item(scrape_item,
                                                                 self.primary_base_domain / "d" / content["code"], title,
-                                                                True, add_parent = scrape_item.url)
+                                                                True, add_parent=scrape_item.url)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
             
             elif content["link"] == "overloaded":
@@ -125,7 +128,7 @@ class GoFileCrawler(Crawler):
             scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(scrape_item)
+                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
                    
                 
 

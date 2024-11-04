@@ -5,7 +5,29 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [5.7.0] - 2024-10-23
+## [UNRELEASED] - 2024-10-31
+
+This update introduces the following changes:
+1. Add support for scraping a users' coomer favourites
+
+#### Details:
+- Add support for scraping a users' coomer favourites by allowing the user to pass the coomer favourites page URL as an input URL (https://coomer.su/favorites). This requires them to have their coomer session token in the `authentication.yaml` file.
+
+## [5.7.1] - 2024-10-28
+
+This update introduces the following changes:
+1. Add integration to handle downloads supported by https://real-debrid.com
+2. Add support for https://nekohouse.su profiles and posts
+3. General logging improvements & bug fixes
+
+#### Details:
+- Add real-debrid API key to authentication file in order to allow downloads from websites that real-debrid supports
+- Nekohouse URLs can now be scraped and downloaded by CDL
+- Update how bunkr file extensions are scraped to prevent errors
+- Remove console markdown data from log files
+
+
+## [5.7.0] - 2024-10-25
 
 This update introduces the following changes:
 1. Rotating log files 
@@ -16,7 +38,7 @@ This update introduces the following changes:
 6. Add support for password protected Cyberfile URLs
 7. Simplify some UI elements
 8. Improve jdownloader intergration
-9. Implement rich logger
+9.  Implement rich logger
 10. Add a "Check for Updates" UI option
 11. General bug fixes
 
@@ -40,6 +62,7 @@ This update introduces the following changes:
 - Fix handling of deleted imgbox albums if they return `HTTP 200`
 - Fix cyberfile deleted folders not being correctly scraped
 - Update logging to include when a file is being downloaded with no crawler
+
 
 ## [5.6.54] - 2024-10-21
 

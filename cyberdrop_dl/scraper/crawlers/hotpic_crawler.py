@@ -12,6 +12,7 @@ from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
+    from bs4 import BeautifulSoup
 
 
 class HotPicCrawler(Crawler):
@@ -40,10 +41,10 @@ class HotPicCrawler(Crawler):
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         scrape_item.album_id = scrape_item.url.parts[2]
-        title = await self.create_title(soup.select_one("title").text.rsplit(" - ")[0], scrape_item.album_id , None)
+        title = await self.create_title(soup.select_one("title").text.rsplit(" - ")[0], scrape_item.album_id, None)
         await scrape_item.add_to_parent_title(title)
         scrape_item.part_of_album = True
         scrape_item.type = FILE_HOST_ALBUM
@@ -62,7 +63,7 @@ class HotPicCrawler(Crawler):
             scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(scrape_item)
+                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
@@ -71,7 +72,7 @@ class HotPicCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         link = URL(soup.select_one("img[id*=main-image]").get("src"))
         filename, ext = await get_filename_and_ext(link.name)

@@ -92,7 +92,8 @@ class ScrolllerCrawler(Crawler):
 
         while True:
             request_body["variables"]["iterator"] = iterator
-            data = await self.client.post_data(self.domain, self.scrolller_api, data=json.dumps(request_body))
+            data = await self.client.post_data(self.domain, self.scrolller_api, data=json.dumps(request_body),
+                                            origin=scrape_item)
 
             if data:
                 items = data["data"]["getSubreddit"]["children"]["items"]
@@ -105,7 +106,7 @@ class ScrolllerCrawler(Crawler):
                         await self.handle_file(highest_res_image_url, scrape_item, filename, ext)
                         if scrape_item.children_limit:
                             if scrape_item.children >= scrape_item.children_limit:
-                                raise ScrapeItemMaxChildrenReached(scrape_item)
+                                raise ScrapeItemMaxChildrenReached(origin = scrape_item)
 
                 prev_iterator = iterator
                 iterator = data["data"]["getSubreddit"]["children"]["iterator"]

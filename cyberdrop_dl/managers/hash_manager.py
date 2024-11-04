@@ -13,7 +13,8 @@ class HashManager:
     async def startup(self):
         await self.hash_client.startup()
 
-    def _get_hasher(self):
+    @staticmethod
+    def _get_hasher():
         """Tries to import xxhash, otherwise falls back to hashlib.md5"""
         try:
             import xxhash  # type: ignore

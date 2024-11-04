@@ -52,7 +52,8 @@ class PixelDrainCrawler(Crawler):
             pass
 
         async with self.request_limiter:
-            JSON_Resp = await self.client.get_json(self.domain, self.api_address / "list" / scrape_item.url.parts[-1])
+            JSON_Resp = await self.client.get_json(self.domain, self.api_address / "list" / scrape_item.url.parts[-1],
+                                                origin=scrape_item)
 
         title = await self.create_title(JSON_Resp['title'], scrape_item.url.parts[2], None)
 
@@ -66,20 +67,22 @@ class PixelDrainCrawler(Crawler):
                     filename, ext = await get_filename_and_ext(file['name'] + "." + file["mime_type"].split("/")[-1])
                 else:
                     raise NoExtensionFailure()
-            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, None, date, add_parent = scrape_item.url)
+            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, None, date,
+                                                            add_parent=scrape_item.url)
             if not await self.check_album_results(link, results):
                 await self.handle_file(link, new_scrape_item, filename, ext)
             scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(scrape_item)
+                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a file"""
         async with self.request_limiter:
             JSON_Resp = await self.client.get_json(self.domain,
-                                                self.api_address / "file" / scrape_item.url.parts[-1] / "info")
+                                                self.api_address / "file" / scrape_item.url.parts[-1] / "info",
+                                                origin=scrape_item)
 
         link = await self.create_download_link(JSON_Resp['id'])
         date = await self.parse_datetime(JSON_Resp['date_upload'].replace("T", " ").split(".")[0])
@@ -89,14 +92,18 @@ class PixelDrainCrawler(Crawler):
             if "text/plain" in JSON_Resp["mime_type"]:
                 await scrape_item.add_to_parent_title(f"{JSON_Resp['name']} (Pixeldrain)")
                 async with self.request_limiter:
-                    text = await self.client.get_text(self.domain, self.api_address / "file" / scrape_item.url.parts[-1])
+                    text = await self.client.get_text(self.domain,
+                                                    self.api_address / "file" / scrape_item.url.parts[-1],
+                                                    origin=scrape_item)
                 lines = text.split("\n")
                 for line in lines:
                     link = URL(line)
-                    new_scrape_item = await self.create_scrape_item(scrape_item, link, "", False, None, date, add_parent = scrape_item.url)
+                    new_scrape_item = await self.create_scrape_item(scrape_item, link, "", False, None, date,
+                                                                    add_parent=scrape_item.url)
                     await self.handle_external_links(new_scrape_item)
             elif "image" in JSON_Resp["mime_type"] or "video" in JSON_Resp["mime_type"]:
-                filename, ext = await get_filename_and_ext(JSON_Resp['name'] + "." + JSON_Resp["mime_type"].split("/")[-1])
+                filename, ext = await get_filename_and_ext(
+                    JSON_Resp['name'] + "." + JSON_Resp["mime_type"].split("/")[-1])
             else:
                 raise NoExtensionFailure()
         new_scrape_item = await self.create_scrape_item(scrape_item, link, "", False, None, date)
@@ -104,15 +111,16 @@ class PixelDrainCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def parse_datetime(self, date: str) -> int:
+    async def create_download_link(self, file_id: str) -> URL:
+        """Creates a download link for a file"""
+        link = (self.api_address / "file" / file_id).with_query('download')
+        return link
+
+    @staticmethod
+    async def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp"""
         try:
             date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
         except ValueError:
             date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%SZ")
         return calendar.timegm(date.timetuple())
-
-    async def create_download_link(self, file_id: str) -> URL:
-        """Creates a download link for a file"""
-        link = (self.api_address / "file" / file_id).with_query('download')
-        return link

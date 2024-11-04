@@ -1,8 +1,8 @@
 import os
 from dataclasses import field
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
-from datetime import datetime
 
 from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem
 
@@ -81,16 +81,18 @@ class PathManager:
         log_options_map = {
             'main_log_filename': 'main_log',
             'last_forum_post_filename': 'last_post_log',
-            'unsupported_urls_filename':  'unsupported_urls_log',
+            'unsupported_urls_filename': 'unsupported_urls_log',
             'download_error_urls_filename': 'download_error_log',
             'scrape_error_urls_filename': 'scrape_error_log'
         }
 
         for log_config_name, log_internal_name in log_options_map.items():
             file_name = Path(getattr(log_args_config, log_config_name, None) or log_settings_config[log_config_name])
+            file_ext = '.log' if log_internal_name == 'main_log' else '.csv'
             if log_settings_config['rotate_logs']:
-                file_name = file_name.with_name(f"{file_name.stem}__{current_time_iso}{file_name.suffix}")
-            setattr(self, log_internal_name, self.log_dir / file_name)
+                file_name = f"{file_name.stem}__{current_time_iso}{file_name.suffix}"
+            log_path = self.log_dir.joinpath(file_name).with_suffix(file_ext)
+            setattr(self, log_internal_name, log_path)
 
         self.log_dir.mkdir(parents=True, exist_ok=True)
         if not self.input_file.is_file():

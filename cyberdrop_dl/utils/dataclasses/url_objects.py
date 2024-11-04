@@ -46,7 +46,7 @@ class ScrapeItem:
         self.url: URL = url
         self.parent_title: str = parent_title
         # WARNING: unsafe but deepcopy is used when a new child item is created
-        self.parents : list[URL] = []
+        self.parents: list[URL] = []
         self.children : int = 0
         self.children_limit: int = 0
         self.type: Union[int, None] = None

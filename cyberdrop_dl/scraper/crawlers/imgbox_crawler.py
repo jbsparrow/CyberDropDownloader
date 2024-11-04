@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.clients.errors import ScrapeFailure
+from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem, FILE_HOST_ALBUM
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
@@ -47,11 +47,11 @@ class ImgBoxCrawler(Crawler):
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         if "The specified gallery could not be found" in soup.text:
-            raise ScrapeFailure(404, f"Gallery not found: {scrape_item.url}")
-        
+            raise ScrapeFailure(404, f"Gallery not found: {scrape_item.url}", origin=scrape_item)
+
         scrape_item.album_id = scrape_item.url.parts[2]
         scrape_item.part_of_album = True
 
@@ -64,7 +64,7 @@ class ImgBoxCrawler(Crawler):
             pass
 
         title = await self.create_title(
-            soup.select_one("div[id=gallery-view] h1").get_text().strip().rsplit(" - ", 1)[0], scrape_item.album_id ,
+            soup.select_one("div[id=gallery-view] h1").get_text().strip().rsplit(" - ", 1)[0], scrape_item.album_id,
             None)
 
         scrape_item.part_of_album = True
@@ -79,7 +79,7 @@ class ImgBoxCrawler(Crawler):
             scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(scrape_item)
+                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
@@ -88,7 +88,7 @@ class ImgBoxCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         image = URL(soup.select_one("img[id=img]").get('src'))
         filename, ext = await get_filename_and_ext(image.name)
@@ -96,7 +96,8 @@ class ImgBoxCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def parse_datetime(self, date: str) -> int:
+    @staticmethod
+    async def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp"""
         date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
         return calendar.timegm(date.timetuple())

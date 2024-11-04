@@ -116,7 +116,7 @@ class HashTable:
         file_size = full_path.stat().st_size
 
         download_filename = full_path.name
-        original_filename=referer or download_filename
+        original_filename = referer or download_filename
         folder = str(full_path.parent)
 
         # Assuming a table named 'file_info' with columns: id (primary key), hash, size, filename, folder

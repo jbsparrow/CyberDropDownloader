@@ -110,7 +110,7 @@ class DownloadClient:
             if resp.status == HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE:
                 media_item.partial_file.unlink()
 
-            await self.client_manager.check_http_status(resp, download=True)
+            await self.client_manager.check_http_status(resp, download=True, origin=media_item.url)
             content_type = resp.headers.get('Content-Type')
 
             media_item.filesize = int(resp.headers.get('Content-Length', '0'))
@@ -146,10 +146,11 @@ class DownloadClient:
             await save_content(resp.content)
             return True
 
-    async def _append_content(self, media_item, content: aiohttp.StreamReader, update_progress: partial) -> None:
+    async def _append_content(self, media_item: MediaItem, content: aiohttp.StreamReader,
+                            update_progress: partial) -> None:
         """Appends content to a file"""
         if not await self.client_manager.manager.download_manager.check_free_space(media_item.download_folder):
-            raise DownloadFailure(status="No Free Space", message="Not enough free space")
+            raise DownloadFailure(status="Insufficient Free Space", message="Not enough free space")
 
         media_item.partial_file.parent.mkdir(parents=True, exist_ok=True)
         if not media_item.partial_file.is_file():
@@ -245,19 +246,20 @@ class DownloadClient:
         skip = False
 
         if not skip and self.manager.config_manager.settings_data['Ignore_Options']['skip_hosts']:
-            for skip_host in self.manager.config_manager.settings_data['Ignore_Options']['skip_hosts']:
-                if media_item.url.host.find(skip_host) != -1:
-                    skip = True
-                    break
-                
+            skip_hosts = self.manager.config_manager.settings_data['Ignore_Options']['skip_hosts']
+            if any ((media_item.url.host.find(skip_host) != -1 for skip_host in skip_hosts)):                
+                await log(f"Download Skip {media_item.url} due to skip_hosts config", 10)
+                skip = True
+
+
         if not skip and self.manager.config_manager.settings_data['Ignore_Options']['only_hosts']:
-            for only_host in self.manager.config_manager.settings_data['Ignore_Options']['only_hosts']:
-                if media_item.url.host.find(only_host) == -1:
-                    skip = True
-                    break
+            only_hosts = self.manager.config_manager.settings_data['Ignore_Options']['only_hosts']
+            if not any((media_item.url.host.find(only_host) != -1 for only_host in only_hosts)):
+                await log(f"Download Skip {media_item.url} due to only_hosts config", 10)
+                skip = True
 
         if skip:
-            return proceed, skip 
+            return proceed, skip
 
         while True:
             if expected_size:

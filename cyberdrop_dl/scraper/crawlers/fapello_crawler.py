@@ -12,6 +12,7 @@ from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
+    from bs4 import BeautifulSoup
 
 
 class FapelloCrawler(Crawler):
@@ -39,7 +40,8 @@ class FapelloCrawler(Crawler):
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile"""
         async with self.request_limiter:
-            soup, response_url = await self.client.get_BS4_and_return_URL(self.domain, scrape_item.url)
+            soup, response_url = await self.client.get_BS4_and_return_URL(self.domain, scrape_item.url,
+                                                                        origin=scrape_item)
             if response_url != scrape_item.url:
                 return
             
@@ -58,15 +60,17 @@ class FapelloCrawler(Crawler):
             if "javascript" in post.get('href'):
                 video_tag = post.select_one('iframe')
                 video_link = URL(video_tag.get('src'))
-                new_scrape_item = await self.create_scrape_item(scrape_item, video_link, "", True, add_parent = scrape_item.url)
+                new_scrape_item = await self.create_scrape_item(scrape_item, video_link, "", True,
+                                                                add_parent=scrape_item.url)
                 await self.handle_external_links(new_scrape_item)
             else:
                 link = URL(post.get('href'))
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent = scrape_item.url)
+                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True,
+                                                                add_parent=scrape_item.url)
                 await self.handle_external_links(new_scrape_item)
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(scrape_item)
+                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
 
         next_page = soup.select_one('div[id="next_page"] a')
         if next_page:
@@ -79,7 +83,7 @@ class FapelloCrawler(Crawler):
     async def post(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         content = soup.select_one('div[class="flex justify-between items-center"]')
         content_tags = content.select("img")
@@ -102,4 +106,4 @@ class FapelloCrawler(Crawler):
             scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(scrape_item)
+                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)

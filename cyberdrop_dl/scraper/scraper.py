@@ -18,7 +18,7 @@ from cyberdrop_dl.utils.utilities import log, get_filename_and_ext, get_download
 
 if TYPE_CHECKING:
     from typing import List
-
+    from cyberdrop_dl.scraper.crawler import Crawler
     from cyberdrop_dl.managers.manager import Manager
 
 
@@ -27,32 +27,30 @@ class ScrapeMapper:
 
     def __init__(self, manager: Manager):
         self.manager = manager
-        self.mapping = {"realdebrid": self.realdebrid, "tokyomotion": self.tokyomotion, "bunkrr": self.bunkrr, "celebforum": self.celebforum, "coomer": self.coomer,
+        self.mapping = {"bunkr": self.bunkr, "celebforum": self.celebforum, "coomer": self.coomer,
                         "cyberdrop": self.cyberdrop, "cyberfile": self.cyberfile, "e-hentai": self.ehentai,
                         "erome": self.erome, "fapello": self.fapello, "f95zone": self.f95zone, "gofile": self.gofile,
                         "hotpic": self.hotpic, "ibb.co": self.imgbb, "imageban": self.imageban, "imgbox": self.imgbox,
-                        "imgur": self.imgur, "img.kiwi": self.imgwiki, "jpg.church": self.jpgchurch,
-                        "jpg.homes": self.jpgchurch, "jpg.fish": self.jpgchurch, "jpg.fishing": self.jpgchurch,
-                        "jpg.pet": self.jpgchurch, "jpeg.pet": self.jpgchurch, "jpg1.su": self.jpgchurch,
-                        "jpg2.su": self.jpgchurch, "jpg3.su": self.jpgchurch, "jpg4.su": self.jpgchurch,
-                        "jpg5.su": self.jpgchurch,
-                        "host.church": self.jpgchurch, "kemono": self.kemono, "leakedmodels": self.leakedmodels,
-                        "mediafire": self.mediafire, "nudostar.com": self.nudostar, "nudostar.tv": self.nudostartv,
-                        "omegascans": self.omegascans, "pimpandhost": self.pimpandhost, "pixeldrain": self.pixeldrain,
-                        "postimg": self.postimg, "realbooru": self.realbooru, "reddit": self.reddit,
-                        "redd.it": self.reddit, "redgifs": self.redgifs, "rule34vault": self.rule34vault,
-                        "rule34.xxx": self.rule34xxx,
-                        "rule34.xyz": self.rule34xyz, "saint": self.saint, "scrolller": self.scrolller,
-                        "socialmediagirls": self.socialmediagirls, "toonily": self.toonily,
-                        "xxxbunker":self.xxxbunker,"xbunker": self.xbunker, "xbunkr": self.xbunkr, "bunkr": self.bunkrr}
-        self.existing_crawlers = {}
+
+                        "imgur": self.imgur, "jpg.church": self.chevereto, "kemono": self.kemono,
+                        "leakedmodels": self.leakedmodels, "mediafire": self.mediafire, "nekohouse": self.nekohouse, "nudostar.com": self.nudostar,
+                        "nudostar.tv": self.nudostartv, "omegascans": self.omegascans, "pimpandhost": self.pimpandhost,
+                        "pixeldrain": self.pixeldrain, "postimg": self.postimg, "realbooru": self.realbooru,
+                        "reddit": self.reddit, "redgifs": self.redgifs, "rule34vault": self.rule34vault,
+                        "rule34.xxx": self.rule34xxx, "rule34.xyz": self.rule34xyz, "saint": self.saint,
+                        "scrolller": self.scrolller, "socialmediagirls": self.socialmediagirls,
+                        "tokyomotion": self.tokyomotion, "toonily": self.toonily,
+                        "xxxbunker": self.xxxbunker, "xbunker": self.xbunker, "xbunkr": self.xbunkr}
+
+        self.existing_crawlers: dict[str, Crawler] = {}
         self.no_crawler_downloader = Downloader(self.manager, "no_crawler")
         self.jdownloader = JDownloader(self.manager)
-        self.jdownloader_whitelist = self.manager.config_manager.settings_data["Runtime_Options"]["jdownloader_whitelist"]
+        self.jdownloader_whitelist = self.manager.config_manager.settings_data["Runtime_Options"][
+            "jdownloader_whitelist"]
         self.lock = asyncio.Lock()
         self.count = 0
 
-    async def bunkrr(self) -> None:
+    async def bunkr(self) -> None:
         """Creates a Bunkr Crawler instance"""
         from cyberdrop_dl.scraper.crawlers.bunkrr_crawler import BunkrrCrawler
         self.existing_crawlers['bunkrr'] = BunkrrCrawler(self.manager)
@@ -128,26 +126,15 @@ class ScrapeMapper:
         from cyberdrop_dl.scraper.crawlers.imgur_crawler import ImgurCrawler
         self.existing_crawlers['imgur'] = ImgurCrawler(self.manager)
 
-    async def imgwiki(self) -> None:
-        """Creates a ImgWiki Crawler instance"""
-        from cyberdrop_dl.scraper.crawlers.imgkiwi_crawler import ImgKiwiCrawler
-        self.existing_crawlers['img.kiwi'] = ImgKiwiCrawler(self.manager)
-
-    async def jpgchurch(self) -> None:
-        """Creates a JPGChurch Crawler instance"""
-        from cyberdrop_dl.scraper.crawlers.jpgchurch_crawler import JPGChurchCrawler
-        self.existing_crawlers['jpg.church'] = JPGChurchCrawler(self.manager)
-        self.existing_crawlers['jpg.homes'] = self.existing_crawlers['jpg.church']
-        self.existing_crawlers['jpg.fish'] = self.existing_crawlers['jpg.church']
-        self.existing_crawlers['jpg.fishing'] = self.existing_crawlers['jpg.church']
-        self.existing_crawlers['jpg.pet'] = self.existing_crawlers['jpg.church']
-        self.existing_crawlers['jpeg.pet'] = self.existing_crawlers['jpg.church']
-        self.existing_crawlers['jpg1.su'] = self.existing_crawlers['jpg.church']
-        self.existing_crawlers['jpg2.su'] = self.existing_crawlers['jpg.church']
-        self.existing_crawlers['jpg3.su'] = self.existing_crawlers['jpg.church']
-        self.existing_crawlers['jpg4.su'] = self.existing_crawlers['jpg.church']
-        self.existing_crawlers['jpg5.su'] = self.existing_crawlers['jpg.church']
-        self.existing_crawlers['host.church'] = self.existing_crawlers['jpg.church']
+    async def chevereto(self) -> None:
+        """Creates a Chevereto Crawler instance"""
+        from cyberdrop_dl.scraper.crawlers.chevereto_crawler import CheveretoCrawler
+        self.existing_crawlers['jpg.church'] = CheveretoCrawler(self.manager, 'jpg.church')
+        for domain in CheveretoCrawler.DOMAINS:
+            if domain in CheveretoCrawler.JPG_CHURCH_DOMAINS:
+                self.existing_crawlers[domain] = self.existing_crawlers['jpg.church']
+            else:
+                self.existing_crawlers[domain] = CheveretoCrawler(self.manager, domain)
 
     async def kemono(self) -> None:
         """Creates a Kemono Crawler instance"""
@@ -163,6 +150,11 @@ class ScrapeMapper:
         """Creates a MediaFire Crawler instance"""
         from cyberdrop_dl.scraper.crawlers.mediafire_crawler import MediaFireCrawler
         self.existing_crawlers['mediafire'] = MediaFireCrawler(self.manager)
+
+    async def nekohouse(self) -> None:
+        """Creates a Nekohouse Crawler instance"""
+        from cyberdrop_dl.scraper.crawlers.nekohouse_crawler import NekohouseCrawler
+        self.existing_crawlers['nekohouse'] = NekohouseCrawler(self.manager)
 
     async def nudostar(self) -> None:
         """Creates a NudoStar Crawler instance"""
@@ -202,7 +194,7 @@ class ScrapeMapper:
     async def realdebrid(self) -> None:
         """Creates a RealDebrid Crawler instance"""
         from cyberdrop_dl.scraper.crawlers.realdebrid_crawler import RealDebridCrawler
-        self.existing_crawlers['realdebrid'] = RealDebridCrawler(self.manager)
+        self.existing_crawlers['real-debrid'] = RealDebridCrawler(self.manager)
 
     async def reddit(self) -> None:
         """Creates a Reddit Crawler instance"""
@@ -254,7 +246,7 @@ class ScrapeMapper:
         """Creates a Tokyomotion Crawler instance"""
         from cyberdrop_dl.scraper.crawlers.tokyomotion_crawler import TokioMotionCrawler
         self.existing_crawlers['tokyomotion'] = TokioMotionCrawler(self.manager)
-        
+
     async def toonily(self) -> None:
         """Creates a Toonily Crawler instance"""
         from cyberdrop_dl.scraper.crawlers.toonily_crawler import ToonilyCrawler
@@ -281,8 +273,10 @@ class ScrapeMapper:
         """Starts all scrapers"""
         for key in self.mapping:
             await self.mapping[key]()
-            crawler = self.existing_crawlers[key]
-            await crawler.startup()
+
+        for crawler in self.existing_crawlers.values():
+            if isinstance(crawler.client, Field):
+                await crawler.startup()
 
     async def start_jdownloader(self) -> None:
         """Starts JDownloader"""
@@ -291,8 +285,12 @@ class ScrapeMapper:
 
     async def start_real_debrid(self) -> None:
         """Starts RealDebrid"""
-        if self.manager.real_debrid_manager.enabled and isinstance(self.manager.real_debrid_manager.api, Field):
+        if isinstance(self.manager.real_debrid_manager.api, Field):
             await self.manager.real_debrid_manager.startup()
+
+        if self.manager.real_debrid_manager.enabled:
+            await self.realdebrid()
+            await self.existing_crawlers['real-debrid'].startup()
 
     async def start(self) -> None:
         """Starts the orchestra"""
@@ -315,7 +313,8 @@ class ScrapeMapper:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def regex_links(self, line: str) -> List:
+    @staticmethod
+    async def regex_links(line: str) -> List:
         """Regex grab the links from the URLs.txt file
         This allows code blocks or full paragraphs to be copy and pasted into the URLs.txt"""
         yarl_links = []
@@ -325,14 +324,16 @@ class ScrapeMapper:
         all_links = [x.group().replace(".md.", ".") for x in re.finditer(
             r"(?:http.*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]))", line)]
         for link in all_links:
-            yarl_links.append(URL(link))
+            encoded = "%" in link
+            yarl_links.append(URL(link, encoded = encoded))
         return yarl_links
 
     async def load_links(self) -> None:
         """Loads links from args / input file"""
         input_file = self.manager.path_manager.input_file
-          # we need to touch the file just in case, purge_tree deletes it
-        input_file.touch(exist_ok=True)
+        # we need to touch the file just in case, purge_tree deletes it
+        if not input_file.is_file():
+            input_file.touch(exist_ok=True)
 
         links = {'': []}
         if not self.manager.args_manager.other_links:
@@ -415,7 +416,8 @@ class ScrapeMapper:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def extension_check(self, url: URL) -> bool:
+    @staticmethod
+    async def extension_check(url: URL) -> bool:
         """Checks if the URL has a valid extension"""
         try:
             filename, ext = await get_filename_and_ext(url.name)
@@ -433,17 +435,19 @@ class ScrapeMapper:
         if await self.filter_items(scrape_item):
             await self.add_item_to_group(scrape_item)
 
-    def get_item_from_link(self, link):
+    @staticmethod
+    def get_item_from_link(link):
         item = ScrapeItem(url=link, parent_title="")
         item.completed_at = None
         item.created_at = None
         return item
 
-    def get_item_from_entry(self, entry):
+    @staticmethod
+    def get_item_from_entry(entry):
         link = URL(entry[0])
         retry_path = Path(entry[1])
         scrape_item = ScrapeItem(link, parent_title="",
-                                 part_of_album=True, retry=True, retry_path=retry_path)
+                                part_of_album=True, retry=True, retry_path=retry_path)
         completed_at = entry[2]
         created_at = entry[3]
         if not isinstance(scrape_item.url, URL):
@@ -460,19 +464,21 @@ class ScrapeMapper:
             else:
                 scrape_item.url = scrape_item.url.with_path(scrape_item.url.path[:-1])
 
-        key = next((key for key in self.mapping if key in scrape_item.url.host.lower()), None)
-        jdownloader_whitelisted = True 
+        key = next((key for key in self.existing_crawlers if key in scrape_item.url.host.lower()), None)
+        jdownloader_whitelisted = True
         if self.jdownloader_whitelist:
-            jdownloader_whitelisted = next((domain for domain in self.jdownloader_whitelist if domain in scrape_item.url.host.lower()), False)
+            jdownloader_whitelisted = next(
+                (domain for domain in self.jdownloader_whitelist if domain in scrape_item.url.host.lower()), False)
 
         if key:
             scraper = self.existing_crawlers[key]
             self.manager.task_group.create_task(scraper.run(scrape_item))
             return
 
-        elif self.manager.real_debrid_manager.enabled and await self.manager.real_debrid_manager.is_supported(scrape_item.url):
+        elif self.manager.real_debrid_manager.enabled and await self.manager.real_debrid_manager.is_supported(
+                scrape_item.url):
             await log(f"Using RealDebrid for unsupported URL: {scrape_item.url}", 10)
-            self.manager.task_group.create_task(self.existing_crawlers['realdebrid'].run(scrape_item))
+            self.manager.task_group.create_task(self.existing_crawlers['real-debrid'].run(scrape_item))
 
         elif await self.extension_check(scrape_item.url):
             check_complete = await self.manager.db_manager.history_table.check_complete("no_crawler", scrape_item.url,
@@ -506,16 +512,19 @@ class ScrapeMapper:
             try:
                 download_folder = await get_download_path(self.manager, scrape_item, "jdownloader")
                 relative_download_dir = download_folder.relative_to(self.manager.path_manager.download_dir)
-                await self.jdownloader.direct_unsupported_to_jdownloader(scrape_item.url, scrape_item.parent_title, relative_download_dir)
+                await self.jdownloader.direct_unsupported_to_jdownloader(scrape_item.url, scrape_item.parent_title,
+                                                                        relative_download_dir)
                 success = True
             except JDownloaderFailure as e:
                 await log(f"Failed to send {scrape_item.url} to JDownloader\n{e.message}", 40)
-                await self.manager.log_manager.write_unsupported_urls_log(scrape_item.url, scrape_item.parents[0] if scrape_item.parents else None)
+                await self.manager.log_manager.write_unsupported_urls_log(scrape_item.url, scrape_item.parents[
+                    0] if scrape_item.parents else None)
             await self.manager.progress_manager.scrape_stats_progress.add_unsupported(sent_to_jdownloader=success)
 
         else:
             await log(f"Unsupported URL: {scrape_item.url}", 30)
-            await self.manager.log_manager.write_unsupported_urls_log(scrape_item.url, scrape_item.parents[0] if scrape_item.parents else None)
+            await self.manager.log_manager.write_unsupported_urls_log(scrape_item.url, scrape_item.parents[
+                0] if scrape_item.parents else None)
             await self.manager.progress_manager.scrape_stats_progress.add_unsupported()
 
     async def filter_items(self, scrape_item: ScrapeItem) -> None:
@@ -578,9 +587,10 @@ class ScrapeMapper:
             media_item = MediaItem(scrape_item.url, scrape_item.url, None, download_folder, filename, ext, filename)
             self.manager.task_group.create_task(self.no_crawler_downloader.run(media_item))
 
-        elif self.manager.real_debrid_manager.enabled and await self.manager.real_debrid_manager.is_supported(scrape_item.url):
+        elif self.manager.real_debrid_manager.enabled and await self.manager.real_debrid_manager.is_supported(
+                scrape_item.url):
             await log(f"Using RealDebrid for unsupported URL: {scrape_item.url}", 10)
-            self.manager.task_group.create_task(self.existing_crawlers['realdebrid'].run(scrape_item))
+            self.manager.task_group.create_task(self.existing_crawlers['real-debrid'].run(scrape_item))
 
         elif self.jdownloader.enabled:
             await log(f"Sending unsupported URL to JDownloader: {scrape_item.url}", 10)
@@ -589,8 +599,10 @@ class ScrapeMapper:
             except JDownloaderFailure as e:
                 await log(f"Failed to send {scrape_item.url} to JDownloader", 40)
                 await log(e.message, 40)
-                await self.manager.log_manager.write_unsupported_urls_log(scrape_item.url, scrape_item.parents[0] if scrape_item.parents else None)
+                await self.manager.log_manager.write_unsupported_urls_log(scrape_item.url, scrape_item.parents[
+                    0] if scrape_item.parents else None)
 
         else:
             await log(f"Unsupported URL: {scrape_item.url}", 30)
-            await self.manager.log_manager.write_unsupported_urls_log(scrape_item.url, scrape_item.parents[0] if scrape_item.parents else None)
+            await self.manager.log_manager.write_unsupported_urls_log(scrape_item.url, scrape_item.parents[
+                0] if scrape_item.parents else None)

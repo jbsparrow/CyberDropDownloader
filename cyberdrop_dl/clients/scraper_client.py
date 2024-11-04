@@ -11,18 +11,19 @@ from bs4 import BeautifulSoup
 from multidict import CIMultiDictProxy
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import InvalidContentTypeFailure, DDOSGuardFailure, ScrapeFailure
+from cyberdrop_dl.clients.errors import InvalidContentTypeFailure, DDOSGuardFailure
 from cyberdrop_dl.utils.utilities import log
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.client_manager import ClientManager
+    from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
 
 
 def limiter(func):
     """Wrapper handles limits for scrape session"""
 
     @wraps(func)
-    async def wrapper(self, *args, **kwargs):
+    async def wrapper(self: ScraperClient, *args, **kwargs):
         domain_limiter = await self.client_manager.get_rate_limiter(args[0])
         async with self.client_manager.session_limit:
             await self._global_limiter.acquire()
@@ -63,10 +64,11 @@ class ScraperClient:
             self.trace_configs.append(trace_config)
 
     @limiter
-    async def flaresolverr(self, domain: str, url: URL, client_session: ClientSession) -> str:
+    async def flaresolverr(self, domain: str, url: URL, client_session: ClientSession,
+                        origin: Optional[ScrapeItem | URL] = None, with_response_url: bool = False) -> str:
         """Returns the resolved URL from the given URL"""
         if not self.client_manager.flaresolverr:
-            raise ScrapeFailure(status="DDOS-Guard", message="FlareSolverr is not configured")
+            raise DDOSGuardFailure(message="FlareSolverr is not configured", origin=origin)
 
         headers = {**self._headers, **{"Content-Type": "application/json"}}
         data = {"cmd": "request.get", "url": str(url), "maxTimeout": 60000}
@@ -74,66 +76,70 @@ class ScraperClient:
         async with client_session.post(f"http://{self.client_manager.flaresolverr}/v1", headers=headers,
                                     ssl=self.client_manager.ssl_context,
                                     proxy=self.client_manager.proxy, json=data) as response:
-            json_obj = await response.json()
+            json_obj: dict = await response.json()
             status = json_obj.get("status")
             if status != "ok":
-                raise ScrapeFailure(status="DDOS-Guard", message="Failed to resolve URL with flaresolverr")
+                raise DDOSGuardFailure(message="Failed to resolve URL with flaresolverr", origin=origin)
 
-            return json_obj.get("solution").get("response")
+            response = json_obj.get("solution").get("response")
+            response_url = json_obj.get("solution").get("url")
+            if with_response_url:
+                return response , URL(response_url)
+            return response
+
 
     @limiter
-    async def get_BS4(self, domain: str, url: URL, client_session: ClientSession) -> BeautifulSoup:
+    async def get_BS4(self, domain: str, url: URL, client_session: ClientSession,
+                    origin: Optional[ScrapeItem | URL] = None, with_response_url: bool = False) -> BeautifulSoup:
         """Returns a BeautifulSoup object from the given URL"""
         async with client_session.get(url, headers=self._headers, ssl=self.client_manager.ssl_context,
                                     proxy=self.client_manager.proxy) as response:
             try:
-                await self.client_manager.check_http_status(response)
+                await self.client_manager.check_http_status(response, origin=origin)
             except DDOSGuardFailure:
-                response_text = await self.flaresolverr(domain, url)
-                return BeautifulSoup(response_text, 'html.parser')
+                response = await self.flaresolverr(domain, url, origin=origin, with_response_url=with_response_url)
+                if with_response_url:
+                    return BeautifulSoup(response[0], 'html.parser'), response[1]
+                return BeautifulSoup(response, 'html.parser')
+            
             content_type = response.headers.get('Content-Type')
             assert content_type is not None
             if not any(s in content_type.lower() for s in ("html", "text")):
-                raise InvalidContentTypeFailure(message=f"Received {content_type}, was expecting text")
+                raise InvalidContentTypeFailure(message=f"Received {content_type}, was expecting text", origin=origin)
             text = await response.text()
+            if with_response_url:
+                return BeautifulSoup(text, 'html.parser'), URL(response.url)
             return BeautifulSoup(text, 'html.parser')
 
-    @limiter
-    async def get_BS4_and_return_URL(self, domain: str, url: URL, client_session: ClientSession) -> tuple[
+    async def get_BS4_and_return_URL(self, domain: str, url: URL,
+                                    origin: Optional[ScrapeItem | URL] = None) -> tuple[
         BeautifulSoup, URL]:
         """Returns a BeautifulSoup object and response URL from the given URL"""
-        async with client_session.get(url, headers=self._headers, ssl=self.client_manager.ssl_context,
-                                    proxy=self.client_manager.proxy) as response:
-            await self.client_manager.check_http_status(response)
-            content_type = response.headers.get('Content-Type')
-            assert content_type is not None
-            if not any(s in content_type.lower() for s in ("html", "text")):
-                raise InvalidContentTypeFailure(message=f"Received {content_type}, was expecting text")
-            text = await response.text()
-            return BeautifulSoup(text, 'html.parser'), URL(response.url)
+        return await self.get_BS4(domain, url, origin = origin, with_response_url = True)
 
     @limiter
     async def get_json(self, domain: str, url: URL, params: Optional[Dict] = None, headers_inc: Optional[Dict] = None,
-                    client_session: ClientSession = None) -> Dict:
+                    client_session: ClientSession = None, origin: Optional[ScrapeItem | URL] = None) -> Dict:
         """Returns a JSON object from the given URL"""
         headers = {**self._headers, **headers_inc} if headers_inc else self._headers
 
         async with client_session.get(url, headers=headers, ssl=self.client_manager.ssl_context,
                                     proxy=self.client_manager.proxy, params=params) as response:
-            await self.client_manager.check_http_status(response)
+            await self.client_manager.check_http_status(response, origin=origin)
             content_type = response.headers.get('Content-Type')
             assert content_type is not None
             if 'json' not in content_type.lower():
-                raise InvalidContentTypeFailure(message=f"Received {content_type}, was expecting JSON")
+                raise InvalidContentTypeFailure(message=f"Received {content_type}, was expecting JSON", origin=origin)
             return await response.json()
 
     @limiter
-    async def get_text(self, domain: str, url: URL, client_session: ClientSession) -> str:
+    async def get_text(self, domain: str, url: URL, client_session: ClientSession,
+                    origin: Optional[ScrapeItem | URL] = None) -> str:
         """Returns a text object from the given URL"""
         async with client_session.get(url, headers=self._headers, ssl=self.client_manager.ssl_context,
                                     proxy=self.client_manager.proxy) as response:
             try:
-                await self.client_manager.check_http_status(response)
+                await self.client_manager.check_http_status(response, origin=origin)
             except DDOSGuardFailure:
                 response_text = await self.flaresolverr(domain, url)
                 return response_text
@@ -142,11 +148,12 @@ class ScraperClient:
 
     @limiter
     async def post_data(self, domain: str, url: URL, client_session: ClientSession, data: Dict,
-                        req_resp: bool = True, raw: Optional[bool] = False) -> Dict:
+                        req_resp: bool = True, raw: Optional[bool] = False,
+                        origin: Optional[ScrapeItem | URL] = None) -> Dict:
         """Returns a JSON object from the given URL when posting data. If raw == True, returns raw binary data of response"""
         async with client_session.post(url, headers=self._headers, ssl=self.client_manager.ssl_context,
                                     proxy=self.client_manager.proxy, data=data) as response:
-            await self.client_manager.check_http_status(response)
+            await self.client_manager.check_http_status(response, origin=origin)
             if req_resp:
                 content = await response.content.read()
                 if raw:

@@ -2,6 +2,7 @@ from typing import List
 
 import aiosqlite
 from yarl import URL
+
 from cyberdrop_dl.utils.database.table_definitions import create_temp_referer
 
 
@@ -42,7 +43,7 @@ class TempRefererTable:
         """Checks whether an individual referer url has already been recorded in the database"""
         if self.ignore_history:
             return False
-        
+
         referer = str(referer)
 
         cursor = await self.db_conn.cursor()
@@ -56,7 +57,7 @@ class TempRefererTable:
         elif sql_referer_check_current_run:
             return False
         return True
-    
+
     async def _check_temp_referer(self, referer: URL) -> bool:
         """Checks whether an individual referer url has already been recorded in this session"""
         if self.ignore_history:

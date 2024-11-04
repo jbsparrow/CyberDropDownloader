@@ -1,8 +1,10 @@
+from http import HTTPStatus
 from typing import Dict, Union, NamedTuple
 
 from rich.console import Group
 from rich.panel import Panel
 from rich.progress import Progress, BarColumn, TaskID
+
 
 class TaskInfo(NamedTuple):
     id: int
@@ -10,6 +12,7 @@ class TaskInfo(NamedTuple):
     completed: int
     total: int
     progress: float
+
 
 async def get_tasks_info_sorted(progress: Progress) -> tuple:
     tasks = [
@@ -29,6 +32,7 @@ async def get_tasks_info_sorted(progress: Progress) -> tuple:
 
     return tasks_sorted, were_sorted
 
+
 class DownloadStatsProgress:
     """Class that keeps track of download failures and reasons"""
 
@@ -45,7 +49,8 @@ class DownloadStatsProgress:
         self.unsupported_urls = 0
         self.sent_to_jdownloader = 0
         self.unsupported_urls_skipped = 0
-        self.panel = Panel(self.progress_group, title="Download Failures", border_style="green", padding=(1, 1), subtitle = f"Total Download Failures: [white]{self.failed_files}")
+        self.panel = Panel(self.progress_group, title="Download Failures", border_style="green", padding=(1, 1),
+                        subtitle=f"Total Download Failures: [white]{self.failed_files}")
 
     async def get_progress(self) -> Panel:
         """Returns the progress bar"""
@@ -65,14 +70,17 @@ class DownloadStatsProgress:
                 self.progress.remove_task(task_id)
 
             for task in tasks_sorted:
-                self.failure_types[task.description] = self.progress.add_task(task.description, total=task.total, completed=task.completed)
-
+                self.failure_types[task.description] = self.progress.add_task(task.description, total=task.total,
+                                                                            completed=task.completed)
 
     async def add_failure(self, failure_type: Union[str, int]) -> None:
         """Adds a failed file to the progress bar"""
         self.failed_files += 1
         if isinstance(failure_type, int):
-            failure_type = str(failure_type) + " HTTP Status"
+            try:
+                failure_type = f"{failure_type} {HTTPStatus(failure_type).phrase}"
+            except ValueError:
+                failure_type = f"{failure_type} HTTP Error"
 
         if failure_type in self.failure_types:
             self.progress.advance(self.failure_types[failure_type], 1)
@@ -106,7 +114,8 @@ class ScrapeStatsProgress:
         self.unsupported_urls = 0
         self.sent_to_jdownloader = 0
         self.unsupported_urls_skipped = 0
-        self.panel = Panel(self.progress_group, title="Scrape Failures", border_style="green", padding=(1, 1), subtitle = f"Total Scrape Failures: [white]{self.failed_files}")
+        self.panel = Panel(self.progress_group, title="Scrape Failures", border_style="green", padding=(1, 1),
+                        subtitle=f"Total Scrape Failures: [white]{self.failed_files}")
 
     async def get_progress(self) -> Panel:
         """Returns the progress bar"""
@@ -126,8 +135,8 @@ class ScrapeStatsProgress:
                 self.progress.remove_task(task_id)
 
             for task in tasks_sorted:
-                self.failure_types[task.description] = self.progress.add_task(task.description, total=task.total, completed=task.completed)
-
+                self.failure_types[task.description] = self.progress.add_task(task.description, total=task.total,
+                                                                            completed=task.completed)
 
     async def add_failure(self, failure_type: Union[str, int]) -> None:
         """Adds a failed site to the progress bar"""

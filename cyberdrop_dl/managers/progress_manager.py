@@ -1,7 +1,10 @@
+from __future__ import annotations
+
+import time
 from dataclasses import field
+from datetime import timedelta
 from typing import TYPE_CHECKING
 
-from aiohttp import ClientSession
 from rich.layout import Layout
 
 from cyberdrop_dl.ui.progress.downloads_progress import DownloadsProgress
@@ -10,14 +13,14 @@ from cyberdrop_dl.ui.progress.hash_progress import HashProgress
 from cyberdrop_dl.ui.progress.scraping_progress import ScrapingProgress
 from cyberdrop_dl.ui.progress.sort_progress import SortProgress
 from cyberdrop_dl.ui.progress.statistic_progress import DownloadStatsProgress, ScrapeStatsProgress
-from cyberdrop_dl.utils.utilities import log_with_color, get_log_output_text
+from cyberdrop_dl.utils.utilities import log_with_color, log, log_spacer, parse_bytes
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
 class ProgressManager:
-    def __init__(self, manager: 'Manager'):
+    def __init__(self, manager: Manager):
         # File Download Bars
         self.manager = manager
         self.file_progress: FileProgress = FileProgress(
@@ -63,57 +66,59 @@ class ProgressManager:
         self.hash_layout = await self.hash_progress.get_hash_progress()
         self.sort_layout = await self.sort_progress.get_progress()
 
-    async def print_stats(self) -> None:
+    async def print_stats(self, start_time: timedelta) -> None:
         """Prints the stats of the program"""
-        await log_with_color("\nDownload Stats:", "cyan", 20)
-        await log_with_color(f"Downloaded {self.download_progress.completed_files} files", "green", 20)
-        await log_with_color(f"Previously Downloaded {self.download_progress.previously_completed_files} files",
+
+        end_time = time.perf_counter()
+        total_time = timedelta(seconds=int(end_time - start_time))
+        downloaded_data, unit = parse_bytes(self.file_progress.downloaded_data)
+
+        await log("Printing Stats...\n", 20)
+        await log_with_color("Run Stats:", "cyan", 20)
+        await log_with_color(f"  Total Runtime: {total_time}", "yellow", 20)
+        await log_with_color(f"  Total Downloaded Data: {downloaded_data:.2f} {unit}", "yellow", 20)
+
+        await log_spacer(20, '')
+        await log_with_color("Download Stats:", "cyan", 20)
+        await log_with_color(f"  Downloaded {self.download_progress.completed_files} files", "green", 20)
+        await log_with_color(f"  Previously Downloaded {self.download_progress.previously_completed_files} files",
                             "yellow", 20)
+        await log_with_color(f"  Skipped By Config {self.download_progress.skipped_files} files", "yellow", 20)
+        await log_with_color(f"  Failed {self.download_stats_progress.failed_files} files", "red", 20)
 
-        await log_with_color(f"Skipped By Config {self.download_progress.skipped_files} files", "yellow", 20)
-        await log_with_color(f"Failed {self.download_stats_progress.failed_files} files", "red", 20)
+        await log_spacer(20, '')
+        await log_with_color("Unsupported URLs Stats:", "cyan", 20)
+        await log_with_color(f"  Sent to Jdownloader: {self.scrape_stats_progress.sent_to_jdownloader}", "yellow", 20)
+        await log_with_color(f"  Skipped: {self.scrape_stats_progress.unsupported_urls_skipped}", "yellow", 20)
 
-        await log_with_color("\nDupe Stats:", "cyan", 20)
-        await log_with_color(f"Previously Hashed {self.hash_progress.prev_hashed_files} files", "yellow", 20)
-        await log_with_color(f"Newly Hashed {self.hash_progress.hashed_files} files", "yellow", 20)
-        await log_with_color(f"Removed From Current Downloads {self.hash_progress.removed_files} files", "yellow", 20)
-        await log_with_color(f"Removed From Previous Downloads {self.hash_progress.removed_prev_files} files", "yellow",
+        await log_spacer(20, '')
+        await log_with_color("Dupe Stats:", "cyan", 20)
+        await log_with_color(f"  Previously Hashed {self.hash_progress.prev_hashed_files} files", "yellow", 20)
+        await log_with_color(f"  Newly Hashed {self.hash_progress.hashed_files} files", "yellow", 20)
+        await log_with_color(f"  Removed From Current Downloads {self.hash_progress.removed_files} files", "yellow", 20)
+        await log_with_color(f"  Removed From Previous Downloads {self.hash_progress.removed_prev_files} files",
+                            "yellow",
                             20)
 
-        await log_with_color("\nSort Stats:", "cyan", 20)
-        await log_with_color(f"Organized: {self.sort_progress.audio_count} Audios", "green", 20)
-        await log_with_color(f"Organized: {self.sort_progress.image_count} Images", "green", 20)
-        await log_with_color(f"Organized: {self.sort_progress.video_count} Videos", "green", 20)
-        await log_with_color(f"Organized: {self.sort_progress.other_count} Other Files", "green", 20)
+        await log_spacer(20, '')
+        await log_with_color("Sort Stats:", "cyan", 20)
+        await log_with_color(f"  Organized: {self.sort_progress.audio_count} Audios", "green", 20)
+        await log_with_color(f"  Organized: {self.sort_progress.image_count} Images", "green", 20)
+        await log_with_color(f"  Organized: {self.sort_progress.video_count} Videos", "green", 20)
+        await log_with_color(f"  Organized: {self.sort_progress.other_count} Other Files", "green", 20)
 
         scrape_failures = await self.scrape_stats_progress.return_totals()
-        await log_with_color("\nScrape Failures:", "cyan", 20)
-        await log_with_color(f"Unsupported URLs, Sent to Jdownloader: {self.scrape_stats_progress.sent_to_jdownloader}", "yellow", 20)
-        await log_with_color(f"Unsupported URLs, Skipped: {self.scrape_stats_progress.unsupported_urls_skipped}", "yellow", 20)
-        await log_with_color(f"Unsupported URLs, Total: {self.scrape_stats_progress.unsupported_urls}", "yellow", 20)
+        await log_spacer(20, '')
+        await log_with_color("Scrape Failures:", "cyan", 20)
+        if not scrape_failures:
+            await log_with_color(f"  None", "green", 20)
         for key, value in scrape_failures.items():
-            await log_with_color(f"Scrape Failures ({key}): {value}", "red", 20)
+            await log_with_color(f"  ({key}): {value}", "red", 20)
 
         download_failures = await self.download_stats_progress.return_totals()
-        await log_with_color("\nDownload Failures:", "cyan", 20)
+        await log_spacer(20, '')
+        await log_with_color("Download Failures:", "cyan", 20)
+        if not download_failures:
+            await log_with_color(f"  None", "green", 20)
         for key, value in download_failures.items():
-            await log_with_color(f"Download Failures ({key}): {value}", "red", 20)
-
-        await self.send_webhook_message(self.manager.config_manager.settings_data['Logs']['webhook_url'])
-
-    async def send_webhook_message(self, webhook_url: str) -> None:
-        """Outputs the stats to a code block for webhook messages"""
-        log = await get_log_output_text()
-        log_message = log.replace('[cyan]', '').replace('[cyan]\n', '\n')
-        log_message = log_message.replace('[green]', '+ ').replace('[green]\n', '\n+ ')
-        log_message = log_message.replace('[red]', '- ').replace('[red]\n', '\n- ')
-        log_message = log_message.replace('[yellow]', '*** ').replace('[yellow]\n', '\n*** ')
-        data = {
-            "content": log_message,
-            "username": "CyberDrop-DL",
-        }
-        # Make an asynchronous POST request to the webhook
-        if webhook_url:
-            async with ClientSession() as session:
-                async with session.post(webhook_url, json=data) as response:
-                    await response.text()
+            await log_with_color(f"  ({key}): {value}", "red", 20)

@@ -6,8 +6,8 @@ import aiosqlite
 
 from cyberdrop_dl.utils.database.tables.hash_table import HashTable
 from cyberdrop_dl.utils.database.tables.history_table import HistoryTable
-from cyberdrop_dl.utils.database.tables.temp_table import TempTable
 from cyberdrop_dl.utils.database.tables.temp_referer_table import TempRefererTable
+from cyberdrop_dl.utils.database.tables.temp_table import TempTable
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager

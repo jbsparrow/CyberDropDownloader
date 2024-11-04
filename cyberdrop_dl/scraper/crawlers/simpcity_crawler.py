@@ -14,6 +14,7 @@ from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
+    from bs4 import BeautifulSoup
 
 
 class SimpCityCrawler(Crawler):
@@ -96,7 +97,7 @@ class SimpCityCrawler(Crawler):
         current_post_number = 0
         while True:
             async with self.request_limiter:
-                soup = await self.client.get_BS4(self.domain, thread_url)
+                soup: BeautifulSoup = await self.client.get_BS4(self.domain, thread_url, origin=scrape_item)
 
             title_block = soup.select_one(self.title_selector)
             for elem in title_block.find_all(self.title_trash_selector):
@@ -117,7 +118,9 @@ class SimpCityCrawler(Crawler):
                         date = int(post.select_one(self.post_date_selector).get(self.post_date_attribute))
                     except:
                         pass
-                    new_scrape_item = await self.create_scrape_item(scrape_item, thread_url, title, False, None, date, add_parent = scrape_item.url.joinpath(f"post-{current_post_number}"))
+                    new_scrape_item = await self.create_scrape_item(scrape_item, thread_url, title, False, None, date,
+                                                                    add_parent=scrape_item.url.joinpath(
+                                                                        f"post-{current_post_number}"))
 
                     # for elem in post.find_all(self.quotes_selector):
                     #     elem.decompose()
@@ -127,7 +130,7 @@ class SimpCityCrawler(Crawler):
                     scrape_item.children += 1
                     if scrape_item.children_limit:
                         if scrape_item.children >= scrape_item.children_limit:
-                            raise ScrapeItemMaxChildrenReached(scrape_item)
+                            raise ScrapeItemMaxChildrenReached(origin = scrape_item)
 
                 if not continue_scraping:
                     break
@@ -170,7 +173,7 @@ class SimpCityCrawler(Crawler):
             scrape_item.children += await scraper(scrape_item, post_content)
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(scrape_item)
+                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
 
     @error_handling_wrapper
     async def links(self, scrape_item: ScrapeItem, post_content: Tag) -> int:

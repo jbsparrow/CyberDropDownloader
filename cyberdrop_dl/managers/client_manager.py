@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import ssl
 from http import HTTPStatus
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import aiohttp
 import certifi
@@ -18,6 +18,13 @@ from cyberdrop_dl.utils.utilities import CustomHTTPStatus
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.scraper.crawler import ScrapeItem
+    from yarl import URL
+
+DOWNLOAD_ERROR_ETAGS = {
+    "d835884373f4d6c8f24742ceabe74946": "Imgur image has been removed",
+    "65b7753c-528a": "SC Scrape Image"
+}
 
 
 class ClientManager:
@@ -80,51 +87,46 @@ class ClientManager:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def check_http_status(self, response: ClientResponse, download: bool = False) -> None:
+    @staticmethod
+    async def check_http_status(response: ClientResponse, download: bool = False,
+                                origin: Optional[ScrapeItem | URL] = None) -> None:
         """Checks the HTTP status code and raises an exception if it's not acceptable"""
         status = response.status
         headers = response.headers
 
-        if download:
-            if headers.get('ETag') == '"d835884373f4d6c8f24742ceabe74946"':
-                raise DownloadFailure(status=HTTPStatus.NOT_FOUND, message="Imgur image has been removed")
-            if headers.get('ETag') == '"65b7753c-528a"':
-                raise DownloadFailure(status=HTTPStatus.NOT_FOUND, message="SC Scrape Image")
+        if download and headers.get('ETag') in DOWNLOAD_ERROR_ETAGS:
+            message = DOWNLOAD_ERROR_ETAGS.get(headers.get('ETag'))
+            raise DownloadFailure(HTTPStatus.NOT_FOUND, message=message, origin=origin)
 
         if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
             return
 
-        if "gofile" in response.url.host.lower():
+        if any({domain in response.url.host.lower() for domain in ("gofile", "imgur")}):
             try:
-                JSON_Resp = await response.json()
-                if "notFound" in JSON_Resp["status"]:
-                    raise ScrapeFailure(404, "Does Not Exist")
-            except ContentTypeError:
-                pass
-
-        if "imgur" in response.url.host.lower():
-            try:
-                JSON_Resp = await response.json()
+                JSON_Resp: dict = await response.json()
                 if "status" in JSON_Resp:
-                    raise ScrapeFailure(JSON_Resp['status'], JSON_Resp['data']['error'])
+                    if "notFound" in JSON_Resp["status"]:
+                        raise ScrapeFailure(HTTPStatus.NOT_FOUND, origin=origin)
+                    if JSON_Resp.get('data') and 'error' in JSON_Resp['data']:
+                        raise ScrapeFailure(JSON_Resp['status'], JSON_Resp['data']['error'], origin=origin)
             except ContentTypeError:
                 pass
 
         try:
-            phrase = HTTPStatus(status).phrase
-        except ValueError:
-            phrase = "Unknown"
-
-        response_text = await response.text()
-        if "<title>DDoS-Guard</title>" in response_text:
-            raise DDOSGuardFailure(status="DDOS-Guard", message="DDoS-Guard detected")
+            response_text = await response.text()
+            if "<title>DDoS-Guard</title>" in response_text:
+                raise DDOSGuardFailure(origin=origin)
+        except UnicodeDecodeError:
+            pass
 
         if not headers.get('Content-Type'):
-            raise DownloadFailure(status=CustomHTTPStatus.IM_A_TEAPOT, message="No content-type in response header")
+            raise DownloadFailure(status=CustomHTTPStatus.IM_A_TEAPOT, message="No content-type in response header",
+                                origin=origin)
 
-        raise DownloadFailure(status=status, message=f"HTTP status code {status}: {phrase}")
+        raise DownloadFailure(status=status, origin=origin)
 
-    async def check_bunkr_maint(self, headers):
+    @staticmethod
+    async def check_bunkr_maint(headers):
         if headers.get('Content-Length') == "322509" and headers.get('Content-Type') == "video/mp4":
             raise DownloadFailure(status="Bunkr Maintenance", message="Bunkr under maintenance")
 

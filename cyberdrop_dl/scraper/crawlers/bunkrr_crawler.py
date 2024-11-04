@@ -9,9 +9,9 @@ from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import NoExtensionFailure
+from cyberdrop_dl.clients.errors import ScrapeFailure
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem, FILE_HOST_PROFILE, FILE_HOST_ALBUM
-from cyberdrop_dl.clients.errors import ScrapeFailure
 from cyberdrop_dl.utils.utilities import FILE_FORMATS, get_filename_and_ext, error_handling_wrapper
 from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
 
@@ -19,7 +19,9 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
     from bs4 import BeautifulSoup, Tag
 
-CDN_POSSIBILITIES = re.compile(r"^(?:(?:(?:media-files|cdn|c|pizza|cdn-burger|cdn-nugget|burger|taquito|pizza|fries|meatballs|milkshake|kebab|nachos|ramen|wiener)[0-9]{0,2})|(?:(?:big-taco-|cdn-pizza|cdn-meatballs|cdn-milkshake|i.kebab|i.fries|i-nugget|i-milkshake|i-nachos|i-ramen|i-wiener)[0-9]{0,2}(?:redir)?))\.bunkr?\.[a-z]{2,3}$")
+CDN_POSSIBILITIES = re.compile(
+    r"^(?:(?:(?:media-files|cdn|c|pizza|cdn-burger|cdn-nugget|burger|taquito|pizza|fries|meatballs|milkshake|kebab|nachos|ramen|wiener)[0-9]{0,2})|(?:(?:big-taco-|cdn-pizza|cdn-meatballs|cdn-milkshake|i.kebab|i.fries|i-nugget|i-milkshake|i-nachos|i-ramen|i-wiener)[0-9]{0,2}(?:redir)?))\.bunkr?\.[a-z]{2,3}$")
+
 
 class BunkrrCrawler(Crawler):
     def __init__(self, manager: Manager):
@@ -63,7 +65,7 @@ class BunkrrCrawler(Crawler):
             pass
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
         title = soup.select_one('title').text.rsplit(" | Bunkr")[0].strip()
 
         title = await self.create_title(title, scrape_item.url.parts[2], None)
@@ -96,7 +98,8 @@ class BunkrrCrawler(Crawler):
                 if "no-image" in src.name:
                     raise FileNotFoundError("No image found, reverting to parent")
 
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, "", True, album_id, date, add_parent = scrape_item.url)
+                new_scrape_item = await self.create_scrape_item(scrape_item, link, "", True, album_id, date,
+                                                                add_parent=scrape_item.url)
 
                 filename, ext = await get_filename_and_ext(src.name)
                 if not await self.check_album_results(src, results):
@@ -109,7 +112,7 @@ class BunkrrCrawler(Crawler):
             scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(scrape_item)
+                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
                 
 
     @error_handling_wrapper
@@ -120,12 +123,12 @@ class BunkrrCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         # try video
         link_container = soup.select_one('video > source')
         src_selector = "src"
-        
+
         # try image
         if not link_container:
             link_container = soup.select_one("img.max-h-full.w-auto.object-cover.relative")
@@ -134,12 +137,12 @@ class BunkrrCrawler(Crawler):
         if not link_container:
             link_container = soup.select_one("a.btn.ic-download-01")
             src_selector = "href"
-    
+
         link = link_container.get(src_selector) if link_container else None
 
         if not link:
-            raise ScrapeFailure(404, f"Could not find source for: {scrape_item.url}")
-        
+            raise ScrapeFailure(404, f"Could not find source for: {scrape_item.url}", origin=scrape_item)
+
         link = URL(link)
 
         try:
@@ -160,7 +163,7 @@ class BunkrrCrawler(Crawler):
         """Gets the download link for a given reinforced URL"""
         """get.bunkr.su"""
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, url)
+            soup: BeautifulSoup = await self.client.get_BS4(self.domain, url)
 
         try:
             link_container = soup.select('a[download*=""]')[-1]
@@ -171,13 +174,14 @@ class BunkrrCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def is_cdn(self, url:URL) -> bool:
+    @staticmethod
+    async def is_cdn(url: URL) -> bool:
         """Checks if a given URL is from a CDN"""
         return bool(re.match(CDN_POSSIBILITIES, url.host))
 
     async def get_stream_link(self, url: URL) -> URL:
         """Gets the stream link for a given url"""
-        
+
         if not await self.is_cdn(url):
             return url
 
@@ -194,7 +198,8 @@ class BunkrrCrawler(Crawler):
 
         return url
 
-    async def parse_datetime(self, date: str) -> int:
+    @staticmethod
+    async def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp"""
         date = datetime.datetime.strptime(date, "%H:%M:%S %d/%m/%Y")
         return calendar.timegm(date.timetuple())
