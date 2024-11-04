@@ -169,13 +169,20 @@ class KemonoCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def parse_datetime(self, date: str) -> int:
-        """Parses a datetime string into a unix timestamp"""
-        try:
-            date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
-        except ValueError:
-            date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S.%f")
-        return calendar.timegm(date.timetuple())
+    async def create_new_scrape_item(self, link: URL, old_scrape_item: ScrapeItem, user: str, title: str, post_id: str,
+                                    date: str, add_parent: Optional[URL] = None) -> None:
+        """Creates a new scrape item with the same parent as the old scrape item"""
+        post_title = None
+        if self.manager.config_manager.settings_data['Download_Options']['separate_posts']:
+            post_title = f"{date} - {title}"
+            if self.manager.config_manager.settings_data['Download_Options']['include_album_id_in_folder_name']:
+                post_title = post_id + " - " + post_title
+
+        new_title = await self.create_title(user, None, None)
+        new_scrape_item = await self.create_scrape_item(old_scrape_item, link, new_title, True, None,
+                                                        await self.parse_datetime(date), add_parent=add_parent)
+        await new_scrape_item.add_to_parent_title(post_title)
+        self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def get_user_str_from_post(self, scrape_item: ScrapeItem) -> str:
@@ -193,30 +200,26 @@ class KemonoCrawler(Crawler):
         user = soup.select_one("span[itemprop=name]").text
         return user
 
-    async def get_service_and_user(self, scrape_item: ScrapeItem) -> Tuple[str, str]:
+    @staticmethod
+    async def get_service_and_user(scrape_item: ScrapeItem) -> Tuple[str, str]:
         """Gets the service and user from a scrape item"""
         user = scrape_item.url.parts[3]
         service = scrape_item.url.parts[1]
         return service, user
 
-    async def get_service_user_and_post(self, scrape_item: ScrapeItem) -> Tuple[str, str, str]:
+    @staticmethod
+    async def get_service_user_and_post(scrape_item: ScrapeItem) -> Tuple[str, str, str]:
         """Gets the service, user and post id from a scrape item"""
         user = scrape_item.url.parts[3]
         service = scrape_item.url.parts[1]
         post = scrape_item.url.parts[5]
         return service, user, post
 
-    async def create_new_scrape_item(self, link: URL, old_scrape_item: ScrapeItem, user: str, title: str, post_id: str,
-                                    date: str, add_parent: Optional[URL] = None) -> None:
-        """Creates a new scrape item with the same parent as the old scrape item"""
-        post_title = None
-        if self.manager.config_manager.settings_data['Download_Options']['separate_posts']:
-            post_title = f"{date} - {title}"
-            if self.manager.config_manager.settings_data['Download_Options']['include_album_id_in_folder_name']:
-                post_title = post_id + " - " + post_title
-
-        new_title = await self.create_title(user, None, None)
-        new_scrape_item = await self.create_scrape_item(old_scrape_item, link, new_title, True, None,
-                                                        await self.parse_datetime(date), add_parent=add_parent)
-        await new_scrape_item.add_to_parent_title(post_title)
-        self.manager.task_group.create_task(self.run(new_scrape_item))
+    @staticmethod
+    async def parse_datetime(date: str) -> int:
+        """Parses a datetime string into a unix timestamp"""
+        try:
+            date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+        except ValueError:
+            date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S.%f")
+        return calendar.timegm(date.timetuple())
