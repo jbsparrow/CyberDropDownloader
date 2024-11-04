@@ -40,10 +40,10 @@ class RedditCrawler(Crawler):
 
         async with aiohttp.ClientSession() as reddit_session:
             reddit = asyncpraw.Reddit(client_id=self.reddit_personal_use_script,
-                                      client_secret=self.reddit_secret,
-                                      user_agent="CyberDrop-DL",
-                                      requestor_kwargs={"session": reddit_session},
-                                      check_for_updates=False)
+                                    client_secret=self.reddit_secret,
+                                    user_agent="CyberDrop-DL",
+                                    requestor_kwargs={"session": reddit_session},
+                                    check_for_updates=False)
 
             if "user" in scrape_item.url.parts or "u" in scrape_item.url.parts:
                 await self.user(scrape_item, reddit)
@@ -157,7 +157,7 @@ class RedditCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def create_new_scrape_item(self, link: URL, old_scrape_item: ScrapeItem, title: str, date: int,
-                                     add_parent: Optional[URL] = None) -> ScrapeItem:
+                                    add_parent: Optional[URL] = None) -> ScrapeItem:
         """Creates a new scrape item with the same parent as the old scrape item"""
 
         new_scrape_item = await self.create_scrape_item(old_scrape_item, link, "", True, None, date,
