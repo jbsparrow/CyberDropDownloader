@@ -46,7 +46,8 @@ class HashClient:
             for file in pathlib.Path(path).glob("**/*"):
                 await self.hash_item(file, None, None)
 
-    def _get_key_from_file(self, file):
+    @staticmethod
+    def _get_key_from_file(file):
         return str(pathlib.Path(file).absolute())
 
     async def hash_item(self, file, original_filename, refer):
