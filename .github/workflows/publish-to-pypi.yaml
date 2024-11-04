@@ -6,6 +6,9 @@ on:
       - master
     tags:
       - '*.*.*'
+    paths:
+      - 'pyproject.toml'
+  workflow_dispatch:
 
 jobs:
   release:
