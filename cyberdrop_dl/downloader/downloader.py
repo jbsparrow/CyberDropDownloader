@@ -84,7 +84,7 @@ def retry(f):
                     e_ui_failure = "Unknown"
 
                 await log(f"{self.log_prefix} failed: {media_item.url} with error: {e_log_detail}", 40,
-                          exc_info=exc_info)
+                        exc_info=exc_info)
 
             if not exc_info:
                 await log(f"{self.log_prefix} failed: {media_item.url} with error: {e_log_detail}", 40)
@@ -240,7 +240,7 @@ class Downloader:
                 if media_item.filename in self._current_attempt_filesize and self._current_attempt_filesize[
                     media_item.filename] >= size:
                     raise DownloadFailure(status=getattr(err, "status", type(err).__name__),
-                                          message=f"{self.log_prefix} failed")
+                                        message=f"{self.log_prefix} failed")
                 self._current_attempt_filesize[media_item.filename] = size
                 media_item.current_attempt = 0
                 raise DownloadFailure(status=999, message="Download timeout reached, retrying")
