@@ -74,7 +74,8 @@ class RealDebridApi:
         self._api_token = new_token
         self._session.headers.update({'Authorization': f"Bearer {self._api_token}"})
 
-    def handle_response(self, response: 'Response') -> dict | str | None:
+    @staticmethod
+    def handle_response(response: 'Response') -> dict | str | None:
         try:
             response.raise_for_status()
             JSONResp: dict = response.json()
