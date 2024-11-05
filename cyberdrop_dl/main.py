@@ -5,6 +5,11 @@ import os
 import sys
 import time
 from pathlib import Path
+import sentry_sdk
+import sentry_sdk.attachments
+from sentry_sdk.integrations.asyncio import AsyncioIntegration
+from sentry_sdk.integrations.logging import ignore_logger
+from sentry_sdk.types import Event, Hint
 
 from rich.console import Console
 from rich.logging import RichHandler
@@ -18,6 +23,9 @@ from cyberdrop_dl.utils.sorting import Sorter
 from cyberdrop_dl.utils.utilities import check_latest_pypi, log_with_color, \
     check_partials_and_empty_folders, log, log_spacer, send_webhook_message, \
     DEFAULT_CONSOLE_WIDTH, sent_apprise_notifications
+
+
+SENTRY_CLIENT: sentry_sdk.client.BaseClient = None
 
 RICH_HANDLER_CONFIG = {
     "show_time": True,
@@ -35,6 +43,16 @@ RICH_HANDLER_DEBUG_CONFIG = {
 }
 
 start_time = 0
+
+
+def sentry_before_send(event: Event, hint: Hint):
+    return event
+
+def sentry_before_breadcrumb(event: Event, hint: Hint):
+    if event.get("response") is not None:
+        # Response codes to include in breadcrumbs. e.g. allow 405s to be sent to sentry
+        if event.get("response").get("status_code") in [405]:
+            return event
 
 
 def startup() -> Manager:
@@ -96,6 +114,34 @@ async def post_runtime(manager: Manager) -> None:
 
 async def director(manager: Manager) -> None:
     """Runs the program and handles the UI"""
+    if manager.config_manager.global_settings_data["Privacy"]["enable_sentry_integration"]:
+        global SENTRY_CLIENT
+        from cyberdrop_dl import __version__ as version
+        environments = {
+            "rc": "Release Candidate",
+            "a": "Alpha",
+            "b": "Beta",
+            "pre": "Pre-Release",
+            "post": "Post-Release",
+            "dev": "Development"
+        }
+        environment = next((env for key, env in environments.items() if key in str(version)), "Production")
+        sentry_sdk.init(
+            dsn="https://c027bde3b1c128f436ad3d93837da3b7@o4504108908478464.ingest.us.sentry.io/4508246301540352",
+            # Set traces_sample_rate to 1.0 to capture 100%
+            # of transactions for tracing.
+            traces_sample_rate=1.0,
+            # Set profiles_sample_rate to 1.0 to profile 100%
+            # of sampled transactions.
+            # We recommend adjusting this value in production.
+            profiles_sample_rate=1.0,
+            release=version,
+            environment=environment,
+            integrations=[AsyncioIntegration()],
+            before_breadcrumb=sentry_before_breadcrumb
+        )
+        SENTRY_CLIENT = sentry_sdk.get_client()
+
     configs = manager.config_manager.get_configs()
     configs_ran = []
     manager.path_manager.startup()
@@ -103,10 +149,16 @@ async def director(manager: Manager) -> None:
 
     logger_debug = logging.getLogger("cyberdrop_dl_debug")
     import cyberdrop_dl.utils.utilities
+
     if os.getenv("PYCHARM_HOSTED") is not None or manager.config_manager.settings_data['Runtime_Options'][
         'log_level'] == -1 or 'TERM_PROGRAM' in os.environ.keys() and os.environ['TERM_PROGRAM'] == 'vscode':
         manager.config_manager.settings_data['Runtime_Options']['log_level'] = 10
         cyberdrop_dl.utils.utilities.DEBUG_VAR = True
+
+        if cyberdrop_dl.utils.utilities.DEBUG_VAR:
+            ignore_logger("cyberdrop_dl")
+        else:
+            ignore_logger("cyberdrop_dl_debug")
 
     if os.getenv("PYCHARM_HOSTED") is not None or manager.config_manager.settings_data['Runtime_Options'][
         'console_log_level'] == -1 or 'TERM_PROGRAM' in os.environ.keys() and os.environ['TERM_PROGRAM'] == 'vscode':
@@ -178,6 +230,11 @@ async def director(manager: Manager) -> None:
                     await runtime(manager)
                     await post_runtime(manager)
             except Exception:
+                if SENTRY_CLIENT is not None:
+                    sentry_sdk.set_tag("config", manager.config_manager.loaded_config)
+                    log_path = manager.path_manager.main_log if not cyberdrop_dl.utils.utilities.DEBUG_VAR else debug_log_file_path
+                    sentry_sdk.get_current_scope().add_attachment(path=log_path, filename=log_path.name)
+                SENTRY_CLIENT.close()
                 await log("\nAn error occurred, please report this to the developer:", 50, exc_info=True)
                 exit(1)
 
@@ -185,6 +242,14 @@ async def director(manager: Manager) -> None:
         await manager.progress_manager.print_stats(start_time)
 
         is_last_config = not manager.args_manager.all_configs or not list(set(configs) - set(configs_ran))
+
+        if SENTRY_CLIENT is not None:
+            log_path = manager.path_manager.main_log if not cyberdrop_dl.utils.utilities.DEBUG_VAR else debug_log_file_path
+            sentry_sdk.get_current_scope().add_attachment(path=log_path, filename=log_path.name)
+            sentry_sdk.add_breadcrumb(message="Attaching log file", category="log")
+            SENTRY_CLIENT.flush()
+            # Remove the attachment from the scope
+            # sentry_sdk.get_current_scope().clear()
 
         if is_last_config:
             await log_spacer(20)
@@ -211,10 +276,15 @@ def main():
             asyncio.run(director(manager))
 
         except KeyboardInterrupt:
+            if SENTRY_CLIENT is not None:
+                sentry_sdk.capture_message("Keyboard Interrupt")
+                SENTRY_CLIENT.close()
             print_("\nTrying to Exit...")
             with contextlib.suppress(Exception):
                 asyncio.run(manager.close())
             exit(1)
+    if SENTRY_CLIENT is not None:
+        SENTRY_CLIENT.close()
     loop.close()
     sys.exit(0)
 
