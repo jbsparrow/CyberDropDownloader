@@ -22,7 +22,8 @@ description: These are the websites supported by Cyberdrop-DL
 | ImgBox                                                                | Album: `/g/...` Images: `/...` Direct Links                                                                                                                                                                                                                                                                                                                                                              |
 | Img.kiwi                                                              | Album: `/album/...` Image: `/image/...` Direct Links                                                                                                                                                                                                                                                                                                                                                     |
 | Imgur                                                                 | Album: `/a/...` Image: `/...` Direct Links                                                                                                                                                                                                                                                                                                                                                               |
-| JPG.Church JPG.Homes JPG.Pet JPEG.Pet JPG1.Su JPG2.Su JPG3.Su JPG4.Su JPG5.Su | Album: `/a/...` Image: `/img/...` Direct Links                                                                                                                                                                                                                                                                                                                                                   |
+| JPG.Church JPG.Homes JPG.Pet JPEG.Pet JPG1.Su JPG2.Su JPG3.Su JPG4.Su JPG5.Su | Album: `/a/...` Image: `/img/...` Direct Links                                                                             
+| Imagepond.net | Album: `/a/...` Image: `/img/...` Direct Links                                                                                                                                                                                                                                                                                                                                               |
 | Kemono                                                                | Patreon Model: `/patreon/user/...` FanBox Model: `/fanbox/user/...` Fantia Model: `/fantia/user/...` Afdian Model: `/afdian/user/...` Boosty Model: `/boosty/user/...` DLSite Model: `/dlsite/user/...` Gumroad Model: `/gumroad/user/...` SubscribeStar Model: `/subscribestar/user/...` Discord Server Channel: `/discord/server/...#...` Individual Post: `/<service>/user/.../post/...` Direct Links |
 | MediaFire                                                             | Folder: `/folder/...` File: `/file/...`                                                                                                                                                                                                                                                                                                                                                                  |
 | Nekohouse.su                                                          | Fanbox Model: `/fanbox/user/...` Fantia Model: `/fantia/user/...` Fantia Products Model: `/fantia_products/user/...` Subscribestar Model: `/subscribestar/user/...` Twitter Model: `/twitter/user/...` Individual Post: `/service/user/.../post/...` Direct Links                                                                                                                                        |
@@ -53,6 +54,15 @@ Example: `https://cyberfile.me/folder/xUGg?password=1234`
 | --------------------------------------------------------------------- |
 | GoFile                                                                |
 | Cyberfile                                                             |
+| Chevereto Sites (JPG5, Imagepond, Img.kiwi)                           |
+
+
+### Content Hosts - Real Debrid <a href="#content-hosts-real-debrid" id="content-hosts-real-debrid"></a>
+
+Cyberdrop-DL has integration with Real Debrid as download service to support additional hosts. In order to enable Real Debrid, user must provide their API token inside the `authentication.yaml` file. You can get your API token from this URL (you must be logged in): https://real-debrid.com/apitoken
+
+Supported domains via Real Debrid include `mega.nz`, `rapidgator`, `google drive`, `1fichier`, `k2s`, `etc`. List of all supported domains can be found here (250+): https://api.real-debrid.com/rest/1.0/hosts/domains
+
 
 
 ### Forums <a href="#forums" id="forums"></a>

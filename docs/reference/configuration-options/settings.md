@@ -87,6 +87,44 @@ Setting this to true (or selecting it) will skip downloading files and mark them
 
 Setting this to true (or selecting it) will skip downloading files from any referer that have been scraped before. The file (s) will always be skipped regardless of whether the referer was successfully scraped or not
 
+***
+
+* maximum\_number\_of\_children
+
+Limit the number of items to scrape using a tuple of up to 4 positions. Each position defines the maximum number of sub-items (`children_limit`) an specific type of `scrape_item` will have:
+
+    1. Max number of children from a FORUM URL
+    2. Max number of children from a FORUM POST
+    3. Max number of children from a FILE HOST PROFILE
+    4. Max number of children from a FILE HOST ALBUM
+
+Using `0` on any position means no `children_limit` for that type of `scrape_item`. Any tailing value not supplied is assumed as `0`
+
+
+
+Examples:
+
+```
+Limit FORUM scrape to 15 posts max, grab all links and media within those posts, but only scrape a maximun of 10 items from each link in a post:
+
+    --maximum-number-of-children 15 0 10
+
+
+Only grab the first link from each post in a forum, but that link will have no children_limit:
+
+    --maximum-number-of-children 0 1
+
+
+Only grab the first POST/ALBUM from a FILE_HOST_PROFILE
+
+    --maximum-number-of-children 0 0 1
+
+
+No FORUM limit, no FORUM_POST limit, no FILE_HOST_PROFILE limit, maximum of 20 items from any FILE_HOST_ALBUM:
+
+    --maximum-number-of-children 0 0 0 20
+``` 
+
 </details>
 
 <details>
@@ -155,7 +193,9 @@ Cyberdrop-DL will output the links it fails to scrape, and the reason in CSV for
 
 * discord\_webhook\_url
 
-The URL of the Discord webhook that you want to send download stats to.
+The URL of the Discord webhook that you want to send download stats to. You can add the optional tag `attach_logs=` as a prefix to include a copy of the main log as an attachment. 
+
+Ex: `attach_logs=https://discord.com/api/webhooks/webhook_id/webhook_token`
 
 ***
 

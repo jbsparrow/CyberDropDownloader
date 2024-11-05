@@ -9,8 +9,9 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeFailure
 from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
+from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem, FILE_HOST_ALBUM
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext, log
+from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -45,6 +46,14 @@ class OmegaScansCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
+        scrape_item.type = FILE_HOST_ALBUM
+        scrape_item.children = scrape_item.children_limit = 0
+        
+        try:
+            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+        except (IndexError, TypeError):
+            pass
+
         scripts = soup.select("script")
         for script in scripts:
             if "series_id" in script.get_text():
@@ -65,6 +74,10 @@ class OmegaScansCrawler(Crawler):
                 new_scrape_item = await self.create_scrape_item(scrape_item, chapter_url, "", True,
                                                                 add_parent=scrape_item.url)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
+                scrape_item.children += 1
+                if scrape_item.children_limit:
+                    if scrape_item.children >= scrape_item.children_limit:
+                        raise ScrapeItemMaxChildrenReached(origin = scrape_item)
 
             if JSON_Obj['meta']['current_page'] == JSON_Obj['meta']['last_page']:
                 break

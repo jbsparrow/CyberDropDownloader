@@ -9,8 +9,9 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeFailure
 from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
+from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem, FILE_HOST_PROFILE, FILE_HOST_ALBUM
 from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wrapper
+from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -73,6 +74,14 @@ class CoomerCrawler(Crawler):
         service, user = await self.get_service_and_user(scrape_item)
         user_str = await self.get_user_str_from_profile(scrape_item)
         api_call = self.api_url / service / "user" / user
+        scrape_item.type = FILE_HOST_PROFILE
+        scrape_item.children = scrape_item.children_limit = 0
+        
+        try:
+            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+        except (IndexError, TypeError):
+            pass
+
         while True:
             async with self.request_limiter:
                 JSON_Resp = await self.client.get_json(self.domain, api_call.with_query({"o": offset}),
@@ -83,6 +92,10 @@ class CoomerCrawler(Crawler):
 
             for post in JSON_Resp:
                 await self.handle_post_content(scrape_item, post, user, user_str)
+                scrape_item.children += 1
+                if scrape_item.children_limit:
+                    if scrape_item.children >= scrape_item.children_limit:
+                        raise ScrapeItemMaxChildrenReached(origin = scrape_item)
 
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem) -> None:
@@ -101,6 +114,14 @@ class CoomerCrawler(Crawler):
             'ignore_coomer_ads']:
             return
 
+        scrape_item.type = FILE_HOST_ALBUM
+        scrape_item.children = scrape_item.children_limit = 0
+        
+        try:
+            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+        except (IndexError, TypeError):
+            pass
+
         date = post.get("published") or post.get("added")
         date = date.replace("T", " ")
         post_id = post["id"]
@@ -117,11 +138,16 @@ class CoomerCrawler(Crawler):
             await self.create_new_scrape_item(link, scrape_item, user_str, post_title, post_id, date,
                                             add_parent=scrape_item.url.joinpath("post", post_id))
 
+        files = []
         if post['file']:
-            await handle_file(post['file'])
+            files.append(post['file'])
 
-        for file in post['attachments']:
+        for file in files.extend(post['attachments']):
             await handle_file(file)
+            scrape_item.children += 1
+            if scrape_item.children_limit:
+                if scrape_item.children >= scrape_item.children_limit:
+                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
 
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:

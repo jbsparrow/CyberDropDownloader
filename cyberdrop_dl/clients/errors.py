@@ -48,6 +48,13 @@ class PasswordProtected(CDLBaseException):
         message = message or "File/Folder is password protected"
         super().__init__(ui_message, message=message, origin=origin)
 
+class ScrapeItemMaxChildrenReached(CDLBaseException):
+    def __init__(self, *, message: Optional[str] = None, origin: Optional[ScrapeItem | URL] = None):
+        """This error will be thrown when an scrape item reaches its max number or children"""
+        ui_message = "Max Children Reached"
+        message = message or "Max number of children reached"
+        super().__init__(ui_message, message=message, origin=origin)
+
 
 class DDOSGuardFailure(CDLBaseException):
     def __init__(self, *, message: Optional[str] = None, origin: Optional[ScrapeItem | URL] = None):
