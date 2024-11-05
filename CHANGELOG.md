@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ⚠️**BREAKING CHANGES**
 
-> All output files (except for the main log file) are now CSV files (`Scrape_Errors`, `Download_Errors`, `Unsupported_URLs` and `Last_Forum_Post`). A custom filename for each file can still be set via config, but the extensions will always be `.csv`
+> All output files (except for the main log file) are now CSV files with headers for each column (`Scrape_Errors`, `Download_Errors`, `Unsupported_URLs` and `Last_Forum_Post`). A custom filename for each file can still be set via config, but the extensions will always be `.csv`
 
 This update introduces the following changes:
 
