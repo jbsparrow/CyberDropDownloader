@@ -5,26 +5,37 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [UNRELEASED] - 2024-10-31
+## [5.7.1] - 2024-11-05
+
+⚠️**BREAKING CHANGES**
+
+> All output files (except for the main log file) are now CSV files (`Scrape_Errors`, `Download_Errors`, `Unsupported_URLs` and `Last_Forum_Post`). A custom filename for each file can still be set via config, but the extensions will always be `.csv`
 
 This update introduces the following changes:
-1. Add support for scraping a users' coomer favourites
+
+1. Adds the option to limit how many items are scraped 
+2. Add support for scraping a users' coomer favorites
+3. Add integration to handle downloads supported by https://real-debrid.com
+4. Add support for https://nekohouse.su profiles and posts
+5. Add support for https://imagepond.net URLs
+6. Add support for password protected albums from chevereto sites (`jpg5`, `Img.kiwi` and `Imagepond`)
+7. Show `total runtime` and `total downloaded data` on final report
+8. Add support to send the main log file as an attachment to the `webhook_url` report
+9. Add support to sent CDL report via email, telegram and many other services via Apprise
+10. Add support for `%` encoded URLs in the input file
+11. General logging improvements and bug fixes
 
 #### Details:
-- Add support for scraping a users' coomer favourites by allowing the user to pass the coomer favourites page URL as an input URL (https://coomer.su/favorites). This requires them to have their coomer session token in the `authentication.yaml` file.
 
-## [5.7.1] - 2024-10-28
-
-This update introduces the following changes:
-1. Add integration to handle downloads supported by https://real-debrid.com
-2. Add support for https://nekohouse.su profiles and posts
-3. General logging improvements & bug fixes
-
-#### Details:
-- Add real-debrid API key to authentication file in order to allow downloads from websites that real-debrid supports
+- Users can limit the number of items to scrape by type, using the `--maximum-number-of-children` parameter. For more details on how to use this feature, visit the wiki: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings#download-options
+- Add support for scraping a users' coomer favorites by allowing the user to pass the coomer favorites page URL as an input URL (https://coomer.su/favorites). This requires them to have their coomer session token in the `authentication.yaml` file.
+- Add real-debrid integration to download from any site that they support (`mega.nz`,`rapidgator`, `google drive`, `k2s`, etc). User needs to provide their API key in the `authentication.yaml` file in order to allow downloads 
 - Nekohouse URLs can now be scraped and downloaded by CDL
-- Update how bunkr file extensions are scraped to prevent errors
+- Users can now get the stats report of the run via multiple services and include the main log as an attachment. For more information on how to setup notifications, visit: https://script-ware.gitbook.io/cyberdrop-dl/reference/notifications
+- Fix parsing of bunkr file extensions when `--remove-generated-id` is enabled
 - Remove console markdown data from log files
+- Fix `only_hosts` skip logic
+- Better handling of some unknown errors
 
 
 ## [5.7.0] - 2024-10-25
