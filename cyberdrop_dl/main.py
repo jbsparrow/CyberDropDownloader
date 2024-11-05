@@ -51,8 +51,9 @@ def sentry_before_send(event: Event, hint: Hint):
 def sentry_before_breadcrumb(event: Event, hint: Hint):
     if event.get("response") is not None:
         # Response codes to include in breadcrumbs. e.g. allow 405s to be sent to sentry
-        if event.get("response").get("status_code") in [405]:
-            return event
+        if event.get("response").get("status_code") not in [405]:
+            return None
+    return event
 
 
 def startup() -> Manager:
