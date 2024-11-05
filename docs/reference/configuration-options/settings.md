@@ -193,7 +193,9 @@ Cyberdrop-DL will output the links it fails to scrape, and the reason in CSV for
 
 * discord\_webhook\_url
 
-The URL of the Discord webhook that you want to send download stats to.
+The URL of the Discord webhook that you want to send download stats to. You can add the optional tag `attach_logs=` as a prefix to include a copy of the main log as an attachment. 
+
+Ex: `attach_logs=https://discord.com/api/webhooks/webhook_id/webhook_token`
 
 ***
 
