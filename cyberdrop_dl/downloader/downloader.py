@@ -157,10 +157,10 @@ class Downloader:
     async def check_file_can_download(self, media_item: MediaItem) -> bool:
         """Checks if the file can be downloaded"""
         if not await self.manager.download_manager.check_free_space(media_item.download_folder):
-            await log(f"{self.log_prefix} failed {media_item.url} due to insufficient free space", 10)
+            await log(f"{self.log_prefix} failed {media_item.url} due to insufficient free space", 20)
             return False, 0
         if not await self.manager.download_manager.check_allowed_filetype(media_item):
-            await log(f"{self.log_prefix} skipped {media_item.url} due to filetype restrictions", 10)
+            await log(f"{self.log_prefix} skipped {media_item.url} due to filetype restrictions", 20)
             return False, 1
         return True, -1
 

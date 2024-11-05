@@ -53,7 +53,7 @@ class RedditCrawler(Crawler):
             elif "redd.it" in scrape_item.url.host:
                 await self.media(scrape_item, reddit)
             else:
-                await log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
+                await log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 30)
                 await self.manager.progress_manager.scrape_stats_progress.add_failure("Unknown")
 
         await self.scraping_progress.remove_task(task_id)

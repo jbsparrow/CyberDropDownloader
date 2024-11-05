@@ -68,9 +68,9 @@ class LeakedModelsCrawler(Crawler):
             if self.logged_in:
                 await self.forum(scrape_item)
             else:
-                await log("LeakedModels login failed. Skipping.", 40)
+                await log("LeakedModels login failed. Skipping.", 30)
         else:
-            await log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
+            await log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 30)
             await self.manager.log_manager.write_unsupported_urls_log(scrape_item.url, scrape_item.parents[
                 0] if scrape_item.parents else None)
 

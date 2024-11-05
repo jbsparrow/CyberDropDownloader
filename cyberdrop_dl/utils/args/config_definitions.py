@@ -139,6 +139,9 @@ global_settings: Dict = {
         "max_folder_name_length": 60,
         "required_free_space": 5,
     },
+    "Privacy": {
+        "enable_sentry_integration": False,
+    },
     "Rate_Limiting_Options": {
         "connection_timeout": 15,
         "download_attempts": 5,
@@ -157,7 +160,6 @@ global_settings: Dict = {
             "keep_new_download": True,
             "dedupe_already_downloaded": False,
             "delete_off_disk": False
-
         },
 
     "UI_Options": {

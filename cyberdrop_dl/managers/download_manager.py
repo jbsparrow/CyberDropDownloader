@@ -7,7 +7,7 @@ from pathlib import Path
 from shutil import disk_usage
 from typing import TYPE_CHECKING
 
-from cyberdrop_dl.utils.utilities import FILE_FORMATS, log_debug
+from cyberdrop_dl.utils.utilities import FILE_FORMATS, log_debug, DEBUG_VAR
 
 if TYPE_CHECKING:
     from typing import Dict
@@ -25,21 +25,21 @@ class FileLock:
     async def check_lock(self, filename: str) -> None:
         """Checks if the file is locked"""
         try:
-            await log_debug(f"Checking lock for {filename}", 40)
+            await log_debug(f"Checking lock for {filename}", 10)
             await self._locked_files[filename].acquire()
-            await log_debug(f"Lock for {filename} acquired", 40)
+            await log_debug(f"Lock for {filename} acquired", 10)
         except KeyError:
-            await log_debug(f"Lock for {filename} does not exist", 40)
+            await log_debug(f"Lock for {filename} does not exist", 10)
             self._locked_files[filename] = asyncio.Lock()
             await self._locked_files[filename].acquire()
-            await log_debug(f"Lock for {filename} acquired", 40)
+            await log_debug(f"Lock for {filename} acquired", 10)
 
     async def release_lock(self, filename: str) -> None:
         """Releases the file lock"""
         with contextlib.suppress(KeyError, RuntimeError):
-            await log_debug(f"Releasing lock for {filename}", 40)
+            await log_debug(f"Releasing lock for {filename}", 10)
             self._locked_files[filename].release()
-            await log_debug(f"Lock for {filename} released", 40)
+            await log_debug(f"Lock for {filename} released", 10)
 
 
 class DownloadManager:

@@ -66,11 +66,11 @@ class DownloadClient:
         if os.getenv("PYCHARM_HOSTED") is not None or 'TERM_PROGRAM' in os.environ.keys() and os.environ[
             'TERM_PROGRAM'] == 'vscode':
             async def on_request_start(session, trace_config_ctx, params):
-                await log(f"Starting download {params.method} request to {params.url}", 40)
+                await log(f"Starting download {params.method} request to {params.url}", 10)
 
             async def on_request_end(session, trace_config_ctx, params):
-                await log(f"Finishing download {params.method} request to {params.url}", 40)
-                await log(f"Response status for {params.url}: {params.response.status}", 40)
+                await log(f"Finishing download {params.method} request to {params.url}", 10)
+                await log(f"Response status for {params.url}: {params.response.status}", 10)
 
             trace_config = aiohttp.TraceConfig()
             trace_config.on_request_start.append(on_request_start)

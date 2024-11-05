@@ -32,7 +32,7 @@ class HotPicCrawler(Crawler):
         elif "i" in scrape_item.url.parts:
             await self.image(scrape_item)
         else:
-            await log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
+            await log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 30)
             await self.manager.progress_manager.scrape_stats_progress.add_failure("Unsupported Link")
 
         await self.scraping_progress.remove_task(task_id)

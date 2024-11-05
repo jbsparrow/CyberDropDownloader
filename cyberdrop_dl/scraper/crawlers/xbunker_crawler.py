@@ -71,7 +71,7 @@ class XBunkerCrawler(Crawler):
         if self.logged_in:
             await self.forum(scrape_item)
         else:
-            await log("XBunker login failed. Skipping.", 40)
+            await log("XBunker login failed. Skipping.", 30)
 
         await self.scraping_progress.remove_task(task_id)
 

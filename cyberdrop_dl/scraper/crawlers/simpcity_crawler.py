@@ -68,7 +68,7 @@ class SimpCityCrawler(Crawler):
                 await self.forum_login(login_url, session_cookie, username, password, wait_time)
 
         if not self.logged_in and self.login_attempts == 1:
-            await log("SimpCity login failed. Scraping without an account.", 40)
+            await log("SimpCity login failed. Scraping without an account.", 30)
 
         await self.forum(scrape_item)
 
