@@ -46,13 +46,20 @@ start_time = 0
 
 
 def sentry_before_send(event: Event, hint: Hint):
+    if event['level'] == 'error':
+        message = event['logentry']['message']
+        skip_messsages = ['(unsupported domain)', 'with error: 401', 'with error: 403', 'with error: 404']
+        if any(x in message for x in skip_messsages):
+            return event
     return event
 
 def sentry_before_breadcrumb(event: Event, hint: Hint):
-    if event.get("response") is not None:
-        # Response codes to include in breadcrumbs. e.g. allow 405s to be sent to sentry
-        if event.get("response").get("status_code") not in [405]:
-            return None
+    if event['type'] == 'log' and event['level'] == 'error' and '404 Not Found' in event['message']:
+        event['level'] = 'warning'
+        hint['log_record'].level = logging.WARNING
+        hint['log_record'].levelno = logging.WARNING
+        hint['log_record'].levelname = 'WARNING'
+        return event
     return event
 
 
@@ -129,17 +136,14 @@ async def director(manager: Manager) -> None:
         environment = next((env for key, env in environments.items() if key in str(version)), "Production")
         sentry_sdk.init(
             dsn="https://c027bde3b1c128f436ad3d93837da3b7@o4504108908478464.ingest.us.sentry.io/4508246301540352",
-            # Set traces_sample_rate to 1.0 to capture 100%
-            # of transactions for tracing.
-            traces_sample_rate=1.0,
-            # Set profiles_sample_rate to 1.0 to profile 100%
-            # of sampled transactions.
-            # We recommend adjusting this value in production.
-            profiles_sample_rate=1.0,
+            traces_sample_rate=0.1,
+            enable_tracing=True,
+            profiles_sample_rate=0.1,
             release=version,
             environment=environment,
             integrations=[AsyncioIntegration()],
-            before_breadcrumb=sentry_before_breadcrumb
+            before_breadcrumb=sentry_before_breadcrumb,
+            before_send=sentry_before_send
         )
         SENTRY_CLIENT = sentry_sdk.get_client()
 
@@ -231,10 +235,6 @@ async def director(manager: Manager) -> None:
                     await runtime(manager)
                     await post_runtime(manager)
             except Exception:
-                if SENTRY_CLIENT is not None:
-                    sentry_sdk.set_tag("config", manager.config_manager.loaded_config)
-                    log_path = manager.path_manager.main_log if not cyberdrop_dl.utils.utilities.DEBUG_VAR else debug_log_file_path
-                    sentry_sdk.get_current_scope().add_attachment(path=log_path, filename=log_path.name)
                 SENTRY_CLIENT.close()
                 await log("\nAn error occurred, please report this to the developer:", 50, exc_info=True)
                 exit(1)
@@ -245,12 +245,7 @@ async def director(manager: Manager) -> None:
         is_last_config = not manager.args_manager.all_configs or not list(set(configs) - set(configs_ran))
 
         if SENTRY_CLIENT is not None:
-            log_path = manager.path_manager.main_log if not cyberdrop_dl.utils.utilities.DEBUG_VAR else debug_log_file_path
-            sentry_sdk.get_current_scope().add_attachment(path=log_path, filename=log_path.name)
-            sentry_sdk.add_breadcrumb(message="Attaching log file", category="log")
             SENTRY_CLIENT.flush()
-            # Remove the attachment from the scope
-            # sentry_sdk.get_current_scope().clear()
 
         if is_last_config:
             await log_spacer(20)
