@@ -5,7 +5,7 @@ import os
 import pathlib
 from typing import TYPE_CHECKING
 
-from InquirerPy import inquirer, get_style
+from InquirerPy import get_style, inquirer
 from InquirerPy.base.control import Choice
 from InquirerPy.separator import Separator
 from InquirerPy.validator import EmptyInputValidator, PathValidator
@@ -49,7 +49,8 @@ def main_prompt(manager: Manager) -> int:
 
     action = inquirer.select(
         message="What would you like to do?",
-        choices=choices, long_instruction="ARROW KEYS: Navigate | ENTER: Select",
+        choices=choices,
+        long_instruction="ARROW KEYS: Navigate | ENTER: Select",
         style=get_style({"pointer": "#ff0000 bold"}) if simp_disclaimer_shown == None else None,
         vi_mode=manager.vi_mode,
     ).execute()
@@ -71,7 +72,8 @@ def manage_configs_prompt(manager: Manager) -> int:
             Choice(5, "Edit Authentication Values"),
             Choice(6, "Edit Global Values"),
             Choice(7, "Done"),
-        ], long_instruction="ARROW KEYS: Navigate | ENTER: Select",
+        ],
+        long_instruction="ARROW KEYS: Navigate | ENTER: Select",
         vi_mode=manager.vi_mode,
     ).execute()
 
@@ -104,7 +106,8 @@ def import_cyberdrop_v4_items_prompt(manager: Manager) -> None:
                 Choice(1, "Import Config"),
                 Choice(2, "Import download_history.sql"),
                 Choice(3, "Done"),
-            ], long_instruction="ARROW KEYS: Navigate | ENTER: Select",
+            ],
+            long_instruction="ARROW KEYS: Navigate | ENTER: Select",
             vi_mode=manager.vi_mode,
         ).execute()
 
@@ -138,7 +141,7 @@ def import_cyberdrop_v4_items_prompt(manager: Manager) -> None:
                 default=home_path,
                 validate=PathValidator(message="Input is not a file"),
                 vi_mode=manager.vi_mode,
-                filter=lambda x: pathlib.Path(x)
+                filter=lambda x: pathlib.Path(x),
             ).execute()
             if import_download_history_path.is_file():
                 transfer_v4_db(import_download_history_path, manager.path_manager.history_db)
@@ -162,11 +165,13 @@ def donations_prompt(manager: Manager) -> None:
     console.clear()
     console.print("[bold]Donations[/bold]")
     console.print("")
-    console.print("I started making this program around three years ago at this point,"
-                "\nIt has grown larger than I could've imagined and I'm very proud of it."
-                "\nI have put a lot of time and effort into this program and I'm glad that people are using it."
-                "\nThanks to everyone that have supported me, "
-                "it keeps me motivated to continue working on this program.")
+    console.print(
+        "I started making this program around three years ago at this point,"
+        "\nIt has grown larger than I could've imagined and I'm very proud of it."
+        "\nI have put a lot of time and effort into this program and I'm glad that people are using it."
+        "\nThanks to everyone that have supported me, "
+        "it keeps me motivated to continue working on this program."
+    )
     console.print("")
     console.print("If you'd like to support me and my work, you can donate to me via the following methods:")
     console.print("BuyMeACoffee: https://www.buymeacoffee.com/jbsparrow")

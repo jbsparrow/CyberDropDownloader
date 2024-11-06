@@ -65,8 +65,9 @@ class HashTable:
             cursor = await self.db_conn.cursor()
 
             # Check if the file exists with matching folder, filename, and size
-            await cursor.execute("SELECT hash FROM hash WHERE folder=? AND download_filename=? AND file_size=?",
-                                (folder, filename, size))
+            await cursor.execute(
+                "SELECT hash FROM hash WHERE folder=? AND download_filename=? AND file_size=?", (folder, filename, size)
+            )
             result = await cursor.fetchone()
             if result and result[0]:
                 return result[0]
@@ -89,8 +90,9 @@ class HashTable:
         cursor = await self.db_conn.cursor()
 
         try:
-            await cursor.execute("SELECT folder, download_filename FROM hash WHERE hash = ? and file_size=?",
-                                (hash_value, size))
+            await cursor.execute(
+                "SELECT folder, download_filename FROM hash WHERE hash = ? and file_size=?", (hash_value, size)
+            )
             results = await cursor.fetchall()
             return results
         except Exception as e:
@@ -123,19 +125,30 @@ class HashTable:
         try:
             await cursor.execute(
                 "INSERT INTO hash (hash, file_size, download_filename, folder,original_filename,referer) VALUES (?, ?, ?, ?,?,?)",
-                (hash_value, file_size, download_filename, folder, original_filename, referer))
+                (hash_value, file_size, download_filename, folder, original_filename, referer),
+            )
             await self.db_conn.commit()
             return True
         except IntegrityError as _:
             # Handle potential duplicate key (assuming a unique constraint on hash, filename, and folder)
-            await cursor.execute("""UPDATE hash
+            await cursor.execute(
+                """UPDATE hash
     SET file_size = ?,
     hash = ?,
     referer= CASE WHEN ? IS NOT NULL THEN ? ELSE referer END,
     original_filename = CASE WHEN ? IS NOT NULL THEN ? ELSE original_filename END
 WHERE download_filename = ? AND folder = ?;""",
-                                (file_size, hash_value, referer, referer, original_filename, original_filename,
-                                download_filename, folder))
+                (
+                    file_size,
+                    hash_value,
+                    referer,
+                    referer,
+                    original_filename,
+                    original_filename,
+                    download_filename,
+                    folder,
+                ),
+            )
             await self.db_conn.commit()
             return True
         except Exception as e:

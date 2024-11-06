@@ -8,15 +8,15 @@ from aiolimiter import AsyncLimiter
 from mediafire import MediaFireApi, api
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import ScrapeFailure
+from cyberdrop_dl.clients.errors import ScrapeFailure, ScrapeItemMaxChildrenReached
 from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem, FILE_HOST_ALBUM
+from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
-from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
 
 if TYPE_CHECKING:
-    from cyberdrop_dl.managers.manager import Manager
     from bs4 import BeautifulSoup
+
+    from cyberdrop_dl.managers.manager import Manager
 
 
 class MediaFireCrawler(Crawler):
@@ -47,12 +47,14 @@ class MediaFireCrawler(Crawler):
         except api.MediaFireApiError as e:
             raise ScrapeFailure(f"MF - {e.message}", origin=scrape_item)
 
-        title = await self.create_title(folder_details['folder_info']['name'], folder_key, None)
+        title = await self.create_title(folder_details["folder_info"]["name"], folder_key, None)
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
-        
+
         try:
-            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
+                "maximum_number_of_children"
+            ][scrape_item.type]
         except (IndexError, TypeError):
             pass
 
@@ -63,23 +65,25 @@ class MediaFireCrawler(Crawler):
         chunk_size = 100
         while True:
             try:
-                folder_contents = self.api.folder_get_content(folder_key=folder_key, content_type='files', chunk=chunk,
-                                                            chunk_size=chunk_size)
+                folder_contents = self.api.folder_get_content(
+                    folder_key=folder_key, content_type="files", chunk=chunk, chunk_size=chunk_size
+                )
             except api.MediaFireApiError as e:
                 raise ScrapeFailure(f"MF - {e.message}", origin=scrape_item)
 
-            files = folder_contents['folder_content']['files']
+            files = folder_contents["folder_content"]["files"]
 
             for file in files:
-                date = await self.parse_datetime(file['created'])
-                link = URL(file['links']['normal_download'])
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, None, date,
-                                                                add_parent=scrape_item.url)
+                date = await self.parse_datetime(file["created"])
+                link = URL(file["links"]["normal_download"])
+                new_scrape_item = await self.create_scrape_item(
+                    scrape_item, link, title, True, None, date, add_parent=scrape_item.url
+                )
                 self.manager.task_group.create_task(self.run(new_scrape_item))
                 scrape_item.children += 1
                 if scrape_item.children_limit:
                     if scrape_item.children >= scrape_item.children_limit:
-                        raise ScrapeItemMaxChildrenReached(origin = scrape_item)
+                        raise ScrapeItemMaxChildrenReached(origin=scrape_item)
 
             if folder_contents["folder_content"]["more_chunks"] == "yes":
                 chunk += 1
@@ -95,9 +99,9 @@ class MediaFireCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
-        date = await self.parse_datetime(soup.select('ul[class=details] li span')[-1].get_text())
+        date = await self.parse_datetime(soup.select("ul[class=details] li span")[-1].get_text())
         scrape_item.possible_datetime = date
-        link = URL(soup.select_one('a[id=downloadButton]').get('href'))
+        link = URL(soup.select_one("a[id=downloadButton]").get("href"))
         filename, ext = await get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 

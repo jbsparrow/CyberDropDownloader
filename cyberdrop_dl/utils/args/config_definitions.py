@@ -54,7 +54,7 @@ authentication_settings: Dict = {
     "Reddit": {
         "reddit_personal_use_script": "",
         "reddit_secret": "",
-    }
+    },
 }
 
 settings: Dict = {
@@ -70,7 +70,7 @@ settings: Dict = {
         "separate_posts": False,
         "skip_download_mark_completed": False,
         "skip_referer_seen_before": False,
-        "maximum_number_of_children": []
+        "maximum_number_of_children": [],
     },
     "Files": {
         "input_file": str(APP_STORAGE / "Configs" / "{config}" / "URLs.txt"),
@@ -84,7 +84,7 @@ settings: Dict = {
         "unsupported_urls_filename": "Unsupported_URLs.csv",
         "download_error_urls_filename": "Download_Error_URLs.csv",
         "scrape_error_urls_filename": "Scrape_Error_URLs.csv",
-        "rotate_logs": False
+        "rotate_logs": False,
     },
     "File_Size_Limits": {
         "maximum_image_size": 0,
@@ -114,7 +114,7 @@ settings: Dict = {
         "send_unsupported_to_jdownloader": False,
         "jdownloader_download_dir": None,
         "jdownloader_autostart": False,
-        "jdownloader_whitelist": []
+        "jdownloader_whitelist": [],
     },
     "Sorting": {
         "sort_downloads": False,
@@ -126,7 +126,7 @@ settings: Dict = {
         "sorted_image": "{sort_dir}/{base_dir}/Images/{filename}{ext}",
         "sorted_other": "{sort_dir}/{base_dir}/Other/{filename}{ext}",
         "sorted_video": "{sort_dir}/{base_dir}/Videos/{filename}{ext}",
-    }
+    },
 }
 
 global_settings: Dict = {
@@ -147,23 +147,20 @@ global_settings: Dict = {
         "download_delay": 0.5,
         "max_simultaneous_downloads": 15,
         "max_simultaneous_downloads_per_domain": 3,
-        "download_speed_limit": 0
+        "download_speed_limit": 0,
     },
-    "Dupe_Cleanup_Options":
-        {
-            "delete_after_download": False,
-            "hash_while_downloading": False,
-            "keep_prev_download": False,
-            "keep_new_download": True,
-            "dedupe_already_downloaded": False,
-            "delete_off_disk": False
-
-        },
-
+    "Dupe_Cleanup_Options": {
+        "delete_after_download": False,
+        "hash_while_downloading": False,
+        "keep_prev_download": False,
+        "keep_new_download": True,
+        "dedupe_already_downloaded": False,
+        "delete_off_disk": False,
+    },
     "UI_Options": {
         "vi_mode": False,
         "refresh_rate": 10,
         "scraping_item_limit": 5,
         "downloading_item_limit": 5,
-    }
+    },
 }

@@ -7,14 +7,15 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem, FILE_HOST_ALBUM
-from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wrapper
 from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
+from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, ScrapeItem
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
-    from cyberdrop_dl.managers.manager import Manager
     from bs4 import BeautifulSoup
+
+    from cyberdrop_dl.managers.manager import Manager
 
 
 class PimpAndHostCrawler(Crawler):
@@ -46,27 +47,31 @@ class PimpAndHostCrawler(Crawler):
 
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
-        
+
         try:
-            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
+                "maximum_number_of_children"
+            ][scrape_item.type]
         except (IndexError, TypeError):
             pass
 
-        title = await self.create_title(soup.select_one("span[class=author-header__album-name]").get_text(),
-                                        scrape_item.album_id, None)
+        title = await self.create_title(
+            soup.select_one("span[class=author-header__album-name]").get_text(), scrape_item.album_id, None
+        )
         date = soup.select_one("span[class=date-time]").get("title")
         date = await self.parse_datetime(date)
 
         files = soup.select('a[class*="image-wrapper center-cropped im-wr"]')
         for file in files:
             link = URL(file.get("href"))
-            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, None, date,
-                                                            add_parent=scrape_item.url)
+            new_scrape_item = await self.create_scrape_item(
+                scrape_item, link, title, True, None, date, add_parent=scrape_item.url
+            )
             self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
+                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
 
         next_page = soup.select_one("li[class=next] a")
         if next_page:
@@ -82,8 +87,8 @@ class PimpAndHostCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
-        link = soup.select_one('.main-image-wrapper')
-        link = link.get('data-src')
+        link = soup.select_one(".main-image-wrapper")
+        link = link.get("data-src")
         link = URL("https:" + link) if link.startswith("//") else URL(link)
 
         date = soup.select_one("span[class=date-time]").get("title")
@@ -98,5 +103,5 @@ class PimpAndHostCrawler(Crawler):
     @staticmethod
     async def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp"""
-        date = datetime.strptime(date, '%A, %B %d, %Y %I:%M:%S%p %Z')
+        date = datetime.strptime(date, "%A, %B %d, %Y %I:%M:%S%p %Z")
         return calendar.timegm(date.timetuple())

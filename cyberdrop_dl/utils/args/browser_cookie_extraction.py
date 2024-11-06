@@ -25,11 +25,13 @@ def cookie_wrapper(func):
         except PermissionError:
             console = Console()
             console.clear()
-            console.print("We've encountered a Permissions Error. Please close all browsers and try again.",
-                          style="bold red")
+            console.print(
+                "We've encountered a Permissions Error. Please close all browsers and try again.", style="bold red"
+            )
             console.print(
                 "If you are still having issues, make sure all browsers processes are closed in a Task Manager.",
-                style="bold red")
+                style="bold red",
+            )
             console.print("Nothing has been saved.", style="bold red")
             inquirer.confirm(message="Press enter to return menu.").execute()
             return
@@ -45,13 +47,15 @@ def get_forum_cookies(manager: Manager, browser: str) -> None:
     for forum in SupportedDomains.supported_forums:
         try:
             cookie = get_cookie(browser, forum)
-            auth_args['Forums'][f'{SupportedDomains.supported_forums_map[forum]}_xf_user_cookie'] = \
-                cookie._cookies[forum]['/']['xf_user'].value
+            auth_args["Forums"][f"{SupportedDomains.supported_forums_map[forum]}_xf_user_cookie"] = cookie._cookies[
+                forum
+            ]["/"]["xf_user"].value
         except KeyError:
             try:
                 cookie = get_cookie(browser, "www." + forum)
-                auth_args['Forums'][f'{SupportedDomains.supported_forums_map[forum]}_xf_user_cookie'] = \
-                    cookie._cookies["www." + forum]['/']['xf_user'].value
+                auth_args["Forums"][f"{SupportedDomains.supported_forums_map[forum]}_xf_user_cookie"] = cookie._cookies[
+                    "www." + forum
+                ]["/"]["xf_user"].value
             except KeyError:
                 pass
 
@@ -60,19 +64,19 @@ def get_forum_cookies(manager: Manager, browser: str) -> None:
 
 def get_cookie(browser: str, domain: str):
     """Get the cookies for a specific domain"""
-    if browser == 'chrome':
+    if browser == "chrome":
         cookie = browser_cookie3.chrome(domain_name=domain)
-    elif browser == 'firefox':
+    elif browser == "firefox":
         cookie = browser_cookie3.firefox(domain_name=domain)
-    elif browser == 'edge':
+    elif browser == "edge":
         cookie = browser_cookie3.edge(domain_name=domain)
-    elif browser == 'safari':
+    elif browser == "safari":
         cookie = browser_cookie3.safari(domain_name=domain)
-    elif browser == 'opera':
+    elif browser == "opera":
         cookie = browser_cookie3.opera(domain_name=domain)
-    elif browser == 'brave':
+    elif browser == "brave":
         cookie = browser_cookie3.brave(domain_name=domain)
     else:
-        raise ValueError('Invalid browser specified')
+        raise ValueError("Invalid browser specified")
 
     return cookie

@@ -9,8 +9,11 @@ from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
-if os.getenv("PYCHARM_HOSTED") is not None or 'TERM_PROGRAM' in os.environ.keys() and os.environ[
-    'TERM_PROGRAM'] == 'vscode':
+if (
+    os.getenv("PYCHARM_HOSTED") is not None
+    or "TERM_PROGRAM" in os.environ.keys()
+    and os.environ["TERM_PROGRAM"] == "vscode"
+):
     """This is for testing purposes only"""
     if os.getcwd().endswith("cyberdrop_dl"):
         APP_STORAGE = Path("../AppData")
@@ -24,7 +27,7 @@ else:
 
 
 class PathManager:
-    def __init__(self, manager: 'Manager'):
+    def __init__(self, manager: "Manager"):
         self.manager = manager
 
         self.download_dir: Path = field(init=False)
@@ -62,34 +65,49 @@ class PathManager:
 
     def startup(self) -> None:
         """Startup process for the Directory Manager"""
-        self.download_dir = self.manager.config_manager.settings_data['Files'][
-            'download_folder'] if not self.manager.args_manager.download_dir else self.manager.args_manager.download_dir
-        self.sorted_dir = self.manager.config_manager.settings_data['Sorting'][
-            'sort_folder'] if not self.manager.args_manager.sort_folder else self.manager.args_manager.sort_folder
+        self.download_dir = (
+            self.manager.config_manager.settings_data["Files"]["download_folder"]
+            if not self.manager.args_manager.download_dir
+            else self.manager.args_manager.download_dir
+        )
+        self.sorted_dir = (
+            self.manager.config_manager.settings_data["Sorting"]["sort_folder"]
+            if not self.manager.args_manager.sort_folder
+            else self.manager.args_manager.sort_folder
+        )
 
-        self.scan_dir = self.manager.config_manager.settings_data['Sorting'][
-            'scan_folder'] if not self.manager.args_manager.scan_folder else self.manager.args_manager.scan_folder
-        self.log_dir = self.manager.config_manager.settings_data['Logs'][
-            'log_folder'] if not self.manager.args_manager.log_dir else self.manager.args_manager.log_dir
-        self.input_file = self.manager.config_manager.settings_data['Files'][
-            'input_file'] if not self.manager.args_manager.input_file else self.manager.args_manager.input_file
+        self.scan_dir = (
+            self.manager.config_manager.settings_data["Sorting"]["scan_folder"]
+            if not self.manager.args_manager.scan_folder
+            else self.manager.args_manager.scan_folder
+        )
+        self.log_dir = (
+            self.manager.config_manager.settings_data["Logs"]["log_folder"]
+            if not self.manager.args_manager.log_dir
+            else self.manager.args_manager.log_dir
+        )
+        self.input_file = (
+            self.manager.config_manager.settings_data["Files"]["input_file"]
+            if not self.manager.args_manager.input_file
+            else self.manager.args_manager.input_file
+        )
         self.history_db = self.cache_dir / "cyberdrop.db"
 
-        current_time_iso = datetime.now().strftime('%Y%m%d_%H%M%S')
-        log_settings_config = self.manager.config_manager.settings_data['Logs']
+        current_time_iso = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_settings_config = self.manager.config_manager.settings_data["Logs"]
         log_args_config = self.manager.args_manager
         log_options_map = {
-            'main_log_filename': 'main_log',
-            'last_forum_post_filename': 'last_post_log',
-            'unsupported_urls_filename': 'unsupported_urls_log',
-            'download_error_urls_filename': 'download_error_log',
-            'scrape_error_urls_filename': 'scrape_error_log'
+            "main_log_filename": "main_log",
+            "last_forum_post_filename": "last_post_log",
+            "unsupported_urls_filename": "unsupported_urls_log",
+            "download_error_urls_filename": "download_error_log",
+            "scrape_error_urls_filename": "scrape_error_log",
         }
 
         for log_config_name, log_internal_name in log_options_map.items():
             file_name = Path(getattr(log_args_config, log_config_name, None) or log_settings_config[log_config_name])
-            file_ext = '.log' if log_internal_name == 'main_log' else '.csv'
-            if log_settings_config['rotate_logs']:
+            file_ext = ".log" if log_internal_name == "main_log" else ".csv"
+            if log_settings_config["rotate_logs"]:
                 file_name = f"{file_name.stem}__{current_time_iso}{file_name.suffix}"
             log_path = self.log_dir.joinpath(file_name).with_suffix(file_ext)
             setattr(self, log_internal_name, log_path)

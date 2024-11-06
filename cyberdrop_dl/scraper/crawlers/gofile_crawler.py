@@ -9,11 +9,16 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import ScrapeFailure, DownloadFailure, PasswordProtected, NoExtensionFailure
+from cyberdrop_dl.clients.errors import (
+    DownloadFailure,
+    NoExtensionFailure,
+    PasswordProtected,
+    ScrapeFailure,
+    ScrapeItemMaxChildrenReached,
+)
 from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem, FILE_HOST_ALBUM
-from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wrapper, log
-from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
+from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, ScrapeItem
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext, log
 
 if TYPE_CHECKING:
     from cyberdrop_dl.clients.scraper_client import ScraperClient
@@ -58,43 +63,53 @@ class GoFileCrawler(Crawler):
 
         try:
             async with self.request_limiter:
-                JSON_Resp = await self.client.get_json(self.domain,
-                                                    (self.api_address / "contents" / content_id).with_query(
-                                                        {"wt": self.websiteToken, "password": password}),
-                                                    headers_inc=self.headers, origin=scrape_item)
+                JSON_Resp = await self.client.get_json(
+                    self.domain,
+                    (self.api_address / "contents" / content_id).with_query(
+                        {"wt": self.websiteToken, "password": password}
+                    ),
+                    headers_inc=self.headers,
+                    origin=scrape_item,
+                )
         except DownloadFailure as e:
             if e.status == http.HTTPStatus.UNAUTHORIZED:
                 self.websiteToken = ""
                 self.manager.cache_manager.remove("gofile_website_token")
                 await self.get_website_token(self.js_address, self.client)
                 async with self.request_limiter:
-                    JSON_Resp = await self.client.get_json(self.domain,
-                                                        (self.api_address / "contents" / content_id).with_query(
-                                                            {"wt": self.websiteToken, "password": password}),
-                                                        headers_inc=self.headers, origin=scrape_item)
+                    JSON_Resp = await self.client.get_json(
+                        self.domain,
+                        (self.api_address / "contents" / content_id).with_query(
+                            {"wt": self.websiteToken, "password": password}
+                        ),
+                        headers_inc=self.headers,
+                        origin=scrape_item,
+                    )
             else:
                 raise ScrapeFailure(e.status, e.message, origin=scrape_item)
 
         if JSON_Resp["status"] == "error-notFound":
             raise ScrapeFailure(404, "Album not found", origin=scrape_item)
 
-        JSON_Resp = JSON_Resp['data']
+        JSON_Resp = JSON_Resp["data"]
 
         if "password" in JSON_Resp:
-            if JSON_Resp['passwordStatus'] in {'passwordRequired', 'passwordWrong'} or not password:
+            if JSON_Resp["passwordStatus"] in {"passwordRequired", "passwordWrong"} or not password:
                 raise PasswordProtected(origin=scrape_item)
 
         if JSON_Resp["canAccess"] is False:
             raise ScrapeFailure(403, "Album is private", origin=scrape_item)
 
         title = await self.create_title(JSON_Resp["name"], content_id, None)
-        #Do not reset nested folders
-        if scrape_item.type!= FILE_HOST_ALBUM:
+        # Do not reset nested folders
+        if scrape_item.type != FILE_HOST_ALBUM:
             scrape_item.type = FILE_HOST_ALBUM
             scrape_item.children = scrape_item.children_limit = 0
 
             try:
-                scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+                scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
+                    "maximum_number_of_children"
+                ][scrape_item.type]
             except (IndexError, TypeError):
                 pass
 
@@ -103,11 +118,15 @@ class GoFileCrawler(Crawler):
             content = contents[content_id]
             link = None
             if content["type"] == "folder":
-                new_scrape_item = await self.create_scrape_item(scrape_item,
-                                                                self.primary_base_domain / "d" / content["code"], title,
-                                                                True, add_parent=scrape_item.url)
+                new_scrape_item = await self.create_scrape_item(
+                    scrape_item,
+                    self.primary_base_domain / "d" / content["code"],
+                    title,
+                    True,
+                    add_parent=scrape_item.url,
+                )
                 self.manager.task_group.create_task(self.run(new_scrape_item))
-            
+
             elif content["link"] == "overloaded":
                 link = URL(content["directLink"])
             else:
@@ -128,9 +147,7 @@ class GoFileCrawler(Crawler):
             scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
-                   
-                
+                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -181,6 +198,6 @@ class GoFileCrawler(Crawler):
         """Sets the given token as a cookie into the session (and client)"""
         client_token = self.token
         morsel: http.cookies.Morsel = http.cookies.Morsel()
-        morsel['domain'] = 'gofile.io'
-        morsel.set('accountToken', client_token, client_token)
-        session.client_manager.cookies.update_cookies({'gofile.io': morsel})
+        morsel["domain"] = "gofile.io"
+        morsel.set("accountToken", client_token, client_token)
+        session.client_manager.cookies.update_cookies({"gofile.io": morsel})

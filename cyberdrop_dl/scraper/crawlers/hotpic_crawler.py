@@ -5,14 +5,15 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem, FILE_HOST_ALBUM
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext, log
 from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
+from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, ScrapeItem
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext, log
 
 if TYPE_CHECKING:
-    from cyberdrop_dl.managers.manager import Manager
     from bs4 import BeautifulSoup
+
+    from cyberdrop_dl.managers.manager import Manager
 
 
 class HotPicCrawler(Crawler):
@@ -51,7 +52,9 @@ class HotPicCrawler(Crawler):
         scrape_item.children = scrape_item.children_limit = 0
 
         try:
-            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
+                "maximum_number_of_children"
+            ][scrape_item.type]
         except (IndexError, TypeError):
             pass
 
@@ -63,7 +66,7 @@ class HotPicCrawler(Crawler):
             scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
+                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:

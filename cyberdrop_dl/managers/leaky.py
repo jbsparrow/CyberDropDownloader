@@ -6,8 +6,9 @@ from aiolimiter.compat import wait_for
 
 class LeakyBucket(AsyncLimiter):
     def __init__(self, manager):
-        self.download_speed_limit = manager.config_manager.global_settings_data['Rate_Limiting_Options'][
-            'download_speed_limit']
+        self.download_speed_limit = manager.config_manager.global_settings_data["Rate_Limiting_Options"][
+            "download_speed_limit"
+        ]
         self.max_amount = 1024 * 1024 * 10
         super().__init__(self.download_speed_limit * 1024, 1)
 
@@ -26,9 +27,7 @@ class LeakyBucket(AsyncLimiter):
             fut = loop.create_future()
             self._waiters[task] = fut
             try:
-                await wait_for(
-                    asyncio.shield(fut), 1 / self._rate_per_sec * amount, loop=loop
-                )
+                await wait_for(asyncio.shield(fut), 1 / self._rate_per_sec * amount, loop=loop)
             except asyncio.TimeoutError:
                 pass
             fut.cancel()

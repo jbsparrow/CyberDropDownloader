@@ -6,15 +6,15 @@ from aiolimiter import AsyncLimiter
 from bs4 import Tag
 from yarl import URL
 
-from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem, FORUM, FORUM_POST
-from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wrapper, log
 from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
-
+from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.utils.dataclasses.url_objects import FORUM, FORUM_POST, ScrapeItem
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext, log
 
 if TYPE_CHECKING:
-    from cyberdrop_dl.managers.manager import Manager
     from bs4 import BeautifulSoup
+
+    from cyberdrop_dl.managers.manager import Manager
 
 
 class CelebForumCrawler(Crawler):
@@ -57,9 +57,9 @@ class CelebForumCrawler(Crawler):
 
         if not self.logged_in:
             login_url = self.primary_base_domain / "login"
-            session_cookie = self.manager.config_manager.authentication_data['Forums']['celebforum_xf_user_cookie']
-            username = self.manager.config_manager.authentication_data['Forums']['celebforum_username']
-            password = self.manager.config_manager.authentication_data['Forums']['celebforum_password']
+            session_cookie = self.manager.config_manager.authentication_data["Forums"]["celebforum_xf_user_cookie"]
+            username = self.manager.config_manager.authentication_data["Forums"]["celebforum_username"]
+            password = self.manager.config_manager.authentication_data["Forums"]["celebforum_password"]
             wait_time = 5
 
             await self.forum_login(login_url, session_cookie, username, password, wait_time)
@@ -80,9 +80,11 @@ class CelebForumCrawler(Crawler):
         post_number = 0
         scrape_item.type = FORUM
         scrape_item.children = scrape_item.children_limit = 0
-        
+
         try:
-            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
+                "maximum_number_of_children"
+            ][scrape_item.type]
         except (IndexError, TypeError):
             pass
 
@@ -101,21 +103,30 @@ class CelebForumCrawler(Crawler):
             for elem in title_block.find_all(self.title_trash_selector):
                 elem.decompose()
 
-            thread_id = thread_url.parts[2].split('.')[-1]
+            thread_id = thread_url.parts[2].split(".")[-1]
             title = await self.create_title(title_block.text.replace("\n", ""), None, thread_id)
 
             posts = soup.select(self.posts_selector)
             for post in posts:
                 current_post_number = int(
-                    post.select_one(self.posts_number_selector).get(self.posts_number_attribute).split('/')[-1].split(
-                        'post-')[-1])
+                    post.select_one(self.posts_number_selector)
+                    .get(self.posts_number_attribute)
+                    .split("/")[-1]
+                    .split("post-")[-1]
+                )
                 scrape_post, continue_scraping = await self.check_post_number(post_number, current_post_number)
 
                 if scrape_post:
                     date = int(post.select_one(self.post_date_selector).get(self.post_date_attribute))
-                    new_scrape_item = await self.create_scrape_item(scrape_item, thread_url, title, False, None, date,
-                                                                    add_parent=thread_url.joinpath(
-                                                                        f"post-{current_post_number}"))
+                    new_scrape_item = await self.create_scrape_item(
+                        scrape_item,
+                        thread_url,
+                        title,
+                        False,
+                        None,
+                        date,
+                        add_parent=thread_url.joinpath(f"post-{current_post_number}"),
+                    )
 
                     for elem in post.find_all(self.quotes_selector):
                         elem.decompose()
@@ -125,7 +136,7 @@ class CelebForumCrawler(Crawler):
                     scrape_item.children += 1
                     if scrape_item.children_limit:
                         if scrape_item.children >= scrape_item.children_limit:
-                            raise ScrapeItemMaxChildrenReached(origin = scrape_item)
+                            raise ScrapeItemMaxChildrenReached(origin=scrape_item)
 
                 if not continue_scraping:
                     break
@@ -151,15 +162,17 @@ class CelebForumCrawler(Crawler):
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem, post_content: Tag, post_number: int) -> None:
         """Scrapes a post"""
-        if self.manager.config_manager.settings_data['Download_Options']['separate_posts']:
+        if self.manager.config_manager.settings_data["Download_Options"]["separate_posts"]:
             scrape_item = await self.create_scrape_item(scrape_item, scrape_item.url, "")
             await scrape_item.add_to_parent_title("post-" + str(post_number))
 
         scrape_item.type = FORUM_POST
         scrape_item.children = scrape_item.children_limit = 0
-        
+
         try:
-            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
+                "maximum_number_of_children"
+            ][scrape_item.type]
         except (IndexError, TypeError):
             pass
 
@@ -169,7 +182,7 @@ class CelebForumCrawler(Crawler):
             scrape_item.children += await scraper(scrape_item, post_content)
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
+                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
 
     @error_handling_wrapper
     async def links(self, scrape_item: ScrapeItem, post_content: Tag) -> int:
@@ -203,7 +216,7 @@ class CelebForumCrawler(Crawler):
                     continue
             except TypeError:
                 await log(f"Scrape Failed: encountered while handling {link}", 40)
-            new_children +=1
+            new_children += 1
             if scrape_item.children_limit:
                 if (new_children + scrape_item.children) >= scrape_item.children_limit:
                     break
@@ -240,7 +253,7 @@ class CelebForumCrawler(Crawler):
                 await self.handle_internal_links(link, scrape_item)
             else:
                 await log(f"Unknown image type: {link}", 30)
-            new_children +=1
+            new_children += 1
             if scrape_item.children_limit:
                 if (new_children + scrape_item.children) >= scrape_item.children_limit:
                     break
@@ -266,7 +279,7 @@ class CelebForumCrawler(Crawler):
             link = URL(link)
             new_scrape_item = await self.create_scrape_item(scrape_item, link, "")
             await self.handle_external_links(new_scrape_item)
-            new_children +=1
+            new_children += 1
             if scrape_item.children_limit:
                 if (new_children + scrape_item.children) >= scrape_item.children_limit:
                     break
@@ -287,7 +300,7 @@ class CelebForumCrawler(Crawler):
             link = URL(link)
             new_scrape_item = await self.create_scrape_item(scrape_item, link, "")
             await self.handle_external_links(new_scrape_item)
-            new_children +=1
+            new_children += 1
             if scrape_item.children_limit:
                 if (new_children + scrape_item.children) >= scrape_item.children_limit:
                     break
@@ -300,7 +313,7 @@ class CelebForumCrawler(Crawler):
         new_children = 0
         if not attachment_block:
             return new_children
-        
+
         attachments = attachment_block.select(self.attachments_selector)
         for attachment in attachments:
             link = attachment.get(self.attachments_attribute)
@@ -323,7 +336,7 @@ class CelebForumCrawler(Crawler):
                 await self.handle_internal_links(link, scrape_item)
             else:
                 await log(f"Unknown image type: {link}", 30)
-            new_children +=1
+            new_children += 1
             if scrape_item.children_limit:
                 if (new_children + scrape_item.children) >= scrape_item.children_limit:
                     break

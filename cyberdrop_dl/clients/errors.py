@@ -8,14 +8,21 @@ from yarl import URL
 
 if TYPE_CHECKING:
     from yaml.constructor import ConstructorError
+
     from cyberdrop_dl.scraper.crawler import ScrapeItem
 
 
 class CDLBaseException(Exception):
     """Base exception for cyberdrop-dl errors"""
 
-    def __init__(self, ui_message: str = "Something went wrong", *, message: Optional[str] = None,
-                status: Optional[int] = None, origin: Optional[ScrapeItem | URL | Path] = None):
+    def __init__(
+        self,
+        ui_message: str = "Something went wrong",
+        *,
+        message: Optional[str] = None,
+        status: Optional[int] = None,
+        origin: Optional[ScrapeItem | URL | Path] = None,
+    ):
         self.ui_message = ui_message
         self.message = message or ui_message
         self.origin = origin
@@ -47,6 +54,7 @@ class PasswordProtected(CDLBaseException):
         ui_message = "Password Protected"
         message = message or "File/Folder is password protected"
         super().__init__(ui_message, message=message, origin=origin)
+
 
 class ScrapeItemMaxChildrenReached(CDLBaseException):
     def __init__(self, *, message: Optional[str] = None, origin: Optional[ScrapeItem | URL] = None):
@@ -97,13 +105,14 @@ class FailedLoginFailure(CDLBaseException):
 
 class JDownloaderFailure(CDLBaseException):
     """This error will be thrown for any Jdownloader error"""
+
     pass
 
 
 class InvalidYamlConfig(CDLBaseException):
     def __init__(self, file: Path, e: ConstructorError):
         """This error will be thrown when a yaml config file has invalid values"""
-        mark = e.problem_mark if hasattr(e, 'problem_mark') else e
+        mark = e.problem_mark if hasattr(e, "problem_mark") else e
         message = f"ERROR: File '{file}' has an invalid config. Please verify and edit it manually\n {mark}"
         self.message_rich = message.replace("ERROR:", "[bold red]ERROR:[/bold red]")
-        super().__init__('Invalid YAML', message=message, origin=file)
+        super().__init__("Invalid YAML", message=message, origin=file)

@@ -7,15 +7,15 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import ScrapeFailure
+from cyberdrop_dl.clients.errors import ScrapeFailure, ScrapeItemMaxChildrenReached
 from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem, FILE_HOST_ALBUM
+from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
-from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
 
 if TYPE_CHECKING:
-    from cyberdrop_dl.managers.manager import Manager
     from bs4 import BeautifulSoup
+
+    from cyberdrop_dl.managers.manager import Manager
 
 
 class ImgBoxCrawler(Crawler):
@@ -57,29 +57,33 @@ class ImgBoxCrawler(Crawler):
 
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
-        
+
         try:
-            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
+                "maximum_number_of_children"
+            ][scrape_item.type]
         except (IndexError, TypeError):
             pass
 
         title = await self.create_title(
-            soup.select_one("div[id=gallery-view] h1").get_text().strip().rsplit(" - ", 1)[0], scrape_item.album_id,
-            None)
+            soup.select_one("div[id=gallery-view] h1").get_text().strip().rsplit(" - ", 1)[0],
+            scrape_item.album_id,
+            None,
+        )
 
         scrape_item.part_of_album = True
         await scrape_item.add_to_parent_title(title)
 
-        images = soup.find('div', attrs={'id': 'gallery-view-content'})
+        images = soup.find("div", attrs={"id": "gallery-view-content"})
         images = images.findAll("img")
         for link in images:
-            link = URL(link.get('src').replace("thumbs", "images").replace("_b", "_o"))
+            link = URL(link.get("src").replace("thumbs", "images").replace("_b", "_o"))
             filename, ext = await get_filename_and_ext(link.name)
             await self.handle_file(link, scrape_item, filename, ext)
             scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
+                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
@@ -90,7 +94,7 @@ class ImgBoxCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
-        image = URL(soup.select_one("img[id=img]").get('src'))
+        image = URL(soup.select_one("img[id=img]").get("src"))
         filename, ext = await get_filename_and_ext(image.name)
         await self.handle_file(image, scrape_item, filename, ext)
 

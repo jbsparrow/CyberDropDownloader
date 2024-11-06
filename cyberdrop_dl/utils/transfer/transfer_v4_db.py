@@ -26,7 +26,8 @@ def transfer_v4_db(db_path: Path, new_db_path: Path) -> None:
 
     new_db_connection.executemany(
         "insert or ignore into media (domain, url_path, referer, download_path, download_filename, original_filename, completed) values (?, ?, ?, ?, ?, ?, ?)",
-        old_data_revised)
+        old_data_revised,
+    )
     del old_data_history
 
     new_db_connection.commit()

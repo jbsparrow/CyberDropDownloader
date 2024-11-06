@@ -8,19 +8,19 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import NoExtensionFailure
-from cyberdrop_dl.clients.errors import ScrapeFailure
+from cyberdrop_dl.clients.errors import NoExtensionFailure, ScrapeFailure, ScrapeItemMaxChildrenReached
 from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem, FILE_HOST_PROFILE, FILE_HOST_ALBUM
-from cyberdrop_dl.utils.utilities import FILE_FORMATS, get_filename_and_ext, error_handling_wrapper
-from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
+from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, ScrapeItem
+from cyberdrop_dl.utils.utilities import FILE_FORMATS, error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
-    from cyberdrop_dl.managers.manager import Manager
     from bs4 import BeautifulSoup, Tag
 
+    from cyberdrop_dl.managers.manager import Manager
+
 CDN_POSSIBILITIES = re.compile(
-    r"^(?:(?:(?:media-files|cdn|c|pizza|cdn-burger|cdn-nugget|burger|taquito|pizza|fries|meatballs|milkshake|kebab|nachos|ramen|wiener)[0-9]{0,2})|(?:(?:big-taco-|cdn-pizza|cdn-meatballs|cdn-milkshake|i.kebab|i.fries|i-nugget|i-milkshake|i-nachos|i-ramen|i-wiener)[0-9]{0,2}(?:redir)?))\.bunkr?\.[a-z]{2,3}$")
+    r"^(?:(?:(?:media-files|cdn|c|pizza|cdn-burger|cdn-nugget|burger|taquito|pizza|fries|meatballs|milkshake|kebab|nachos|ramen|wiener)[0-9]{0,2})|(?:(?:big-taco-|cdn-pizza|cdn-meatballs|cdn-milkshake|i.kebab|i.fries|i-nugget|i-milkshake|i-nachos|i-ramen|i-wiener)[0-9]{0,2}(?:redir)?))\.bunkr?\.[a-z]{2,3}$"
+)
 
 
 class BunkrrCrawler(Crawler):
@@ -58,15 +58,17 @@ class BunkrrCrawler(Crawler):
         results = await self.get_album_results(album_id)
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
-        
+
         try:
-            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
+                "maximum_number_of_children"
+            ][scrape_item.type]
         except (IndexError, TypeError):
             pass
 
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
-        title = soup.select_one('title').text.rsplit(" | Bunkr")[0].strip()
+        title = soup.select_one("title").text.rsplit(" | Bunkr")[0].strip()
 
         title = await self.create_title(title, scrape_item.url.parts[2], None)
         await scrape_item.add_to_parent_title(title)
@@ -75,10 +77,10 @@ class BunkrrCrawler(Crawler):
         for card_listing in card_listings:
             filename = card_listing.select_one('p[class*="theName"]').text
             file_ext = "." + filename.split(".")[-1]
-            thumbnail = card_listing.select_one("img").get('src')
+            thumbnail = card_listing.select_one("img").get("src")
             date_str = card_listing.select_one('span[class*="theDate"]').text.strip()
             date = await self.parse_datetime(date_str)
-            link = card_listing.find('a').get("href")
+            link = card_listing.find("a").get("href")
             if link.startswith("/"):
                 link = URL("https://" + scrape_item.url.host + link)
             link = URL(link)
@@ -86,20 +88,21 @@ class BunkrrCrawler(Crawler):
 
             # Try to get final file URL
             try:
-                if file_ext.lower() not in FILE_FORMATS['Images'] and file_ext.lower() not in FILE_FORMATS['Videos']:
+                if file_ext.lower() not in FILE_FORMATS["Images"] and file_ext.lower() not in FILE_FORMATS["Videos"]:
                     raise FileNotFoundError()
                 src = thumbnail.replace("/thumbs/", "/")
                 src = URL(src, encoded=True)
                 src = src.with_suffix(file_ext)
                 src = src.with_query("download=true")
-                if file_ext.lower() not in FILE_FORMATS['Images']:
+                if file_ext.lower() not in FILE_FORMATS["Images"]:
                     src = src.with_host(src.host.replace("i-", ""))
 
                 if "no-image" in src.name:
                     raise FileNotFoundError("No image found, reverting to parent")
 
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, "", True, album_id, date,
-                                                                add_parent=scrape_item.url)
+                new_scrape_item = await self.create_scrape_item(
+                    scrape_item, link, "", True, album_id, date, add_parent=scrape_item.url
+                )
 
                 filename, ext = await get_filename_and_ext(src.name)
                 if not await self.check_album_results(src, results):
@@ -107,13 +110,13 @@ class BunkrrCrawler(Crawler):
 
             except FileNotFoundError:
                 self.manager.task_group.create_task(
-                    self.run(ScrapeItem(link, scrape_item.parent_title, True, album_id, date)))
-                
+                    self.run(ScrapeItem(link, scrape_item.parent_title, True, album_id, date))
+                )
+
             scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
-                
+                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
@@ -126,7 +129,7 @@ class BunkrrCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         # try video
-        link_container = soup.select_one('video > source')
+        link_container = soup.select_one("video > source")
         src_selector = "src"
 
         # try image
@@ -168,8 +171,8 @@ class BunkrrCrawler(Crawler):
         try:
             link_container = soup.select('a[download*=""]')[-1]
         except IndexError:
-            link_container = soup.select('a[class*=download]')[-1]
-        link = URL(link_container.get('href'))
+            link_container = soup.select("a[class*=download]")[-1]
+        link = URL(link_container.get("href"))
         return link
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -189,9 +192,9 @@ class BunkrrCrawler(Crawler):
         if ext == "":
             return url
 
-        if ext in FILE_FORMATS['Images']:
+        if ext in FILE_FORMATS["Images"]:
             url = self.primary_base_domain / "d" / url.parts[-1]
-        elif ext in FILE_FORMATS['Videos']:
+        elif ext in FILE_FORMATS["Videos"]:
             url = self.primary_base_domain / "v" / url.parts[-1]
         else:
             url = self.primary_base_domain / "d" / url.parts[-1]

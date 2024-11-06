@@ -10,16 +10,19 @@ from cyberdrop_dl.managers.console_manager import console
 from cyberdrop_dl.utils.utilities import log
 
 if TYPE_CHECKING:
-    from cyberdrop_dl.managers.manager import Manager
     from rich.layout import Layout
+
+    from cyberdrop_dl.managers.manager import Manager
 
 
 class LiveManager:
     def __init__(self, manager: Manager):
         self.manager = manager
-        self.live = Live(auto_refresh=True,
-                        refresh_per_second=self.manager.config_manager.global_settings_data['UI_Options'][
-                            'refresh_rate'], console=console)
+        self.live = Live(
+            auto_refresh=True,
+            refresh_per_second=self.manager.config_manager.global_settings_data["UI_Options"]["refresh_rate"],
+            console=console,
+        )
 
     @asynccontextmanager
     async def get_live(self, layout: Layout, stop=False):

@@ -7,14 +7,15 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem, FILE_HOST_ALBUM, FILE_HOST_PROFILE
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
+from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
-    from cyberdrop_dl.managers.manager import Manager
     from bs4 import BeautifulSoup
+
+    from cyberdrop_dl.managers.manager import Manager
 
 
 class ToonilyCrawler(Crawler):
@@ -48,7 +49,9 @@ class ToonilyCrawler(Crawler):
         scrape_item.children = scrape_item.children_limit = 0
 
         try:
-            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
+                "maximum_number_of_children"
+            ][scrape_item.type]
         except (IndexError, TypeError):
             pass
 
@@ -61,12 +64,13 @@ class ToonilyCrawler(Crawler):
                 chapter_path = self.primary_base_domain / chapter_path[1:]
             else:
                 chapter_path = URL(chapter_path)
-            new_scrape_item = await self.create_scrape_item(scrape_item, chapter_path, "", True,
-                                                            add_parent=scrape_item.url)
+            new_scrape_item = await self.create_scrape_item(
+                scrape_item, chapter_path, "", True, add_parent=scrape_item.url
+            )
             self.manager.task_group.create_task(self.run(new_scrape_item))
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
+                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
 
     @error_handling_wrapper
     async def chapter(self, scrape_item: ScrapeItem) -> None:
@@ -76,9 +80,11 @@ class ToonilyCrawler(Crawler):
 
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
-        
+
         try:
-            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
+                "maximum_number_of_children"
+            ][scrape_item.type]
         except (IndexError, TypeError):
             pass
 
@@ -93,7 +99,7 @@ class ToonilyCrawler(Crawler):
         date = None
         for script in scripts:
             if "datePublished" in script.get_text():
-                date = script.get_text().split("datePublished\":\"")[1].split("+")[0]
+                date = script.get_text().split('datePublished":"')[1].split("+")[0]
                 date = await self.parse_datetime(date)
                 break
 
@@ -111,7 +117,7 @@ class ToonilyCrawler(Crawler):
             await self.handle_file(link, scrape_item, filename, ext)
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
+                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
 
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:

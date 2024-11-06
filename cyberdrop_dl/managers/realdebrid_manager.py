@@ -10,28 +10,25 @@ from cyberdrop_dl.managers.real_debrid.api import RealDebridApi
 from cyberdrop_dl.managers.real_debrid.errors import RealDebridError
 from cyberdrop_dl.utils.utilities import log
 
-warnings.simplefilter(action='ignore', category=FutureWarning)
+warnings.simplefilter(action="ignore", category=FutureWarning)
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
-FOLDER_AS_PART = {'folder', 'folders', 'dir'}
-FOLDER_AS_QUERY = {'sharekey'}
+FOLDER_AS_PART = {"folder", "folders", "dir"}
+FOLDER_AS_QUERY = {"sharekey"}
 
 
 class RealDebridManager:
-    def __init__(self, manager: 'Manager'):
+    def __init__(self, manager: "Manager"):
         self.manager = manager
-        self.__api_token = self.manager.config_manager.authentication_data['RealDebrid']['realdebrid_api_key']
+        self.__api_token = self.manager.config_manager.authentication_data["RealDebrid"]["realdebrid_api_key"]
         self.enabled = bool(self.__api_token)
         self.file_regex: Pattern = field(init=False)
         self.folder_regex: Pattern = field(init=False)
         self.supported_regex: Pattern = field(init=False)
         self.api: RealDebridApi = field(init=False)
-        self._folder_guess_functions = [
-            self._guess_folder_by_part,
-            self._guess_folder_by_query
-        ]
+        self._folder_guess_functions = [self._guess_folder_by_part, self._guess_folder_by_query]
 
     async def startup(self) -> None:
         """Startup process for Real Debrid manager"""
@@ -59,10 +56,10 @@ class RealDebridManager:
 
     async def is_supported(self, url: URL) -> bool:
         match = self.supported_regex.search(str(url))
-        return bool(match) or 'real-debrid' in url.host.lower()
+        return bool(match) or "real-debrid" in url.host.lower()
 
     async def unrestrict_link(self, url: URL, password: Optional[str] = None) -> URL:
-        return self.api.unrestrict.link(url, password).get('download')
+        return self.api.unrestrict.link(url, password).get("download")
 
     async def unrestrict_folder(self, url: URL) -> list[URL]:
         return self.api.unrestrict.folder(url)

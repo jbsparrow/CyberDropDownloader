@@ -60,7 +60,7 @@ class ConsoleManager:
                     if sleep:
                         break
                 if not bool(log_rends):
-                    time.sleep(.3)
+                    time.sleep(0.3)
                     continue
                 set_console_height()
                 console.log("\n".join(log_rends))

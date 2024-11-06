@@ -5,14 +5,15 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem, FILE_HOST_ALBUM
-from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wrapper, log
 from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
+from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, ScrapeItem
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext, log
 
 if TYPE_CHECKING:
-    from cyberdrop_dl.managers.manager import Manager
     from bs4 import BeautifulSoup
+
+    from cyberdrop_dl.managers.manager import Manager
 
 
 class Rule34XXXCrawler(Crawler):
@@ -49,19 +50,21 @@ class Rule34XXXCrawler(Crawler):
 
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
-        
+
         try:
-            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
+                "maximum_number_of_children"
+            ][scrape_item.type]
         except (IndexError, TypeError):
             pass
 
-        title_portion = scrape_item.url.query['tags'].strip()
+        title_portion = scrape_item.url.query["tags"].strip()
         title = await self.create_title(title_portion, None, None)
         scrape_item.part_of_album = True
 
         content = soup.select("div[class=image-list] span a")
         for file_page in content:
-            link = file_page.get('href')
+            link = file_page.get("href")
             if link.startswith("/"):
                 link = f"{self.primary_base_url}{link}"
             link = URL(link, encoded=True)
@@ -69,7 +72,7 @@ class Rule34XXXCrawler(Crawler):
             self.manager.task_group.create_task(self.run(new_scrape_item))
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
+                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
 
         next_page = soup.select_one("a[alt=next]")
         if next_page is not None:
@@ -89,12 +92,12 @@ class Rule34XXXCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
         image = soup.select_one("img[id=image]")
         if image:
-            link = URL(image.get('src'))
+            link = URL(image.get("src"))
             filename, ext = await get_filename_and_ext(link.name)
             await self.handle_file(link, scrape_item, filename, ext)
         video = soup.select_one("video source")
         if video:
-            link = URL(video.get('src'))
+            link = URL(video.get("src"))
             filename, ext = await get_filename_and_ext(link.name)
             await self.handle_file(link, scrape_item, filename, ext)
 

@@ -66,8 +66,7 @@ class HashClient:
                 await self.manager.progress_manager.hash_progress.add_new_completed_hash()
             else:
                 await self.manager.progress_manager.hash_progress.add_prev_hash()
-                await self.manager.db_manager.hash_table.insert_or_update_hash_db(hash
-                                                                                , file, original_filename, refer)
+                await self.manager.db_manager.hash_table.insert_or_update_hash_db(hash, file, original_filename, refer)
         except Exception as e:
             await log(f"Error hashing {file} : {e}", 40)
         self.hashes[key] = hash
@@ -75,15 +74,14 @@ class HashClient:
 
     async def hash_item_during_download(self, media_item: MediaItem):
         try:
-            if self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['hash_while_downloading']:
-                await self.hash_item(media_item.complete_file, media_item.original_filename, media_item.referer
-                                    )
+            if self.manager.config_manager.global_settings_data["Dupe_Cleanup_Options"]["hash_while_downloading"]:
+                await self.hash_item(media_item.complete_file, media_item.original_filename, media_item.referer)
         except Exception as e:
             await log(f"After hash processing failed: {media_item.complete_file} with error {e}", 40)
 
     async def cleanup_dupes(self):
         async with self.manager.live_manager.get_hash_live():
-            if not self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_after_download']:
+            if not self.manager.config_manager.global_settings_data["Dupe_Cleanup_Options"]["delete_after_download"]:
                 return
             file_hashes_dict = await self.get_file_hashes_dict()
         async with self.manager.live_manager.get_remove_file_via_hash_live():
@@ -93,13 +91,16 @@ class HashClient:
     async def final_dupe_cleanup(self, final_dict):
         for hash, size_dict in final_dict.items():
             for size, data in size_dict.items():
-                selected_file = pathlib.Path(data['selected'])
-                other_files = data['others']
+                selected_file = pathlib.Path(data["selected"])
+                other_files = data["others"]
 
                 # Get all matches from the database
-                all_matches = list(map(lambda x: pathlib.Path(x[0], x[1]),
-                                    await self.manager.db_manager.hash_table.get_files_with_hash_matches(hash,
-                                                                                                            size)))
+                all_matches = list(
+                    map(
+                        lambda x: pathlib.Path(x[0], x[1]),
+                        await self.manager.db_manager.hash_table.get_files_with_hash_matches(hash, size),
+                    )
+                )
 
                 # Filter out files with the same path as any file in other_files
                 other_matches = [match for match in all_matches if str(match) not in other_files]
@@ -174,14 +175,16 @@ class HashClient:
                         pass
 
                 if selected_file:
-                    size_dict[size] = {'selected': selected_file,
-                                    'others': list(map(lambda x: str(x.absolute()), files))}
+                    size_dict[size] = {
+                        "selected": selected_file,
+                        "others": list(map(lambda x: str(x.absolute()), files)),
+                    }
                 else:
                     del size_dict[size]
         return hashes_dict
 
     def send2trash(self, path):
-        if self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['delete_off_disk']:
+        if self.manager.config_manager.global_settings_data["Dupe_Cleanup_Options"]["delete_off_disk"]:
             pathlib.Path(path).unlink(missing_ok=True)
         else:
             send2trash(path)
@@ -193,7 +196,7 @@ class HashClient:
         return not self.keep_new_download(hash, selected_file)
 
     def keep_new_download(self, hash, selected_file):
-        if self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_new_download']:
+        if self.manager.config_manager.global_settings_data["Dupe_Cleanup_Options"]["keep_new_download"]:
             return True
         elif hash not in self.prev_hashes:
             return True
@@ -201,4 +204,4 @@ class HashClient:
             return True
 
     def keep_prev_file(self):
-        return (self.manager.config_manager.global_settings_data['Dupe_Cleanup_Options']['keep_prev_download'])
+        return self.manager.config_manager.global_settings_data["Dupe_Cleanup_Options"]["keep_prev_download"]

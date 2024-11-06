@@ -5,14 +5,15 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem, FILE_HOST_PROFILE, FILE_HOST_ALBUM
-from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wrapper
 from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
+from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
-    from cyberdrop_dl.managers.manager import Manager
     from bs4 import BeautifulSoup
+
+    from cyberdrop_dl.managers.manager import Manager
 
 
 class FapelloCrawler(Crawler):
@@ -40,41 +41,47 @@ class FapelloCrawler(Crawler):
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile"""
         async with self.request_limiter:
-            soup, response_url = await self.client.get_BS4_and_return_URL(self.domain, scrape_item.url,
-                                                                        origin=scrape_item)
+            soup, response_url = await self.client.get_BS4_and_return_URL(
+                self.domain, scrape_item.url, origin=scrape_item
+            )
             if response_url != scrape_item.url:
                 return
-            
+
         scrape_item.type = FILE_HOST_PROFILE
 
         try:
-            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
+                "maximum_number_of_children"
+            ][scrape_item.type]
         except (IndexError, TypeError):
             pass
 
         title = await self.create_title(
-            soup.select_one('h2[class="font-semibold lg:text-2xl text-lg mb-2 mt-4"]').get_text(), None, None)
+            soup.select_one('h2[class="font-semibold lg:text-2xl text-lg mb-2 mt-4"]').get_text(), None, None
+        )
 
         content = soup.select("div[id=content] a")
         for post in content:
-            if "javascript" in post.get('href'):
-                video_tag = post.select_one('iframe')
-                video_link = URL(video_tag.get('src'))
-                new_scrape_item = await self.create_scrape_item(scrape_item, video_link, "", True,
-                                                                add_parent=scrape_item.url)
+            if "javascript" in post.get("href"):
+                video_tag = post.select_one("iframe")
+                video_link = URL(video_tag.get("src"))
+                new_scrape_item = await self.create_scrape_item(
+                    scrape_item, video_link, "", True, add_parent=scrape_item.url
+                )
                 await self.handle_external_links(new_scrape_item)
             else:
-                link = URL(post.get('href'))
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True,
-                                                                add_parent=scrape_item.url)
+                link = URL(post.get("href"))
+                new_scrape_item = await self.create_scrape_item(
+                    scrape_item, link, title, True, add_parent=scrape_item.url
+                )
                 await self.handle_external_links(new_scrape_item)
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
+                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
 
         next_page = soup.select_one('div[id="next_page"] a')
         if next_page:
-            next_page = next_page.get('href')
+            next_page = next_page.get("href")
             if next_page:
                 new_scrape_item = await self.create_scrape_item(scrape_item, URL(next_page), "")
                 self.manager.task_group.create_task(self.run(new_scrape_item))
@@ -90,9 +97,11 @@ class FapelloCrawler(Crawler):
         content_tags.extend(content.select("source"))
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
-        
+
         try:
-            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
+                "maximum_number_of_children"
+            ][scrape_item.type]
         except (IndexError, TypeError):
             pass
 
@@ -100,10 +109,10 @@ class FapelloCrawler(Crawler):
             soup = await self.client.get_BS4(self.domain, scrape_item.url)
 
         for selection in content_tags:
-            link = URL(selection.get('src'))
+            link = URL(selection.get("src"))
             filename, ext = await get_filename_and_ext(link.name)
             await self.handle_file(link, scrape_item, filename, ext)
             scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
+                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)

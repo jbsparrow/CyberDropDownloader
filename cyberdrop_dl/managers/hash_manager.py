@@ -18,9 +18,11 @@ class HashManager:
         """Tries to import xxhash, otherwise falls back to hashlib.md5"""
         try:
             import xxhash  # type: ignore
+
             return xxhash.xxh128
         except ImportError:
             import hashlib
+
             return hashlib.md5
 
     async def hash_file(self, filename):

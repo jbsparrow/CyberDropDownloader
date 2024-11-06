@@ -10,13 +10,14 @@ from cyberdrop_dl.utils.utilities import log, log_spacer
 
 if TYPE_CHECKING:
     from yarl import URL
+
     from cyberdrop_dl.managers.manager import Manager
 
-CSV_DELIMITER = ','
+CSV_DELIMITER = ","
 
 
 class LogManager:
-    def __init__(self, manager: 'Manager'):
+    def __init__(self, manager: Manager):
         self.manager = manager
         self.main_log: Path = manager.path_manager.main_log
         self.last_post_log: Path = manager.path_manager.last_post_log
@@ -32,11 +33,11 @@ class LogManager:
 
     @staticmethod
     async def write_to_csv(file: Path, **kwargs):
-        "Write to the specified csv file. kwargs are columns for the CSV "
+        "Write to the specified csv file. kwargs are columns for the CSV"
         # padding of 1 to the left
         row = {key: f"{value} " for key, value in kwargs.items()}
         write_headers = not file.is_file()
-        async with aiofiles.open(file, 'a', encoding="utf8") as csv_file:
+        async with aiofiles.open(file, "a", encoding="utf8") as csv_file:
             writer = csv.DictWriter(csv_file, fieldnames=row.keys(), delimiter=CSV_DELIMITER, quoting=csv.QUOTE_MINIMAL)
             if write_headers:
                 await writer.writeheader()
@@ -70,9 +71,9 @@ class LogManager:
 
         current_urls, current_base_urls, new_urls, new_base_urls = [], [], [], []
 
-        async with aiofiles.open(input_file, 'r', encoding="utf8") as f:
+        async with aiofiles.open(input_file, encoding="utf8") as f:
             async for line in f:
-                url = base_url = line.strip().removesuffix('/')
+                url = base_url = line.strip().removesuffix("/")
 
                 if "https" in url and "/post-" in url:
                     base_url = url.rsplit("/post", 1)[0]
@@ -82,10 +83,10 @@ class LogManager:
                     current_urls.append(url)
                     current_base_urls.append(base_url)
 
-        async with aiofiles.open(self.last_post_log, 'r', encoding="utf8") as f:
+        async with aiofiles.open(self.last_post_log, encoding="utf8") as f:
             reader = csv.DictReader(await f.readlines())
             for row in reader:
-                new_url = base_url = row.get("url").strip().removesuffix('/')
+                new_url = base_url = row.get("url").strip().removesuffix("/")
 
                 if "https" in new_url and "/post-" in new_url:
                     base_url = new_url.rsplit("/post", 1)[0]
@@ -109,5 +110,5 @@ class LogManager:
             await log("No URLs updated", 20)
             return
 
-        async with aiofiles.open(input_file, 'w', encoding="utf8") as f:
+        async with aiofiles.open(input_file, "w", encoding="utf8") as f:
             await f.write("\n".join(updated_urls))

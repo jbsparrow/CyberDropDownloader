@@ -8,14 +8,15 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem, FILE_HOST_ALBUM
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
+from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, ScrapeItem
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
-    from cyberdrop_dl.managers.manager import Manager
     from bs4 import BeautifulSoup
+
+    from cyberdrop_dl.managers.manager import Manager
 
 
 class ImgBBCrawler(Crawler):
@@ -53,17 +54,20 @@ class ImgBBCrawler(Crawler):
 
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
-        
+
         try:
-            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
+                "maximum_number_of_children"
+            ][scrape_item.type]
         except (IndexError, TypeError):
             pass
 
-        title = await self.create_title(soup.select_one("a[data-text=album-name]").get_text(), scrape_item.album_id,
-                                        None)
+        title = await self.create_title(
+            soup.select_one("a[data-text=album-name]").get_text(), scrape_item.album_id, None
+        )
         albums = soup.select("a[class='image-container --media']")
         for album in albums:
-            sub_album_link = URL(album.get('href'))
+            sub_album_link = URL(album.get("href"))
             new_scrape_item = await self.create_scrape_item(scrape_item, sub_album_link, title, True)
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
@@ -76,19 +80,20 @@ class ImgBBCrawler(Crawler):
                 soup: BeautifulSoup = await self.client.get_BS4(self.domain, link_next, origin=scrape_item)
             links = soup.select("a[class*=image-container]")
             for link in links:
-                link = URL(link.get('href'))
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True,
-                                                                add_parent=scrape_item.url)
+                link = URL(link.get("href"))
+                new_scrape_item = await self.create_scrape_item(
+                    scrape_item, link, title, True, add_parent=scrape_item.url
+                )
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
             scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
+                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
 
-            link_next = soup.select_one('a[data-pagination=next]')
+            link_next = soup.select_one("a[data-pagination=next]")
             if link_next is not None:
-                link_next = link_next.get('href')
+                link_next = link_next.get("href")
                 if link_next is not None:
                     link_next = URL(link_next)
                 else:
@@ -105,7 +110,7 @@ class ImgBBCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
-        link = URL(soup.select_one("div[id=image-viewer-container] img").get('src'))
+        link = URL(soup.select_one("div[id=image-viewer-container] img").get("src"))
         date = soup.select_one("p[class*=description-meta] span").get("title")
         date = await self.parse_datetime(date)
         scrape_item.possible_datetime = date
@@ -116,7 +121,7 @@ class ImgBBCrawler(Crawler):
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:
         """Handles a direct link"""
-        scrape_item.url = scrape_item.url.with_name(scrape_item.url.name.replace('.md.', '.').replace('.th.', '.'))
+        scrape_item.url = scrape_item.url.with_name(scrape_item.url.name.replace(".md.", ".").replace(".th.", "."))
         filename, ext = await get_filename_and_ext(scrape_item.url.name)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
@@ -131,5 +136,7 @@ class ImgBBCrawler(Crawler):
     @staticmethod
     async def check_direct_link(url: URL) -> bool:
         """Determines if the url is a direct link or not"""
-        mapping_direct = [r'i.ibb.co', ]
+        mapping_direct = [
+            r"i.ibb.co",
+        ]
         return any(re.search(domain, str(url)) for domain in mapping_direct)

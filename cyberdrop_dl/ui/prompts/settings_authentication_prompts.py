@@ -34,7 +34,8 @@ def edit_authentication_values_prompt(manager: Manager) -> None:
                 Choice(5, "Edit Imgur Client ID"),
                 Choice(6, "Edit PixelDrain API Key"),
                 Choice(7, "Done"),
-            ], long_instruction="ARROW KEYS: Navigate | ENTER: Select",
+            ],
+            long_instruction="ARROW KEYS: Navigate | ENTER: Select",
             vi_mode=manager.vi_mode,
         ).execute()
 
@@ -68,7 +69,7 @@ def edit_authentication_values_prompt(manager: Manager) -> None:
                 message="Enter the Imgur Client ID:",
                 default=auth["Imgur"]["imgur_client_id"],
                 long_instruction="You can create an app and get your client ID "
-                                "from https://imgur.com/account/settings/apps",
+                "from https://imgur.com/account/settings/apps",
                 vi_mode=manager.vi_mode,
             ).execute()
             auth["Imgur"]["imgur_client_id"] = imgur_client_id
@@ -101,7 +102,8 @@ def edit_forum_authentication_values_prompt(manager: Manager) -> None:
                 Choice(1, "Browser Cookie Extraction"),
                 Choice(2, "Enter Cookie Values Manually"),
                 Choice(3, "Done"),
-            ], long_instruction="ARROW KEYS: Navigate | ENTER: Select",
+            ],
+            long_instruction="ARROW KEYS: Navigate | ENTER: Select",
             vi_mode=manager.vi_mode,
         ).execute()
 
@@ -117,7 +119,8 @@ def edit_forum_authentication_values_prompt(manager: Manager) -> None:
                     Choice("opera", "Opera"),
                     Choice("brave", "Brave"),
                     Choice(1, "Done"),
-                ], long_instruction="ARROW KEYS: Navigate | ENTER: Select",
+                ],
+                long_instruction="ARROW KEYS: Navigate | ENTER: Select",
                 vi_mode=manager.vi_mode,
             ).execute()
 
@@ -224,8 +227,9 @@ def edit_forum_authentication_values_prompt(manager: Manager) -> None:
             manager.config_manager.authentication_data["Forums"]["leakedmodels_username"] = leakedmodels_username
             manager.config_manager.authentication_data["Forums"]["nudostar_username"] = nudostar_username
             manager.config_manager.authentication_data["Forums"]["simpcity_username"] = simpcity_username
-            manager.config_manager.authentication_data["Forums"][
-                "socialmediagirls_username"] = socialmediagirls_username
+            manager.config_manager.authentication_data["Forums"]["socialmediagirls_username"] = (
+                socialmediagirls_username
+            )
             manager.config_manager.authentication_data["Forums"]["xbunker_username"] = xbunker_username
 
             manager.config_manager.authentication_data["Forums"]["celebforum_password"] = celebforum_password
@@ -233,8 +237,9 @@ def edit_forum_authentication_values_prompt(manager: Manager) -> None:
             manager.config_manager.authentication_data["Forums"]["leakedmodels_password"] = leakedmodels_password
             manager.config_manager.authentication_data["Forums"]["nudostar_password"] = nudostar_password
             manager.config_manager.authentication_data["Forums"]["simpcity_password"] = simpcity_password
-            manager.config_manager.authentication_data["Forums"][
-                "socialmediagirls_password"] = socialmediagirls_password
+            manager.config_manager.authentication_data["Forums"]["socialmediagirls_password"] = (
+                socialmediagirls_password
+            )
             manager.config_manager.authentication_data["Forums"]["xbunker_password"] = xbunker_password
             return
         elif action == 3:
@@ -265,9 +270,7 @@ def edit_jdownloader_authentication_values_prompt(auth: Dict) -> None:
 def edit_reddit_authentication_values_prompt(auth: Dict) -> None:
     """Edit the reddit authentication values"""
     console.clear()
-    console.print(
-        "You can create a Reddit App to use here: https://www.reddit.com/prefs/apps/"
-    )
+    console.print("You can create a Reddit App to use here: https://www.reddit.com/prefs/apps/")
     reddit_secret = inquirer.text(
         message="Enter the Reddit Secret value:",
         default=auth["Reddit"]["reddit_secret"],

@@ -49,28 +49,40 @@ class DownloadManager:
 
         self.file_lock = FileLock()
 
-        self.download_limits = {'bunkr': 1, 'bunkrr': 1, 'cyberdrop': 1, 'cyberfile': 1, "pixeldrain": 2,
-                                'xxxbunker': 2}
+        self.download_limits = {
+            "bunkr": 1,
+            "bunkrr": 1,
+            "cyberdrop": 1,
+            "cyberfile": 1,
+            "pixeldrain": 2,
+            "xxxbunker": 2,
+        }
 
     async def get_download_limit(self, key: str) -> int:
         """Returns the download limit for a domain"""
         if key in self.download_limits:
             instances = self.download_limits[key]
         else:
-            instances = self.manager.config_manager.global_settings_data['Rate_Limiting_Options'][
-                'max_simultaneous_downloads_per_domain']
+            instances = self.manager.config_manager.global_settings_data["Rate_Limiting_Options"][
+                "max_simultaneous_downloads_per_domain"
+            ]
 
-        if instances > self.manager.config_manager.global_settings_data['Rate_Limiting_Options'][
-            'max_simultaneous_downloads_per_domain']:
-            instances = self.manager.config_manager.global_settings_data['Rate_Limiting_Options'][
-                'max_simultaneous_downloads_per_domain']
+        if (
+            instances
+            > self.manager.config_manager.global_settings_data["Rate_Limiting_Options"][
+                "max_simultaneous_downloads_per_domain"
+            ]
+        ):
+            instances = self.manager.config_manager.global_settings_data["Rate_Limiting_Options"][
+                "max_simultaneous_downloads_per_domain"
+            ]
         return instances
 
     @staticmethod
     async def basic_auth(username, password) -> str:
         """Returns a basic auth token"""
-        token = b64encode(f"{username}:{password}".encode('utf-8')).decode("ascii")
-        return f'Basic {token}'
+        token = b64encode(f"{username}:{password}".encode()).decode("ascii")
+        return f"Basic {token}"
 
     async def check_free_space(self, folder: Path = None) -> bool:
         """Checks if there is enough free space on the drive to continue operating"""
@@ -84,22 +96,31 @@ class DownloadManager:
             if not folder.is_dir():
                 return False
             free_space = disk_usage(folder).free
-        free_space_gb = free_space / 1024 ** 3
-        return free_space_gb >= self.manager.config_manager.global_settings_data['General']['required_free_space']
+        free_space_gb = free_space / 1024**3
+        return free_space_gb >= self.manager.config_manager.global_settings_data["General"]["required_free_space"]
 
     async def check_allowed_filetype(self, media_item: MediaItem) -> bool:
         """Checks if the file type is allowed to download"""
-        if media_item.ext in FILE_FORMATS['Images'] and self.manager.config_manager.settings_data['Ignore_Options'][
-            'exclude_images']:
+        if (
+            media_item.ext in FILE_FORMATS["Images"]
+            and self.manager.config_manager.settings_data["Ignore_Options"]["exclude_images"]
+        ):
             return False
-        if media_item.ext in FILE_FORMATS['Videos'] and self.manager.config_manager.settings_data['Ignore_Options'][
-            'exclude_videos']:
+        if (
+            media_item.ext in FILE_FORMATS["Videos"]
+            and self.manager.config_manager.settings_data["Ignore_Options"]["exclude_videos"]
+        ):
             return False
-        if media_item.ext in FILE_FORMATS['Audio'] and self.manager.config_manager.settings_data['Ignore_Options'][
-            'exclude_audio']:
+        if (
+            media_item.ext in FILE_FORMATS["Audio"]
+            and self.manager.config_manager.settings_data["Ignore_Options"]["exclude_audio"]
+        ):
             return False
-        if (self.manager.config_manager.settings_data['Ignore_Options']['exclude_other'] and
-                media_item.ext not in FILE_FORMATS['Images'] and media_item.ext not in FILE_FORMATS['Videos'] and
-                media_item.ext not in FILE_FORMATS['Audio']):
+        if (
+            self.manager.config_manager.settings_data["Ignore_Options"]["exclude_other"]
+            and media_item.ext not in FILE_FORMATS["Images"]
+            and media_item.ext not in FILE_FORMATS["Videos"]
+            and media_item.ext not in FILE_FORMATS["Audio"]
+        ):
             return False
         return True

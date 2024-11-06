@@ -7,15 +7,15 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem, FILE_HOST_ALBUM
-from cyberdrop_dl.utils.utilities import error_handling_wrapper
-from cyberdrop_dl.utils.utilities import get_filename_and_ext
 from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
+from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, ScrapeItem
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
-    from cyberdrop_dl.managers.manager import Manager
     from bs4 import BeautifulSoup
+
+    from cyberdrop_dl.managers.manager import Manager
 
 
 class Rule34VaultCrawler(Crawler):
@@ -51,42 +51,38 @@ class Rule34VaultCrawler(Crawler):
         scrape_item.part_of_album = True
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
-        
+
         try:
-            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
+                "maximum_number_of_children"
+            ][scrape_item.type]
         except (IndexError, TypeError):
             pass
 
-        content_block = soup.select_one(
-            'div[class="box-grid ng-star-inserted"]')
+        content_block = soup.select_one('div[class="box-grid ng-star-inserted"]')
         content = content_block.select('a[class="box ng-star-inserted"]')
         for file_page in content:
             link = file_page.get("href")
             if link.startswith("/"):
                 link = f"{self.primary_base_url}{link}"
             link = URL(link)
-            new_scrape_item = await self.create_scrape_item(
-                scrape_item, link, title, True, add_parent=scrape_item.url)
+            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
+                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
         if not content:
             return
 
         if "?page=" in scrape_item.url.parts[1]:
-            page = int(
-                scrape_item.url.parts[1].split("page=")[-1].split("&")[0])
+            page = int(scrape_item.url.parts[1].split("page=")[-1].split("&")[0])
             next_page = scrape_item.url.with_path(
-                f"/{scrape_item.url.parts[1]}".replace(f"page={page}",
-                                                    f"page={page + 1}"),
+                f"/{scrape_item.url.parts[1]}".replace(f"page={page}", f"page={page + 1}"),
                 encoded=True,
             )
         else:
-            next_page = scrape_item.url.with_path(
-                f"/{scrape_item.url.parts[1]}?page=2", encoded=True)
-        new_scrape_item = await self.create_scrape_item(
-            scrape_item, next_page, "")
+            next_page = scrape_item.url.with_path(f"/{scrape_item.url.parts[1]}?page=2", encoded=True)
+        new_scrape_item = await self.create_scrape_item(scrape_item, next_page, "")
         self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -97,9 +93,11 @@ class Rule34VaultCrawler(Crawler):
 
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
-        
+
         try:
-            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
+                "maximum_number_of_children"
+            ][scrape_item.type]
         except (IndexError, TypeError):
             pass
 
@@ -108,20 +106,18 @@ class Rule34VaultCrawler(Crawler):
         scrape_item.album_id = scrape_item.url.parts[-1]
         title = await self.create_title(title_str, scrape_item.album_id, None)
 
-        content_block = soup.select_one(
-            'div[class="box-grid ng-star-inserted"]')
+        content_block = soup.select_one('div[class="box-grid ng-star-inserted"]')
         content = content_block.select('a[class="box ng-star-inserted"]')
         for file_page in content:
             link = file_page.get("href")
             if link.startswith("/"):
                 link = f"{self.primary_base_url}{link}"
             link = URL(link)
-            new_scrape_item = await self.create_scrape_item(
-                scrape_item, link, title, True, add_parent=scrape_item.url)
+            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
+                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
         if not content:
             return
 
@@ -130,8 +126,7 @@ class Rule34VaultCrawler(Crawler):
             next_page = scrape_item.url.with_query({"page": int(page) + 1})
         else:
             next_page = scrape_item.url.with_query({"page": 2})
-        new_scrape_item = await self.create_scrape_item(
-            scrape_item, next_page, "")
+        new_scrape_item = await self.create_scrape_item(scrape_item, next_page, "")
         self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -141,25 +136,27 @@ class Rule34VaultCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         date = await self.parse_datetime(
-            soup.select_one(
-                'div[class="posted-date-full text-secondary mt-4 ng-star-inserted"]'
-            ).text)
+            soup.select_one('div[class="posted-date-full text-secondary mt-4 ng-star-inserted"]').text
+        )
         scrape_item.date = date
 
         image = soup.select_one('img[class*="img ng-star-inserted"]')
         if image:
-            link = image.get("src").replace(".small",
-                                            "").replace(".thumbnail", "")
+            link = image.get("src").replace(".small", "").replace(".thumbnail", "")
             if link.startswith("/"):
                 link = f"{self.primary_base_url}{link}"
             link = URL(link)
             filename, ext = await get_filename_and_ext(link.name)
             await self.handle_file(link, scrape_item, filename, ext)
-        video = soup.select_one(
-            'div[class="con-video ng-star-inserted"] > video > source')
+        video = soup.select_one('div[class="con-video ng-star-inserted"] > video > source')
         if video:
-            link = (video.get("src").replace(".small", "").replace(
-                ".thumbnail", "").replace(".720", "").replace(".hevc", ""))
+            link = (
+                video.get("src")
+                .replace(".small", "")
+                .replace(".thumbnail", "")
+                .replace(".720", "")
+                .replace(".hevc", "")
+            )
             if link.startswith("/"):
                 link = f"{self.primary_base_url}{link}"
             link = URL(link)

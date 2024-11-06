@@ -9,12 +9,14 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import ScrapeFailure
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
-from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wrapper
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
-    from cyberdrop_dl.managers.manager import Manager
-    from bs4 import BeautifulSoup
     from re import Match
+
+    from bs4 import BeautifulSoup
+
+    from cyberdrop_dl.managers.manager import Manager
 
 
 class SaintCrawler(Crawler):
@@ -48,16 +50,16 @@ class SaintCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
-        title_portion = soup.select_one('title').text.rsplit(" - Saint Video Hosting")[0].strip()
+        title_portion = soup.select_one("title").text.rsplit(" - Saint Video Hosting")[0].strip()
         if not title_portion:
             title_portion = scrape_item.url.name
         title = await self.create_title(title_portion, album_id, None)
         await scrape_item.add_to_parent_title(title)
 
-        videos = soup.select('a.btn-primary.action.download')
+        videos = soup.select("a.btn-primary.action.download")
 
         for video in videos:
-            match: Match = re.search(r"\('(.+?)'\)", video.get('onclick'))
+            match: Match = re.search(r"\('(.+?)'\)", video.get("onclick"))
             link = URL(match.group(1)) if match else None
             filename, ext = await get_filename_and_ext(link.name)
             if not await self.check_album_results(link, results):
@@ -72,7 +74,7 @@ class SaintCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
         try:
-            link = URL(soup.select_one('video[id=main-video] source').get('src'))
+            link = URL(soup.select_one("video[id=main-video] source").get("src"))
         except AttributeError:
             raise ScrapeFailure(404, f"Could not find video source for {scrape_item.url}", origin=scrape_item)
         filename, ext = await get_filename_and_ext(link.name)

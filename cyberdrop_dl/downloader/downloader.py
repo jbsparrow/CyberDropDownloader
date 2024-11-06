@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import os
-from dataclasses import field, Field
+from dataclasses import Field, field
 from functools import wraps
 from http import HTTPStatus
 from pathlib import Path
@@ -12,7 +12,7 @@ import aiohttp
 import filedate
 
 from cyberdrop_dl.clients.download_client import is_4xx_client_error
-from cyberdrop_dl.clients.errors import DownloadFailure, CDLBaseException
+from cyberdrop_dl.clients.errors import CDLBaseException, DownloadFailure
 from cyberdrop_dl.managers.real_debrid.errors import RealDebridError
 from cyberdrop_dl.utils.utilities import CustomHTTPStatus, log
 
@@ -35,9 +35,10 @@ def retry(f):
             except DownloadFailure as e:
                 await self.attempt_task_removal(media_item)
 
-                max_attempts = self.manager.config_manager.global_settings_data['Rate_Limiting_Options'][
-                    'download_attempts']
-                if self.manager.config_manager.settings_data['Download_Options']['disable_download_attempt_limit']:
+                max_attempts = self.manager.config_manager.global_settings_data["Rate_Limiting_Options"][
+                    "download_attempts"
+                ]
+                if self.manager.config_manager.settings_data["Download_Options"]["disable_download_attempt_limit"]:
                     max_attempts = 1
 
                 if e.status != 999:
@@ -54,16 +55,17 @@ def retry(f):
 
                 if media_item.current_attempt >= max_attempts:
                     await self.manager.progress_manager.download_stats_progress.add_failure(e.ui_message)
-                    await self.manager.log_manager.write_download_error_log(media_item.url, e.message,
-                                                                            media_item.referer)
+                    await self.manager.log_manager.write_download_error_log(
+                        media_item.url, e.message, media_item.referer
+                    )
                     await self.manager.progress_manager.download_progress.add_failed()
                     break
 
                 await log(
                     f"Retrying {self.log_prefix.lower()}: {media_item.url} ,retry attempt: {media_item.current_attempt + 1}",
-                    20)
+                    20,
+                )
                 continue
-
 
             except CDLBaseException as err:
                 e_log_detail = e_log_message = err.message
@@ -76,15 +78,16 @@ def retry(f):
 
             except Exception as err:
                 exc_info = True
-                if hasattr(err, 'status') and hasattr(err, 'message'):
+                if hasattr(err, "status") and hasattr(err, "message"):
                     e_log_detail = e_log_message = e_ui_failure = f"{err.status} - {err.message}"
                 else:
                     e_log_detail = str(err)
                     e_log_message = "See Log for Details"
                     e_ui_failure = "Unknown"
 
-                await log(f"{self.log_prefix} failed: {media_item.url} with error: {e_log_detail}", 40,
-                        exc_info=exc_info)
+                await log(
+                    f"{self.log_prefix} failed: {media_item.url} with error: {e_log_detail}", 40, exc_info=exc_info
+                )
 
             if not exc_info:
                 await log(f"{self.log_prefix} failed: {media_item.url} with error: {e_log_detail}", 40)
@@ -112,7 +115,7 @@ class Downloader:
         self.processed_items: list = []
         self.waiting_items = 0
         self._current_attempt_filesize = {}
-        self.log_prefix = "Download attempt (unsupported domain)" if domain == 'no_crawler' else 'Download'
+        self.log_prefix = "Download attempt (unsupported domain)" if domain == "no_crawler" else "Download"
 
     async def startup(self) -> None:
         """Starts the downloader"""
@@ -120,7 +123,7 @@ class Downloader:
         self._semaphore = asyncio.Semaphore(await self.manager.download_manager.get_download_limit(self.domain))
 
         self.manager.path_manager.download_dir.mkdir(parents=True, exist_ok=True)
-        if self.manager.config_manager.settings_data['Sorting']['sort_downloads']:
+        if self.manager.config_manager.settings_data["Sorting"]["sort_downloads"]:
             self.manager.path_manager.sorted_dir.mkdir(parents=True, exist_ok=True)
 
     async def run(self, media_item: MediaItem) -> None:
@@ -166,7 +169,7 @@ class Downloader:
 
     async def set_file_datetime(self, media_item: MediaItem, complete_file: Path) -> None:
         """Sets the file's datetime"""
-        if self.manager.config_manager.settings_data['Download_Options']['disable_file_timestamps']:
+        if self.manager.config_manager.settings_data["Download_Options"]["disable_file_timestamps"]:
             return
         if not isinstance(media_item.datetime, Field):
             file = filedate.File(str(complete_file))
@@ -198,8 +201,9 @@ class Downloader:
             if not can_download:
                 if reason == 0:
                     await self.manager.progress_manager.download_stats_progress.add_failure("Insufficient Free Space")
-                    await self.manager.log_manager.write_download_error_log(media_item.url, "Insufficient Free Space",
-                                                                            media_item.referer)
+                    await self.manager.log_manager.write_download_error_log(
+                        media_item.url, "Insufficient Free Space", media_item.referer
+                    )
                     await self.manager.progress_manager.download_progress.add_failed()
                 else:
                     await self.manager.progress_manager.download_progress.add_skipped()
@@ -213,16 +217,24 @@ class Downloader:
                 await self.attempt_task_removal(media_item)
                 await self.manager.progress_manager.download_progress.add_completed()
 
-        except (aiohttp.ClientPayloadError, aiohttp.ClientOSError, aiohttp.ClientResponseError, ConnectionResetError,
-                DownloadFailure, FileNotFoundError, PermissionError, aiohttp.ServerDisconnectedError,
-                asyncio.TimeoutError, aiohttp.ServerTimeoutError) as err:
-
+        except (
+            aiohttp.ClientPayloadError,
+            aiohttp.ClientOSError,
+            aiohttp.ClientResponseError,
+            ConnectionResetError,
+            DownloadFailure,
+            FileNotFoundError,
+            PermissionError,
+            aiohttp.ServerDisconnectedError,
+            asyncio.TimeoutError,
+            aiohttp.ServerTimeoutError,
+        ) as err:
             e_origin = media_item.referer
 
             if hasattr(err, "status") and await self.is_failed(err.status):
                 e_ui_failure = err.ui_message if isinstance(err, CDLBaseException) else err.status
 
-                if hasattr(err, 'message'):
+                if hasattr(err, "message"):
                     e_log_detail = e_log_message = f"{err.status} - {err.message}"
                 else:
                     e_log_detail = str(err)
@@ -237,10 +249,13 @@ class Downloader:
 
             if isinstance(media_item.partial_file, Path) and media_item.partial_file.is_file():
                 size = media_item.partial_file.stat().st_size
-                if media_item.filename in self._current_attempt_filesize and self._current_attempt_filesize[
-                    media_item.filename] >= size:
-                    raise DownloadFailure(status=getattr(err, "status", type(err).__name__),
-                                        message=f"{self.log_prefix} failed")
+                if (
+                    media_item.filename in self._current_attempt_filesize
+                    and self._current_attempt_filesize[media_item.filename] >= size
+                ):
+                    raise DownloadFailure(
+                        status=getattr(err, "status", type(err).__name__), message=f"{self.log_prefix} failed"
+                    )
                 self._current_attempt_filesize[media_item.filename] = size
                 media_item.current_attempt = 0
                 raise DownloadFailure(status=999, message="Download timeout reached, retrying")
@@ -250,6 +265,9 @@ class Downloader:
 
     @staticmethod
     async def is_failed(status: int):
-        return any((await is_4xx_client_error(status) and status != HTTPStatus.TOO_MANY_REQUESTS,
-                    status in (
-                    HTTPStatus.SERVICE_UNAVAILABLE, HTTPStatus.BAD_GATEWAY, CustomHTTPStatus.WEB_SERVER_IS_DOWN)))
+        return any(
+            (
+                await is_4xx_client_error(status) and status != HTTPStatus.TOO_MANY_REQUESTS,
+                status in (HTTPStatus.SERVICE_UNAVAILABLE, HTTPStatus.BAD_GATEWAY, CustomHTTPStatus.WEB_SERVER_IS_DOWN),
+            )
+        )

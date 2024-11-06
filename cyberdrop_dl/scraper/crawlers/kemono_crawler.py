@@ -3,20 +3,20 @@ from __future__ import annotations
 import calendar
 import datetime
 import re
-from typing import TYPE_CHECKING, Tuple, Dict, Optional
+from typing import TYPE_CHECKING, Dict, Optional, Tuple
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import NoExtensionFailure
+from cyberdrop_dl.clients.errors import NoExtensionFailure, ScrapeItemMaxChildrenReached
 from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem, FILE_HOST_PROFILE, FILE_HOST_ALBUM
-from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wrapper
-from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
+from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
-    from cyberdrop_dl.managers.manager import Manager
     from bs4 import BeautifulSoup
+
+    from cyberdrop_dl.managers.manager import Manager
 
 
 class KemonoCrawler(Crawler):
@@ -24,7 +24,7 @@ class KemonoCrawler(Crawler):
         super().__init__(manager, "kemono", "Kemono")
         self.primary_base_domain = URL("https://kemono.su")
         self.api_url = URL("https://kemono.su/api/v1")
-        self.services = ['afdian', 'boosty', 'dlsite', 'fanbox', 'fantia', 'gumroad', 'patreon', 'subscribestar']
+        self.services = ["afdian", "boosty", "dlsite", "fanbox", "fantia", "gumroad", "patreon", "subscribestar"]
         self.request_limiter = AsyncLimiter(10, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -58,15 +58,18 @@ class KemonoCrawler(Crawler):
         api_call = self.api_url / service / "user" / user
         scrape_item.type = FILE_HOST_PROFILE
         scrape_item.children = scrape_item.children_limit = 0
-        
+
         try:
-            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
+                "maximum_number_of_children"
+            ][scrape_item.type]
         except (IndexError, TypeError):
             pass
         while True:
             async with self.request_limiter:
-                JSON_Resp = await self.client.get_json(self.domain, api_call.with_query({"o": offset}),
-                                                    origin=scrape_item)
+                JSON_Resp = await self.client.get_json(
+                    self.domain, api_call.with_query({"o": offset}), origin=scrape_item
+                )
                 offset += 50
                 if not JSON_Resp:
                     break
@@ -76,7 +79,7 @@ class KemonoCrawler(Crawler):
                 scrape_item.children += 1
                 if scrape_item.children_limit:
                     if scrape_item.children >= scrape_item.children_limit:
-                        raise ScrapeItemMaxChildrenReached(origin = scrape_item)
+                        raise ScrapeItemMaxChildrenReached(origin=scrape_item)
 
     @error_handling_wrapper
     async def discord(self, scrape_item: ScrapeItem) -> None:
@@ -86,15 +89,18 @@ class KemonoCrawler(Crawler):
         api_call = self.api_url / "discord/channel" / channel
         scrape_item.type = FILE_HOST_PROFILE
         scrape_item.children = scrape_item.children_limit = 0
-        
+
         try:
-            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
+                "maximum_number_of_children"
+            ][scrape_item.type]
         except (IndexError, TypeError):
             pass
         while True:
             async with self.request_limiter:
-                JSON_Resp = await self.client.get_json(self.domain, api_call.with_query({"o": offset}),
-                                                    origin=scrape_item)
+                JSON_Resp = await self.client.get_json(
+                    self.domain, api_call.with_query({"o": offset}), origin=scrape_item
+                )
                 offset += 150
                 if not JSON_Resp:
                     break
@@ -104,7 +110,7 @@ class KemonoCrawler(Crawler):
                 scrape_item.children += 1
                 if scrape_item.children_limit:
                     if scrape_item.children >= scrape_item.children_limit:
-                        raise ScrapeItemMaxChildrenReached(origin = scrape_item)
+                        raise ScrapeItemMaxChildrenReached(origin=scrape_item)
 
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem) -> None:
@@ -122,9 +128,11 @@ class KemonoCrawler(Crawler):
 
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
-        
+
         try:
-            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
+                "maximum_number_of_children"
+            ][scrape_item.type]
         except (IndexError, TypeError):
             pass
 
@@ -141,8 +149,8 @@ class KemonoCrawler(Crawler):
         scrape_item.children += await self.get_content_links(scrape_item, post, user_str)
 
         async def handle_file(file_obj):
-            link = self.primary_base_domain / ("data" + file_obj['path'])
-            link = link.with_query({"f": file_obj['name']})
+            link = self.primary_base_domain / ("data" + file_obj["path"])
+            link = link.with_query({"f": file_obj["name"]})
             await self.create_new_scrape_item(link, scrape_item, user_str, post_title, post_id, date)
 
         files = []
@@ -155,7 +163,7 @@ class KemonoCrawler(Crawler):
         for file in files:
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
+                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
             await handle_file(file)
             scrape_item.children += 1
 
@@ -164,7 +172,7 @@ class KemonoCrawler(Crawler):
         content = post.get("content", "")
         if not content:
             return
-        
+
         new_children = 0
 
         date = post["published"].replace("T", " ")
@@ -172,21 +180,25 @@ class KemonoCrawler(Crawler):
         title = post.get("title", "")
 
         post_title = None
-        if self.manager.config_manager.settings_data['Download_Options']['separate_posts']:
+        if self.manager.config_manager.settings_data["Download_Options"]["separate_posts"]:
             post_title = f"{date} - {title}"
-            if self.manager.config_manager.settings_data['Download_Options']['include_album_id_in_folder_name']:
+            if self.manager.config_manager.settings_data["Download_Options"]["include_album_id_in_folder_name"]:
                 post_title = post_id + " - " + post_title
 
         new_title = await self.create_title(user, None, None)
-        scrape_item = await self.create_scrape_item(scrape_item, scrape_item.url, new_title, True, None,
-                                                    await self.parse_datetime(date))
+        scrape_item = await self.create_scrape_item(
+            scrape_item, scrape_item.url, new_title, True, None, await self.parse_datetime(date)
+        )
         await scrape_item.add_to_parent_title(post_title)
         await scrape_item.add_to_parent_title("Loose Files")
 
         yarl_links: list[URL] = []
-        all_links = [x.group().replace(".md.", ".") for x in
-                    re.finditer(r"(?:http(?!.*\.\.)[^ ]*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]|</|'))",
-                                content)]
+        all_links = [
+            x.group().replace(".md.", ".")
+            for x in re.finditer(
+                r"(?:http(?!.*\.\.)[^ ]*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]|</|'))", content
+            )
+        ]
 
         for link in all_links:
             try:
@@ -198,8 +210,9 @@ class KemonoCrawler(Crawler):
         for link in yarl_links:
             if "kemono" in link.host:
                 continue
-            scrape_item = await self.create_scrape_item(scrape_item, link, "",
-                                                        add_parent=scrape_item.url.joinpath("post", post_id))
+            scrape_item = await self.create_scrape_item(
+                scrape_item, link, "", add_parent=scrape_item.url.joinpath("post", post_id)
+            )
             await self.handle_external_links(scrape_item)
             new_children += 1
             if scrape_item.children_limit:
@@ -218,18 +231,27 @@ class KemonoCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def create_new_scrape_item(self, link: URL, old_scrape_item: ScrapeItem, user: str, title: str, post_id: str,
-                                    date: str, add_parent: Optional[URL] = None) -> None:
+    async def create_new_scrape_item(
+        self,
+        link: URL,
+        old_scrape_item: ScrapeItem,
+        user: str,
+        title: str,
+        post_id: str,
+        date: str,
+        add_parent: Optional[URL] = None,
+    ) -> None:
         """Creates a new scrape item with the same parent as the old scrape item"""
         post_title = None
-        if self.manager.config_manager.settings_data['Download_Options']['separate_posts']:
+        if self.manager.config_manager.settings_data["Download_Options"]["separate_posts"]:
             post_title = f"{date} - {title}"
-            if self.manager.config_manager.settings_data['Download_Options']['include_album_id_in_folder_name']:
+            if self.manager.config_manager.settings_data["Download_Options"]["include_album_id_in_folder_name"]:
                 post_title = post_id + " - " + post_title
 
         new_title = await self.create_title(user, None, None)
-        new_scrape_item = await self.create_scrape_item(old_scrape_item, link, new_title, True, None,
-                                                        await self.parse_datetime(date), add_parent=add_parent)
+        new_scrape_item = await self.create_scrape_item(
+            old_scrape_item, link, new_title, True, None, await self.parse_datetime(date), add_parent=add_parent
+        )
         await new_scrape_item.add_to_parent_title(post_title)
         self.manager.task_group.create_task(self.run(new_scrape_item))
 

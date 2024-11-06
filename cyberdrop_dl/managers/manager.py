@@ -65,8 +65,11 @@ class Manager:
         self.cache_manager.startup(self.path_manager.cache_dir / "cache.yaml")
         self.config_manager = ConfigManager(self)
         self.config_manager.startup()
-        self.vi_mode = self.config_manager.global_settings_data['UI_Options'][
-            'vi_mode'] if self.args_manager.vi_mode is None else self.args_manager.vi_mode
+        self.vi_mode = (
+            self.config_manager.global_settings_data["UI_Options"]["vi_mode"]
+            if self.args_manager.vi_mode is None
+            else self.args_manager.vi_mode
+        )
 
         self.path_manager.startup()
         self.log_manager = LogManager(self)
@@ -77,15 +80,15 @@ class Manager:
             for config in self.config_manager.get_configs():
                 if config != self.config_manager.loaded_config:
                     self.config_manager.change_config(config)
-                self.config_manager.settings_data['Runtime_Options']['update_last_forum_post'] = True
+                self.config_manager.settings_data["Runtime_Options"]["update_last_forum_post"] = True
                 self.config_manager.write_updated_settings_config()
             global_settings = self.config_manager.global_settings_data
-            if global_settings['Rate_Limiting_Options']['download_attempts'] >= 10:
-                global_settings['Rate_Limiting_Options']['download_attempts'] = 5
-            if global_settings['Rate_Limiting_Options']['max_simultaneous_downloads_per_domain'] > 15:
-                global_settings['Rate_Limiting_Options']['max_simultaneous_downloads_per_domain'] = 5
+            if global_settings["Rate_Limiting_Options"]["download_attempts"] >= 10:
+                global_settings["Rate_Limiting_Options"]["download_attempts"] = 5
+            if global_settings["Rate_Limiting_Options"]["max_simultaneous_downloads_per_domain"] > 15:
+                global_settings["Rate_Limiting_Options"]["max_simultaneous_downloads_per_domain"] = 5
             self.config_manager.write_updated_global_settings_config()
-        self.cache_manager.save('simp_settings_adjusted', True)
+        self.cache_manager.save("simp_settings_adjusted", True)
 
     def args_startup(self) -> None:
         """Start the args manager"""
@@ -101,7 +104,7 @@ class Manager:
 
         if not isinstance(self.db_manager, DBManager):
             self.db_manager = DBManager(self, self.path_manager.history_db)
-            self.db_manager.ignore_history = self.config_manager.settings_data['Runtime_Options']['ignore_history']
+            self.db_manager.ignore_history = self.config_manager.settings_data["Runtime_Options"]["ignore_history"]
             await self.db_manager.startup()
         if not isinstance(self.client_manager, ClientManager):
             self.client_manager = ClientManager(self)
@@ -122,8 +125,9 @@ class Manager:
 
         # set files from args
         from cyberdrop_dl.utils.utilities import MAX_NAME_LENGTHS
-        MAX_NAME_LENGTHS['FILE'] = int(self.config_manager.global_settings_data['General']['max_file_name_length'])
-        MAX_NAME_LENGTHS['FOLDER'] = int(self.config_manager.global_settings_data['General']['max_folder_name_length'])
+
+        MAX_NAME_LENGTHS["FILE"] = int(self.config_manager.global_settings_data["General"]["max_file_name_length"])
+        MAX_NAME_LENGTHS["FOLDER"] = int(self.config_manager.global_settings_data["General"]["max_folder_name_length"])
 
     async def async_db_hash_startup(self):
         # start up the db manager and hash manager only for scanning
@@ -154,21 +158,23 @@ class Manager:
                     else:
                         if self.args_manager.parsed_args[arg] is not None:
                             self.config_manager.settings_data[cli_settings_group][arg] = self.args_manager.parsed_args[
-                                arg]
+                                arg
+                            ]
 
     async def args_logging(self) -> None:
         """Logs the runtime arguments"""
         forum_xf_cookies_provided = {}
         forum_credentials_provided = {}
 
-        auth_data_forums = self.config_manager.authentication_data['Forums']
+        auth_data_forums = self.config_manager.authentication_data["Forums"]
         auth_data_others = self.config_manager.authentication_data.copy()
-        auth_data_others.pop('Forums', None)
+        auth_data_others.pop("Forums", None)
 
         for forum in SupportedDomains.supported_forums_map.values():
             forum_xf_cookies_provided[forum] = bool(auth_data_forums[f"{forum}_xf_user_cookie"])
             forum_credentials_provided[forum] = bool(
-                auth_data_forums[f"{forum}_username"] and auth_data_forums[f"{forum}_password"])
+                auth_data_forums[f"{forum}_username"] and auth_data_forums[f"{forum}_password"]
+            )
 
         auth_provided = {
             "Forums Credentials": forum_credentials_provided,
@@ -179,13 +185,14 @@ class Manager:
             auth_provided[site] = all([value for value in auth_entries.values()])
 
         print_settings = copy.deepcopy(self.config_manager.settings_data)
-        print_settings['Files']['input_file'] = str(print_settings['Files']['input_file'])
-        print_settings['Files']['download_folder'] = str(print_settings['Files']['download_folder'])
+        print_settings["Files"]["input_file"] = str(print_settings["Files"]["input_file"])
+        print_settings["Files"]["download_folder"] = str(print_settings["Files"]["download_folder"])
         print_settings["Logs"]["log_folder"] = str(print_settings["Logs"]["log_folder"])
         print_settings["Logs"]["webhook_url"] = bool(print_settings["Logs"]["webhook_url"])
-        print_settings['Sorting']['sort_folder'] = str(print_settings['Sorting']['sort_folder'])
-        print_settings['Sorting']['scan_folder'] = str(print_settings['Sorting']['scan_folder']) if str(
-            print_settings['Sorting']['scan_folder']) else ""
+        print_settings["Sorting"]["sort_folder"] = str(print_settings["Sorting"]["sort_folder"])
+        print_settings["Sorting"]["scan_folder"] = (
+            str(print_settings["Sorting"]["scan_folder"]) if str(print_settings["Sorting"]["scan_folder"]) else ""
+        )
 
         input_file = str(self.path_manager.input_file)
         download_dir = str(self.path_manager.download_dir)
@@ -202,7 +209,8 @@ class Manager:
         await log(f"Using Settings: \n{json.dumps(print_settings, indent=4, sort_keys=True)}", 10)
         await log(
             f"Using Global Settings: \n{json.dumps(self.config_manager.global_settings_data, indent=4, sort_keys=True)}",
-            10)
+            10,
+        )
 
     async def close(self) -> None:
         """Closes the manager"""

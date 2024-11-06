@@ -8,23 +8,24 @@ import asyncprawcore
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import ScrapeFailure, NoExtensionFailure
+from cyberdrop_dl.clients.errors import NoExtensionFailure, ScrapeFailure, ScrapeItemMaxChildrenReached
 from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem, FILE_HOST_ALBUM, FILE_HOST_PROFILE
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, log, get_filename_and_ext
-from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
+from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext, log
 
 if TYPE_CHECKING:
-    from cyberdrop_dl.managers.manager import Manager
     import asyncpraw.models
+
+    from cyberdrop_dl.managers.manager import Manager
 
 
 class RedditCrawler(Crawler):
     def __init__(self, manager: Manager):
         super().__init__(manager, "reddit", "Reddit")
-        self.reddit_personal_use_script = self.manager.config_manager.authentication_data['Reddit'][
-            'reddit_personal_use_script']
-        self.reddit_secret = self.manager.config_manager.authentication_data['Reddit']['reddit_secret']
+        self.reddit_personal_use_script = self.manager.config_manager.authentication_data["Reddit"][
+            "reddit_personal_use_script"
+        ]
+        self.reddit_secret = self.manager.config_manager.authentication_data["Reddit"]["reddit_secret"]
         self.request_limiter = AsyncLimiter(5, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -40,11 +41,13 @@ class RedditCrawler(Crawler):
             return
 
         async with aiohttp.ClientSession() as reddit_session:
-            reddit = asyncpraw.Reddit(client_id=self.reddit_personal_use_script,
-                                    client_secret=self.reddit_secret,
-                                    user_agent="CyberDrop-DL",
-                                    requestor_kwargs={"session": reddit_session},
-                                    check_for_updates=False)
+            reddit = asyncpraw.Reddit(
+                client_id=self.reddit_personal_use_script,
+                client_secret=self.reddit_secret,
+                user_agent="CyberDrop-DL",
+                requestor_kwargs={"session": reddit_session},
+                check_for_updates=False,
+            )
 
             if "user" in scrape_item.url.parts or "u" in scrape_item.url.parts:
                 await self.user(scrape_item, reddit)
@@ -90,12 +93,14 @@ class RedditCrawler(Crawler):
             raise ScrapeFailure(403, "Forbidden", origin=scrape_item)
         except asyncprawcore.exceptions.NotFound:
             raise ScrapeFailure(404, "Not Found", origin=scrape_item)
-        
+
         scrape_item.type = FILE_HOST_PROFILE
         scrape_item.children = scrape_item.children_limit = 0
 
         try:
-            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
+                "maximum_number_of_children"
+            ][scrape_item.type]
         except (IndexError, TypeError):
             pass
 
@@ -103,7 +108,7 @@ class RedditCrawler(Crawler):
             await self.post(scrape_item, submission, reddit)
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
+                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
 
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem, submission, reddit: asyncpraw.Reddit) -> None:
@@ -112,7 +117,7 @@ class RedditCrawler(Crawler):
         date = int(str(submission.created_utc).split(".")[0])
 
         try:
-            media_url = URL(submission.media['reddit_video']['fallback_url'])
+            media_url = URL(submission.media["reddit_video"]["fallback_url"])
         except (KeyError, TypeError):
             media_url = URL(submission.url)
 
@@ -120,17 +125,20 @@ class RedditCrawler(Crawler):
             filename, ext = await get_filename_and_ext(media_url.name)
 
         if "redd.it" in media_url.host:
-            new_scrape_item = await self.create_new_scrape_item(media_url, scrape_item, title, date,
-                                                                add_parent=scrape_item.url)
+            new_scrape_item = await self.create_new_scrape_item(
+                media_url, scrape_item, title, date, add_parent=scrape_item.url
+            )
             await self.media(new_scrape_item, reddit)
         elif "gallery" in media_url.parts:
-            new_scrape_item = await self.create_new_scrape_item(media_url, scrape_item, title, date,
-                                                                add_parent=scrape_item.url)
+            new_scrape_item = await self.create_new_scrape_item(
+                media_url, scrape_item, title, date, add_parent=scrape_item.url
+            )
             await self.gallery(new_scrape_item, submission, reddit)
         else:
             if "reddit.com" not in media_url.host:
-                new_scrape_item = await self.create_new_scrape_item(media_url, scrape_item, title, date,
-                                                                    add_parent=scrape_item.url)
+                new_scrape_item = await self.create_new_scrape_item(
+                    media_url, scrape_item, title, date, add_parent=scrape_item.url
+                )
                 await self.handle_external_links(new_scrape_item)
 
     async def gallery(self, scrape_item: ScrapeItem, submission, reddit: asyncpraw.Reddit) -> None:
@@ -141,20 +149,22 @@ class RedditCrawler(Crawler):
         links = [URL(item["s"]["u"]).with_host("i.redd.it").with_query(None) for item in items]
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
-        
+
         try:
-            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
+                "maximum_number_of_children"
+            ][scrape_item.type]
         except (IndexError, TypeError):
             pass
         for link in links:
-            new_scrape_item = await self.create_new_scrape_item(link, scrape_item, scrape_item.parent_title,
-                                                                scrape_item.possible_datetime,
-                                                                add_parent=scrape_item.url)
+            new_scrape_item = await self.create_new_scrape_item(
+                link, scrape_item, scrape_item.parent_title, scrape_item.possible_datetime, add_parent=scrape_item.url
+            )
             await self.media(new_scrape_item, reddit)
             scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
+                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
 
     @error_handling_wrapper
     async def media(self, scrape_item: ScrapeItem, reddit: asyncpraw.Reddit) -> None:
@@ -163,10 +173,10 @@ class RedditCrawler(Crawler):
             filename, ext = await get_filename_and_ext(scrape_item.url.name)
         except NoExtensionFailure:
             head = await self.client.get_head(self.domain, scrape_item.url)
-            head = await self.client.get_head(self.domain, head['location'])
+            head = await self.client.get_head(self.domain, head["location"])
 
             try:
-                post = await reddit.submission(url=head['location'])
+                post = await reddit.submission(url=head["location"])
             except asyncprawcore.exceptions.Forbidden:
                 raise ScrapeFailure(403, "Forbidden", origin=scrape_item)
             except asyncprawcore.exceptions.NotFound:
@@ -179,12 +189,14 @@ class RedditCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def create_new_scrape_item(self, link: URL, old_scrape_item: ScrapeItem, title: str, date: int,
-                                    add_parent: Optional[URL] = None) -> ScrapeItem:
+    async def create_new_scrape_item(
+        self, link: URL, old_scrape_item: ScrapeItem, title: str, date: int, add_parent: Optional[URL] = None
+    ) -> ScrapeItem:
         """Creates a new scrape item with the same parent as the old scrape item"""
 
-        new_scrape_item = await self.create_scrape_item(old_scrape_item, link, "", True, None, date,
-                                                        add_parent=add_parent)
-        if self.manager.config_manager.settings_data['Download_Options']['separate_posts']:
+        new_scrape_item = await self.create_scrape_item(
+            old_scrape_item, link, "", True, None, date, add_parent=add_parent
+        )
+        if self.manager.config_manager.settings_data["Download_Options"]["separate_posts"]:
             await new_scrape_item.add_to_parent_title(title)
         return new_scrape_item

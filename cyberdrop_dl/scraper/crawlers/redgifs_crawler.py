@@ -5,10 +5,10 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem, FILE_HOST_PROFILE
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
+from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_PROFILE, ScrapeItem
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -51,15 +51,19 @@ class RedGifsCrawler(Crawler):
         scrape_item.children = scrape_item.children_limit = 0
 
         try:
-            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
+                "maximum_number_of_children"
+            ][scrape_item.type]
         except (IndexError, TypeError):
             pass
         while page <= total_pages:
             async with self.request_limiter:
-                JSON_Resp = await self.client.get_json(self.domain,
-                                                    (self.redgifs_api / "v2/users" / user_id / "search").with_query(
-                                                        f"order=new&count=40&page={page}"), headers_inc=self.headers,
-                                                    origin=scrape_item)
+                JSON_Resp = await self.client.get_json(
+                    self.domain,
+                    (self.redgifs_api / "v2/users" / user_id / "search").with_query(f"order=new&count=40&page={page}"),
+                    headers_inc=self.headers,
+                    origin=scrape_item,
+                )
             total_pages = JSON_Resp["pages"]
             gifs = JSON_Resp["gifs"]
             for gif in gifs:
@@ -73,12 +77,13 @@ class RedGifsCrawler(Crawler):
                     link = URL(links["sd"])
 
                 filename, ext = await get_filename_and_ext(link.name)
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, date,
-                                                                add_parent=scrape_item.url)
+                new_scrape_item = await self.create_scrape_item(
+                    scrape_item, link, title, True, date, add_parent=scrape_item.url
+                )
                 await self.handle_file(link, new_scrape_item, filename, ext)
                 if scrape_item.children_limit:
                     if scrape_item.children >= scrape_item.children_limit:
-                        raise ScrapeItemMaxChildrenReached(origin = scrape_item)
+                        raise ScrapeItemMaxChildrenReached(origin=scrape_item)
             page += 1
 
     @error_handling_wrapper
@@ -87,8 +92,9 @@ class RedGifsCrawler(Crawler):
         post_id = scrape_item.url.parts[-1].split(".")[0]
 
         async with self.request_limiter:
-            JSON_Resp = await self.client.get_json(self.domain, self.redgifs_api / "v2/gifs" / post_id,
-                                                headers_inc=self.headers, origin=scrape_item)
+            JSON_Resp = await self.client.get_json(
+                self.domain, self.redgifs_api / "v2/gifs" / post_id, headers_inc=self.headers, origin=scrape_item
+            )
 
         title_part = JSON_Resp["gif"].get("title", "Loose Files")
         title = await self.create_title(title_part, None, None)
@@ -98,8 +104,9 @@ class RedGifsCrawler(Crawler):
         link = URL(links["hd"] if "hd" in links else links["sd"])
 
         filename, ext = await get_filename_and_ext(link.name)
-        new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, date,
-                                                        add_parent=scrape_item.url)
+        new_scrape_item = await self.create_scrape_item(
+            scrape_item, link, title, True, date, add_parent=scrape_item.url
+        )
         await self.handle_file(link, new_scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

@@ -7,15 +7,15 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import ScrapeFailure
+from cyberdrop_dl.clients.errors import ScrapeFailure, ScrapeItemMaxChildrenReached
 from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem, FILE_HOST_ALBUM
+from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext, log
-from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
 
 if TYPE_CHECKING:
-    from cyberdrop_dl.managers.manager import Manager
     from bs4 import BeautifulSoup
+
+    from cyberdrop_dl.managers.manager import Manager
 
 
 class OmegaScansCrawler(Crawler):
@@ -48,9 +48,11 @@ class OmegaScansCrawler(Crawler):
 
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
-        
+
         try:
-            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
+                "maximum_number_of_children"
+            ][scrape_item.type]
         except (IndexError, TypeError):
             pass
 
@@ -69,17 +71,18 @@ class OmegaScansCrawler(Crawler):
             if not JSON_Obj:
                 break
 
-            for chapter in JSON_Obj['data']:
-                chapter_url = scrape_item.url / chapter['chapter_slug']
-                new_scrape_item = await self.create_scrape_item(scrape_item, chapter_url, "", True,
-                                                                add_parent=scrape_item.url)
+            for chapter in JSON_Obj["data"]:
+                chapter_url = scrape_item.url / chapter["chapter_slug"]
+                new_scrape_item = await self.create_scrape_item(
+                    scrape_item, chapter_url, "", True, add_parent=scrape_item.url
+                )
                 self.manager.task_group.create_task(self.run(new_scrape_item))
                 scrape_item.children += 1
                 if scrape_item.children_limit:
                     if scrape_item.children >= scrape_item.children_limit:
-                        raise ScrapeItemMaxChildrenReached(origin = scrape_item)
+                        raise ScrapeItemMaxChildrenReached(origin=scrape_item)
 
-            if JSON_Obj['meta']['current_page'] == JSON_Obj['meta']['last_page']:
+            if JSON_Obj["meta"]["current_page"] == JSON_Obj["meta"]["last_page"]:
                 break
             page_number += 1
 
@@ -107,7 +110,7 @@ class OmegaScansCrawler(Crawler):
             scripts = soup.select("script")
             for script in scripts:
                 if "created" in script.get_text():
-                    date = script.get_text().split("created_at\\\":\\\"")[1].split(".")[0]
+                    date = script.get_text().split('created_at\\":\\"')[1].split(".")[0]
                     date = await self.parse_datetime_other(date)
                     break
 

@@ -7,14 +7,15 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem, FILE_HOST_ALBUM
-from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wrapper
 from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
+from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, ScrapeItem
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
-    from cyberdrop_dl.managers.manager import Manager
     from bs4 import BeautifulSoup
+
+    from cyberdrop_dl.managers.manager import Manager
 
 
 class ImageBanCrawler(Crawler):
@@ -48,18 +49,20 @@ class ImageBanCrawler(Crawler):
         scrape_item.album_id = scrape_item.url.parts[2]
         scrape_item.part_of_album = True
 
-        title = await self.create_title(soup.select_one("title").get_text().replace("Просмотр альбома: ", ""),
-                                        scrape_item.album_id, None)
+        title = await self.create_title(
+            soup.select_one("title").get_text().replace("Просмотр альбома: ", ""), scrape_item.album_id, None
+        )
         content_block = soup.select_one('div[class="row text-center"]')
         images = content_block.select("a")
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
-        
+
         try:
-            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
+                "maximum_number_of_children"
+            ][scrape_item.type]
         except (IndexError, TypeError):
             pass
-
 
         for image in images:
             link_path = image.get("href")
@@ -77,7 +80,7 @@ class ImageBanCrawler(Crawler):
             scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
+                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
 
         next_page = soup.select_one('a[class*="page-link next"]')
         if next_page:
@@ -101,9 +104,11 @@ class ImageBanCrawler(Crawler):
         images = content_block.select("img")
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
-        
+
         try:
-            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
+            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
+                "maximum_number_of_children"
+            ][scrape_item.type]
         except (IndexError, TypeError):
             pass
 
@@ -116,7 +121,7 @@ class ImageBanCrawler(Crawler):
             scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
+                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
@@ -128,7 +133,8 @@ class ImageBanCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
 
         date = await self.parse_datetime(
-            f"{(scrape_item.url.parts[2])}-{(scrape_item.url.parts[3])}-{(scrape_item.url.parts[4])}")
+            f"{(scrape_item.url.parts[2])}-{(scrape_item.url.parts[3])}-{(scrape_item.url.parts[4])}"
+        )
         scrape_item.possible_datetime = date
 
         image = soup.select_one("img[id=img_main]")
