@@ -119,7 +119,7 @@ class CyberdropCrawler(Crawler):
 
         """
 
-        if any([part in url.parts for part in ("a", "f")]):
+        if any(part in url.parts for part in ("a", "f")):
             return url
 
         if self.is_cdn(url):

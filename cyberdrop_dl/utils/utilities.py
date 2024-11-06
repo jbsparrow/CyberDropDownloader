@@ -7,7 +7,7 @@ import re
 from enum import IntEnum
 from functools import wraps
 from pathlib import Path
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 import aiofiles
 import apprise
@@ -23,8 +23,6 @@ from cyberdrop_dl.managers.real_debrid.errors import RealDebridError
 DEFAULT_CONSOLE_WIDTH = 240
 
 if TYPE_CHECKING:
-    from typing import Tuple
-
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.scraper.crawler import Crawler
     from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
@@ -133,7 +131,7 @@ def error_handling_wrapper(func):
     return wrapper
 
 
-async def log(message: Union[str, Exception], level: int, sleep: int = None, **kwargs) -> None:
+async def log(message: Exception | str, level: int, sleep: int = None, **kwargs) -> None:
     """Simple logging function"""
     logger.log(level, message, **kwargs)
     if DEBUG_VAR:
@@ -141,13 +139,13 @@ async def log(message: Union[str, Exception], level: int, sleep: int = None, **k
     log_console(level, message, sleep=sleep)
 
 
-async def log_debug(message: Union[str, Exception], level: int, sleep: int = None, *kwargs) -> None:
+async def log_debug(message: Exception | str, level: int, sleep: int = None, *kwargs) -> None:
     """Simple logging function"""
     if DEBUG_VAR:
         logger_debug.log(level, message.encode("ascii", "ignore").decode("ascii"), *kwargs)
 
 
-async def log_debug_console(message: Union[str, Exception], level: int, sleep: int = None):
+async def log_debug_console(message: Exception | str, level: int, sleep: int = None):
     if CONSOLE_DEBUG_VAR:
         log_console(level, message.encode("ascii", "ignore").decode("ascii"), sleep=sleep)
 
@@ -222,7 +220,7 @@ async def sanitize_folder(title: str) -> str:
     return title
 
 
-async def get_filename_and_ext(filename: str, forum: bool = False) -> Tuple[str, str]:
+async def get_filename_and_ext(filename: str, forum: bool = False) -> tuple[str, str]:
     """Returns the filename and extension of a given file, throws NoExtensionFailure if there is no extension"""
     filename_parts = filename.rsplit(".", 1)
     if len(filename_parts) == 1:
@@ -266,7 +264,7 @@ async def _is_number(ext: str):
         return False
 
 
-async def remove_id(manager: Manager, filename: str, ext: str) -> Tuple[str, str]:
+async def remove_id(manager: Manager, filename: str, ext: str) -> tuple[str, str]:
     """Removes the additional string some websites adds to the end of every filename"""
     original_filename = filename
     if manager.config_manager.settings_data["Download_Options"]["remove_generated_id_from_filenames"]:
@@ -328,7 +326,7 @@ async def check_partials_and_empty_folders(manager: Manager):
             await purge_dir_tree(manager.path_manager.sorted_dir)
 
 
-async def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -> Tuple[str]:
+async def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -> tuple[str]:
     """Checks if the current version is the latest version"""
     import json
     import urllib.request
@@ -462,7 +460,7 @@ async def sent_apprise_notifications(manager: Manager) -> None:
     rich.print("Apprise notifications results:", result)
 
 
-def parse_bytes(size: int) -> Tuple[int, str]:
+def parse_bytes(size: int) -> tuple[int, str]:
     for unit in ["B", "KB", "MB", "GB", "TB", "PB", "EB"]:
         if size < 1024:
             return size, unit

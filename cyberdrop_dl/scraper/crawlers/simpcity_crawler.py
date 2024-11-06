@@ -122,7 +122,7 @@ class SimpCityCrawler(Crawler):
                 if scrape_post:
                     try:
                         date = int(post.select_one(self.post_date_selector).get(self.post_date_attribute))
-                    except:
+                    except AttributeError:
                         pass
                     new_scrape_item = await self.create_scrape_item(
                         scrape_item,

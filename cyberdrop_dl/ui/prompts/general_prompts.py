@@ -16,8 +16,6 @@ from cyberdrop_dl.utils.transfer.transfer_v4_db import transfer_v4_db
 from cyberdrop_dl.utils.utilities import log
 
 if TYPE_CHECKING:
-    from typing import List
-
     from cyberdrop_dl.managers.manager import Manager
 
 console = Console()
@@ -44,14 +42,14 @@ def main_prompt(manager: Manager) -> int:
     ]
 
     simp_disclaimer_shown = manager.cache_manager.get("simp_disclaimer_shown")
-    if simp_disclaimer_shown == None:
+    if not simp_disclaimer_shown:
         choices = [Choice(-1, "!! VIEW DISCLAIMER !!")]
 
     action = inquirer.select(
         message="What would you like to do?",
         choices=choices,
         long_instruction="ARROW KEYS: Navigate | ENTER: Select",
-        style=get_style({"pointer": "#ff0000 bold"}) if simp_disclaimer_shown == None else None,
+        style=get_style({"pointer": "#ff0000 bold"}) if not simp_disclaimer_shown else None,
         vi_mode=manager.vi_mode,
     ).execute()
 
@@ -80,7 +78,7 @@ def manage_configs_prompt(manager: Manager) -> int:
     return action
 
 
-def select_config_prompt(manager: Manager, configs: List) -> str:
+def select_config_prompt(manager: Manager, configs: list) -> str:
     """Select a config file from a list of configs"""
     choice = inquirer.fuzzy(
         choices=configs,

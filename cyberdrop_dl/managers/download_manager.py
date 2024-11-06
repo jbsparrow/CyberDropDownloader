@@ -10,8 +10,6 @@ from typing import TYPE_CHECKING
 from cyberdrop_dl.utils.utilities import FILE_FORMATS, log_debug
 
 if TYPE_CHECKING:
-    from typing import Dict
-
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem
 
@@ -45,7 +43,7 @@ class FileLock:
 class DownloadManager:
     def __init__(self, manager: Manager):
         self.manager = manager
-        self._download_instances: Dict = {}
+        self._download_instances: dict = {}
 
         self.file_lock = FileLock()
 

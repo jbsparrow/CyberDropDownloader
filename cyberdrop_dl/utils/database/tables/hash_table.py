@@ -171,7 +171,7 @@ WHERE download_filename = ? AND folder = ?;""",
         try:
             await cursor.execute("SELECT DISTINCT hash FROM hash")
             results = await cursor.fetchall()
-            return list(map(lambda x: x[0], results))
+            return [x[0] for x in results]
         except Exception as e:
             console.print(f"Error retrieving folder and filename: {e}")
             return []

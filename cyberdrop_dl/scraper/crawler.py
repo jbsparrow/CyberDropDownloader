@@ -4,7 +4,7 @@ import asyncio
 import copy
 from abc import ABC, abstractmethod
 from dataclasses import field
-from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any
 
 from bs4 import BeautifulSoup
 from yarl import URL
@@ -72,8 +72,8 @@ class Crawler(ABC):
         scrape_item: ScrapeItem,
         filename: str,
         ext: str,
-        custom_filename: Optional[str] = None,
-        debrid_link: Optional[URL] = None,
+        custom_filename: str | None = None,
+        debrid_link: URL | None = None,
     ) -> None:
         """Finishes handling the file and hands it off to the downloader"""
         if custom_filename:
@@ -114,7 +114,7 @@ class Crawler(ABC):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def check_post_number(self, post_number: int, current_post_number: int) -> Tuple[bool, bool]:
+    async def check_post_number(self, post_number: int, current_post_number: int) -> tuple[bool, bool]:
         """Checks if the program should scrape the current post"""
         """Returns (scrape_post, continue_scraping)"""
         scrape_single_forum_post = self.manager.config_manager.settings_data["Download_Options"][
@@ -215,9 +215,9 @@ class Crawler(ABC):
         url: URL,
         new_title_part: str,
         part_of_album: bool = False,
-        album_id: Union[str, None] = None,
-        possible_datetime: Optional[int] = None,
-        add_parent: Optional[URL] = None,
+        album_id: str | None = None,
+        possible_datetime: int | None = None,
+        add_parent: URL | None = None,
     ) -> ScrapeItem:
         """Creates a scrape item"""
         scrape_item = copy.deepcopy(parent_scrape_item)
@@ -233,7 +233,7 @@ class Crawler(ABC):
             scrape_item.album_id = album_id
         return scrape_item
 
-    async def create_title(self, title: str, album_id: Optional[str], thread_id: Optional[str]) -> str:
+    async def create_title(self, title: str, album_id: str | None, thread_id: str | None) -> str:
         """Creates the title for the scrape item"""
         if not title:
             title = "Untitled"

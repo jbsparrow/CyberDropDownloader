@@ -10,8 +10,6 @@ from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.utils.args.browser_cookie_extraction import get_forum_cookies
 
 if TYPE_CHECKING:
-    from typing import Dict
-
     from cyberdrop_dl.managers.manager import Manager
 
 console = Console()
@@ -246,7 +244,7 @@ def edit_forum_authentication_values_prompt(manager: Manager) -> None:
             return
 
 
-def edit_jdownloader_authentication_values_prompt(auth: Dict) -> None:
+def edit_jdownloader_authentication_values_prompt(auth: dict) -> None:
     """Edit the JDownloader authentication values"""
     console.clear()
     jdownloader_username = inquirer.text(
@@ -267,7 +265,7 @@ def edit_jdownloader_authentication_values_prompt(auth: Dict) -> None:
     auth["JDownloader"]["jdownloader_device"] = jdownloader_device
 
 
-def edit_reddit_authentication_values_prompt(auth: Dict) -> None:
+def edit_reddit_authentication_values_prompt(auth: dict) -> None:
     """Edit the reddit authentication values"""
     console.clear()
     console.print("You can create a Reddit App to use here: https://www.reddit.com/prefs/apps/")

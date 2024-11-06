@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 from functools import wraps
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Dict
 
 import aiohttp
 from aiohttp import ClientSession
@@ -78,7 +78,7 @@ class ScraperClient:
         domain: str,
         url: URL,
         client_session: ClientSession,
-        origin: Optional[ScrapeItem | URL] = None,
+        origin: ScrapeItem | URL | None = None,
         with_response_url: bool = False,
     ) -> str:
         """Returns the resolved URL from the given URL"""
@@ -112,7 +112,7 @@ class ScraperClient:
         domain: str,
         url: URL,
         client_session: ClientSession,
-        origin: Optional[ScrapeItem | URL] = None,
+        origin: ScrapeItem | URL | None = None,
         with_response_url: bool = False,
     ) -> BeautifulSoup:
         """Returns a BeautifulSoup object from the given URL"""
@@ -137,7 +137,7 @@ class ScraperClient:
             return BeautifulSoup(text, "html.parser")
 
     async def get_BS4_and_return_URL(
-        self, domain: str, url: URL, origin: Optional[ScrapeItem | URL] = None
+        self, domain: str, url: URL, origin: ScrapeItem | URL | None = None
     ) -> tuple[BeautifulSoup, URL]:
         """Returns a BeautifulSoup object and response URL from the given URL"""
         return await self.get_BS4(domain, url, origin=origin, with_response_url=True)
@@ -147,10 +147,10 @@ class ScraperClient:
         self,
         domain: str,
         url: URL,
-        params: Optional[Dict] = None,
-        headers_inc: Optional[Dict] = None,
+        params: dict | None = None,
+        headers_inc: dict | None = None,
         client_session: ClientSession = None,
-        origin: Optional[ScrapeItem | URL] = None,
+        origin: ScrapeItem | URL | None = None,
     ) -> Dict:
         """Returns a JSON object from the given URL"""
         headers = {**self._headers, **headers_inc} if headers_inc else self._headers
@@ -167,7 +167,7 @@ class ScraperClient:
 
     @limiter
     async def get_text(
-        self, domain: str, url: URL, client_session: ClientSession, origin: Optional[ScrapeItem | URL] = None
+        self, domain: str, url: URL, client_session: ClientSession, origin: ScrapeItem | URL | None = None
     ) -> str:
         """Returns a text object from the given URL"""
         async with client_session.get(
@@ -187,11 +187,11 @@ class ScraperClient:
         domain: str,
         url: URL,
         client_session: ClientSession,
-        data: Dict,
+        data: dict,
         req_resp: bool = True,
-        raw: Optional[bool] = False,
-        origin: Optional[ScrapeItem | URL] = None,
-    ) -> Dict:
+        raw: bool = False,
+        origin: ScrapeItem | URL | None = None,
+    ) -> dict:
         """Returns a JSON object from the given URL when posting data. If raw == True, returns raw binary data of response"""
         async with client_session.post(
             url, headers=self._headers, ssl=self.client_manager.ssl_context, proxy=self.client_manager.proxy, data=data

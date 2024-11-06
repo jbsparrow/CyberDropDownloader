@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import csv
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import aiofiles
 
@@ -47,15 +47,15 @@ class LogManager:
         """Writes to the last post log"""
         await self.write_to_csv(self.last_post_log, url=url)
 
-    async def write_unsupported_urls_log(self, url: URL, origin: Optional[URL] = None) -> None:
+    async def write_unsupported_urls_log(self, url: URL, origin: URL | None = None) -> None:
         """Writes to the unsupported urls log"""
         await self.write_to_csv(self.unsupported_urls_log, url=url, origin=origin)
 
-    async def write_download_error_log(self, url: URL, error_message: str, origin: Optional[URL] = None) -> None:
+    async def write_download_error_log(self, url: URL, error_message: str, origin: URL | None = None) -> None:
         """Writes to the download error log"""
         await self.write_to_csv(self.download_error_log, url=url, error=error_message, origin=origin)
 
-    async def write_scrape_error_log(self, url: URL, error_message: str, origin: Optional[URL] = None) -> None:
+    async def write_scrape_error_log(self, url: URL, error_message: str, origin: URL | None = None) -> None:
         """Writes to the scrape error log"""
         await self.write_to_csv(self.scrape_error_log, url=url, error=error_message, origin=origin)
 

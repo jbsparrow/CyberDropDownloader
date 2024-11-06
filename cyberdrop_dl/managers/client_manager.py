@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import ssl
 from http import HTTPStatus
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import aiohttp
 import certifi
@@ -106,7 +106,7 @@ class ClientManager:
 
     @staticmethod
     async def check_http_status(
-        response: ClientResponse, download: bool = False, origin: Optional[ScrapeItem | URL] = None
+        response: ClientResponse, download: bool = False, origin: ScrapeItem | URL | None = None
     ) -> None:
         """Checks the HTTP status code and raises an exception if it's not acceptable"""
         status = response.status
@@ -119,7 +119,7 @@ class ClientManager:
         if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
             return
 
-        if any({domain in response.url.host.lower() for domain in ("gofile", "imgur")}):
+        if any(domain in response.url.host for domain in ("gofile", "imgur")):
             try:
                 JSON_Resp: dict = await response.json()
                 if "status" in JSON_Resp:

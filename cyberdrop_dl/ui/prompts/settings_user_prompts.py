@@ -11,8 +11,6 @@ from rich.console import Console
 from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
 
 if TYPE_CHECKING:
-    from typing import Dict
-
     from cyberdrop_dl.managers.manager import Manager
 
 console = Console()
@@ -93,7 +91,7 @@ def edit_config_values_prompt(manager: Manager) -> None:
             return
 
 
-def edit_download_options_prompt(manager: Manager, config: Dict) -> None:
+def edit_download_options_prompt(manager: Manager, config: dict) -> None:
     """Edit the download options"""
     console.clear()
     action = inquirer.checkbox(
@@ -161,7 +159,7 @@ def edit_download_options_prompt(manager: Manager, config: Dict) -> None:
         config["Download_Options"][key] = True
 
 
-def edit_input_output_file_paths_prompt(manager: Manager, config: Dict) -> None:
+def edit_input_output_file_paths_prompt(manager: Manager, config: dict) -> None:
     """Edit the input / output file paths"""
     console.clear()
     console.print("Editing Input / Output File Paths")
@@ -182,7 +180,7 @@ def edit_input_output_file_paths_prompt(manager: Manager, config: Dict) -> None:
     config["Files"]["download_folder"] = Path(download_folder)
 
 
-def edit_log_file_naming_path_prompt(manager: Manager, config: Dict) -> None:
+def edit_log_file_naming_path_prompt(manager: Manager, config: dict) -> None:
     """Edit the log file naming / path"""
     console.clear()
     console.print("Editing Log File Naming / Path")
@@ -237,7 +235,7 @@ def edit_log_file_naming_path_prompt(manager: Manager, config: Dict) -> None:
     config["Logs"]["webhook_url"] = webhook_url
 
 
-def edit_file_size_limits_prompt(manager: Manager, config: Dict) -> None:
+def edit_file_size_limits_prompt(manager: Manager, config: dict) -> None:
     """Edit the file size limits"""
     console.clear()
     console.print("Editing File Size Limits")
@@ -292,7 +290,7 @@ def edit_file_size_limits_prompt(manager: Manager, config: Dict) -> None:
     config["File_Size_Limits"]["minimum_other_size"] = int(minimum_other_size)
 
 
-def edit_ignore_options_prompt(manager: Manager, config: Dict) -> None:
+def edit_ignore_options_prompt(manager: Manager, config: dict) -> None:
     """Edit the ignore options"""
     console.clear()
     console.print("Editing Ignore Options")
@@ -362,7 +360,7 @@ def edit_ignore_options_prompt(manager: Manager, config: Dict) -> None:
     config["Ignore_Options"]["only_hosts"] = only_hosts
 
 
-def edit_runtime_options_prompt(manager: Manager, config: Dict) -> None:
+def edit_runtime_options_prompt(manager: Manager, config: dict) -> None:
     """Edit the runtime options"""
     console.clear()
     console.print("Editing Runtime Options")
@@ -430,7 +428,7 @@ def edit_runtime_options_prompt(manager: Manager, config: Dict) -> None:
     config["Runtime_Options"]["console_log_level"] = int(console_log_level)
 
 
-def edit_sort_options_prompt(manager: Manager, config: Dict) -> None:
+def edit_sort_options_prompt(manager: Manager, config: dict) -> None:
     """Edit the sort options"""
     console.clear()
     console.print("Editing Sort Options")

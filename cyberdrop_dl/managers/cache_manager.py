@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import field
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any
 
 import yaml
 
@@ -10,14 +10,14 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
-def _save_yaml(file: Path, data: Dict) -> None:
+def _save_yaml(file: Path, data: dict) -> None:
     """Saves a dict to a yaml file"""
     file.parent.mkdir(parents=True, exist_ok=True)
     with open(file, "w") as yaml_file:
         yaml.dump(data, yaml_file)
 
 
-def _load_yaml(file: Path) -> Dict:
+def _load_yaml(file: Path) -> dict:
     """Loads a yaml file and returns it as a dict"""
     with open(file) as yaml_file:
         return yaml.load(yaml_file.read(), Loader=yaml.FullLoader)

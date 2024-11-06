@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 import aiohttp
 import asyncpraw
@@ -190,7 +190,7 @@ class RedditCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def create_new_scrape_item(
-        self, link: URL, old_scrape_item: ScrapeItem, title: str, date: int, add_parent: Optional[URL] = None
+        self, link: URL, old_scrape_item: ScrapeItem, title: str, date: int, add_parent: URL | None = None
     ) -> ScrapeItem:
         """Creates a new scrape item with the same parent as the old scrape item"""
 

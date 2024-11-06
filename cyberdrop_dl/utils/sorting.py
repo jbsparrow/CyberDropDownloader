@@ -157,7 +157,7 @@ class Sorter:
                 relative_folder = folder.relative_to(self.download_dir)
                 base_folder = self.download_dir / relative_folder.parts[0]
             except Exception as e:
-                if e.__class__ == ValueError:
+                if isinstance(e, ValueError):
                     continue
                 logger.log(
                     40,

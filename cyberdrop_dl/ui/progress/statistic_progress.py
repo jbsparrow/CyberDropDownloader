@@ -46,7 +46,7 @@ class DownloadStatsProgress:
         )
         self.progress_group = Group(self.progress)
 
-        self.failure_types: Dict[str, TaskID] = {}
+        self.failure_types: dict[str, TaskID] = {}
         self.failed_files = 0
         self.unsupported_urls = 0
         self.sent_to_jdownloader = 0
@@ -120,7 +120,7 @@ class ScrapeStatsProgress:
         )
         self.progress_group = Group(self.progress)
 
-        self.failure_types: Dict[str, TaskID] = {}
+        self.failure_types: dict[str, TaskID] = {}
         self.failed_files = 0
         self.unsupported_urls = 0
         self.sent_to_jdownloader = 0

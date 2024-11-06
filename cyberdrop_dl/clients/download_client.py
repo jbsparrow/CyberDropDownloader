@@ -7,7 +7,7 @@ import os
 from functools import partial, wraps
 from http import HTTPStatus
 from pathlib import Path
-from typing import TYPE_CHECKING, List, Tuple
+from typing import TYPE_CHECKING
 
 import aiofiles
 import aiohttp
@@ -338,7 +338,7 @@ class DownloadClient:
         media_item.download_filename = media_item.complete_file.name
         return proceed, skip
 
-    async def iterate_filename(self, complete_file: Path, media_item: MediaItem) -> Tuple[Path, Path]:
+    async def iterate_filename(self, complete_file: Path, media_item: MediaItem) -> tuple[Path, Path]:
         """Iterates the filename until it is unique"""
         partial_file = None
         for iteration in itertools.count(1):
@@ -390,7 +390,7 @@ class DownloadClient:
         return True
 
     @property
-    def file_path(self) -> List[str]:
+    def file_path(self) -> list[str]:
         return self._file_path
 
     @file_path.setter

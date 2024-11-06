@@ -230,9 +230,9 @@ class CyberfileCrawler(Crawler):
                 return
 
     @error_handling_wrapper
-    async def handle_content_id(self, scrape_item: ScrapeItem, contentId: int) -> None:
+    async def handle_content_id(self, scrape_item: ScrapeItem, content_id: int) -> None:
         """Scrapes a file using the content id"""
-        data = {"u": contentId}
+        data = {"u": content_id}
         async with self.request_limiter:
             ajax_dict = await self.client.post_data(self.domain, self.api_details, data=data, origin=scrape_item)
             ajax_soup = BeautifulSoup(ajax_dict["html"].replace("\\", ""), "html.parser")

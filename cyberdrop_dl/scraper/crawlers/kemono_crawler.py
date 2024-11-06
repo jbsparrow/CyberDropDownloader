@@ -3,7 +3,7 @@ from __future__ import annotations
 import calendar
 import datetime
 import re
-from typing import TYPE_CHECKING, Dict, Optional, Tuple
+from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
@@ -123,7 +123,7 @@ class KemonoCrawler(Crawler):
         await self.handle_post_content(scrape_item, post, user, user_str)
 
     @error_handling_wrapper
-    async def handle_post_content(self, scrape_item: ScrapeItem, post: Dict, user: str, user_str: str) -> None:
+    async def handle_post_content(self, scrape_item: ScrapeItem, post: dict, user: str, user_str: str) -> None:
         """Handles the content of a post"""
 
         scrape_item.type = FILE_HOST_ALBUM
@@ -167,7 +167,7 @@ class KemonoCrawler(Crawler):
             await handle_file(file)
             scrape_item.children += 1
 
-    async def get_content_links(self, scrape_item: ScrapeItem, post: Dict, user: str) -> None:
+    async def get_content_links(self, scrape_item: ScrapeItem, post: dict, user: str) -> None:
         """Gets links out of content in post"""
         content = post.get("content", "")
         if not content:
@@ -239,7 +239,7 @@ class KemonoCrawler(Crawler):
         title: str,
         post_id: str,
         date: str,
-        add_parent: Optional[URL] = None,
+        add_parent: URL | None = None,
     ) -> None:
         """Creates a new scrape item with the same parent as the old scrape item"""
         post_title = None
@@ -272,14 +272,14 @@ class KemonoCrawler(Crawler):
         return user
 
     @staticmethod
-    async def get_service_and_user(scrape_item: ScrapeItem) -> Tuple[str, str]:
+    async def get_service_and_user(scrape_item: ScrapeItem) -> tuple[str, str]:
         """Gets the service and user from a scrape item"""
         user = scrape_item.url.parts[3]
         service = scrape_item.url.parts[1]
         return service, user
 
     @staticmethod
-    async def get_service_user_and_post(scrape_item: ScrapeItem) -> Tuple[str, str, str]:
+    async def get_service_user_and_post(scrape_item: ScrapeItem) -> tuple[str, str, str]:
         """Gets the service, user and post id from a scrape item"""
         user = scrape_item.url.parts[3]
         service = scrape_item.url.parts[1]

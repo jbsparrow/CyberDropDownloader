@@ -10,8 +10,6 @@ from rich.console import Console
 from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
 
 if TYPE_CHECKING:
-    from typing import Dict
-
     from cyberdrop_dl.managers.manager import Manager
 
 
@@ -43,7 +41,7 @@ def cookie_wrapper(func):
 @cookie_wrapper
 def get_forum_cookies(manager: Manager, browser: str) -> None:
     """Get the cookies for the forums"""
-    auth_args: Dict = manager.config_manager.authentication_data
+    auth_args: dict = manager.config_manager.authentication_data
     for forum in SupportedDomains.supported_forums:
         try:
             cookie = get_cookie(browser, forum)

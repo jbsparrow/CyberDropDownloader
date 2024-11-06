@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from typing import Dict
-
 from cyberdrop_dl.managers.path_manager import APP_STORAGE, DOWNLOAD_STORAGE
 
-authentication_settings: Dict = {
+authentication_settings: dict = {
     "Forums": {
         "celebforum_xf_user_cookie": "",
         "celebforum_username": "",
@@ -57,7 +55,7 @@ authentication_settings: Dict = {
     },
 }
 
-settings: Dict = {
+settings: dict = {
     "Download_Options": {
         "block_download_sub_folders": False,
         "disable_download_attempt_limit": False,
@@ -129,7 +127,7 @@ settings: Dict = {
     },
 }
 
-global_settings: Dict = {
+global_settings: dict = {
     "General": {
         "allow_insecure_connections": False,
         "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0",

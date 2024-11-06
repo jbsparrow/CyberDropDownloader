@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
-def _match_config_dicts(default: Dict, existing: Dict) -> Dict:
+def _match_config_dicts(default: dict, existing: dict) -> Dict:
     """Matches the keys of two dicts and returns the default dict with the values of the existing dict"""
     for group in default:
         for key in default[group]:
@@ -24,7 +24,7 @@ def _match_config_dicts(default: Dict, existing: Dict) -> Dict:
     return default
 
 
-def _save_yaml(file: Path, data: Dict) -> None:
+def _save_yaml(file: Path, data: dict) -> None:
     """Saves a dict to a yaml file"""
     file.parent.mkdir(parents=True, exist_ok=True)
     with open(file, "w") as yaml_file:
@@ -60,9 +60,9 @@ class ConfigManager:
         self.settings: Path = field(init=False)
         self.global_settings: Path = field(init=False)
 
-        self.authentication_data: Dict = field(init=False)
-        self.settings_data: Dict = field(init=False)
-        self.global_settings_data: Dict = field(init=False)
+        self.authentication_data: dict = field(init=False)
+        self.settings_data: dict = field(init=False)
+        self.global_settings_data: dict = field(init=False)
 
     def startup(self) -> None:
         """Pre-startup process for the config manager"""
@@ -257,7 +257,7 @@ class ConfigManager:
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @staticmethod
-    def create_new_config(new_settings: Path, settings_data: Dict) -> None:
+    def create_new_config(new_settings: Path, settings_data: dict) -> None:
         """Creates a new settings config file"""
         settings_data["Files"]["input_file"] = str(settings_data["Files"]["input_file"])
         settings_data["Files"]["download_folder"] = str(settings_data["Files"]["download_folder"])

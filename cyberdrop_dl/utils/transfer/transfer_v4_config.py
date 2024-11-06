@@ -8,7 +8,7 @@ from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.utils.args.config_definitions import settings
 
 
-def _save_yaml(file: Path, data: Dict) -> None:
+def _save_yaml(file: Path, data: dict) -> None:
     """Saves a dict to a yaml file"""
     file.parent.mkdir(parents=True, exist_ok=True)
     with open(file, "w") as yaml_file:

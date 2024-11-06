@@ -17,8 +17,6 @@ from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext, log
 
 if TYPE_CHECKING:
-    from typing import List
-
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.scraper.crawler import Crawler
 
@@ -386,7 +384,7 @@ class ScrapeMapper:
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @staticmethod
-    async def regex_links(line: str) -> List:
+    async def regex_links(line: str) -> list:
         """Regex grab the links from the URLs.txt file
         This allows code blocks or full paragraphs to be copy and pasted into the URLs.txt"""
         yarl_links = []

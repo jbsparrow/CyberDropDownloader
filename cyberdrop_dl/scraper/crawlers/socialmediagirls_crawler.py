@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
 from bs4 import Tag
@@ -373,7 +373,7 @@ class SocialMediaGirlsCrawler(Crawler):
         await self.handle_file(link, new_scrape_item, filename, ext)
 
     @error_handling_wrapper
-    async def handle_link_confirmation(self, link: URL) -> Optional[URL]:
+    async def handle_link_confirmation(self, link: URL) -> URL | None:
         """Handles link confirmation"""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_BS4(self.domain, link)

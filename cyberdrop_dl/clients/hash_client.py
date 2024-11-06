@@ -95,12 +95,10 @@ class HashClient:
                 other_files = data["others"]
 
                 # Get all matches from the database
-                all_matches = list(
-                    map(
-                        lambda x: pathlib.Path(x[0], x[1]),
-                        await self.manager.db_manager.hash_table.get_files_with_hash_matches(hash, size),
-                    )
-                )
+                all_matches = [
+                    pathlib.Path(x[0], x[1])
+                    for x in await self.manager.db_manager.hash_table.get_files_with_hash_matches(hash, size)
+                ]
 
                 # Filter out files with the same path as any file in other_files
                 other_matches = [match for match in all_matches if str(match) not in other_files]
@@ -177,7 +175,7 @@ class HashClient:
                 if selected_file:
                     size_dict[size] = {
                         "selected": selected_file,
-                        "others": list(map(lambda x: str(x.absolute()), files)),
+                        "others": [str(x.absolute()) for x in files],
                     }
                 else:
                     del size_dict[size]

@@ -76,7 +76,7 @@ class Manager:
 
         # Adjust settings for SimpCity update
         simp_settings_adjusted = self.cache_manager.get("simp_settings_adjusted")
-        if simp_settings_adjusted == None:
+        if not simp_settings_adjusted:
             for config in self.config_manager.get_configs():
                 if config != self.config_manager.loaded_config:
                     self.config_manager.change_config(config)
@@ -167,7 +167,7 @@ class Manager:
         forum_credentials_provided = {}
 
         auth_data_forums = self.config_manager.authentication_data["Forums"]
-        auth_data_others = self.config_manager.authentication_data.copy()
+        auth_data_others: dict[str, dict] = self.config_manager.authentication_data.copy()
         auth_data_others.pop("Forums", None)
 
         for forum in SupportedDomains.supported_forums_map.values():
@@ -182,7 +182,7 @@ class Manager:
         }
 
         for site, auth_entries in auth_data_others.items():
-            auth_provided[site] = all([value for value in auth_entries.values()])
+            auth_provided[site] = all(auth_entries.values())
 
         print_settings = copy.deepcopy(self.config_manager.settings_data)
         print_settings["Files"]["input_file"] = str(print_settings["Files"]["input_file"])

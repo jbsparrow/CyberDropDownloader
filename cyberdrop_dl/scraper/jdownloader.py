@@ -3,7 +3,7 @@ from __future__ import annotations
 import time
 from dataclasses import field
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from myjdapi import myjdapi
 
@@ -57,7 +57,7 @@ class JDownloader:
         time.sleep(20)
 
     async def direct_unsupported_to_jdownloader(
-        self, url: URL, title: str, relative_download_folder: Optional[Path] = None
+        self, url: URL, title: str, relative_download_folder: Path | None = None
     ) -> None:
         """Sends links to JDownloader"""
         try:
