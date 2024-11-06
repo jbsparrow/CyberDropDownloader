@@ -1,6 +1,5 @@
 import copy
 from pathlib import Path
-from typing import Dict
 
 import yaml
 
@@ -9,20 +8,20 @@ from cyberdrop_dl.utils.args.config_definitions import settings
 
 
 def _save_yaml(file: Path, data: dict) -> None:
-    """Saves a dict to a yaml file"""
+    """Saves a dict to a yaml file."""
     file.parent.mkdir(parents=True, exist_ok=True)
-    with open(file, "w") as yaml_file:
+    with file.open("w") as yaml_file:
         yaml.dump(data, yaml_file)
 
 
-def _load_yaml(file: Path) -> Dict:
-    """Loads a yaml file and returns it as a dict"""
-    with open(file) as yaml_file:
+def _load_yaml(file: Path) -> dict:
+    """Loads a yaml file and returns it as a dict."""
+    with file.open() as yaml_file:
         return yaml.load(yaml_file.read(), Loader=yaml.FullLoader)
 
 
 def transfer_v4_config(manager: Manager, old_config_path: Path, new_config_name: str) -> None:
-    """Transfers a V4 config into V5 possession"""
+    """Transfers a V4 config into V5 possession."""
     new_auth_data = manager.config_manager.authentication_data
     new_user_data = copy.deepcopy(settings)
 
@@ -124,15 +123,16 @@ def transfer_v4_config(manager: Manager, old_config_path: Path, new_config_name:
     new_urls.touch(exist_ok=True)
 
     if old_urls_path.is_absolute():
-        with open(str(old_urls_path)) as urls_file:
+        with old_urls_path.open(encoding="utf8") as urls_file:
             urls = urls_file.readlines()
-        with open(new_urls, "w") as urls_file:
+        with new_urls.open("w", encoding="utf8") as urls_file:
             urls_file.writelines(urls)
+
     elif len(old_urls_path.parts) == 1:
         if (old_config_path / old_urls_path.name).is_file():
-            with open(str(old_config_path / old_urls_path.name)) as urls_file:
+            with old_config_path.joinpath(old_urls_path.name).open(encoding="utf8") as urls_file:
                 urls = urls_file.readlines()
-            with open(new_urls, "w") as urls_file:
+            with new_urls.open("w", encoding="utf8") as urls_file:
                 urls_file.writelines(urls)
     else:
         new_urls.touch(exist_ok=True)

@@ -1,24 +1,50 @@
 from __future__ import annotations
 
-import time
+import asyncio
 from dataclasses import field
+from functools import wraps
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 from myjdapi import myjdapi
 
 from cyberdrop_dl.clients.errors import JDownloaderError
-from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.utils.utilities import log
 
 if TYPE_CHECKING:
     from yarl import URL
 
+    from cyberdrop_dl.managers.manager import Manager
+
+
+def error_wrapper(func: Callable) -> None:
+    """Wrapper handles limits for scrape session."""
+
+    @wraps(func)
+    async def wrapper(self: JDownloader, *args, **kwargs) -> None:
+        try:
+            return await func(self, *args, **kwargs)
+        except JDownloaderError as e:
+            msg = e.message
+
+        except myjdapi.MYJDDeviceNotFoundException:
+            msg = f"Device not found ({self.jdownloader_device})"
+
+        except myjdapi.MYJDApiException as e:
+            msg = e
+
+        await log(f"Failed JDownloader setup: {msg}", 40)
+        self.enabled = False
+        await asyncio.sleep(20)
+        return None
+
+    return wrapper
+
 
 class JDownloader:
-    """Class that handles connecting and passing links to JDownloader"""
+    """Class that handles connecting and passing links to JDownloader."""
 
-    def __init__(self, manager: Manager):
+    def __init__(self, manager: Manager) -> None:
         self.enabled = manager.config_manager.settings_data["Runtime_Options"]["send_unsupported_to_jdownloader"]
         self.jdownloader_device = manager.config_manager.authentication_data["JDownloader"]["jdownloader_device"]
         self.jdownloader_username = manager.config_manager.authentication_data["JDownloader"]["jdownloader_username"]
@@ -32,40 +58,30 @@ class JDownloader:
         self.jdownloader_download_dir = Path(self.jdownloader_download_dir)
         self.jdownloader_agent = field(init=False)
 
+    @error_wrapper
     async def jdownloader_setup(self) -> None:
-        """Setup function for JDownloader"""
-        try:
-            if not all((self.jdownloader_username, self.jdownloader_password, self.jdownloader_device)):
-                raise JDownloaderError("JDownloader credentials were not provided.")
-            jd = myjdapi.Myjdapi()
-            jd.set_app_key("CYBERDROP-DL")
-            jd.connect(self.jdownloader_username, self.jdownloader_password)
-            self.jdownloader_agent = jd.get_device(self.jdownloader_device)
-            return
-
-        except JDownloaderError as e:
-            msg = e.message
-
-        except myjdapi.MYJDDeviceNotFoundException:
-            msg = f"Device not found ({self.jdownloader_device})"
-
-        except myjdapi.MYJDApiException as e:
-            msg = e
-
-        await log(f"Failed JDownloader setup: {msg}", 40)
-        self.enabled = False
-        time.sleep(20)
+        """Setup function for JDownloader."""
+        if not all((self.jdownloader_username, self.jdownloader_password, self.jdownloader_device)):
+            msg = "JDownloader credentials were not provided."
+            raise JDownloaderError(msg)
+        jd = myjdapi.Myjdapi()
+        jd.set_app_key("CYBERDROP-DL")
+        jd.connect(self.jdownloader_username, self.jdownloader_password)
+        self.jdownloader_agent = jd.get_device(self.jdownloader_device)
 
     async def direct_unsupported_to_jdownloader(
-        self, url: URL, title: str, relative_download_folder: Path | None = None
+        self,
+        url: URL,
+        title: str,
+        relative_download_path: Path | None = None,
     ) -> None:
-        """Sends links to JDownloader"""
+        """Sends links to JDownloader."""
         try:
             assert url.host is not None
             assert self.jdownloader_agent is not None
             download_folder = self.jdownloader_download_dir
-            if relative_download_folder:
-                download_folder = download_folder / relative_download_folder
+            if relative_download_path:
+                download_folder = download_folder / relative_download_path
             self.jdownloader_agent.linkgrabber.add_links(
                 [
                     {
@@ -74,8 +90,8 @@ class JDownloader:
                         "packageName": title if title else "Cyberdrop-DL",
                         "destinationFolder": str(download_folder.resolve()),
                         "overwritePackagizerRules": True,
-                    }
-                ]
+                    },
+                ],
             )
         except (AssertionError, myjdapi.MYJDApiException) as e:
-            raise JDownloaderError(e) from None
+            raise JDownloaderError(e) from e

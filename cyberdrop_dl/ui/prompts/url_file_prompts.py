@@ -7,11 +7,11 @@ from rich.console import Console
 console = Console()
 
 
-def edit_urls_prompt(file: Path, vi_mode: bool, fix_strings=True) -> None:
-    """Edit the URLs file"""
+def edit_urls_prompt(file: Path, vi_mode: bool, fix_strings: bool = True) -> None:
+    """Edit the URLs file."""
     console.clear()
     console.print(f"Editing URLs: {file}")
-    with open(file) as f:
+    with file.open() as f:
         existing_urls = f.read()
 
     result = inquirer.text(
@@ -26,5 +26,5 @@ def edit_urls_prompt(file: Path, vi_mode: bool, fix_strings=True) -> None:
         result = result.replace(" ", "\n")
         result = re.sub(r"(\n)+", "\n", result)
 
-    with open(file, "w") as f:
+    with file.open("w") as f:
         f.write(result)

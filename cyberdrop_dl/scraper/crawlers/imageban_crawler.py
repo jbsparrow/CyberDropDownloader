@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import calendar
+import contextlib
 import datetime
 from typing import TYPE_CHECKING
 
@@ -19,14 +20,14 @@ if TYPE_CHECKING:
 
 
 class ImageBanCrawler(Crawler):
-    def __init__(self, manager: Manager):
+    def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "imageban", "ImageBan")
         self.request_limiter = AsyncLimiter(10, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url"""
+        """Determines where to send the scrape item based on the url."""
         task_id = await self.scraping_progress.add_task(scrape_item.url)
 
         if "a" in scrape_item.url.parts:
@@ -42,7 +43,7 @@ class ImageBanCrawler(Crawler):
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a gallery"""
+        """Scrapes a gallery."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
@@ -50,19 +51,19 @@ class ImageBanCrawler(Crawler):
         scrape_item.part_of_album = True
 
         title = await self.create_title(
-            soup.select_one("title").get_text().replace("Просмотр альбома: ", ""), scrape_item.album_id, None
+            soup.select_one("title").get_text().replace("Просмотр альбома: ", ""),
+            scrape_item.album_id,
+            None,
         )
         content_block = soup.select_one('div[class="row text-center"]')
         images = content_block.select("a")
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
 
-        try:
+        with contextlib.suppress(IndexError, TypeError):
             scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
                 "maximum_number_of_children"
             ][scrape_item.type]
-        except (IndexError, TypeError):
-            pass
 
         for image in images:
             link_path = image.get("href")
@@ -70,31 +71,24 @@ class ImageBanCrawler(Crawler):
             if "javascript:void(0)" in link_path:
                 continue
 
-            if link_path.startswith("/"):
-                link = URL("https://" + scrape_item.url.host + link_path)
-            else:
-                link = URL(link_path)
+            link = URL("https://" + scrape_item.url.host + link_path) if link_path.startswith("/") else URL(link_path)
 
             new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.children += 1
-            if scrape_item.children_limit:
-                if scrape_item.children >= scrape_item.children_limit:
-                    raise MaxChildrenError(origin=scrape_item)
+            if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
+                raise MaxChildrenError(origin=scrape_item)
 
         next_page = soup.select_one('a[class*="page-link next"]')
         if next_page:
             link_path = next_page.get("href")
-            if link_path.startswith("/"):
-                link = URL("https://" + scrape_item.url.host + link_path)
-            else:
-                link = URL(link_path)
+            link = URL("https://" + scrape_item.url.host + link_path) if link_path.startswith("/") else URL(link_path)
             new_scrape_item = await self.create_scrape_item(scrape_item, link, "", True)
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def compilation(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a compilation"""
+        """Scrapes a compilation."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
@@ -105,27 +99,24 @@ class ImageBanCrawler(Crawler):
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
 
-        try:
+        with contextlib.suppress(IndexError, TypeError):
             scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
                 "maximum_number_of_children"
             ][scrape_item.type]
-        except (IndexError, TypeError):
-            pass
 
         for image in images:
             link = URL(image.get("src"))
             date = await self.parse_datetime(f"{(link.parts[2])}-{(link.parts[3])}-{(link.parts[4])}")
             scrape_item.possible_datetime = date
-            filename, ext = await get_filename_and_ext(link.name)
+            filename, ext = get_filename_and_ext(link.name)
             await self.handle_file(link, scrape_item, filename, ext)
             scrape_item.children += 1
-            if scrape_item.children_limit:
-                if scrape_item.children >= scrape_item.children_limit:
-                    raise MaxChildrenError(origin=scrape_item)
+            if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
+                raise MaxChildrenError(origin=scrape_item)
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an image"""
+        """Scrapes an image."""
         if await self.check_complete_from_referer(scrape_item):
             return
 
@@ -133,26 +124,26 @@ class ImageBanCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         date = await self.parse_datetime(
-            f"{(scrape_item.url.parts[2])}-{(scrape_item.url.parts[3])}-{(scrape_item.url.parts[4])}"
+            f"{(scrape_item.url.parts[2])}-{(scrape_item.url.parts[3])}-{(scrape_item.url.parts[4])}",
         )
         scrape_item.possible_datetime = date
 
         image = soup.select_one("img[id=img_main]")
         if image:
             link = URL(image.get("src"))
-            filename, ext = await get_filename_and_ext(link.name)
+            filename, ext = get_filename_and_ext(link.name)
             await self.handle_file(link, scrape_item, filename, ext)
 
     @error_handling_wrapper
     async def handle_direct(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an image"""
-        filename, ext = await get_filename_and_ext(scrape_item.url.name)
+        """Scrapes an image."""
+        filename, ext = get_filename_and_ext(scrape_item.url.name)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @staticmethod
     async def parse_datetime(date: str) -> int:
-        """Parses a datetime string into a unix timestamp"""
+        """Parses a datetime string into a unix timestamp."""
         date = datetime.datetime.strptime(date, "%Y-%m-%d")
         return calendar.timegm(date.timetuple())

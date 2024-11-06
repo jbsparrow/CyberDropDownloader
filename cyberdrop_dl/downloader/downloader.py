@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 import asyncio
-import os
+import contextlib
 from dataclasses import Field, field
 from functools import wraps
 from http import HTTPStatus
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 import aiohttp
-import filedate
+from filedate import File
 
 from cyberdrop_dl.clients.download_client import is_4xx_client_error
-from cyberdrop_dl.clients.errors import CDLBaseError, DownloadError
+from cyberdrop_dl.clients.errors import CDLBaseError, DownloadError, InsufficientFreeSpaceError, RestrictedFiletypeError
 from cyberdrop_dl.managers.real_debrid.errors import RealDebridError
 from cyberdrop_dl.utils.utilities import CustomHTTPStatus, log
 
@@ -22,16 +22,16 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem
 
 
-def retry(f):
-    """This function is a wrapper that handles retrying for failed downloads"""
+def retry(func: Callable) -> None:
+    """This function is a wrapper that handles retrying for failed downloads."""
 
-    @wraps(f)
-    async def wrapper(self: Downloader, *args, **kwargs):
+    @wraps(func)
+    async def wrapper(self: Downloader, *args, **kwargs) -> None:
         media_item: MediaItem = args[0]
         while True:
-            e_origin = exc_info = None
+            origin = exc_info = None
             try:
-                return await f(self, *args, **kwargs)
+                return await func(self, *args, **kwargs)
             except DownloadError as e:
                 await self.attempt_task_removal(media_item)
 
@@ -44,56 +44,49 @@ def retry(f):
                 if e.status != 999:
                     media_item.current_attempt += 1
 
-                if hasattr(e, "status") and hasattr(e, "message"):
-                    e_log_detail = f"with status {e.status} and message: {e.message}"
-                elif hasattr(e, "status"):
-                    e_log_detail = f"with status {e.status}"
-                else:
-                    e_log_detail = f"with error {e}"
+                log_message = f"with status {e.status} and message: {e.message}"
 
-                await log(f"{self.log_prefix} failed: {media_item.url} {e_log_detail}", 40)
+                await log(f"{self.log_prefix} failed: {media_item.url} {log_message}", 40)
 
                 if media_item.current_attempt >= max_attempts:
                     await self.manager.progress_manager.download_stats_progress.add_failure(e.ui_message)
                     await self.manager.log_manager.write_download_error_log(
-                        media_item.url, e.message, media_item.referer
+                        media_item.url,
+                        e.message,
+                        media_item.referer,
                     )
                     await self.manager.progress_manager.download_progress.add_failed()
                     break
 
-                await log(
-                    f"Retrying {self.log_prefix.lower()}: {media_item.url} ,retry attempt: {media_item.current_attempt + 1}",
-                    20,
-                )
+                retrying_message = f"Retrying {self.log_prefix.lower()}: {media_item.url} ,retry attempt: {media_item.current_attempt + 1}"
+                await log(retrying_message, 20)
                 continue
 
-            except CDLBaseError as err:
-                e_log_detail = e_log_message = err.message
-                e_ui_failure = err.ui_message
-                e_origin = err.origin
+            except CDLBaseError as e:
+                log_message = log_message_short = e.message
+                ui_message = e.ui_message
+                origin = e.origin
 
-            except RealDebridError as err:
-                e_log_detail = e_log_message = f"RealDebridError - {err.error}"
-                e_ui_failure = f"RD - {err.error}"
+            except RealDebridError as e:
+                log_message = log_message_short = f"RealDebridError - {e.error}"
+                ui_message = f"RD - {e.error}"
 
-            except Exception as err:
-                exc_info = True
-                if hasattr(err, "status") and hasattr(err, "message"):
-                    e_log_detail = e_log_message = e_ui_failure = f"{err.status} - {err.message}"
-                else:
-                    e_log_detail = str(err)
-                    e_log_message = "See Log for Details"
-                    e_ui_failure = "Unknown"
+            except Exception as e:
+                exc_info = e
+                log_message = str(e)
+                log_message_short = "See Log for Details"
+                ui_message = "Unknown"
 
-                await log(
-                    f"{self.log_prefix} failed: {media_item.url} with error: {e_log_detail}", 40, exc_info=exc_info
-                )
+                status = getattr(e, "status", None)
+                message = getattr(e, "message", None)
+                if status and message:
+                    log_message = log_message_short = ui_message = f"{status} - {message}"
 
-            if not exc_info:
-                await log(f"{self.log_prefix} failed: {media_item.url} with error: {e_log_detail}", 40)
+            failed_message = f"{self.log_prefix} failed: {media_item.url} with error: {log_message}"
+            await log(failed_message, 40, exc_info=exc_info)
             await self.attempt_task_removal(media_item)
-            await self.manager.log_manager.write_download_error_log(media_item.url, e_log_message, e_origin)
-            await self.manager.progress_manager.download_stats_progress.add_failure(e_ui_failure)
+            await self.manager.log_manager.write_download_error_log(media_item.url, log_message_short, origin)
+            await self.manager.progress_manager.download_stats_progress.add_failure(ui_message)
             await self.manager.progress_manager.download_progress.add_failed()
             break
 
@@ -101,7 +94,7 @@ def retry(f):
 
 
 class Downloader:
-    def __init__(self, manager: Manager, domain: str):
+    def __init__(self, manager: Manager, domain: str) -> None:
         self.manager: Manager = manager
         self.domain: str = domain
 
@@ -118,7 +111,7 @@ class Downloader:
         self.log_prefix = "Download attempt (unsupported domain)" if domain == "no_crawler" else "Download"
 
     async def startup(self) -> None:
-        """Starts the downloader"""
+        """Starts the downloader."""
         self.client = self.manager.client_manager.downloader_session
         self._semaphore = asyncio.Semaphore(await self.manager.download_manager.get_download_limit(self.domain))
 
@@ -127,7 +120,7 @@ class Downloader:
             self.manager.path_manager.sorted_dir.mkdir(parents=True, exist_ok=True)
 
     async def run(self, media_item: MediaItem) -> None:
-        """Runs the download loop"""
+        """Runs the download loop."""
         self.waiting_items += 1
         media_item.current_attempt = 0
 
@@ -143,7 +136,6 @@ class Downloader:
                     if isinstance(media_item.file_lock_reference_name, Field):
                         media_item.file_lock_reference_name = media_item.filename
                     await self._file_lock.check_lock(media_item.file_lock_reference_name)
-
                     await self.download(media_item)
                 except Exception as e:
                     await log(f"{self.log_prefix} failed: {media_item.url} with error {e}", 40, exc_info=True)
@@ -157,22 +149,19 @@ class Downloader:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def check_file_can_download(self, media_item: MediaItem) -> bool:
-        """Checks if the file can be downloaded"""
+    async def check_file_can_download(self, media_item: MediaItem) -> None:
+        """Checks if the file can be downloaded."""
         if not await self.manager.download_manager.check_free_space(media_item.download_folder):
-            await log(f"{self.log_prefix} failed {media_item.url} due to insufficient free space", 10)
-            return False, 0
+            raise InsufficientFreeSpaceError(origin=media_item)
         if not await self.manager.download_manager.check_allowed_filetype(media_item):
-            await log(f"{self.log_prefix} skipped {media_item.url} due to filetype restrictions", 10)
-            return False, 1
-        return True, -1
+            raise RestrictedFiletypeError(origin=media_item)
 
     async def set_file_datetime(self, media_item: MediaItem, complete_file: Path) -> None:
-        """Sets the file's datetime"""
+        """Sets the file's datetime."""
         if self.manager.config_manager.settings_data["Download_Options"]["disable_file_timestamps"]:
             return
         if not isinstance(media_item.datetime, Field):
-            file = filedate.File(str(complete_file))
+            file = File(str(complete_file))
             file.set(
                 created=media_item.datetime,
                 modified=media_item.datetime,
@@ -180,94 +169,73 @@ class Downloader:
             )
 
     async def attempt_task_removal(self, media_item: MediaItem) -> None:
-        """Attempts to remove the task from the progress bar"""
+        """Attempts to remove the task from the progress bar."""
         if not isinstance(media_item.task_id, Field):
-            try:
+            with contextlib.suppress(ValueError):
                 await self.manager.progress_manager.file_progress.remove_file(media_item.task_id)
-            except ValueError:
-                pass
         media_item.task_id = field(init=False)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @retry
     async def download(self, media_item: MediaItem) -> None:
-        """Downloads the media item"""
+        """Downloads the media item."""
+        origin = media_item.referer
         try:
             if not isinstance(media_item.current_attempt, int):
                 media_item.current_attempt = 1
 
-            can_download, reason = await self.check_file_can_download(media_item)
-            if not can_download:
-                if reason == 0:
-                    await self.manager.progress_manager.download_stats_progress.add_failure("Insufficient Free Space")
-                    await self.manager.log_manager.write_download_error_log(
-                        media_item.url, "Insufficient Free Space", media_item.referer
-                    )
-                    await self.manager.progress_manager.download_progress.add_failed()
-                else:
-                    await self.manager.progress_manager.download_progress.add_skipped()
-                return
-
+            await self.check_file_can_download(media_item)
             downloaded = await self.client.download_file(self.manager, self.domain, media_item)
-
             if downloaded:
-                os.chmod(media_item.complete_file, 0o666)
+                Path.chmod(media_item.complete_file, 0o666)
                 await self.set_file_datetime(media_item, media_item.complete_file)
                 await self.attempt_task_removal(media_item)
                 await self.manager.progress_manager.download_progress.add_completed()
 
+        except RestrictedFiletypeError:
+            await self.manager.progress_manager.download_progress.add_skipped()
+            await self.attempt_task_removal(media_item)
+
+        except (DownloadError, aiohttp.ClientResponseError) as e:
+            ui_message = getattr(e, "ui_message", e.status)
+            log_message_short = log_message = f"{e.status} - {e.message}"
+            await log(f"{self.log_prefix} failed: {media_item.url} with error: {log_message}", 40)
+            await self.manager.log_manager.write_download_error_log(media_item.url, log_message_short, origin)
+            await self.manager.progress_manager.download_stats_progress.add_failure(ui_message)
+            await self.manager.progress_manager.download_progress.add_failed()
+            await self.attempt_task_removal(media_item)
+
         except (
             aiohttp.ClientPayloadError,
             aiohttp.ClientOSError,
-            aiohttp.ClientResponseError,
             ConnectionResetError,
-            DownloadError,
             FileNotFoundError,
             PermissionError,
             aiohttp.ServerDisconnectedError,
             asyncio.TimeoutError,
             aiohttp.ServerTimeoutError,
-        ) as err:
-            e_origin = media_item.referer
-
-            if hasattr(err, "status") and await self.is_failed(err.status):
-                e_ui_failure = err.ui_message if isinstance(err, CDLBaseError) else err.status
-
-                if hasattr(err, "message"):
-                    e_log_detail = e_log_message = f"{err.status} - {err.message}"
-                else:
-                    e_log_detail = str(err)
-                    e_log_message = f"{err.status}"
-
-                await log(f"{self.log_prefix} failed: {media_item.url} with error: {e_log_detail}", 40)
-                await self.manager.log_manager.write_download_error_log(media_item.url, e_log_message, e_origin)
-                await self.manager.progress_manager.download_stats_progress.add_failure(e_ui_failure)
-                await self.manager.progress_manager.download_progress.add_failed()
-                await self.attempt_task_removal(media_item)
-                return
-
+        ) as e:
+            ui_message = getattr(e, "status", type(e).__name__)
             if isinstance(media_item.partial_file, Path) and media_item.partial_file.is_file():
                 size = media_item.partial_file.stat().st_size
                 if (
                     media_item.filename in self._current_attempt_filesize
                     and self._current_attempt_filesize[media_item.filename] >= size
                 ):
-                    raise DownloadError(
-                        status=getattr(err, "status", type(err).__name__), message=f"{self.log_prefix} failed"
-                    ) from None
+                    raise DownloadError(ui_message, message=f"{self.log_prefix} failed") from None
                 self._current_attempt_filesize[media_item.filename] = size
                 media_item.current_attempt = 0
                 raise DownloadError(status=999, message="Download timeout reached, retrying") from None
 
-            message = err.message if hasattr(err, "message") else str(err)
-            raise DownloadError(status=getattr(err, "status", type(err).__name__), message=message) from None
+            message = str(e)
+            raise DownloadError(ui_message, message) from e
 
     @staticmethod
-    async def is_failed(status: int):
+    def is_failed(status: int):
         return any(
             (
-                await is_4xx_client_error(status) and status != HTTPStatus.TOO_MANY_REQUESTS,
+                is_4xx_client_error(status) and status != HTTPStatus.TOO_MANY_REQUESTS,
                 status in (HTTPStatus.SERVICE_UNAVAILABLE, HTTPStatus.BAD_GATEWAY, CustomHTTPStatus.WEB_SERVER_IS_DOWN),
-            )
+            ),
         )

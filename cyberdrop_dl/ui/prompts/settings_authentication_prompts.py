@@ -16,7 +16,7 @@ console = Console()
 
 
 def edit_authentication_values_prompt(manager: Manager) -> None:
-    """Edit the authentication values"""
+    """Edit the authentication values."""
     auth = manager.config_manager.authentication_data
 
     while True:
@@ -90,7 +90,7 @@ def edit_authentication_values_prompt(manager: Manager) -> None:
 
 
 def edit_forum_authentication_values_prompt(manager: Manager) -> None:
-    """Edit the forum authentication values"""
+    """Edit the forum authentication values."""
     while True:
         console.clear()
         console.print("Editing Forum Authentication Values")
@@ -142,7 +142,7 @@ def edit_forum_authentication_values_prompt(manager: Manager) -> None:
             return
 
         # Enter Cred Values Manually
-        elif action == 2:
+        if action == 2:
             celebforum_username = inquirer.text(
                 message="Enter your CelebForum Username:",
                 default=manager.config_manager.authentication_data["Forums"]["celebforum_username"],
@@ -240,12 +240,12 @@ def edit_forum_authentication_values_prompt(manager: Manager) -> None:
             )
             manager.config_manager.authentication_data["Forums"]["xbunker_password"] = xbunker_password
             return
-        elif action == 3:
+        if action == 3:
             return
 
 
 def edit_jdownloader_authentication_values_prompt(auth: dict) -> None:
-    """Edit the JDownloader authentication values"""
+    """Edit the JDownloader authentication values."""
     console.clear()
     jdownloader_username = inquirer.text(
         message="Enter the JDownloader Username:",
@@ -266,7 +266,7 @@ def edit_jdownloader_authentication_values_prompt(auth: dict) -> None:
 
 
 def edit_reddit_authentication_values_prompt(auth: dict) -> None:
-    """Edit the reddit authentication values"""
+    """Edit the reddit authentication values."""
     console.clear()
     console.print("You can create a Reddit App to use here: https://www.reddit.com/prefs/apps/")
     reddit_secret = inquirer.text(

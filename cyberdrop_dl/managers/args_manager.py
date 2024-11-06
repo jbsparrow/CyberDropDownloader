@@ -9,7 +9,7 @@ from cyberdrop_dl.utils.args.args import parse_args
 
 
 class ArgsManager:
-    def __init__(self):
+    def __init__(self) -> None:
         self.parsed_args = {}
 
         self.proxy = ""
@@ -56,8 +56,18 @@ class ArgsManager:
         self.after = None
         self.before = None
 
+        self._convert_to_paths = [
+            "input_file",
+            "download_dir",
+            "config_file",
+            "appdata_dir",
+            "log_dir",
+            "sort_folder",
+            "scan_folder",
+        ]
+
     def startup(self) -> None:
-        """Parses arguments and sets variables accordingly"""
+        """Parses arguments and sets variables accordingly."""
         if self.parsed_args:
             return
 
@@ -66,6 +76,11 @@ class ArgsManager:
         self.immediate_download = self.parsed_args["download"]
         self.load_config_name = self.parsed_args["config"]
         self.vi_mode = self.parsed_args["vi_mode"]
+
+        for arg in self._convert_to_paths:
+            value = self.parsed_args.get(arg)
+            if value:
+                setattr(self, arg, Path(value))
 
         if self.parsed_args["no_ui"]:
             self.immediate_download = True
@@ -93,25 +108,13 @@ class ArgsManager:
         if self.parsed_args["retry_maintenance"]:
             self.retry_maintenance = True
             self.immediate_download = True
-        if self.parsed_args["input_file"]:
-            self.input_file = Path(self.parsed_args["input_file"])
-        if self.parsed_args["output_folder"]:
-            self.download_dir = Path(self.parsed_args["output_folder"])
-        if self.parsed_args["appdata_folder"]:
-            self.appdata_dir = Path(self.parsed_args["appdata_folder"])
+
         if self.parsed_args["config_file"]:
-            self.config_file = Path(self.parsed_args["config_file"])
             self.immediate_download = True
-        if self.parsed_args["log_folder"]:
-            self.log_dir = Path(self.parsed_args["log_folder"])
         if self.parsed_args["sort_downloads"]:
             self.sort_downloads = True
         if not self.parsed_args["sort_all_downloads"]:
             self.sort_cdl_only = True
-        if self.parsed_args["sort_folder"]:
-            self.sort_folder = Path(self.parsed_args["sort_folder"])
-        if self.parsed_args["scan_folder"]:
-            self.scan_folder = Path(self.parsed_args["scan_folder"])
         if self.parsed_args["main_log_filename"]:
             self.main_log_filename = self.parsed_args["main_log_filename"]
         if self.parsed_args["last_forum_post_filename"]:

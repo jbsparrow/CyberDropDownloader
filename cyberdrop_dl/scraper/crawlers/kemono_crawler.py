@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import calendar
+import contextlib
 import datetime
 import re
 from typing import TYPE_CHECKING
@@ -20,7 +21,7 @@ if TYPE_CHECKING:
 
 
 class KemonoCrawler(Crawler):
-    def __init__(self, manager: Manager):
+    def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "kemono", "Kemono")
         self.primary_base_domain = URL("https://kemono.su")
         self.api_url = URL("https://kemono.su/api/v1")
@@ -30,7 +31,7 @@ class KemonoCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url"""
+        """Determines where to send the scrape item based on the url."""
         task_id = await self.scraping_progress.add_task(scrape_item.url)
 
         if "thumbnails" in scrape_item.url.parts:
@@ -51,7 +52,7 @@ class KemonoCrawler(Crawler):
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a profile"""
+        """Scrapes a profile."""
         offset = 0
         service, user = await self.get_service_and_user(scrape_item)
         user_str = await self.get_user_str_from_profile(scrape_item)
@@ -59,16 +60,16 @@ class KemonoCrawler(Crawler):
         scrape_item.type = FILE_HOST_PROFILE
         scrape_item.children = scrape_item.children_limit = 0
 
-        try:
+        with contextlib.suppress(IndexError, TypeError):
             scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
                 "maximum_number_of_children"
             ][scrape_item.type]
-        except (IndexError, TypeError):
-            pass
         while True:
             async with self.request_limiter:
                 JSON_Resp = await self.client.get_json(
-                    self.domain, api_call.with_query({"o": offset}), origin=scrape_item
+                    self.domain,
+                    api_call.with_query({"o": offset}),
+                    origin=scrape_item,
                 )
                 offset += 50
                 if not JSON_Resp:
@@ -77,29 +78,28 @@ class KemonoCrawler(Crawler):
             for post in JSON_Resp:
                 await self.handle_post_content(scrape_item, post, user, user_str)
                 scrape_item.children += 1
-                if scrape_item.children_limit:
-                    if scrape_item.children >= scrape_item.children_limit:
-                        raise MaxChildrenError(origin=scrape_item)
+                if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
+                    raise MaxChildrenError(origin=scrape_item)
 
     @error_handling_wrapper
     async def discord(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a profile"""
+        """Scrapes a profile."""
         offset = 0
         channel = scrape_item.url.raw_fragment
         api_call = self.api_url / "discord/channel" / channel
         scrape_item.type = FILE_HOST_PROFILE
         scrape_item.children = scrape_item.children_limit = 0
 
-        try:
+        with contextlib.suppress(IndexError, TypeError):
             scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
                 "maximum_number_of_children"
             ][scrape_item.type]
-        except (IndexError, TypeError):
-            pass
         while True:
             async with self.request_limiter:
                 JSON_Resp = await self.client.get_json(
-                    self.domain, api_call.with_query({"o": offset}), origin=scrape_item
+                    self.domain,
+                    api_call.with_query({"o": offset}),
+                    origin=scrape_item,
                 )
                 offset += 150
                 if not JSON_Resp:
@@ -108,13 +108,12 @@ class KemonoCrawler(Crawler):
             for post in JSON_Resp:
                 await self.handle_post_content(scrape_item, post, channel, channel)
                 scrape_item.children += 1
-                if scrape_item.children_limit:
-                    if scrape_item.children >= scrape_item.children_limit:
-                        raise MaxChildrenError(origin=scrape_item)
+                if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
+                    raise MaxChildrenError(origin=scrape_item)
 
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a post"""
+        """Scrapes a post."""
         service, user, post_id = await self.get_service_user_and_post(scrape_item)
         user_str = await self.get_user_str_from_post(scrape_item)
         api_call = self.api_url / service / "user" / user / "post" / post_id
@@ -124,17 +123,14 @@ class KemonoCrawler(Crawler):
 
     @error_handling_wrapper
     async def handle_post_content(self, scrape_item: ScrapeItem, post: dict, user: str, user_str: str) -> None:
-        """Handles the content of a post"""
-
+        """Handles the content of a post."""
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
 
-        try:
+        with contextlib.suppress(IndexError, TypeError):
             scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
                 "maximum_number_of_children"
             ][scrape_item.type]
-        except (IndexError, TypeError):
-            pass
 
         date = post.get("published") or post.get("added")
         date = date.replace("T", " ")
@@ -148,7 +144,7 @@ class KemonoCrawler(Crawler):
 
         scrape_item.children += await self.get_content_links(scrape_item, post, user_str)
 
-        async def handle_file(file_obj):
+        async def handle_file(file_obj: dict):
             link = self.primary_base_domain / ("data" + file_obj["path"])
             link = link.with_query({"f": file_obj["name"]})
             await self.create_new_scrape_item(link, scrape_item, user_str, post_title, post_id, date)
@@ -167,11 +163,11 @@ class KemonoCrawler(Crawler):
             await handle_file(file)
             scrape_item.children += 1
 
-    async def get_content_links(self, scrape_item: ScrapeItem, post: dict, user: str) -> None:
-        """Gets links out of content in post"""
+    async def get_content_links(self, scrape_item: ScrapeItem, post: dict, user: str) -> int:
+        """Gets links out of content in post."""
         content = post.get("content", "")
         if not content:
-            return
+            return 0
 
         new_children = 0
 
@@ -187,7 +183,12 @@ class KemonoCrawler(Crawler):
 
         new_title = await self.create_title(user, None, None)
         scrape_item = await self.create_scrape_item(
-            scrape_item, scrape_item.url, new_title, True, None, await self.parse_datetime(date)
+            scrape_item,
+            scrape_item.url,
+            new_title,
+            True,
+            None,
+            await self.parse_datetime(date),
         )
         await scrape_item.add_to_parent_title(post_title)
         await scrape_item.add_to_parent_title("Loose Files")
@@ -196,7 +197,8 @@ class KemonoCrawler(Crawler):
         all_links = [
             x.group().replace(".md.", ".")
             for x in re.finditer(
-                r"(?:http(?!.*\.\.)[^ ]*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]|</|'))", content
+                r"(?:http(?!.*\.\.)[^ ]*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]|</|'))",
+                content,
             )
         ]
 
@@ -211,22 +213,24 @@ class KemonoCrawler(Crawler):
             if "kemono" in link.host:
                 continue
             scrape_item = await self.create_scrape_item(
-                scrape_item, link, "", add_parent=scrape_item.url.joinpath("post", post_id)
+                scrape_item,
+                link,
+                "",
+                add_parent=scrape_item.url.joinpath("post", post_id),
             )
             await self.handle_external_links(scrape_item)
             new_children += 1
-            if scrape_item.children_limit:
-                if (new_children + scrape_item.children) >= scrape_item.children_limit:
-                    break
+            if scrape_item.children_limit and (new_children + scrape_item.children) >= scrape_item.children_limit:
+                break
         return new_children
 
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:
-        """Handles a direct link"""
+        """Handles a direct link."""
         try:
-            filename, ext = await get_filename_and_ext(scrape_item.url.query["f"])
+            filename, ext = get_filename_and_ext(scrape_item.url.query["f"])
         except NoExtensionError:
-            filename, ext = await get_filename_and_ext(scrape_item.url.name)
+            filename, ext = get_filename_and_ext(scrape_item.url.name)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -241,7 +245,7 @@ class KemonoCrawler(Crawler):
         date: str,
         add_parent: URL | None = None,
     ) -> None:
-        """Creates a new scrape item with the same parent as the old scrape item"""
+        """Creates a new scrape item with the same parent as the old scrape item."""
         post_title = None
         if self.manager.config_manager.settings_data["Download_Options"]["separate_posts"]:
             post_title = f"{date} - {title}"
@@ -250,37 +254,41 @@ class KemonoCrawler(Crawler):
 
         new_title = await self.create_title(user, None, None)
         new_scrape_item = await self.create_scrape_item(
-            old_scrape_item, link, new_title, True, None, await self.parse_datetime(date), add_parent=add_parent
+            old_scrape_item,
+            link,
+            new_title,
+            True,
+            None,
+            await self.parse_datetime(date),
+            add_parent=add_parent,
         )
         await new_scrape_item.add_to_parent_title(post_title)
         self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def get_user_str_from_post(self, scrape_item: ScrapeItem) -> str:
-        """Gets the user string from a scrape item"""
+        """Gets the user string from a scrape item."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
-        user = soup.select_one("a[class=post__user-name]").text
-        return user
+        return soup.select_one("a[class=post__user-name]").text
 
     @error_handling_wrapper
     async def get_user_str_from_profile(self, scrape_item: ScrapeItem) -> str:
-        """Gets the user string from a scrape item"""
+        """Gets the user string from a scrape item."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
-        user = soup.select_one("span[itemprop=name]").text
-        return user
+        return soup.select_one("span[itemprop=name]").text
 
     @staticmethod
     async def get_service_and_user(scrape_item: ScrapeItem) -> tuple[str, str]:
-        """Gets the service and user from a scrape item"""
+        """Gets the service and user from a scrape item."""
         user = scrape_item.url.parts[3]
         service = scrape_item.url.parts[1]
         return service, user
 
     @staticmethod
     async def get_service_user_and_post(scrape_item: ScrapeItem) -> tuple[str, str, str]:
-        """Gets the service, user and post id from a scrape item"""
+        """Gets the service, user and post id from a scrape item."""
         user = scrape_item.url.parts[3]
         service = scrape_item.url.parts[1]
         post = scrape_item.url.parts[5]
@@ -288,7 +296,7 @@ class KemonoCrawler(Crawler):
 
     @staticmethod
     async def parse_datetime(date: str) -> int:
-        """Parses a datetime string into a unix timestamp"""
+        """Parses a datetime string into a unix timestamp."""
         try:
             date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
         except ValueError:

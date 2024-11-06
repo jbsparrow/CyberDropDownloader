@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import ssl
 from http import HTTPStatus
 from typing import TYPE_CHECKING
@@ -29,9 +30,9 @@ DOWNLOAD_ERROR_ETAGS = {
 
 
 class ClientManager:
-    """Creates a 'client' that can be referenced by scraping or download sessions"""
+    """Creates a 'client' that can be referenced by scraping or download sessions."""
 
-    def __init__(self, manager: Manager):
+    def __init__(self, manager: Manager) -> None:
         self.manager = manager
         self.connection_timeout = manager.config_manager.global_settings_data["Rate_Limiting_Options"][
             "connection_timeout"
@@ -81,7 +82,7 @@ class ClientManager:
         self.global_rate_limiter = AsyncLimiter(self.rate_limit, 1)
         self.session_limit = asyncio.Semaphore(50)
         self.download_session_limit = asyncio.Semaphore(
-            self.manager.config_manager.global_settings_data["Rate_Limiting_Options"]["max_simultaneous_downloads"]
+            self.manager.config_manager.global_settings_data["Rate_Limiting_Options"]["max_simultaneous_downloads"],
         )
 
         self.scraper_session = ScraperClient(self)
@@ -91,13 +92,13 @@ class ClientManager:
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def get_downloader_spacer(self, key: str) -> float:
-        """Returns the download spacer for a domain"""
+        """Returns the download spacer for a domain."""
         if key in self.download_spacer:
             return self.download_spacer[key]
         return 0.1
 
     async def get_rate_limiter(self, domain: str) -> AsyncLimiter:
-        """Get a rate limiter for a domain"""
+        """Get a rate limiter for a domain."""
         if domain in self.domain_rate_limits:
             return self.domain_rate_limits[domain]
         return self.domain_rate_limits["other"]
@@ -106,9 +107,11 @@ class ClientManager:
 
     @staticmethod
     async def check_http_status(
-        response: ClientResponse, download: bool = False, origin: ScrapeItem | URL | None = None
+        response: ClientResponse,
+        download: bool = False,
+        origin: ScrapeItem | URL | None = None,
     ) -> None:
-        """Checks the HTTP status code and raises an exception if it's not acceptable"""
+        """Checks the HTTP status code and raises an exception if it's not acceptable."""
         status = response.status
         headers = response.headers
 
@@ -120,34 +123,27 @@ class ClientManager:
             return
 
         if any(domain in response.url.host for domain in ("gofile", "imgur")):
-            try:
+            with contextlib.suppress(ContentTypeError):
                 JSON_Resp: dict = await response.json()
-                if "status" in JSON_Resp:
-                    if "notFound" in JSON_Resp["status"]:
-                        raise ScrapeError(HTTPStatus.NOT_FOUND, origin=origin)
-                    if JSON_Resp.get("data") and "error" in JSON_Resp["data"]:
-                        raise ScrapeError(JSON_Resp["status"], JSON_Resp["data"]["error"], origin=origin)
-            except ContentTypeError:
-                pass
+                if "status" in JSON_Resp and "notFound" in JSON_Resp["status"]:
+                    raise ScrapeError(HTTPStatus.NOT_FOUND, origin=origin)
+                if "data" in JSON_Resp and "error" in JSON_Resp["data"]:
+                    raise ScrapeError(JSON_Resp["status"], JSON_Resp["data"]["error"], origin=origin)
 
-        try:
+        with contextlib.suppress(UnicodeDecodeError):
             response_text = await response.text()
             if "<title>DDoS-Guard</title>" in response_text:
                 raise DDOSGuardError(origin=origin)
-        except UnicodeDecodeError:
-            pass
 
-        if not headers.get("Content-Type"):
-            raise DownloadError(
-                status=CustomHTTPStatus.IM_A_TEAPOT, message="No content-type in response header", origin=origin
-            )
+        status = status if headers.get("Content-Type") else CustomHTTPStatus.IM_A_TEAPOT
+        message = "No content-type in response header" if headers.get("Content-Type") else None
 
-        raise DownloadError(status=status, origin=origin)
+        raise DownloadError(status=status, message=message, origin=origin)
 
     @staticmethod
-    async def check_bunkr_maint(headers):
+    async def check_bunkr_maint(headers: dict):
         if headers.get("Content-Length") == "322509" and headers.get("Content-Type") == "video/mp4":
             raise DownloadError(status="Bunkr Maintenance", message="Bunkr under maintenance")
 
-    async def check_bucket(self, size):
+    async def check_bucket(self, size: float) -> None:
         await self._leaky_bucket.acquire(size)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import calendar
+import contextlib
 import datetime
 import re
 from typing import TYPE_CHECKING
@@ -20,7 +21,7 @@ if TYPE_CHECKING:
 
 
 class ImgBBCrawler(Crawler):
-    def __init__(self, manager: Manager):
+    def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "imgbb", "ImgBB")
         self.primary_base_domain = URL("https://ibb.co")
         self.request_limiter = AsyncLimiter(10, 1)
@@ -28,7 +29,7 @@ class ImgBBCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url"""
+        """Determines where to send the scrape item based on the url."""
         task_id = await self.scraping_progress.add_task(scrape_item.url)
 
         if await self.check_direct_link(scrape_item.url):
@@ -45,7 +46,7 @@ class ImgBBCrawler(Crawler):
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album"""
+        """Scrapes an album."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url / "sub", origin=scrape_item)
 
@@ -55,15 +56,15 @@ class ImgBBCrawler(Crawler):
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
 
-        try:
+        with contextlib.suppress(IndexError, TypeError):
             scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
                 "maximum_number_of_children"
             ][scrape_item.type]
-        except (IndexError, TypeError):
-            pass
 
         title = await self.create_title(
-            soup.select_one("a[data-text=album-name]").get_text(), scrape_item.album_id, None
+            soup.select_one("a[data-text=album-name]").get_text(),
+            scrape_item.album_id,
+            None,
         )
         albums = soup.select("a[class='image-container --media']")
         for album in albums:
@@ -82,14 +83,17 @@ class ImgBBCrawler(Crawler):
             for link in links:
                 link = URL(link.get("href"))
                 new_scrape_item = await self.create_scrape_item(
-                    scrape_item, link, title, True, add_parent=scrape_item.url
+                    scrape_item,
+                    link,
+                    title,
+                    True,
+                    add_parent=scrape_item.url,
                 )
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
             scrape_item.children += 1
-            if scrape_item.children_limit:
-                if scrape_item.children >= scrape_item.children_limit:
-                    raise MaxChildrenError(origin=scrape_item)
+            if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
+                raise MaxChildrenError(origin=scrape_item)
 
             link_next = soup.select_one("a[data-pagination=next]")
             if link_next is not None:
@@ -103,7 +107,7 @@ class ImgBBCrawler(Crawler):
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an image"""
+        """Scrapes an image."""
         if await self.check_complete_from_referer(scrape_item):
             return
 
@@ -115,27 +119,27 @@ class ImgBBCrawler(Crawler):
         date = await self.parse_datetime(date)
         scrape_item.possible_datetime = date
 
-        filename, ext = await get_filename_and_ext(link.name)
+        filename, ext = get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:
-        """Handles a direct link"""
+        """Handles a direct link."""
         scrape_item.url = scrape_item.url.with_name(scrape_item.url.name.replace(".md.", ".").replace(".th.", "."))
-        filename, ext = await get_filename_and_ext(scrape_item.url.name)
+        filename, ext = get_filename_and_ext(scrape_item.url.name)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @staticmethod
     async def parse_datetime(date: str) -> int:
-        """Parses a datetime string into a unix timestamp"""
+        """Parses a datetime string into a unix timestamp."""
         date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
         return calendar.timegm(date.timetuple())
 
     @staticmethod
     async def check_direct_link(url: URL) -> bool:
-        """Determines if the url is a direct link or not"""
+        """Determines if the url is a direct link or not."""
         mapping_direct = [
             r"i.ibb.co",
         ]

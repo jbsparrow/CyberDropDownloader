@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import calendar
+import contextlib
 import datetime
 import re
 from typing import TYPE_CHECKING
@@ -19,12 +20,12 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 CDN_POSSIBILITIES = re.compile(
-    r"^(?:(?:(?:media-files|cdn|c|pizza|cdn-burger|cdn-nugget|burger|taquito|pizza|fries|meatballs|milkshake|kebab|nachos|ramen|wiener)[0-9]{0,2})|(?:(?:big-taco-|cdn-pizza|cdn-meatballs|cdn-milkshake|i.kebab|i.fries|i-nugget|i-milkshake|i-nachos|i-ramen|i-wiener)[0-9]{0,2}(?:redir)?))\.bunkr?\.[a-z]{2,3}$"
+    r"^(?:(?:(?:media-files|cdn|c|pizza|cdn-burger|cdn-nugget|burger|taquito|pizza|fries|meatballs|milkshake|kebab|nachos|ramen|wiener)[0-9]{0,2})|(?:(?:big-taco-|cdn-pizza|cdn-meatballs|cdn-milkshake|i.kebab|i.fries|i-nugget|i-milkshake|i-nachos|i-ramen|i-wiener)[0-9]{0,2}(?:redir)?))\.bunkr?\.[a-z]{2,3}$",
 )
 
 
 class BunkrrCrawler(Crawler):
-    def __init__(self, manager: Manager):
+    def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "bunkrr", "Bunkrr")
         self.primary_base_domain = URL("https://bunkr.site")
         self.request_limiter = AsyncLimiter(10, 1)
@@ -32,7 +33,7 @@ class BunkrrCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url"""
+        """Determines where to send the scrape item based on the url."""
         task_id = await self.scraping_progress.add_task(scrape_item.url)
         scrape_item.url = await self.get_stream_link(scrape_item.url)
 
@@ -51,7 +52,7 @@ class BunkrrCrawler(Crawler):
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album"""
+        """Scrapes an album."""
         scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path)
         album_id = scrape_item.url.parts[2]
         scrape_item.album_id = album_id
@@ -59,12 +60,10 @@ class BunkrrCrawler(Crawler):
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
 
-        try:
+        with contextlib.suppress(IndexError, TypeError):
             scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
                 "maximum_number_of_children"
             ][scrape_item.type]
-        except (IndexError, TypeError):
-            pass
 
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
@@ -89,7 +88,7 @@ class BunkrrCrawler(Crawler):
             # Try to get final file URL
             try:
                 if file_ext.lower() not in FILE_FORMATS["Images"] and file_ext.lower() not in FILE_FORMATS["Videos"]:
-                    raise FileNotFoundError()
+                    raise FileNotFoundError
                 src = thumbnail.replace("/thumbs/", "/")
                 src = URL(src, encoded=True)
                 src = src.with_suffix(file_ext)
@@ -98,29 +97,35 @@ class BunkrrCrawler(Crawler):
                     src = src.with_host(src.host.replace("i-", ""))
 
                 if "no-image" in src.name:
-                    raise FileNotFoundError("No image found, reverting to parent")
+                    msg = "No image found, reverting to parent"
+                    raise FileNotFoundError(msg)
 
                 new_scrape_item = await self.create_scrape_item(
-                    scrape_item, link, "", True, album_id, date, add_parent=scrape_item.url
+                    scrape_item,
+                    link,
+                    "",
+                    True,
+                    album_id,
+                    date,
+                    add_parent=scrape_item.url,
                 )
 
-                filename, ext = await get_filename_and_ext(src.name)
+                filename, ext = get_filename_and_ext(src.name)
                 if not await self.check_album_results(src, results):
                     await self.handle_file(src, new_scrape_item, filename, ext)
 
             except FileNotFoundError:
                 self.manager.task_group.create_task(
-                    self.run(ScrapeItem(link, scrape_item.parent_title, True, album_id, date))
+                    self.run(ScrapeItem(link, scrape_item.parent_title, True, album_id, date)),
                 )
 
             scrape_item.children += 1
-            if scrape_item.children_limit:
-                if scrape_item.children >= scrape_item.children_limit:
-                    raise MaxChildrenError(origin=scrape_item)
+            if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
+                raise MaxChildrenError(origin=scrape_item)
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a file"""
+        """Scrapes a file."""
         scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path)
         if await self.check_complete_from_referer(scrape_item):
             return
@@ -149,21 +154,21 @@ class BunkrrCrawler(Crawler):
         link = URL(link)
 
         try:
-            filename, ext = await get_filename_and_ext(link.name)
+            filename, ext = get_filename_and_ext(link.name)
         except NoExtensionError:
             if "get" in link.host:
                 link = await self.reinforced_link(link)
                 if not link:
                     return
-                filename, ext = await get_filename_and_ext(link.name)
+                filename, ext = get_filename_and_ext(link.name)
             else:
-                filename, ext = await get_filename_and_ext(scrape_item.url.name)
+                filename, ext = get_filename_and_ext(scrape_item.url.name)
 
         await self.handle_file(link, scrape_item, filename, ext)
 
     @error_handling_wrapper
     async def reinforced_link(self, url: URL) -> URL:
-        """Gets the download link for a given reinforced URL"""
+        """Gets the download link for a given reinforced URL."""
         """get.bunkr.su"""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, url)
@@ -172,19 +177,17 @@ class BunkrrCrawler(Crawler):
             link_container = soup.select('a[download*=""]')[-1]
         except IndexError:
             link_container = soup.select("a[class*=download]")[-1]
-        link = URL(link_container.get("href"))
-        return link
+        return URL(link_container.get("href"))
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @staticmethod
     async def is_cdn(url: URL) -> bool:
-        """Checks if a given URL is from a CDN"""
+        """Checks if a given URL is from a CDN."""
         return bool(re.match(CDN_POSSIBILITIES, url.host))
 
     async def get_stream_link(self, url: URL) -> URL:
-        """Gets the stream link for a given url"""
-
+        """Gets the stream link for a given url."""
         if not await self.is_cdn(url):
             return url
 
@@ -203,6 +206,6 @@ class BunkrrCrawler(Crawler):
 
     @staticmethod
     async def parse_datetime(date: str) -> int:
-        """Parses a datetime string into a unix timestamp"""
+        """Parses a datetime string into a unix timestamp."""
         date = datetime.datetime.strptime(date, "%H:%M:%S %d/%m/%Y")
         return calendar.timegm(date.timetuple())

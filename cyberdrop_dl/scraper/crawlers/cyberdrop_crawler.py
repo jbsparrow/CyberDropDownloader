@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import calendar
+import contextlib
 import datetime
 import re
 from typing import TYPE_CHECKING
@@ -23,7 +24,7 @@ CDN_POSSIBILITIES = re.compile(r"^(?:(?:k1)[0-9]{0,2})(?:redir)?\.cyberdrop?\.[a
 
 
 class CyberdropCrawler(Crawler):
-    def __init__(self, manager: Manager):
+    def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "cyberdrop", "Cyberdrop")
         self.api_url = URL("https://api.cyberdrop.me/api/")
         self.primary_base_domain = URL("https://cyberdrop.me/")
@@ -32,7 +33,7 @@ class CyberdropCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url"""
+        """Determines where to send the scrape item based on the url."""
         task_id = await self.scraping_progress.add_task(scrape_item.url)
 
         if "a" in scrape_item.url.parts:
@@ -45,18 +46,16 @@ class CyberdropCrawler(Crawler):
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album"""
+        """Scrapes an album."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
 
-        try:
+        with contextlib.suppress(IndexError, TypeError):
             scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
                 "maximum_number_of_children"
             ][scrape_item.type]
-        except (IndexError, TypeError):
-            pass
 
         scrape_item.album_id = scrape_item.url.parts[2]
         scrape_item.part_of_album = True
@@ -66,7 +65,9 @@ class CyberdropCrawler(Crawler):
             title = await self.create_title(soup.select_one("h1[id=title]").text, scrape_item.album_id, None)
         except AttributeError:
             raise ScrapeError(
-                404, message="No album information found in response content", origin=scrape_item
+                404,
+                message="No album information found in response content",
+                origin=scrape_item,
             ) from None
 
         date = soup.select("p[class=title]")
@@ -81,17 +82,22 @@ class CyberdropCrawler(Crawler):
             link = URL(link)
 
             new_scrape_item = await self.create_scrape_item(
-                scrape_item, link, title, True, None, date, add_parent=scrape_item.url
+                scrape_item,
+                link,
+                title,
+                True,
+                None,
+                date,
+                add_parent=scrape_item.url,
             )
             self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.children += 1
-            if scrape_item.children_limit:
-                if scrape_item.children >= scrape_item.children_limit:
-                    raise MaxChildrenError(origin=scrape_item)
+            if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
+                raise MaxChildrenError(origin=scrape_item)
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a file"""
+        """Scrapes a file."""
         scrape_item.url = await self.get_stream_link(scrape_item.url)
 
         if await self.check_complete_from_referer(scrape_item):
@@ -99,14 +105,18 @@ class CyberdropCrawler(Crawler):
 
         async with self.request_limiter:
             JSON_Resp = await self.client.get_json(
-                self.domain, self.api_url / "file" / "info" / scrape_item.url.path[3:], origin=scrape_item
+                self.domain,
+                self.api_url / "file" / "info" / scrape_item.url.path[3:],
+                origin=scrape_item,
             )
 
-        filename, ext = await get_filename_and_ext(JSON_Resp["name"])
+        filename, ext = get_filename_and_ext(JSON_Resp["name"])
 
         async with self.request_limiter:
             JSON_Resp = await self.client.get_json(
-                self.domain, self.api_url / "file" / "auth" / scrape_item.url.path[3:], origin=scrape_item
+                self.domain,
+                self.api_url / "file" / "auth" / scrape_item.url.path[3:],
+                origin=scrape_item,
             )
 
         link = URL(JSON_Resp["url"])
@@ -115,12 +125,11 @@ class CyberdropCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def get_stream_link(self, url: URL) -> URL:
-        """Gets the stream link for a given URL
+        """Gets the stream link for a given URL.
 
         NOTE: This makes a request to get the final URL (if necessary). Calling function must use `@error_handling_wrapper`
 
         """
-
         if any(part in url.parts for part in ("a", "f")):
             return url
 
@@ -133,11 +142,11 @@ class CyberdropCrawler(Crawler):
 
     @staticmethod
     def is_cdn(url: URL) -> bool:
-        """Checks if a given URL is from a CDN"""
+        """Checks if a given URL is from a CDN."""
         return bool(re.match(CDN_POSSIBILITIES, url.host))
 
     @staticmethod
     async def parse_datetime(date: str) -> int:
-        """Parses a datetime string into a unix timestamp"""
+        """Parses a datetime string into a unix timestamp."""
         date = datetime.datetime.strptime(date, "%d.%m.%Y")
         return calendar.timegm(date.timetuple())

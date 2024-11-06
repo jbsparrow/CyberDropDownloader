@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import calendar
+import contextlib
 from datetime import datetime
 from typing import TYPE_CHECKING
 
@@ -19,14 +20,14 @@ if TYPE_CHECKING:
 
 
 class PimpAndHostCrawler(Crawler):
-    def __init__(self, manager: Manager):
+    def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "pimpandhost", "PimpAndHost")
         self.request_limiter = AsyncLimiter(10, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url"""
+        """Determines where to send the scrape item based on the url."""
         task_id = await self.scraping_progress.add_task(scrape_item.url)
 
         if "album" in scrape_item.url.parts:
@@ -38,7 +39,7 @@ class PimpAndHostCrawler(Crawler):
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album"""
+        """Scrapes an album."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
@@ -48,15 +49,15 @@ class PimpAndHostCrawler(Crawler):
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
 
-        try:
+        with contextlib.suppress(IndexError, TypeError):
             scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
                 "maximum_number_of_children"
             ][scrape_item.type]
-        except (IndexError, TypeError):
-            pass
 
         title = await self.create_title(
-            soup.select_one("span[class=author-header__album-name]").get_text(), scrape_item.album_id, None
+            soup.select_one("span[class=author-header__album-name]").get_text(),
+            scrape_item.album_id,
+            None,
         )
         date = soup.select_one("span[class=date-time]").get("title")
         date = await self.parse_datetime(date)
@@ -65,13 +66,18 @@ class PimpAndHostCrawler(Crawler):
         for file in files:
             link = URL(file.get("href"))
             new_scrape_item = await self.create_scrape_item(
-                scrape_item, link, title, True, None, date, add_parent=scrape_item.url
+                scrape_item,
+                link,
+                title,
+                True,
+                None,
+                date,
+                add_parent=scrape_item.url,
             )
             self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.children += 1
-            if scrape_item.children_limit:
-                if scrape_item.children >= scrape_item.children_limit:
-                    raise MaxChildrenError(origin=scrape_item)
+            if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
+                raise MaxChildrenError(origin=scrape_item)
 
         next_page = soup.select_one("li[class=next] a")
         if next_page:
@@ -83,7 +89,7 @@ class PimpAndHostCrawler(Crawler):
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an image"""
+        """Scrapes an image."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
@@ -95,13 +101,13 @@ class PimpAndHostCrawler(Crawler):
         date = await self.parse_datetime(date)
 
         new_scrape_item = await self.create_scrape_item(scrape_item, link, "", True, None, date)
-        filename, ext = await get_filename_and_ext(link.name)
+        filename, ext = get_filename_and_ext(link.name)
         await self.handle_file(link, new_scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @staticmethod
     async def parse_datetime(date: str) -> int:
-        """Parses a datetime string into a unix timestamp"""
+        """Parses a datetime string into a unix timestamp."""
         date = datetime.strptime(date, "%A, %B %d, %Y %I:%M:%S%p %Z")
         return calendar.timegm(date.timetuple())

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
 
 
 class RedGifsCrawler(Crawler):
-    def __init__(self, manager: Manager):
+    def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "redgifs", "RedGifs")
         self.redgifs_api = URL("https://api.redgifs.com/")
         self.token = ""
@@ -25,7 +26,7 @@ class RedGifsCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url"""
+        """Determines where to send the scrape item based on the url."""
         task_id = await self.scraping_progress.add_task(scrape_item.url)
 
         if not self.token:
@@ -41,7 +42,7 @@ class RedGifsCrawler(Crawler):
 
     @error_handling_wrapper
     async def user(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a users page"""
+        """Scrapes a users page."""
         user_id = scrape_item.url.parts[-1].split(".")[0]
 
         page = 1
@@ -50,12 +51,10 @@ class RedGifsCrawler(Crawler):
         scrape_item.type = FILE_HOST_PROFILE
         scrape_item.children = scrape_item.children_limit = 0
 
-        try:
+        with contextlib.suppress(IndexError, TypeError):
             scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
                 "maximum_number_of_children"
             ][scrape_item.type]
-        except (IndexError, TypeError):
-            pass
         while page <= total_pages:
             async with self.request_limiter:
                 JSON_Resp = await self.client.get_json(
@@ -76,24 +75,31 @@ class RedGifsCrawler(Crawler):
                 except (KeyError, TypeError):
                     link = URL(links["sd"])
 
-                filename, ext = await get_filename_and_ext(link.name)
+                filename, ext = get_filename_and_ext(link.name)
                 new_scrape_item = await self.create_scrape_item(
-                    scrape_item, link, title, True, date, add_parent=scrape_item.url
+                    scrape_item,
+                    link,
+                    title,
+                    True,
+                    date,
+                    add_parent=scrape_item.url,
                 )
                 await self.handle_file(link, new_scrape_item, filename, ext)
-                if scrape_item.children_limit:
-                    if scrape_item.children >= scrape_item.children_limit:
-                        raise MaxChildrenError(origin=scrape_item)
+                if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
+                    raise MaxChildrenError(origin=scrape_item)
             page += 1
 
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a post"""
+        """Scrapes a post."""
         post_id = scrape_item.url.parts[-1].split(".")[0]
 
         async with self.request_limiter:
             JSON_Resp = await self.client.get_json(
-                self.domain, self.redgifs_api / "v2/gifs" / post_id, headers_inc=self.headers, origin=scrape_item
+                self.domain,
+                self.redgifs_api / "v2/gifs" / post_id,
+                headers_inc=self.headers,
+                origin=scrape_item,
             )
 
         title_part = JSON_Resp["gif"].get("title", "Loose Files")
@@ -103,9 +109,14 @@ class RedGifsCrawler(Crawler):
 
         link = URL(links["hd"] if "hd" in links else links["sd"])
 
-        filename, ext = await get_filename_and_ext(link.name)
+        filename, ext = get_filename_and_ext(link.name)
         new_scrape_item = await self.create_scrape_item(
-            scrape_item, link, title, True, date, add_parent=scrape_item.url
+            scrape_item,
+            link,
+            title,
+            True,
+            date,
+            add_parent=scrape_item.url,
         )
         await self.handle_file(link, new_scrape_item, filename, ext)
 
@@ -113,7 +124,7 @@ class RedGifsCrawler(Crawler):
 
     @error_handling_wrapper
     async def manage_token(self, token_url: URL) -> None:
-        """Gets/Sets the redgifs token and header"""
+        """Gets/Sets the redgifs token and header."""
         async with self.request_limiter:
             json_obj = await self.client.get_json(self.domain, token_url)
         self.token = json_obj["token"]

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import http
 import re
 from copy import deepcopy
@@ -26,7 +27,7 @@ if TYPE_CHECKING:
 
 
 class GoFileCrawler(Crawler):
-    def __init__(self, manager: Manager):
+    def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "gofile", "GoFile")
         self.api_address = URL("https://api.gofile.io")
         self.js_address = URL("https://gofile.io/dist/js/alljs.js")
@@ -39,7 +40,7 @@ class GoFileCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url"""
+        """Determines where to send the scrape item based on the url."""
         task_id = await self.scraping_progress.add_task(scrape_item.url)
 
         await self.get_token(self.api_address / "accounts", self.client)
@@ -51,7 +52,7 @@ class GoFileCrawler(Crawler):
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album"""
+        """Scrapes an album."""
         content_id = scrape_item.url.name
         scrape_item.album_id = content_id
         scrape_item.part_of_album = True
@@ -66,7 +67,7 @@ class GoFileCrawler(Crawler):
                 JSON_Resp = await self.client.get_json(
                     self.domain,
                     (self.api_address / "contents" / content_id).with_query(
-                        {"wt": self.websiteToken, "password": password}
+                        {"wt": self.websiteToken, "password": password},
                     ),
                     headers_inc=self.headers,
                     origin=scrape_item,
@@ -80,7 +81,7 @@ class GoFileCrawler(Crawler):
                     JSON_Resp = await self.client.get_json(
                         self.domain,
                         (self.api_address / "contents" / content_id).with_query(
-                            {"wt": self.websiteToken, "password": password}
+                            {"wt": self.websiteToken, "password": password},
                         ),
                         headers_inc=self.headers,
                         origin=scrape_item,
@@ -91,11 +92,10 @@ class GoFileCrawler(Crawler):
         if JSON_Resp["status"] == "error-notFound":
             raise ScrapeError(404, "Album not found", origin=scrape_item)
 
-        JSON_Resp = JSON_Resp["data"]
-
-        if "password" in JSON_Resp:
-            if JSON_Resp["passwordStatus"] in {"passwordRequired", "passwordWrong"} or not password:
-                raise PasswordProtectedError(origin=scrape_item)
+        JSON_Resp: dict = JSON_Resp["data"]
+        is_password_protected = JSON_Resp.get("password")
+        if is_password_protected and (is_password_protected in {"passwordRequired", "passwordWrong"} or not password):
+            raise PasswordProtectedError(origin=scrape_item)
 
         if JSON_Resp["canAccess"] is False:
             raise ScrapeError(403, "Album is private", origin=scrape_item)
@@ -106,12 +106,10 @@ class GoFileCrawler(Crawler):
             scrape_item.type = FILE_HOST_ALBUM
             scrape_item.children = scrape_item.children_limit = 0
 
-            try:
+            with contextlib.suppress(IndexError, TypeError):
                 scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
                     "maximum_number_of_children"
                 ][scrape_item.type]
-            except (IndexError, TypeError):
-                pass
 
         contents = JSON_Resp["children"]
         for content_id in contents:
@@ -134,7 +132,7 @@ class GoFileCrawler(Crawler):
 
             if link:
                 try:
-                    filename, ext = await get_filename_and_ext(link.name)
+                    filename, ext = get_filename_and_ext(link.name)
                     duplicate_scrape_item = deepcopy(scrape_item)
                     duplicate_scrape_item.possible_datetime = content["createTime"]
                     duplicate_scrape_item.part_of_album = True
@@ -145,15 +143,14 @@ class GoFileCrawler(Crawler):
                     await self.manager.log_manager.write_scrape_error_log(link, " No File Extension")
                     await self.manager.progress_manager.scrape_stats_progress.add_failure("No File Extension")
             scrape_item.children += 1
-            if scrape_item.children_limit:
-                if scrape_item.children >= scrape_item.children_limit:
-                    raise MaxChildrenError(origin=scrape_item)
+            if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
+                raise MaxChildrenError(origin=scrape_item)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @error_handling_wrapper
     async def get_token(self, create_acct_address: URL, session: ScraperClient) -> None:
-        """Get the token for the API"""
+        """Get the token for the API."""
         if self.token:
             self.headers["Authorization"] = f"Bearer {self.token}"
             return
@@ -195,7 +192,7 @@ class GoFileCrawler(Crawler):
         self.manager.cache_manager.save("gofile_website_token", self.websiteToken)
 
     async def set_cookie(self, session: ScraperClient) -> None:
-        """Sets the given token as a cookie into the session (and client)"""
+        """Sets the given token as a cookie into the session (and client)."""
         client_token = self.token
         morsel: http.cookies.Morsel = http.cookies.Morsel()
         morsel["domain"] = "gofile.io"

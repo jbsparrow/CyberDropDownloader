@@ -1,18 +1,19 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import os
 import re
+from enum import IntEnum
 from functools import wraps
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable
 
 import aiofiles
 import apprise
 import rich
 from aiohttp import ClientSession, FormData
-from Nonenum import IntEnum
 from rich.text import Text
 from yarl import URL
 
@@ -35,7 +36,6 @@ MAX_NAME_LENGTHS = {"FILE": 95, "FOLDER": 60}
 DEBUG_VAR = False
 CONSOLE_DEBUG_VAR = False
 
-global LOG_OUTPUT_TEXT
 LOG_OUTPUT_TEXT = Text("")
 
 RAR_MULTIPART_PATTERN = r"^part\d+"
@@ -95,8 +95,8 @@ FILE_FORMATS = {
 }
 
 
-def error_handling_wrapper(func):
-    """Wrapper handles errors for url scraping"""
+def error_handling_wrapper(func: Callable) -> Any:
+    """Wrapper handles errors for url scraping."""
 
     @wraps(func)
     async def wrapper(self: Crawler, *args, **kwargs):
@@ -113,7 +113,7 @@ def error_handling_wrapper(func):
             e_ui_failure = f"RD - {err.error}"
         except asyncio.TimeoutError:
             e_log_detail = e_log_message = e_ui_failure = "Timeout"
-        except Exception as err:
+        except Exception as err:  # noqa
             exc_info = True
             if hasattr(err, "status") and hasattr(err, "message"):
                 e_log_detail = e_log_message = e_ui_failure = f"{err.status} - {err.message}"
@@ -127,31 +127,34 @@ def error_handling_wrapper(func):
             await log(f"Scrape Failed: {link} ({e_log_detail})", 40)
         await self.manager.log_manager.write_scrape_error_log(link, e_log_message, e_origin)
         await self.manager.progress_manager.scrape_stats_progress.add_failure(e_ui_failure)
+        return None
 
     return wrapper
 
 
-async def log(message: Exception | str, level: int, sleep: int = None, **kwargs) -> None:
-    """Simple logging function"""
+async def log(message: Exception | str, level: int = 10, sleep: int | None = None, **kwargs) -> None:
+    """Simple logging function."""
     logger.log(level, message, **kwargs)
     if DEBUG_VAR:
         logger_debug.log(level, message, **kwargs)
     log_console(level, message, sleep=sleep)
 
 
-async def log_debug(message: Exception | str, level: int, sleep: int = None, *kwargs) -> None:
-    """Simple logging function"""
+async def log_debug(message: Exception | str, level: int = 10, *kwargs) -> None:
+    """Simple logging function."""
     if DEBUG_VAR:
+        message = str(message)
         logger_debug.log(level, message.encode("ascii", "ignore").decode("ascii"), *kwargs)
 
 
-async def log_debug_console(message: Exception | str, level: int, sleep: int = None):
+async def log_debug_console(message: Exception | str, level: int, sleep: int | None = None) -> None:
     if CONSOLE_DEBUG_VAR:
+        message = str(message)
         log_console(level, message.encode("ascii", "ignore").decode("ascii"), sleep=sleep)
 
 
 async def log_with_color(message: str, style: str, level: int, show_in_stats: bool = True, *kwargs) -> None:
-    """Simple logging function with color"""
+    """Simple logging function with color."""
     global LOG_OUTPUT_TEXT
     logger.log(level, message, *kwargs)
     text = Text(message, style=style)
@@ -167,7 +170,7 @@ async def get_log_output_text() -> str:
     return LOG_OUTPUT_TEXT
 
 
-async def set_log_output_text(text=Text | str) -> str:
+async def set_log_output_text(text: Text | str) -> None:
     global LOG_OUTPUT_TEXT
     if isinstance(text, str):
         text = Text(text)
@@ -176,7 +179,7 @@ async def set_log_output_text(text=Text | str) -> str:
 
 async def log_spacer(level: int, char: str = "-") -> None:
     global LOG_OUTPUT_TEXT
-    spacer = char * min(DEFAULT_CONSOLE_WIDTH / 2, 50)
+    spacer = char * min(int(DEFAULT_CONSOLE_WIDTH / 2), 50)
     rich.print("")
     LOG_OUTPUT_TEXT.append("\n", style="black")
     logger.log(level, spacer)
@@ -195,14 +198,16 @@ class CustomHTTPStatus(IntEnum):
 
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+SANITIZE_PATTERN = re.compile(r'[<>:"/\\|?*\']')
 
-async def sanitize(name: str) -> str:
-    """Simple sanitization to remove illegal characters"""
-    return re.sub(r'[<>:"/\\|?*\']', "", name).strip()
+
+def sanitize(name: str) -> str:
+    """Simple sanitization to remove illegal characters."""
+    return re.sub(SANITIZE_PATTERN, "", name).strip()
 
 
 async def sanitize_folder(title: str) -> str:
-    """Simple sanitization to remove illegal characters from titles and trim the length to be less than 60 chars"""
+    """Simple sanitization to remove illegal characters from titles and trim the length to be less than 60 chars."""
     title = title.replace("\n", "").strip()
     title = title.replace("\t", "").strip()
     title = re.sub(" +", " ", title)
@@ -220,15 +225,15 @@ async def sanitize_folder(title: str) -> str:
     return title
 
 
-async def get_filename_and_ext(filename: str, forum: bool = False) -> tuple[str, str]:
-    """Returns the filename and extension of a given file, throws NoExtensionFailure if there is no extension"""
+def get_filename_and_ext(filename: str, forum: bool = False) -> tuple[str, str]:
+    """Returns the filename and extension of a given file, throws NoExtensionFailure if there is no extension."""
     filename_parts = filename.rsplit(".", 1)
     if len(filename_parts) == 1:
-        raise NoExtensionError()
+        raise NoExtensionError
     if filename_parts[-1].isnumeric() and forum:
         filename_parts = filename_parts[0].rsplit("-", 1)
     if len(filename_parts[-1]) > 5:
-        raise NoExtensionError()
+        raise NoExtensionError
     ext = "." + filename_parts[-1].lower()
     filename = (
         filename_parts[0][: MAX_NAME_LENGTHS["FILE"]]
@@ -237,12 +242,12 @@ async def get_filename_and_ext(filename: str, forum: bool = False) -> tuple[str,
     )
     filename = filename.strip()
     filename = filename.rstrip(".")
-    filename = await sanitize(filename + ext)
+    filename = sanitize(filename + ext)
     return filename, ext
 
 
 async def get_download_path(manager: Manager, scrape_item: ScrapeItem, domain: str) -> Path:
-    """Returns the path to the download folder"""
+    """Returns the path to the download folder."""
     download_dir = manager.path_manager.download_dir
 
     if scrape_item.retry:
@@ -250,10 +255,9 @@ async def get_download_path(manager: Manager, scrape_item: ScrapeItem, domain: s
 
     if scrape_item.parent_title and scrape_item.part_of_album:
         return download_dir / scrape_item.parent_title
-    elif scrape_item.parent_title:
+    if scrape_item.parent_title:
         return download_dir / scrape_item.parent_title / f"Loose Files ({domain})"
-    else:
-        return download_dir / f"Loose Files ({domain})"
+    return download_dir / f"Loose Files ({domain})"
 
 
 async def _is_number(ext: str):
@@ -265,7 +269,7 @@ async def _is_number(ext: str):
 
 
 async def remove_id(manager: Manager, filename: str, ext: str) -> tuple[str, str]:
-    """Removes the additional string some websites adds to the end of every filename"""
+    """Removes the additional string some websites adds to the end of every filename."""
     original_filename = filename
     if manager.config_manager.settings_data["Download_Options"]["remove_generated_id_from_filenames"]:
         original_filename = filename
@@ -287,22 +291,19 @@ async def remove_id(manager: Manager, filename: str, ext: str) -> tuple[str, str
 
 
 async def purge_dir_tree(dirname: Path) -> None:
-    """Purges empty files and directories"""
-
+    """Purges empty files and directories."""
     for file in dirname.rglob("*"):
         if file.is_file() and file.stat().st_size == 0:
             file.unlink()
 
-    for parent, dirs, _ in os.walk(dirname, topdown=False):
-        for child_dir in dirs:
-            try:
-                (Path(parent) / child_dir).rmdir()
-            except OSError:
-                pass  # skip if folder is not empty
+    with contextlib.suppress(OSError):
+        for parent, dirs, _ in os.walk(dirname, topdown=False):
+            for child_dir in dirs:
+                Path(parent).joinpath(child_dir).rmdir()
 
 
-async def check_partials_and_empty_folders(manager: Manager):
-    """Checks for partial downloads and empty folders"""
+async def check_partials_and_empty_folders(manager: Manager) -> None:
+    """Checks for partial downloads and empty folders."""
     if manager.config_manager.settings_data["Runtime_Options"]["delete_partial_files"]:
         await log_with_color("Deleting partial downloads...", "bold_red", 20)
         partial_downloads = manager.path_manager.download_dir.rglob("*.part")
@@ -316,7 +317,9 @@ async def check_partials_and_empty_folders(manager: Manager):
         temp_downloads = any(Path(f).is_file() for f in await manager.db_manager.temp_table.get_temp_names())
         if temp_downloads:
             await log_with_color(
-                "There are partial downloads from the previous run, please re-run the program.", "yellow", 20
+                "There are partial downloads from the previous run, please re-run the program.",
+                "yellow",
+                20,
             )
 
     if not manager.config_manager.settings_data["Runtime_Options"]["skip_check_for_empty_folders"]:
@@ -327,25 +330,46 @@ async def check_partials_and_empty_folders(manager: Manager):
 
 
 async def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -> tuple[str]:
-    """Checks if the current version is the latest version"""
+    """Checks if the current version is the latest version."""
     import json
-    import urllib.request
 
+    from aiohttp import request
+
+    pypi_url = "https://pypi.org/pypi/cyberdrop-dl-patched/json"
     from cyberdrop_dl import __version__ as current_version
 
-    contents = urllib.request.urlopen("https://pypi.org/pypi/cyberdrop-dl-patched/json").read()
-    data = json.loads(contents)
-    latest_version = data["info"]["version"]
+    async with request("GET", pypi_url) as response:
+        contents = await response.read()
+    data: dict[str, dict] = json.loads(contents)
+    latest_version: str = data["info"]["version"]
     releases = data["releases"].keys()
+    message = color = None
+
+    is_prelease, message = check_prelease_version(current_version, releases)
 
     if current_version not in releases:
-        message = "You are on an unreleased version, skipping version check"
-        if call_from_ui:
-            rich.print(message)
-        elif log_to_console:
-            await log_with_color(message, "bold_yellow", 30)
-        return current_version, latest_version
+        message = Text("You are on an unreleased version, skipping version check")
+        color = "bold_yellow"
 
+    elif is_prelease:
+        color = "bold_red"
+
+    elif current_version != latest_version:
+        message = f"A new version of Cyberdrop-DL is available: [cyan]{latest_version}[/cyan]"
+        message = Text.from_markup(message)
+
+    else:
+        message = Text("You are currently on the latest version of Cyberdrop-DL")
+
+    if call_from_ui:
+        rich.print(message)
+    elif log_to_console:
+        await log_with_color(message.plain, color, 30)
+
+    return current_version, latest_version
+
+
+def check_prelease_version(current_version: str, releases: list[str]) -> tuple[str, Text]:
     tags = {
         "dev": "Development",
         "pre": "Pre-Release",
@@ -355,50 +379,36 @@ async def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = Fa
         "b": "Beta",
     }
 
-    latest_version_rich = f"[b cyan]{latest_version}[/b cyan]"
+    VERSION_PATTERN = r"(\d+)\.(\d+)\.(\d+)(?:\.([a-z]+)\d+|([a-z]+)\d+)"
 
-    for tag in tags:
-        if tag in current_version:
-            match = re.match(r"(\d+)\.(\d+)\.(\d+)(?:\.([a-z]+)\d+|([a-z]+)\d+)", current_version)
-            if match:
-                major_version, minor_version, patch_version, dot_tag, no_dot_tag = match.groups()
-                test_tag = dot_tag if dot_tag else no_dot_tag
+    is_prelease = next((tag for tag in tags if tag in current_version), False)
+    match = re.match(VERSION_PATTERN, current_version)
+    latest_testing_version = message = None
 
-                rough_matches = [
-                    release
-                    for release in releases
-                    if re.match(
-                        rf"{major_version}\.{minor_version}\.{patch_version}(\.{test_tag}\d+|{test_tag}\d+)", release
-                    )
-                ]
-                latest_testing_version = max(rough_matches, key=lambda x: int(re.search(r"(\d+)$", x).group()))
-                latest_testing_version_rich = f"[b cyan]{latest_testing_version}[/b cyan]"
+    if is_prelease and match:
+        major_version, minor_version, patch_version, dot_tag, no_dot_tag = match.groups()
+        test_tag = dot_tag if dot_tag else no_dot_tag
 
-                if current_version != latest_testing_version:
-                    message = f"A new {tags.get(test_tag, 'Testing').lower()} version of Cyberdrop-DL is available: "
-                    if call_from_ui:
-                        rich.print(f"{message}{latest_testing_version_rich}")
-                    elif log_to_console:
-                        await log_with_color(f"{message}{latest_testing_version}", "bold_red", 30)
-                else:
-                    if call_from_ui:
-                        rich.print(
-                            f"You are currently on the latest {tags.get(test_tag, 'Testing').lower()} version of [b cyan]{major_version}.{minor_version}.{patch_version}[/b cyan]"
-                        )
+        rough_matches = [
+            release
+            for release in releases
+            if re.match(
+                rf"{major_version}\.{minor_version}\.{patch_version}(\.{test_tag}\d+|{test_tag}\d+)",
+                release,
+            )
+        ]
+        latest_testing_version = max(rough_matches, key=lambda x: int(re.search(r"(\d+)$", x).group()))  # type: ignore
+        latest_testing_version = Text(latest_testing_version, style="cyan")
+        ui_tag = tags.get(test_tag, "Testing").lower()
 
-                return current_version, latest_testing_version
+        if current_version != latest_testing_version:
+            message = f"A new {ui_tag} version of Cyberdrop-DL is available:"
+            message = Text(message).append_text(latest_testing_version)
+        else:
+            message = f"You are currently on the latest {ui_tag} version of [b cyan]{major_version}.{minor_version}.{patch_version}[/b cyan]"
+            message = Text.from_markup(message)
 
-    if current_version != latest_version:
-        message = "A new version of Cyberdrop-DL is available: "
-        if call_from_ui:
-            rich.print(f"{message}{latest_version_rich}")
-        elif log_to_console:
-            await log_with_color(f"{message}{latest_version}", "bold_red", 30)
-    else:
-        if call_from_ui:
-            rich.print("You are currently on the latest version of Cyberdrop-DL")
-
-    return current_version, latest_version
+    return latest_testing_version, message
 
 
 async def sent_apprise_notifications(manager: Manager) -> None:
@@ -431,7 +441,10 @@ async def sent_apprise_notifications(manager: Manager) -> None:
     results = []
 
     result = apprise_obj.notify(
-        body=text.plain, title="Cyberdrop-DL", body_format=apprise.NotifyFormat.TEXT, tag="no_logs"
+        body=text.plain,
+        title="Cyberdrop-DL",
+        body_format=apprise.NotifyFormat.TEXT,
+        tag="no_logs",
     )
 
     if result is not None:
@@ -468,7 +481,7 @@ def parse_bytes(size: int) -> tuple[int, str]:
     return size, "YB"
 
 
-def parse_rich_text_by_style(text: Text, style_map: dict, default_style_map_key: str = "default"):
+def parse_rich_text_by_style(text: Text, style_map: dict, default_style_map_key: str = "default") -> str:
     plain_text = ""
     for span in text.spans:
         span_text = text.plain[span.start : span.end].rstrip("\n")
@@ -488,8 +501,7 @@ STYLE_TO_DIFF_FORMAT_MAP = {
 
 
 async def send_webhook_message(manager: Manager) -> None:
-    """Outputs the stats to a code block for webhook messages"""
-
+    """Outputs the stats to a code block for webhook messages."""
     webhook_url: str = manager.config_manager.settings_data["Logs"]["webhook_url"]
 
     if not webhook_url:
@@ -523,6 +535,5 @@ async def send_webhook_message(manager: Manager) -> None:
     )
 
     # Make an asynchronous POST request to the webhook
-    async with ClientSession() as session:
-        async with session.post(url, data=form) as response:
-            await response.text()
+    async with ClientSession() as session, session.post(url, data=form) as response:
+        await response.text()

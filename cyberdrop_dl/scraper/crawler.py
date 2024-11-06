@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 
 class Crawler(ABC):
-    def __init__(self, manager: Manager, domain: str, folder_domain: str):
+    def __init__(self, manager: Manager, domain: str, folder_domain: str) -> None:
         self.manager = manager
         self.downloader = field(init=False)
         self.scraping_progress = manager.progress_manager.scraping_progress
@@ -37,13 +37,13 @@ class Crawler(ABC):
         self.waiting_items = 0
 
     async def startup(self) -> None:
-        """Starts the crawler"""
+        """Starts the crawler."""
         self.client = self.manager.client_manager.scraper_session
         self.downloader = Downloader(self.manager, self.domain)
         await self.downloader.startup()
 
     async def run(self, item: ScrapeItem) -> None:
-        """Runs the crawler loop"""
+        """Runs the crawler loop."""
         if not item.url.host:
             return
 
@@ -63,8 +63,9 @@ class Crawler(ABC):
 
     @abstractmethod
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Director for scraping"""
-        raise NotImplementedError("Must override in child class")
+        """Director for scraping."""
+        msg = "Must override in child class"
+        raise NotImplementedError(msg)
 
     async def handle_file(
         self,
@@ -75,7 +76,7 @@ class Crawler(ABC):
         custom_filename: str | None = None,
         debrid_link: URL | None = None,
     ) -> None:
-        """Finishes handling the file and hands it off to the downloader"""
+        """Finishes handling the file and hands it off to the downloader."""
         if custom_filename:
             original_filename, filename = filename, custom_filename
         elif self.domain in ["cyberdrop", "bunkrr"]:
@@ -85,7 +86,14 @@ class Crawler(ABC):
 
         download_folder = await get_download_path(self.manager, scrape_item, self.folder_domain)
         media_item = MediaItem(
-            url, scrape_item.url, scrape_item.album_id, download_folder, filename, ext, original_filename, debrid_link
+            url,
+            scrape_item.url,
+            scrape_item.album_id,
+            download_folder,
+            filename,
+            ext,
+            original_filename,
+            debrid_link,
         )
         if scrape_item.possible_datetime:
             media_item.datetime = scrape_item.possible_datetime
@@ -115,7 +123,7 @@ class Crawler(ABC):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def check_post_number(self, post_number: int, current_post_number: int) -> tuple[bool, bool]:
-        """Checks if the program should scrape the current post"""
+        """Checks if the program should scrape the current post."""
         """Returns (scrape_post, continue_scraping)"""
         scrape_single_forum_post = self.manager.config_manager.settings_data["Download_Options"][
             "scrape_single_forum_post"
@@ -128,24 +136,29 @@ class Crawler(ABC):
                 return True, False
             return False, True
 
-        elif post_number:
-            if post_number > current_post_number:
-                return False, True
+        if post_number and post_number > current_post_number:
+            return False, True
 
         return True, True
 
     async def handle_external_links(self, scrape_item: ScrapeItem) -> None:
-        """Maps external links to the scraper class"""
-        self.manager.task_group.create_task(self.manager.scrape_mapper.map_url(scrape_item))
+        """Maps external links to the scraper class."""
+        self.manager.task_group.create_task(self.manager.scrape_mapper.filter_and_send_to_crawler(scrape_item))
 
     @error_handling_wrapper
     async def forum_login(
-        self, login_url: URL, session_cookie: str, username: str, password: str, wait_time: int = 0
+        self,
+        login_url: URL,
+        session_cookie: str,
+        username: str,
+        password: str,
+        wait_time: int = 0,
     ) -> None:
-        """Logs into a forum"""
+        """Logs into a forum."""
         if session_cookie:
             self.client.client_manager.cookies.update_cookies(
-                {"xf_user": session_cookie}, response_url=URL("https://" + login_url.host)
+                {"xf_user": session_cookie},
+                response_url=URL("https://" + login_url.host),
             )
         if (not username or not password) and not session_cookie:
             await log(f"Login wasn't provided for {login_url.host}", 30)
@@ -171,7 +184,7 @@ class Crawler(ABC):
                 inputs = soup.select("form input")
                 data = {elem["name"]: elem["value"] for elem in inputs if elem.get("name") and elem.get("value")}
                 data.update(
-                    {"login": username, "password": password, "_xfRedirect": str(URL("https://" + login_url.host))}
+                    {"login": username, "password": password, "_xfRedirect": str(URL("https://" + login_url.host))},
                 )
                 await self.client.post_data(self.domain, login_url / "login", data=data, req_resp=False)
                 await asyncio.sleep(wait_time)
@@ -186,7 +199,7 @@ class Crawler(ABC):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def check_complete_from_referer(self, scrape_item: ScrapeItem | URL) -> bool:
-        """Checks if the scrape item has already been scraped"""
+        """Checks if the scrape item has already been scraped."""
         url = scrape_item if isinstance(scrape_item, URL) else scrape_item.url
         check_complete = await self.manager.db_manager.history_table.check_complete_by_referer(self.domain, url)
         if check_complete:
@@ -196,17 +209,16 @@ class Crawler(ABC):
         return False
 
     async def get_album_results(self, album_id: str) -> bool | dict[Any, Any]:
-        """Checks whether an album has completed given its domain and album id"""
+        """Checks whether an album has completed given its domain and album id."""
         return await self.manager.db_manager.history_table.check_album(self.domain, album_id)
 
     async def check_album_results(self, url: URL, album_results: dict[Any, Any]) -> bool:
-        """Checks whether an album has completed given its domain and album id"""
+        """Checks whether an album has completed given its domain and album id."""
         url_path = await get_db_path(url.with_query(""), self.domain)
-        if album_results and url_path in album_results:
-            if album_results[url_path] != 0:
-                await log(f"Skipping {url} as it has already been downloaded", 10)
-                await self.manager.progress_manager.download_progress.add_previously_completed()
-                return True
+        if album_results and url_path in album_results and album_results[url_path] != 0:
+            await log(f"Skipping {url} as it has already been downloaded", 10)
+            await self.manager.progress_manager.download_progress.add_previously_completed()
+            return True
         return False
 
     @staticmethod
@@ -219,7 +231,7 @@ class Crawler(ABC):
         possible_datetime: int | None = None,
         add_parent: URL | None = None,
     ) -> ScrapeItem:
-        """Creates a scrape item"""
+        """Creates a scrape item."""
         scrape_item = copy.deepcopy(parent_scrape_item)
         scrape_item.url = url
         if add_parent:
@@ -234,7 +246,7 @@ class Crawler(ABC):
         return scrape_item
 
     async def create_title(self, title: str, album_id: str | None, thread_id: str | None) -> str:
-        """Creates the title for the scrape item"""
+        """Creates the title for the scrape item."""
         if not title:
             title = "Untitled"
 

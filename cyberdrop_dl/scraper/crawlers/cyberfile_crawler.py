@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import calendar
+import contextlib
 import datetime
 from typing import TYPE_CHECKING
 
@@ -18,7 +19,7 @@ if TYPE_CHECKING:
 
 
 class CyberfileCrawler(Crawler):
-    def __init__(self, manager: Manager):
+    def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "cyberfile", "Cyberfile")
         self.api_files = URL("https://cyberfile.me/account/ajax/load_files")
         self.api_details = URL("https://cyberfile.me/account/ajax/file_details")
@@ -28,7 +29,7 @@ class CyberfileCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url"""
+        """Determines where to send the scrape item based on the url."""
         task_id = await self.scraping_progress.add_task(scrape_item.url)
 
         if "folder" in scrape_item.url.parts:
@@ -42,7 +43,7 @@ class CyberfileCrawler(Crawler):
 
     @error_handling_wrapper
     async def folder(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a folder"""
+        """Scrapes a folder."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
@@ -62,36 +63,43 @@ class CyberfileCrawler(Crawler):
             scrape_item.type = FILE_HOST_ALBUM
             scrape_item.children = scrape_item.children_limit = 0
 
-            try:
+            with contextlib.suppress(IndexError, TypeError):
                 scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
                     "maximum_number_of_children"
                 ][scrape_item.type]
-            except (IndexError, TypeError):
-                pass
 
         page = 1
         while True:
             data = {"pageType": "folder", "nodeId": nodeId, "pageStart": page, "perPage": 0, "filterOrderBy": ""}
             async with self.request_limiter:
                 ajax_dict: dict = await self.client.post_data(
-                    self.domain, self.api_files, data=data, origin=scrape_item
+                    self.domain,
+                    self.api_files,
+                    data=data,
+                    origin=scrape_item,
                 )
                 if "Password Required" in ajax_dict["html"]:
                     password_data = {"folderPassword": password, "folderId": nodeId, "submitme": 1}
                     password_response: dict = await self.client.post_data(
-                        self.domain, self.api_password_process, data=password_data, origin=scrape_item
+                        self.domain,
+                        self.api_password_process,
+                        data=password_data,
+                        origin=scrape_item,
                     )
                     if not password_response.get("success"):
                         raise PasswordProtectedError(origin=scrape_item)
                     ajax_dict: dict = await self.client.post_data(
-                        self.domain, self.api_files, data=data, origin=scrape_item
+                        self.domain,
+                        self.api_files,
+                        data=data,
+                        origin=scrape_item,
                     )
 
                 ajax_soup = BeautifulSoup(ajax_dict["html"].replace("\\", ""), "html.parser")
 
             title = await self.create_title(ajax_dict["page_title"], scrape_item.album_id, None)
             num_pages = int(
-                ajax_soup.select("a[onclick*=loadImages]")[-1].get("onclick").split(",")[2].split(")")[0].strip()
+                ajax_soup.select("a[onclick*=loadImages]")[-1].get("onclick").split(",")[2].split(")")[0].strip(),
             )
 
             tile_listings = ajax_soup.select("div[class=fileListing] div[class*=fileItem]")
@@ -105,7 +113,11 @@ class CyberfileCrawler(Crawler):
                     link = URL(tile.get("dtfullurl"))
                 if link:
                     new_scrape_item = await self.create_scrape_item(
-                        scrape_item, link, title, True, add_parent=scrape_item.url
+                        scrape_item,
+                        link,
+                        title,
+                        True,
+                        add_parent=scrape_item.url,
                     )
                     self.manager.task_group.create_task(self.run(new_scrape_item))
                 else:
@@ -113,14 +125,17 @@ class CyberfileCrawler(Crawler):
                     continue
 
                 new_scrape_item = await self.create_scrape_item(
-                    scrape_item, link, title, True, add_parent=scrape_item.url
+                    scrape_item,
+                    link,
+                    title,
+                    True,
+                    add_parent=scrape_item.url,
                 )
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
                 scrape_item.children += 1
-                if scrape_item.children_limit:
-                    if scrape_item.children >= scrape_item.children_limit:
-                        raise MaxChildrenError(origin=scrape_item)
+                if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
+                    raise MaxChildrenError(origin=scrape_item)
 
             page += 1
             if page > num_pages:
@@ -128,7 +143,7 @@ class CyberfileCrawler(Crawler):
 
     @error_handling_wrapper
     async def shared(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a shared folder"""
+        """Scrapes a shared folder."""
         async with self.request_limiter:
             await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
@@ -139,12 +154,10 @@ class CyberfileCrawler(Crawler):
             scrape_item.type = FILE_HOST_ALBUM
             scrape_item.children = scrape_item.children_limit = 0
 
-            try:
+            with contextlib.suppress(IndexError, TypeError):
                 scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
                     "maximum_number_of_children"
                 ][scrape_item.type]
-            except (IndexError, TypeError):
-                pass
 
         page = 1
         while True:
@@ -170,12 +183,16 @@ class CyberfileCrawler(Crawler):
                 if folder_id:
                     new_folders.append(folder_id)
                     continue
-                elif file_id:
+                if file_id:
                     link = URL(tile.get("dtfullurl"))
 
                 if link:
                     new_scrape_item = await self.create_scrape_item(
-                        scrape_item, link, title, True, add_parent=scrape_item.url
+                        scrape_item,
+                        link,
+                        title,
+                        True,
+                        add_parent=scrape_item.url,
                     )
                     self.manager.task_group.create_task(self.run(new_scrape_item))
 
@@ -184,14 +201,17 @@ class CyberfileCrawler(Crawler):
                     continue
 
                 new_scrape_item = await self.create_scrape_item(
-                    scrape_item, link, title, True, add_parent=scrape_item.url
+                    scrape_item,
+                    link,
+                    title,
+                    True,
+                    add_parent=scrape_item.url,
                 )
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
                 scrape_item.children += 1
-                if scrape_item.children_limit:
-                    if scrape_item.children >= scrape_item.children_limit:
-                        raise MaxChildrenError(origin=scrape_item)
+                if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
+                    raise MaxChildrenError(origin=scrape_item)
 
             page += 1
             if page > num_pages and not new_folders:
@@ -203,7 +223,7 @@ class CyberfileCrawler(Crawler):
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a file"""
+        """Scrapes a file."""
         password = scrape_item.url.query.get("password", "")
         scrape_item.url = scrape_item.url.with_query(None)
         async with self.request_limiter:
@@ -212,8 +232,12 @@ class CyberfileCrawler(Crawler):
                 password_data = {"filePassword": password, "submitted": 1}
                 soup = BeautifulSoup(
                     await self.client.post_data(
-                        self.domain, scrape_item.url, data=password_data, raw=True, origin=scrape_item
-                    )
+                        self.domain,
+                        scrape_item.url,
+                        data=password_data,
+                        raw=True,
+                        origin=scrape_item,
+                    ),
                 )
                 if "File password is invalid" in soup.text:
                     raise PasswordProtectedError(origin=scrape_item)
@@ -223,7 +247,7 @@ class CyberfileCrawler(Crawler):
             script_text = script.text
             if script_text and "showFileInformation" in script_text:
                 contentId_a = script_text.split("showFileInformation(")
-                contentId_a = [x for x in contentId_a if x[0].isdigit()][0]
+                contentId_a = next(x for x in contentId_a if x[0].isdigit())
                 contentId_b = contentId_a.split(");")[0]
                 contentId = int(contentId_b)
                 await self.handle_content_id(scrape_item, contentId)
@@ -231,7 +255,7 @@ class CyberfileCrawler(Crawler):
 
     @error_handling_wrapper
     async def handle_content_id(self, scrape_item: ScrapeItem, content_id: int) -> None:
-        """Scrapes a file using the content id"""
+        """Scrapes a file using the content id."""
         data = {"u": content_id}
         async with self.request_limiter:
             ajax_dict = await self.client.post_data(self.domain, self.api_details, data=data, origin=scrape_item)
@@ -243,10 +267,7 @@ class CyberfileCrawler(Crawler):
         file_menu = ajax_soup.select_one('ul[class="dropdown-menu dropdown-info account-dropdown-resize-menu"] li a')
         file_button = ajax_soup.select_one('div[class="btn-group responsiveMobileMargin"] button')
         try:
-            if file_menu:
-                html_download_text = file_menu.get("onclick")
-            else:
-                html_download_text = file_button.get("onclick")
+            html_download_text = file_menu.get("onclick") if file_menu else file_button.get("onclick")
         except AttributeError:
             await log(f"Couldn't find download button for {scrape_item.url}", 30)
             raise ScrapeError(422, "Couldn't find download button", origin=scrape_item) from None
@@ -258,13 +279,13 @@ class CyberfileCrawler(Crawler):
         uploaded_date = await self.parse_datetime(uploaded_date)
         scrape_item.possible_datetime = uploaded_date
 
-        filename, ext = await get_filename_and_ext(link.name)
+        filename, ext = get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @staticmethod
     async def parse_datetime(date: str) -> int:
-        """Parses a datetime string into a unix timestamp"""
+        """Parses a datetime string into a unix timestamp."""
         date = datetime.datetime.strptime(date, "%d/%m/%Y %H:%M:%S")
         return calendar.timegm(date.timetuple())

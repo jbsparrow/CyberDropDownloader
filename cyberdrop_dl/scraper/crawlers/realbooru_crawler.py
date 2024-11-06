@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
@@ -17,7 +18,7 @@ if TYPE_CHECKING:
 
 
 class RealBooruCrawler(Crawler):
-    def __init__(self, manager: Manager):
+    def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "realbooru", "RealBooru")
         self.primary_base_url = URL("https://realbooru.com")
         self.request_limiter = AsyncLimiter(10, 1)
@@ -27,7 +28,7 @@ class RealBooruCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url"""
+        """Determines where to send the scrape item based on the url."""
         task_id = await self.scraping_progress.add_task(scrape_item.url)
 
         await self.set_cookies()
@@ -44,7 +45,7 @@ class RealBooruCrawler(Crawler):
 
     @error_handling_wrapper
     async def tag(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album"""
+        """Scrapes an album."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
@@ -53,12 +54,10 @@ class RealBooruCrawler(Crawler):
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
 
-        try:
+        with contextlib.suppress(IndexError, TypeError):
             scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
                 "maximum_number_of_children"
             ][scrape_item.type]
-        except (IndexError, TypeError):
-            pass
 
         content = soup.select("div[class=items] div a")
         for file_page in content:
@@ -69,41 +68,37 @@ class RealBooruCrawler(Crawler):
             new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.children += 1
-            if scrape_item.children_limit:
-                if scrape_item.children >= scrape_item.children_limit:
-                    raise MaxChildrenError(origin=scrape_item)
+            if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
+                raise MaxChildrenError(origin=scrape_item)
 
         next_page = soup.select_one("a[alt=next]")
         if next_page is not None:
             next_page = next_page.get("href")
             if next_page is not None:
-                if next_page.startswith("?"):
-                    next_page = scrape_item.url.with_query(next_page[1:])
-                else:
-                    next_page = URL(next_page)
+                next_page = scrape_item.url.with_query(next_page[1:]) if next_page.startswith("?") else URL(next_page)
                 new_scrape_item = await self.create_scrape_item(scrape_item, next_page, "")
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an image"""
+        """Scrapes an image."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
         image = soup.select_one("img[id=image]")
         if image:
             link = URL(image.get("src"))
-            filename, ext = await get_filename_and_ext(link.name)
+            filename, ext = get_filename_and_ext(link.name)
             await self.handle_file(link, scrape_item, filename, ext)
         video = soup.select_one("video source")
         if video:
             link = URL(video.get("src"))
-            filename, ext = await get_filename_and_ext(link.name)
+            filename, ext = get_filename_and_ext(link.name)
             await self.handle_file(link, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def set_cookies(self):
-        """Sets the cookies for the client"""
+    async def set_cookies(self) -> None:
+        """Sets the cookies for the client."""
         if self.cookies_set:
             return
 

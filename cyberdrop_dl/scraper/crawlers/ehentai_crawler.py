@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import calendar
+import contextlib
 import datetime
 from typing import TYPE_CHECKING
 
@@ -19,7 +20,7 @@ if TYPE_CHECKING:
 
 
 class EHentaiCrawler(Crawler):
-    def __init__(self, manager: Manager):
+    def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "e-hentai", "E-Hentai")
         self.request_limiter = AsyncLimiter(10, 1)
         self.warnings_set = False
@@ -27,7 +28,7 @@ class EHentaiCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url"""
+        """Determines where to send the scrape item based on the url."""
         task_id = await self.scraping_progress.add_task(scrape_item.url)
 
         if "g" in scrape_item.url.parts:
@@ -44,7 +45,7 @@ class EHentaiCrawler(Crawler):
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album"""
+        """Scrapes an album."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
@@ -53,24 +54,27 @@ class EHentaiCrawler(Crawler):
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
 
-        try:
+        with contextlib.suppress(IndexError, TypeError):
             scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
                 "maximum_number_of_children"
             ][scrape_item.type]
-        except (IndexError, TypeError):
-            pass
 
         images = soup.select("div[class=gdtm] div a")
         for image in images:
             link = URL(image.get("href"))
             new_scrape_item = await self.create_scrape_item(
-                scrape_item, link, title, True, None, date, add_parent=scrape_item.url
+                scrape_item,
+                link,
+                title,
+                True,
+                None,
+                date,
+                add_parent=scrape_item.url,
             )
             self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.children += 1
-            if scrape_item.children_limit:
-                if scrape_item.children >= scrape_item.children_limit:
-                    raise MaxChildrenError(origin=scrape_item)
+            if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
+                raise MaxChildrenError(origin=scrape_item)
 
         next_page_opts = soup.select('td[onclick="document.location=this.firstChild.href"]')
         next_page = None
@@ -86,7 +90,7 @@ class EHentaiCrawler(Crawler):
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an image"""
+        """Scrapes an image."""
         if await self.check_complete_from_referer(scrape_item):
             return
 
@@ -94,14 +98,14 @@ class EHentaiCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
         image = soup.select_one("img[id=img]")
         link = URL(image.get("src"))
-        filename, ext = await get_filename_and_ext(link.name)
+        filename, ext = get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @error_handling_wrapper
-    async def set_no_warnings(self, scrape_item) -> None:
-        """Sets the no warnings cookie"""
+    async def set_no_warnings(self, scrape_item: ScrapeItem) -> None:
+        """Sets the no warnings cookie."""
         self.warnings_set = True
         async with self.request_limiter:
             scrape_item.url = URL(str(scrape_item.url) + "/").update_query("nw=session")
@@ -109,7 +113,7 @@ class EHentaiCrawler(Crawler):
 
     @staticmethod
     async def parse_datetime(date: str) -> int:
-        """Parses a datetime string into a unix timestamp"""
+        """Parses a datetime string into a unix timestamp."""
         if date.count(":") == 1:
             date = date + ":00"
         date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")

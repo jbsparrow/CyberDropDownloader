@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from typing import Dict, NamedTuple, Union
+from typing import NamedTuple, Union
 
 from rich.console import Group
 from rich.panel import Panel
@@ -27,16 +27,14 @@ async def get_tasks_info_sorted(progress: Progress) -> tuple:
     ]
 
     tasks_sorted = sorted(tasks, key=lambda x: x.completed, reverse=True)
-
     were_sorted = tasks == tasks_sorted
-
     return tasks_sorted, were_sorted
 
 
 class DownloadStatsProgress:
-    """Class that keeps track of download failures and reasons"""
+    """Class that keeps track of download failures and reasons."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.progress = Progress(
             "[progress.description]{task.description}",
             BarColumn(bar_width=None),
@@ -60,11 +58,11 @@ class DownloadStatsProgress:
         )
 
     async def get_progress(self) -> Panel:
-        """Returns the progress bar"""
+        """Returns the progress bar."""
         return self.panel
 
     async def update_total(self, total: int) -> None:
-        """Updates the total number download failures"""
+        """Updates the total number download failures."""
         self.panel.subtitle = f"Total Download Failures: [white]{self.failed_files}"
         for key in self.failure_types:
             self.progress.update(self.failure_types[key], total=total)
@@ -78,11 +76,13 @@ class DownloadStatsProgress:
 
             for task in tasks_sorted:
                 self.failure_types[task.description] = self.progress.add_task(
-                    task.description, total=task.total, completed=task.completed
+                    task.description,
+                    total=task.total,
+                    completed=task.completed,
                 )
 
     async def add_failure(self, failure_type: Union[str, int]) -> None:
-        """Adds a failed file to the progress bar"""
+        """Adds a failed file to the progress bar."""
         self.failed_files += 1
         if isinstance(failure_type, int):
             try:
@@ -94,12 +94,14 @@ class DownloadStatsProgress:
             self.progress.advance(self.failure_types[failure_type], 1)
         else:
             self.failure_types[failure_type] = self.progress.add_task(
-                failure_type, total=self.failed_files, completed=1
+                failure_type,
+                total=self.failed_files,
+                completed=1,
             )
         await self.update_total(self.failed_files)
 
-    async def return_totals(self) -> Dict:
-        """Returns the total number of failed files"""
+    async def return_totals(self) -> dict:
+        """Returns the total number of failed files."""
         failures = {}
         for failure_type, task_id in self.failure_types.items():
             task = next(task for task in self.progress.tasks if task.id == task_id)
@@ -108,9 +110,9 @@ class DownloadStatsProgress:
 
 
 class ScrapeStatsProgress:
-    """Class that keeps track of scraping failures and reasons"""
+    """Class that keeps track of scraping failures and reasons."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.progress = Progress(
             "[progress.description]{task.description}",
             BarColumn(bar_width=None),
@@ -134,11 +136,11 @@ class ScrapeStatsProgress:
         )
 
     async def get_progress(self) -> Panel:
-        """Returns the progress bar"""
+        """Returns the progress bar."""
         return self.panel
 
     async def update_total(self, total: int) -> None:
-        """Updates the total number of scrape failures"""
+        """Updates the total number of scrape failures."""
         self.panel.subtitle = f"Total Scrape Failures: [white]{self.failed_files}"
         for key in self.failure_types:
             self.progress.update(self.failure_types[key], total=total)
@@ -152,11 +154,13 @@ class ScrapeStatsProgress:
 
             for task in tasks_sorted:
                 self.failure_types[task.description] = self.progress.add_task(
-                    task.description, total=task.total, completed=task.completed
+                    task.description,
+                    total=task.total,
+                    completed=task.completed,
                 )
 
     async def add_failure(self, failure_type: Union[str, int]) -> None:
-        """Adds a failed site to the progress bar"""
+        """Adds a failed site to the progress bar."""
         self.failed_files += 1
         if isinstance(failure_type, int):
             failure_type = str(failure_type) + " HTTP Status"
@@ -165,20 +169,22 @@ class ScrapeStatsProgress:
             self.progress.advance(self.failure_types[failure_type], 1)
         else:
             self.failure_types[failure_type] = self.progress.add_task(
-                failure_type, total=self.failed_files, completed=1
+                failure_type,
+                total=self.failed_files,
+                completed=1,
             )
         await self.update_total(self.failed_files)
 
     async def add_unsupported(self, sent_to_jdownloader: bool = False) -> None:
-        """Adds an unsupported url to the progress bar"""
+        """Adds an unsupported url to the progress bar."""
         self.unsupported_urls += 1
         if sent_to_jdownloader:
             self.sent_to_jdownloader += 1
         else:
             self.unsupported_urls_skipped += 1
 
-    async def return_totals(self) -> Dict:
-        """Returns the total number of failed sites and reasons"""
+    async def return_totals(self) -> dict:
+        """Returns the total number of failed sites and reasons."""
         failures = {}
         for failure_type, task_id in self.failure_types.items():
             task = next(task for task in self.progress.tasks if task.id == task_id)

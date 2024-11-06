@@ -17,7 +17,7 @@ CSV_DELIMITER = ","
 
 
 class LogManager:
-    def __init__(self, manager: Manager):
+    def __init__(self, manager: Manager) -> None:
         self.manager = manager
         self.main_log: Path = manager.path_manager.main_log
         self.last_post_log: Path = manager.path_manager.last_post_log
@@ -26,14 +26,14 @@ class LogManager:
         self.scrape_error_log: Path = manager.path_manager.scrape_error_log
 
     def startup(self) -> None:
-        """Startup process for the file manager"""
+        """Startup process for the file manager."""
         for var in vars(self).values():
             if isinstance(var, Path):
                 var.unlink(missing_ok=True)
 
     @staticmethod
     async def write_to_csv(file: Path, **kwargs):
-        "Write to the specified csv file. kwargs are columns for the CSV"
+        """Write to the specified csv file. kwargs are columns for the CSV."""
         # padding of 1 to the left
         row = {key: f"{value} " for key, value in kwargs.items()}
         write_headers = not file.is_file()
@@ -44,24 +44,23 @@ class LogManager:
             await writer.writerow(row)
 
     async def write_last_post_log(self, url: URL) -> None:
-        """Writes to the last post log"""
+        """Writes to the last post log."""
         await self.write_to_csv(self.last_post_log, url=url)
 
     async def write_unsupported_urls_log(self, url: URL, origin: URL | None = None) -> None:
-        """Writes to the unsupported urls log"""
+        """Writes to the unsupported urls log."""
         await self.write_to_csv(self.unsupported_urls_log, url=url, origin=origin)
 
     async def write_download_error_log(self, url: URL, error_message: str, origin: URL | None = None) -> None:
-        """Writes to the download error log"""
+        """Writes to the download error log."""
         await self.write_to_csv(self.download_error_log, url=url, error=error_message, origin=origin)
 
     async def write_scrape_error_log(self, url: URL, error_message: str, origin: URL | None = None) -> None:
-        """Writes to the scrape error log"""
+        """Writes to the scrape error log."""
         await self.write_to_csv(self.scrape_error_log, url=url, error=error_message, origin=origin)
 
     async def update_last_forum_post(self) -> None:
-        """Updates the last forum post"""
-
+        """Updates the last forum post."""
         input_file = self.manager.path_manager.input_file
         if not input_file.is_file() or not self.last_post_log.is_file():
             return
@@ -70,7 +69,6 @@ class LogManager:
         await log("Updating Last Forum Posts...\n", 20)
 
         current_urls, current_base_urls, new_urls, new_base_urls = [], [], [], []
-
         async with aiofiles.open(input_file, encoding="utf8") as f:
             async for line in f:
                 url = base_url = line.strip().removesuffix("/")

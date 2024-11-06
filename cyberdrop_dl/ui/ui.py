@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import sys
 from pathlib import Path
 from textwrap import dedent
 from typing import TYPE_CHECKING
 
-import aiofiles
-from aiohttp import request
 from InquirerPy import inquirer
 from InquirerPy.validator import PathValidator
+from requests import request
 from rich import print as rprint
 from rich.console import Console
 from rich.markdown import Markdown
@@ -39,11 +39,11 @@ def bold(text: str) -> str:
     return "".join(ch + "\b" + ch for ch in text)
 
 
-def program_ui(manager: Manager):
-    """Program UI"""
+def program_ui(manager: Manager) -> None:
+    """Program UI."""
     while True:
         console.clear()
-        console.print(f"[bold]Cyberdrop Downloader (V{str(__version__)})[/bold]")
+        console.print(f"[bold]Cyberdrop Downloader (V{__version__})[/bold]")
         console.print(f"[bold]Current Config:[/bold] {manager.config_manager.loaded_config}")
 
         action = main_prompt(manager)
@@ -86,7 +86,7 @@ def program_ui(manager: Manager):
             rprint(simp_disclaimer)
 
             input("Press Enter to continue...")
-            manager.cache_manager.save("simp_disclaimer_shown", True)
+            manager.cache_manager.save("simp_disclaimer_shown", value=True)
 
         # Download
         if action == 1:
@@ -98,12 +98,12 @@ def program_ui(manager: Manager):
             break
 
         # Retry Failed Downloads
-        elif action == 3:
+        if action == 3:
             manager.args_manager.retry_failed = True
             break
 
         # Scanning folder to create hashes
-        elif action == 4:
+        if action == 4:
             path = path_prompt(manager)
             hash_directory_scanner(manager, path)
 
@@ -205,7 +205,7 @@ def program_ui(manager: Manager):
 
         elif action == 10:
             asyncio.run(check_latest_pypi(log_to_console=True, call_from_ui=True))
-            exit(0)
+            sys.exit(0)
 
         # Import Cyberdrop_V4 Items
         elif action == 11:
@@ -213,34 +213,32 @@ def program_ui(manager: Manager):
 
         elif action == 12:
             changelog_path = manager.path_manager.config_dir.parent / "CHANGELOG.md"
-            changelog_content = asyncio.run(_get_changelog(changelog_path))
+            changelog_content = _get_changelog_content(changelog_path)
 
             with console.pager(links=True):
                 console.print(Markdown(changelog_content, justify="left"))
 
         # Exit
         elif action == 13:
-            exit(0)
+            sys.exit(0)
 
 
-async def _get_changelog(changelog_path: Path):
+def _get_changelog_content(changelog_path: Path) -> str:
     url = "https://raw.githubusercontent.com/jbsparrow/CyberDropDownloader/refs/heads/master/CHANGELOG.md"
-    _, lastest_version = await check_latest_pypi(log_to_console=False)
+    _, lastest_version = asyncio.run(check_latest_pypi(log_to_console=False))
     latest_changelog = changelog_path.with_name(f"{changelog_path.stem}_{lastest_version}{changelog_path.suffix}")
     if not latest_changelog.is_file():
         changelog_pattern = f"{changelog_path.stem}*{changelog_path.suffix}"
         for old_changelog in changelog_path.parent.glob(changelog_pattern):
             old_changelog.unlink()
         try:
-            async with request("GET", url) as response:
+            with request("GET", url, timeout=10) as response:
                 response.raise_for_status()
-                async with aiofiles.open(latest_changelog, "wb") as f:
-                    await f.write(await response.read())
+                with latest_changelog.open("wb") as f:
+                    f.write(response.content)
         except Exception:
             return "UNABLE TO GET CHANGELOG INFORMATION"
 
     changelog_lines = latest_changelog.read_text(encoding="utf8").splitlines()
     # remove keep_a_changelog disclaimer
-    changelog_content = "\n".join(changelog_lines[:4] + changelog_lines[6:])
-
-    return changelog_content
+    return "\n".join(changelog_lines[:4] + changelog_lines[6:])

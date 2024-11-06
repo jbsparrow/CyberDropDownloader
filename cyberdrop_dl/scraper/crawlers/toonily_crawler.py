@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import calendar
+import contextlib
 import datetime
 from typing import TYPE_CHECKING
 
@@ -19,7 +20,7 @@ if TYPE_CHECKING:
 
 
 class ToonilyCrawler(Crawler):
-    def __init__(self, manager: Manager):
+    def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "toonily", "Toonily")
         self.primary_base_domain = URL("https://toonily.com")
         self.request_limiter = AsyncLimiter(10, 1)
@@ -27,7 +28,7 @@ class ToonilyCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url"""
+        """Determines where to send the scrape item based on the url."""
         task_id = await self.scraping_progress.add_task(scrape_item.url)
 
         if "chapter" in scrape_item.url.name:
@@ -41,23 +42,23 @@ class ToonilyCrawler(Crawler):
 
     @error_handling_wrapper
     async def series(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a series"""
+        """Scrapes a series."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         scrape_item.type = FILE_HOST_PROFILE
         scrape_item.children = scrape_item.children_limit = 0
 
-        try:
+        with contextlib.suppress(IndexError, TypeError):
             scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
                 "maximum_number_of_children"
             ][scrape_item.type]
-        except (IndexError, TypeError):
-            pass
 
         chapters = soup.select("li[class*=wp-manga-chapter] a")
         for chapter in chapters:
-            chapter_path = chapter.get("href")
+            chapter_path: str = chapter.get("href")
+            if not chapter_path:
+                continue
             if chapter_path.endswith("/"):
                 chapter_path = chapter_path[:-1]
             if chapter_path.startswith("/"):
@@ -65,28 +66,29 @@ class ToonilyCrawler(Crawler):
             else:
                 chapter_path = URL(chapter_path)
             new_scrape_item = await self.create_scrape_item(
-                scrape_item, chapter_path, "", True, add_parent=scrape_item.url
+                scrape_item,
+                chapter_path,
+                "",
+                True,
+                add_parent=scrape_item.url,
             )
             self.manager.task_group.create_task(self.run(new_scrape_item))
-            if scrape_item.children_limit:
-                if scrape_item.children >= scrape_item.children_limit:
-                    raise MaxChildrenError(origin=scrape_item)
+            if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
+                raise MaxChildrenError(origin=scrape_item)
 
     @error_handling_wrapper
     async def chapter(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an image"""
+        """Scrapes an image."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
 
-        try:
+        with contextlib.suppress(IndexError, TypeError):
             scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
                 "maximum_number_of_children"
             ][scrape_item.type]
-        except (IndexError, TypeError):
-            pass
 
         title_parts = soup.select_one("title").get_text().split(" - ")
         series_name = title_parts[0]
@@ -113,23 +115,22 @@ class ToonilyCrawler(Crawler):
                 continue
             link = URL(link)
 
-            filename, ext = await get_filename_and_ext(link.name)
+            filename, ext = get_filename_and_ext(link.name)
             await self.handle_file(link, scrape_item, filename, ext)
-            if scrape_item.children_limit:
-                if scrape_item.children >= scrape_item.children_limit:
-                    raise MaxChildrenError(origin=scrape_item)
+            if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
+                raise MaxChildrenError(origin=scrape_item)
 
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:
-        """Handles a direct link"""
+        """Handles a direct link."""
         scrape_item.url = scrape_item.url.with_name(scrape_item.url.name)
-        filename, ext = await get_filename_and_ext(scrape_item.url.name)
+        filename, ext = get_filename_and_ext(scrape_item.url.name)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @staticmethod
     async def parse_datetime(date: str) -> int:
-        """Parses a datetime string into a unix timestamp"""
+        """Parses a datetime string into a unix timestamp."""
         date = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
         return calendar.timegm(date.timetuple())

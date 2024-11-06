@@ -1,5 +1,6 @@
+from __future__ import annotations
+
 from dataclasses import field
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import aiosqlite
@@ -10,11 +11,13 @@ from cyberdrop_dl.utils.database.tables.temp_referer_table import TempRefererTab
 from cyberdrop_dl.utils.database.tables.temp_table import TempTable
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from cyberdrop_dl.managers.manager import Manager
 
 
 class DBManager:
-    def __init__(self, manager: "Manager", db_path: Path):
+    def __init__(self, manager: Manager, db_path: Path) -> None:
         self.manager = manager
         self._db_conn: aiosqlite.Connection = field(init=False)
         self._db_path: Path = db_path
@@ -27,7 +30,7 @@ class DBManager:
         self.temp_referer_table: TempRefererTable = field(init=False)
 
     async def startup(self) -> None:
-        """Startup process for the DBManager"""
+        """Startup process for the DBManager."""
         self._db_conn = await aiosqlite.connect(self._db_path)
 
         self.ignore_history = self.manager.config_manager.settings_data["Runtime_Options"]["ignore_history"]
@@ -48,12 +51,12 @@ class DBManager:
         await self.temp_referer_table.startup()
 
     async def close(self) -> None:
-        """Close the DBManager"""
+        """Close the DBManager."""
         await self.temp_referer_table.sql_drop_temp_referers()
         await self._db_conn.close()
 
     async def _pre_allocate(self) -> None:
-        """We pre-allocate 100MB of space to the SQL file just in case the user runs out of disk space"""
+        """We pre-allocate 100MB of space to the SQL file just in case the user runs out of disk space."""
         create_pre_allocation_table = "CREATE TABLE IF NOT EXISTS t(x);"
         drop_pre_allocation_table = "DROP TABLE t;"
 

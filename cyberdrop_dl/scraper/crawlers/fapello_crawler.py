@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
@@ -17,14 +18,14 @@ if TYPE_CHECKING:
 
 
 class FapelloCrawler(Crawler):
-    def __init__(self, manager: Manager):
+    def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "fapello", "Fapello")
         self.request_limiter = AsyncLimiter(5, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url"""
+        """Determines where to send the scrape item based on the url."""
         task_id = await self.scraping_progress.add_task(scrape_item.url)
 
         if not str(scrape_item.url).endswith("/"):
@@ -39,25 +40,27 @@ class FapelloCrawler(Crawler):
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a profile"""
+        """Scrapes a profile."""
         async with self.request_limiter:
             soup, response_url = await self.client.get_soup_and_return_url(
-                self.domain, scrape_item.url, origin=scrape_item
+                self.domain,
+                scrape_item.url,
+                origin=scrape_item,
             )
             if response_url != scrape_item.url:
                 return
 
         scrape_item.type = FILE_HOST_PROFILE
 
-        try:
+        with contextlib.suppress(IndexError, TypeError):
             scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
                 "maximum_number_of_children"
             ][scrape_item.type]
-        except (IndexError, TypeError):
-            pass
 
         title = await self.create_title(
-            soup.select_one('h2[class="font-semibold lg:text-2xl text-lg mb-2 mt-4"]').get_text(), None, None
+            soup.select_one('h2[class="font-semibold lg:text-2xl text-lg mb-2 mt-4"]').get_text(),
+            None,
+            None,
         )
 
         content = soup.select("div[id=content] a")
@@ -66,18 +69,25 @@ class FapelloCrawler(Crawler):
                 video_tag = post.select_one("iframe")
                 video_link = URL(video_tag.get("src"))
                 new_scrape_item = await self.create_scrape_item(
-                    scrape_item, video_link, "", True, add_parent=scrape_item.url
+                    scrape_item,
+                    video_link,
+                    "",
+                    True,
+                    add_parent=scrape_item.url,
                 )
                 await self.handle_external_links(new_scrape_item)
             else:
                 link = URL(post.get("href"))
                 new_scrape_item = await self.create_scrape_item(
-                    scrape_item, link, title, True, add_parent=scrape_item.url
+                    scrape_item,
+                    link,
+                    title,
+                    True,
+                    add_parent=scrape_item.url,
                 )
                 await self.handle_external_links(new_scrape_item)
-            if scrape_item.children_limit:
-                if scrape_item.children >= scrape_item.children_limit:
-                    raise MaxChildrenError(origin=scrape_item)
+            if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
+                raise MaxChildrenError(origin=scrape_item)
 
         next_page = soup.select_one('div[id="next_page"] a')
         if next_page:
@@ -88,7 +98,7 @@ class FapelloCrawler(Crawler):
 
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album"""
+        """Scrapes an album."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
@@ -98,21 +108,18 @@ class FapelloCrawler(Crawler):
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
 
-        try:
+        with contextlib.suppress(IndexError, TypeError):
             scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
                 "maximum_number_of_children"
             ][scrape_item.type]
-        except (IndexError, TypeError):
-            pass
 
         async with self.request_limiter:
             soup = await self.client.get_soup(self.domain, scrape_item.url)
 
         for selection in content_tags:
             link = URL(selection.get("src"))
-            filename, ext = await get_filename_and_ext(link.name)
+            filename, ext = get_filename_and_ext(link.name)
             await self.handle_file(link, scrape_item, filename, ext)
             scrape_item.children += 1
-            if scrape_item.children_limit:
-                if scrape_item.children >= scrape_item.children_limit:
-                    raise MaxChildrenError(origin=scrape_item)
+            if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
+                raise MaxChildrenError(origin=scrape_item)

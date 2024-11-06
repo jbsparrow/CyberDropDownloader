@@ -1,18 +1,25 @@
+from __future__ import annotations
+
 import asyncio
+import contextlib
+from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
 from aiolimiter.compat import wait_for
 
+if TYPE_CHECKING:
+    from cyberdrop_dl.managers.manager import Manager
+
 
 class LeakyBucket(AsyncLimiter):
-    def __init__(self, manager):
+    def __init__(self, manager: Manager) -> None:
         self.download_speed_limit = manager.config_manager.global_settings_data["Rate_Limiting_Options"][
             "download_speed_limit"
         ]
         self.max_amount = 1024 * 1024 * 10
         super().__init__(self.download_speed_limit * 1024, 1)
 
-    async def acquire(self, amount: float = 1):
+    async def acquire(self, amount: float = 1) -> None:
         if self.download_speed_limit <= 0:
             return
         if not isinstance(amount, int):
@@ -26,17 +33,14 @@ class LeakyBucket(AsyncLimiter):
             # 'early' if capacity has come up
             fut = loop.create_future()
             self._waiters[task] = fut
-            try:
+            with contextlib.suppress(asyncio.TimeoutError):
                 await wait_for(asyncio.shield(fut), 1 / self._rate_per_sec * amount, loop=loop)
-            except asyncio.TimeoutError:
-                pass
             fut.cancel()
         self._waiters.pop(task, None)
         self._level += amount
-        return None
 
     def has_capacity(self, amount: float = 1) -> bool:
-        """Check if there is enough capacity remaining in the limiter
+        """Check if there is enough capacity remaining in the limiter.
 
         :param amount: How much capacity you need to be available.
 

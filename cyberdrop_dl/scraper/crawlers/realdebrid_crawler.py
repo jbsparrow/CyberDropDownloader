@@ -8,22 +8,22 @@ from yarl import URL
 
 from cyberdrop_dl.managers.real_debrid.api import RATE_LIMIT
 from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext, log
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
 
 
 class RealDebridCrawler(Crawler):
-    def __init__(self, manager: Manager):
+    def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "real-debrid", "RealDebrid")
         self.headers = {}
         self.primary_base_domain = URL("https://real-debrid.com")
         self.request_limiter = AsyncLimiter(RATE_LIMIT, 60)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url"""
+        """Determines where to send the scrape item based on the url."""
         task_id = await self.scraping_progress.add_task(scrape_item.url)
         scrape_item.url = await self.get_original_url(scrape_item)
 
@@ -36,7 +36,7 @@ class RealDebridCrawler(Crawler):
 
     @error_handling_wrapper
     async def folder(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a folder"""
+        """Scrapes a folder."""
         original_url = scrape_item.url
         await log(f"scraping folder with RealDebrid: {original_url}", 10)
         folder_id = await self.manager.real_debrid_manager.guess_folder(original_url)
@@ -51,20 +51,25 @@ class RealDebridCrawler(Crawler):
 
         for link in links:
             new_scrape_item = await self.create_scrape_item(
-                scrape_item, link, "", True, folder_id, add_parent=original_url
+                scrape_item,
+                link,
+                "",
+                True,
+                folder_id,
+                add_parent=original_url,
             )
             await self.file(new_scrape_item)
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a file"""
+        """Scrapes a file."""
         original_url = database_url = debrid_url = scrape_item.url
         password = original_url.query.get("password", "")
 
         if await self.check_complete_from_referer(original_url):
             return
 
-        self_hosted = await self.is_self_hosted(original_url)
+        self_hosted = self.is_self_hosted(original_url)
 
         if not self_hosted:
             title = await self.create_title(f"files [{original_url.host.lower()}]", None, None)
@@ -89,14 +94,14 @@ class RealDebridCrawler(Crawler):
             if original_url.fragment:
                 database_url = database_url / "frag" / original_url.fragment
 
-        filename, ext = await get_filename_and_ext(debrid_url.name)
+        filename, ext = get_filename_and_ext(debrid_url.name)
         await self.handle_file(database_url, scrape_item, filename, ext, debrid_link=debrid_url)
 
-    async def is_self_hosted(self, url: URL):
+    def is_self_hosted(self, url: URL) -> bool:
         return any(subdomain in url.host for subdomain in ("download.", "my.")) and self.domain in url.host
 
     async def get_original_url(self, scrape_item: ScrapeItem) -> URL:
-        if await self.is_self_hosted(scrape_item.url):
+        if self.is_self_hosted(scrape_item.url):
             return scrape_item.url
 
         parts_dict = {"parts": [], "query": [], "frag": []}
@@ -104,10 +109,7 @@ class RealDebridCrawler(Crawler):
 
         original_domain = scrape_item.url.parts[1]
         for part in scrape_item.url.parts[2:]:
-            if part == "query":
-                key = part
-                continue
-            elif part == "frag":
+            if part in ("query", "frag"):
                 key = part
                 continue
             parts_dict[key].append(part)
@@ -120,5 +122,4 @@ class RealDebridCrawler(Crawler):
 
         frag = parts_dict["frag"] if parts_dict["frag"] else None
 
-        original_url = URL(f"https://{original_domain}").with_path(path).with_query(query).with_fragment(frag)
-        return original_url
+        return URL(f"https://{original_domain}").with_path(path).with_query(query).with_fragment(frag)

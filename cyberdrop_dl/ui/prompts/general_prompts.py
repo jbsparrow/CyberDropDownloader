@@ -22,7 +22,7 @@ console = Console()
 
 
 def main_prompt(manager: Manager) -> int:
-    """Main prompt for the program"""
+    """Main prompt for the program."""
     choices = [
         Choice(1, "Download"),
         Choice(2, "Download (All Configs)"),
@@ -45,7 +45,7 @@ def main_prompt(manager: Manager) -> int:
     if not simp_disclaimer_shown:
         choices = [Choice(-1, "!! VIEW DISCLAIMER !!")]
 
-    action = inquirer.select(
+    return inquirer.select(
         message="What would you like to do?",
         choices=choices,
         long_instruction="ARROW KEYS: Navigate | ENTER: Select",
@@ -53,13 +53,11 @@ def main_prompt(manager: Manager) -> int:
         vi_mode=manager.vi_mode,
     ).execute()
 
-    return action
-
 
 def manage_configs_prompt(manager: Manager) -> int:
-    """Manage Configs Prompt"""
+    """Manage Configs Prompt."""
     console.clear()
-    action = inquirer.select(
+    return inquirer.select(
         message="What would you like to do?",
         choices=[
             Choice(1, "Change Default Config"),
@@ -75,12 +73,10 @@ def manage_configs_prompt(manager: Manager) -> int:
         vi_mode=manager.vi_mode,
     ).execute()
 
-    return action
-
 
 def select_config_prompt(manager: Manager, configs: list) -> str:
-    """Select a config file from a list of configs"""
-    choice = inquirer.fuzzy(
+    """Select a config file from a list of configs."""
+    return inquirer.fuzzy(
         choices=configs,
         multiselect=False,
         validate=lambda result: len(result) > 0,
@@ -90,11 +86,9 @@ def select_config_prompt(manager: Manager, configs: list) -> str:
         vi_mode=manager.vi_mode,
     ).execute()
 
-    return choice
-
 
 def import_cyberdrop_v4_items_prompt(manager: Manager) -> None:
-    """Import Cyberdrop_V4 Items"""
+    """Import Cyberdrop_V4 Items."""
     while True:
         console.clear()
         console.print("Editing Config Values")
@@ -151,7 +145,7 @@ def import_cyberdrop_v4_items_prompt(manager: Manager) -> None:
                     try:
                         transfer_v4_db(ele, manager.path_manager.history_db)
                     except Exception as e:
-                        loop.run_until_complete(log(f"Error importing {ele.name}: {str(e)}", 20))
+                        loop.run_until_complete(log(f"Error importing {ele.name}: {e!s}", 20))
 
         # Done
         elif action == 3:
@@ -159,7 +153,7 @@ def import_cyberdrop_v4_items_prompt(manager: Manager) -> None:
 
 
 def donations_prompt(manager: Manager) -> None:
-    """Donations prompt"""
+    """Donations prompt."""
     console.clear()
     console.print("[bold]Donations[/bold]")
     console.print("")
@@ -168,7 +162,7 @@ def donations_prompt(manager: Manager) -> None:
         "\nIt has grown larger than I could've imagined and I'm very proud of it."
         "\nI have put a lot of time and effort into this program and I'm glad that people are using it."
         "\nThanks to everyone that have supported me, "
-        "it keeps me motivated to continue working on this program."
+        "it keeps me motivated to continue working on this program.",
     )
     console.print("")
     console.print("If you'd like to support me and my work, you can donate to me via the following methods:")

@@ -5,7 +5,7 @@ from cyberdrop_dl.utils.database.table_definitions import create_history, create
 
 
 def transfer_v4_db(db_path: Path, new_db_path: Path) -> None:
-    """Transfers a V4 database into V5 possession"""
+    """Transfers a V4 database into V5 possession."""
     old_db_connection = sqlite3.connect(db_path)
     if not new_db_path.exists():
         new_db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -20,9 +20,9 @@ def transfer_v4_db(db_path: Path, new_db_path: Path) -> None:
 
     old_data_revised = []
     for row in old_data_history:
-        row = list(row)
-        row[3] = str(Path(row[3]).parent)
-        old_data_revised.append(tuple(row))
+        row_list = list(row)
+        row_list[3] = str(Path(row_list[3]).parent)
+        old_data_revised.append(tuple(row_list))
 
     new_db_connection.executemany(
         "insert or ignore into media (domain, url_path, referer, download_path, download_filename, original_filename, completed) values (?, ?, ?, ?, ?, ?, ?)",

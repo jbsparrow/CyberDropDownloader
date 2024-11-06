@@ -48,9 +48,9 @@ ERROR_CODES = {
 
 
 class RealDebridError(BaseException):
-    """Base RealDebrid API error"""
+    """Base RealDebrid API error."""
 
-    def __init__(self, response: "Response"):
+    def __init__(self, response: "Response") -> None:
         self.path = URL(response.url).path
         try:
             JSONResp: dict = response.json()

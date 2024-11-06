@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, AsyncGenerator
 
 from rich.console import Console
 from rich.live import Live
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 
 class LiveManager:
-    def __init__(self, manager: Manager):
+    def __init__(self, manager: Manager) -> None:
         self.manager = manager
         self.live = Live(
             auto_refresh=True,
@@ -25,7 +25,7 @@ class LiveManager:
         )
 
     @asynccontextmanager
-    async def get_live(self, layout: Layout, stop=False):
+    async def get_live(self, layout: Layout, stop: bool = False) -> AsyncGenerator[Live]:
         try:
             if self.manager.args_manager.no_ui:
                 yield
@@ -41,26 +41,26 @@ class LiveManager:
             await log(f"Issue with rich live {e}", level=10, exc_info=True)
 
     @asynccontextmanager
-    async def get_main_live(self, stop=False):
-        "main UI startup and context manager"
+    async def get_main_live(self, stop: bool = False) -> AsyncGenerator[Live]:
+        """Main UI startup and context manager."""
         layout = self.manager.progress_manager.layout
         async with self.get_live(layout, stop=stop) as live:
             yield live
 
     @asynccontextmanager
-    async def get_remove_file_via_hash_live(self, stop=False):
+    async def get_remove_file_via_hash_live(self, stop: bool = False) -> AsyncGenerator[Live]:
         layout = self.manager.progress_manager.hash_remove_layout
         async with self.get_live(layout, stop=stop) as live:
             yield live
 
     @asynccontextmanager
-    async def get_hash_live(self, stop=False):
+    async def get_hash_live(self, stop: bool = False) -> AsyncGenerator[Live]:
         layout = self.manager.progress_manager.hash_layout
         async with self.get_live(layout, stop=stop) as live:
             yield live
 
     @asynccontextmanager
-    async def get_sort_live(self, stop=False):
+    async def get_sort_live(self, stop: bool = False) -> AsyncGenerator[Live]:
         layout = self.manager.progress_manager.sort_layout
         async with self.get_live(layout, stop=stop) as live:
             yield live

@@ -14,7 +14,7 @@ console = Console()
 
 
 def edit_global_settings_prompt(manager: Manager) -> None:
-    """Edit the authentication values"""
+    """Edit the authentication values."""
     while True:
         console.clear()
         console.print("Editing Global Settings")
@@ -53,7 +53,7 @@ def edit_global_settings_prompt(manager: Manager) -> None:
 
 
 def edit_general_settings_prompt(manager: Manager) -> None:
-    """Edit the general settings"""
+    """Edit the general settings."""
     console.clear()
     console.print("Editing General Settings")
     allow_insecure_connections = inquirer.confirm("Allow insecure connections?", vi_mode=manager.vi_mode).execute()
@@ -102,7 +102,7 @@ def edit_general_settings_prompt(manager: Manager) -> None:
 
 
 def edit_ui_settings_prompt(manager: Manager) -> None:
-    """Edit the progress settings"""
+    """Edit the progress settings."""
     console.clear()
     console.print("Editing UI Settings")
     refresh_rate = inquirer.number(
@@ -138,7 +138,7 @@ def edit_ui_settings_prompt(manager: Manager) -> None:
 
 
 def edit_rate_limiting_settings_prompt(manager: Manager) -> None:
-    """Edit the rate limiting settings"""
+    """Edit the rate limiting settings."""
     console.clear()
     console.print("Editing Rate Limiting Settings")
     connection_timeout = inquirer.number(
@@ -190,7 +190,7 @@ def edit_rate_limiting_settings_prompt(manager: Manager) -> None:
         default=int(
             manager.config_manager.global_settings_data["Rate_Limiting_Options"][
                 "max_simultaneous_downloads_per_domain"
-            ]
+            ],
         ),
         float_allowed=False,
         vi_mode=manager.vi_mode,
@@ -201,19 +201,19 @@ def edit_rate_limiting_settings_prompt(manager: Manager) -> None:
     manager.config_manager.global_settings_data["Rate_Limiting_Options"]["download_attempts"] = int(download_attempts)
     manager.config_manager.global_settings_data["Rate_Limiting_Options"]["rate_limit"] = int(rate_limit)
     manager.config_manager.global_settings_data["Rate_Limiting_Options"]["download_speed_limit"] = int(
-        download_speed_limit
+        download_speed_limit,
     )
     manager.config_manager.global_settings_data["Rate_Limiting_Options"]["download_delay"] = float(throttle)
     manager.config_manager.global_settings_data["Rate_Limiting_Options"]["max_simultaneous_downloads"] = int(
-        max_simultaneous_downloads
+        max_simultaneous_downloads,
     )
     manager.config_manager.global_settings_data["Rate_Limiting_Options"]["max_simultaneous_downloads_per_domain"] = int(
-        max_simultaneous_downloads_per_domain
+        max_simultaneous_downloads_per_domain,
     )
 
 
 def edit_dupe_settings_prompt(manager: Manager) -> None:
-    """Edit the duplicate file removal settings"""
+    """Edit the duplicate file removal settings."""
     console.clear()
     console.print("Editing Duplicate File Settings")
 

@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import copy
 import shutil
 from dataclasses import field
 from pathlib import Path
 from time import sleep
-from typing import TYPE_CHECKING, Dict, List
+from typing import TYPE_CHECKING
 
 import yaml
 
@@ -15,8 +17,8 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
-def _match_config_dicts(default: dict, existing: dict) -> Dict:
-    """Matches the keys of two dicts and returns the default dict with the values of the existing dict"""
+def _match_config_dicts(default: dict, existing: dict) -> dict:
+    """Matches the keys of two dicts and returns the default dict with the values of the existing dict."""
     for group in default:
         for key in default[group]:
             if group in existing and key in existing[group]:
@@ -25,23 +27,23 @@ def _match_config_dicts(default: dict, existing: dict) -> Dict:
 
 
 def _save_yaml(file: Path, data: dict) -> None:
-    """Saves a dict to a yaml file"""
+    """Saves a dict to a yaml file."""
     file.parent.mkdir(parents=True, exist_ok=True)
-    with open(file, "w") as yaml_file:
+    with file.open("w") as yaml_file:
         yaml.dump(data, yaml_file)
 
 
-def _load_yaml(file: Path) -> Dict:
-    """Loads a yaml file and returns it as a dict"""
+def _load_yaml(file: Path) -> dict:
+    """Loads a yaml file and returns it as a dict."""
     try:
-        with open(file) as yaml_file:
+        with file.open() as yaml_file:
             yaml_values = yaml.load(yaml_file.read(), Loader=yaml.FullLoader)
             return yaml_values if yaml_values else {}
     except yaml.constructor.ConstructorError as e:
         raise InvalidYamlError(file, e) from None
 
 
-def get_keys(dl, keys=None) -> set:
+def get_keys(dl: dict | list, keys: list | None = None) -> set:
     keys = keys or []
     if isinstance(dl, dict):
         keys += dl.keys()
@@ -52,7 +54,7 @@ def get_keys(dl, keys=None) -> set:
 
 
 class ConfigManager:
-    def __init__(self, manager: "Manager"):
+    def __init__(self, manager: Manager) -> None:
         self.manager = manager
         self.loaded_config: str = field(init=False)
 
@@ -65,7 +67,7 @@ class ConfigManager:
         self.global_settings_data: dict = field(init=False)
 
     def startup(self) -> None:
-        """Pre-startup process for the config manager"""
+        """Pre-startup process for the config manager."""
         if not isinstance(self.loaded_config, str):
             self.loaded_config = self.manager.cache_manager.get("default_config")
             if not self.loaded_config:
@@ -85,7 +87,7 @@ class ConfigManager:
         self.load_configs()
 
     def load_configs(self) -> None:
-        """Loads all the configs"""
+        """Loads all the configs."""
         if self.authentication_settings.is_file():
             self._verify_authentication_config()
         else:
@@ -117,7 +119,7 @@ class ConfigManager:
             self.write_updated_settings_config()
 
     def _verify_authentication_config(self) -> None:
-        """Verifies the authentication config file and creates it if it doesn't exist"""
+        """Verifies the authentication config file and creates it if it doesn't exist."""
         default_auth_data = copy.deepcopy(authentication_settings)
         existing_auth_data = _load_yaml(self.authentication_settings)
 
@@ -129,7 +131,7 @@ class ConfigManager:
         _save_yaml(self.authentication_settings, self.authentication_data)
 
     def _verify_settings_config(self) -> None:
-        """Verifies the settings config file and creates it if it doesn't exist"""
+        """Verifies the settings config file and creates it if it doesn't exist."""
         default_settings_data = copy.deepcopy(settings)
         existing_settings_data = _load_yaml(self.settings)
         self.settings_data = _match_config_dicts(default_settings_data, existing_settings_data)
@@ -144,61 +146,61 @@ class ConfigManager:
 
         # change to ints
         self.settings_data["File_Size_Limits"]["maximum_image_size"] = int(
-            self.settings_data["File_Size_Limits"]["maximum_image_size"]
+            self.settings_data["File_Size_Limits"]["maximum_image_size"],
         )
         self.settings_data["File_Size_Limits"]["maximum_video_size"] = int(
-            self.settings_data["File_Size_Limits"]["maximum_video_size"]
+            self.settings_data["File_Size_Limits"]["maximum_video_size"],
         )
         self.settings_data["File_Size_Limits"]["maximum_other_size"] = int(
-            self.settings_data["File_Size_Limits"]["maximum_other_size"]
+            self.settings_data["File_Size_Limits"]["maximum_other_size"],
         )
         self.settings_data["File_Size_Limits"]["minimum_image_size"] = int(
-            self.settings_data["File_Size_Limits"]["minimum_image_size"]
+            self.settings_data["File_Size_Limits"]["minimum_image_size"],
         )
         self.settings_data["File_Size_Limits"]["minimum_video_size"] = int(
-            self.settings_data["File_Size_Limits"]["minimum_video_size"]
+            self.settings_data["File_Size_Limits"]["minimum_video_size"],
         )
         self.settings_data["File_Size_Limits"]["minimum_other_size"] = int(
-            self.settings_data["File_Size_Limits"]["minimum_other_size"]
+            self.settings_data["File_Size_Limits"]["minimum_other_size"],
         )
 
         self.settings_data["Runtime_Options"]["log_level"] = int(self.settings_data["Runtime_Options"]["log_level"])
 
         self.settings_data["Runtime_Options"]["console_log_level"] = int(
-            self.settings_data["Runtime_Options"]["console_log_level"]
+            self.settings_data["Runtime_Options"]["console_log_level"],
         )
 
         self.global_settings_data["General"]["max_file_name_length"] = int(
-            self.global_settings_data["General"]["max_file_name_length"]
+            self.global_settings_data["General"]["max_file_name_length"],
         )
         self.global_settings_data["General"]["max_folder_name_length"] = int(
-            self.global_settings_data["General"]["max_folder_name_length"]
+            self.global_settings_data["General"]["max_folder_name_length"],
         )
 
         self.global_settings_data["Rate_Limiting_Options"]["connection_timeout"] = int(
-            self.global_settings_data["Rate_Limiting_Options"]["connection_timeout"]
+            self.global_settings_data["Rate_Limiting_Options"]["connection_timeout"],
         )
         self.global_settings_data["Rate_Limiting_Options"]["download_attempts"] = int(
-            self.global_settings_data["Rate_Limiting_Options"]["download_attempts"]
+            self.global_settings_data["Rate_Limiting_Options"]["download_attempts"],
         )
         self.global_settings_data["Rate_Limiting_Options"]["download_delay"] = int(
-            self.global_settings_data["Rate_Limiting_Options"]["download_delay"]
+            self.global_settings_data["Rate_Limiting_Options"]["download_delay"],
         )
         self.global_settings_data["Rate_Limiting_Options"]["max_simultaneous_downloads"] = int(
-            self.global_settings_data["Rate_Limiting_Options"]["max_simultaneous_downloads"]
+            self.global_settings_data["Rate_Limiting_Options"]["max_simultaneous_downloads"],
         )
         self.global_settings_data["Rate_Limiting_Options"]["max_simultaneous_downloads_per_domain"] = int(
-            self.global_settings_data["Rate_Limiting_Options"]["max_simultaneous_downloads_per_domain"]
+            self.global_settings_data["Rate_Limiting_Options"]["max_simultaneous_downloads_per_domain"],
         )
         self.global_settings_data["Rate_Limiting_Options"]["rate_limit"] = int(
-            self.global_settings_data["Rate_Limiting_Options"]["rate_limit"]
+            self.global_settings_data["Rate_Limiting_Options"]["rate_limit"],
         )
 
         self.global_settings_data["Rate_Limiting_Options"]["download_speed_limit"] = int(
-            self.global_settings_data["Rate_Limiting_Options"]["download_speed_limit"]
+            self.global_settings_data["Rate_Limiting_Options"]["download_speed_limit"],
         )
         self.global_settings_data["Rate_Limiting_Options"]["read_timeout"] = int(
-            self.global_settings_data["Rate_Limiting_Options"]["read_timeout"]
+            self.global_settings_data["Rate_Limiting_Options"]["read_timeout"],
         )
 
         self.global_settings_data["Dupe_Cleanup_Options"]["delete_after_download"] = self.global_settings_data[
@@ -221,13 +223,13 @@ class ConfigManager:
         ]["delete_off_disk"]
 
         self.global_settings_data["UI_Options"]["refresh_rate"] = int(
-            self.global_settings_data["UI_Options"]["refresh_rate"]
+            self.global_settings_data["UI_Options"]["refresh_rate"],
         )
         self.global_settings_data["UI_Options"]["scraping_item_limit"] = int(
-            self.global_settings_data["UI_Options"]["scraping_item_limit"]
+            self.global_settings_data["UI_Options"]["scraping_item_limit"],
         )
         self.global_settings_data["UI_Options"]["downloading_item_limit"] = int(
-            self.global_settings_data["UI_Options"]["downloading_item_limit"]
+            self.global_settings_data["UI_Options"]["downloading_item_limit"],
         )
 
         if get_keys(default_settings_data) == get_keys(existing_settings_data):
@@ -243,7 +245,7 @@ class ConfigManager:
         _save_yaml(self.settings, save_data)
 
     def _verify_global_settings_config(self) -> None:
-        """Verifies the global settings config file and creates it if it doesn't exist"""
+        """Verifies the global settings config file and creates it if it doesn't exist."""
         default_global_settings_data = copy.deepcopy(global_settings)
         existing_global_settings_data = _load_yaml(self.global_settings)
 
@@ -258,7 +260,7 @@ class ConfigManager:
 
     @staticmethod
     def create_new_config(new_settings: Path, settings_data: dict) -> None:
-        """Creates a new settings config file"""
+        """Creates a new settings config file."""
         settings_data["Files"]["input_file"] = str(settings_data["Files"]["input_file"])
         settings_data["Files"]["download_folder"] = str(settings_data["Files"]["download_folder"])
         settings_data["Logs"]["log_folder"] = str(settings_data["Logs"]["log_folder"])
@@ -270,11 +272,11 @@ class ConfigManager:
         _save_yaml(new_settings, settings_data)
 
     def write_updated_authentication_config(self) -> None:
-        """Write updated authentication data"""
+        """Write updated authentication data."""
         _save_yaml(self.authentication_settings, self.authentication_data)
 
     def write_updated_settings_config(self) -> None:
-        """Write updated settings data"""
+        """Write updated settings data."""
         settings_data = copy.deepcopy(self.settings_data)
         settings_data["Files"]["input_file"] = str(settings_data["Files"]["input_file"])
         settings_data["Files"]["download_folder"] = str(settings_data["Files"]["download_folder"])
@@ -286,21 +288,21 @@ class ConfigManager:
         _save_yaml(self.settings, settings_data)
 
     def write_updated_global_settings_config(self) -> None:
-        """Write updated global settings data"""
+        """Write updated global settings data."""
         _save_yaml(self.global_settings, self.global_settings_data)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    def get_configs(self) -> List:
-        """Returns a list of all the configs"""
+    def get_configs(self) -> list:
+        """Returns a list of all the configs."""
         return [config.name for config in self.manager.path_manager.config_dir.iterdir() if config.is_dir()]
 
     def change_default_config(self, config_name: str) -> None:
-        """Changes the default config"""
+        """Changes the default config."""
         self.manager.cache_manager.save("default_config", config_name)
 
     def delete_config(self, config_name: str) -> None:
-        """Deletes a config"""
+        """Deletes a config."""
         configs = self.get_configs()
         configs.remove(config_name)
 
@@ -311,7 +313,7 @@ class ConfigManager:
         shutil.rmtree(config)
 
     def change_config(self, config_name: str) -> None:
-        """Changes the config"""
+        """Changes the config."""
         self.loaded_config = config_name
         self.startup()
 

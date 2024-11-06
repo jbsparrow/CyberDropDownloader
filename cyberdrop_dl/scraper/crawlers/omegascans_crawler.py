@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import calendar
+import contextlib
 import datetime
 from typing import TYPE_CHECKING
 
@@ -19,7 +20,7 @@ if TYPE_CHECKING:
 
 
 class OmegaScansCrawler(Crawler):
-    def __init__(self, manager: Manager):
+    def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "omegascans", "OmegaScans")
         self.primary_base_domain = URL("https://omegascans.org")
         self.api_url = "https://api.omegascans.org/chapter/query?page={}&perPage={}&series_id={}"
@@ -28,7 +29,7 @@ class OmegaScansCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url"""
+        """Determines where to send the scrape item based on the url."""
         task_id = await self.scraping_progress.add_task(scrape_item.url)
 
         if "chapter" in scrape_item.url.name:
@@ -42,25 +43,27 @@ class OmegaScansCrawler(Crawler):
 
     @error_handling_wrapper
     async def series(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album"""
+        """Scrapes an album."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
 
-        try:
+        with contextlib.suppress(IndexError, TypeError):
             scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
                 "maximum_number_of_children"
             ][scrape_item.type]
-        except (IndexError, TypeError):
-            pass
 
         scripts = soup.select("script")
+        series_id = None
         for script in scripts:
             if "series_id" in script.get_text():
                 series_id = script.get_text().split('series_id\\":')[1].split(",")[0]
                 break
+
+        if not series_id:
+            raise ScrapeError(404, "series_id not found", origin=ScrapeItem)
 
         page_number = 1
         number_per_page = 30
@@ -74,13 +77,16 @@ class OmegaScansCrawler(Crawler):
             for chapter in JSON_Obj["data"]:
                 chapter_url = scrape_item.url / chapter["chapter_slug"]
                 new_scrape_item = await self.create_scrape_item(
-                    scrape_item, chapter_url, "", True, add_parent=scrape_item.url
+                    scrape_item,
+                    chapter_url,
+                    "",
+                    True,
+                    add_parent=scrape_item.url,
                 )
                 self.manager.task_group.create_task(self.run(new_scrape_item))
                 scrape_item.children += 1
-                if scrape_item.children_limit:
-                    if scrape_item.children >= scrape_item.children_limit:
-                        raise MaxChildrenError(origin=scrape_item)
+                if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
+                    raise MaxChildrenError(origin=scrape_item)
 
             if JSON_Obj["meta"]["current_page"] == JSON_Obj["meta"]["last_page"]:
                 break
@@ -88,7 +94,7 @@ class OmegaScansCrawler(Crawler):
 
     @error_handling_wrapper
     async def chapter(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an image"""
+        """Scrapes an image."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
@@ -126,26 +132,26 @@ class OmegaScansCrawler(Crawler):
                     continue
             link = URL(link)
 
-            filename, ext = await get_filename_and_ext(link.name)
+            filename, ext = get_filename_and_ext(link.name)
             await self.handle_file(link, scrape_item, filename, ext)
 
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:
-        """Handles a direct link"""
+        """Handles a direct link."""
         scrape_item.url = scrape_item.url.with_name(scrape_item.url.name)
-        filename, ext = await get_filename_and_ext(scrape_item.url.name)
+        filename, ext = get_filename_and_ext(scrape_item.url.name)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @staticmethod
     async def parse_datetime_standard(date: str) -> int:
-        """Parses a datetime string into a unix timestamp"""
+        """Parses a datetime string into a unix timestamp."""
         date = datetime.datetime.strptime(date, "%m/%d/%Y")
         return calendar.timegm(date.timetuple())
 
     @staticmethod
     async def parse_datetime_other(date: str) -> int:
-        """Parses a datetime string into a unix timestamp"""
+        """Parses a datetime string into a unix timestamp."""
         date = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
         return calendar.timegm(date.timetuple())

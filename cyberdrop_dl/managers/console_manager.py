@@ -1,16 +1,23 @@
+from __future__ import annotations
+
 import shutil
 import time
 from collections import deque
+from typing import TYPE_CHECKING
 
 from rich.console import Console
 
+if TYPE_CHECKING:
+    from rich.text import Text
+
+
 console = Console()
-_HEIGHT, _ = None, None
+_HEIGHT, _ = 20, None
 LEVEL = 100
 QUEUE = deque()
 
 
-def log(level, record, *args, sleep=None, **kwargs):
+def log(level: int, record: str, sleep: int = 0, *_, **__) -> None:
     level = level or 10
     if level >= LEVEL:
         # QUEUE.append((record,sleep))
@@ -19,21 +26,21 @@ def log(level, record, *args, sleep=None, **kwargs):
             time.sleep(sleep)
 
 
-def print_(text, sleep=None):
+def print_(text: Text | str) -> None:
     set_console_height()
     console.print(text)
 
 
-def set_console_height():
+def set_console_height() -> None:
     global _HEIGHT
     _width, _new_height = shutil.get_terminal_size()
-    if not _HEIGHT == _new_height:
+    if _new_height != _HEIGHT:
         _HEIGHT = _new_height
     console.size = (_width, _HEIGHT - 4)
 
 
 class ConsoleManager:
-    def __init__(self):
+    def __init__(self) -> None:
         self.thread = None
 
     def startup(self) -> None:
@@ -41,7 +48,7 @@ class ConsoleManager:
         # self.thread = threading.Thread(target=self.flush_buffer_thread)
         # self.thread.start()
 
-    def close(self):
+    def close(self) -> None:
         pass
         # if self.thread:
         #     self.thread.join()

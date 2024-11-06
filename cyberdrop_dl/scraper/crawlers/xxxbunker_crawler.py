@@ -25,7 +25,7 @@ MAX_RETRIES = 3
 
 
 class XXXBunkerCrawler(Crawler):
-    def __init__(self, manager: Manager):
+    def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "xxxbunker", "XXXBunker")
         self.primary_base_domain = URL("https://xxxbunker.com")
         self.api_download = URL("https://xxxbunker.com/ajax/downloadpopup")
@@ -36,7 +36,7 @@ class XXXBunkerCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url"""
+        """Determines where to send the scrape item based on the url."""
         task_id = await self.scraping_progress.add_task(scrape_item.url)
 
         # Old behavior, not worth it with such a bad rate_limit: modify URL to always start on page 1
@@ -56,7 +56,7 @@ class XXXBunkerCrawler(Crawler):
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a video"""
+        """Scrapes a video."""
         if await self.check_complete_from_referer(scrape_item):
             return
 
@@ -76,13 +76,16 @@ class XXXBunkerCrawler(Crawler):
         except AttributeError:
             pass
 
+        video_iframe = ajax_soup = None
         try:
             video_iframe = soup.select_one("div.player-frame iframe")
             video_iframe_url = URL(video_iframe.get("data-src"))
             video_id = video_iframe_url.parts[-1]
             async with self.request_limiter:
                 video_iframe_soup: BeautifulSoup = await self.client.get_soup(
-                    self.domain, video_iframe_url, origin=scrape_item
+                    self.domain,
+                    video_iframe_url,
+                    origin=scrape_item,
                 )
 
             src = video_iframe_soup.select_one("source")
@@ -101,7 +104,7 @@ class XXXBunkerCrawler(Crawler):
             link = URL(ajax_soup.select_one("a#download-download").get("href"))
 
         except (AttributeError, TypeError):
-            if "You must be registered to download this video" in ajax_soup.text:
+            if ajax_soup and "You must be registered to download this video" in ajax_soup.text:
                 raise ScrapeError(403, f"Invalid PHPSESSID: {scrape_item.url}", origin=scrape_item) from None
 
             if "TRAFFIC VERIFICATION" in soup.text:
@@ -115,12 +118,12 @@ class XXXBunkerCrawler(Crawler):
         # NOTE: hardcoding the extension to prevent quering the final server URL
         # final server URL is always different so it can not be saved to db.
         filename, ext = f"{video_id}.mp4", ".mp4"
-        custom_file_name, _ = await get_filename_and_ext(f"{title} [{video_id}]{ext}")
+        custom_file_name, _ = get_filename_and_ext(f"{title} [{video_id}]{ext}")
         await self.handle_file(link, scrape_item, filename, ext, custom_file_name)
 
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a playlist"""
+        """Scrapes a playlist."""
         if not self.session_cookie:
             raise ScrapeError(401, "No cookies provided", origin=scrape_item)
 
@@ -157,12 +160,13 @@ class XXXBunkerCrawler(Crawler):
                 await self.video(new_scrape_item)
 
     async def web_pager(self, url: URL) -> AsyncGenerator[BeautifulSoup]:
-        "Generator of website pages"
+        """Generator of website pages."""
         page_url = url
         rate_limited = True
         while True:
             attempt = 1
             rate_limited = True
+            soup = None
             await log(f"Current page: {page_url}", 10)
             while rate_limited and attempt <= MAX_RETRIES:
                 async with self.request_limiter:
@@ -197,7 +201,7 @@ class XXXBunkerCrawler(Crawler):
 
     @staticmethod
     async def parse_relative_date(relative_date: timedelta | str) -> int:
-        """Parses `datetime.timedelta` or `string` in a timedelta format. Returns `now() - parsed_timedelta` as an unix timestamp"""
+        """Parses `datetime.timedelta` or `string` in a timedelta format. Returns `now() - parsed_timedelta` as an unix timestamp."""
         if isinstance(relative_date, str):
             time_str = relative_date.casefold()
             matches: list[str] = re.findall(DATE_PATTERN, time_str)
@@ -216,12 +220,13 @@ class XXXBunkerCrawler(Crawler):
         return timegm(date.timetuple())
 
     async def check_session_cookie(self) -> None:
-        """Get Cookie from config file"""
+        """Get Cookie from config file."""
         self.session_cookie = self.manager.config_manager.authentication_data["XXXBunker"]["PHPSESSID"]
         if not self.session_cookie:
             self.session_cookie = ""
             return
 
         self.client.client_manager.cookies.update_cookies(
-            {"PHPSESSID": self.session_cookie}, response_url=self.primary_base_domain
+            {"PHPSESSID": self.session_cookie},
+            response_url=self.primary_base_domain,
         )

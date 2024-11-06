@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import asyncio
 import contextlib
 import logging
@@ -41,12 +43,11 @@ start_time = 0
 
 
 def startup() -> Manager:
-    """
-    Starts the program and returns the manager
-    This will also run the UI for the program
-    After this function returns, the manager will be ready to use and scraping / downloading can begin
-    """
+    """Starts the program and returns the manager.
 
+    This will also run the UI for the program
+    After this function returns, the manager will be ready to use and scraping / downloading can begin.
+    """
     try:
         manager = Manager()
         manager.startup()
@@ -58,38 +59,39 @@ def startup() -> Manager:
 
     except InvalidYamlError as e:
         print_(e.message_rich)
-        exit(1)
+        sys.exit(1)
 
     except KeyboardInterrupt:
         print_("\nExiting...")
-        exit(0)
+        sys.exit(0)
 
 
 async def runtime(manager: Manager) -> None:
-    """Main runtime loop for the program, this will run until all scraping and downloading is complete"""
+    """Main runtime loop for the program, this will run until all scraping and downloading is complete."""
     scrape_mapper = ScrapeMapper(manager)
 
-    # NEW CODE
     async with asyncio.TaskGroup() as task_group:
         manager.task_group = task_group
         await scrape_mapper.start()
 
 
 async def post_runtime(manager: Manager) -> None:
-    """Actions to complete after main runtime, and before ui shutdown"""
-
+    """Actions to complete after main runtime, and before ui shutdown."""
     await log_spacer(20)
     await log_with_color(
-        f"Running Post-Download Processes For Config: {manager.config_manager.loaded_config}...\n", "green", 20
+        f"Running Post-Download Processes For Config: {manager.config_manager.loaded_config}...\n",
+        "green",
+        20,
     )
     # checking and removing dupes
     if not manager.args_manager.sort_all_configs:
         await manager.hash_manager.hash_client.cleanup_dupes()
-    if isinstance(manager.args_manager.sort_downloads, bool):
-        if manager.args_manager.sort_downloads:
-            sorter = Sorter(manager)
-            await sorter.sort()
-    elif manager.config_manager.settings_data["Sorting"]["sort_downloads"] and not manager.args_manager.retry_any:
+    if (
+        isinstance(manager.args_manager.sort_downloads, bool)
+        and manager.args_manager.sort_downloads
+        or manager.config_manager.settings_data["Sorting"]["sort_downloads"]
+        and not manager.args_manager.retry_any
+    ):
         sorter = Sorter(manager)
         await sorter.sort()
     await check_partials_and_empty_folders(manager)
@@ -98,11 +100,12 @@ async def post_runtime(manager: Manager) -> None:
         await manager.log_manager.update_last_forum_post()
 
 
-def setup_debug_logger(manager: Manager):
+def setup_debug_logger(manager: Manager) -> Path | None:
     logger_debug = logging.getLogger("cyberdrop_dl_debug")
+    debug_log_file_path = None
+    running_in_IDE = os.getenv("PYCHARM_HOSTED") or os.getenv("TERM_PROGRAM") == "vscode"
     import cyberdrop_dl.utils.utilities
 
-    running_in_IDE = os.getenv("PYCHARM_HOSTED") or os.getenv("TERM_PROGRAM") == "vscode"
     if running_in_IDE or manager.config_manager.settings_data["Runtime_Options"]["log_level"] == -1:
         manager.config_manager.settings_data["Runtime_Options"]["log_level"] = 10
         cyberdrop_dl.utils.utilities.DEBUG_VAR = True
@@ -112,10 +115,9 @@ def setup_debug_logger(manager: Manager):
 
     if cyberdrop_dl.utils.utilities.DEBUG_VAR:
         logger_debug.setLevel(manager.config_manager.settings_data["Runtime_Options"]["log_level"])
+        debug_log_file_path = Path(__file__).parent / "cyberdrop_dl_debug.log"
         if running_in_IDE:
             debug_log_file_path = Path(__file__).parents[1] / "cyberdrop_dl_debug.log"
-        else:
-            debug_log_file_path = Path(__file__).parent / "cyberdrop_dl_debug.log"
 
         rich_file_handler_debug = RichHandler(
             **RICH_HANDLER_DEBUG_CONFIG,
@@ -127,10 +129,12 @@ def setup_debug_logger(manager: Manager):
         # aiosqlite_log = logging.getLogger("aiosqlite")
         # aiosqlite_log.setLevel(manager.config_manager.settings_data['Runtime_Options']['log_level'])
         # aiosqlite_log.addHandler(file_handler_debug)
-        return debug_log_file_path.resolve()
+
+    return debug_log_file_path.resolve() if debug_log_file_path else None
 
 
-async def switch_config_and_reset_logger(manager: Manager, config_name: str):
+async def switch_config_and_reset_logger(manager: Manager, config_name: str) -> None:
+    import cyberdrop_dl.managers.console_manager
     import cyberdrop_dl.utils.utilities
 
     logger = logging.getLogger("cyberdrop_dl")
@@ -156,7 +160,6 @@ async def switch_config_and_reset_logger(manager: Manager, config_name: str):
     )
 
     logger.addHandler(rich_file_handler)
-    import cyberdrop_dl.managers.console_manager
 
     cyberdrop_dl.managers.console_manager.LEVEL = manager.config_manager.settings_data["Runtime_Options"][
         "console_log_level"
@@ -164,18 +167,22 @@ async def switch_config_and_reset_logger(manager: Manager, config_name: str):
 
 
 async def director(manager: Manager) -> None:
-    """Runs the program and handles the UI"""
+    """Runs the program and handles the UI."""
+    global start_time
     manager.path_manager.startup()
     manager.log_manager.startup()
     debug_log_file_path = setup_debug_logger(manager)
+    using_multiple_configs = False
 
     configs_to_run = [manager.config_manager.loaded_config]
     if manager.args_manager.all_configs:
         configs_to_run = manager.config_manager.get_configs()
+        using_multiple_configs = True
         configs_to_run.sort()
 
     for current_config in configs_to_run:
-        await switch_config_and_reset_logger(manager, current_config)
+        if using_multiple_configs:
+            await switch_config_and_reset_logger(manager, current_config)
         configs_to_run.pop(0)
 
         await log(f"Using Debug Log: {debug_log_file_path if debug_log_file_path else None}", 10)
@@ -191,7 +198,7 @@ async def director(manager: Manager) -> None:
                     await post_runtime(manager)
             except Exception:
                 await log("\nAn error occurred, please report this to the developer:", 50, exc_info=True)
-                exit(1)
+                sys.exit(1)
 
         await log_spacer(20)
         await manager.progress_manager.print_stats(start_time)
@@ -207,9 +214,10 @@ async def director(manager: Manager) -> None:
 
         await send_webhook_message(manager)
         await sent_apprise_notifications(manager)
+        start_time = time.perf_counter()
 
 
-def main():
+def main() -> None:
     global start_time
     start_time = time.perf_counter()
     manager = startup()
@@ -224,7 +232,7 @@ def main():
             print_("\nTrying to Exit...")
             with contextlib.suppress(Exception):
                 asyncio.run(manager.close())
-            exit(1)
+            sys.exit(1)
     loop.close()
     sys.exit(0)
 

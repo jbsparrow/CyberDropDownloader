@@ -11,19 +11,19 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
 
 DATE_PATTERN = re.compile(r"(\d+)\s*(weeks?|days?|hours?|minutes?|seconds?)", re.IGNORECASE)
 
 
 class TokioMotionCrawler(Crawler):
-    def __init__(self, manager: Manager):
+    def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "tokyomotion", "Tokyomotion")
         self.primary_base_domain = URL("https://www.tokyomotion.net")
         self.request_limiter = AsyncLimiter(10, 1)
@@ -42,7 +42,7 @@ class TokioMotionCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url"""
+        """Determines where to send the scrape item based on the url."""
         task_id = await self.scraping_progress.add_task(scrape_item.url)
         new_query = MultiDict(scrape_item.url.query)
         new_query.pop("page", None)
@@ -73,7 +73,7 @@ class TokioMotionCrawler(Crawler):
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a video"""
+        """Scrapes a video."""
         if await self.check_complete_from_referer(scrape_item):
             return
 
@@ -103,12 +103,12 @@ class TokioMotionCrawler(Crawler):
         # NOTE: hardcoding the extension to prevent quering the final server URL
         # final server URL is always diferent so it can not be saved to db.
         filename, ext = f"{video_id}.mp4", ".mp4"
-        custom_file_name, _ = await get_filename_and_ext(f"{title} [{video_id}]{ext}")
+        custom_file_name, _ = get_filename_and_ext(f"{title} [{video_id}]{ext}")
         await self.handle_file(link, scrape_item, filename, ext, custom_file_name)
 
     @error_handling_wrapper
     async def albums(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes user albums"""
+        """Scrapes user albums."""
         user = scrape_item.url.parts[2]
         user_title = await self.create_title(f"{user} [user]", scrape_item.album_id, None)
         if user_title not in scrape_item.parent_title.split("/"):
@@ -130,7 +130,7 @@ class TokioMotionCrawler(Crawler):
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album"""
+        """Scrapes an album."""
         title = scrape_item.url.parts[-1]
         if "user" in scrape_item.url.parts:
             user = scrape_item.url.parts[2]
@@ -167,12 +167,12 @@ class TokioMotionCrawler(Crawler):
                 link = URL(link)
                 link = link.with_path(link.path.replace("/tmb/", "/"))
 
-                filename, ext = await get_filename_and_ext(link.name)
+                filename, ext = get_filename_and_ext(link.name)
                 await self.handle_file(link, scrape_item, filename, ext)
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an image"""
+        """Scrapes an image."""
         if await self.check_complete_from_referer(scrape_item):
             return
         async with self.request_limiter:
@@ -186,12 +186,12 @@ class TokioMotionCrawler(Crawler):
                 raise ScrapeError(403, f"Private Photo: {scrape_item.url}", origin=scrape_item) from None
             raise ScrapeError(404, f"Could not find image source for {scrape_item.url}", origin=scrape_item) from None
 
-        filename, ext = await get_filename_and_ext(link.name)
+        filename, ext = get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an user profile"""
+        """Scrapes an user profile."""
         user = scrape_item.url.parts[2]
         user_title = await self.create_title(f"{user} [user]", scrape_item.album_id, None)
         if user_title not in scrape_item.parent_title.split("/"):
@@ -206,7 +206,7 @@ class TokioMotionCrawler(Crawler):
 
     @error_handling_wrapper
     async def search(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a search result"""
+        """Scrapes a search result."""
         search_type = scrape_item.url.query.get("search_type")
         if "search" not in scrape_item.url.parts or search_type == "users":
             return
@@ -240,7 +240,7 @@ class TokioMotionCrawler(Crawler):
 
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a video playlist"""
+        """Scrapes a video playlist."""
         title = scrape_item.url.parts[-1]
         user = scrape_item.url.parts[2]
         user_title = await self.create_title(f"{user} [user]", scrape_item.album_id, None)
@@ -274,7 +274,7 @@ class TokioMotionCrawler(Crawler):
                 await self.video(new_scrape_item)
 
     async def web_pager(self, url: URL) -> AsyncGenerator[BeautifulSoup]:
-        "Generator of website pages"
+        """Generator of website pages."""
         page_url = url
         while True:
             async with self.request_limiter:
@@ -292,7 +292,7 @@ class TokioMotionCrawler(Crawler):
 
     @staticmethod
     async def parse_relative_date(relative_date: timedelta | str) -> int:
-        """Parses `datetime.timedelta` or `string` in a timedelta format. Returns `now() - parsed_timedelta` as an unix timestamp"""
+        """Parses `datetime.timedelta` or `string` in a timedelta format. Returns `now() - parsed_timedelta` as an unix timestamp."""
         if isinstance(relative_date, str):
             time_str = relative_date.casefold()
             matches: list[str] = re.findall(DATE_PATTERN, time_str)

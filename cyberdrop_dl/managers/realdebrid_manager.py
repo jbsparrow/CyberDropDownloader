@@ -1,10 +1,10 @@
+from __future__ import annotations
+
 import re
 import warnings
 from dataclasses import field
 from re import Pattern
 from typing import TYPE_CHECKING
-
-from yarl import URL
 
 from cyberdrop_dl.managers.real_debrid.api import RealDebridApi
 from cyberdrop_dl.managers.real_debrid.errors import RealDebridError
@@ -13,6 +13,8 @@ from cyberdrop_dl.utils.utilities import log
 warnings.simplefilter(action="ignore", category=FutureWarning)
 
 if TYPE_CHECKING:
+    from yarl import URL
+
     from cyberdrop_dl.managers.manager import Manager
 
 FOLDER_AS_PART = {"folder", "folders", "dir"}
@@ -20,7 +22,7 @@ FOLDER_AS_QUERY = {"sharekey"}
 
 
 class RealDebridManager:
-    def __init__(self, manager: "Manager"):
+    def __init__(self, manager: Manager) -> None:
         self.manager = manager
         self.__api_token = self.manager.config_manager.authentication_data["RealDebrid"]["realdebrid_api_key"]
         self.enabled = bool(self.__api_token)
@@ -31,7 +33,7 @@ class RealDebridManager:
         self._folder_guess_functions = [self._guess_folder_by_part, self._guess_folder_by_query]
 
     async def startup(self) -> None:
-        """Startup process for Real Debrid manager"""
+        """Startup process for Real Debrid manager."""
         try:
             self.api = RealDebridApi(self.__api_token, True)
             file_regex = [pattern[1:-1] for pattern in self.api.hosts.regex()]
@@ -54,7 +56,7 @@ class RealDebridManager:
         match = self.file_regex.search(str(url))
         return bool(match)
 
-    async def is_supported(self, url: URL) -> bool:
+    def is_supported(self, url: URL) -> bool:
         match = self.supported_regex.search(str(url))
         return bool(match) or "real-debrid" in url.host.lower()
 
@@ -66,21 +68,20 @@ class RealDebridManager:
 
     @staticmethod
     async def _guess_folder_by_part(url: URL):
-        folder = None
         for word in FOLDER_AS_PART:
             if word in url.parts:
                 index = url.parts.index(word)
                 if index + 1 < len(url.parts):
                     return url.parts[index + 1]
-        return folder
+        return None
 
     @staticmethod
     async def _guess_folder_by_query(url: URL):
         for word in FOLDER_AS_QUERY:
             folder = url.query.get(word)
             if folder:
-                break
-        return folder
+                return folder
+        return None
 
     async def guess_folder(self, url: URL) -> str:
         for guess_function in self._folder_guess_functions:

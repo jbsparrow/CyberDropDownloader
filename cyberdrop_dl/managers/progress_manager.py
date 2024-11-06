@@ -20,16 +20,18 @@ if TYPE_CHECKING:
 
 
 class ProgressManager:
-    def __init__(self, manager: Manager):
+    def __init__(self, manager: Manager) -> None:
         # File Download Bars
         self.manager = manager
         self.file_progress: FileProgress = FileProgress(
-            manager.config_manager.global_settings_data["UI_Options"]["downloading_item_limit"], manager
+            manager.config_manager.global_settings_data["UI_Options"]["downloading_item_limit"],
+            manager,
         )
 
         # Scraping Printout
         self.scraping_progress: ScrapingProgress = ScrapingProgress(
-            manager.config_manager.global_settings_data["UI_Options"]["scraping_item_limit"], manager
+            manager.config_manager.global_settings_data["UI_Options"]["scraping_item_limit"],
+            manager,
         )
 
         # Overall Progress Bars & Stats
@@ -47,7 +49,7 @@ class ProgressManager:
         self.sort_layout: Layout = field(init=False)
 
     async def startup(self) -> None:
-        """Startup process for the progress manager"""
+        """Startup process for the progress manager."""
         progress_layout = Layout()
         progress_layout.split_column(
             Layout(name="upper", ratio=2, minimum_size=8),
@@ -68,9 +70,8 @@ class ProgressManager:
         self.hash_layout = await self.hash_progress.get_hash_progress()
         self.sort_layout = await self.sort_progress.get_progress()
 
-    async def print_stats(self, start_time: timedelta) -> None:
-        """Prints the stats of the program"""
-
+    async def print_stats(self, start_time: timedelta | float) -> None:
+        """Prints the stats of the program."""
         end_time = time.perf_counter()
         total_time = timedelta(seconds=int(end_time - start_time))
         downloaded_data, unit = parse_bytes(self.file_progress.downloaded_data)
@@ -84,7 +85,9 @@ class ProgressManager:
         await log_with_color("Download Stats:", "cyan", 20)
         await log_with_color(f"  Downloaded {self.download_progress.completed_files} files", "green", 20)
         await log_with_color(
-            f"  Previously Downloaded {self.download_progress.previously_completed_files} files", "yellow", 20
+            f"  Previously Downloaded {self.download_progress.previously_completed_files} files",
+            "yellow",
+            20,
         )
         await log_with_color(f"  Skipped By Config {self.download_progress.skipped_files} files", "yellow", 20)
         await log_with_color(f"  Failed {self.download_stats_progress.failed_files} files", "red", 20)
@@ -100,7 +103,9 @@ class ProgressManager:
         await log_with_color(f"  Newly Hashed {self.hash_progress.hashed_files} files", "yellow", 20)
         await log_with_color(f"  Removed From Current Downloads {self.hash_progress.removed_files} files", "yellow", 20)
         await log_with_color(
-            f"  Removed From Previous Downloads {self.hash_progress.removed_prev_files} files", "yellow", 20
+            f"  Removed From Previous Downloads {self.hash_progress.removed_prev_files} files",
+            "yellow",
+            20,
         )
 
         await log_spacer(20, "")
