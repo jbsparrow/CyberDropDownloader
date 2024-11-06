@@ -9,7 +9,7 @@ from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import ScrapeFailure, ScrapeItemMaxChildrenReached
+from cyberdrop_dl.clients.errors import MaxChildrenError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
@@ -65,7 +65,7 @@ class CyberdropCrawler(Crawler):
         try:
             title = await self.create_title(soup.select_one("h1[id=title]").text, scrape_item.album_id, None)
         except AttributeError:
-            raise ScrapeFailure(404, message="No album information found in response content", origin=scrape_item)
+            raise ScrapeError(404, message="No album information found in response content", origin=scrape_item)
 
         date = soup.select("p[class=title]")
         if date:
@@ -85,7 +85,7 @@ class CyberdropCrawler(Crawler):
             scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
+                    raise MaxChildrenError(origin=scrape_item)
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:

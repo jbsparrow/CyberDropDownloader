@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import NoExtensionFailure, ScrapeFailure, ScrapeItemMaxChildrenReached
+from cyberdrop_dl.clients.errors import MaxChildrenError, NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import FILE_FORMATS, error_handling_wrapper, get_filename_and_ext
@@ -116,7 +116,7 @@ class BunkrrCrawler(Crawler):
             scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
+                    raise MaxChildrenError(origin=scrape_item)
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
@@ -144,13 +144,13 @@ class BunkrrCrawler(Crawler):
         link = link_container.get(src_selector) if link_container else None
 
         if not link:
-            raise ScrapeFailure(404, f"Could not find source for: {scrape_item.url}", origin=scrape_item)
+            raise ScrapeError(404, f"Could not find source for: {scrape_item.url}", origin=scrape_item)
 
         link = URL(link)
 
         try:
             filename, ext = await get_filename_and_ext(link.name)
-        except NoExtensionFailure:
+        except NoExtensionError:
             if "get" in link.host:
                 link = await self.reinforced_link(link)
                 if not link:

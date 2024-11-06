@@ -9,7 +9,7 @@ from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import PasswordProtected, ScrapeFailure
+from cyberdrop_dl.clients.errors import PasswordProtectedError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
@@ -128,7 +128,7 @@ class CheveretoCrawler(Crawler):
                 )
 
         if "This content is password protected" in sub_albums_soup.text:
-            raise PasswordProtected(message="Wrong password" if password else None, origin=scrape_item)
+            raise PasswordProtectedError(message="Wrong password" if password else None, origin=scrape_item)
 
         title = await self.create_title(
             sub_albums_soup.select_one(self.album_title_selector).get_text(), album_id, None
@@ -170,7 +170,7 @@ class CheveretoCrawler(Crawler):
             link = URL(soup.select_one("div[id=image-viewer] img").get("src"))
             link = link.with_name(link.name.replace(".md.", ".").replace(".th.", "."))
         except AttributeError:
-            raise ScrapeFailure(404, f"Could not find img source for {scrape_item.url}", origin=scrape_item)
+            raise ScrapeError(404, f"Could not find img source for {scrape_item.url}", origin=scrape_item)
 
         desc_rows = soup.select("p[class*=description-meta]")
         date = None

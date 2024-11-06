@@ -11,7 +11,7 @@ from aiohttp import ClientResponse, ContentTypeError
 from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.clients.download_client import DownloadClient
-from cyberdrop_dl.clients.errors import DDOSGuardFailure, DownloadFailure, ScrapeFailure
+from cyberdrop_dl.clients.errors import DDOSGuardError, DownloadError, ScrapeError
 from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.managers.leaky import LeakyBucket
 from cyberdrop_dl.utils.utilities import CustomHTTPStatus
@@ -114,7 +114,7 @@ class ClientManager:
 
         if download and headers.get("ETag") in DOWNLOAD_ERROR_ETAGS:
             message = DOWNLOAD_ERROR_ETAGS.get(headers.get("ETag"))
-            raise DownloadFailure(HTTPStatus.NOT_FOUND, message=message, origin=origin)
+            raise DownloadError(HTTPStatus.NOT_FOUND, message=message, origin=origin)
 
         if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
             return
@@ -124,30 +124,30 @@ class ClientManager:
                 JSON_Resp: dict = await response.json()
                 if "status" in JSON_Resp:
                     if "notFound" in JSON_Resp["status"]:
-                        raise ScrapeFailure(HTTPStatus.NOT_FOUND, origin=origin)
+                        raise ScrapeError(HTTPStatus.NOT_FOUND, origin=origin)
                     if JSON_Resp.get("data") and "error" in JSON_Resp["data"]:
-                        raise ScrapeFailure(JSON_Resp["status"], JSON_Resp["data"]["error"], origin=origin)
+                        raise ScrapeError(JSON_Resp["status"], JSON_Resp["data"]["error"], origin=origin)
             except ContentTypeError:
                 pass
 
         try:
             response_text = await response.text()
             if "<title>DDoS-Guard</title>" in response_text:
-                raise DDOSGuardFailure(origin=origin)
+                raise DDOSGuardError(origin=origin)
         except UnicodeDecodeError:
             pass
 
         if not headers.get("Content-Type"):
-            raise DownloadFailure(
+            raise DownloadError(
                 status=CustomHTTPStatus.IM_A_TEAPOT, message="No content-type in response header", origin=origin
             )
 
-        raise DownloadFailure(status=status, origin=origin)
+        raise DownloadError(status=status, origin=origin)
 
     @staticmethod
     async def check_bunkr_maint(headers):
         if headers.get("Content-Length") == "322509" and headers.get("Content-Type") == "video/mp4":
-            raise DownloadFailure(status="Bunkr Maintenance", message="Bunkr under maintenance")
+            raise DownloadError(status="Bunkr Maintenance", message="Bunkr under maintenance")
 
     async def check_bucket(self, size):
         await self._leaky_bucket.acquire(size)

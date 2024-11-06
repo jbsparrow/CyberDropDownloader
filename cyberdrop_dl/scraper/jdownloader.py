@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from myjdapi import myjdapi
 
-from cyberdrop_dl.clients.errors import JDownloaderFailure
+from cyberdrop_dl.clients.errors import JDownloaderError
 from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.utils.utilities import log
 
@@ -36,14 +36,14 @@ class JDownloader:
         """Setup function for JDownloader"""
         try:
             if not all((self.jdownloader_username, self.jdownloader_password, self.jdownloader_device)):
-                raise JDownloaderFailure("JDownloader credentials were not provided.")
+                raise JDownloaderError("JDownloader credentials were not provided.")
             jd = myjdapi.Myjdapi()
             jd.set_app_key("CYBERDROP-DL")
             jd.connect(self.jdownloader_username, self.jdownloader_password)
             self.jdownloader_agent = jd.get_device(self.jdownloader_device)
             return
 
-        except JDownloaderFailure as e:
+        except JDownloaderError as e:
             msg = e.message
 
         except myjdapi.MYJDDeviceNotFoundException:
@@ -78,4 +78,4 @@ class JDownloader:
                 ]
             )
         except (AssertionError, myjdapi.MYJDApiException) as e:
-            raise JDownloaderFailure(e)
+            raise JDownloaderError(e)

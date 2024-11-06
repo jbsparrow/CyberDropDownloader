@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import NoExtensionFailure, ScrapeItemMaxChildrenReached
+from cyberdrop_dl.clients.errors import MaxChildrenError, NoExtensionError
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
@@ -64,11 +64,11 @@ class PixelDrainCrawler(Crawler):
             date = await self.parse_datetime(file["date_upload"].replace("T", " ").split(".")[0].strip("Z"))
             try:
                 filename, ext = await get_filename_and_ext(file["name"])
-            except NoExtensionFailure:
+            except NoExtensionError:
                 if "image" in file["mime_type"] or "video" in file["mime_type"]:
                     filename, ext = await get_filename_and_ext(file["name"] + "." + file["mime_type"].split("/")[-1])
                 else:
-                    raise NoExtensionFailure()
+                    raise NoExtensionError()
             new_scrape_item = await self.create_scrape_item(
                 scrape_item, link, title, True, None, date, add_parent=scrape_item.url
             )
@@ -77,7 +77,7 @@ class PixelDrainCrawler(Crawler):
             scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
+                    raise MaxChildrenError(origin=scrape_item)
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
@@ -91,7 +91,7 @@ class PixelDrainCrawler(Crawler):
         date = await self.parse_datetime(JSON_Resp["date_upload"].replace("T", " ").split(".")[0])
         try:
             filename, ext = await get_filename_and_ext(JSON_Resp["name"])
-        except NoExtensionFailure:
+        except NoExtensionError:
             if "text/plain" in JSON_Resp["mime_type"]:
                 await scrape_item.add_to_parent_title(f"{JSON_Resp['name']} (Pixeldrain)")
                 async with self.request_limiter:
@@ -110,7 +110,7 @@ class PixelDrainCrawler(Crawler):
                     JSON_Resp["name"] + "." + JSON_Resp["mime_type"].split("/")[-1]
                 )
             else:
-                raise NoExtensionFailure()
+                raise NoExtensionError()
         new_scrape_item = await self.create_scrape_item(scrape_item, link, "", False, None, date)
         await self.handle_file(link, new_scrape_item, filename, ext)
 

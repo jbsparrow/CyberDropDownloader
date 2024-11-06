@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import ScrapeFailure, ScrapeItemMaxChildrenReached
+from cyberdrop_dl.clients.errors import MaxChildrenError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
@@ -52,7 +52,7 @@ class CoomerCrawler(Crawler):
     async def favorites(self, scrape_item: ScrapeItem) -> None:
         """Scrapes the users' favourites and creates scrape items for each artist found"""
         if not self.manager.config_manager.authentication_data["Coomer"]["session"]:
-            raise ScrapeFailure(
+            raise ScrapeError(
                 401, message="No session cookie found in the config file, cannot scrape favorites", origin=scrape_item
             )
         async with self.request_limiter:
@@ -102,7 +102,7 @@ class CoomerCrawler(Crawler):
                 scrape_item.children += 1
                 if scrape_item.children_limit:
                     if scrape_item.children >= scrape_item.children_limit:
-                        raise ScrapeItemMaxChildrenReached(origin=scrape_item)
+                        raise MaxChildrenError(origin=scrape_item)
 
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem) -> None:
@@ -168,7 +168,7 @@ class CoomerCrawler(Crawler):
             scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
+                    raise MaxChildrenError(origin=scrape_item)
 
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:

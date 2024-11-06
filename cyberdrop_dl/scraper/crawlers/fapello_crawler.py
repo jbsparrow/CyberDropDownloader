@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
+from cyberdrop_dl.clients.errors import MaxChildrenError
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
@@ -77,7 +77,7 @@ class FapelloCrawler(Crawler):
                 await self.handle_external_links(new_scrape_item)
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
+                    raise MaxChildrenError(origin=scrape_item)
 
         next_page = soup.select_one('div[id="next_page"] a')
         if next_page:
@@ -115,4 +115,4 @@ class FapelloCrawler(Crawler):
             scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
+                    raise MaxChildrenError(origin=scrape_item)

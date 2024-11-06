@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import ScrapeFailure
+from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
@@ -76,6 +76,6 @@ class SaintCrawler(Crawler):
         try:
             link = URL(soup.select_one("video[id=main-video] source").get("src"))
         except AttributeError:
-            raise ScrapeFailure(404, f"Could not find video source for {scrape_item.url}", origin=scrape_item)
+            raise ScrapeError(404, f"Could not find video source for {scrape_item.url}", origin=scrape_item)
         filename, ext = await get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)

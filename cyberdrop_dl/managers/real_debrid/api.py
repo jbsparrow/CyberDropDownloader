@@ -2,7 +2,7 @@ import time
 from contextlib import contextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from requests import Session
 from requests.exceptions import RequestException
@@ -38,7 +38,7 @@ class RealDebridApi:
     API_ENTRYPOINT = URL("https://api.real-debrid.com/rest/1.0")
     API_OAUTH_ENTRYPOINT = URL("https://api.real-debrid.com/oauth/v2/")
 
-    def __init__(self, api_token: Optional[str] = None, convert_special_types: bool = False):
+    def __init__(self, api_token: str | None = None, convert_special_types: bool = False):
         self._session = Session()
         self._last_request_time = 0
         self._convert_special_types = convert_special_types
@@ -191,11 +191,11 @@ class Unrestrict:
     def __init__(self, api: RealDebridApi):
         self.api = api
 
-    def check(self, link: URL, password: Optional[str] = None):
+    def check(self, link: URL, password: str | None = None):
         """Check if a file is downloadable on the concerned hoster. This request does not require authentication"""
         return self.api.post("unrestrict/check", link=link, password=password)
 
-    def link(self, link: URL, password: Optional[str] = None, remote: bool = False) -> dict:
+    def link(self, link: URL, password: str | None = None, remote: bool = False) -> dict:
         """Unrestrict a hoster link and get a new unrestricted link"""
         JSONResp = self.api.post("unrestrict/link", link=link, password=password, remote=remote)
         if self.api._convert_special_types:
@@ -317,11 +317,11 @@ class Torrents:
         """Get available hosts to upload the torrent to"""
         return self.api.get("torrents/availableHosts")
 
-    def add_file(self, filepath: Path, host: Optional[str] = None):
+    def add_file(self, filepath: Path, host: str | None = None):
         """Add a torrent file to download, return a 201 HTTP code"""
         return self.api.put("torrents/addTorrent", filepath=filepath, host=host)
 
-    def add_magnet(self, magnet: str, host: Optional[str] = None):
+    def add_magnet(self, magnet: str, host: str | None = None):
         """Add a magnet link to download, returns a 201 HTTP code"""
         if MAGNET_PREFIX not in magnet:
             magnet = f"{MAGNET_PREFIX}{magnet}"

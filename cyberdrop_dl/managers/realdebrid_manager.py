@@ -2,7 +2,7 @@ import re
 import warnings
 from dataclasses import field
 from re import Pattern
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from yarl import URL
 
@@ -58,7 +58,7 @@ class RealDebridManager:
         match = self.supported_regex.search(str(url))
         return bool(match) or "real-debrid" in url.host.lower()
 
-    async def unrestrict_link(self, url: URL, password: Optional[str] = None) -> URL:
+    async def unrestrict_link(self, url: URL, password: str | None = None) -> URL:
         return self.api.unrestrict.link(url, password).get("download")
 
     async def unrestrict_folder(self, url: URL) -> list[URL]:

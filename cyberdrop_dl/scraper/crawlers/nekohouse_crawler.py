@@ -8,7 +8,7 @@ from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import NoExtensionFailure, ScrapeFailure
+from cyberdrop_dl.clients.errors import NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
@@ -139,15 +139,15 @@ class NekohouseCrawler(Crawler):
                 try:
                     data["title"] = soup.select_one(self.post_title_selector).text.strip()
                 except AttributeError:
-                    raise ScrapeFailure("Failed to scrape post title.")
+                    raise ScrapeError("Failed to scrape post title.")
                 try:
                     data["content"] = soup.select_one(self.post_content_selector).text.strip()
                 except AttributeError:
-                    raise ScrapeFailure("Failed to scrape post content.")
+                    raise ScrapeError("Failed to scrape post content.")
                 try:
                     data["published"] = soup.select_one(self.post_timestamp_selector).text.strip()
                 except AttributeError:
-                    raise ScrapeFailure("Failed to scrape post timestamp.")
+                    raise ScrapeError("Failed to scrape post timestamp.")
 
                 for file in soup.select(self.post_images_selector):
                     attachment = {
@@ -194,7 +194,7 @@ class NekohouseCrawler(Crawler):
                 try:
                     data["title"] = soup.select_one("title").text.strip()
                 except AttributeError:
-                    raise ScrapeFailure("Failed to scrape post title.")
+                    raise ScrapeError("Failed to scrape post title.")
 
                 for file in soup.select("a[class=post__attachment-link]"):
                     attachment = {
@@ -230,7 +230,7 @@ class NekohouseCrawler(Crawler):
         """Handles a direct link"""
         try:
             filename, ext = await get_filename_and_ext(scrape_item.url.query["f"])
-        except NoExtensionFailure:
+        except NoExtensionError:
             filename, ext = await get_filename_and_ext(scrape_item.url.name)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 

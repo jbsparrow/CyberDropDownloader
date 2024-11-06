@@ -8,7 +8,7 @@ import asyncprawcore
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import NoExtensionFailure, ScrapeFailure, ScrapeItemMaxChildrenReached
+from cyberdrop_dl.clients.errors import MaxChildrenError, NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext, log
@@ -90,9 +90,9 @@ class RedditCrawler(Crawler):
         try:
             submissions = [submission async for submission in submissions]
         except asyncprawcore.exceptions.Forbidden:
-            raise ScrapeFailure(403, "Forbidden", origin=scrape_item)
+            raise ScrapeError(403, "Forbidden", origin=scrape_item)
         except asyncprawcore.exceptions.NotFound:
-            raise ScrapeFailure(404, "Not Found", origin=scrape_item)
+            raise ScrapeError(404, "Not Found", origin=scrape_item)
 
         scrape_item.type = FILE_HOST_PROFILE
         scrape_item.children = scrape_item.children_limit = 0
@@ -108,7 +108,7 @@ class RedditCrawler(Crawler):
             await self.post(scrape_item, submission, reddit)
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
+                    raise MaxChildrenError(origin=scrape_item)
 
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem, submission, reddit: asyncpraw.Reddit) -> None:
@@ -164,23 +164,23 @@ class RedditCrawler(Crawler):
             scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
+                    raise MaxChildrenError(origin=scrape_item)
 
     @error_handling_wrapper
     async def media(self, scrape_item: ScrapeItem, reddit: asyncpraw.Reddit) -> None:
         """Handles media links"""
         try:
             filename, ext = await get_filename_and_ext(scrape_item.url.name)
-        except NoExtensionFailure:
+        except NoExtensionError:
             head = await self.client.get_head(self.domain, scrape_item.url)
             head = await self.client.get_head(self.domain, head["location"])
 
             try:
                 post = await reddit.submission(url=head["location"])
             except asyncprawcore.exceptions.Forbidden:
-                raise ScrapeFailure(403, "Forbidden", origin=scrape_item)
+                raise ScrapeError(403, "Forbidden", origin=scrape_item)
             except asyncprawcore.exceptions.NotFound:
-                raise ScrapeFailure(404, "Not Found", origin=scrape_item)
+                raise ScrapeError(404, "Not Found", origin=scrape_item)
 
             await self.post(scrape_item, post, reddit)
             return

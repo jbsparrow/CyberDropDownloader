@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
+from cyberdrop_dl.clients.errors import MaxChildrenError
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext, log
@@ -105,7 +105,7 @@ class ScrolllerCrawler(Crawler):
                         await self.handle_file(highest_res_image_url, scrape_item, filename, ext)
                         if scrape_item.children_limit:
                             if scrape_item.children >= scrape_item.children_limit:
-                                raise ScrapeItemMaxChildrenReached(origin=scrape_item)
+                                raise MaxChildrenError(origin=scrape_item)
 
                 prev_iterator = iterator
                 iterator = data["data"]["getSubreddit"]["children"]["iterator"]

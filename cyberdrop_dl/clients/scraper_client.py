@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 from multidict import CIMultiDictProxy
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import DDOSGuardFailure, InvalidContentTypeFailure
+from cyberdrop_dl.clients.errors import DDOSGuardError, InvalidContentTypeError
 from cyberdrop_dl.utils.utilities import log
 
 if TYPE_CHECKING:
@@ -83,7 +83,7 @@ class ScraperClient:
     ) -> str:
         """Returns the resolved URL from the given URL"""
         if not self.client_manager.flaresolverr:
-            raise DDOSGuardFailure(message="FlareSolverr is not configured", origin=origin)
+            raise DDOSGuardError(message="FlareSolverr is not configured", origin=origin)
 
         headers = {**self._headers, **{"Content-Type": "application/json"}}
         data = {"cmd": "request.get", "url": str(url), "maxTimeout": 60000}
@@ -98,7 +98,7 @@ class ScraperClient:
             json_obj: dict = await response.json()
             status = json_obj.get("status")
             if status != "ok":
-                raise DDOSGuardFailure(message="Failed to resolve URL with flaresolverr", origin=origin)
+                raise DDOSGuardError(message="Failed to resolve URL with flaresolverr", origin=origin)
 
             response = json_obj.get("solution").get("response")
             response_url = json_obj.get("solution").get("url")
@@ -121,7 +121,7 @@ class ScraperClient:
         ) as response:
             try:
                 await self.client_manager.check_http_status(response, origin=origin)
-            except DDOSGuardFailure:
+            except DDOSGuardError:
                 response = await self.flaresolverr(domain, url, origin=origin, with_response_url=with_response_url)
                 if with_response_url:
                     return BeautifulSoup(response[0], "html.parser"), response[1]
@@ -130,7 +130,7 @@ class ScraperClient:
             content_type = response.headers.get("Content-Type")
             assert content_type is not None
             if not any(s in content_type.lower() for s in ("html", "text")):
-                raise InvalidContentTypeFailure(message=f"Received {content_type}, was expecting text", origin=origin)
+                raise InvalidContentTypeError(message=f"Received {content_type}, was expecting text", origin=origin)
             text = await response.text()
             if with_response_url:
                 return BeautifulSoup(text, "html.parser"), URL(response.url)
@@ -162,7 +162,7 @@ class ScraperClient:
             content_type = response.headers.get("Content-Type")
             assert content_type is not None
             if "json" not in content_type.lower():
-                raise InvalidContentTypeFailure(message=f"Received {content_type}, was expecting JSON", origin=origin)
+                raise InvalidContentTypeError(message=f"Received {content_type}, was expecting JSON", origin=origin)
             return await response.json()
 
     @limiter
@@ -175,7 +175,7 @@ class ScraperClient:
         ) as response:
             try:
                 await self.client_manager.check_http_status(response, origin=origin)
-            except DDOSGuardFailure:
+            except DDOSGuardError:
                 response_text = await self.flaresolverr(domain, url)
                 return response_text
             text = await response.text()

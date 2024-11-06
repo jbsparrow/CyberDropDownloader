@@ -7,7 +7,7 @@ from aiolimiter import AsyncLimiter
 from bs4 import Tag
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
+from cyberdrop_dl.clients.errors import MaxChildrenError
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import FORUM, FORUM_POST, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext, log
@@ -137,7 +137,7 @@ class SocialMediaGirlsCrawler(Crawler):
                     scrape_item.children += 1
                     if scrape_item.children_limit:
                         if scrape_item.children >= scrape_item.children_limit:
-                            raise ScrapeItemMaxChildrenReached(origin=scrape_item)
+                            raise MaxChildrenError(origin=scrape_item)
 
                 if not continue_scraping:
                     break
@@ -182,7 +182,7 @@ class SocialMediaGirlsCrawler(Crawler):
             scrape_item.children += await scraper(scrape_item, post_content)
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
+                    raise MaxChildrenError(origin=scrape_item)
 
     @error_handling_wrapper
     async def links(self, scrape_item: ScrapeItem, post_content: Tag) -> int:

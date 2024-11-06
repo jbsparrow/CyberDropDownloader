@@ -8,7 +8,7 @@ from aiolimiter import AsyncLimiter
 from mediafire import MediaFireApi, api
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import ScrapeFailure, ScrapeItemMaxChildrenReached
+from cyberdrop_dl.clients.errors import MaxChildrenError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
@@ -45,7 +45,7 @@ class MediaFireCrawler(Crawler):
         try:
             folder_details = self.api.folder_get_info(folder_key=folder_key)
         except api.MediaFireApiError as e:
-            raise ScrapeFailure(f"MF - {e.message}", origin=scrape_item)
+            raise ScrapeError(f"MF - {e.message}", origin=scrape_item)
 
         title = await self.create_title(folder_details["folder_info"]["name"], folder_key, None)
         scrape_item.type = FILE_HOST_ALBUM
@@ -69,7 +69,7 @@ class MediaFireCrawler(Crawler):
                     folder_key=folder_key, content_type="files", chunk=chunk, chunk_size=chunk_size
                 )
             except api.MediaFireApiError as e:
-                raise ScrapeFailure(f"MF - {e.message}", origin=scrape_item)
+                raise ScrapeError(f"MF - {e.message}", origin=scrape_item)
 
             files = folder_contents["folder_content"]["files"]
 
@@ -83,7 +83,7 @@ class MediaFireCrawler(Crawler):
                 scrape_item.children += 1
                 if scrape_item.children_limit:
                     if scrape_item.children >= scrape_item.children_limit:
-                        raise ScrapeItemMaxChildrenReached(origin=scrape_item)
+                        raise MaxChildrenError(origin=scrape_item)
 
             if folder_contents["folder_content"]["more_chunks"] == "yes":
                 chunk += 1

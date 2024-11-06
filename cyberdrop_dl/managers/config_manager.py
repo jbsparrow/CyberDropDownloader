@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Dict, List
 
 import yaml
 
-from cyberdrop_dl.clients.errors import InvalidYamlConfig
+from cyberdrop_dl.clients.errors import InvalidYamlError
 from cyberdrop_dl.managers.log_manager import LogManager
 from cyberdrop_dl.utils.args.config_definitions import authentication_settings, global_settings, settings
 
@@ -38,7 +38,7 @@ def _load_yaml(file: Path) -> Dict:
             yaml_values = yaml.load(yaml_file.read(), Loader=yaml.FullLoader)
             return yaml_values if yaml_values else {}
     except yaml.constructor.ConstructorError as e:
-        raise InvalidYamlConfig(file, e)
+        raise InvalidYamlError(file, e)
 
 
 def get_keys(dl, keys=None) -> set:

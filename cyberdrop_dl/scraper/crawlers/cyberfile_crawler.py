@@ -8,7 +8,7 @@ from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import PasswordProtected, ScrapeFailure, ScrapeItemMaxChildrenReached
+from cyberdrop_dl.clients.errors import MaxChildrenError, PasswordProtectedError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext, log
@@ -48,7 +48,7 @@ class CyberfileCrawler(Crawler):
 
         login = soup.select_one("form[id=form_login]")
         if login:
-            raise ScrapeFailure(404, "Folder has been deleted", origin=scrape_item)
+            raise ScrapeError(404, "Folder has been deleted", origin=scrape_item)
 
         script_func = soup.select('div[class*="page-container"] script')[-1].text
         script_func = script_func.split("loadImages(")[-1]
@@ -82,7 +82,7 @@ class CyberfileCrawler(Crawler):
                         self.domain, self.api_password_process, data=password_data, origin=scrape_item
                     )
                     if not password_response.get("success"):
-                        raise PasswordProtected(origin=scrape_item)
+                        raise PasswordProtectedError(origin=scrape_item)
                     ajax_dict: dict = await self.client.post_data(
                         self.domain, self.api_files, data=data, origin=scrape_item
                     )
@@ -120,7 +120,7 @@ class CyberfileCrawler(Crawler):
                 scrape_item.children += 1
                 if scrape_item.children_limit:
                     if scrape_item.children >= scrape_item.children_limit:
-                        raise ScrapeItemMaxChildrenReached(origin=scrape_item)
+                        raise MaxChildrenError(origin=scrape_item)
 
             page += 1
             if page > num_pages:
@@ -191,7 +191,7 @@ class CyberfileCrawler(Crawler):
                 scrape_item.children += 1
                 if scrape_item.children_limit:
                     if scrape_item.children >= scrape_item.children_limit:
-                        raise ScrapeItemMaxChildrenReached(origin=scrape_item)
+                        raise MaxChildrenError(origin=scrape_item)
 
             page += 1
             if page > num_pages and not new_folders:
@@ -216,7 +216,7 @@ class CyberfileCrawler(Crawler):
                     )
                 )
                 if "File password is invalid" in soup.text:
-                    raise PasswordProtected(origin=scrape_item)
+                    raise PasswordProtectedError(origin=scrape_item)
 
         script_funcs = soup.select("script")
         for script in script_funcs:
@@ -238,7 +238,7 @@ class CyberfileCrawler(Crawler):
             ajax_soup = BeautifulSoup(ajax_dict["html"].replace("\\", ""), "html.parser")
 
         if "albumPasswordModel" in ajax_dict["html"]:
-            raise PasswordProtected(origin=scrape_item)
+            raise PasswordProtectedError(origin=scrape_item)
 
         file_menu = ajax_soup.select_one('ul[class="dropdown-menu dropdown-info account-dropdown-resize-menu"] li a')
         file_button = ajax_soup.select_one('div[class="btn-group responsiveMobileMargin"] button')
@@ -249,7 +249,7 @@ class CyberfileCrawler(Crawler):
                 html_download_text = file_button.get("onclick")
         except AttributeError:
             await log(f"Couldn't find download button for {scrape_item.url}", 30)
-            raise ScrapeFailure(422, "Couldn't find download button", origin=scrape_item)
+            raise ScrapeError(422, "Couldn't find download button", origin=scrape_item)
         link = URL(html_download_text.split("'")[1])
 
         file_detail_table = ajax_soup.select('table[class="table table-bordered table-striped"]')[-1]

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import NoExtensionFailure, ScrapeItemMaxChildrenReached
+from cyberdrop_dl.clients.errors import MaxChildrenError, NoExtensionError
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
@@ -79,7 +79,7 @@ class KemonoCrawler(Crawler):
                 scrape_item.children += 1
                 if scrape_item.children_limit:
                     if scrape_item.children >= scrape_item.children_limit:
-                        raise ScrapeItemMaxChildrenReached(origin=scrape_item)
+                        raise MaxChildrenError(origin=scrape_item)
 
     @error_handling_wrapper
     async def discord(self, scrape_item: ScrapeItem) -> None:
@@ -110,7 +110,7 @@ class KemonoCrawler(Crawler):
                 scrape_item.children += 1
                 if scrape_item.children_limit:
                     if scrape_item.children >= scrape_item.children_limit:
-                        raise ScrapeItemMaxChildrenReached(origin=scrape_item)
+                        raise MaxChildrenError(origin=scrape_item)
 
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem) -> None:
@@ -163,7 +163,7 @@ class KemonoCrawler(Crawler):
         for file in files:
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
+                    raise MaxChildrenError(origin=scrape_item)
             await handle_file(file)
             scrape_item.children += 1
 
@@ -225,7 +225,7 @@ class KemonoCrawler(Crawler):
         """Handles a direct link"""
         try:
             filename, ext = await get_filename_and_ext(scrape_item.url.query["f"])
-        except NoExtensionFailure:
+        except NoExtensionError:
             filename, ext = await get_filename_and_ext(scrape_item.url.name)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 

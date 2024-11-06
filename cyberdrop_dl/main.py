@@ -9,7 +9,7 @@ from pathlib import Path
 from rich.console import Console
 from rich.logging import RichHandler
 
-from cyberdrop_dl.clients.errors import InvalidYamlConfig
+from cyberdrop_dl.clients.errors import InvalidYamlError
 from cyberdrop_dl.managers.console_manager import print_
 from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.scraper.scraper import ScrapeMapper
@@ -56,7 +56,7 @@ def startup() -> Manager:
 
         return manager
 
-    except InvalidYamlConfig as e:
+    except InvalidYamlError as e:
         print_(e.message_rich)
         exit(1)
 

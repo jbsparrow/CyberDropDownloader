@@ -10,7 +10,7 @@ import aiofiles
 import arrow
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import JDownloaderFailure, NoExtensionFailure
+from cyberdrop_dl.clients.errors import JDownloaderError, NoExtensionError
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.scraper.jdownloader import JDownloader
 from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem, ScrapeItem
@@ -500,7 +500,7 @@ class ScrapeMapper:
             if ext in FILE_FORMATS["Images"] or ext in FILE_FORMATS["Videos"] or ext in FILE_FORMATS["Audio"]:
                 return True
             return False
-        except NoExtensionFailure:
+        except NoExtensionError:
             return False
 
     async def map_url(self, scrape_item: ScrapeItem, date: arrow.Arrow = None):
@@ -592,7 +592,7 @@ class ScrapeMapper:
                     scrape_item.url, scrape_item.parent_title, relative_download_dir
                 )
                 success = True
-            except JDownloaderFailure as e:
+            except JDownloaderError as e:
                 await log(f"Failed to send {scrape_item.url} to JDownloader\n{e.message}", 40)
                 await self.manager.log_manager.write_unsupported_urls_log(
                     scrape_item.url, scrape_item.parents[0] if scrape_item.parents else None
@@ -677,7 +677,7 @@ class ScrapeMapper:
             await log(f"Sending unsupported URL to JDownloader: {scrape_item.url}", 10)
             try:
                 await self.jdownloader.direct_unsupported_to_jdownloader(scrape_item.url, scrape_item.parent_title)
-            except JDownloaderFailure as e:
+            except JDownloaderError as e:
                 await log(f"Failed to send {scrape_item.url} to JDownloader", 40)
                 await log(e.message, 40)
                 await self.manager.log_manager.write_unsupported_urls_log(

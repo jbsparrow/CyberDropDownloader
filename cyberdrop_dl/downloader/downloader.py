@@ -12,7 +12,7 @@ import aiohttp
 import filedate
 
 from cyberdrop_dl.clients.download_client import is_4xx_client_error
-from cyberdrop_dl.clients.errors import CDLBaseException, DownloadFailure
+from cyberdrop_dl.clients.errors import CDLBaseError, DownloadError
 from cyberdrop_dl.managers.real_debrid.errors import RealDebridError
 from cyberdrop_dl.utils.utilities import CustomHTTPStatus, log
 
@@ -32,7 +32,7 @@ def retry(f):
             e_origin = exc_info = None
             try:
                 return await f(self, *args, **kwargs)
-            except DownloadFailure as e:
+            except DownloadError as e:
                 await self.attempt_task_removal(media_item)
 
                 max_attempts = self.manager.config_manager.global_settings_data["Rate_Limiting_Options"][
@@ -67,7 +67,7 @@ def retry(f):
                 )
                 continue
 
-            except CDLBaseException as err:
+            except CDLBaseError as err:
                 e_log_detail = e_log_message = err.message
                 e_ui_failure = err.ui_message
                 e_origin = err.origin
@@ -222,7 +222,7 @@ class Downloader:
             aiohttp.ClientOSError,
             aiohttp.ClientResponseError,
             ConnectionResetError,
-            DownloadFailure,
+            DownloadError,
             FileNotFoundError,
             PermissionError,
             aiohttp.ServerDisconnectedError,
@@ -232,7 +232,7 @@ class Downloader:
             e_origin = media_item.referer
 
             if hasattr(err, "status") and await self.is_failed(err.status):
-                e_ui_failure = err.ui_message if isinstance(err, CDLBaseException) else err.status
+                e_ui_failure = err.ui_message if isinstance(err, CDLBaseError) else err.status
 
                 if hasattr(err, "message"):
                     e_log_detail = e_log_message = f"{err.status} - {err.message}"
@@ -253,15 +253,15 @@ class Downloader:
                     media_item.filename in self._current_attempt_filesize
                     and self._current_attempt_filesize[media_item.filename] >= size
                 ):
-                    raise DownloadFailure(
+                    raise DownloadError(
                         status=getattr(err, "status", type(err).__name__), message=f"{self.log_prefix} failed"
                     )
                 self._current_attempt_filesize[media_item.filename] = size
                 media_item.current_attempt = 0
-                raise DownloadFailure(status=999, message="Download timeout reached, retrying")
+                raise DownloadError(status=999, message="Download timeout reached, retrying")
 
             message = err.message if hasattr(err, "message") else str(err)
-            raise DownloadFailure(status=getattr(err, "status", type(err).__name__), message=message)
+            raise DownloadError(status=getattr(err, "status", type(err).__name__), message=message)
 
     @staticmethod
     async def is_failed(status: int):

@@ -16,7 +16,7 @@ from aiohttp import ClientSession, FormData
 from rich.text import Text
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import CDLBaseException, NoExtensionFailure
+from cyberdrop_dl.clients.errors import CDLBaseError, NoExtensionError
 from cyberdrop_dl.managers.console_manager import log as log_console
 from cyberdrop_dl.managers.real_debrid.errors import RealDebridError
 
@@ -104,7 +104,7 @@ def error_handling_wrapper(func):
         e_origin = exc_info = None
         try:
             return await func(self, *args, **kwargs)
-        except CDLBaseException as err:
+        except CDLBaseError as err:
             e_log_detail = e_ui_failure = err.ui_message
             e_log_message = err.message
             e_origin = err.origin
@@ -224,11 +224,11 @@ async def get_filename_and_ext(filename: str, forum: bool = False) -> tuple[str,
     """Returns the filename and extension of a given file, throws NoExtensionFailure if there is no extension"""
     filename_parts = filename.rsplit(".", 1)
     if len(filename_parts) == 1:
-        raise NoExtensionFailure()
+        raise NoExtensionError()
     if filename_parts[-1].isnumeric() and forum:
         filename_parts = filename_parts[0].rsplit("-", 1)
     if len(filename_parts[-1]) > 5:
-        raise NoExtensionFailure()
+        raise NoExtensionError()
     ext = "." + filename_parts[-1].lower()
     filename = (
         filename_parts[0][: MAX_NAME_LENGTHS["FILE"]]

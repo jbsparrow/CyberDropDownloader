@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 from bs4 import BeautifulSoup
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import FailedLoginFailure
+from cyberdrop_dl.clients.errors import LoginError
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem, ScrapeItem
@@ -149,14 +149,14 @@ class Crawler(ABC):
             )
         if (not username or not password) and not session_cookie:
             await log(f"Login wasn't provided for {login_url.host}", 30)
-            raise FailedLoginFailure(message="Login wasn't provided")
+            raise LoginError(message="Login wasn't provided")
         attempt = 0
 
         while True:
             try:
                 attempt += 1
                 if attempt == 5:
-                    raise FailedLoginFailure(message="Failed to login after 5 attempts")
+                    raise LoginError(message="Failed to login after 5 attempts")
 
                 assert login_url.host is not None
 

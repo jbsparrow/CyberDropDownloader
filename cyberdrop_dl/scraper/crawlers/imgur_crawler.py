@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import FailedLoginFailure, ScrapeFailure, ScrapeItemMaxChildrenReached
+from cyberdrop_dl.clients.errors import LoginError, MaxChildrenError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext, log
@@ -43,7 +43,7 @@ class ImgurCrawler(Crawler):
         """Scrapes an album"""
         if self.imgur_client_id == "":
             await log("To scrape imgur content, you need to provide a client id", 30)
-            raise FailedLoginFailure(message="No Imgur Client ID provided")
+            raise LoginError(message="No Imgur Client ID provided")
         await self.check_imgur_credits()
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
@@ -81,14 +81,14 @@ class ImgurCrawler(Crawler):
             scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
+                    raise MaxChildrenError(origin=scrape_item)
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image"""
         if self.imgur_client_id == "":
             await log("To scrape imgur content, you need to provide a client id", 30)
-            raise FailedLoginFailure(message="No Imgur Client ID provided")
+            raise LoginError(message="No Imgur Client ID provided")
         await self.check_imgur_credits()
 
         image_id = scrape_item.url.parts[-1]
@@ -119,4 +119,4 @@ class ImgurCrawler(Crawler):
         credits_obj = await self.client.get_json(self.domain, self.imgur_api / "credits", headers_inc=self.headers)
         self.imgur_client_remaining = credits_obj["data"]["ClientRemaining"]
         if self.imgur_client_remaining < 100:
-            raise ScrapeFailure(429, "Imgur API rate limit reached")
+            raise ScrapeError(429, "Imgur API rate limit reached")

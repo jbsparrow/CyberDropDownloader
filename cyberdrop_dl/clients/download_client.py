@@ -13,7 +13,7 @@ import aiofiles
 import aiohttp
 from aiohttp import ClientSession
 
-from cyberdrop_dl.clients.errors import DownloadFailure, InvalidContentTypeFailure
+from cyberdrop_dl.clients.errors import DownloadError, InvalidContentTypeError
 from cyberdrop_dl.utils.utilities import FILE_FORMATS, log
 
 if TYPE_CHECKING:
@@ -150,7 +150,7 @@ class DownloadClient:
                 and any(s in content_type.lower() for s in ("html", "text"))
                 and ext not in FILE_FORMATS["Text"]
             ):
-                raise InvalidContentTypeFailure(message=f"Received {content_type}, was expecting other")
+                raise InvalidContentTypeError(message=f"Received {content_type}, was expecting other")
 
             if resp.status != HTTPStatus.PARTIAL_CONTENT and media_item.partial_file.is_file():
                 media_item.partial_file.unlink()
@@ -170,7 +170,7 @@ class DownloadClient:
     ) -> None:
         """Appends content to a file"""
         if not await self.client_manager.manager.download_manager.check_free_space(media_item.download_folder):
-            raise DownloadFailure(status="Insufficient Free Space", message="Not enough free space")
+            raise DownloadError(status="Insufficient Free Space", message="Not enough free space")
 
         media_item.partial_file.parent.mkdir(parents=True, exist_ok=True)
         if not media_item.partial_file.is_file():
@@ -183,7 +183,7 @@ class DownloadClient:
                 await update_progress(len(chunk))
         if not content.total_bytes and not media_item.partial_file.stat().st_size:
             media_item.partial_file.unlink()
-            raise DownloadFailure(status=HTTPStatus.INTERNAL_SERVER_ERROR, message="File is empty")
+            raise DownloadError(status=HTTPStatus.INTERNAL_SERVER_ERROR, message="File is empty")
 
     async def download_file(self, manager: Manager, domain: str, media_item: MediaItem) -> bool:
         """Starts a file"""

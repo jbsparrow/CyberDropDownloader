@@ -10,11 +10,11 @@ from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import (
-    DownloadFailure,
-    NoExtensionFailure,
-    PasswordProtected,
-    ScrapeFailure,
-    ScrapeItemMaxChildrenReached,
+    DownloadError,
+    MaxChildrenError,
+    NoExtensionError,
+    PasswordProtectedError,
+    ScrapeError,
 )
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, ScrapeItem
@@ -71,7 +71,7 @@ class GoFileCrawler(Crawler):
                     headers_inc=self.headers,
                     origin=scrape_item,
                 )
-        except DownloadFailure as e:
+        except DownloadError as e:
             if e.status == http.HTTPStatus.UNAUTHORIZED:
                 self.websiteToken = ""
                 self.manager.cache_manager.remove("gofile_website_token")
@@ -86,19 +86,19 @@ class GoFileCrawler(Crawler):
                         origin=scrape_item,
                     )
             else:
-                raise ScrapeFailure(e.status, e.message, origin=scrape_item)
+                raise ScrapeError(e.status, e.message, origin=scrape_item)
 
         if JSON_Resp["status"] == "error-notFound":
-            raise ScrapeFailure(404, "Album not found", origin=scrape_item)
+            raise ScrapeError(404, "Album not found", origin=scrape_item)
 
         JSON_Resp = JSON_Resp["data"]
 
         if "password" in JSON_Resp:
             if JSON_Resp["passwordStatus"] in {"passwordRequired", "passwordWrong"} or not password:
-                raise PasswordProtected(origin=scrape_item)
+                raise PasswordProtectedError(origin=scrape_item)
 
         if JSON_Resp["canAccess"] is False:
-            raise ScrapeFailure(403, "Album is private", origin=scrape_item)
+            raise ScrapeError(403, "Album is private", origin=scrape_item)
 
         title = await self.create_title(JSON_Resp["name"], content_id, None)
         # Do not reset nested folders
@@ -140,14 +140,14 @@ class GoFileCrawler(Crawler):
                     duplicate_scrape_item.part_of_album = True
                     await duplicate_scrape_item.add_to_parent_title(title)
                     await self.handle_file(link, duplicate_scrape_item, filename, ext)
-                except NoExtensionFailure:
+                except NoExtensionError:
                     await log(f"Scrape Failed: {link} (No File Extension)", 40)
                     await self.manager.log_manager.write_scrape_error_log(link, " No File Extension")
                     await self.manager.progress_manager.scrape_stats_progress.add_failure("No File Extension")
             scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
+                    raise MaxChildrenError(origin=scrape_item)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -173,7 +173,7 @@ class GoFileCrawler(Crawler):
                 self.headers["Authorization"] = f"Bearer {self.token}"
                 await self.set_cookie(session)
             else:
-                raise ScrapeFailure(403, "Couldn't generate GoFile token")
+                raise ScrapeError(403, "Couldn't generate GoFile token")
 
     @error_handling_wrapper
     async def get_website_token(self, js_address: URL, session: ScraperClient) -> None:
@@ -191,7 +191,7 @@ class GoFileCrawler(Crawler):
         text = str(text)
         self.websiteToken = re.search(r'fetchData\s=\s\{\swt:\s"(.*?)"', text).group(1)
         if not self.websiteToken:
-            raise ScrapeFailure(403, "Couldn't generate GoFile websiteToken")
+            raise ScrapeError(403, "Couldn't generate GoFile websiteToken")
         self.manager.cache_manager.save("gofile_website_token", self.websiteToken)
 
     async def set_cookie(self, session: ScraperClient) -> None:

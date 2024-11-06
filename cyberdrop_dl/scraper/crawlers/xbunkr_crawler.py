@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import NoExtensionFailure, ScrapeItemMaxChildrenReached
+from cyberdrop_dl.clients.errors import MaxChildrenError, NoExtensionError
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext, log
@@ -61,7 +61,7 @@ class XBunkrCrawler(Crawler):
             link = URL(link.get("href"))
             try:
                 filename, ext = await get_filename_and_ext(link.name)
-            except NoExtensionFailure:
+            except NoExtensionError:
                 await log(f"Couldn't get extension for {str(link)}", 30)
                 continue
             new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent=scrape_item.url)
@@ -69,4 +69,4 @@ class XBunkrCrawler(Crawler):
             scrape_item.children += 1
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin=scrape_item)
+                    raise MaxChildrenError(origin=scrape_item)
