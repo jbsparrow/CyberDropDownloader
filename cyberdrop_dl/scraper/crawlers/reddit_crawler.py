@@ -90,9 +90,9 @@ class RedditCrawler(Crawler):
         try:
             submissions = [submission async for submission in submissions]
         except asyncprawcore.exceptions.Forbidden:
-            raise ScrapeError(403, "Forbidden", origin=scrape_item)
+            raise ScrapeError(403, "Forbidden", origin=scrape_item) from None
         except asyncprawcore.exceptions.NotFound:
-            raise ScrapeError(404, "Not Found", origin=scrape_item)
+            raise ScrapeError(404, "Not Found", origin=scrape_item) from None
 
         scrape_item.type = FILE_HOST_PROFILE
         scrape_item.children = scrape_item.children_limit = 0
@@ -178,9 +178,9 @@ class RedditCrawler(Crawler):
             try:
                 post = await reddit.submission(url=head["location"])
             except asyncprawcore.exceptions.Forbidden:
-                raise ScrapeError(403, "Forbidden", origin=scrape_item)
+                raise ScrapeError(403, "Forbidden", origin=scrape_item) from None
             except asyncprawcore.exceptions.NotFound:
-                raise ScrapeError(404, "Not Found", origin=scrape_item)
+                raise ScrapeError(404, "Not Found", origin=scrape_item) from None
 
             await self.post(scrape_item, post, reddit)
             return

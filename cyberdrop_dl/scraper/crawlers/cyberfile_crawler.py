@@ -249,7 +249,7 @@ class CyberfileCrawler(Crawler):
                 html_download_text = file_button.get("onclick")
         except AttributeError:
             await log(f"Couldn't find download button for {scrape_item.url}", 30)
-            raise ScrapeError(422, "Couldn't find download button", origin=scrape_item)
+            raise ScrapeError(422, "Couldn't find download button", origin=scrape_item) from None
         link = URL(html_download_text.split("'")[1])
 
         file_detail_table = ajax_soup.select('table[class="table table-bordered table-striped"]')[-1]

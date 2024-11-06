@@ -2,7 +2,7 @@ import argparse
 
 import arrow
 
-from cyberdrop_dl import __version__ as VERSION
+from cyberdrop_dl import __version__
 from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
 
 
@@ -10,7 +10,7 @@ def parse_args() -> argparse.Namespace:
     """Parses the command line arguments passed into the program"""
     parser = argparse.ArgumentParser(description="Bulk downloader for multiple file hosts")
     general = parser.add_argument_group("General")
-    general.add_argument("-V", "--version", action="version", version=f"%(prog)s {VERSION}")
+    general.add_argument("-V", "--version", action="version", version=f"%(prog)s {__version__}")
     general.add_argument("--config", type=str, help="name of config to load", default="")
     general.add_argument("--proxy", type=str, help="manually specify proxy string", default="")
     general.add_argument("--flaresolverr", type=str, help="IP:PORT for flaresolverr", default="")

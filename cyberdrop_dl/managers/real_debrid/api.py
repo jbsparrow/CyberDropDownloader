@@ -82,7 +82,7 @@ class RealDebridApi:
             JSONResp: dict = response.json()
             return JSONResp
         except RequestException:
-            raise RealDebridError(response)
+            raise RealDebridError(response) from None
         except AttributeError:
             return response.text
 

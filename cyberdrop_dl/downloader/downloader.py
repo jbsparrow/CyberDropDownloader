@@ -255,13 +255,13 @@ class Downloader:
                 ):
                     raise DownloadError(
                         status=getattr(err, "status", type(err).__name__), message=f"{self.log_prefix} failed"
-                    )
+                    ) from None
                 self._current_attempt_filesize[media_item.filename] = size
                 media_item.current_attempt = 0
-                raise DownloadError(status=999, message="Download timeout reached, retrying")
+                raise DownloadError(status=999, message="Download timeout reached, retrying") from None
 
             message = err.message if hasattr(err, "message") else str(err)
-            raise DownloadError(status=getattr(err, "status", type(err).__name__), message=message)
+            raise DownloadError(status=getattr(err, "status", type(err).__name__), message=message) from None
 
     @staticmethod
     async def is_failed(status: int):

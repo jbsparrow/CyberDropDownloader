@@ -45,7 +45,7 @@ class MediaFireCrawler(Crawler):
         try:
             folder_details = self.api.folder_get_info(folder_key=folder_key)
         except api.MediaFireApiError as e:
-            raise ScrapeError(f"MF - {e.message}", origin=scrape_item)
+            raise ScrapeError(f"MF - {e.message}", origin=scrape_item) from None
 
         title = await self.create_title(folder_details["folder_info"]["name"], folder_key, None)
         scrape_item.type = FILE_HOST_ALBUM
@@ -69,7 +69,7 @@ class MediaFireCrawler(Crawler):
                     folder_key=folder_key, content_type="files", chunk=chunk, chunk_size=chunk_size
                 )
             except api.MediaFireApiError as e:
-                raise ScrapeError(f"MF - {e.message}", origin=scrape_item)
+                raise ScrapeError(f"MF - {e.message}", origin=scrape_item) from None
 
             files = folder_contents["folder_content"]["files"]
 

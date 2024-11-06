@@ -139,15 +139,15 @@ class NekohouseCrawler(Crawler):
                 try:
                     data["title"] = soup.select_one(self.post_title_selector).text.strip()
                 except AttributeError:
-                    raise ScrapeError("Failed to scrape post title.")
+                    raise ScrapeError("Failed to scrape post title.") from None
                 try:
                     data["content"] = soup.select_one(self.post_content_selector).text.strip()
                 except AttributeError:
-                    raise ScrapeError("Failed to scrape post content.")
+                    raise ScrapeError("Failed to scrape post content.") from None
                 try:
                     data["published"] = soup.select_one(self.post_timestamp_selector).text.strip()
                 except AttributeError:
-                    raise ScrapeError("Failed to scrape post timestamp.")
+                    raise ScrapeError("Failed to scrape post timestamp.") from None
 
                 for file in soup.select(self.post_images_selector):
                     attachment = {
@@ -194,7 +194,7 @@ class NekohouseCrawler(Crawler):
                 try:
                     data["title"] = soup.select_one("title").text.strip()
                 except AttributeError:
-                    raise ScrapeError("Failed to scrape post title.")
+                    raise ScrapeError("Failed to scrape post title.") from None
 
                 for file in soup.select("a[class=post__attachment-link]"):
                     attachment = {

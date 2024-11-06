@@ -38,7 +38,7 @@ def _load_yaml(file: Path) -> Dict:
             yaml_values = yaml.load(yaml_file.read(), Loader=yaml.FullLoader)
             return yaml_values if yaml_values else {}
     except yaml.constructor.ConstructorError as e:
-        raise InvalidYamlError(file, e)
+        raise InvalidYamlError(file, e) from None
 
 
 def get_keys(dl, keys=None) -> set:

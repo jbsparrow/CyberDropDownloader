@@ -4,7 +4,6 @@ import asyncio
 import logging
 import os
 import re
-from enum import IntEnum
 from functools import wraps
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -13,6 +12,7 @@ import aiofiles
 import apprise
 import rich
 from aiohttp import ClientSession, FormData
+from Nonenum import IntEnum
 from rich.text import Text
 from yarl import URL
 

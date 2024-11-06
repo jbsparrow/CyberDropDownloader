@@ -95,8 +95,8 @@ class TokioMotionCrawler(Crawler):
             link = URL(src)
         except AttributeError:
             if "This is a private" in soup.text:
-                raise ScrapeError(403, f"Private video: {scrape_item.url}", origin=scrape_item)
-            raise ScrapeError(404, f"Could not find video source for {scrape_item.url}", origin=scrape_item)
+                raise ScrapeError(403, f"Private video: {scrape_item.url}", origin=scrape_item) from None
+            raise ScrapeError(404, f"Could not find video source for {scrape_item.url}", origin=scrape_item) from None
 
         title = soup.select_one("title").text.rsplit(" - TOKYO Motion")[0].strip()
 
@@ -183,8 +183,8 @@ class TokioMotionCrawler(Crawler):
             link = URL(src)
         except AttributeError:
             if "This is a private" in soup.text:
-                raise ScrapeError(403, f"Private Photo: {scrape_item.url}", origin=scrape_item)
-            raise ScrapeError(404, f"Could not find image source for {scrape_item.url}", origin=scrape_item)
+                raise ScrapeError(403, f"Private Photo: {scrape_item.url}", origin=scrape_item) from None
+            raise ScrapeError(404, f"Could not find image source for {scrape_item.url}", origin=scrape_item) from None
 
         filename, ext = await get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)

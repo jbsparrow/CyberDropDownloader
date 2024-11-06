@@ -86,7 +86,7 @@ class GoFileCrawler(Crawler):
                         origin=scrape_item,
                     )
             else:
-                raise ScrapeError(e.status, e.message, origin=scrape_item)
+                raise ScrapeError(e.status, e.message, origin=scrape_item) from None
 
         if JSON_Resp["status"] == "error-notFound":
             raise ScrapeError(404, "Album not found", origin=scrape_item)
