@@ -79,7 +79,7 @@ class TokioMotionCrawler(Crawler):
 
         video_id = scrape_item.url.parts[2]
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         try:
             relative_date_str = soup.select_one("div.pull-right.big-views-xs.visible-xs > span.text-white").text.strip()
@@ -176,7 +176,7 @@ class TokioMotionCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item):
             return
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
         try:
             img = soup.select_one("img[class='img-responsive-mw']")
             src = img.get("src")
@@ -278,7 +278,7 @@ class TokioMotionCrawler(Crawler):
         page_url = url
         while True:
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_BS4(self.domain, page_url)
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url)
             next_page = soup.select_one(self.next_page_selector)
             yield soup
             if next_page:

@@ -38,7 +38,7 @@ class EromeCrawler(Crawler):
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         title = await self.create_title(scrape_item.url.name, None, None)
         albums = soup.select("a[class=album-link]")
@@ -88,7 +88,7 @@ class EromeCrawler(Crawler):
             pass
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         title_portion = soup.select_one("title").text.rsplit(" - Porn")[0].strip()
         if not title_portion:

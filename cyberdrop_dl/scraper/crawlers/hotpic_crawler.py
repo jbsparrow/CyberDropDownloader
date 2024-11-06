@@ -42,7 +42,7 @@ class HotPicCrawler(Crawler):
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         scrape_item.album_id = scrape_item.url.parts[2]
         title = await self.create_title(soup.select_one("title").text.rsplit(" - ")[0], scrape_item.album_id, None)
@@ -75,7 +75,7 @@ class HotPicCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         link = URL(soup.select_one("img[id*=main-image]").get("src"))
         filename, ext = await get_filename_and_ext(link.name)

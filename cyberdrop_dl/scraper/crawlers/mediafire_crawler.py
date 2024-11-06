@@ -97,7 +97,7 @@ class MediaFireCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         date = await self.parse_datetime(soup.select("ul[class=details] li span")[-1].get_text())
         scrape_item.possible_datetime = date

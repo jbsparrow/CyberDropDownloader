@@ -46,7 +46,7 @@ class RealBooruCrawler(Crawler):
     async def tag(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         title_portion = scrape_item.url.query["tags"].strip()
         title = await self.create_title(title_portion, None, None)
@@ -88,7 +88,7 @@ class RealBooruCrawler(Crawler):
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
         image = soup.select_one("img[id=image]")
         if image:
             link = URL(image.get("src"))

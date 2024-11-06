@@ -47,7 +47,7 @@ class CyberdropCrawler(Crawler):
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
 
@@ -125,7 +125,7 @@ class CyberdropCrawler(Crawler):
         if self.is_cdn(url):
             return self.primary_base_domain / "f" / url.parts[-1]
 
-        _, streaming_url = await self.client.get_BS4_and_return_URL(self.domain, url)
+        _, streaming_url = await self.client.get_soup_and_return_url(self.domain, url)
 
         return streaming_url
 

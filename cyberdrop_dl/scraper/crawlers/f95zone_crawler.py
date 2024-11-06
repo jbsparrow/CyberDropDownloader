@@ -97,7 +97,7 @@ class F95ZoneCrawler(Crawler):
         current_post_number = 0
         while True:
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_BS4(self.domain, thread_url, origin=scrape_item)
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, thread_url, origin=scrape_item)
 
             title_block = soup.select_one(self.title_selector)
             for elem in title_block.find_all(self.title_trash_selector):
@@ -358,7 +358,7 @@ class F95ZoneCrawler(Crawler):
     async def handle_link_confirmation(self, link: URL) -> URL | None:
         """Handles link confirmation"""
         async with self.request_limiter:
-            await self.client.get_BS4(self.domain, link)
+            await self.client.get_soup(self.domain, link)
         async with self.request_limiter:
             JSON_Resp = await self.client.post_data(self.domain, link, data={"xhr": "1", "download": "1"})
 

@@ -48,7 +48,7 @@ class SaintCrawler(Crawler):
         scrape_item.part_of_album = True
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         title_portion = soup.select_one("title").text.rsplit(" - Saint Video Hosting")[0].strip()
         if not title_portion:
@@ -72,7 +72,7 @@ class SaintCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
         try:
             link = URL(soup.select_one("video[id=main-video] source").get("src"))
         except AttributeError:

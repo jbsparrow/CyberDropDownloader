@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 from functools import wraps
-from typing import TYPE_CHECKING, Dict
+from typing import TYPE_CHECKING
 
 import aiohttp
 from aiohttp import ClientSession
@@ -107,7 +107,7 @@ class ScraperClient:
             return response
 
     @limiter
-    async def get_BS4(
+    async def get_soup(
         self,
         domain: str,
         url: URL,
@@ -136,11 +136,11 @@ class ScraperClient:
                 return BeautifulSoup(text, "html.parser"), URL(response.url)
             return BeautifulSoup(text, "html.parser")
 
-    async def get_BS4_and_return_URL(
+    async def get_soup_and_return_url(
         self, domain: str, url: URL, origin: ScrapeItem | URL | None = None
     ) -> tuple[BeautifulSoup, URL]:
         """Returns a BeautifulSoup object and response URL from the given URL"""
-        return await self.get_BS4(domain, url, origin=origin, with_response_url=True)
+        return await self.get_soup(domain, url, origin=origin, with_response_url=True)
 
     @limiter
     async def get_json(
@@ -151,7 +151,7 @@ class ScraperClient:
         headers_inc: dict | None = None,
         client_session: ClientSession = None,
         origin: ScrapeItem | URL | None = None,
-    ) -> Dict:
+    ) -> dict:
         """Returns a JSON object from the given URL"""
         headers = {**self._headers, **headers_inc} if headers_inc else self._headers
 

@@ -44,7 +44,7 @@ class ImageBanCrawler(Crawler):
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a gallery"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         scrape_item.album_id = scrape_item.url.parts[2]
         scrape_item.part_of_album = True
@@ -96,7 +96,7 @@ class ImageBanCrawler(Crawler):
     async def compilation(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a compilation"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         title = await self.create_title(soup.select_one("blockquote").get_text(), scrape_item.url.parts[2], None)
         await scrape_item.add_to_parent_title(title)
@@ -130,7 +130,7 @@ class ImageBanCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         date = await self.parse_datetime(
             f"{(scrape_item.url.parts[2])}-{(scrape_item.url.parts[3])}-{(scrape_item.url.parts[4])}"

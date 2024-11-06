@@ -83,7 +83,7 @@ class PostImgCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         link = URL(soup.select_one("a[id=download]").get("href").replace("?dl=1", ""))
         filename, ext = await get_filename_and_ext(link.name)

@@ -66,14 +66,14 @@ class NekohouseCrawler(Crawler):
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile"""
-        soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+        soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
         offset, maximum_offset = await self.get_offsets(scrape_item, soup)
         service, user = await self.get_service_and_user(scrape_item)
         user_str = await self.get_user_str_from_profile(soup)
         service_call = self.primary_base_domain / service / "user" / user
         while offset <= maximum_offset:
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_BS4(
+                soup: BeautifulSoup = await self.client.get_soup(
                     self.domain, service_call.with_query({"o": offset}), origin=scrape_item
                 )
                 offset += 50
@@ -123,7 +123,7 @@ class NekohouseCrawler(Crawler):
         post_url = scrape_item.url
         if unlinked_post is True:
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_BS4(self.domain, post_url, origin=scrape_item)
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, post_url, origin=scrape_item)
                 data = {
                     "id": post,
                     "user": user,
@@ -177,7 +177,7 @@ class NekohouseCrawler(Crawler):
                     data["file"].append(attachment)
         else:
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_BS4(self.domain, post_url, origin=scrape_item)
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, post_url, origin=scrape_item)
                 # Published as current time to avoid errors.
                 data = {
                     "id": post,
@@ -290,7 +290,7 @@ class NekohouseCrawler(Crawler):
     async def get_user_str_from_post(self, scrape_item: ScrapeItem) -> str:
         """Gets the user string from a scrape item"""
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
         user = soup.select_one("a[class=scrape__user-name]").text
         return user
 

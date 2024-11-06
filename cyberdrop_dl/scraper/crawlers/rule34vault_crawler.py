@@ -45,7 +45,7 @@ class Rule34VaultCrawler(Crawler):
     async def tag(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         title = await self.create_title(scrape_item.url.parts[1], None, None)
         scrape_item.part_of_album = True
@@ -89,7 +89,7 @@ class Rule34VaultCrawler(Crawler):
     async def playlist(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a playlist"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
@@ -133,7 +133,7 @@ class Rule34VaultCrawler(Crawler):
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         date = await self.parse_datetime(
             soup.select_one('div[class="posted-date-full text-secondary mt-4 ng-star-inserted"]').text

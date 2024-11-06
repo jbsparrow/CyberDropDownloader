@@ -41,7 +41,7 @@ class FapelloCrawler(Crawler):
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile"""
         async with self.request_limiter:
-            soup, response_url = await self.client.get_BS4_and_return_URL(
+            soup, response_url = await self.client.get_soup_and_return_url(
                 self.domain, scrape_item.url, origin=scrape_item
             )
             if response_url != scrape_item.url:
@@ -90,7 +90,7 @@ class FapelloCrawler(Crawler):
     async def post(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         content = soup.select_one('div[class="flex justify-between items-center"]')
         content_tags = content.select("img")
@@ -106,7 +106,7 @@ class FapelloCrawler(Crawler):
             pass
 
         async with self.request_limiter:
-            soup = await self.client.get_BS4(self.domain, scrape_item.url)
+            soup = await self.client.get_soup(self.domain, scrape_item.url)
 
         for selection in content_tags:
             link = URL(selection.get("src"))

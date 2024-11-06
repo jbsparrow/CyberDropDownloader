@@ -64,7 +64,7 @@ class XXXBunkerCrawler(Crawler):
             raise ScrapeError(401, "No cookies provided", origin=scrape_item)
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         title = soup.select_one("title").text.rsplit(" : XXXBunker.com")[0].strip()
         try:
@@ -81,7 +81,7 @@ class XXXBunkerCrawler(Crawler):
             video_iframe_url = URL(video_iframe.get("data-src"))
             video_id = video_iframe_url.parts[-1]
             async with self.request_limiter:
-                video_iframe_soup: BeautifulSoup = await self.client.get_BS4(
+                video_iframe_soup: BeautifulSoup = await self.client.get_soup(
                     self.domain, video_iframe_url, origin=scrape_item
                 )
 
@@ -125,7 +125,7 @@ class XXXBunkerCrawler(Crawler):
             raise ScrapeError(401, "No cookies provided", origin=scrape_item)
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         if "favoritevideos" in scrape_item.url.parts:
             title = await self.create_title(f"user {scrape_item.url.parts[2]} [favorites]", None, None)
@@ -166,7 +166,7 @@ class XXXBunkerCrawler(Crawler):
             await log(f"Current page: {page_url}", 10)
             while rate_limited and attempt <= MAX_RETRIES:
                 async with self.request_limiter:
-                    soup: BeautifulSoup = await self.client.get_BS4(self.domain, page_url)
+                    soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url)
                 await asyncio.sleep(self.wait_time)
 
                 if "TRAFFIC VERIFICATION" not in soup.text:

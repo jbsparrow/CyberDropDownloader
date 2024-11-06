@@ -87,7 +87,7 @@ class CheveretoCrawler(Crawler):
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an user profile"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         title = await self.create_title(soup.select_one(self.profile_title_selector).get("content"), None, None)
 
@@ -114,7 +114,7 @@ class CheveretoCrawler(Crawler):
         scrape_item.url = scrape_item.url.with_query(None)
 
         async with self.request_limiter:
-            sub_albums_soup: BeautifulSoup = await self.client.get_BS4(
+            sub_albums_soup: BeautifulSoup = await self.client.get_soup(
                 self.domain, scrape_item.url / "sub", origin=scrape_item
             )
 
@@ -164,7 +164,7 @@ class CheveretoCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         try:
             link = URL(soup.select_one("div[id=image-viewer] img").get("src"))
@@ -202,7 +202,7 @@ class CheveretoCrawler(Crawler):
         page_url = await self.get_sort_by_new_url(url)
         while True:
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_BS4(self.domain, page_url)
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url)
             next_page = soup.select_one(self.next_page_selector)
             yield soup
             if next_page:

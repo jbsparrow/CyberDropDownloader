@@ -44,7 +44,7 @@ class OmegaScansCrawler(Crawler):
     async def series(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
@@ -90,7 +90,7 @@ class OmegaScansCrawler(Crawler):
     async def chapter(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         if "This chapter is premium" in soup.get_text():
             await log("Scrape Failed: This chapter is premium", 40)

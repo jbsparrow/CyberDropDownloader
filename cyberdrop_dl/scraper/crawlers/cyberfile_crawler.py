@@ -44,7 +44,7 @@ class CyberfileCrawler(Crawler):
     async def folder(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a folder"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         login = soup.select_one("form[id=form_login]")
         if login:
@@ -130,7 +130,7 @@ class CyberfileCrawler(Crawler):
     async def shared(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a shared folder"""
         async with self.request_limiter:
-            await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         new_folders = []
         node_id = ""
@@ -207,7 +207,7 @@ class CyberfileCrawler(Crawler):
         password = scrape_item.url.query.get("password", "")
         scrape_item.url = scrape_item.url.with_query(None)
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
             if "Enter File Password" in soup.text:
                 password_data = {"filePassword": password, "submitted": 1}
                 soup = BeautifulSoup(

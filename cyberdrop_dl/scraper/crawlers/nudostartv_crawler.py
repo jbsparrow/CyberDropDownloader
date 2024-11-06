@@ -35,7 +35,7 @@ class NudoStarTVCrawler(Crawler):
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         title = await self.create_title(soup.select_one("title").get_text().split("/")[0], None, None)
         content = soup.select("div[id=list_videos_common_videos_list_items] div a")
@@ -53,7 +53,7 @@ class NudoStarTVCrawler(Crawler):
     async def image(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
         content = soup.select("div[class=block-video] a img")
         for image in content:
             link = URL(image.get("src"))
