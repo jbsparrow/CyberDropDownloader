@@ -34,7 +34,7 @@ class HotPicCrawler(Crawler):
         elif "i" in scrape_item.url.parts:
             await self.image(scrape_item)
         else:
-            await log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
+            log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
             await self.manager.progress_manager.scrape_stats_progress.add_failure("Unsupported Link")
 
         await self.scraping_progress.remove_task(task_id)
@@ -47,7 +47,7 @@ class HotPicCrawler(Crawler):
 
         scrape_item.album_id = scrape_item.url.parts[2]
         title = await self.create_title(soup.select_one("title").text.rsplit(" - ")[0], scrape_item.album_id, None)
-        await scrape_item.add_to_parent_title(title)
+        scrape_item.add_to_parent_title(title)
         scrape_item.part_of_album = True
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0

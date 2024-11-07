@@ -78,16 +78,16 @@ class Sorter:
     async def check_dir_parents(self) -> bool:
         """Checks if the sort dir is in the download dir."""
         if self.download_dir in self.sorted_downloads.parents:
-            await log_with_color("Sort Directory cannot be in the Download Directory", "red", 40)
+            log_with_color("Sort Directory cannot be in the Download Directory", "red", 40)
             return True
         if self.download_dir == self.sorted_downloads:
-            await log_with_color("Sort Directory cannot be the Directory being scanned", "red", 40)
+            log_with_color("Sort Directory cannot be the Directory being scanned", "red", 40)
             return True
         return False
 
     async def sort(self) -> None:
         """Sorts the files in the download directory into their respective folders."""
-        await log_with_color("\nSorting Downloads: Please Wait", "cyan", 20)
+        log_with_color("\nSorting Downloads: Please Wait", "cyan", 20)
         # make sort dir
         self.sorted_downloads.mkdir(parents=True, exist_ok=True)
 
@@ -95,7 +95,7 @@ class Sorter:
             return
 
         if not self.download_dir.is_dir():
-            await log_with_color("Download Directory does not exist", "red", 40)
+            log_with_color("Download Directory does not exist", "red", 40)
             return
 
         download_folders = await self.get_download_folder()
@@ -154,7 +154,7 @@ class Sorter:
                 relative_folder = folder.relative_to(self.download_dir)
             except ValueError:
                 msg = f"Folder: {folder} if not relative to download_dir: {self.download_dir}"
-                await log(msg, 40)
+                log(msg, 40)
                 continue
             base_folder = self.download_dir / relative_folder.parts[0]
             if base_folder.exists():

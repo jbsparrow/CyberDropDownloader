@@ -92,7 +92,7 @@ class EromeCrawler(Crawler):
         if not title_portion:
             title_portion = scrape_item.url.name
         title = await self.create_title(title_portion, scrape_item.url.parts[2], None)
-        await scrape_item.add_to_parent_title(title)
+        scrape_item.add_to_parent_title(title)
 
         images = soup.select('img[class="img-front lasyload"]')
         videos = soup.select("div[class=media-group] div[class=video-lg] video source")

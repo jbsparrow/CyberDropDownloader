@@ -102,7 +102,7 @@ class PixelDrainCrawler(Crawler):
             filename, ext = get_filename_and_ext(JSON_Resp["name"])
         except NoExtensionError:
             if "text/plain" in JSON_Resp["mime_type"]:
-                await scrape_item.add_to_parent_title(f"{JSON_Resp['name']} (Pixeldrain)")
+                scrape_item.add_to_parent_title(f"{JSON_Resp['name']} (Pixeldrain)")
                 async with self.request_limiter:
                     text = await self.client.get_text(
                         self.domain,

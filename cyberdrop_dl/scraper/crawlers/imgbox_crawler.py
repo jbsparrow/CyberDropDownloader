@@ -71,7 +71,7 @@ class ImgBoxCrawler(Crawler):
         )
 
         scrape_item.part_of_album = True
-        await scrape_item.add_to_parent_title(title)
+        scrape_item.add_to_parent_title(title)
 
         images = soup.find("div", attrs={"id": "gallery-view-content"})
         images = images.findAll("img")

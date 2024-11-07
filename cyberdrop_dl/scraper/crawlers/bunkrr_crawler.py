@@ -70,7 +70,7 @@ class BunkrrCrawler(Crawler):
         title = soup.select_one("title").text.rsplit(" | Bunkr")[0].strip()
 
         title = await self.create_title(title, scrape_item.url.parts[2], None)
-        await scrape_item.add_to_parent_title(title)
+        scrape_item.add_to_parent_title(title)
 
         card_listings: list[Tag] = soup.select('div[class*="relative group/item theItem"]')
         for card_listing in card_listings:

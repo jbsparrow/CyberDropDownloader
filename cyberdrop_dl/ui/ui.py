@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import sys
 from pathlib import Path
 from textwrap import dedent
@@ -204,7 +203,7 @@ def program_ui(manager: Manager) -> None:
                     break
 
         elif action == 10:
-            asyncio.run(check_latest_pypi(log_to_console=True, call_from_ui=True))
+            check_latest_pypi(log_to_console=True, call_from_ui=True)
             sys.exit(0)
 
         # Import Cyberdrop_V4 Items
@@ -225,7 +224,7 @@ def program_ui(manager: Manager) -> None:
 
 def _get_changelog_content(changelog_path: Path) -> str:
     url = "https://raw.githubusercontent.com/jbsparrow/CyberDropDownloader/refs/heads/master/CHANGELOG.md"
-    _, lastest_version = asyncio.run(check_latest_pypi(log_to_console=False))
+    _, lastest_version = check_latest_pypi(log_to_console=False)
     latest_changelog = changelog_path.with_name(f"{changelog_path.stem}_{lastest_version}{changelog_path.suffix}")
     if not latest_changelog.is_file():
         changelog_pattern = f"{changelog_path.stem}*{changelog_path.suffix}"

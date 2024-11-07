@@ -77,8 +77,8 @@ async def runtime(manager: Manager) -> None:
 
 async def post_runtime(manager: Manager) -> None:
     """Actions to complete after main runtime, and before ui shutdown."""
-    await log_spacer(20)
-    await log_with_color(
+    log_spacer(20)
+    log_with_color(
         f"Running Post-Download Processes For Config: {manager.config_manager.loaded_config}...\n",
         "green",
         20,
@@ -140,10 +140,10 @@ async def switch_config_and_reset_logger(manager: Manager, config_name: str) -> 
     logger = logging.getLogger("cyberdrop_dl")
     if manager.args_manager.all_configs:
         if len(logger.handlers) > 0:
-            await log("Picking new config...", 20)
+            log("Picking new config...", 20)
         manager.config_manager.change_config(config_name)
         if len(logger.handlers) > 0:
-            await log(f"Changing config to {config_name}...", 20)
+            log(f"Changing config to {config_name}...", 20)
             old_file_handler = logger.handlers[0]
             logger.removeHandler(logger.handlers[0])
             old_file_handler.close()
@@ -185,32 +185,32 @@ async def director(manager: Manager) -> None:
             await switch_config_and_reset_logger(manager, current_config)
         configs_to_run.pop(0)
 
-        await log(f"Using Debug Log: {debug_log_file_path if debug_log_file_path else None}", 10)
-        await log("Starting Async Processes...", 20)
+        log(f"Using Debug Log: {debug_log_file_path if debug_log_file_path else None}", 10)
+        log("Starting Async Processes...", 20)
         await manager.async_startup()
 
-        await log_spacer(20)
-        await log("Starting CDL...\n", 20)
+        log_spacer(20)
+        log("Starting CDL...\n", 20)
         if not manager.args_manager.sort_all_configs:
             try:
                 async with manager.live_manager.get_main_live(stop=True):
                     await runtime(manager)
                     await post_runtime(manager)
             except Exception:
-                await log("\nAn error occurred, please report this to the developer:", 50, exc_info=True)
+                log("\nAn error occurred, please report this to the developer:", 50, exc_info=True)
                 sys.exit(1)
 
-        await log_spacer(20)
+        log_spacer(20)
         await manager.progress_manager.print_stats(start_time)
 
         if not configs_to_run:
-            await log_spacer(20)
-            await log("Checking for Updates...", 20)
-            await check_latest_pypi()
-            await log_spacer(20)
-            await log("Closing Program...", 20)
+            log_spacer(20)
+            log("Checking for Updates...", 20)
+            check_latest_pypi()
+            log_spacer(20)
+            log("Closing Program...", 20)
             await manager.close()
-            await log_with_color("Finished downloading. Enjoy :)", "green", 20, show_in_stats=False)
+            log_with_color("Finished downloading. Enjoy :)", "green", 20, show_in_stats=False)
 
         await send_webhook_message(manager)
         await sent_apprise_notifications(manager)

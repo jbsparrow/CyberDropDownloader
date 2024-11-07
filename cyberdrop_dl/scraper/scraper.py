@@ -10,11 +10,18 @@ import aiofiles
 import arrow
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import JDownloaderError, NoExtensionError
+from cyberdrop_dl.clients.errors import JDownloaderError
 from cyberdrop_dl.downloader.downloader import Downloader
+from cyberdrop_dl.scraper.filters import (
+    has_valid_extension,
+    is_in_domain_list,
+    is_outside_date_range,
+    is_valid_url,
+    remove_trailing_slash,
+)
 from cyberdrop_dl.scraper.jdownloader import JDownloader
 from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem, ScrapeItem
-from cyberdrop_dl.utils.utilities import FILE_FORMATS, get_download_path, get_filename_and_ext, log
+from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext, log
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -446,7 +453,7 @@ class ScrapeMapper:
         items = []
 
         if not links:
-            await log("No valid links found.", 30)
+            log("No valid links found.", 30)
         for title in links:
             for url in links[title]:
                 item = self.create_item_from_link(url)
@@ -545,7 +552,7 @@ class ScrapeMapper:
         if self.manager.real_debrid_manager.enabled and self.manager.real_debrid_manager.is_supported(
             scrape_item.url,
         ):
-            await log(f"Using RealDebrid for unsupported URL: {scrape_item.url}", 10)
+            log(f"Using RealDebrid for unsupported URL: {scrape_item.url}", 10)
             self.manager.task_group.create_task(self.existing_crawlers["real-debrid"].run(scrape_item))
             return
 
@@ -553,19 +560,19 @@ class ScrapeMapper:
             if await self.skip_no_crawler_by_config(scrape_item):
                 return
 
-            await scrape_item.add_to_parent_title("Loose Files")
+            scrape_item.add_to_parent_title("Loose Files")
             scrape_item.part_of_album = True
-            download_folder = await get_download_path(self.manager, scrape_item, "no_crawler")
+            download_folder = get_download_path(self.manager, scrape_item, "no_crawler")
             filename, ext = get_filename_and_ext(scrape_item.url.name)
             media_item = MediaItem(scrape_item.url, scrape_item.url, None, download_folder, filename, ext, filename)
             self.manager.task_group.create_task(self.no_crawler_downloader.run(media_item))
             return
 
         if self.jdownloader.enabled and jdownloader_whitelisted:
-            await log(f"Sending unsupported URL to JDownloader: {scrape_item.url}", 10)
+            log(f"Sending unsupported URL to JDownloader: {scrape_item.url}", 10)
             success = False
             try:
-                download_folder = await get_download_path(self.manager, scrape_item, "jdownloader")
+                download_folder = get_download_path(self.manager, scrape_item, "jdownloader")
                 relative_download_dir = download_folder.relative_to(self.manager.path_manager.download_dir)
                 await self.jdownloader.direct_unsupported_to_jdownloader(
                     scrape_item.url,
@@ -574,14 +581,14 @@ class ScrapeMapper:
                 )
                 success = True
             except JDownloaderError as e:
-                await log(f"Failed to send {scrape_item.url} to JDownloader\n{e.message}", 40)
+                log(f"Failed to send {scrape_item.url} to JDownloader\n{e.message}", 40)
                 await self.manager.log_manager.write_unsupported_urls_log(
                     scrape_item.url, next(scrape_item.parents, None)
                 )
             await self.manager.progress_manager.scrape_stats_progress.add_unsupported(sent_to_jdownloader=success)
             return
 
-        await log(f"Unsupported URL: {scrape_item.url}", 30)
+        log(f"Unsupported URL: {scrape_item.url}", 30)
         await self.manager.log_manager.write_unsupported_urls_log(scrape_item.url, next(scrape_item.parents, None))
         await self.manager.progress_manager.scrape_stats_progress.add_unsupported()
 
@@ -592,23 +599,23 @@ class ScrapeMapper:
             return False
 
         if is_in_domain_list(scrape_item, BLOCKED_DOMAINS):
-            await log(f"Skipping {scrape_item.url} as it is a blocked domain", 10)
+            log(f"Skipping {scrape_item.url} as it is a blocked domain", 10)
             return False
 
         before = self.manager.args_manager.before
         after = self.manager.args_manager.after
         if is_outside_date_range(scrape_item, before, after):
-            await log(f"Skipping {scrape_item.url} as it is outside of the desired date range", 10)
+            log(f"Skipping {scrape_item.url} as it is outside of the desired date range", 10)
             return False
 
         skip_hosts = self.manager.config_manager.settings_data["Ignore_Options"]["skip_hosts"]
         if skip_hosts and is_in_domain_list(scrape_item, skip_hosts):
-            await log(f"Skipping URL by skip_hosts config: {scrape_item.url}", 10)
+            log(f"Skipping URL by skip_hosts config: {scrape_item.url}", 10)
             return False
 
         only_hosts = self.manager.config_manager.settings_data["Ignore_Options"]["skip_hosts"]
         if only_hosts and not is_in_domain_list(scrape_item, only_hosts):
-            await log(f"Skipping URL by only_hosts config: {scrape_item.url}", 10)
+            log(f"Skipping URL by only_hosts config: {scrape_item.url}", 10)
             return False
 
         return True
@@ -620,7 +627,7 @@ class ScrapeMapper:
             scrape_item.url,
         )
         if check_complete:
-            await log(f"Skipping {scrape_item.url} as it has already been downloaded", 10)
+            log(f"Skipping {scrape_item.url} as it has already been downloaded", 10)
             await self.manager.progress_manager.download_progress.add_previously_completed()
             return True
 
@@ -630,67 +637,8 @@ class ScrapeMapper:
             check_referer = await self.manager.db_manager.temp_referer_table.check_referer(posible_referer)
 
         if check_referer:
-            await log(f"Skipping {scrape_item.url} as referer has been seen before", 10)
+            log(f"Skipping {scrape_item.url} as referer has been seen before", 10)
             await self.manager.progress_manager.download_progress.add_skipped()
             return True
 
-        return False
-
-
-def is_valid_url(scrape_item: ScrapeItem) -> bool:
-    if not scrape_item.url:
-        return False
-    if not isinstance(scrape_item.url, URL):
-        try:
-            scrape_item.url = URL(scrape_item.url)
-        except AttributeError:
-            return False
-    try:
-        if not scrape_item.url.host:
-            return False
-    except AttributeError:
-        return False
-
-    return True
-
-
-def is_outside_date_range(scrape_item: ScrapeItem, before: arrow, after: arrow) -> bool:
-    skip = False
-    item_date = scrape_item.completed_at or scrape_item.created_at
-    if not item_date:
-        return False
-    if after and arrow.get(item_date) < after:
-        skip = True
-    elif before and arrow.get(item_date) > before:
-        skip = True
-
-    return skip
-
-
-def is_in_domain_list(scrape_item: ScrapeItem, domain_list: list[str]) -> bool:
-    if any(domain in scrape_item.url.host for domain in domain_list):
-        return True
-    return False
-
-
-def remove_trailing_slash(url: URL) -> URL:
-    if not str(url).endswith("/"):
-        return url
-
-    url_trimmed = url.with_path(url.path[:-1])
-    if url.query_string:
-        query = url.query_string[:-1]
-        url_trimmed = url.with_query(query)
-
-    return url_trimmed
-
-
-def has_valid_extension(url: URL) -> bool:
-    """Checks if the URL has a valid extension."""
-    try:
-        _, ext = get_filename_and_ext(url.name)
-
-        valid_exts = FILE_FORMATS["Images"] + FILE_FORMATS["Videos"] + FILE_FORMATS["Audio"]
-        return ext in valid_exts
-    except NoExtensionError:
         return False

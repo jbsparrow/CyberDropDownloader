@@ -54,7 +54,7 @@ class SaintCrawler(Crawler):
         if not title_portion:
             title_portion = scrape_item.url.name
         title = await self.create_title(title_portion, album_id, None)
-        await scrape_item.add_to_parent_title(title)
+        scrape_item.add_to_parent_title(title)
 
         videos = soup.select("a.btn-primary.action.download")
 

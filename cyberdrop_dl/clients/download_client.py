@@ -74,12 +74,12 @@ class DownloadClient:
     def add_request_log_hooks(self) -> None:
         async def on_request_start(*args):
             params: aiohttp.TraceRequestStartParams = args[2]
-            await log(f"Starting download {params.method} request to {params.url}", 40)
+            log(f"Starting download {params.method} request to {params.url}", 40)
 
         async def on_request_end(*args):
             params: aiohttp.TraceRequestEndParams = args[2]
-            await log(f"Finishing download {params.method} request to {params.url}", 40)
-            await log(f"Response status for {params.url}: {params.response.status}", 40)
+            log(f"Finishing download {params.method} request to {params.url}", 40)
+            log(f"Response status for {params.url}: {params.response.status}", 40)
 
         trace_config = aiohttp.TraceConfig()
         trace_config.on_request_start.append(on_request_start)
@@ -142,7 +142,7 @@ class DownloadClient:
                     await self.manager.progress_manager.download_progress.add_skipped()
                     return False
                 if not proceed:
-                    await log(f"Skipping {media_item.url} as it has already been downloaded", 10)
+                    log(f"Skipping {media_item.url} as it has already been downloaded", 10)
                     await self.manager.progress_manager.download_progress.add_previously_completed(False)
                     await self.process_completed(media_item, domain)
                     await self.handle_media_item_completion(media_item, downloaded=False)
@@ -197,7 +197,7 @@ class DownloadClient:
     async def download_file(self, manager: Manager, domain: str, media_item: MediaItem) -> bool:
         """Starts a file."""
         if self.manager.config_manager.settings_data["Download_Options"]["skip_download_mark_completed"]:
-            await log(f"Download Skip {media_item.url} due to mark completed option", 10)
+            log(f"Download Skip {media_item.url} due to mark completed option", 10)
             await self.manager.progress_manager.download_progress.add_skipped()
             # set completed path
             await self.mark_incomplete(media_item, domain)
@@ -250,7 +250,7 @@ class DownloadClient:
             if not downloaded:
                 self.manager.path_manager.add_prev(media_item)
         except Exception:
-            await log(f"Error handling media item completion of: {media_item.complete_file}", 10, exc_info=True)
+            log(f"Error handling media item completion of: {media_item.complete_file}", 10, exc_info=True)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -282,13 +282,13 @@ class DownloadClient:
         if not skip and self.manager.config_manager.settings_data["Ignore_Options"]["skip_hosts"]:
             skip_hosts = self.manager.config_manager.settings_data["Ignore_Options"]["skip_hosts"]
             if any(host in media_item.url.host for host in skip_hosts):
-                await log(f"Download Skip {media_item.url} due to skip_hosts config", 10)
+                log(f"Download Skip {media_item.url} due to skip_hosts config", 10)
                 skip = True
 
         if not skip and self.manager.config_manager.settings_data["Ignore_Options"]["only_hosts"]:
             only_hosts = self.manager.config_manager.settings_data["Ignore_Options"]["only_hosts"]
             if not any(host in media_item.url.host for host in only_hosts):
-                await log(f"Download Skip {media_item.url} due to only_hosts config", 10)
+                log(f"Download Skip {media_item.url} due to only_hosts config", 10)
                 skip = True
 
         if skip:
@@ -298,7 +298,7 @@ class DownloadClient:
             if expected_size:
                 file_size_check = await self.check_filesize_limits(media_item)
                 if not file_size_check:
-                    await log(f"Download Skip {media_item.url} due to filesize restrictions", 10)
+                    log(f"Download Skip {media_item.url} due to filesize restrictions", 10)
                     proceed = False
                     skip = True
                     return proceed, skip

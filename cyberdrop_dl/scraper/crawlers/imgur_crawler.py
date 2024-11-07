@@ -43,7 +43,7 @@ class ImgurCrawler(Crawler):
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
         if self.imgur_client_id == "":
-            await log("To scrape imgur content, you need to provide a client id", 30)
+            log("To scrape imgur content, you need to provide a client id", 30)
             raise LoginError(message="No Imgur Client ID provided")
         await self.check_imgur_credits()
         scrape_item.type = FILE_HOST_ALBUM
@@ -96,7 +96,7 @@ class ImgurCrawler(Crawler):
     async def image(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image."""
         if self.imgur_client_id == "":
-            await log("To scrape imgur content, you need to provide a client id", 30)
+            log("To scrape imgur content, you need to provide a client id", 30)
             raise LoginError(message="No Imgur Client ID provided")
         await self.check_imgur_credits()
 

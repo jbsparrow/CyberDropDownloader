@@ -190,8 +190,8 @@ class KemonoCrawler(Crawler):
             None,
             await self.parse_datetime(date),
         )
-        await scrape_item.add_to_parent_title(post_title)
-        await scrape_item.add_to_parent_title("Loose Files")
+        scrape_item.add_to_parent_title(post_title)
+        scrape_item.add_to_parent_title("Loose Files")
 
         yarl_links: list[URL] = []
         all_links = [

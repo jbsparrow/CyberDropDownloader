@@ -46,7 +46,7 @@ def retry(func: Callable) -> None:
 
                 log_message = f"with status {e.status} and message: {e.message}"
 
-                await log(f"{self.log_prefix} failed: {media_item.url} {log_message}", 40)
+                log(f"{self.log_prefix} failed: {media_item.url} {log_message}", 40)
 
                 if media_item.current_attempt >= max_attempts:
                     await self.manager.progress_manager.download_stats_progress.add_failure(e.ui_message)
@@ -59,7 +59,7 @@ def retry(func: Callable) -> None:
                     break
 
                 retrying_message = f"Retrying {self.log_prefix.lower()}: {media_item.url} ,retry attempt: {media_item.current_attempt + 1}"
-                await log(retrying_message, 20)
+                log(retrying_message, 20)
                 continue
 
             except CDLBaseError as e:
@@ -83,7 +83,7 @@ def retry(func: Callable) -> None:
                     log_message = log_message_short = ui_message = f"{status} - {message}"
 
             failed_message = f"{self.log_prefix} failed: {media_item.url} with error: {log_message}"
-            await log(failed_message, 40, exc_info=exc_info)
+            log(failed_message, 40, exc_info=exc_info)
             await self.attempt_task_removal(media_item)
             await self.manager.log_manager.write_download_error_log(media_item.url, log_message_short, origin)
             await self.manager.progress_manager.download_stats_progress.add_failure(ui_message)
@@ -130,7 +130,7 @@ class Downloader:
             self.processed_items.append(media_item.url.path)
             await self.manager.progress_manager.download_progress.update_total()
 
-            await log(f"{self.log_prefix} starting: {media_item.url}", 20)
+            log(f"{self.log_prefix} starting: {media_item.url}", 20)
             async with self.manager.client_manager.download_session_limit:
                 try:
                     if isinstance(media_item.file_lock_reference_name, Field):
@@ -138,11 +138,11 @@ class Downloader:
                     await self._file_lock.check_lock(media_item.file_lock_reference_name)
                     await self.download(media_item)
                 except Exception as e:
-                    await log(f"{self.log_prefix} failed: {media_item.url} with error {e}", 40, exc_info=True)
+                    log(f"{self.log_prefix} failed: {media_item.url} with error {e}", 40, exc_info=True)
                     await self.manager.progress_manager.download_stats_progress.add_failure("Unknown")
                     await self.manager.progress_manager.download_progress.add_failed()
                 else:
-                    await log(f"{self.log_prefix} finished: {media_item.url}", 20)
+                    log(f"{self.log_prefix} finished: {media_item.url}", 20)
                 finally:
                     await self._file_lock.release_lock(media_item.file_lock_reference_name)
         self._semaphore.release()
@@ -200,7 +200,7 @@ class Downloader:
         except (DownloadError, aiohttp.ClientResponseError) as e:
             ui_message = getattr(e, "ui_message", e.status)
             log_message_short = log_message = f"{e.status} - {e.message}"
-            await log(f"{self.log_prefix} failed: {media_item.url} with error: {log_message}", 40)
+            log(f"{self.log_prefix} failed: {media_item.url} with error: {log_message}", 40)
             await self.manager.log_manager.write_download_error_log(media_item.url, log_message_short, origin)
             await self.manager.progress_manager.download_stats_progress.add_failure(ui_message)
             await self.manager.progress_manager.download_progress.add_failed()

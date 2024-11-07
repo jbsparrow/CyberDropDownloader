@@ -99,15 +99,15 @@ class OmegaScansCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         if "This chapter is premium" in soup.get_text():
-            await log("Scrape Failed: This chapter is premium", 40)
+            log("Scrape Failed: This chapter is premium", 40)
             raise ScrapeError(401, "This chapter is premium", origin=scrape_item)
 
         title_parts = soup.select_one("title").get_text().split(" - ")
         series_name = title_parts[0]
         chapter_title = title_parts[1]
         series_title = await self.create_title(series_name, None, None)
-        await scrape_item.add_to_parent_title(series_title)
-        await scrape_item.add_to_parent_title(chapter_title)
+        scrape_item.add_to_parent_title(series_title)
+        scrape_item.add_to_parent_title(chapter_title)
 
         date = soup.select('h2[class="font-semibold font-sans text-muted-foreground text-xs"]')[-1].get_text()
         try:

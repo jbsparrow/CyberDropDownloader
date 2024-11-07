@@ -13,7 +13,7 @@ from cyberdrop_dl.clients.errors import LoginError
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem, ScrapeItem
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_download_path, log, remove_id
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_download_path, log, remove_file_id
 
 if TYPE_CHECKING:
     from cyberdrop_dl.clients.scraper_client import ScraperClient
@@ -51,12 +51,12 @@ class Crawler(ABC):
         await self._lock.acquire()
         self.waiting_items -= 1
         if item.url.path_qs not in self.scraped_items:
-            await log(f"Scrape Starting: {item.url}", 20)
+            log(f"Scrape Starting: {item.url}", 20)
             self.scraped_items.append(item.url.path_qs)
             await self.fetch(item)
-            await log(f"Scrape Finished: {item.url}", 20)
+            log(f"Scrape Finished: {item.url}", 20)
         else:
-            await log(f"Skipping {item.url} as it has already been scraped", 10)
+            log(f"Skipping {item.url} as it has already been scraped", 10)
         self._lock.release()
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -80,11 +80,11 @@ class Crawler(ABC):
         if custom_filename:
             original_filename, filename = filename, custom_filename
         elif self.domain in ["cyberdrop", "bunkrr"]:
-            original_filename, filename = await remove_id(self.manager, filename, ext)
+            original_filename, filename = remove_file_id(self.manager, filename, ext)
         else:
             original_filename = filename
 
-        download_folder = await get_download_path(self.manager, scrape_item, self.folder_domain)
+        download_folder = get_download_path(self.manager, scrape_item, self.folder_domain)
         media_item = MediaItem(
             url,
             scrape_item.url,
@@ -102,7 +102,7 @@ class Crawler(ABC):
         if check_complete:
             if media_item.album_id:
                 await self.manager.db_manager.history_table.set_album_id(self.domain, media_item)
-            await log(f"Skipping {url} as it has already been downloaded", 10)
+            log(f"Skipping {url} as it has already been downloaded", 10)
             await self.manager.progress_manager.download_progress.add_previously_completed()
             return
 
@@ -111,7 +111,7 @@ class Crawler(ABC):
             check_referer = await self.manager.db_manager.temp_referer_table.check_referer(scrape_item.url)
 
         if check_referer:
-            await log(f"Skipping {url} as referer has been seen before", 10)
+            log(f"Skipping {url} as referer has been seen before", 10)
             await self.manager.progress_manager.download_progress.add_skipped()
             return
 
@@ -161,7 +161,7 @@ class Crawler(ABC):
                 response_url=URL("https://" + login_url.host),
             )
         if (not username or not password) and not session_cookie:
-            await log(f"Login wasn't provided for {login_url.host}", 30)
+            log(f"Login wasn't provided for {login_url.host}", 30)
             raise LoginError(message="Login wasn't provided")
         attempt = 0
 
@@ -203,7 +203,7 @@ class Crawler(ABC):
         url = scrape_item if isinstance(scrape_item, URL) else scrape_item.url
         check_complete = await self.manager.db_manager.history_table.check_complete_by_referer(self.domain, url)
         if check_complete:
-            await log(f"Skipping {url} as it has already been downloaded", 10)
+            log(f"Skipping {url} as it has already been downloaded", 10)
             await self.manager.progress_manager.download_progress.add_previously_completed()
             return True
         return False
@@ -216,7 +216,7 @@ class Crawler(ABC):
         """Checks whether an album has completed given its domain and album id."""
         url_path = await get_db_path(url.with_query(""), self.domain)
         if album_results and url_path in album_results and album_results[url_path] != 0:
-            await log(f"Skipping {url} as it has already been downloaded", 10)
+            log(f"Skipping {url} as it has already been downloaded", 10)
             await self.manager.progress_manager.download_progress.add_previously_completed()
             return True
         return False
@@ -237,7 +237,7 @@ class Crawler(ABC):
         if add_parent:
             scrape_item.parents.append(add_parent)
         if new_title_part:
-            await scrape_item.add_to_parent_title(new_title_part)
+            scrape_item.add_to_parent_title(new_title_part)
         scrape_item.part_of_album = part_of_album if part_of_album else scrape_item.part_of_album
         if possible_datetime:
             scrape_item.possible_datetime = possible_datetime

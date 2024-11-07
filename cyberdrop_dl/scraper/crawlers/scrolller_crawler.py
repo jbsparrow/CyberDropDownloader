@@ -32,7 +32,7 @@ class ScrolllerCrawler(Crawler):
         if "r" in scrape_item.url.parts:
             await self.subreddit(scrape_item)
         else:
-            await log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
+            log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
             await self.manager.progress_manager.scrape_stats_progress.add_failure("Unsupported Link")
 
         await self.scraping_progress.remove_task(task_id)
@@ -42,7 +42,7 @@ class ScrolllerCrawler(Crawler):
         """Scrapes an album."""
         subreddit = scrape_item.url.parts[-1]
         title = await self.create_title(subreddit, None, None)
-        await scrape_item.add_to_parent_title(title)
+        scrape_item.add_to_parent_title(title)
         scrape_item.part_of_album = True
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0

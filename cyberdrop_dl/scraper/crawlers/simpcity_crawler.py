@@ -69,7 +69,7 @@ class SimpCityCrawler(Crawler):
                 await self.forum_login(login_url, session_cookie, username, password, wait_time)
 
         if not self.logged_in and self.login_attempts == 1:
-            await log("SimpCity login failed. Scraping without an account.", 40)
+            log("SimpCity login failed. Scraping without an account.", 40)
 
         await self.forum(scrape_item)
 
@@ -165,7 +165,7 @@ class SimpCityCrawler(Crawler):
         """Scrapes a post."""
         if self.manager.config_manager.settings_data["Download_Options"]["separate_posts"]:
             scrape_item = await self.create_scrape_item(scrape_item, scrape_item.url, "")
-            await scrape_item.add_to_parent_title("post-" + str(post_number))
+            scrape_item.add_to_parent_title("post-" + str(post_number))
 
         scrape_item.type = FORUM_POST
         scrape_item.children = scrape_item.children_limit = 0
@@ -214,9 +214,9 @@ class SimpCityCrawler(Crawler):
                 elif self.attachment_url_part in link.parts:
                     await self.handle_internal_links(link, scrape_item)
                 else:
-                    await log(f"Unknown link type: {link}", 30)
+                    log(f"Unknown link type: {link}", 30)
             except TypeError:
-                await log(f"Scrape Failed: encountered while handling {link}", 40)
+                log(f"Scrape Failed: encountered while handling {link}", 40)
             new_children += 1
             if scrape_item.children_limit and (new_children + scrape_item.children) >= scrape_item.children_limit:
                 break
@@ -252,7 +252,7 @@ class SimpCityCrawler(Crawler):
             elif self.attachment_url_part in link.parts:
                 continue
             else:
-                await log(f"Unknown image type: {link}", 30)
+                log(f"Unknown image type: {link}", 30)
             new_children += 1
             if scrape_item.children_limit and (new_children + scrape_item.children) >= scrape_item.children_limit:
                 break
@@ -346,7 +346,7 @@ class SimpCityCrawler(Crawler):
             elif self.attachment_url_part in link.parts:
                 await self.handle_internal_links(link, scrape_item)
             else:
-                await log(f"Unknown image type: {link}", 30)
+                log(f"Unknown image type: {link}", 30)
             new_children += 1
             if scrape_item.children_limit and (new_children + scrape_item.children) >= scrape_item.children_limit:
                 break

@@ -93,7 +93,7 @@ class ImageBanCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         title = await self.create_title(soup.select_one("blockquote").get_text(), scrape_item.url.parts[2], None)
-        await scrape_item.add_to_parent_title(title)
+        scrape_item.add_to_parent_title(title)
         content_block = soup.select("div[class=container-fluid]")[-1]
         images = content_block.select("img")
         scrape_item.type = FILE_HOST_ALBUM

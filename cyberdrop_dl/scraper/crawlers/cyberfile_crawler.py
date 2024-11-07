@@ -121,7 +121,7 @@ class CyberfileCrawler(Crawler):
                     )
                     self.manager.task_group.create_task(self.run(new_scrape_item))
                 else:
-                    await log(f"Couldn't find folder or file id for {scrape_item.url} element", 30)
+                    log(f"Couldn't find folder or file id for {scrape_item.url} element", 30)
                     continue
 
                 new_scrape_item = await self.create_scrape_item(
@@ -197,7 +197,7 @@ class CyberfileCrawler(Crawler):
                     self.manager.task_group.create_task(self.run(new_scrape_item))
 
                 else:
-                    await log(f"Couldn't find folder or file id for {scrape_item.url} element", 30)
+                    log(f"Couldn't find folder or file id for {scrape_item.url} element", 30)
                     continue
 
                 new_scrape_item = await self.create_scrape_item(
@@ -269,7 +269,7 @@ class CyberfileCrawler(Crawler):
         try:
             html_download_text = file_menu.get("onclick") if file_menu else file_button.get("onclick")
         except AttributeError:
-            await log(f"Couldn't find download button for {scrape_item.url}", 30)
+            log(f"Couldn't find download button for {scrape_item.url}", 30)
             raise ScrapeError(422, "Couldn't find download button", origin=scrape_item) from None
         link = URL(html_download_text.split("'")[1])
 

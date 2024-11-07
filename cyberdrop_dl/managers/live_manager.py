@@ -38,7 +38,7 @@ class LiveManager:
                 if not self.manager.args_manager.no_ui:
                     Console().clear()
         except Exception as e:
-            await log(f"Issue with rich live {e}", level=10, exc_info=True)
+            log(f"Issue with rich live {e}", level=10, exc_info=True)
 
     @asynccontextmanager
     async def get_main_live(self, stop: bool = False) -> AsyncGenerator[Live]:

@@ -65,8 +65,8 @@ class LogManager:
         if not input_file.is_file() or not self.last_post_log.is_file():
             return
 
-        await log_spacer(20)
-        await log("Updating Last Forum Posts...\n", 20)
+        log_spacer(20)
+        log("Updating Last Forum Posts...\n", 20)
 
         current_urls, current_base_urls, new_urls, new_base_urls = [], [], [], []
         async with aiofiles.open(input_file, encoding="utf8") as f:
@@ -101,11 +101,11 @@ class LogManager:
                 old_url = current_urls[index]
                 if old_url == new_url:
                     continue
-                await log(f"Updating {base}\n  {old_url = }\n  {new_url = }", 20)
+                log(f"Updating {base}\n  {old_url = }\n  {new_url = }", 20)
                 updated_urls[index] = new_url
 
         if updated_urls == current_urls:
-            await log("No URLs updated", 20)
+            log("No URLs updated", 20)
             return
 
         async with aiofiles.open(input_file, "w", encoding="utf8") as f:

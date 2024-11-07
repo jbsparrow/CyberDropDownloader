@@ -90,7 +90,7 @@ class HashClient:
                     referer,
                 )
         except Exception as e:
-            await log(f"Error hashing {file} : {e}", 40, exc_info=True)
+            log(f"Error hashing {file} : {e}", 40, exc_info=True)
         self.hashes[key] = hash
         return hash
 
@@ -99,7 +99,7 @@ class HashClient:
             if self.manager.config_manager.global_settings_data["Dupe_Cleanup_Options"]["hash_while_downloading"]:
                 await self.hash_item(media_item.complete_file, media_item.original_filename, media_item.referer)
         except Exception as e:
-            await log(f"After hash processing failed: {media_item.complete_file} with error {e}", 40, exc_info=True)
+            log(f"After hash processing failed: {media_item.complete_file} with error {e}", 40, exc_info=True)
 
     async def cleanup_dupes(self) -> None:
         async with self.manager.live_manager.get_hash_live():
@@ -134,7 +134,7 @@ class HashClient:
                             continue
                         try:
                             self.send2trash(ele)
-                            await log(f"Sent prev download: {ele!s} to trash with hash {hash}", 10)
+                            log(f"Sent prev download: {ele!s} to trash with hash {hash}", 10)
                             await self.manager.progress_manager.hash_progress.add_removed_prev_file()
                         except OSError:
                             continue
@@ -145,7 +145,7 @@ class HashClient:
                             continue
                         try:
                             self.send2trash(ele)
-                            await log(f"Sent prev download: {ele!s} to trash with hash {hash}", 10)
+                            log(f"Sent prev download: {ele!s} to trash with hash {hash}", 10)
                             await self.manager.progress_manager.hash_progress.add_removed_prev_file()
                         except OSError:
                             continue
@@ -154,7 +154,7 @@ class HashClient:
                     try:
                         if selected_file.exists():
                             self.send2trash(selected_file)
-                            await log(f"Sent new download:{selected_file} to trash with hash {hash}", 10)
+                            log(f"Sent new download:{selected_file} to trash with hash {hash}", 10)
                             await self.manager.progress_manager.hash_progress.add_removed_file()
 
                     except OSError:
@@ -171,7 +171,7 @@ class HashClient:
                 if hash:
                     hashes_dict[hash][size].append(item)
             except Exception as e:
-                await log(f"After hash processing failed: {item} with error {e}", 40, exc_info=True)
+                log(f"After hash processing failed: {item} with error {e}", 40, exc_info=True)
         return hashes_dict
 
     async def get_candiate_per_group(self, hashes_dict: dict[str, dict[int, list[Path]]]) -> dict:
@@ -188,7 +188,7 @@ class HashClient:
                 for file in filter(lambda x: x != selected_file, files):
                     try:
                         self.send2trash(file)
-                        await log(f"Sent new download : {file} to trash with hash {hash}", 10)
+                        log(f"Sent new download : {file} to trash with hash {hash}", 10)
                         await self.manager.progress_manager.hash_progress.add_removed_file()
                     except OSError:
                         pass

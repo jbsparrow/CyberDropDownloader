@@ -16,7 +16,6 @@ FORUM = 0
 FORUM_POST = 1
 FILE_HOST_PROFILE = 2
 FILE_HOST_ALBUM = 3
-
 SCRAPE_ITEM_TYPES = [FORUM, FORUM_POST, FILE_HOST_PROFILE, FILE_HOST_ALBUM]
 
 
@@ -78,9 +77,9 @@ class ScrapeItem:
         self.completed_at = None
         self.created_at = None
 
-    async def add_to_parent_title(self, title: str) -> None:
+    def add_to_parent_title(self, title: str) -> None:
         """Adds a title to the parent title."""
         if not title or self.retry:
             return
-        title = await sanitize_folder(title)
+        title = sanitize_folder(title)
         self.parent_title = (self.parent_title + "/" + title) if self.parent_title else title

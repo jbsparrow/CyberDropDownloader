@@ -38,13 +38,13 @@ class RealDebridCrawler(Crawler):
     async def folder(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a folder."""
         original_url = scrape_item.url
-        await log(f"scraping folder with RealDebrid: {original_url}", 10)
+        log(f"scraping folder with RealDebrid: {original_url}", 10)
         folder_id = await self.manager.real_debrid_manager.guess_folder(original_url)
         scrape_item.album_id = folder_id
         scrape_item.part_of_album = True
 
         title = await self.create_title(f"{folder_id} [{original_url.host.lower()}]", None, None)
-        await scrape_item.add_to_parent_title(title)
+        scrape_item.add_to_parent_title(title)
 
         async with self.request_limiter:
             links = await self.manager.real_debrid_manager.unrestrict_folder(original_url)
@@ -74,14 +74,14 @@ class RealDebridCrawler(Crawler):
         if not self_hosted:
             title = await self.create_title(f"files [{original_url.host.lower()}]", None, None)
             scrape_item.part_of_album = True
-            await scrape_item.add_to_parent_title(title)
+            scrape_item.add_to_parent_title(title)
             async with self.request_limiter:
                 debrid_url = await self.manager.real_debrid_manager.unrestrict_link(original_url, password)
 
         if await self.check_complete_from_referer(debrid_url):
             return
 
-        await log(f"Real Debrid:\n  Original URL: {original_url}\n  Debrid URL: {debrid_url}", 10)
+        log(f"Real Debrid:\n  Original URL: {original_url}\n  Debrid URL: {debrid_url}", 10)
 
         if not self_hosted:
             # Some hosts use query params or fragment as id or password (ex: mega.nz)

@@ -94,8 +94,8 @@ class ToonilyCrawler(Crawler):
         series_name = title_parts[0]
         chapter_title = title_parts[1]
         series_title = await self.create_title(series_name, None, None)
-        await scrape_item.add_to_parent_title(series_title)
-        await scrape_item.add_to_parent_title(chapter_title)
+        scrape_item.add_to_parent_title(series_title)
+        scrape_item.add_to_parent_title(chapter_title)
 
         scripts = soup.select("script")
         date = None

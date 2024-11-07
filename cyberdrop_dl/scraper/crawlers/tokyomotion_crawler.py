@@ -112,7 +112,7 @@ class TokioMotionCrawler(Crawler):
         user = scrape_item.url.parts[2]
         user_title = await self.create_title(f"{user} [user]", scrape_item.album_id, None)
         if user_title not in scrape_item.parent_title.split("/"):
-            await scrape_item.add_to_parent_title(user_title)
+            scrape_item.add_to_parent_title(user_title)
 
         async for soup in self.web_pager(scrape_item.url):
             albums = soup.select(self.album_selector)
@@ -136,7 +136,7 @@ class TokioMotionCrawler(Crawler):
             user = scrape_item.url.parts[2]
             user_title = await self.create_title(f"{user} [user]", scrape_item.album_id, None)
             if user_title not in scrape_item.parent_title.split("/"):
-                await scrape_item.add_to_parent_title(user_title)
+                scrape_item.add_to_parent_title(user_title)
 
         else:
             scrape_item.album_id = scrape_item.url.parts[2]
@@ -146,10 +146,10 @@ class TokioMotionCrawler(Crawler):
             title = await self.create_title(title, scrape_item.album_id, None)
 
         if "favorite" in scrape_item.url.parts:
-            await scrape_item.add_to_parent_title("favorite")
+            scrape_item.add_to_parent_title("favorite")
 
         if title not in scrape_item.parent_title.split("/"):
-            await scrape_item.add_to_parent_title(title)
+            scrape_item.add_to_parent_title(title)
 
         async for soup in self.web_pager(scrape_item.url):
             if "This is a private" in soup.text:
@@ -195,7 +195,7 @@ class TokioMotionCrawler(Crawler):
         user = scrape_item.url.parts[2]
         user_title = await self.create_title(f"{user} [user]", scrape_item.album_id, None)
         if user_title not in scrape_item.parent_title.split("/"):
-            await scrape_item.add_to_parent_title(user_title)
+            scrape_item.add_to_parent_title(user_title)
 
         new_parts = ["albums", "favorite/photos", "videos", "favorite/videos"]
         scrapers = [self.albums, self.album, self.playlist, self.playlist]
@@ -214,7 +214,7 @@ class TokioMotionCrawler(Crawler):
         search_query = scrape_item.url.query.get("search_query")
         search_title = await self.create_title(f"{search_query} [{search_type} search]", scrape_item.album_id, None)
         if search_title not in scrape_item.parent_title.split("/"):
-            await scrape_item.add_to_parent_title(search_title)
+            scrape_item.add_to_parent_title(search_title)
 
         selector = self.video_selector
         scraper = self.video
@@ -245,16 +245,16 @@ class TokioMotionCrawler(Crawler):
         user = scrape_item.url.parts[2]
         user_title = await self.create_title(f"{user} [user]", scrape_item.album_id, None)
         if user_title not in scrape_item.parent_title.split("/"):
-            await scrape_item.add_to_parent_title(user_title)
+            scrape_item.add_to_parent_title(user_title)
 
         if "favorite" in scrape_item.url.parts:
-            await scrape_item.add_to_parent_title("favorite")
+            scrape_item.add_to_parent_title("favorite")
 
         if self.folder_domain not in scrape_item.parent_title:
             title = await self.create_title(title, scrape_item.album_id, None)
 
         if title not in scrape_item.parent_title.split("/"):
-            await scrape_item.add_to_parent_title(title)
+            scrape_item.add_to_parent_title(title)
 
         async for soup in self.web_pager(scrape_item.url):
             if "This is a private" in soup.text:

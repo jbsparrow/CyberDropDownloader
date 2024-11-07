@@ -167,7 +167,7 @@ class XXXBunkerCrawler(Crawler):
             attempt = 1
             rate_limited = True
             soup = None
-            await log(f"Current page: {page_url}", 10)
+            log(f"Current page: {page_url}", 10)
             while rate_limited and attempt <= MAX_RETRIES:
                 async with self.request_limiter:
                     soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url)
@@ -180,7 +180,7 @@ class XXXBunkerCrawler(Crawler):
                 self.wait_time = min(self.wait_time + 10, MAX_WAIT)
                 self.rate_limit = max(self.rate_limit * 0.8, MIN_RATE_LIMIT)
                 self.request_limiter = AsyncLimiter(self.rate_limit, 60)
-                await log(f"Rate limited: {page_url}, retrying in {self.wait_time} seconds")
+                log(f"Rate limited: {page_url}, retrying in {self.wait_time} seconds")
                 attempt += 1
                 await asyncio.sleep(self.wait_time)
 

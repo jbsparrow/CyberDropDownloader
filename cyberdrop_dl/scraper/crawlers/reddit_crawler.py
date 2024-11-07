@@ -36,7 +36,7 @@ class RedditCrawler(Crawler):
         task_id = await self.scraping_progress.add_task(scrape_item.url)
 
         if not self.reddit_personal_use_script or not self.reddit_secret:
-            await log("Reddit API credentials not found. Skipping.", 30)
+            log("Reddit API credentials not found. Skipping.", 30)
             await self.manager.progress_manager.scrape_stats_progress.add_failure("Failed Login")
             await self.scraping_progress.remove_task(task_id)
             return
@@ -57,7 +57,7 @@ class RedditCrawler(Crawler):
             elif "redd.it" in scrape_item.url.host:
                 await self.media(scrape_item, reddit)
             else:
-                await log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
+                log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
                 await self.manager.progress_manager.scrape_stats_progress.add_failure("Unknown")
 
         await self.scraping_progress.remove_task(task_id)
@@ -67,7 +67,7 @@ class RedditCrawler(Crawler):
         """Scrapes user pages."""
         username = scrape_item.url.name or scrape_item.url.parts[-2]
         title = await self.create_title(username, None, None)
-        await scrape_item.add_to_parent_title(title)
+        scrape_item.add_to_parent_title(title)
         scrape_item.part_of_album = True
 
         user: Redditor = await reddit.redditor(username)
@@ -79,7 +79,7 @@ class RedditCrawler(Crawler):
         """Scrapes subreddit pages."""
         subreddit = scrape_item.url.name or scrape_item.url.parts[-2]
         title = await self.create_title(subreddit, None, None)
-        await scrape_item.add_to_parent_title(title)
+        scrape_item.add_to_parent_title(title)
         scrape_item.part_of_album = True
 
         subreddit: Subreddit = await reddit.subreddit(subreddit)

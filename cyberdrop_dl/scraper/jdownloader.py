@@ -33,7 +33,7 @@ def error_wrapper(func: Callable) -> None:
         except myjdapi.MYJDApiException as e:
             msg = e
 
-        await log(f"Failed JDownloader setup: {msg}", 40)
+        log(f"Failed JDownloader setup: {msg}", 40)
         self.enabled = False
         await asyncio.sleep(20)
         return None

@@ -38,7 +38,7 @@ class Rule34XXXCrawler(Crawler):
         elif "id" in scrape_item.url.query_string:
             await self.file(scrape_item)
         else:
-            await log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
+            log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
             await self.manager.progress_manager.scrape_stats_progress.add_failure("Unsupported Link")
 
         await self.scraping_progress.remove_task(task_id)

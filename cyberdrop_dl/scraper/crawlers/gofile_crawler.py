@@ -139,7 +139,7 @@ class GoFileCrawler(Crawler):
                     await duplicate_scrape_item.add_to_parent_title(title)
                     await self.handle_file(link, duplicate_scrape_item, filename, ext)
                 except NoExtensionError:
-                    await log(f"Scrape Failed: {link} (No File Extension)", 40)
+                    log(f"Scrape Failed: {link} (No File Extension)", 40)
                     await self.manager.log_manager.write_scrape_error_log(link, " No File Extension")
                     await self.manager.progress_manager.scrape_stats_progress.add_failure("No File Extension")
             scrape_item.children += 1
