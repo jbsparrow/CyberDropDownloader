@@ -146,10 +146,13 @@ class KemonoCrawler(Crawler):
             await self.create_new_scrape_item(link, scrape_item, user_str, post_title, post_id, date)
 
         files = []
-        if post['file']:
+        if post.get('file'):
             files.append(post['file'])
 
-        for file in files.extend(post['attachments']):
+        if post.get('attachments'):
+            files.extend(post['attachments'])
+            
+        for file in files:
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
                     raise ScrapeItemMaxChildrenReached(origin = scrape_item)

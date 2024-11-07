@@ -139,10 +139,13 @@ class CoomerCrawler(Crawler):
                                             add_parent=scrape_item.url.joinpath("post", post_id))
 
         files = []
-        if post['file']:
+        if post.get('file'):
             files.append(post['file'])
 
-        for file in files.extend(post['attachments']):
+        if post.get('attachments'):
+            files.extend(post['attachments'])
+            
+        for file in files:
             await handle_file(file)
             scrape_item.children += 1
             if scrape_item.children_limit:
