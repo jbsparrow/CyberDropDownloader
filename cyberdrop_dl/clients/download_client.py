@@ -13,7 +13,8 @@ import aiohttp
 from aiohttp import ClientSession
 
 from cyberdrop_dl.clients.errors import DownloadError, InvalidContentTypeError
-from cyberdrop_dl.utils.utilities import DEBUG_VAR, FILE_FORMATS, log
+from cyberdrop_dl.utils.constants import DEBUG_VAR, FILE_FORMATS
+from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
     from typing import Any, Callable, Coroutine

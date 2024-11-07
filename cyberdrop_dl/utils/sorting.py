@@ -12,7 +12,9 @@ from filedate import File
 from PIL import Image
 from videoprops import get_audio_properties, get_video_properties
 
-from cyberdrop_dl.utils.utilities import FILE_FORMATS, log, log_with_color, purge_dir_tree
+from cyberdrop_dl.utils.constants import FILE_FORMATS
+from cyberdrop_dl.utils.logger import log, log_with_color
+from cyberdrop_dl.utils.utilities import purge_dir_tree
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager

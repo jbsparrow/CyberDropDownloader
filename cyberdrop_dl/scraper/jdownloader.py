@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Callable
 from myjdapi import myjdapi
 
 from cyberdrop_dl.clients.errors import JDownloaderError
-from cyberdrop_dl.utils.utilities import log
+from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
     from yarl import URL

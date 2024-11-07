@@ -100,7 +100,7 @@ class DownloadStatsProgress:
             )
         await self.update_total(self.failed_files)
 
-    async def return_totals(self) -> dict:
+    def return_totals(self) -> dict:
         """Returns the total number of failed files."""
         failures = {}
         for failure_type, task_id in self.failure_types.items():
@@ -183,7 +183,7 @@ class ScrapeStatsProgress:
         else:
             self.unsupported_urls_skipped += 1
 
-    async def return_totals(self) -> dict:
+    def return_totals(self) -> dict:
         """Returns the total number of failed sites and reasons."""
         failures = {}
         for failure_type, task_id in self.failure_types.items():

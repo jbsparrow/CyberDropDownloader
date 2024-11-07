@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from cyberdrop_dl.managers.real_debrid.api import RealDebridApi
 from cyberdrop_dl.managers.real_debrid.errors import RealDebridError
-from cyberdrop_dl.utils.utilities import log
+from cyberdrop_dl.utils.logger import log
 
 warnings.simplefilter(action="ignore", category=FutureWarning)
 

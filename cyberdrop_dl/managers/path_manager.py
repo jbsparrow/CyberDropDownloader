@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from cyberdrop_dl.utils.utilities import DEBUG_VAR
+from cyberdrop_dl.utils.constants import DEBUG_VAR
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager

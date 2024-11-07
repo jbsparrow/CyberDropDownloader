@@ -6,7 +6,8 @@ from base64 import b64encode
 from shutil import disk_usage
 from typing import TYPE_CHECKING
 
-from cyberdrop_dl.utils.utilities import FILE_FORMATS, log_debug
+from cyberdrop_dl.utils.constants import FILE_FORMATS
+from cyberdrop_dl.utils.logger import log_debug
 
 if TYPE_CHECKING:
     from pathlib import Path

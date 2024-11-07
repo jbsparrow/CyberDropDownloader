@@ -10,7 +10,8 @@ from bs4 import BeautifulSoup
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import DDOSGuardError, InvalidContentTypeError
-from cyberdrop_dl.utils.utilities import DEBUG_VAR, log
+from cyberdrop_dl.utils.constants import DEBUG_VAR
+from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
     from multidict import CIMultiDictProxy

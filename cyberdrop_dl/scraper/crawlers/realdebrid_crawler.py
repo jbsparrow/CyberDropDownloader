@@ -8,7 +8,8 @@ from yarl import URL
 
 from cyberdrop_dl.managers.real_debrid.api import RATE_LIMIT
 from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext, log
+from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager

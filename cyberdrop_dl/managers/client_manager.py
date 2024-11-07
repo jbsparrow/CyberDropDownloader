@@ -15,7 +15,7 @@ from cyberdrop_dl.clients.download_client import DownloadClient
 from cyberdrop_dl.clients.errors import DDOSGuardError, DownloadError, ScrapeError
 from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.managers.leaky import LeakyBucket
-from cyberdrop_dl.utils.utilities import CustomHTTPStatus
+from cyberdrop_dl.utils.constants import CustomHTTPStatus
 
 if TYPE_CHECKING:
     from yarl import URL

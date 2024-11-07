@@ -63,6 +63,7 @@ def parse_args() -> argparse.Namespace:
     file_paths.add_argument("--config-file", type=str, help="path to the CDL settings.yaml file to load", default="")
     file_paths.add_argument(
         "--appdata-folder",
+        dest="appdata_dir",
         type=str,
         help="path to where you want CDL to store it's AppData folder",
         default="",

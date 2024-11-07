@@ -11,8 +11,9 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import MaxChildrenError, NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.utils.constants import FILE_FORMATS
 from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.utilities import FILE_FORMATS, error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup, Tag

@@ -14,7 +14,8 @@ from filedate import File
 from cyberdrop_dl.clients.download_client import is_4xx_client_error
 from cyberdrop_dl.clients.errors import CDLBaseError, DownloadError, InsufficientFreeSpaceError, RestrictedFiletypeError
 from cyberdrop_dl.managers.real_debrid.errors import RealDebridError
-from cyberdrop_dl.utils.utilities import CustomHTTPStatus, log
+from cyberdrop_dl.utils.constants import CustomHTTPStatus
+from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
     from cyberdrop_dl.clients.download_client import DownloadClient

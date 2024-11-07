@@ -279,7 +279,7 @@ class NekohouseCrawler(Crawler):
             await self.parse_datetime(date),
             add_parent=add_parent,
         )
-        await new_scrape_item.add_to_parent_title(post_title)
+        new_scrape_item.add_to_parent_title(post_title)
         self.manager.task_group.create_task(self.run(new_scrape_item))
 
     async def get_maximum_offset(self, soup: BeautifulSoup) -> int:

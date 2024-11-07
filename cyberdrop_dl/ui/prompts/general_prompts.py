@@ -11,9 +11,9 @@ from InquirerPy.separator import Separator
 from InquirerPy.validator import EmptyInputValidator, PathValidator
 from rich.console import Console
 
+from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.transfer.transfer_v4_config import transfer_v4_config
 from cyberdrop_dl.utils.transfer.transfer_v4_db import transfer_v4_db
-from cyberdrop_dl.utils.utilities import log
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager

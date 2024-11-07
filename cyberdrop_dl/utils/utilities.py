@@ -6,7 +6,7 @@ import os
 import re
 from functools import wraps
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Callable
 
 import aiofiles
 import apprise
@@ -15,10 +15,10 @@ from aiohttp import ClientSession, FormData
 from rich.text import Text
 from yarl import URL
 
-import cyberdrop_dl.utils.constants as constants
 from cyberdrop_dl.clients.errors import CDLBaseError, NoExtensionError
 from cyberdrop_dl.managers.real_debrid.errors import RealDebridError
-from cyberdrop_dl.utils.logger import get_log_output_text, log, log_with_color, set_log_output_text
+from cyberdrop_dl.utils import constants
+from cyberdrop_dl.utils.logger import log, log_with_color
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
 
 
-def error_handling_wrapper(func: Callable) -> Any:
+def error_handling_wrapper(func: Callable) -> None:
     """Wrapper handles errors for url scraping."""
 
     @wraps(func)
@@ -145,6 +145,27 @@ def remove_file_id(manager: Manager, filename: str, ext: str) -> tuple[str, str]
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
 
+def parse_bytes(size: int) -> tuple[int, str]:
+    """Get human repr of bytes as a tuple of (VALUE , UNIT)"""
+    for unit in ["B", "KB", "MB", "GB", "TB", "PB", "EB"]:
+        if size < 1024:
+            return size, unit
+        size /= 1024
+    return size, "YB"
+
+
+def parse_rich_text_by_style(text: Text, style_map: dict, default_style_map_key: str = "default") -> str:
+    """Returns `text` as a plain str, parsing each tag in text acording to `style_map`."""
+    plain_text = ""
+    for span in text.spans:
+        span_text = text.plain[span.start : span.end].rstrip("\n")
+        plain_line: str = style_map.get(span.style) or style_map.get(default_style_map_key)
+        if plain_line:
+            plain_text += plain_line.format(span_text) + "\n"
+
+    return plain_text
+
+
 def purge_dir_tree(dirname: Path) -> None:
     """Purges empty files and directories."""
     for file in dirname.rglob("*"):
@@ -173,11 +194,7 @@ async def check_partials_and_empty_folders(manager: Manager) -> None:
         temp_downloads = any(Path(f).is_file() for f in await manager.db_manager.temp_table.get_temp_names())
         if temp_downloads:
             msg = "There are partial downloads from the previous run, please re-run the program."
-            log_with_color(
-                msg,
-                "yellow",
-                20,
-            )
+            log_with_color(msg, "yellow", 20)
 
     if not manager.config_manager.settings_data["Runtime_Options"]["skip_check_for_empty_folders"]:
         log_with_color("Checking for empty folders...", "yellow", 20)
@@ -186,7 +203,7 @@ async def check_partials_and_empty_folders(manager: Manager) -> None:
             purge_dir_tree(manager.path_manager.sorted_dir)
 
 
-def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -> tuple[str]:
+def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -> tuple[str, str]:
     """Checks if the current version is the latest version."""
     import json
 
@@ -201,27 +218,23 @@ def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -
     latest_version: str = data["info"]["version"]
     releases = data["releases"].keys()
     message = color = None
-
     is_prelease, message = check_prelease_version(current_version, releases)
 
     if current_version not in releases:
         message = Text("You are on an unreleased version, skipping version check")
         color = "bold_yellow"
-
     elif is_prelease:
         color = "bold_red"
-
     elif current_version != latest_version:
         message = f"A new version of Cyberdrop-DL is available: [cyan]{latest_version}[/cyan]"
         message = Text.from_markup(message)
-
     else:
         message = Text("You are currently on the latest version of Cyberdrop-DL")
 
     if call_from_ui:
         rich.print(message)
     elif log_to_console:
-        log_with_color(message.plain, color, 30)
+        log_with_color(message.plain, color, 30, show_in_stats=False)
 
     return current_version, latest_version
 
@@ -248,7 +261,7 @@ def check_prelease_version(current_version: str, releases: list[str]) -> tuple[s
         ui_tag = constants.PRELEASE_TAGS.get(test_tag, "Testing").lower()
 
         if current_version != latest_testing_version:
-            message = f"A new {ui_tag} version of Cyberdrop-DL is available:"
+            message = f"A new {ui_tag} version of Cyberdrop-DL is available: "
             message = Text(message).append_text(latest_testing_version)
         else:
             message = f"You are currently on the latest {ui_tag} version of [b cyan]{major_version}.{minor_version}.{patch_version}[/b cyan]"
@@ -257,18 +270,16 @@ def check_prelease_version(current_version: str, releases: list[str]) -> tuple[s
     return latest_testing_version, message
 
 
-async def sent_apprise_notifications(manager: Manager) -> None:
+def sent_apprise_notifications(manager: Manager) -> None:
     apprise_file = manager.path_manager.config_dir / manager.config_manager.loaded_config / "apprise.txt"
-
-    text: Text = get_log_output_text()
-    set_log_output_text("")
+    text: Text = constants.LOG_OUTPUT_TEXT
+    constants.LOG_OUTPUT_TEXT = Text("")
 
     if not apprise_file.is_file():
         return
 
-    async with aiofiles.open(apprise_file, encoding="utf8") as file:
-        lines = await file.readlines()
-        lines = [line.strip() for line in lines]
+    with apprise_file.open(encoding="utf8") as file:
+        lines = [line.strip() for line in file]
 
     if not lines:
         return
@@ -285,7 +296,6 @@ async def sent_apprise_notifications(manager: Manager) -> None:
         apprise_obj.add(url, tag=tags)
 
     results = []
-
     result = apprise_obj.notify(
         body=text.plain,
         title="Cyberdrop-DL",
@@ -319,27 +329,6 @@ async def sent_apprise_notifications(manager: Manager) -> None:
     rich.print("Apprise notifications results:", result)
 
 
-def parse_bytes(size: int) -> tuple[int, str]:
-    """Get human repr of bytes as a tuple of (VALUE , UNIT)"""
-    for unit in ["B", "KB", "MB", "GB", "TB", "PB", "EB"]:
-        if size < 1024:
-            return size, unit
-        size /= 1024
-    return size, "YB"
-
-
-def parse_rich_text_by_style(text: Text, style_map: dict, default_style_map_key: str = "default") -> str:
-    """Returns `text` as a plain str, parsing each tag in text acording to `style_map`."""
-    plain_text = ""
-    for span in text.spans:
-        span_text = text.plain[span.start : span.end].rstrip("\n")
-        plain_line: str = style_map.get(span.style) or style_map.get(default_style_map_key)
-        if plain_line:
-            plain_text += plain_line.format(span_text) + "\n"
-
-    return plain_text
-
-
 async def send_webhook_message(manager: Manager) -> None:
     """Outputs the stats to a code block for webhook messages."""
     webhook_url: str = manager.config_manager.settings_data["Logs"]["webhook_url"]
@@ -355,7 +344,7 @@ async def send_webhook_message(manager: Manager) -> None:
         tags = tags.split(",")
 
     url = URL(url)
-    text: Text = get_log_output_text()
+    text: Text = constants.LOG_OUTPUT_TEXT
     plain_text = parse_rich_text_by_style(text, constants.STYLE_TO_DIFF_FORMAT_MAP)
     main_log = manager.path_manager.main_log
 

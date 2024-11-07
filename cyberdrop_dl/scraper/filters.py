@@ -6,13 +6,11 @@ import arrow
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import NoExtensionError
-from cyberdrop_dl.utils.utilities import FILE_FORMATS, get_filename_and_ext
+from cyberdrop_dl.utils.constants import FILE_FORMATS
+from cyberdrop_dl.utils.utilities import get_filename_and_ext
 
 if TYPE_CHECKING:
     from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
-
-
-BLOCKED_DOMAINS = ("facebook", "instagram", "fbcdn")
 
 
 def is_valid_url(scrape_item: ScrapeItem) -> bool:
@@ -37,18 +35,14 @@ def is_outside_date_range(scrape_item: ScrapeItem, before: arrow, after: arrow) 
     item_date = scrape_item.completed_at or scrape_item.created_at
     if not item_date:
         return False
-    if after and arrow.get(item_date) < after:
-        skip = True
-    elif before and arrow.get(item_date) > before:
+    if after and arrow.get(item_date) < after or before and arrow.get(item_date) > before:
         skip = True
 
     return skip
 
 
 def is_in_domain_list(scrape_item: ScrapeItem, domain_list: list[str]) -> bool:
-    if any(domain in scrape_item.url.host for domain in domain_list):
-        return True
-    return False
+    return any(domain in scrape_item.url.host for domain in domain_list)
 
 
 def remove_trailing_slash(url: URL) -> URL:

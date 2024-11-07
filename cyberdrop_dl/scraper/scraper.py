@@ -20,15 +20,14 @@ from cyberdrop_dl.scraper.filters import (
     remove_trailing_slash,
 )
 from cyberdrop_dl.scraper.jdownloader import JDownloader
+from cyberdrop_dl.utils.constants import BLOCKED_DOMAINS
 from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem, ScrapeItem
-from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext, log
+from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.scraper.crawler import Crawler
-
-
-BLOCKED_DOMAINS = ("facebook", "instagram", "fbcdn")
 
 
 class ScrapeMapper:
@@ -413,7 +412,7 @@ class ScrapeMapper:
         return yarl_links
 
     async def parse_input_file_groups(self) -> dict[str, URL]:
-        "Split URLs from input file by their groups"
+        """Split URLs from input file by their groups"""
         input_file = self.manager.path_manager.input_file
         links = {"": []}
         block_quote = False
@@ -444,7 +443,7 @@ class ScrapeMapper:
 
         links = {"": []}
         if not self.manager.args_manager.other_links:
-            links = self.parse_input_file_groups()
+            links = await self.parse_input_file_groups()
 
         else:
             links[""].extend(self.manager.args_manager.other_links)
@@ -457,9 +456,9 @@ class ScrapeMapper:
         for title in links:
             for url in links[title]:
                 item = self.create_item_from_link(url)
-                await item.add_to_parent_title(title)
+                item.add_to_parent_title(title)
                 item.part_of_album = True
-                if await self.filter_items(item):
+                if self.filter_items(item):
                     items.append(item)
         for item in items:
             self.manager.task_group.create_task(self.send_to_crawler(item))
@@ -470,7 +469,7 @@ class ScrapeMapper:
         items = []
         for entry in entries:
             item = self.create_item_from_entry(entry)
-            if await self.filter_items(item):
+            if self.filter_items(item):
                 items.append(item)
         if self.manager.args_manager.max_items:
             items = items[: self.manager.args_manager.max_items]
@@ -486,7 +485,7 @@ class ScrapeMapper:
         items = []
         for entry in entries:
             item = self.create_item_from_entry(entry)
-            if await self.filter_items(item):
+            if self.filter_items(item):
                 items.append(item)
         if self.manager.args_manager.max_items:
             items = items[: self.manager.args_manager.max_items]
@@ -500,7 +499,7 @@ class ScrapeMapper:
         items = []
         for entry in entries:
             item = self.create_item_from_entry(entry)
-            if await self.filter_items(item):
+            if self.filter_items(item):
                 items.append(item)
         if self.manager.args_manager.max_items:
             items = items[: self.manager.args_manager.max_items]
@@ -510,10 +509,10 @@ class ScrapeMapper:
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def filter_and_send_to_crawler(self, scrape_item: ScrapeItem) -> None:
-        "Send scrape_item to a supported crawler."
+        """Send scrape_item to a supported crawler."""
         if not isinstance(scrape_item.url, URL):
             scrape_item.url = URL(scrape_item.url)
-        if await self.filter_items(scrape_item):
+        if self.filter_items(scrape_item):
             await self.send_to_crawler(scrape_item)
 
     @staticmethod
@@ -583,7 +582,8 @@ class ScrapeMapper:
             except JDownloaderError as e:
                 log(f"Failed to send {scrape_item.url} to JDownloader\n{e.message}", 40)
                 await self.manager.log_manager.write_unsupported_urls_log(
-                    scrape_item.url, next(scrape_item.parents, None)
+                    scrape_item.url,
+                    next(scrape_item.parents, None),
                 )
             await self.manager.progress_manager.scrape_stats_progress.add_unsupported(sent_to_jdownloader=success)
             return
@@ -592,9 +592,8 @@ class ScrapeMapper:
         await self.manager.log_manager.write_unsupported_urls_log(scrape_item.url, next(scrape_item.parents, None))
         await self.manager.progress_manager.scrape_stats_progress.add_unsupported()
 
-    async def filter_items(self, scrape_item: ScrapeItem) -> bool:
-        """Pre-filter scrape items base on URL blocks."""
-
+    def filter_items(self, scrape_item: ScrapeItem) -> bool:
+        """Pre-filter scrape items base on URL."""
         if not is_valid_url(scrape_item):
             return False
 
@@ -613,7 +612,7 @@ class ScrapeMapper:
             log(f"Skipping URL by skip_hosts config: {scrape_item.url}", 10)
             return False
 
-        only_hosts = self.manager.config_manager.settings_data["Ignore_Options"]["skip_hosts"]
+        only_hosts = self.manager.config_manager.settings_data["Ignore_Options"]["only_hosts"]
         if only_hosts and not is_in_domain_list(scrape_item, only_hosts):
             log(f"Skipping URL by only_hosts config: {scrape_item.url}", 10)
             return False

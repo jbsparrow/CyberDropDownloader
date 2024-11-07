@@ -5,12 +5,12 @@ from typing import TYPE_CHECKING
 from cyberdrop_dl.utils.database.table_definitions import create_temp
 
 if TYPE_CHECKING:
-    import aiosqlite
+    from aiosqlite import Connection
 
 
 class TempTable:
-    def __init__(self, db_conn: aiosqlite.Connection) -> None:
-        self.db_conn: aiosqlite.Connection = db_conn
+    def __init__(self, db_conn: Connection) -> None:
+        self.db_conn: Connection = db_conn
 
     async def startup(self) -> None:
         """Startup process for the TempTable."""

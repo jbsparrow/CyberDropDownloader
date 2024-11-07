@@ -3,13 +3,25 @@ from enum import IntEnum
 
 from rich.text import Text
 
+# logging
+CONSOLE_LEVEL = 100
 MAX_NAME_LENGTHS = {"FILE": 95, "FOLDER": 60}
-
 DEFAULT_CONSOLE_WIDTH = 240
 DEBUG_VAR = False
 CONSOLE_DEBUG_VAR = False
-
+CSV_DELIMITER = ","
 LOG_OUTPUT_TEXT = Text("")
+RICH_HANDLER_CONFIG = {"show_time": True, "rich_tracebacks": True, "tracebacks_show_locals": False}
+RICH_HANDLER_DEBUG_CONFIG = {
+    "show_time": True,
+    "rich_tracebacks": True,
+    "tracebacks_show_locals": True,
+    "locals_max_string": DEFAULT_CONSOLE_WIDTH,
+    "tracebacks_extra_lines": 2,
+    "locals_max_length": 20,
+}
+
+BLOCKED_DOMAINS = ("facebook", "instagram", "fbcdn")
 
 # regex
 RAR_MULTIPART_PATTERN = re.compile(r"^part\d+")

@@ -13,7 +13,8 @@ from cyberdrop_dl.clients.errors import LoginError
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem, ScrapeItem
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_download_path, log, remove_file_id
+from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_download_path, remove_file_id
 
 if TYPE_CHECKING:
     from cyberdrop_dl.clients.scraper_client import ScraperClient

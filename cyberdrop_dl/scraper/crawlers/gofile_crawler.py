@@ -19,7 +19,8 @@ from cyberdrop_dl.clients.errors import (
 )
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext, log
+from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
     from cyberdrop_dl.clients.scraper_client import ScraperClient
@@ -136,7 +137,7 @@ class GoFileCrawler(Crawler):
                     duplicate_scrape_item = deepcopy(scrape_item)
                     duplicate_scrape_item.possible_datetime = content["createTime"]
                     duplicate_scrape_item.part_of_album = True
-                    await duplicate_scrape_item.add_to_parent_title(title)
+                    duplicate_scrape_item.add_to_parent_title(title)
                     await self.handle_file(link, duplicate_scrape_item, filename, ext)
                 except NoExtensionError:
                     log(f"Scrape Failed: {link} (No File Extension)", 40)

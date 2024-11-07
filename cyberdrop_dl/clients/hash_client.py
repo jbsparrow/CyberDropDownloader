@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, AsyncGenerator
 from send2trash import send2trash
 
 from cyberdrop_dl.ui.prompts.continue_prompt import enter_to_continue
-from cyberdrop_dl.utils.utilities import log
+from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
     from yarl import URL

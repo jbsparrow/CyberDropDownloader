@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import json
 from dataclasses import field
+from time import perf_counter
 from typing import TYPE_CHECKING
 
 from cyberdrop_dl import __version__
@@ -10,7 +11,6 @@ from cyberdrop_dl.managers.args_manager import ArgsManager
 from cyberdrop_dl.managers.cache_manager import CacheManager
 from cyberdrop_dl.managers.client_manager import ClientManager
 from cyberdrop_dl.managers.config_manager import ConfigManager
-from cyberdrop_dl.managers.console_manager import ConsoleManager
 from cyberdrop_dl.managers.db_manager import DBManager
 from cyberdrop_dl.managers.download_manager import DownloadManager
 from cyberdrop_dl.managers.hash_manager import HashManager
@@ -21,11 +21,11 @@ from cyberdrop_dl.managers.progress_manager import ProgressManager
 from cyberdrop_dl.managers.realdebrid_manager import RealDebridManager
 from cyberdrop_dl.utils.args import config_definitions
 from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
+from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.transfer.first_time_setup import TransitionManager
-from cyberdrop_dl.utils.utilities import log
 
 if TYPE_CHECKING:
-    import asyncio
+    from asyncio import TaskGroup
 
     from cyberdrop_dl.scraper.scraper import ScrapeMapper
 
@@ -52,12 +52,13 @@ class Manager:
         self._loaded_args_config: bool = False
         self._made_portable: bool = False
 
-        self.task_group: asyncio.TaskGroup = field(init=False)
+        self.task_group: TaskGroup = field(init=False)
         self.task_list: list = []
         self.scrape_mapper: ScrapeMapper = field(init=False)
 
         self.vi_mode: bool = False
-        self.console_manager: ConsoleManager = field(init=False)
+        self.start_time: float = perf_counter()
+        self.downloaded_data: int = 0
 
     def startup(self) -> None:
         """Startup process for the manager."""
@@ -124,14 +125,11 @@ class Manager:
             self.live_manager = LiveManager(self)
         if not isinstance(self.real_debrid_manager, RealDebridManager):
             self.real_debrid_manager = RealDebridManager(self)
-        if not isinstance(self.console_manager, ConsoleManager):
-            self.console_manager = ConsoleManager()
-            self.console_manager.startup()
         self.progress_manager = ProgressManager(self)
         await self.progress_manager.startup()
 
         # set files from args
-        from cyberdrop_dl.utils.utilities import MAX_NAME_LENGTHS
+        from cyberdrop_dl.utils.constants import MAX_NAME_LENGTHS
 
         MAX_NAME_LENGTHS["FILE"] = int(self.config_manager.global_settings_data["General"]["max_file_name_length"])
         MAX_NAME_LENGTHS["FOLDER"] = int(self.config_manager.global_settings_data["General"]["max_folder_name_length"])
@@ -146,9 +144,6 @@ class Manager:
             await self.hash_manager.startup()
         if not isinstance(self.live_manager, LiveManager):
             self.live_manager = LiveManager(self)
-        if not isinstance(self.console_manager, ConsoleManager):
-            self.console_manager = ConsoleManager()
-            self.console_manager.startup()
         self.progress_manager = ProgressManager(self)
         await self.progress_manager.startup()
 
@@ -199,16 +194,13 @@ class Manager:
             str(print_settings["Sorting"]["scan_folder"]) if str(print_settings["Sorting"]["scan_folder"]) else ""
         )
 
-        input_file = str(self.path_manager.input_file)
-        download_dir = str(self.path_manager.download_dir)
-
-        log(f"Starting Cyberdrop-DL Process for {self.config_manager.loaded_config} Config", 10)
+        log(f"Starting Cyberdrop-DL Process - Config: {self.config_manager.loaded_config}", 10)
         log(f"Running version {__version__}", 10)
         log(f"Using Config: {self.config_manager.loaded_config}", 10)
-        log(f"Using Config File: {self.config_manager.settings!s}", 10)
-        log(f"Using Input File: {input_file}", 10)
-        log(f"Using Download Folder: {download_dir}", 10)
-        log(f"Using History File: {self.path_manager.history_db!s}", 10)
+        log(f"Using Config File: {self.config_manager.settings.resolve()}", 10)
+        log(f"Using Input File: {self.path_manager.input_file.resolve()}", 10)
+        log(f"Using Download Folder: {self.path_manager.download_dir.resolve()}", 10)
+        log(f"Using History File: {self.path_manager.history_db.resolve()}", 10)
 
         log(f"Using Authentication: \n{json.dumps(auth_provided, indent=4, sort_keys=True)}", 10)
         log(f"Using Settings: \n{json.dumps(print_settings, indent=4, sort_keys=True)}", 10)
@@ -220,8 +212,6 @@ class Manager:
     async def close(self) -> None:
         """Closes the manager."""
         await self.db_manager.close()
-        self.console_manager.close()
         self.db_manager: DBManager = field(init=False)
-        self.console_manager: ConsoleManager = field(init=False)
         self.cache_manager: CacheManager = field(init=False)
         self.hash_manager: HashManager = field(init=False)

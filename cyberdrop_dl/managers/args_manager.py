@@ -151,7 +151,7 @@ class ArgsManager:
         del self.parsed_args["retry_maintenance"]
         del self.parsed_args["input_file"]
         del self.parsed_args["output_folder"]
-        del self.parsed_args["appdata_folder"]
+        del self.parsed_args["appdata_dir"]
         del self.parsed_args["config_file"]
         del self.parsed_args["log_folder"]
         del self.parsed_args["proxy"]

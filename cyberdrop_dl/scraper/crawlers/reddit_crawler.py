@@ -12,7 +12,8 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import MaxChildrenError, NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext, log
+from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
     from asyncpraw.models import Redditor, Submission, Subreddit
@@ -223,5 +224,5 @@ class RedditCrawler(Crawler):
             add_parent=add_parent,
         )
         if self.manager.config_manager.settings_data["Download_Options"]["separate_posts"]:
-            await new_scrape_item.add_to_parent_title(title)
+            new_scrape_item.add_to_parent_title(title)
         return new_scrape_item

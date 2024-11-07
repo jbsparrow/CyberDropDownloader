@@ -6,8 +6,7 @@ from typing import TYPE_CHECKING, AsyncGenerator
 from rich.console import Console
 from rich.live import Live
 
-from cyberdrop_dl.managers.console_manager import console
-from cyberdrop_dl.utils.utilities import log
+from cyberdrop_dl.utils.logger import console, log
 
 if TYPE_CHECKING:
     from rich.layout import Layout
