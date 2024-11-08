@@ -285,7 +285,9 @@ class ConfigManager:
         settings_data["Logs"]["log_folder"] = str(settings_data["Logs"]["log_folder"])
         settings_data["Logs"]["webhook_url"] = str(settings_data["Logs"]["webhook_url"])
         settings_data["Sorting"]["sort_folder"] = str(settings_data["Sorting"]["sort_folder"])
-        settings_data["Sorting"]["scan_folder"] = str(settings_data["Sorting"]["scan_folder"])
+        settings_data["Sorting"]["scan_folder"] = (
+            str(settings_data["Sorting"]["scan_folder"]) if settings_data["Sorting"]["scan_folder"] else None
+        )
 
         _save_yaml(self.settings, settings_data)
 

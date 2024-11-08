@@ -3,7 +3,6 @@ from __future__ import annotations
 import contextlib
 import os
 import re
-from collections.abc import Callable
 from functools import wraps
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -21,6 +20,8 @@ from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.logger import log, log_with_color
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.scraper.crawler import Crawler
     from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem

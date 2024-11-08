@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import wraps
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 import browser_cookie3
 from InquirerPy import inquirer
@@ -10,6 +10,7 @@ from rich.console import Console
 from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from http.cookiejar import CookieJar
 
     from cyberdrop_dl.managers.manager import Manager

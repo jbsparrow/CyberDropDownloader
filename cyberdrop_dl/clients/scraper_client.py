@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from functools import wraps
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 import aiohttp
 from aiohttp import ClientSession
@@ -14,6 +14,8 @@ from cyberdrop_dl.utils.constants import DEBUG_VAR
 from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from multidict import CIMultiDictProxy
 
     from cyberdrop_dl.managers.client_manager import ClientManager

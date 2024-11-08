@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import contextlib
-from collections.abc import AsyncIterator
 from typing import TYPE_CHECKING
 
 import aiohttp
@@ -17,6 +16,8 @@ from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncIterator
+
     from asyncpraw.models import Redditor, Submission, Subreddit
 
     from cyberdrop_dl.managers.manager import Manager

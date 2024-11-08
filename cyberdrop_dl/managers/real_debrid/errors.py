@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from http import HTTPStatus
 from typing import TYPE_CHECKING
 
@@ -50,7 +52,7 @@ ERROR_CODES = {
 class RealDebridError(BaseException):
     """Base RealDebrid API error."""
 
-    def __init__(self, response: "Response") -> None:
+    def __init__(self, response: Response) -> None:
         self.path = URL(response.url).path
         try:
             JSONResp: dict = response.json()
@@ -63,5 +65,6 @@ class RealDebridError(BaseException):
             self.code = response.status_code
             self.error = f"{self.code} - {HTTPStatus(self.code).phrase}"
 
+        self.error = self.error.capitalize()
         self.msg = f"{self.code}: {self.error} at {self.path}"
         super().__init__(self.msg)

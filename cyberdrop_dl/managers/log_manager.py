@@ -94,7 +94,7 @@ class LogManager:
                     new_base_urls.append(base_url)
 
         updated_urls = current_urls.copy()
-        for new_url, base in zip(new_urls, new_base_urls):
+        for new_url, base in zip(new_urls, new_base_urls, strict=False):
             if base in current_base_urls:
                 index = current_base_urls.index(base)
                 old_url = current_urls[index]

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import field
 from functools import wraps
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 from myjdapi import myjdapi
 
@@ -11,6 +11,8 @@ from cyberdrop_dl.clients.errors import JDownloaderError
 from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from yarl import URL
 
     from cyberdrop_dl.managers.manager import Manager

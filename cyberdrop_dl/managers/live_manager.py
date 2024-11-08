@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Generator
 from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
@@ -10,6 +9,8 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from cyberdrop_dl.utils.logger import console, log
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from rich.layout import Layout
 
     from cyberdrop_dl.managers.manager import Manager
@@ -46,7 +47,7 @@ class LiveManager:
                 for sub_exception in e.exceptions:
                     msg = f"Multiple exception caught: {type(sub_exception).__name__} - {sub_exception}"
                     log(msg, 50, exc_info=sub_exception)
-            raise e
+            raise
         finally:
             if stop:
                 self.live.stop()

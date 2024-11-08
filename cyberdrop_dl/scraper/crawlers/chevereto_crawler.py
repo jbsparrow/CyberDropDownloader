@@ -3,7 +3,6 @@ from __future__ import annotations
 import calendar
 import datetime
 import re
-from collections.abc import AsyncGenerator
 from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
@@ -15,6 +14,8 @@ from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
 

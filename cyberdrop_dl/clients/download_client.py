@@ -17,7 +17,8 @@ from cyberdrop_dl.utils.constants import DEBUG_VAR, FILE_FORMATS
 from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Coroutine
+    from collections.abc import Callable, Coroutine
+    from typing import Any
 
     from cyberdrop_dl.managers.client_manager import ClientManager
     from cyberdrop_dl.managers.manager import Manager

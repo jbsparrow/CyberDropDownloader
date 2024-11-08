@@ -50,7 +50,8 @@ class TransitionManager:
 
         if (constants.APP_STORAGE / "download_history.sqlite").is_file():
             transfer_v4_db(
-                constants.APP_STORAGE / "download_history.sqlite", constants.APP_STORAGE / "Cache" / "cyberdrop.db"
+                constants.APP_STORAGE / "download_history.sqlite",
+                constants.APP_STORAGE / "Cache" / "cyberdrop.db",
             )
             (constants.APP_STORAGE / "download_history.sqlite").rename(OLD_FILES / "download_history2.sqlite")
 

@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import time
 from collections import defaultdict
-from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -14,6 +13,8 @@ from cyberdrop_dl.ui.prompts.continue_prompt import enter_to_continue
 from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from yarl import URL
 
     from cyberdrop_dl.managers.manager import Manager

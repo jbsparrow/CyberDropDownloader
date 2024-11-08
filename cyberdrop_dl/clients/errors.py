@@ -26,7 +26,7 @@ class CDLBaseError(Exception):
         self.ui_message = ui_message
         self.message = message or ui_message
         self.origin = origin
-        if origin and not isinstance(origin, (URL, Path)):
+        if origin and not isinstance(origin, URL | Path):
             self.origin = origin.parents[0] if origin.parents else None
         super().__init__(self.message)
         if status:

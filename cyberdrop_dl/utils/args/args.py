@@ -59,7 +59,14 @@ def parse_args() -> argparse.Namespace:
         help="path to txt file containing urls to download",
         default="",
     )
-    file_paths.add_argument("-d", "--output-folder", type=str, help="path to download folder", default="")
+    file_paths.add_argument(
+        "-d",
+        "--output-folder",
+        dest="download_dir",
+        type=str,
+        help="path to download folder",
+        default="",
+    )
     file_paths.add_argument("--config-file", type=str, help="path to the CDL settings.yaml file to load", default="")
     file_paths.add_argument(
         "--appdata-folder",

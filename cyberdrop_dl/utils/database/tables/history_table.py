@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import pathlib
 from sqlite3 import IntegrityError, Row
-from typing import TYPE_CHECKING, Any, Iterable
+from typing import TYPE_CHECKING, Any
 
 from cyberdrop_dl.utils.database.table_definitions import create_fixed_history, create_history
 from cyberdrop_dl.utils.utilities import log
 
 if TYPE_CHECKING:
     import datetime
+    from collections.abc import Iterable
 
     import aiosqlite
     from yarl import URL

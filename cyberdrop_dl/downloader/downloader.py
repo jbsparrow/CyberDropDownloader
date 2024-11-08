@@ -6,7 +6,7 @@ from dataclasses import Field, field
 from functools import wraps
 from http import HTTPStatus
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 import aiohttp
 from filedate import File
@@ -18,6 +18,8 @@ from cyberdrop_dl.utils.constants import CustomHTTPStatus
 from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from cyberdrop_dl.clients.download_client import DownloadClient
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem
@@ -214,7 +216,7 @@ class Downloader:
             FileNotFoundError,
             PermissionError,
             aiohttp.ServerDisconnectedError,
-            asyncio.TimeoutError,
+            TimeoutError,
             aiohttp.ServerTimeoutError,
         ) as e:
             ui_message = getattr(e, "status", type(e).__name__)

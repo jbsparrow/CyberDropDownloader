@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import re
 from calendar import timegm
-from collections.abc import AsyncGenerator
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
@@ -15,6 +14,8 @@ from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.managers.manager import Manager

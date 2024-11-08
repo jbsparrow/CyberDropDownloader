@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import time
-from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import date, datetime, timedelta
 from typing import TYPE_CHECKING
@@ -13,6 +12,7 @@ from yarl import URL
 from cyberdrop_dl.managers.real_debrid.errors import RealDebridError
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
     from pathlib import Path
 
     from requests import Response

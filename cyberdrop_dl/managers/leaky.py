@@ -33,7 +33,7 @@ class LeakyBucket(AsyncLimiter):
             # 'early' if capacity has come up
             fut = loop.create_future()
             self._waiters[task] = fut
-            with contextlib.suppress(asyncio.TimeoutError):
+            with contextlib.suppress(TimeoutError):
                 await wait_for(asyncio.shield(fut), 1 / self._rate_per_sec * amount, loop=loop)
             fut.cancel()
         self._waiters.pop(task, None)

@@ -587,7 +587,8 @@ class ScrapeMapper:
 
         log(f"Unsupported URL: {scrape_item.url}", 30)
         await self.manager.log_manager.write_unsupported_urls_log(
-            scrape_item.url, scrape_item.parents[0] if scrape_item.parents else None
+            scrape_item.url,
+            scrape_item.parents[0] if scrape_item.parents else None,
         )
         self.manager.progress_manager.scrape_stats_progress.add_unsupported()
 
