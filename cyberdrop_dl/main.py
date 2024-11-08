@@ -43,8 +43,6 @@ def startup() -> Manager:
         if not manager.args_manager.immediate_download:
             program_ui(manager)
 
-        return manager
-
     except InvalidYamlError as e:
         print_to_console(e.message_rich)
         sys.exit(1)
@@ -52,6 +50,9 @@ def startup() -> Manager:
     except KeyboardInterrupt:
         print_to_console("Exiting...")
         sys.exit(0)
+
+    else:
+        return manager
 
 
 async def runtime(manager: Manager) -> None:
@@ -185,7 +186,7 @@ async def director(manager: Manager) -> None:
             with manager.live_manager.get_main_live(stop=True):
                 await runtime(manager)
                 await post_runtime(manager)
-        except Exception as e:
+        except* Exception as e:
             log_with_color(
                 f"An error occurred, please report this to the developer: {e}",
                 "bold red",

@@ -3,7 +3,8 @@ from __future__ import annotations
 import calendar
 import datetime
 import re
-from typing import TYPE_CHECKING, AsyncGenerator, ClassVar
+from collections.abc import AsyncGenerator
+from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
@@ -27,7 +28,7 @@ CDN_POSSIBILITIES = re.compile("|".join(CDN_PATTERNS.values()))
 
 
 class CheveretoCrawler(Crawler):
-    JPG_CHURCH_DOMAINS = {
+    JPG_CHURCH_DOMAINS: ClassVar[tuple[str, ...]] = {
         "jpg.homes",
         "jpg.church",
         "jpg.fish",
@@ -42,7 +43,7 @@ class CheveretoCrawler(Crawler):
         "host.church",
     }
 
-    PRIMARY_BASE_DOMAINS = {
+    PRIMARY_BASE_DOMAINS: ClassVar[dict[str, URL]] = {
         "imagepond.net": URL("https://imagepond.net"),
         "jpg.church": URL("https://jpg5.su"),
         "img.kiwi": URL("https://img.kiwi"),
@@ -104,7 +105,7 @@ class CheveretoCrawler(Crawler):
                 if link.startswith("/"):
                     link = self.primary_base_domain / link[1:]
                 link = URL(link)
-                new_scrape_item = await self.create_scrape_item(
+                new_scrape_item = self.create_scrape_item(
                     scrape_item,
                     link,
                     title,
@@ -159,7 +160,7 @@ class CheveretoCrawler(Crawler):
                 sub_album_link = self.primary_base_domain / sub_album_link[1:]
 
             sub_album_link = URL(sub_album_link)
-            new_scrape_item = await self.create_scrape_item(scrape_item, sub_album_link, "", True)
+            new_scrape_item = self.create_scrape_item(scrape_item, sub_album_link, "", True)
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
         async for soup in self.web_pager(scrape_item.url):
@@ -169,7 +170,7 @@ class CheveretoCrawler(Crawler):
                 if link.startswith("/"):
                     link = self.primary_base_domain / link[1:]
                 link = URL(link)
-                new_scrape_item = await self.create_scrape_item(
+                new_scrape_item = self.create_scrape_item(
                     scrape_item,
                     link,
                     title,
@@ -203,7 +204,7 @@ class CheveretoCrawler(Crawler):
                 break
 
         if date:
-            date = await self.parse_datetime(date)
+            date = self.parse_datetime(date)
             scrape_item.possible_datetime = date
 
         filename, ext = get_filename_and_ext(link.name)
@@ -242,7 +243,7 @@ class CheveretoCrawler(Crawler):
         return url.with_query({"sort": "date_desc", "page": 1})
 
     @staticmethod
-    async def parse_datetime(date: str) -> int:
+    def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
         date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
         return calendar.timegm(date.timetuple())

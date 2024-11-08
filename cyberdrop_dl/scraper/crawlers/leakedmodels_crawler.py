@@ -125,7 +125,7 @@ class LeakedModelsCrawler(Crawler):
 
                 if scrape_post:
                     date = int(post.select_one(self.post_date_selector).get(self.post_date_attribute))
-                    new_scrape_item = await self.create_scrape_item(
+                    new_scrape_item = self.create_scrape_item(
                         scrape_item,
                         thread_url,
                         title,
@@ -168,7 +168,7 @@ class LeakedModelsCrawler(Crawler):
     async def post(self, scrape_item: ScrapeItem, post_content: Tag, post_number: int) -> None:
         """Scrapes a post."""
         if self.manager.config_manager.settings_data["Download_Options"]["separate_posts"]:
-            scrape_item = await self.create_scrape_item(scrape_item, scrape_item.url, "")
+            scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, "")
             scrape_item.add_to_parent_title("post-" + str(post_number))
 
         scrape_item.type = FORUM_POST
@@ -213,7 +213,7 @@ class LeakedModelsCrawler(Crawler):
 
             try:
                 if self.domain not in link.host:
-                    new_scrape_item = await self.create_scrape_item(scrape_item, link, "")
+                    new_scrape_item = self.create_scrape_item(scrape_item, link, "")
                     await self.handle_external_links(new_scrape_item)
                 elif self.attachment_url_part in link.parts:
                     await self.handle_internal_links(link, scrape_item)
@@ -247,7 +247,7 @@ class LeakedModelsCrawler(Crawler):
             link = URL(link)
 
             if self.domain not in link.host:
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, "")
+                new_scrape_item = self.create_scrape_item(scrape_item, link, "")
                 await self.handle_external_links(new_scrape_item)
             elif self.attachment_url_part in link.parts:
                 await self.handle_internal_links(link, scrape_item)
@@ -276,7 +276,7 @@ class LeakedModelsCrawler(Crawler):
                 link = "https:" + link
 
             link = URL(link)
-            new_scrape_item = await self.create_scrape_item(scrape_item, link, "")
+            new_scrape_item = self.create_scrape_item(scrape_item, link, "")
             await self.handle_external_links(new_scrape_item)
             new_children += 1
             if scrape_item.children_limit and (new_children + scrape_item.children) >= scrape_item.children_limit:
@@ -296,7 +296,7 @@ class LeakedModelsCrawler(Crawler):
             link = link.replace("ifr", "watch")
 
             link = URL(link)
-            new_scrape_item = await self.create_scrape_item(scrape_item, link, "")
+            new_scrape_item = self.create_scrape_item(scrape_item, link, "")
             await self.handle_external_links(new_scrape_item)
             new_children += 1
             if scrape_item.children_limit and (new_children + scrape_item.children) >= scrape_item.children_limit:
@@ -326,7 +326,7 @@ class LeakedModelsCrawler(Crawler):
             link = URL(link)
 
             if self.domain not in link.host:
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, "")
+                new_scrape_item = self.create_scrape_item(scrape_item, link, "")
                 await self.handle_external_links(new_scrape_item)
             elif self.attachment_url_part in link.parts:
                 await self.handle_internal_links(link, scrape_item)
@@ -343,5 +343,5 @@ class LeakedModelsCrawler(Crawler):
     async def handle_internal_links(self, link: URL, scrape_item: ScrapeItem) -> None:
         """Handles internal links."""
         filename, ext = get_filename_and_ext(link.name, True)
-        new_scrape_item = await self.create_scrape_item(scrape_item, link, "Attachments", True)
+        new_scrape_item = self.create_scrape_item(scrape_item, link, "Attachments", True)
         await self.handle_file(link, new_scrape_item, filename, ext)

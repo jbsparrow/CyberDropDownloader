@@ -40,7 +40,7 @@ class Rule34XXXCrawler(Crawler):
             await self.file(scrape_item)
         else:
             log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
-            await self.manager.progress_manager.scrape_stats_progress.add_failure("Unsupported Link")
+            self.manager.progress_manager.scrape_stats_progress.add_failure("Unsupported Link")
 
         self.scraping_progress.remove_task(task_id)
 
@@ -68,7 +68,7 @@ class Rule34XXXCrawler(Crawler):
             if link.startswith("/"):
                 link = f"{self.primary_base_url}{link}"
             link = URL(link, encoded=True)
-            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent=scrape_item.url)
+            new_scrape_item = self.create_scrape_item(scrape_item, link, title, True, add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
             if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
                 raise MaxChildrenError(origin=scrape_item)
@@ -78,7 +78,7 @@ class Rule34XXXCrawler(Crawler):
             next_page = next_page.get("href")
             if next_page is not None:
                 next_page = scrape_item.url.with_query(next_page[1:]) if next_page.startswith("?") else URL(next_page)
-                new_scrape_item = await self.create_scrape_item(scrape_item, next_page, "")
+                new_scrape_item = self.create_scrape_item(scrape_item, next_page, "")
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper

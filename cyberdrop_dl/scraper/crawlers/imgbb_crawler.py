@@ -69,7 +69,7 @@ class ImgBBCrawler(Crawler):
         albums = soup.select("a[class='image-container --media']")
         for album in albums:
             sub_album_link = URL(album.get("href"))
-            new_scrape_item = await self.create_scrape_item(scrape_item, sub_album_link, title, True)
+            new_scrape_item = self.create_scrape_item(scrape_item, sub_album_link, title, True)
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
         async with self.request_limiter:
@@ -82,7 +82,7 @@ class ImgBBCrawler(Crawler):
             links = soup.select("a[class*=image-container]")
             for link in links:
                 link = URL(link.get("href"))
-                new_scrape_item = await self.create_scrape_item(
+                new_scrape_item = self.create_scrape_item(
                     scrape_item,
                     link,
                     title,
@@ -116,7 +116,7 @@ class ImgBBCrawler(Crawler):
 
         link = URL(soup.select_one("div[id=image-viewer-container] img").get("src"))
         date = soup.select_one("p[class*=description-meta] span").get("title")
-        date = await self.parse_datetime(date)
+        date = self.parse_datetime(date)
         scrape_item.possible_datetime = date
 
         filename, ext = get_filename_and_ext(link.name)
@@ -132,7 +132,7 @@ class ImgBBCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @staticmethod
-    async def parse_datetime(date: str) -> int:
+    def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
         date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
         return calendar.timegm(date.timetuple())

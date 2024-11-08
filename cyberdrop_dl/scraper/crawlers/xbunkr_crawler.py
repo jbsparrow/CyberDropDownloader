@@ -64,7 +64,7 @@ class XBunkrCrawler(Crawler):
             except NoExtensionError:
                 log(f"Couldn't get extension for {link!s}", 30)
                 continue
-            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent=scrape_item.url)
+            new_scrape_item = self.create_scrape_item(scrape_item, link, title, True, add_parent=scrape_item.url)
             await self.handle_file(link, new_scrape_item, filename, ext)
             scrape_item.children += 1
             if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:

@@ -68,7 +68,7 @@ class FapelloCrawler(Crawler):
             if "javascript" in post.get("href"):
                 video_tag = post.select_one("iframe")
                 video_link = URL(video_tag.get("src"))
-                new_scrape_item = await self.create_scrape_item(
+                new_scrape_item = self.create_scrape_item(
                     scrape_item,
                     video_link,
                     "",
@@ -78,7 +78,7 @@ class FapelloCrawler(Crawler):
                 await self.handle_external_links(new_scrape_item)
             else:
                 link = URL(post.get("href"))
-                new_scrape_item = await self.create_scrape_item(
+                new_scrape_item = self.create_scrape_item(
                     scrape_item,
                     link,
                     title,
@@ -93,7 +93,7 @@ class FapelloCrawler(Crawler):
         if next_page:
             next_page = next_page.get("href")
             if next_page:
-                new_scrape_item = await self.create_scrape_item(scrape_item, URL(next_page), "")
+                new_scrape_item = self.create_scrape_item(scrape_item, URL(next_page), "")
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper

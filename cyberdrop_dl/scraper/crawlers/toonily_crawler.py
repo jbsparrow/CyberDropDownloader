@@ -65,7 +65,7 @@ class ToonilyCrawler(Crawler):
                 chapter_path = self.primary_base_domain / chapter_path[1:]
             else:
                 chapter_path = URL(chapter_path)
-            new_scrape_item = await self.create_scrape_item(
+            new_scrape_item = self.create_scrape_item(
                 scrape_item,
                 chapter_path,
                 "",
@@ -102,7 +102,7 @@ class ToonilyCrawler(Crawler):
         for script in scripts:
             if "datePublished" in script.get_text():
                 date = script.get_text().split('datePublished":"')[1].split("+")[0]
-                date = await self.parse_datetime(date)
+                date = self.parse_datetime(date)
                 break
 
         scrape_item.possible_datetime = date if date else scrape_item.possible_datetime
@@ -130,7 +130,7 @@ class ToonilyCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @staticmethod
-    async def parse_datetime(date: str) -> int:
+    def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
         date = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
         return calendar.timegm(date.timetuple())

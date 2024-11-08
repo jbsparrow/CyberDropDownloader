@@ -117,7 +117,7 @@ class GoFileCrawler(Crawler):
             content = contents[content_id]
             link = None
             if content["type"] == "folder":
-                new_scrape_item = await self.create_scrape_item(
+                new_scrape_item = self.create_scrape_item(
                     scrape_item,
                     self.primary_base_domain / "d" / content["code"],
                     title,
@@ -142,7 +142,7 @@ class GoFileCrawler(Crawler):
                 except NoExtensionError:
                     log(f"Scrape Failed: {link} (No File Extension)", 40)
                     await self.manager.log_manager.write_scrape_error_log(link, " No File Extension")
-                    await self.manager.progress_manager.scrape_stats_progress.add_failure("No File Extension")
+                    self.manager.progress_manager.scrape_stats_progress.add_failure("No File Extension")
             scrape_item.children += 1
             if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
                 raise MaxChildrenError(origin=scrape_item)

@@ -61,8 +61,8 @@ def has_valid_extension(url: URL) -> bool:
     """Checks if the URL has a valid extension."""
     try:
         _, ext = get_filename_and_ext(url.name)
-
         valid_exts = FILE_FORMATS["Images"] | FILE_FORMATS["Videos"] | FILE_FORMATS["Audio"]
-        return ext in valid_exts
     except NoExtensionError:
         return False
+    else:
+        return ext in valid_exts

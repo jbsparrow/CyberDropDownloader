@@ -63,7 +63,7 @@ class Rule34VaultCrawler(Crawler):
             if link.startswith("/"):
                 link = f"{self.primary_base_url}{link}"
             link = URL(link)
-            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent=scrape_item.url)
+            new_scrape_item = self.create_scrape_item(scrape_item, link, title, True, add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
             if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
                 raise MaxChildrenError(origin=scrape_item)
@@ -78,7 +78,7 @@ class Rule34VaultCrawler(Crawler):
             )
         else:
             next_page = scrape_item.url.with_path(f"/{scrape_item.url.parts[1]}?page=2", encoded=True)
-        new_scrape_item = await self.create_scrape_item(scrape_item, next_page, "")
+        new_scrape_item = self.create_scrape_item(scrape_item, next_page, "")
         self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -107,7 +107,7 @@ class Rule34VaultCrawler(Crawler):
             if link.startswith("/"):
                 link = f"{self.primary_base_url}{link}"
             link = URL(link)
-            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent=scrape_item.url)
+            new_scrape_item = self.create_scrape_item(scrape_item, link, title, True, add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
             if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
                 raise MaxChildrenError(origin=scrape_item)
@@ -119,7 +119,7 @@ class Rule34VaultCrawler(Crawler):
             next_page = scrape_item.url.with_query({"page": int(page) + 1})
         else:
             next_page = scrape_item.url.with_query({"page": 2})
-        new_scrape_item = await self.create_scrape_item(scrape_item, next_page, "")
+        new_scrape_item = self.create_scrape_item(scrape_item, next_page, "")
         self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -128,7 +128,7 @@ class Rule34VaultCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        date = await self.parse_datetime(
+        date = self.parse_datetime(
             soup.select_one('div[class="posted-date-full text-secondary mt-4 ng-star-inserted"]').text,
         )
         scrape_item.date = date
@@ -159,7 +159,7 @@ class Rule34VaultCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @staticmethod
-    async def parse_datetime(date: str) -> int:
+    def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
         date = datetime.datetime.strptime(date, "%b %d, %Y, %I:%M:%S %p")
         return calendar.timegm(date.timetuple())

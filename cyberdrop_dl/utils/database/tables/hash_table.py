@@ -128,7 +128,6 @@ class HashTable:
                 (hash_value, file_size, download_filename, folder, original_filename, referer),
             )
             await self.db_conn.commit()
-            return True
         except IntegrityError as _:
             # Handle potential duplicate key (assuming a unique constraint on hash, filename, and folder)
             await cursor.execute(
@@ -150,10 +149,10 @@ WHERE download_filename = ? AND folder = ?;""",
                 ),
             )
             await self.db_conn.commit()
-            return True
         except Exception as e:
             console.print(f"Error inserting/updating record: {e}")
             return False
+        return True
 
     async def get_all_unique_hashes(self) -> list:
         """Retrieves a list of (folder, filename) tuples based on a given hash.

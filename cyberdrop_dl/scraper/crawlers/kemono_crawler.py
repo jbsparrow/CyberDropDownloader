@@ -54,7 +54,7 @@ class KemonoCrawler(Crawler):
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile."""
         offset = 0
-        service, user = await self.get_service_and_user(scrape_item)
+        service, user = self.get_service_and_user(scrape_item)
         user_str = await self.get_user_str_from_profile(scrape_item)
         api_call = self.api_url / service / "user" / user
         scrape_item.type = FILE_HOST_PROFILE
@@ -181,13 +181,13 @@ class KemonoCrawler(Crawler):
                 post_title = post_id + " - " + post_title
 
         new_title = self.create_title(user, None, None)
-        scrape_item = await self.create_scrape_item(
+        scrape_item = self.create_scrape_item(
             scrape_item,
             scrape_item.url,
             new_title,
             True,
             None,
-            await self.parse_datetime(date),
+            self.parse_datetime(date),
         )
         scrape_item.add_to_parent_title(post_title)
         scrape_item.add_to_parent_title("Loose Files")
@@ -211,7 +211,7 @@ class KemonoCrawler(Crawler):
         for link in yarl_links:
             if "kemono" in link.host:
                 continue
-            scrape_item = await self.create_scrape_item(
+            scrape_item = self.create_scrape_item(
                 scrape_item,
                 link,
                 "",
@@ -252,13 +252,13 @@ class KemonoCrawler(Crawler):
                 post_title = post_id + " - " + post_title
 
         new_title = self.create_title(user, None, None)
-        new_scrape_item = await self.create_scrape_item(
+        new_scrape_item = self.create_scrape_item(
             old_scrape_item,
             link,
             new_title,
             True,
             None,
-            await self.parse_datetime(date),
+            self.parse_datetime(date),
             add_parent=add_parent,
         )
         new_scrape_item.add_to_parent_title(post_title)
@@ -279,7 +279,7 @@ class KemonoCrawler(Crawler):
         return soup.select_one("span[itemprop=name]").text
 
     @staticmethod
-    async def get_service_and_user(scrape_item: ScrapeItem) -> tuple[str, str]:
+    def get_service_and_user(scrape_item: ScrapeItem) -> tuple[str, str]:
         """Gets the service and user from a scrape item."""
         user = scrape_item.url.parts[3]
         service = scrape_item.url.parts[1]
@@ -294,7 +294,7 @@ class KemonoCrawler(Crawler):
         return service, user, post
 
     @staticmethod
-    async def parse_datetime(date: str) -> int:
+    def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
         try:
             date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")

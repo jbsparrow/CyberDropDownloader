@@ -113,7 +113,7 @@ class CyberfileCrawler(Crawler):
                 elif file_id:
                     link = URL(tile.get("dtfullurl"))
                 if link:
-                    new_scrape_item = await self.create_scrape_item(
+                    new_scrape_item = self.create_scrape_item(
                         scrape_item,
                         link,
                         title,
@@ -125,7 +125,7 @@ class CyberfileCrawler(Crawler):
                     log(f"Couldn't find folder or file id for {scrape_item.url} element", 30)
                     continue
 
-                new_scrape_item = await self.create_scrape_item(
+                new_scrape_item = self.create_scrape_item(
                     scrape_item,
                     link,
                     title,
@@ -188,7 +188,7 @@ class CyberfileCrawler(Crawler):
                     link = URL(tile.get("dtfullurl"))
 
                 if link:
-                    new_scrape_item = await self.create_scrape_item(
+                    new_scrape_item = self.create_scrape_item(
                         scrape_item,
                         link,
                         title,
@@ -201,7 +201,7 @@ class CyberfileCrawler(Crawler):
                     log(f"Couldn't find folder or file id for {scrape_item.url} element", 30)
                     continue
 
-                new_scrape_item = await self.create_scrape_item(
+                new_scrape_item = self.create_scrape_item(
                     scrape_item,
                     link,
                     title,
@@ -277,7 +277,7 @@ class CyberfileCrawler(Crawler):
         file_detail_table = ajax_soup.select('table[class="table table-bordered table-striped"]')[-1]
         uploaded_row = file_detail_table.select("tr")[-2]
         uploaded_date = uploaded_row.select_one("td[class=responsiveTable]").text.strip()
-        uploaded_date = await self.parse_datetime(uploaded_date)
+        uploaded_date = self.parse_datetime(uploaded_date)
         scrape_item.possible_datetime = uploaded_date
 
         filename, ext = get_filename_and_ext(link.name)
@@ -286,7 +286,7 @@ class CyberfileCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @staticmethod
-    async def parse_datetime(date: str) -> int:
+    def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
         date = datetime.datetime.strptime(date, "%d/%m/%Y %H:%M:%S")
         return calendar.timegm(date.timetuple())

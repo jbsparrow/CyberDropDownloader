@@ -63,7 +63,7 @@ class PostImgCrawler(Crawler):
             for image in JSON_Resp["images"]:
                 link = URL(image[4])
                 filename, ext = image[2], image[3]
-                new_scrape_item = await self.create_scrape_item(
+                new_scrape_item = self.create_scrape_item(
                     scrape_item,
                     link,
                     title,

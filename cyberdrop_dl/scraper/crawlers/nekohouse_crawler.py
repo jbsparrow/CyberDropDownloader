@@ -69,7 +69,7 @@ class NekohouseCrawler(Crawler):
         """Scrapes a profile."""
         soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
         offset, maximum_offset = await self.get_offsets(scrape_item, soup)
-        service, user = await self.get_service_and_user(scrape_item)
+        service, user = self.get_service_and_user(scrape_item)
         user_str = await self.get_user_str_from_profile(soup)
         service_call = self.primary_base_domain / service / "user" / user
         while offset <= maximum_offset:
@@ -94,7 +94,7 @@ class NekohouseCrawler(Crawler):
                         continue
                     post_link = self.primary_base_domain / post_url
                     # Call on self.post to scrape the post by creating a new scrape item
-                    new_scrape_item = await self.create_scrape_item(
+                    new_scrape_item = self.create_scrape_item(
                         scrape_item,
                         post_link,
                         "",
@@ -270,13 +270,13 @@ class NekohouseCrawler(Crawler):
                 post_title = post_id + " - " + post_title
 
         new_title = self.create_title(user, None, None)
-        new_scrape_item = await self.create_scrape_item(
+        new_scrape_item = self.create_scrape_item(
             old_scrape_item,
             link,
             new_title,
             True,
             None,
-            await self.parse_datetime(date),
+            self.parse_datetime(date),
             add_parent=add_parent,
         )
         new_scrape_item.add_to_parent_title(post_title)
@@ -320,7 +320,7 @@ class NekohouseCrawler(Crawler):
         return soup.select_one("span[itemprop=name]").text
 
     @staticmethod
-    async def get_service_and_user(scrape_item: ScrapeItem) -> tuple[str, str]:
+    def get_service_and_user(scrape_item: ScrapeItem) -> tuple[str, str]:
         """Gets the service and user from a scrape item."""
         user = scrape_item.url.parts[3]
         service = scrape_item.url.parts[1]
@@ -335,7 +335,7 @@ class NekohouseCrawler(Crawler):
         return service, user, post
 
     @staticmethod
-    async def parse_datetime(date: str) -> int:
+    def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
         try:
             date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")

@@ -62,7 +62,7 @@ class PixelDrainCrawler(Crawler):
 
         for file in JSON_Resp["files"]:
             link = await self.create_download_link(file["id"])
-            date = await self.parse_datetime(file["date_upload"].replace("T", " ").split(".")[0].strip("Z"))
+            date = self.parse_datetime(file["date_upload"].replace("T", " ").split(".")[0].strip("Z"))
             try:
                 filename, ext = get_filename_and_ext(file["name"])
             except NoExtensionError:
@@ -70,7 +70,7 @@ class PixelDrainCrawler(Crawler):
                     filename, ext = get_filename_and_ext(file["name"] + "." + file["mime_type"].split("/")[-1])
                 else:
                     raise NoExtensionError from None
-            new_scrape_item = await self.create_scrape_item(
+            new_scrape_item = self.create_scrape_item(
                 scrape_item,
                 link,
                 title,
@@ -96,7 +96,7 @@ class PixelDrainCrawler(Crawler):
             )
 
         link = await self.create_download_link(JSON_Resp["id"])
-        date = await self.parse_datetime(JSON_Resp["date_upload"].replace("T", " ").split(".")[0])
+        date = self.parse_datetime(JSON_Resp["date_upload"].replace("T", " ").split(".")[0])
         filename = ext = None
         try:
             filename, ext = get_filename_and_ext(JSON_Resp["name"])
@@ -112,7 +112,7 @@ class PixelDrainCrawler(Crawler):
                 lines = text.split("\n")
                 for line in lines:
                     link = URL(line)
-                    new_scrape_item = await self.create_scrape_item(
+                    new_scrape_item = self.create_scrape_item(
                         scrape_item,
                         link,
                         "",
@@ -128,7 +128,7 @@ class PixelDrainCrawler(Crawler):
                 )
             else:
                 raise NoExtensionError from None
-        new_scrape_item = await self.create_scrape_item(scrape_item, link, "", False, None, date)
+        new_scrape_item = self.create_scrape_item(scrape_item, link, "", False, None, date)
         await self.handle_file(link, new_scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -138,7 +138,7 @@ class PixelDrainCrawler(Crawler):
         return (self.api_address / "file" / file_id).with_query("download")
 
     @staticmethod
-    async def parse_datetime(date: str) -> int:
+    def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
         try:
             date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")

@@ -77,7 +77,7 @@ class OmegaScansCrawler(Crawler):
 
             for chapter in JSON_Obj["data"]:
                 chapter_url = scrape_item.url / chapter["chapter_slug"]
-                new_scrape_item = await self.create_scrape_item(
+                new_scrape_item = self.create_scrape_item(
                     scrape_item,
                     chapter_url,
                     "",
@@ -112,13 +112,13 @@ class OmegaScansCrawler(Crawler):
 
         date = soup.select('h2[class="font-semibold font-sans text-muted-foreground text-xs"]')[-1].get_text()
         try:
-            date = await self.parse_datetime_standard(date)
+            date = self.parse_datetime_standard(date)
         except ValueError:
             scripts = soup.select("script")
             for script in scripts:
                 if "created" in script.get_text():
                     date = script.get_text().split('created_at\\":\\"')[1].split(".")[0]
-                    date = await self.parse_datetime_other(date)
+                    date = self.parse_datetime_other(date)
                     break
 
         scrape_item.possible_datetime = date
@@ -146,13 +146,13 @@ class OmegaScansCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @staticmethod
-    async def parse_datetime_standard(date: str) -> int:
+    def parse_datetime_standard(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
         date = datetime.datetime.strptime(date, "%m/%d/%Y")
         return calendar.timegm(date.timetuple())
 
     @staticmethod
-    async def parse_datetime_other(date: str) -> int:
+    def parse_datetime_other(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
         date = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
         return calendar.timegm(date.timetuple())

@@ -73,7 +73,7 @@ class ImageBanCrawler(Crawler):
 
             link = URL("https://" + scrape_item.url.host + link_path) if link_path.startswith("/") else URL(link_path)
 
-            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent=scrape_item.url)
+            new_scrape_item = self.create_scrape_item(scrape_item, link, title, True, add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.children += 1
             if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
@@ -83,7 +83,7 @@ class ImageBanCrawler(Crawler):
         if next_page:
             link_path = next_page.get("href")
             link = URL("https://" + scrape_item.url.host + link_path) if link_path.startswith("/") else URL(link_path)
-            new_scrape_item = await self.create_scrape_item(scrape_item, link, "", True)
+            new_scrape_item = self.create_scrape_item(scrape_item, link, "", True)
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -106,7 +106,7 @@ class ImageBanCrawler(Crawler):
 
         for image in images:
             link = URL(image.get("src"))
-            date = await self.parse_datetime(f"{(link.parts[2])}-{(link.parts[3])}-{(link.parts[4])}")
+            date = self.parse_datetime(f"{(link.parts[2])}-{(link.parts[3])}-{(link.parts[4])}")
             scrape_item.possible_datetime = date
             filename, ext = get_filename_and_ext(link.name)
             await self.handle_file(link, scrape_item, filename, ext)
@@ -123,7 +123,7 @@ class ImageBanCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        date = await self.parse_datetime(
+        date = self.parse_datetime(
             f"{(scrape_item.url.parts[2])}-{(scrape_item.url.parts[3])}-{(scrape_item.url.parts[4])}",
         )
         scrape_item.possible_datetime = date
@@ -143,7 +143,7 @@ class ImageBanCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @staticmethod
-    async def parse_datetime(date: str) -> int:
+    def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
         date = datetime.datetime.strptime(date, "%Y-%m-%d")
         return calendar.timegm(date.timetuple())

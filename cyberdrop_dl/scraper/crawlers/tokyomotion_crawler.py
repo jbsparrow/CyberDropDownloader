@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import re
 from calendar import timegm
+from collections.abc import AsyncGenerator
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, AsyncGenerator
+from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
 from multidict import MultiDict
@@ -125,7 +126,7 @@ class TokioMotionCrawler(Crawler):
                     link = self.primary_base_domain / link[1:]
 
                 link = URL(link)
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, "albums", add_parent=scrape_item.url)
+                new_scrape_item = self.create_scrape_item(scrape_item, link, "albums", add_parent=scrape_item.url)
                 await self.album(new_scrape_item)
 
     @error_handling_wrapper
@@ -199,9 +200,9 @@ class TokioMotionCrawler(Crawler):
 
         new_parts = ["albums", "favorite/photos", "videos", "favorite/videos"]
         scrapers = [self.albums, self.album, self.playlist, self.playlist]
-        for part, scraper in zip(new_parts, scrapers):
+        for part, scraper in zip(new_parts, scrapers, strict=False):
             link = scrape_item.url / part
-            new_scrape_item = await self.create_scrape_item(scrape_item, link, "", add_parent=scrape_item.url)
+            new_scrape_item = self.create_scrape_item(scrape_item, link, "", add_parent=scrape_item.url)
             await scraper(new_scrape_item)
 
     @error_handling_wrapper
@@ -235,7 +236,7 @@ class TokioMotionCrawler(Crawler):
                     link = self.primary_base_domain / link[1:]
 
                 link = URL(link)
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, "", add_parent=scrape_item.url)
+                new_scrape_item = self.create_scrape_item(scrape_item, link, "", add_parent=scrape_item.url)
                 await scraper(new_scrape_item)
 
     @error_handling_wrapper
@@ -270,7 +271,7 @@ class TokioMotionCrawler(Crawler):
                     link = self.primary_base_domain / link[1:]
 
                 link = URL(link)
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, "", add_parent=scrape_item.url)
+                new_scrape_item = self.create_scrape_item(scrape_item, link, "", add_parent=scrape_item.url)
                 await self.video(new_scrape_item)
 
     async def web_pager(self, url: URL) -> AsyncGenerator[BeautifulSoup]:

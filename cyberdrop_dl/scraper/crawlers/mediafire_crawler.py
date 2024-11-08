@@ -76,9 +76,9 @@ class MediaFireCrawler(Crawler):
             files = folder_contents["folder_content"]["files"]
 
             for file in files:
-                date = await self.parse_datetime(file["created"])
+                date = self.parse_datetime(file["created"])
                 link = URL(file["links"]["normal_download"])
-                new_scrape_item = await self.create_scrape_item(
+                new_scrape_item = self.create_scrape_item(
                     scrape_item,
                     link,
                     title,
@@ -106,7 +106,7 @@ class MediaFireCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        date = await self.parse_datetime(soup.select("ul[class=details] li span")[-1].get_text())
+        date = self.parse_datetime(soup.select("ul[class=details] li span")[-1].get_text())
         scrape_item.possible_datetime = date
         link = URL(soup.select_one("a[id=downloadButton]").get("href"))
         filename, ext = get_filename_and_ext(link.name)
@@ -115,7 +115,7 @@ class MediaFireCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @staticmethod
-    async def parse_datetime(date: str) -> int:
+    def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
         date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
         return calendar.timegm(date.timetuple())

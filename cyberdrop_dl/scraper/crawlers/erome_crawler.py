@@ -54,7 +54,7 @@ class EromeCrawler(Crawler):
 
         for album in albums:
             link = URL(album["href"])
-            new_scrape_item = await self.create_scrape_item(scrape_item, link, title, True, add_parent=scrape_item.url)
+            new_scrape_item = self.create_scrape_item(scrape_item, link, title, True, add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.children += 1
             if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
@@ -63,7 +63,7 @@ class EromeCrawler(Crawler):
         next_page = soup.select_one('a[rel="next"]')
         if next_page:
             next_page = next_page.get("href").split("page=")[-1]
-            new_scrape_item = await self.create_scrape_item(
+            new_scrape_item = self.create_scrape_item(
                 scrape_item,
                 scrape_item.url.with_query(f"page={next_page}"),
                 "",

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-import asyncio
 import contextlib
 import os
 import re
+from collections.abc import Callable
 from functools import wraps
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 import aiofiles
 import apprise
@@ -42,7 +42,7 @@ def error_handling_wrapper(func: Callable) -> None:
         except RealDebridError as e:
             log_message_short = log_message = f"RealDebridError - {e.error}"
             e_ui_failure = f"RD - {e.error}"
-        except asyncio.TimeoutError:
+        except TimeoutError:
             log_message_short = log_message = e_ui_failure = "Timeout"
         except Exception as e:  # noqa
             exc_info = e
@@ -55,7 +55,7 @@ def error_handling_wrapper(func: Callable) -> None:
 
         log(f"Scrape Failed: {link} ({log_message})", 40, exc_info=exc_info)
         await self.manager.log_manager.write_scrape_error_log(link, log_message_short, origin)
-        await self.manager.progress_manager.scrape_stats_progress.add_failure(e_ui_failure)
+        self.manager.progress_manager.scrape_stats_progress.add_failure(e_ui_failure)
         return None
 
     return wrapper

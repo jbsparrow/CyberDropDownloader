@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import date, datetime, timedelta
-from typing import TYPE_CHECKING, Generator
+from typing import TYPE_CHECKING
 
 from requests import Session
 from requests.exceptions import RequestException
@@ -82,11 +83,12 @@ class RealDebridApi:
         try:
             response.raise_for_status()
             JSONResp: dict = response.json()
-            return JSONResp
         except RequestException:
             raise RealDebridError(response) from None
         except AttributeError:
             return response.text
+        else:
+            return JSONResp
 
     @contextmanager
     def rate_limiter(self, buffer: float = 0.2) -> Generator:

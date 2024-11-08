@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import contextlib
-from typing import TYPE_CHECKING, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import TYPE_CHECKING
 
 import aiohttp
 import asyncpraw
@@ -38,7 +39,7 @@ class RedditCrawler(Crawler):
 
         if not self.reddit_personal_use_script or not self.reddit_secret:
             log("Reddit API credentials not found. Skipping.", 30)
-            await self.manager.progress_manager.scrape_stats_progress.add_failure("Failed Login")
+            self.manager.progress_manager.scrape_stats_progress.add_failure("Failed Login")
             self.scraping_progress.remove_task(task_id)
             return
 
@@ -59,7 +60,7 @@ class RedditCrawler(Crawler):
                 await self.media(scrape_item, reddit)
             else:
                 log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
-                await self.manager.progress_manager.scrape_stats_progress.add_failure("Unknown")
+                self.manager.progress_manager.scrape_stats_progress.add_failure("Unknown")
 
         self.scraping_progress.remove_task(task_id)
 
@@ -214,7 +215,7 @@ class RedditCrawler(Crawler):
         add_parent: URL | None = None,
     ) -> ScrapeItem:
         """Creates a new scrape item with the same parent as the old scrape item."""
-        new_scrape_item = await self.create_scrape_item(
+        new_scrape_item = self.create_scrape_item(
             old_scrape_item,
             link,
             "",

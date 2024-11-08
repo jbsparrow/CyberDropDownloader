@@ -3,8 +3,9 @@ from __future__ import annotations
 import asyncio
 import re
 from calendar import timegm
+from collections.abc import AsyncGenerator
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, AsyncGenerator
+from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
@@ -157,7 +158,7 @@ class XXXBunkerCrawler(Crawler):
                     link = self.primary_base_domain / link[1:]
 
                 link = URL(link)
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, title, add_parent=scrape_item.url)
+                new_scrape_item = self.create_scrape_item(scrape_item, link, title, add_parent=scrape_item.url)
                 await self.video(new_scrape_item)
 
     async def web_pager(self, url: URL) -> AsyncGenerator[BeautifulSoup]:

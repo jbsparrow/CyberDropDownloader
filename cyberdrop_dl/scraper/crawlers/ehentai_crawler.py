@@ -40,7 +40,7 @@ class EHentaiCrawler(Crawler):
             await self.image(scrape_item)
         else:
             log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
-            await self.manager.progress_manager.scrape_stats_progress.add_failure("Unsupported Link")
+            self.manager.progress_manager.scrape_stats_progress.add_failure("Unsupported Link")
 
         self.scraping_progress.remove_task(task_id)
 
@@ -51,7 +51,7 @@ class EHentaiCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         title = self.create_title(soup.select_one("h1[id=gn]").get_text(), None, None)
-        date = await self.parse_datetime(soup.select_one("td[class=gdt2]").get_text())
+        date = self.parse_datetime(soup.select_one("td[class=gdt2]").get_text())
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
 
@@ -63,7 +63,7 @@ class EHentaiCrawler(Crawler):
         images = soup.select("div[class=gdtm] div a")
         for image in images:
             link = URL(image.get("href"))
-            new_scrape_item = await self.create_scrape_item(
+            new_scrape_item = self.create_scrape_item(
                 scrape_item,
                 link,
                 title,
@@ -86,7 +86,7 @@ class EHentaiCrawler(Crawler):
         if next_page is not None:
             next_page = URL(next_page.get("href"))
             if next_page is not None:
-                new_scrape_item = await self.create_scrape_item(scrape_item, next_page, "")
+                new_scrape_item = self.create_scrape_item(scrape_item, next_page, "")
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -113,7 +113,7 @@ class EHentaiCrawler(Crawler):
             await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
     @staticmethod
-    async def parse_datetime(date: str) -> int:
+    def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
         if date.count(":") == 1:
             date = date + ":00"

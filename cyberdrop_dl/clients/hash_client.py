@@ -3,9 +3,10 @@ from __future__ import annotations
 import asyncio
 import time
 from collections import defaultdict
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import TYPE_CHECKING, AsyncGenerator
+from typing import TYPE_CHECKING
 
 from send2trash import send2trash
 
@@ -35,7 +36,7 @@ async def _hash_directory_scanner_helper(manager: Manager, path: Path):
     start_time = time.perf_counter()
     async with hash_scan_directory_context(manager):
         await manager.hash_manager.hash_client.hash_directory(path)
-        await manager.progress_manager.print_stats(start_time)
+        manager.progress_manager.print_stats(start_time)
 
 
 class HashClient:

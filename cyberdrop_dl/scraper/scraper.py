@@ -580,13 +580,15 @@ class ScrapeMapper:
                 log(f"Failed to send {scrape_item.url} to JDownloader\n{e.message}", 40)
                 await self.manager.log_manager.write_unsupported_urls_log(
                     scrape_item.url,
-                    next(scrape_item.parents, None),
+                    scrape_item.parents[0] if scrape_item.parents else None,
                 )
             self.manager.progress_manager.scrape_stats_progress.add_unsupported(sent_to_jdownloader=success)
             return
 
         log(f"Unsupported URL: {scrape_item.url}", 30)
-        await self.manager.log_manager.write_unsupported_urls_log(scrape_item.url, next(scrape_item.parents, None))
+        await self.manager.log_manager.write_unsupported_urls_log(
+            scrape_item.url, scrape_item.parents[0] if scrape_item.parents else None
+        )
         self.manager.progress_manager.scrape_stats_progress.add_unsupported()
 
     def filter_items(self, scrape_item: ScrapeItem) -> bool:

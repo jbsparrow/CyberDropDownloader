@@ -60,12 +60,12 @@ class PimpAndHostCrawler(Crawler):
             None,
         )
         date = soup.select_one("span[class=date-time]").get("title")
-        date = await self.parse_datetime(date)
+        date = self.parse_datetime(date)
 
         files = soup.select('a[class*="image-wrapper center-cropped im-wr"]')
         for file in files:
             link = URL(file.get("href"))
-            new_scrape_item = await self.create_scrape_item(
+            new_scrape_item = self.create_scrape_item(
                 scrape_item,
                 link,
                 title,
@@ -84,7 +84,7 @@ class PimpAndHostCrawler(Crawler):
             next_page = next_page.get("href")
             if next_page.startswith("/"):
                 next_page = URL("https://pimpandhost.com" + next_page)
-            new_scrape_item = await self.create_scrape_item(scrape_item, next_page, "", True, None, date)
+            new_scrape_item = self.create_scrape_item(scrape_item, next_page, "", True, None, date)
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -98,16 +98,16 @@ class PimpAndHostCrawler(Crawler):
         link = URL("https:" + link) if link.startswith("//") else URL(link)
 
         date = soup.select_one("span[class=date-time]").get("title")
-        date = await self.parse_datetime(date)
+        date = self.parse_datetime(date)
 
-        new_scrape_item = await self.create_scrape_item(scrape_item, link, "", True, None, date)
+        new_scrape_item = self.create_scrape_item(scrape_item, link, "", True, None, date)
         filename, ext = get_filename_and_ext(link.name)
         await self.handle_file(link, new_scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @staticmethod
-    async def parse_datetime(date: str) -> int:
+    def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
         date = datetime.strptime(date, "%A, %B %d, %Y %I:%M:%S%p %Z")
         return calendar.timegm(date.timetuple())

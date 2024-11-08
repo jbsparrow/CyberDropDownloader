@@ -72,7 +72,7 @@ class CyberdropCrawler(Crawler):
 
         date = soup.select("p[class=title]")
         if date:
-            date = await self.parse_datetime(date[-1].text)
+            date = self.parse_datetime(date[-1].text)
 
         links = soup.select("div[class*=image-container] a[class=image]")
         for link in links:
@@ -81,7 +81,7 @@ class CyberdropCrawler(Crawler):
                 link = self.primary_base_domain.with_path(link)
             link = URL(link)
 
-            new_scrape_item = await self.create_scrape_item(
+            new_scrape_item = self.create_scrape_item(
                 scrape_item,
                 link,
                 title,
@@ -146,7 +146,7 @@ class CyberdropCrawler(Crawler):
         return bool(re.match(CDN_POSSIBILITIES, url.host))
 
     @staticmethod
-    async def parse_datetime(date: str) -> int:
+    def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
         date = datetime.datetime.strptime(date, "%d.%m.%Y")
         return calendar.timegm(date.timetuple())

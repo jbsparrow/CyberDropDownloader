@@ -28,7 +28,7 @@ class RealDebridCrawler(Crawler):
         task_id = self.scraping_progress.add_task(scrape_item.url)
         scrape_item.url = await self.get_original_url(scrape_item)
 
-        if await self.manager.real_debrid_manager.is_supported_folder(scrape_item.url):
+        if self.manager.real_debrid_manager.is_supported_folder(scrape_item.url):
             await self.folder(scrape_item)
         else:
             await self.file(scrape_item)
@@ -40,7 +40,7 @@ class RealDebridCrawler(Crawler):
         """Scrapes a folder."""
         original_url = scrape_item.url
         log(f"scraping folder with RealDebrid: {original_url}", 10)
-        folder_id = await self.manager.real_debrid_manager.guess_folder(original_url)
+        folder_id = self.manager.real_debrid_manager.guess_folder(original_url)
         scrape_item.album_id = folder_id
         scrape_item.part_of_album = True
 
@@ -48,10 +48,10 @@ class RealDebridCrawler(Crawler):
         scrape_item.add_to_parent_title(title)
 
         async with self.request_limiter:
-            links = await self.manager.real_debrid_manager.unrestrict_folder(original_url)
+            links = self.manager.real_debrid_manager.unrestrict_folder(original_url)
 
         for link in links:
-            new_scrape_item = await self.create_scrape_item(
+            new_scrape_item = self.create_scrape_item(
                 scrape_item,
                 link,
                 "",
@@ -77,7 +77,7 @@ class RealDebridCrawler(Crawler):
             scrape_item.part_of_album = True
             scrape_item.add_to_parent_title(title)
             async with self.request_limiter:
-                debrid_url = await self.manager.real_debrid_manager.unrestrict_link(original_url, password)
+                debrid_url = self.manager.real_debrid_manager.unrestrict_link(original_url, password)
 
         if await self.check_complete_from_referer(debrid_url):
             return
@@ -102,7 +102,9 @@ class RealDebridCrawler(Crawler):
         return any(subdomain in url.host for subdomain in ("download.", "my.")) and self.domain in url.host
 
     async def get_original_url(self, scrape_item: ScrapeItem) -> URL:
-        if self.is_self_hosted(scrape_item.url):
+        log(f"Input URL: {scrape_item.url}")
+        if not self.is_self_hosted(scrape_item.url) or self.domain not in scrape_item.url.host:
+            log(f"Parsed URL: {scrape_item.url}")
             return scrape_item.url
 
         parts_dict = {"parts": [], "query": [], "frag": []}
@@ -118,9 +120,11 @@ class RealDebridCrawler(Crawler):
         path = "/".join(parts_dict["parts"])
         query = MultiDict()
 
-        for i in range(0, parts_dict["query"], 2):
+        for i in range(0, len(parts_dict["query"]), 2):
             query[parts_dict[i]] = parts_dict[i + 1]
 
         frag = parts_dict["frag"] if parts_dict["frag"] else None
 
-        return URL(f"https://{original_domain}").with_path(path).with_query(query).with_fragment(frag)
+        parsed_url = URL(f"https://{original_domain}").with_path(path).with_query(query).with_fragment(frag)
+        log(f"Parsed URL: {parsed_url}")
+        return parsed_url
