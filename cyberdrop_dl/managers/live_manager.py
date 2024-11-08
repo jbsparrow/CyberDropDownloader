@@ -3,10 +3,10 @@ from __future__ import annotations
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Generator
 
-from rich.console import Console
 from rich.live import Live
+from rich.progress import Progress, SpinnerColumn, TextColumn
 
-from cyberdrop_dl.utils.logger import console, log
+from cyberdrop_dl.utils.logger import console
 
 if TYPE_CHECKING:
     from rich.layout import Layout
@@ -21,23 +21,30 @@ class LiveManager:
             auto_refresh=True,
             refresh_per_second=self.manager.config_manager.global_settings_data["UI_Options"]["refresh_rate"],
             console=console,
+            transient=True,
         )
+
+        self.placeholder = Progress(
+            SpinnerColumn(style="green", spinner_name="dots"),
+            TextColumn("Running Cyberdrop-DL"),
+        )
+        self.placeholder.add_task("running with no UI", total=100, completed=0)
 
     @contextmanager
     def get_live(self, layout: Layout, stop: bool = False) -> Generator[Live]:
+        show = self.placeholder if self.manager.args_manager.no_ui else layout
         try:
-            if self.manager.args_manager.no_ui:
-                yield
-            else:
-                self.live.start()
-                self.live.update(layout, refresh=True)
-                yield self.live
+            self.live.start()
+            self.live.update(show, refresh=True)
+            yield self.live
+
+        except Exception as e:
+            msg = f"Issue with rich live {e}"
+            raise Exception(msg) from e
+
+        finally:
             if stop:
                 self.live.stop()
-                if not self.manager.args_manager.no_ui:
-                    Console().clear()
-        except Exception as e:
-            log(f"Issue with rich live {e}", level=10, exc_info=True)
 
     @contextmanager
     def get_main_live(self, stop: bool = False) -> Generator[Live]:

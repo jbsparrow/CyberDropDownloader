@@ -36,14 +36,22 @@ def startup() -> Manager:
     This will also run the UI for the program
     After this function returns, the manager will be ready to use and scraping / downloading can begin.
     """
+    try:
+        manager = Manager()
+        manager.startup()
 
-    manager = Manager()
-    manager.startup()
+        if not manager.args_manager.immediate_download:
+            program_ui(manager)
 
-    if not manager.args_manager.immediate_download:
-        program_ui(manager)
+        return manager
 
-    return manager
+    except InvalidYamlError as e:
+        print_to_console(e.message_rich)
+        exit(1)
+
+    except KeyboardInterrupt:
+        print_to_console("Exiting...")
+        exit(0)
 
 
 async def runtime(manager: Manager) -> None:
@@ -88,24 +96,24 @@ def setup_debug_logger(manager: Manager) -> Path | None:
     logger_debug = logging.getLogger("cyberdrop_dl_debug")
     debug_log_file_path = None
     running_in_IDE = os.getenv("PYCHARM_HOSTED") or os.getenv("TERM_PROGRAM") == "vscode"
-    import cyberdrop_dl.utils.constants as contants
+    from cyberdrop_dl.utils import constants
 
     if running_in_IDE or manager.config_manager.settings_data["Runtime_Options"]["log_level"] == -1:
         manager.config_manager.settings_data["Runtime_Options"]["log_level"] = 10
-        contants.DEBUG_VAR = True
+        constants.DEBUG_VAR = True
 
     if running_in_IDE or manager.config_manager.settings_data["Runtime_Options"]["console_log_level"] == -1:
-        contants.CONSOLE_DEBUG_VAR = True
+        constants.CONSOLE_DEBUG_VAR = True
 
-    if contants.DEBUG_VAR:
+    if constants.DEBUG_VAR:
         logger_debug.setLevel(manager.config_manager.settings_data["Runtime_Options"]["log_level"])
         debug_log_file_path = Path(__file__).parent / "cyberdrop_dl_debug.log"
         if running_in_IDE:
             debug_log_file_path = Path(__file__).parents[1] / "cyberdrop_dl_debug.log"
 
         rich_file_handler_debug = RichHandler(
-            **contants.RICH_HANDLER_DEBUG_CONFIG,
-            console=Console(file=debug_log_file_path.open("w", encoding="utf8"), width=contants.DEFAULT_CONSOLE_WIDTH),
+            **constants.RICH_HANDLER_DEBUG_CONFIG,
+            console=Console(file=debug_log_file_path.open("w", encoding="utf8"), width=constants.DEFAULT_CONSOLE_WIDTH),
             level=manager.config_manager.settings_data["Runtime_Options"]["log_level"],
         )
 
@@ -118,7 +126,7 @@ def setup_debug_logger(manager: Manager) -> Path | None:
 
 
 def setup_logger(manager: Manager, config_name: str) -> None:
-    import cyberdrop_dl.utils.constants as contants
+    from cyberdrop_dl.utils import constants
 
     logger = logging.getLogger("cyberdrop_dl")
     if manager.args_manager.all_configs:
@@ -133,20 +141,20 @@ def setup_logger(manager: Manager, config_name: str) -> None:
 
     logger.setLevel(manager.config_manager.settings_data["Runtime_Options"]["log_level"])
 
-    if contants.DEBUG_VAR:
+    if constants.DEBUG_VAR:
         manager.config_manager.settings_data["Runtime_Options"]["log_level"] = 10
 
     rich_file_handler = RichHandler(
-        **contants.RICH_HANDLER_CONFIG,
+        **constants.RICH_HANDLER_CONFIG,
         console=Console(
             file=manager.path_manager.main_log.open("w", encoding="utf8"),
-            width=contants.DEFAULT_CONSOLE_WIDTH,
+            width=constants.DEFAULT_CONSOLE_WIDTH,
         ),
         level=manager.config_manager.settings_data["Runtime_Options"]["log_level"],
     )
 
     logger.addHandler(rich_file_handler)
-    contants.CONSOLE_LEVEL = manager.config_manager.settings_data["Runtime_Options"]["console_log_level"]
+    constants.CONSOLE_LEVEL = manager.config_manager.settings_data["Runtime_Options"]["console_log_level"]
 
 
 async def director(manager: Manager) -> None:
@@ -173,9 +181,19 @@ async def director(manager: Manager) -> None:
         log_spacer(20)
         log("Starting CDL...\n", 20)
 
-        with manager.live_manager.get_main_live(stop=True):
-            await runtime(manager)
-            await post_runtime(manager)
+        try:
+            with manager.live_manager.get_main_live(stop=True):
+                await runtime(manager)
+                await post_runtime(manager)
+        except Exception as e:
+            log_with_color(
+                f"An error occurred, please report this to the developer: {e}",
+                "bold red",
+                50,
+                show_in_stats=False,
+                exc_info=True,
+            )
+            sys.exit(1)
 
         log_spacer(20)
         manager.progress_manager.print_stats(start_time)
@@ -198,25 +216,18 @@ def main() -> None:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     exit_code = 1
+    manager = startup()
     with contextlib.suppress(RuntimeError):
         try:
-            manager = startup()
             asyncio.run(director(manager))
             exit_code = 0
-        except InvalidYamlError as e:
-            print_to_console(e.message_rich)
         except KeyboardInterrupt:
+            print_to_console("Trying to Exit ...")
             with contextlib.suppress(Exception):
-                print_to_console("\nTrying to Exit...")
                 asyncio.run(manager.close())
-        except Exception as e:
-            log_with_color(
-                f"An error occurred, please report this to the developer: {e}",
-                "bold red",
-                50,
-                show_in_stats=False,
-                exc_info=True,
-            )
+            exit(1)
+    loop.close()
+    sys.exit(0)
 
     loop.close()
     sys.exit(exit_code)

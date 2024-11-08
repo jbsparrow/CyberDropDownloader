@@ -102,11 +102,11 @@ class HashClient:
             log(f"After hash processing failed: {media_item.complete_file} with error {e}", 40, exc_info=True)
 
     async def cleanup_dupes(self) -> None:
-        with self.manager.live_manager.get_hash_live():
+        with self.manager.live_manager.get_hash_live(stop=True):
             if not self.manager.config_manager.global_settings_data["Dupe_Cleanup_Options"]["delete_after_download"]:
                 return
             file_hashes_dict = await self.get_file_hashes_dict()
-        async with self.manager.live_manager.get_remove_file_via_hash_live():
+        with self.manager.live_manager.get_remove_file_via_hash_live(stop=True):
             final_candiates_dict = self.get_candiate_per_group(file_hashes_dict)
             await self.final_dupe_cleanup(final_candiates_dict)
 

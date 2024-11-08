@@ -99,7 +99,7 @@ class Sorter:
             log_with_color("Download Directory does not exist", "red", 40)
             return
 
-        download_folders = await self.get_download_folder()
+        download_folders: list[Path] = await self.get_download_folder()
         with self.manager.live_manager.get_sort_live(stop=True):
             all_scan_folders = list(filter(lambda x: x.is_dir(), self.download_dir.iterdir()))
             queue_length = len(all_scan_folders)

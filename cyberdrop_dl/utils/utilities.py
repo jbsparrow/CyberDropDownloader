@@ -231,7 +231,7 @@ def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -
         message = Text.from_markup(message)
     else:
         message = Text("You are currently on the latest version of Cyberdrop-DL")
-        level = 10
+        level = 20
 
     if call_from_ui:
         rich.print(message)

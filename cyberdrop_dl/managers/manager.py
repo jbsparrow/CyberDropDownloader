@@ -119,13 +119,13 @@ class Manager:
         await self.async_db_hash_startup()
 
         # set files from args
-        import cyberdrop_dl.utils.constants as constants
+        from cyberdrop_dl.utils import constants
 
         constants.MAX_NAME_LENGTHS["FILE"] = int(
-            self.config_manager.global_settings_data["General"]["max_file_name_length"]
+            self.config_manager.global_settings_data["General"]["max_file_name_length"],
         )
         constants.MAX_NAME_LENGTHS["FOLDER"] = int(
-            self.config_manager.global_settings_data["General"]["max_folder_name_length"]
+            self.config_manager.global_settings_data["General"]["max_folder_name_length"],
         )
 
     async def async_db_hash_startup(self) -> None:
