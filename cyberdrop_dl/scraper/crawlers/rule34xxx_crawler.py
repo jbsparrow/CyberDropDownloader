@@ -30,7 +30,7 @@ class Rule34XXXCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
+        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         await self.set_cookies()
 
@@ -42,7 +42,7 @@ class Rule34XXXCrawler(Crawler):
             log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
             await self.manager.progress_manager.scrape_stats_progress.add_failure("Unsupported Link")
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def tag(self, scrape_item: ScrapeItem) -> None:
@@ -59,7 +59,7 @@ class Rule34XXXCrawler(Crawler):
             ][scrape_item.type]
 
         title_portion = scrape_item.url.query["tags"].strip()
-        title = await self.create_title(title_portion, None, None)
+        title = self.create_title(title_portion, None, None)
         scrape_item.part_of_album = True
 
         content = soup.select("div[class=image-list] span a")

@@ -34,7 +34,7 @@ class CyberdropCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
+        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         if "a" in scrape_item.url.parts:
             scrape_item.url = scrape_item.url.with_query("nojs")
@@ -42,7 +42,7 @@ class CyberdropCrawler(Crawler):
         else:
             await self.file(scrape_item)
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
@@ -62,7 +62,7 @@ class CyberdropCrawler(Crawler):
         date = title = None
 
         try:
-            title = await self.create_title(soup.select_one("h1[id=title]").text, scrape_item.album_id, None)
+            title = self.create_title(soup.select_one("h1[id=title]").text, scrape_item.album_id, None)
         except AttributeError:
             raise ScrapeError(
                 404,

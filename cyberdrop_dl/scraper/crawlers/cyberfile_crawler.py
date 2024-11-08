@@ -31,7 +31,7 @@ class CyberfileCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
+        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         if "folder" in scrape_item.url.parts:
             await self.folder(scrape_item)
@@ -40,7 +40,7 @@ class CyberfileCrawler(Crawler):
         else:
             await self.file(scrape_item)
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def folder(self, scrape_item: ScrapeItem) -> None:
@@ -98,7 +98,7 @@ class CyberfileCrawler(Crawler):
 
                 ajax_soup = BeautifulSoup(ajax_dict["html"].replace("\\", ""), "html.parser")
 
-            title = await self.create_title(ajax_dict["page_title"], scrape_item.album_id, None)
+            title = self.create_title(ajax_dict["page_title"], scrape_item.album_id, None)
             num_pages = int(
                 ajax_soup.select("a[onclick*=loadImages]")[-1].get("onclick").split(",")[2].split(")")[0].strip(),
             )
@@ -172,7 +172,7 @@ class CyberfileCrawler(Crawler):
             async with self.request_limiter:
                 ajax_dict = await self.client.post_data("cyberfile", self.api_files, data=data, origin=scrape_item)
                 ajax_soup = BeautifulSoup(ajax_dict["html"].replace("\\", ""), "html.parser")
-            title = await self.create_title(ajax_dict["page_title"], scrape_item.url.parts[2], None)
+            title = self.create_title(ajax_dict["page_title"], scrape_item.url.parts[2], None)
             num_pages = int(ajax_soup.select_one("input[id=rspTotalPages]").get("value"))
 
             tile_listings = ajax_soup.select("div[class=fileListing] div[class*=fileItem]")

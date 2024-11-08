@@ -34,7 +34,7 @@ def retry(func: Callable) -> None:
             try:
                 return await func(self, *args, **kwargs)
             except DownloadError as e:
-                await self.attempt_task_removal(media_item)
+                self.attempt_task_removal(media_item)
 
                 max_attempts = self.manager.config_manager.global_settings_data["Rate_Limiting_Options"][
                     "download_attempts"
@@ -50,13 +50,13 @@ def retry(func: Callable) -> None:
                 log(f"{self.log_prefix} failed: {media_item.url} {log_message}", 40)
 
                 if media_item.current_attempt >= max_attempts:
-                    await self.manager.progress_manager.download_stats_progress.add_failure(e.ui_message)
+                    self.manager.progress_manager.download_stats_progress.add_failure(e.ui_message)
                     await self.manager.log_manager.write_download_error_log(
                         media_item.url,
                         e.message,
                         media_item.referer,
                     )
-                    await self.manager.progress_manager.download_progress.add_failed()
+                    self.manager.progress_manager.download_progress.add_failed()
                     break
 
                 retrying_message = f"Retrying {self.log_prefix.lower()}: {media_item.url} ,retry attempt: {media_item.current_attempt + 1}"
@@ -85,10 +85,10 @@ def retry(func: Callable) -> None:
 
             failed_message = f"{self.log_prefix} failed: {media_item.url} with error: {log_message}"
             log(failed_message, 40, exc_info=exc_info)
-            await self.attempt_task_removal(media_item)
+            self.attempt_task_removal(media_item)
             await self.manager.log_manager.write_download_error_log(media_item.url, log_message_short, origin)
-            await self.manager.progress_manager.download_stats_progress.add_failure(ui_message)
-            await self.manager.progress_manager.download_progress.add_failed()
+            self.manager.progress_manager.download_stats_progress.add_failure(ui_message)
+            self.manager.progress_manager.download_progress.add_failed()
             break
 
     return wrapper
@@ -111,10 +111,10 @@ class Downloader:
         self._current_attempt_filesize = {}
         self.log_prefix = "Download attempt (unsupported domain)" if domain == "no_crawler" else "Download"
 
-    async def startup(self) -> None:
+    def startup(self) -> None:
         """Starts the downloader."""
         self.client = self.manager.client_manager.downloader_session
-        self._semaphore = asyncio.Semaphore(await self.manager.download_manager.get_download_limit(self.domain))
+        self._semaphore = asyncio.Semaphore(self.manager.download_manager.get_download_limit(self.domain))
 
         self.manager.path_manager.download_dir.mkdir(parents=True, exist_ok=True)
         if self.manager.config_manager.settings_data["Sorting"]["sort_downloads"]:
@@ -129,7 +129,7 @@ class Downloader:
         self.waiting_items -= 1
         if media_item.url.path not in self.processed_items:
             self.processed_items.append(media_item.url.path)
-            await self.manager.progress_manager.download_progress.update_total()
+            self.manager.progress_manager.download_progress.update_total()
 
             log(f"{self.log_prefix} starting: {media_item.url}", 20)
             async with self.manager.client_manager.download_session_limit:
@@ -140,8 +140,8 @@ class Downloader:
                     await self.download(media_item)
                 except Exception as e:
                     log(f"{self.log_prefix} failed: {media_item.url} with error {e}", 40, exc_info=True)
-                    await self.manager.progress_manager.download_stats_progress.add_failure("Unknown")
-                    await self.manager.progress_manager.download_progress.add_failed()
+                    self.manager.progress_manager.download_stats_progress.add_failure("Unknown")
+                    self.manager.progress_manager.download_progress.add_failed()
                 else:
                     log(f"{self.log_prefix} finished: {media_item.url}", 20)
                 finally:
@@ -150,14 +150,14 @@ class Downloader:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def check_file_can_download(self, media_item: MediaItem) -> None:
+    def check_file_can_download(self, media_item: MediaItem) -> None:
         """Checks if the file can be downloaded."""
-        if not await self.manager.download_manager.check_free_space(media_item.download_folder):
+        if not self.manager.download_manager.check_free_space(media_item.download_folder):
             raise InsufficientFreeSpaceError(origin=media_item)
-        if not await self.manager.download_manager.check_allowed_filetype(media_item):
+        if not self.manager.download_manager.check_allowed_filetype(media_item):
             raise RestrictedFiletypeError(origin=media_item)
 
-    async def set_file_datetime(self, media_item: MediaItem, complete_file: Path) -> None:
+    def set_file_datetime(self, media_item: MediaItem, complete_file: Path) -> None:
         """Sets the file's datetime."""
         if self.manager.config_manager.settings_data["Download_Options"]["disable_file_timestamps"]:
             return
@@ -169,11 +169,11 @@ class Downloader:
                 accessed=media_item.datetime,
             )
 
-    async def attempt_task_removal(self, media_item: MediaItem) -> None:
+    def attempt_task_removal(self, media_item: MediaItem) -> None:
         """Attempts to remove the task from the progress bar."""
         if not isinstance(media_item.task_id, Field):
             with contextlib.suppress(ValueError):
-                await self.manager.progress_manager.file_progress.remove_file(media_item.task_id)
+                self.manager.progress_manager.file_progress.remove_file(media_item.task_id)
         media_item.task_id = field(init=False)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -186,26 +186,26 @@ class Downloader:
             if not isinstance(media_item.current_attempt, int):
                 media_item.current_attempt = 1
 
-            await self.check_file_can_download(media_item)
+            self.check_file_can_download(media_item)
             downloaded = await self.client.download_file(self.manager, self.domain, media_item)
             if downloaded:
                 Path.chmod(media_item.complete_file, 0o666)
-                await self.set_file_datetime(media_item, media_item.complete_file)
-                await self.attempt_task_removal(media_item)
-                await self.manager.progress_manager.download_progress.add_completed()
+                self.set_file_datetime(media_item, media_item.complete_file)
+                self.attempt_task_removal(media_item)
+                self.manager.progress_manager.download_progress.add_completed()
 
         except RestrictedFiletypeError:
-            await self.manager.progress_manager.download_progress.add_skipped()
-            await self.attempt_task_removal(media_item)
+            self.manager.progress_manager.download_progress.add_skipped()
+            self.attempt_task_removal(media_item)
 
         except (DownloadError, aiohttp.ClientResponseError) as e:
             ui_message = getattr(e, "ui_message", e.status)
             log_message_short = log_message = f"{e.status} - {e.message}"
             log(f"{self.log_prefix} failed: {media_item.url} with error: {log_message}", 40)
             await self.manager.log_manager.write_download_error_log(media_item.url, log_message_short, origin)
-            await self.manager.progress_manager.download_stats_progress.add_failure(ui_message)
-            await self.manager.progress_manager.download_progress.add_failed()
-            await self.attempt_task_removal(media_item)
+            self.manager.progress_manager.download_stats_progress.add_failure(ui_message)
+            self.manager.progress_manager.download_progress.add_failed()
+            self.attempt_task_removal(media_item)
 
         except (
             aiohttp.ClientPayloadError,

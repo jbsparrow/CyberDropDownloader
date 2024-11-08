@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem
 
 
-async def get_db_path(url: URL, referer: str = "") -> str:
+def get_db_path(url: URL, referer: str = "") -> str:
     """Gets the URL path to be put into the DB and checked from the DB."""
     url_path = url.path
 
@@ -29,7 +29,7 @@ async def get_db_path(url: URL, referer: str = "") -> str:
     return url_path
 
 
-async def get_db_domain(domain: str) -> str:
+def get_db_domain(domain: str) -> str:
     """Gets the domain to be put into the DB and checked from the DB."""
     if domain in (
         "img.kiwi",
@@ -65,9 +65,9 @@ class HistoryTable:
         if self.ignore_history:
             return False
 
-        domain = await get_db_domain(domain)
+        domain = get_db_domain(domain)
 
-        url_path = await get_db_path(url, domain)
+        url_path = get_db_path(url, domain)
         cursor = await self.db_conn.cursor()
         result = await cursor.execute(
             """SELECT referer, completed FROM media WHERE domain = ? and url_path = ?""",
@@ -90,7 +90,7 @@ class HistoryTable:
         if self.ignore_history:
             return False
 
-        domain = await get_db_domain(domain)
+        domain = get_db_domain(domain)
         cursor = await self.db_conn.cursor()
         result = await cursor.execute(
             """SELECT url_path, completed FROM media WHERE domain = ? and album_id = ?""",
@@ -101,8 +101,8 @@ class HistoryTable:
 
     async def set_album_id(self, domain: str, media_item: MediaItem) -> None:
         """Sets an album_id in the database."""
-        domain = await get_db_domain(domain)
-        url_path = await get_db_path(media_item.url, str(media_item.referer))
+        domain = get_db_domain(domain)
+        url_path = get_db_path(media_item.url, str(media_item.referer))
         await self.db_conn.execute(
             """UPDATE media SET album_id = ? WHERE domain = ? and url_path = ?""",
             (media_item.album_id, domain, url_path),
@@ -114,7 +114,7 @@ class HistoryTable:
         if self.ignore_history:
             return False
 
-        domain = await get_db_domain(domain)
+        domain = get_db_domain(domain)
         cursor = await self.db_conn.cursor()
         result = await cursor.execute(
             """SELECT completed FROM media WHERE domain = ? and referer = ?""",
@@ -125,8 +125,8 @@ class HistoryTable:
 
     async def insert_incompleted(self, domain: str, media_item: MediaItem) -> None:
         """Inserts an uncompleted file into the database."""
-        domain = await get_db_domain(domain)
-        url_path = await get_db_path(media_item.url, str(media_item.referer))
+        domain = get_db_domain(domain)
+        url_path = get_db_path(media_item.url, str(media_item.referer))
         download_filename = media_item.download_filename if isinstance(media_item.download_filename, str) else ""
         try:
             await self.db_conn.execute(
@@ -159,8 +159,8 @@ class HistoryTable:
 
     async def mark_complete(self, domain: str, media_item: MediaItem) -> None:
         """Mark a download as completed in the database."""
-        domain = await get_db_domain(domain)
-        url_path = await get_db_path(media_item.url, str(media_item.referer))
+        domain = get_db_domain(domain)
+        url_path = get_db_path(media_item.url, str(media_item.referer))
         await self.db_conn.execute(
             """UPDATE media SET completed = 1, completed_at = CURRENT_TIMESTAMP WHERE domain = ? and url_path = ?""",
             (domain, url_path),
@@ -169,8 +169,8 @@ class HistoryTable:
 
     async def add_filesize(self, domain: str, media_item: MediaItem) -> None:
         """Add the file size to the db."""
-        domain = await get_db_domain(domain)
-        url_path = await get_db_path(media_item.url, str(media_item.referer))
+        domain = get_db_domain(domain)
+        url_path = get_db_path(media_item.url, str(media_item.referer))
         file_size = pathlib.Path(media_item.complete_file).stat().st_size
         await self.db_conn.execute(
             """UPDATE media SET file_size=? WHERE domain = ? and url_path = ?""",
@@ -187,8 +187,8 @@ class HistoryTable:
 
     async def get_downloaded_filename(self, domain: str, media_item: MediaItem) -> str:
         """Returns the downloaded filename from the database."""
-        domain = await get_db_domain(domain)
-        url_path = await get_db_path(media_item.url, str(media_item.referer))
+        domain = get_db_domain(domain)
+        url_path = get_db_path(media_item.url, str(media_item.referer))
         cursor = await self.db_conn.cursor()
         result = await cursor.execute(
             """SELECT download_filename FROM media WHERE domain = ? and url_path = ?""",

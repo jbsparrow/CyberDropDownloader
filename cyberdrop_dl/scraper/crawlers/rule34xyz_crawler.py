@@ -29,14 +29,14 @@ class Rule34XYZCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
+        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         if "post" in scrape_item.url.parts:
             await self.file(scrape_item)
         else:
             await self.tag(scrape_item)
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def tag(self, scrape_item: ScrapeItem) -> None:
@@ -52,7 +52,7 @@ class Rule34XYZCrawler(Crawler):
                 "maximum_number_of_children"
             ][scrape_item.type]
 
-        title = await self.create_title(scrape_item.url.parts[1], None, None)
+        title = self.create_title(scrape_item.url.parts[1], None, None)
         scrape_item.part_of_album = True
 
         content_block = soup.select_one('div[class="box-grid ng-star-inserted"]')

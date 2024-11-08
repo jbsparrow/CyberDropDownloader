@@ -27,14 +27,14 @@ class PixelDrainCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
+        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         if "l" in scrape_item.url.parts:
             await self.folder(scrape_item)
         else:
             await self.file(scrape_item)
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def folder(self, scrape_item: ScrapeItem) -> None:
@@ -58,7 +58,7 @@ class PixelDrainCrawler(Crawler):
                 origin=scrape_item,
             )
 
-        title = await self.create_title(JSON_Resp["title"], scrape_item.url.parts[2], None)
+        title = self.create_title(JSON_Resp["title"], scrape_item.url.parts[2], None)
 
         for file in JSON_Resp["files"]:
             link = await self.create_download_link(file["id"])

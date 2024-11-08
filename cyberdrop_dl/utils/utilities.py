@@ -218,6 +218,7 @@ def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -
     latest_version: str = data["info"]["version"]
     releases = data["releases"].keys()
     message = color = None
+    level = 30
     is_prelease, message = check_prelease_version(current_version, releases)
 
     if current_version not in releases:
@@ -230,11 +231,12 @@ def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -
         message = Text.from_markup(message)
     else:
         message = Text("You are currently on the latest version of Cyberdrop-DL")
+        level = 10
 
     if call_from_ui:
         rich.print(message)
     elif log_to_console:
-        log_with_color(message.plain, color, 30, show_in_stats=False)
+        log_with_color(message.plain, color, level, show_in_stats=False)
 
     return current_version, latest_version
 

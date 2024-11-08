@@ -141,7 +141,7 @@ class ClientManager:
         raise DownloadError(status=status, message=message, origin=origin)
 
     @staticmethod
-    async def check_bunkr_maint(headers: dict):
+    def check_bunkr_maint(headers: dict):
         if headers.get("Content-Length") == "322509" and headers.get("Content-Type") == "video/mp4":
             raise DownloadError(status="Bunkr Maintenance", message="Bunkr under maintenance")
 

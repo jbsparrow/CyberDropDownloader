@@ -28,7 +28,7 @@ class HotPicCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
+        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         if "album" in scrape_item.url.parts:
             await self.album(scrape_item)
@@ -38,7 +38,7 @@ class HotPicCrawler(Crawler):
             log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
             await self.manager.progress_manager.scrape_stats_progress.add_failure("Unsupported Link")
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
@@ -47,7 +47,7 @@ class HotPicCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         scrape_item.album_id = scrape_item.url.parts[2]
-        title = await self.create_title(soup.select_one("title").text.rsplit(" - ")[0], scrape_item.album_id, None)
+        title = self.create_title(soup.select_one("title").text.rsplit(" - ")[0], scrape_item.album_id, None)
         scrape_item.add_to_parent_title(title)
         scrape_item.part_of_album = True
         scrape_item.type = FILE_HOST_ALBUM

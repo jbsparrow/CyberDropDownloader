@@ -62,7 +62,7 @@ def has_valid_extension(url: URL) -> bool:
     try:
         _, ext = get_filename_and_ext(url.name)
 
-        valid_exts = FILE_FORMATS["Images"] + FILE_FORMATS["Videos"] + FILE_FORMATS["Audio"]
+        valid_exts = FILE_FORMATS["Images"] | FILE_FORMATS["Videos"] | FILE_FORMATS["Audio"]
         return ext in valid_exts
     except NoExtensionError:
         return False

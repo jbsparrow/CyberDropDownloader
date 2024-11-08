@@ -26,14 +26,14 @@ class EromeCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
+        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         if "a" in scrape_item.url.parts:
             await self.album(scrape_item)
         else:
             await self.profile(scrape_item)
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
@@ -41,7 +41,7 @@ class EromeCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        title = await self.create_title(scrape_item.url.name, None, None)
+        title = self.create_title(scrape_item.url.name, None, None)
         albums = soup.select("a[class=album-link]")
 
         scrape_item.type = FILE_HOST_PROFILE
@@ -91,7 +91,7 @@ class EromeCrawler(Crawler):
         title_portion = soup.select_one("title").text.rsplit(" - Porn")[0].strip()
         if not title_portion:
             title_portion = scrape_item.url.name
-        title = await self.create_title(title_portion, scrape_item.url.parts[2], None)
+        title = self.create_title(title_portion, scrape_item.url.parts[2], None)
         scrape_item.add_to_parent_title(title)
 
         images = soup.select('img[class="img-front lasyload"]')

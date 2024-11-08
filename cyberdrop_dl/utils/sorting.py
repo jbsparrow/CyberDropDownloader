@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import itertools
 import subprocess
-from os import name as os_name
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -13,7 +12,7 @@ from PIL import Image
 from videoprops import get_audio_properties, get_video_properties
 
 from cyberdrop_dl.utils.constants import FILE_FORMATS
-from cyberdrop_dl.utils.logger import log, log_with_color
+from cyberdrop_dl.utils.logger import console, log, log_with_color
 from cyberdrop_dl.utils.utilities import purge_dir_tree
 
 if TYPE_CHECKING:
@@ -48,17 +47,17 @@ class Sorter:
         self.video_count = 0
         self.other_count = 0
 
-    async def find_files_in_dir(self, directory: Path) -> list:
+    def find_files_in_dir(self, directory: Path) -> list[Path]:
         """Finds all files in a directory and returns them in a list."""
         file_list = []
         for x in directory.iterdir():
             if x.is_file():
                 file_list.append(x)
             elif x.is_dir():
-                file_list.extend(await self.find_files_in_dir(x))
+                file_list.extend(self.find_files_in_dir(x))
         return file_list
 
-    async def move_cd(self, file: Path, dest: Path) -> bool:
+    def move_cd(self, file: Path, dest: Path) -> bool:
         """Moves a file to a destination folder."""
         try:
             dest.parent.mkdir(parents=True, exist_ok=True)
@@ -77,7 +76,7 @@ class Sorter:
 
         return True
 
-    async def check_dir_parents(self) -> bool:
+    def check_dir_parents(self) -> bool:
         """Checks if the sort dir is in the download dir."""
         if self.download_dir in self.sorted_downloads.parents:
             log_with_color("Sort Directory cannot be in the Download Directory", "red", 40)
@@ -93,7 +92,7 @@ class Sorter:
         # make sort dir
         self.sorted_downloads.mkdir(parents=True, exist_ok=True)
 
-        if await self.check_dir_parents():
+        if self.check_dir_parents():
             return
 
         if not self.download_dir.is_dir():
@@ -101,44 +100,44 @@ class Sorter:
             return
 
         download_folders = await self.get_download_folder()
-        async with self.manager.live_manager.get_sort_live(stop=True):
+        with self.manager.live_manager.get_sort_live(stop=True):
             all_scan_folders = list(filter(lambda x: x.is_dir(), self.download_dir.iterdir()))
             queue_length = len(all_scan_folders)
-            await self.manager.progress_manager.sort_progress.set_queue_length(queue_length)
+            self.manager.progress_manager.sort_progress.set_queue_length(queue_length)
 
             for folder in all_scan_folders:
                 if self.sort_cdl_only and folder not in download_folders:
                     continue
-                files = await self.find_files_in_dir(folder)
+                files = self.find_files_in_dir(folder)
                 # add folder to progress and set number of files
-                task_id = await self.manager.progress_manager.sort_progress.add_task(folder.name, len(files))
+                task_id = self.manager.progress_manager.sort_progress.add_task(folder.name, len(files))
                 for file in files:
                     ext = file.suffix.lower()
                     if ".part" in ext:
                         continue
 
                     if ext in FILE_FORMATS["Audio"]:
-                        await self.sort_audio(file, folder.name)
+                        self.sort_audio(file, folder.name)
                     elif ext in FILE_FORMATS["Images"]:
-                        await self.sort_image(file, folder.name)
+                        self.sort_image(file, folder.name)
                     elif ext in FILE_FORMATS["Videos"]:
-                        await self.sort_video(file, folder.name)
+                        self.sort_video(file, folder.name)
                     else:
-                        await self.sort_other(file, folder.name)
-                    await self.manager.progress_manager.sort_progress.advance_folder(
+                        self.sort_other(file, folder.name)
+                    # advance folder progress by one file
+                    self.manager.progress_manager.sort_progress.advance_folder(
                         task_id,
                         1,
-                    )  # advance folder progress by one file
-                await purge_dir_tree(folder)
+                    )
+                purge_dir_tree(folder)
                 queue_length -= 1
-                await self.manager.progress_manager.sort_progress.set_queue_length(queue_length)  # update queue length
-                await self.manager.progress_manager.sort_progress.remove_folder(task_id)  # remove folder from progress
+                self.manager.progress_manager.sort_progress.set_queue_length(queue_length)  # update queue length
+                self.manager.progress_manager.sort_progress.remove_folder(task_id)  # remove folder from progress
 
         await asyncio.sleep(1)
-        await purge_dir_tree(self.download_dir)
+        purge_dir_tree(self.download_dir)
 
-        clear_screen_proc = await asyncio.create_subprocess_shell("cls" if os_name == "nt" else "clear")
-        await clear_screen_proc.wait()
+        console.clear()
 
     async def get_download_folder(self) -> list[Path]:
         """Gets the download folder."""
@@ -165,7 +164,7 @@ class Sorter:
         download_folders.extend(existing_folders)
         return list(set(download_folders))
 
-    async def sort_audio(self, file: Path, base_name: str) -> None:
+    def sort_audio(self, file: Path, base_name: str) -> None:
         """Sorts an audio file into the sorted audio folder."""
         self.audio_count += 1
 
@@ -198,10 +197,10 @@ class Sorter:
             ),
         )
 
-        if await self.move_cd(file, new_file):
-            await self.manager.progress_manager.sort_progress.increment_audio()
+        if self.move_cd(file, new_file):
+            self.manager.progress_manager.sort_progress.increment_audio()
 
-    async def sort_image(self, file: Path, base_name: str) -> None:
+    def sort_image(self, file: Path, base_name: str) -> None:
         """Sorts an image file into the sorted image folder."""
         self.image_count += 1
 
@@ -230,10 +229,10 @@ class Sorter:
             ),
         )
 
-        if await self.move_cd(file, new_file):
-            await self.manager.progress_manager.sort_progress.increment_image()
+        if self.move_cd(file, new_file):
+            self.manager.progress_manager.sort_progress.increment_image()
 
-    async def sort_video(self, file: Path, base_name: str) -> None:
+    def sort_video(self, file: Path, base_name: str) -> None:
         """Sorts a video file into the sorted video folder."""
         self.video_count += 1
 
@@ -271,10 +270,10 @@ class Sorter:
             ),
         )
 
-        if await self.move_cd(file, new_file):
-            await self.manager.progress_manager.sort_progress.increment_video()
+        if self.move_cd(file, new_file):
+            self.manager.progress_manager.sort_progress.increment_video()
 
-    async def sort_other(self, file: Path, base_name: str) -> None:
+    def sort_other(self, file: Path, base_name: str) -> None:
         """Sorts an other file into the sorted other folder."""
         self.other_count += 1
 
@@ -294,5 +293,5 @@ class Sorter:
             ),
         )
 
-        if await self.move_cd(file, new_file):
-            await self.manager.progress_manager.sort_progress.increment_other()
+        if self.move_cd(file, new_file):
+            self.manager.progress_manager.sort_progress.increment_other()

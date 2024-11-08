@@ -29,7 +29,7 @@ class ImgBoxCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
+        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         if "t" in scrape_item.url.host or "_" in scrape_item.url.name:
             scrape_item.url = self.primary_base_domain / scrape_item.url.name.split("_")[0]
@@ -42,7 +42,7 @@ class ImgBoxCrawler(Crawler):
         else:
             await self.image(scrape_item)
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
@@ -64,7 +64,7 @@ class ImgBoxCrawler(Crawler):
                 "maximum_number_of_children"
             ][scrape_item.type]
 
-        title = await self.create_title(
+        title = self.create_title(
             soup.select_one("div[id=gallery-view] h1").get_text().strip().rsplit(" - ", 1)[0],
             scrape_item.album_id,
             None,

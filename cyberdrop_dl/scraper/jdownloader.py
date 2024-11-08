@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from dataclasses import field
 from functools import wraps
 from pathlib import Path
@@ -21,9 +20,9 @@ def error_wrapper(func: Callable) -> None:
     """Wrapper handles limits for scrape session."""
 
     @wraps(func)
-    async def wrapper(self: JDownloader, *args, **kwargs) -> None:
+    def wrapper(self: JDownloader, *args, **kwargs) -> None:
         try:
-            return await func(self, *args, **kwargs)
+            return func(self, *args, **kwargs)
         except JDownloaderError as e:
             msg = e.message
 
@@ -35,7 +34,6 @@ def error_wrapper(func: Callable) -> None:
 
         log(f"Failed JDownloader setup: {msg}", 40)
         self.enabled = False
-        await asyncio.sleep(20)
         return None
 
     return wrapper
@@ -59,7 +57,7 @@ class JDownloader:
         self.jdownloader_agent = field(init=False)
 
     @error_wrapper
-    async def jdownloader_setup(self) -> None:
+    def jdownloader_setup(self) -> None:
         """Setup function for JDownloader."""
         if not all((self.jdownloader_username, self.jdownloader_password, self.jdownloader_device)):
             msg = "JDownloader credentials were not provided."
@@ -69,7 +67,7 @@ class JDownloader:
         jd.connect(self.jdownloader_username, self.jdownloader_password)
         self.jdownloader_agent = jd.get_device(self.jdownloader_device)
 
-    async def direct_unsupported_to_jdownloader(
+    def direct_unsupported_to_jdownloader(
         self,
         url: URL,
         title: str,

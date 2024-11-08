@@ -54,7 +54,7 @@ class F95ZoneCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
+        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         if not self.logged_in:
             login_url = self.primary_base_domain / "login"
@@ -70,7 +70,7 @@ class F95ZoneCrawler(Crawler):
         else:
             log("F95Zone login failed. Skipping.", 40)
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def forum(self, scrape_item: ScrapeItem) -> None:
@@ -103,7 +103,7 @@ class F95ZoneCrawler(Crawler):
                 elem.decompose()
 
             thread_id = thread_url.parts[2].split(".")[-1]
-            title = await self.create_title(title_block.text.replace("\n", ""), None, thread_id)
+            title = self.create_title(title_block.text.replace("\n", ""), None, thread_id)
 
             posts = soup.select(self.posts_selector)
             for post in posts:

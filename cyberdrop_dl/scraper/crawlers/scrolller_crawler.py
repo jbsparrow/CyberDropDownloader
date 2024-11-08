@@ -28,7 +28,7 @@ class ScrolllerCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
+        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         if "r" in scrape_item.url.parts:
             await self.subreddit(scrape_item)
@@ -36,13 +36,13 @@ class ScrolllerCrawler(Crawler):
             log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
             await self.manager.progress_manager.scrape_stats_progress.add_failure("Unsupported Link")
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def subreddit(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
         subreddit = scrape_item.url.parts[-1]
-        title = await self.create_title(subreddit, None, None)
+        title = self.create_title(subreddit, None, None)
         scrape_item.add_to_parent_title(title)
         scrape_item.part_of_album = True
         scrape_item.type = FILE_HOST_ALBUM

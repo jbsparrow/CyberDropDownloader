@@ -28,7 +28,7 @@ class PostImgCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
+        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         if "i.postimg.cc" in scrape_item.url.host:
             filename, ext = get_filename_and_ext(scrape_item.url.name)
@@ -38,7 +38,7 @@ class PostImgCrawler(Crawler):
         else:
             await self.image(scrape_item)
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
@@ -58,7 +58,7 @@ class PostImgCrawler(Crawler):
 
             scrape_item.part_of_album = True
             scrape_item.album_id = scrape_item.url.parts[2]
-            title = await self.create_title(scrape_item.url.raw_name, scrape_item.album_id, None)
+            title = self.create_title(scrape_item.url.raw_name, scrape_item.album_id, None)
 
             for image in JSON_Resp["images"]:
                 link = URL(image[4])

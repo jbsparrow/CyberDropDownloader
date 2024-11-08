@@ -29,7 +29,7 @@ class SaintCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
+        task_id = self.scraping_progress.add_task(scrape_item.url)
         scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path)
 
         if "a" in scrape_item.url.parts:
@@ -37,7 +37,7 @@ class SaintCrawler(Crawler):
         else:
             await self.video(scrape_item)
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
@@ -53,7 +53,7 @@ class SaintCrawler(Crawler):
         title_portion = soup.select_one("title").text.rsplit(" - Saint Video Hosting")[0].strip()
         if not title_portion:
             title_portion = scrape_item.url.name
-        title = await self.create_title(title_portion, album_id, None)
+        title = self.create_title(title_portion, album_id, None)
         scrape_item.add_to_parent_title(title)
 
         videos = soup.select("a.btn-primary.action.download")

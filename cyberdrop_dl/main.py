@@ -173,7 +173,7 @@ async def director(manager: Manager) -> None:
         log_spacer(20)
         log("Starting CDL...\n", 20)
 
-        async with manager.live_manager.get_main_live(stop=True):
+        with manager.live_manager.get_main_live(stop=True):
             await runtime(manager)
             await post_runtime(manager)
 
@@ -209,9 +209,9 @@ def main() -> None:
             with contextlib.suppress(Exception):
                 print_to_console("\nTrying to Exit...")
                 asyncio.run(manager.close())
-        except Exception:
+        except Exception as e:
             log_with_color(
-                "An error occurred, please report this to the developer:",
+                f"An error occurred, please report this to the developer: {e}",
                 "bold red",
                 50,
                 show_in_stats=False,

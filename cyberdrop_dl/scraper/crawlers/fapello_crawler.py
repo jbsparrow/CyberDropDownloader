@@ -26,7 +26,7 @@ class FapelloCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
+        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         if not str(scrape_item.url).endswith("/"):
             scrape_item.url = URL(str(scrape_item.url) + "/")
@@ -36,7 +36,7 @@ class FapelloCrawler(Crawler):
         else:
             await self.profile(scrape_item)
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
@@ -57,7 +57,7 @@ class FapelloCrawler(Crawler):
                 "maximum_number_of_children"
             ][scrape_item.type]
 
-        title = await self.create_title(
+        title = self.create_title(
             soup.select_one('h2[class="font-semibold lg:text-2xl text-lg mb-2 mt-4"]').get_text(),
             None,
             None,

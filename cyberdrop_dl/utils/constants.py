@@ -26,6 +26,7 @@ BLOCKED_DOMAINS = ("facebook", "instagram", "fbcdn")
 # regex
 RAR_MULTIPART_PATTERN = re.compile(r"^part\d+")
 SANITIZE_FILENAME_PATTERN = re.compile(r'[<>:"/\\|?*\']')
+REGEX_LINKS = re.compile(r"(?:http.*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]))")
 
 
 class CustomHTTPStatus(IntEnum):

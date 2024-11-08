@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import os
 import pathlib
 from typing import TYPE_CHECKING
@@ -138,14 +137,13 @@ def import_cyberdrop_v4_items_prompt(manager: Manager) -> None:
             if import_download_history_path.is_file():
                 transfer_v4_db(import_download_history_path, manager.path_manager.history_db)
             else:
-                loop = asyncio.new_event_loop()
                 for ele in pathlib.Path(import_download_history_path).glob("**/*.sqlite"):
                     if str(ele) == str(manager.path_manager.history_db):
                         continue
                     try:
                         transfer_v4_db(ele, manager.path_manager.history_db)
                     except Exception as e:
-                        loop.run_until_complete(log(f"Error importing {ele.name}: {e!s}", 20))
+                        log(f"Error importing {ele.name}: {e!s}", 20)
 
         # Done
         elif action == 3:

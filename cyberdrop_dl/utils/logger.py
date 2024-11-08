@@ -9,8 +9,6 @@ from cyberdrop_dl.utils import constants
 
 logger = logging.getLogger("cyberdrop_dl")
 logger_debug = logging.getLogger("cyberdrop_dl_debug")
-
-
 console = Console()
 
 
@@ -22,14 +20,14 @@ def log(message: Exception | str, level: int = 10, *, sleep: int | None = None, 
     """Simple logging function."""
     logger.log(level, message, **kwargs)
     log_debug(message, level, **kwargs)
-    log_debug_console(message, level, sleep=sleep, **kwargs)
+    log_debug_console(message, level, sleep=sleep)
 
 
-def log_debug(message: Exception | str, level: int = 10, *kwargs) -> None:
+def log_debug(message: Exception | str, level: int = 10, **kwargs) -> None:
     """Simple logging function."""
     if constants.DEBUG_VAR:
         message = str(message)
-        logger_debug.log(level, message.encode("ascii", "ignore").decode("ascii"), *kwargs)
+        logger_debug.log(level, message.encode("ascii", "ignore").decode("ascii"), **kwargs)
 
 
 def log_debug_console(message: Exception | str, level: int, sleep: int | None = None) -> None:
@@ -38,9 +36,9 @@ def log_debug_console(message: Exception | str, level: int, sleep: int | None = 
         _log_to_console(level, message.encode("ascii", "ignore").decode("ascii"), sleep=sleep)
 
 
-def log_with_color(message: str, style: str, level: int, show_in_stats: bool = True, *kwargs) -> None:
+def log_with_color(message: str, style: str, level: int, show_in_stats: bool = True, **kwargs) -> None:
     """Simple logging function with color."""
-    log(message, level, *kwargs)
+    log(message, level, **kwargs)
     text = Text(message, style=style)
     console.print(text)
     if show_in_stats:

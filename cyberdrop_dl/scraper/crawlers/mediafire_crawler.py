@@ -30,14 +30,14 @@ class MediaFireCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
+        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         if "folder" in scrape_item.url.parts:
             await self.folder(scrape_item)
         else:
             await self.file(scrape_item)
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def folder(self, scrape_item: ScrapeItem) -> None:
@@ -48,7 +48,7 @@ class MediaFireCrawler(Crawler):
         except api.MediaFireApiError as e:
             raise ScrapeError(status=f"MF - {e.message}", origin=scrape_item) from None
 
-        title = await self.create_title(folder_details["folder_info"]["name"], folder_key, None)
+        title = self.create_title(folder_details["folder_info"]["name"], folder_key, None)
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
 

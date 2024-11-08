@@ -29,7 +29,7 @@ class Rule34VaultCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
+        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         if "post" in scrape_item.url.parts:
             await self.file(scrape_item)
@@ -38,7 +38,7 @@ class Rule34VaultCrawler(Crawler):
         else:
             await self.tag(scrape_item)
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def tag(self, scrape_item: ScrapeItem) -> None:
@@ -46,7 +46,7 @@ class Rule34VaultCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        title = await self.create_title(scrape_item.url.parts[1], None, None)
+        title = self.create_title(scrape_item.url.parts[1], None, None)
         scrape_item.part_of_album = True
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
@@ -98,7 +98,7 @@ class Rule34VaultCrawler(Crawler):
         title_str = soup.select_one("div[class*=title]").text
         scrape_item.part_of_album = True
         scrape_item.album_id = scrape_item.url.parts[-1]
-        title = await self.create_title(title_str, scrape_item.album_id, None)
+        title = self.create_title(title_str, scrape_item.album_id, None)
 
         content_block = soup.select_one('div[class="box-grid ng-star-inserted"]')
         content = content_block.select('a[class="box ng-star-inserted"]')

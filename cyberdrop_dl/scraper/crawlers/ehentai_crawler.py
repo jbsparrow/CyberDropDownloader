@@ -30,7 +30,7 @@ class EHentaiCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
+        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         if "g" in scrape_item.url.parts:
             if not self.warnings_set:
@@ -42,7 +42,7 @@ class EHentaiCrawler(Crawler):
             log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
             await self.manager.progress_manager.scrape_stats_progress.add_failure("Unsupported Link")
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
@@ -50,7 +50,7 @@ class EHentaiCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        title = await self.create_title(soup.select_one("h1[id=gn]").get_text(), None, None)
+        title = self.create_title(soup.select_one("h1[id=gn]").get_text(), None, None)
         date = await self.parse_datetime(soup.select_one("td[class=gdt2]").get_text())
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0

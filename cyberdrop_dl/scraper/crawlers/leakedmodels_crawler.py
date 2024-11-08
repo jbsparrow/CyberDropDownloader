@@ -54,7 +54,7 @@ class LeakedModelsCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
+        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         if "threads" in scrape_item.url.parts:
             if not self.logged_in:
@@ -79,7 +79,7 @@ class LeakedModelsCrawler(Crawler):
                 scrape_item.parents[0] if scrape_item.parents else None,
             )
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def forum(self, scrape_item: ScrapeItem) -> None:
@@ -111,7 +111,7 @@ class LeakedModelsCrawler(Crawler):
                 elem.decompose()
 
             thread_id = thread_url.parts[2].split(".")[-1]
-            title = await self.create_title(title_block.text.replace("\n", ""), None, thread_id)
+            title = self.create_title(title_block.text.replace("\n", ""), None, thread_id)
 
             posts = soup.select(self.posts_selector)
             for post in posts:

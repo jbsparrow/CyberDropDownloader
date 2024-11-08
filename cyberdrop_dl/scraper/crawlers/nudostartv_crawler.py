@@ -24,12 +24,12 @@ class NudoStarTVCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
+        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         scrape_item.url = URL(str(scrape_item.url) + "/")
         await self.profile(scrape_item)
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
@@ -37,7 +37,7 @@ class NudoStarTVCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        title = await self.create_title(soup.select_one("title").get_text().split("/")[0], None, None)
+        title = self.create_title(soup.select_one("title").get_text().split("/")[0], None, None)
         content = soup.select("div[id=list_videos_common_videos_list_items] div a")
         for page in content:
             link = URL(page.get("href"))

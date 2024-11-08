@@ -43,7 +43,7 @@ class TokioMotionCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
+        task_id = self.scraping_progress.add_task(scrape_item.url)
         new_query = MultiDict(scrape_item.url.query)
         new_query.pop("page", None)
         scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path).with_query(new_query)
@@ -69,7 +69,7 @@ class TokioMotionCrawler(Crawler):
         else:
             await self.search(scrape_item)
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
@@ -110,7 +110,7 @@ class TokioMotionCrawler(Crawler):
     async def albums(self, scrape_item: ScrapeItem) -> None:
         """Scrapes user albums."""
         user = scrape_item.url.parts[2]
-        user_title = await self.create_title(f"{user} [user]", scrape_item.album_id, None)
+        user_title = self.create_title(f"{user} [user]", scrape_item.album_id, None)
         if user_title not in scrape_item.parent_title.split("/"):
             scrape_item.add_to_parent_title(user_title)
 
@@ -134,7 +134,7 @@ class TokioMotionCrawler(Crawler):
         title = scrape_item.url.parts[-1]
         if "user" in scrape_item.url.parts:
             user = scrape_item.url.parts[2]
-            user_title = await self.create_title(f"{user} [user]", scrape_item.album_id, None)
+            user_title = self.create_title(f"{user} [user]", scrape_item.album_id, None)
             if user_title not in scrape_item.parent_title.split("/"):
                 scrape_item.add_to_parent_title(user_title)
 
@@ -143,7 +143,7 @@ class TokioMotionCrawler(Crawler):
             scrape_item.part_of_album = True
 
         if self.folder_domain not in scrape_item.parent_title:
-            title = await self.create_title(title, scrape_item.album_id, None)
+            title = self.create_title(title, scrape_item.album_id, None)
 
         if "favorite" in scrape_item.url.parts:
             scrape_item.add_to_parent_title("favorite")
@@ -193,7 +193,7 @@ class TokioMotionCrawler(Crawler):
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an user profile."""
         user = scrape_item.url.parts[2]
-        user_title = await self.create_title(f"{user} [user]", scrape_item.album_id, None)
+        user_title = self.create_title(f"{user} [user]", scrape_item.album_id, None)
         if user_title not in scrape_item.parent_title.split("/"):
             scrape_item.add_to_parent_title(user_title)
 
@@ -212,7 +212,7 @@ class TokioMotionCrawler(Crawler):
             return
 
         search_query = scrape_item.url.query.get("search_query")
-        search_title = await self.create_title(f"{search_query} [{search_type} search]", scrape_item.album_id, None)
+        search_title = self.create_title(f"{search_query} [{search_type} search]", scrape_item.album_id, None)
         if search_title not in scrape_item.parent_title.split("/"):
             scrape_item.add_to_parent_title(search_title)
 
@@ -243,7 +243,7 @@ class TokioMotionCrawler(Crawler):
         """Scrapes a video playlist."""
         title = scrape_item.url.parts[-1]
         user = scrape_item.url.parts[2]
-        user_title = await self.create_title(f"{user} [user]", scrape_item.album_id, None)
+        user_title = self.create_title(f"{user} [user]", scrape_item.album_id, None)
         if user_title not in scrape_item.parent_title.split("/"):
             scrape_item.add_to_parent_title(user_title)
 
@@ -251,7 +251,7 @@ class TokioMotionCrawler(Crawler):
             scrape_item.add_to_parent_title("favorite")
 
         if self.folder_domain not in scrape_item.parent_title:
-            title = await self.create_title(title, scrape_item.album_id, None)
+            title = self.create_title(title, scrape_item.album_id, None)
 
         if title not in scrape_item.parent_title.split("/"):
             scrape_item.add_to_parent_title(title)

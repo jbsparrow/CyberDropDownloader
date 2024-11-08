@@ -107,32 +107,26 @@ class Manager:
 
     async def async_startup(self) -> None:
         """Async startup process for the manager."""
-        await self.args_consolidation()
-        await self.args_logging()
+        self.args_consolidation()
+        self.args_logging()
 
-        if not isinstance(self.db_manager, DBManager):
-            self.db_manager = DBManager(self, self.path_manager.history_db)
-            self.db_manager.ignore_history = self.config_manager.settings_data["Runtime_Options"]["ignore_history"]
-            await self.db_manager.startup()
         if not isinstance(self.client_manager, ClientManager):
             self.client_manager = ClientManager(self)
         if not isinstance(self.download_manager, DownloadManager):
             self.download_manager = DownloadManager(self)
-        if not isinstance(self.hash_manager, HashManager):
-            self.hash_manager = HashManager(self)
-            await self.hash_manager.startup()
-        if not isinstance(self.live_manager, LiveManager):
-            self.live_manager = LiveManager(self)
         if not isinstance(self.real_debrid_manager, RealDebridManager):
             self.real_debrid_manager = RealDebridManager(self)
-        self.progress_manager = ProgressManager(self)
-        await self.progress_manager.startup()
+        await self.async_db_hash_startup()
 
         # set files from args
-        from cyberdrop_dl.utils.constants import MAX_NAME_LENGTHS
+        import cyberdrop_dl.utils.constants as constants
 
-        MAX_NAME_LENGTHS["FILE"] = int(self.config_manager.global_settings_data["General"]["max_file_name_length"])
-        MAX_NAME_LENGTHS["FOLDER"] = int(self.config_manager.global_settings_data["General"]["max_folder_name_length"])
+        constants.MAX_NAME_LENGTHS["FILE"] = int(
+            self.config_manager.global_settings_data["General"]["max_file_name_length"]
+        )
+        constants.MAX_NAME_LENGTHS["FOLDER"] = int(
+            self.config_manager.global_settings_data["General"]["max_folder_name_length"]
+        )
 
     async def async_db_hash_startup(self) -> None:
         # start up the db manager and hash manager only for scanning
@@ -145,9 +139,9 @@ class Manager:
         if not isinstance(self.live_manager, LiveManager):
             self.live_manager = LiveManager(self)
         self.progress_manager = ProgressManager(self)
-        await self.progress_manager.startup()
+        self.progress_manager.startup()
 
-    async def args_consolidation(self) -> None:
+    def args_consolidation(self) -> None:
         """Consolidates runtime arguments with config values."""
         cli_settings_groups = ["Download_Options", "File_Size_Limits", "Ignore_Options", "Runtime_Options"]
         parsed_args = self.args_manager.parsed_args
@@ -161,7 +155,7 @@ class Manager:
                     elif self.args_manager.parsed_args[arg] is not None:
                         self.config_manager.settings_data[cli_settings_group][arg] = parsed_args[arg]
 
-    async def args_logging(self) -> None:
+    def args_logging(self) -> None:
         """Logs the runtime arguments."""
         forum_xf_cookies_provided = {}
         forum_credentials_provided = {}
@@ -190,9 +184,7 @@ class Manager:
         print_settings["Logs"]["log_folder"] = str(print_settings["Logs"]["log_folder"])
         print_settings["Logs"]["webhook_url"] = bool(print_settings["Logs"]["webhook_url"])
         print_settings["Sorting"]["sort_folder"] = str(print_settings["Sorting"]["sort_folder"])
-        print_settings["Sorting"]["scan_folder"] = (
-            str(print_settings["Sorting"]["scan_folder"]) if str(print_settings["Sorting"]["scan_folder"]) else ""
-        )
+        print_settings["Sorting"]["scan_folder"] = str(print_settings["Sorting"]["scan_folder"]) or ""
 
         log(f"Starting Cyberdrop-DL Process - Config: {self.config_manager.loaded_config}", 10)
         log(f"Running version {__version__}", 10)

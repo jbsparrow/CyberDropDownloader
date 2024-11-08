@@ -20,7 +20,7 @@ from cyberdrop_dl.scraper.filters import (
     remove_trailing_slash,
 )
 from cyberdrop_dl.scraper.jdownloader import JDownloader
-from cyberdrop_dl.utils.constants import BLOCKED_DOMAINS
+from cyberdrop_dl.utils.constants import BLOCKED_DOMAINS, REGEX_LINKS
 from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext
@@ -87,98 +87,98 @@ class ScrapeMapper:
         self.lock = asyncio.Lock()
         self.count = 0
 
-    async def bunkr(self) -> None:
+    def bunkr(self) -> None:
         """Creates a Bunkr Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.bunkrr_crawler import BunkrrCrawler
 
         self.existing_crawlers["bunkrr"] = BunkrrCrawler(self.manager)
         self.existing_crawlers["bunkr"] = self.existing_crawlers["bunkrr"]
 
-    async def celebforum(self) -> None:
+    def celebforum(self) -> None:
         """Creates a CelebForum Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.celebforum_crawler import CelebForumCrawler
 
         self.existing_crawlers["celebforum"] = CelebForumCrawler(self.manager)
 
-    async def coomer(self) -> None:
+    def coomer(self) -> None:
         """Creates a Coomer Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.coomer_crawler import CoomerCrawler
 
         self.existing_crawlers["coomer"] = CoomerCrawler(self.manager)
 
-    async def cyberdrop(self) -> None:
+    def cyberdrop(self) -> None:
         """Creates a Cyberdrop Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.cyberdrop_crawler import CyberdropCrawler
 
         self.existing_crawlers["cyberdrop"] = CyberdropCrawler(self.manager)
 
-    async def cyberfile(self) -> None:
+    def cyberfile(self) -> None:
         """Creates a Cyberfile Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.cyberfile_crawler import CyberfileCrawler
 
         self.existing_crawlers["cyberfile"] = CyberfileCrawler(self.manager)
 
-    async def ehentai(self) -> None:
+    def ehentai(self) -> None:
         """Creates a EHentai Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.ehentai_crawler import EHentaiCrawler
 
         self.existing_crawlers["e-hentai"] = EHentaiCrawler(self.manager)
 
-    async def erome(self) -> None:
+    def erome(self) -> None:
         """Creates a Erome Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.erome_crawler import EromeCrawler
 
         self.existing_crawlers["erome"] = EromeCrawler(self.manager)
 
-    async def fapello(self) -> None:
+    def fapello(self) -> None:
         """Creates a Fappelo Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.fapello_crawler import FapelloCrawler
 
         self.existing_crawlers["fapello"] = FapelloCrawler(self.manager)
 
-    async def f95zone(self) -> None:
+    def f95zone(self) -> None:
         """Creates a F95Zone Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.f95zone_crawler import F95ZoneCrawler
 
         self.existing_crawlers["f95zone"] = F95ZoneCrawler(self.manager)
 
-    async def gofile(self) -> None:
+    def gofile(self) -> None:
         """Creates a GoFile Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.gofile_crawler import GoFileCrawler
 
         self.existing_crawlers["gofile"] = GoFileCrawler(self.manager)
 
-    async def hotpic(self) -> None:
+    def hotpic(self) -> None:
         """Creates a HotPic Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.hotpic_crawler import HotPicCrawler
 
         self.existing_crawlers["hotpic"] = HotPicCrawler(self.manager)
 
-    async def imageban(self) -> None:
+    def imageban(self) -> None:
         """Creates a ImageBan Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.imageban_crawler import ImageBanCrawler
 
         self.existing_crawlers["imageban"] = ImageBanCrawler(self.manager)
 
-    async def imgbb(self) -> None:
+    def imgbb(self) -> None:
         """Creates a ImgBB Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.imgbb_crawler import ImgBBCrawler
 
         self.existing_crawlers["ibb.co"] = ImgBBCrawler(self.manager)
 
-    async def imgbox(self) -> None:
+    def imgbox(self) -> None:
         """Creates a ImgBox Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.imgbox_crawler import ImgBoxCrawler
 
         self.existing_crawlers["imgbox"] = ImgBoxCrawler(self.manager)
 
-    async def imgur(self) -> None:
+    def imgur(self) -> None:
         """Creates a Imgur Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.imgur_crawler import ImgurCrawler
 
         self.existing_crawlers["imgur"] = ImgurCrawler(self.manager)
 
-    async def chevereto(self) -> None:
+    def chevereto(self) -> None:
         """Creates a Chevereto Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.chevereto_crawler import CheveretoCrawler
 
@@ -189,158 +189,158 @@ class ScrapeMapper:
             else:
                 self.existing_crawlers[domain] = CheveretoCrawler(self.manager, domain)
 
-    async def kemono(self) -> None:
+    def kemono(self) -> None:
         """Creates a Kemono Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.kemono_crawler import KemonoCrawler
 
         self.existing_crawlers["kemono"] = KemonoCrawler(self.manager)
 
-    async def leakedmodels(self) -> None:
+    def leakedmodels(self) -> None:
         """Creates a LeakedModels Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.leakedmodels_crawler import LeakedModelsCrawler
 
         self.existing_crawlers["leakedmodels"] = LeakedModelsCrawler(self.manager)
 
-    async def mediafire(self) -> None:
+    def mediafire(self) -> None:
         """Creates a MediaFire Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.mediafire_crawler import MediaFireCrawler
 
         self.existing_crawlers["mediafire"] = MediaFireCrawler(self.manager)
 
-    async def nekohouse(self) -> None:
+    def nekohouse(self) -> None:
         """Creates a Nekohouse Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.nekohouse_crawler import NekohouseCrawler
 
         self.existing_crawlers["nekohouse"] = NekohouseCrawler(self.manager)
 
-    async def nudostar(self) -> None:
+    def nudostar(self) -> None:
         """Creates a NudoStar Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.nudostar_crawler import NudoStarCrawler
 
         self.existing_crawlers["nudostar.com"] = NudoStarCrawler(self.manager)
 
-    async def nudostartv(self) -> None:
+    def nudostartv(self) -> None:
         """Creates a NudoStarTV Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.nudostartv_crawler import NudoStarTVCrawler
 
         self.existing_crawlers["nudostar.tv"] = NudoStarTVCrawler(self.manager)
 
-    async def omegascans(self) -> None:
+    def omegascans(self) -> None:
         """Creates a OmegaScans Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.omegascans_crawler import OmegaScansCrawler
 
         self.existing_crawlers["omegascans"] = OmegaScansCrawler(self.manager)
 
-    async def pimpandhost(self) -> None:
+    def pimpandhost(self) -> None:
         """Creates a PimpAndHost Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.pimpandhost_crawler import PimpAndHostCrawler
 
         self.existing_crawlers["pimpandhost"] = PimpAndHostCrawler(self.manager)
 
-    async def pixeldrain(self) -> None:
+    def pixeldrain(self) -> None:
         """Creates a PixelDrain Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.pixeldrain_crawler import PixelDrainCrawler
 
         self.existing_crawlers["pixeldrain"] = PixelDrainCrawler(self.manager)
 
-    async def postimg(self) -> None:
+    def postimg(self) -> None:
         """Creates a PostImg Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.postimg_crawler import PostImgCrawler
 
         self.existing_crawlers["postimg"] = PostImgCrawler(self.manager)
 
-    async def realbooru(self) -> None:
+    def realbooru(self) -> None:
         """Creates a RealBooru Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.realbooru_crawler import RealBooruCrawler
 
         self.existing_crawlers["realbooru"] = RealBooruCrawler(self.manager)
 
-    async def realdebrid(self) -> None:
+    def realdebrid(self) -> None:
         """Creates a RealDebrid Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.realdebrid_crawler import RealDebridCrawler
 
         self.existing_crawlers["real-debrid"] = RealDebridCrawler(self.manager)
 
-    async def reddit(self) -> None:
+    def reddit(self) -> None:
         """Creates a Reddit Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.reddit_crawler import RedditCrawler
 
         self.existing_crawlers["reddit"] = RedditCrawler(self.manager)
         self.existing_crawlers["redd.it"] = self.existing_crawlers["reddit"]
 
-    async def redgifs(self) -> None:
+    def redgifs(self) -> None:
         """Creates a RedGifs Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.redgifs_crawler import RedGifsCrawler
 
         self.existing_crawlers["redgifs"] = RedGifsCrawler(self.manager)
 
-    async def rule34vault(self) -> None:
+    def rule34vault(self) -> None:
         """Creates a Rule34Vault Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.rule34vault_crawler import Rule34VaultCrawler
 
         self.existing_crawlers["rule34vault"] = Rule34VaultCrawler(self.manager)
 
-    async def rule34xxx(self) -> None:
+    def rule34xxx(self) -> None:
         """Creates a Rule34XXX Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.rule34xxx_crawler import Rule34XXXCrawler
 
         self.existing_crawlers["rule34.xxx"] = Rule34XXXCrawler(self.manager)
 
-    async def rule34xyz(self) -> None:
+    def rule34xyz(self) -> None:
         """Creates a Rule34XYZ Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.rule34xyz_crawler import Rule34XYZCrawler
 
         self.existing_crawlers["rule34.xyz"] = Rule34XYZCrawler(self.manager)
 
-    async def saint(self) -> None:
+    def saint(self) -> None:
         """Creates a Saint Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.saint_crawler import SaintCrawler
 
         self.existing_crawlers["saint"] = SaintCrawler(self.manager)
 
-    async def scrolller(self) -> None:
+    def scrolller(self) -> None:
         """Creates a Scrolller Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.scrolller_crawler import ScrolllerCrawler
 
         self.existing_crawlers["scrolller"] = ScrolllerCrawler(self.manager)
 
-    async def simpcity(self) -> None:
+    def simpcity(self) -> None:
         """Creates a SimpCity Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.simpcity_crawler import SimpCityCrawler
 
         self.existing_crawlers["simpcity"] = SimpCityCrawler(self.manager)
 
-    async def socialmediagirls(self) -> None:
+    def socialmediagirls(self) -> None:
         """Creates a SocialMediaGirls Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.socialmediagirls_crawler import SocialMediaGirlsCrawler
 
         self.existing_crawlers["socialmediagirls"] = SocialMediaGirlsCrawler(self.manager)
 
-    async def tokyomotion(self) -> None:
+    def tokyomotion(self) -> None:
         """Creates a Tokyomotion Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.tokyomotion_crawler import TokioMotionCrawler
 
         self.existing_crawlers["tokyomotion"] = TokioMotionCrawler(self.manager)
 
-    async def toonily(self) -> None:
+    def toonily(self) -> None:
         """Creates a Toonily Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.toonily_crawler import ToonilyCrawler
 
         self.existing_crawlers["toonily"] = ToonilyCrawler(self.manager)
 
-    async def xbunker(self) -> None:
+    def xbunker(self) -> None:
         """Creates a XBunker Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.xbunker_crawler import XBunkerCrawler
 
         self.existing_crawlers["xbunker"] = XBunkerCrawler(self.manager)
 
-    async def xbunkr(self) -> None:
+    def xbunkr(self) -> None:
         """Creates a XBunkr Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.xbunkr_crawler import XBunkrCrawler
 
         self.existing_crawlers["xbunkr"] = XBunkrCrawler(self.manager)
 
-    async def xxxbunker(self) -> None:
+    def xxxbunker(self) -> None:
         """Creates a XXXBunker Crawler instance."""
         from cyberdrop_dl.scraper.crawlers.xxxbunker_crawler import XXXBunkerCrawler
 
@@ -348,38 +348,38 @@ class ScrapeMapper:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def start_scrapers(self) -> None:
+    def start_scrapers(self) -> None:
         """Starts all scrapers."""
         for domain in self.mapping:
-            await self.mapping[domain]()
+            self.mapping[domain]()
 
         for crawler in self.existing_crawlers.values():
             if isinstance(crawler.client, Field):
-                await crawler.startup()
+                crawler.startup()
 
-    async def start_jdownloader(self) -> None:
+    def start_jdownloader(self) -> None:
         """Starts JDownloader."""
         if self.jdownloader.enabled and isinstance(self.jdownloader.jdownloader_agent, Field):
-            await self.jdownloader.jdownloader_setup()
+            self.jdownloader.jdownloader_setup()
 
-    async def start_real_debrid(self) -> None:
+    def start_real_debrid(self) -> None:
         """Starts RealDebrid."""
         if isinstance(self.manager.real_debrid_manager.api, Field):
-            await self.manager.real_debrid_manager.startup()
+            self.manager.real_debrid_manager.startup()
 
         if self.manager.real_debrid_manager.enabled:
-            await self.realdebrid()
-            await self.existing_crawlers["real-debrid"].startup()
+            self.realdebrid()
+            self.existing_crawlers["real-debrid"].startup()
 
     async def start(self) -> None:
         """Starts the orchestra."""
         self.manager.scrape_mapper = self
 
-        await self.start_scrapers()
-        await self.start_jdownloader()
-        await self.start_real_debrid()
+        self.start_scrapers()
+        self.start_jdownloader()
+        self.start_real_debrid()
 
-        await self.no_crawler_downloader.startup()
+        self.no_crawler_downloader.startup()
 
         if self.manager.args_manager.retry_failed:
             await self.load_failed_links()
@@ -393,7 +393,7 @@ class ScrapeMapper:
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @staticmethod
-    async def regex_links(line: str) -> list:
+    def regex_links(line: str) -> list:
         """Regex grab the links from the URLs.txt file.
 
         This allows code blocks or full paragraphs to be copy and pasted into the URLs.txt.
@@ -402,10 +402,7 @@ class ScrapeMapper:
         if line.lstrip().rstrip().startswith("#"):
             return yarl_links
 
-        all_links = [
-            x.group().replace(".md.", ".")
-            for x in re.finditer(r"(?:http.*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]))", line)
-        ]
+        all_links = [x.group().replace(".md.", ".") for x in re.finditer(REGEX_LINKS, line)]
         for link in all_links:
             encoded = "%" in link
             yarl_links.append(URL(link, encoded=encoded))
@@ -427,11 +424,11 @@ class ScrapeMapper:
                         links[thread_title] = []
 
                 if thread_title:
-                    links[thread_title].extend(await self.regex_links(line))
+                    links[thread_title].extend(self.regex_links(line))
                 else:
                     block_quote = not block_quote if line == "#\n" else block_quote
                     if not block_quote:
-                        links[""].extend(await self.regex_links(line))
+                        links[""].extend(self.regex_links(line))
         return links
 
     async def load_links(self) -> None:
@@ -573,7 +570,7 @@ class ScrapeMapper:
             try:
                 download_folder = get_download_path(self.manager, scrape_item, "jdownloader")
                 relative_download_dir = download_folder.relative_to(self.manager.path_manager.download_dir)
-                await self.jdownloader.direct_unsupported_to_jdownloader(
+                self.jdownloader.direct_unsupported_to_jdownloader(
                     scrape_item.url,
                     scrape_item.parent_title,
                     relative_download_dir,
@@ -585,12 +582,12 @@ class ScrapeMapper:
                     scrape_item.url,
                     next(scrape_item.parents, None),
                 )
-            await self.manager.progress_manager.scrape_stats_progress.add_unsupported(sent_to_jdownloader=success)
+            self.manager.progress_manager.scrape_stats_progress.add_unsupported(sent_to_jdownloader=success)
             return
 
         log(f"Unsupported URL: {scrape_item.url}", 30)
         await self.manager.log_manager.write_unsupported_urls_log(scrape_item.url, next(scrape_item.parents, None))
-        await self.manager.progress_manager.scrape_stats_progress.add_unsupported()
+        self.manager.progress_manager.scrape_stats_progress.add_unsupported()
 
     def filter_items(self, scrape_item: ScrapeItem) -> bool:
         """Pre-filter scrape items base on URL."""
@@ -627,7 +624,7 @@ class ScrapeMapper:
         )
         if check_complete:
             log(f"Skipping {scrape_item.url} as it has already been downloaded", 10)
-            await self.manager.progress_manager.download_progress.add_previously_completed()
+            self.manager.progress_manager.download_progress.add_previously_completed()
             return True
 
         posible_referer = scrape_item.parents[-1] if scrape_item.parents else scrape_item.url
@@ -637,7 +634,7 @@ class ScrapeMapper:
 
         if check_referer:
             log(f"Skipping {scrape_item.url} as referer has been seen before", 10)
-            await self.manager.progress_manager.download_progress.add_skipped()
+            self.manager.progress_manager.download_progress.add_skipped()
             return True
 
         return False

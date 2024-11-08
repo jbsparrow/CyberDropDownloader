@@ -49,27 +49,27 @@ class ProgressManager:
         self.hash_layout: Layout = field(init=False)
         self.sort_layout: Layout = field(init=False)
 
-    async def startup(self) -> None:
+    def startup(self) -> None:
         """Startup process for the progress manager."""
         progress_layout = Layout()
         progress_layout.split_column(
             Layout(name="upper", ratio=2, minimum_size=8),
-            Layout(renderable=await self.scraping_progress.get_progress(), name="Scraping", ratio=2),
-            Layout(renderable=await self.file_progress.get_progress(), name="Downloads", ratio=2),
+            Layout(renderable=self.scraping_progress.get_progress(), name="Scraping", ratio=2),
+            Layout(renderable=self.file_progress.get_progress(), name="Downloads", ratio=2),
         )
         progress_layout["upper"].split_row(
-            Layout(renderable=await self.download_progress.get_progress(), name="Files", ratio=1),
-            Layout(renderable=await self.scrape_stats_progress.get_progress(), name="Scrape Failures", ratio=1),
-            Layout(renderable=await self.download_stats_progress.get_progress(), name="Download Failures", ratio=1),
+            Layout(renderable=self.download_progress.get_progress(), name="Files", ratio=1),
+            Layout(renderable=self.scrape_stats_progress.get_progress(), name="Scrape Failures", ratio=1),
+            Layout(renderable=self.download_stats_progress.get_progress(), name="Download Failures", ratio=1),
         )
 
         hash_remove_layout = Layout()
-        hash_remove_layout = await self.hash_progress.get_removed_progress()
+        hash_remove_layout = self.hash_progress.get_removed_progress()
 
         self.layout = progress_layout
         self.hash_remove_layout = hash_remove_layout
-        self.hash_layout = await self.hash_progress.get_hash_progress()
-        self.sort_layout = await self.sort_progress.get_progress()
+        self.hash_layout = self.hash_progress.get_hash_progress()
+        self.sort_layout = self.sort_progress.get_progress()
 
     def print_stats(self, start_time: timedelta | float) -> None:
         """Prints the stats of the program."""

@@ -35,21 +35,21 @@ class BunkrrCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
-        scrape_item.url = await self.get_stream_link(scrape_item.url)
+        task_id = self.scraping_progress.add_task(scrape_item.url)
+        scrape_item.url = self.get_stream_link(scrape_item.url)
 
         if scrape_item.url.host.startswith("get"):
             scrape_item.url = await self.reinforced_link(scrape_item.url)
             if not scrape_item.url:
                 return
-            scrape_item.url = await self.get_stream_link(scrape_item.url)
+            scrape_item.url = self.get_stream_link(scrape_item.url)
 
         if "a" in scrape_item.url.parts:
             await self.album(scrape_item)
         else:
             await self.file(scrape_item)
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
@@ -70,7 +70,7 @@ class BunkrrCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
         title = soup.select_one("title").text.rsplit(" | Bunkr")[0].strip()
 
-        title = await self.create_title(title, scrape_item.url.parts[2], None)
+        title = self.create_title(title, scrape_item.url.parts[2], None)
         scrape_item.add_to_parent_title(title)
 
         card_listings: list[Tag] = soup.select('div[class*="relative group/item theItem"]')
@@ -79,16 +79,17 @@ class BunkrrCrawler(Crawler):
             file_ext = "." + filename.split(".")[-1]
             thumbnail = card_listing.select_one("img").get("src")
             date_str = card_listing.select_one('span[class*="theDate"]').text.strip()
-            date = await self.parse_datetime(date_str)
+            date = self.parse_datetime(date_str)
             link = card_listing.find("a").get("href")
             if link.startswith("/"):
                 link = URL("https://" + scrape_item.url.host + link)
             link = URL(link)
-            link = await self.get_stream_link(link)
+            link = self.get_stream_link(link)
 
             # Try to get final file URL
+            valid_extensions = FILE_FORMATS["Images"] | FILE_FORMATS["Videos"]
             try:
-                if file_ext.lower() not in FILE_FORMATS["Images"] and file_ext.lower() not in FILE_FORMATS["Videos"]:
+                if file_ext.lower() not in valid_extensions:
                     raise FileNotFoundError
                 src = thumbnail.replace("/thumbs/", "/")
                 src = URL(src, encoded=True)
@@ -101,7 +102,7 @@ class BunkrrCrawler(Crawler):
                     msg = "No image found, reverting to parent"
                     raise FileNotFoundError(msg)
 
-                new_scrape_item = await self.create_scrape_item(
+                new_scrape_item = self.create_scrape_item(
                     scrape_item,
                     link,
                     "",
@@ -112,7 +113,7 @@ class BunkrrCrawler(Crawler):
                 )
 
                 filename, ext = get_filename_and_ext(src.name)
-                if not await self.check_album_results(src, results):
+                if not self.check_album_results(src, results):
                     await self.handle_file(src, new_scrape_item, filename, ext)
 
             except FileNotFoundError:
@@ -183,13 +184,13 @@ class BunkrrCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @staticmethod
-    async def is_cdn(url: URL) -> bool:
+    def is_cdn(url: URL) -> bool:
         """Checks if a given URL is from a CDN."""
         return bool(re.match(CDN_POSSIBILITIES, url.host))
 
-    async def get_stream_link(self, url: URL) -> URL:
+    def get_stream_link(self, url: URL) -> URL:
         """Gets the stream link for a given url."""
-        if not await self.is_cdn(url):
+        if not self.is_cdn(url):
             return url
 
         ext = url.suffix.lower()
@@ -206,7 +207,7 @@ class BunkrrCrawler(Crawler):
         return url
 
     @staticmethod
-    async def parse_datetime(date: str) -> int:
+    def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
         date = datetime.datetime.strptime(date, "%H:%M:%S %d/%m/%Y")
         return calendar.timegm(date.timetuple())

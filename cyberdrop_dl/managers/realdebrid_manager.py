@@ -32,7 +32,7 @@ class RealDebridManager:
         self.api: RealDebridApi = field(init=False)
         self._folder_guess_functions = [self._guess_folder_by_part, self._guess_folder_by_query]
 
-    async def startup(self) -> None:
+    def startup(self) -> None:
         """Startup process for Real Debrid manager."""
         try:
             self.api = RealDebridApi(self.__api_token, True)
@@ -48,11 +48,11 @@ class RealDebridManager:
             log(f"Failed RealDebrid setup: {e.error}", 40)
             self.enabled = False
 
-    async def is_supported_folder(self, url: URL) -> bool:
+    def is_supported_folder(self, url: URL) -> bool:
         match = self.folder_regex.search(str(url))
         return bool(match)
 
-    async def is_supported_file(self, url: URL) -> bool:
+    def is_supported_file(self, url: URL) -> bool:
         match = self.file_regex.search(str(url))
         return bool(match)
 
@@ -60,14 +60,14 @@ class RealDebridManager:
         match = self.supported_regex.search(str(url))
         return bool(match) or "real-debrid" in url.host.lower()
 
-    async def unrestrict_link(self, url: URL, password: str | None = None) -> URL:
+    def unrestrict_link(self, url: URL, password: str | None = None) -> URL:
         return self.api.unrestrict.link(url, password).get("download")
 
-    async def unrestrict_folder(self, url: URL) -> list[URL]:
+    def unrestrict_folder(self, url: URL) -> list[URL]:
         return self.api.unrestrict.folder(url)
 
     @staticmethod
-    async def _guess_folder_by_part(url: URL):
+    def _guess_folder_by_part(url: URL):
         for word in FOLDER_AS_PART:
             if word in url.parts:
                 index = url.parts.index(word)
@@ -76,16 +76,16 @@ class RealDebridManager:
         return None
 
     @staticmethod
-    async def _guess_folder_by_query(url: URL):
+    def _guess_folder_by_query(url: URL):
         for word in FOLDER_AS_QUERY:
             folder = url.query.get(word)
             if folder:
                 return folder
         return None
 
-    async def guess_folder(self, url: URL) -> str:
+    def guess_folder(self, url: URL) -> str:
         for guess_function in self._folder_guess_functions:
-            folder = await guess_function(url)
+            folder = guess_function(url)
             if folder:
                 return folder
         return url.path

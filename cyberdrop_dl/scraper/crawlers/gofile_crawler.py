@@ -42,14 +42,14 @@ class GoFileCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
+        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         await self.get_token(self.api_address / "accounts", self.client)
         await self.get_website_token(self.js_address, self.client)
 
         await self.album(scrape_item)
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
@@ -101,7 +101,7 @@ class GoFileCrawler(Crawler):
         if JSON_Resp["canAccess"] is False:
             raise ScrapeError(403, "Album is private", origin=scrape_item)
 
-        title = await self.create_title(JSON_Resp["name"], content_id, None)
+        title = self.create_title(JSON_Resp["name"], content_id, None)
         # Do not reset nested folders
         if scrape_item.type != FILE_HOST_ALBUM:
             scrape_item.type = FILE_HOST_ALBUM

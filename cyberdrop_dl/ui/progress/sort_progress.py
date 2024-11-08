@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
-async def adjust_title(s: str, length: int = 40, placeholder: str = "...") -> str:
+def adjust_title(s: str, length: int = 40, placeholder: str = "...") -> str:
     """Collapse and truncate or pad the given string to fit in the given length."""
     return f"{s[:length - len(placeholder)]}{placeholder}" if len(s) >= length else s.ljust(length)
 
@@ -53,6 +53,12 @@ class SortProgress:
         self.completed_tasks: list[TaskID] = []
         self.uninitiated_tasks: list[TaskID] = []
         self.tasks_visibility_limit = visible_task_limit
+        self.panel = Panel(
+            self.progress_group,
+            title=f"Sorting Downloads ━ Config: {self.manager.config_manager.loaded_config}",
+            border_style="green",
+            padding=(1, 1),
+        )
 
         # counts
         self.audio_count = 0
@@ -60,19 +66,14 @@ class SortProgress:
         self.image_count = 0
         self.other_count = 0
 
-    async def get_progress(self) -> Panel:
+    def get_progress(self) -> Panel:
         """Returns the progress bar."""
-        return Panel(
-            self.progress_group,
-            title=f"Sorting Downloads ━ Config: {self.manager.config_manager.loaded_config}",
-            border_style="green",
-            padding=(1, 1),
-        )
+        return self.panel
 
-    async def set_queue_length(self, length: int) -> None:
+    def set_queue_length(self, length: int) -> None:
         self.queue_length = length
 
-    async def redraw(self, passed: bool = False) -> None:
+    def redraw(self, passed: bool = False) -> None:
         """Redraws the progress bar."""
         while len(self.visible_tasks) > self.tasks_visibility_limit:
             task_id = self.visible_tasks.pop(0)
@@ -107,14 +108,14 @@ class SortProgress:
             self.queue.update(self.queue_task_id, visible=False)
 
         if not passed:
-            await self.manager.progress_manager.scraping_progress.redraw(True)
+            self.manager.progress_manager.scraping_progress.redraw(True)
 
-    async def add_task(self, folder: str, expected_size: int | None) -> TaskID:
+    def add_task(self, folder: str, expected_size: int | None) -> TaskID:
         """Adds a new task to the progress bar."""
         # description = f'Sorting {folder}'
         description = folder
         description = description.encode("ascii", "ignore").decode().strip()
-        description = await adjust_title(description)
+        description = adjust_title(description)
 
         if len(self.visible_tasks) >= self.tasks_visibility_limit:
             task_id = self.progress.add_task(
@@ -129,10 +130,10 @@ class SortProgress:
                 total=expected_size,
             )
             self.visible_tasks.append(task_id)
-        await self.redraw()
+        self.redraw()
         return task_id
 
-    async def remove_folder(self, task_id: TaskID) -> None:
+    def remove_folder(self, task_id: TaskID) -> None:
         """Removes the given task from the progress bar."""
         if task_id in self.visible_tasks:
             self.visible_tasks.remove(task_id)
@@ -144,24 +145,24 @@ class SortProgress:
         else:
             msg = "Task ID not found"
             raise ValueError(msg)
-        await self.redraw()
+        self.redraw()
 
-    async def advance_folder(self, task_id: TaskID, amount: int) -> None:
+    def advance_folder(self, task_id: TaskID, amount: int) -> None:
         """Advances the progress of the given task by the given amount."""
         if task_id in self.uninitiated_tasks:
             self.uninitiated_tasks.remove(task_id)
             self.invisible_tasks.append(task_id)
-            await self.redraw()
+            self.redraw()
         self.progress.advance(task_id, amount)
 
-    async def increment_audio(self) -> None:
+    def increment_audio(self) -> None:
         self.audio_count += 1
 
-    async def increment_video(self) -> None:
+    def increment_video(self) -> None:
         self.video_count += 1
 
-    async def increment_image(self) -> None:
+    def increment_image(self) -> None:
         self.image_count += 1
 
-    async def increment_other(self) -> None:
+    def increment_other(self) -> None:
         self.other_count += 1

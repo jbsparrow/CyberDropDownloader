@@ -27,7 +27,7 @@ class RedGifsCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
+        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         if not self.token:
             await self.manage_token(self.redgifs_api / "v2/auth/temporary")
@@ -38,7 +38,7 @@ class RedGifsCrawler(Crawler):
             else:
                 await self.post(scrape_item)
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def user(self, scrape_item: ScrapeItem) -> None:
@@ -68,7 +68,7 @@ class RedGifsCrawler(Crawler):
             for gif in gifs:
                 links = gif["urls"]
                 date = gif["createDate"]
-                title = await self.create_title(user_id, None, None)
+                title = self.create_title(user_id, None, None)
 
                 try:
                     link = URL(links["hd"])
@@ -103,7 +103,7 @@ class RedGifsCrawler(Crawler):
             )
 
         title_part = JSON_Resp["gif"].get("title", "Loose Files")
-        title = await self.create_title(title_part, None, None)
+        title = self.create_title(title_part, None, None)
         links = JSON_Resp["gif"]["urls"]
         date = JSON_Resp["gif"]["createDate"]
 

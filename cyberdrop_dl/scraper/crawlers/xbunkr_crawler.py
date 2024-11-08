@@ -27,7 +27,7 @@ class XBunkrCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
+        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         if "media" in cast(str, scrape_item.url.host):
             filename, ext = get_filename_and_ext(scrape_item.url.name)
@@ -35,7 +35,7 @@ class XBunkrCrawler(Crawler):
         else:
             await self.album(scrape_item)
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
@@ -54,7 +54,7 @@ class XBunkrCrawler(Crawler):
                 "maximum_number_of_children"
             ][scrape_item.type]
 
-        title = await self.create_title(soup.select_one("h1[id=title]").text, scrape_item.album_id, None)
+        title = self.create_title(soup.select_one("h1[id=title]").text, scrape_item.album_id, None)
 
         links = soup.select("a[class=image]")
         for link in links:

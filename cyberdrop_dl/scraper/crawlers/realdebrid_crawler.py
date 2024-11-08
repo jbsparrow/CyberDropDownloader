@@ -25,7 +25,7 @@ class RealDebridCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
+        task_id = self.scraping_progress.add_task(scrape_item.url)
         scrape_item.url = await self.get_original_url(scrape_item)
 
         if await self.manager.real_debrid_manager.is_supported_folder(scrape_item.url):
@@ -33,7 +33,7 @@ class RealDebridCrawler(Crawler):
         else:
             await self.file(scrape_item)
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def folder(self, scrape_item: ScrapeItem) -> None:
@@ -44,7 +44,7 @@ class RealDebridCrawler(Crawler):
         scrape_item.album_id = folder_id
         scrape_item.part_of_album = True
 
-        title = await self.create_title(f"{folder_id} [{original_url.host.lower()}]", None, None)
+        title = self.create_title(f"{folder_id} [{original_url.host.lower()}]", None, None)
         scrape_item.add_to_parent_title(title)
 
         async with self.request_limiter:
@@ -73,7 +73,7 @@ class RealDebridCrawler(Crawler):
         self_hosted = self.is_self_hosted(original_url)
 
         if not self_hosted:
-            title = await self.create_title(f"files [{original_url.host.lower()}]", None, None)
+            title = self.create_title(f"files [{original_url.host.lower()}]", None, None)
             scrape_item.part_of_album = True
             scrape_item.add_to_parent_title(title)
             async with self.request_limiter:

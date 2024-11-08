@@ -38,7 +38,7 @@ class XXXBunkerCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
+        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         # Old behavior, not worth it with such a bad rate_limit: modify URL to always start on page 1
         """
@@ -53,7 +53,7 @@ class XXXBunkerCrawler(Crawler):
         else:
             await self.video(scrape_item)
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
@@ -132,13 +132,13 @@ class XXXBunkerCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         if "favoritevideos" in scrape_item.url.parts:
-            title = await self.create_title(f"user {scrape_item.url.parts[2]} [favorites]", None, None)
+            title = self.create_title(f"user {scrape_item.url.parts[2]} [favorites]", None, None)
 
         elif "search" in scrape_item.url.parts:
-            title = await self.create_title(f"{scrape_item.url.parts[2].replace('+', ' ')} [search]", None, None)
+            title = self.create_title(f"{scrape_item.url.parts[2].replace('+', ' ')} [search]", None, None)
 
         elif len(scrape_item.url.parts) >= 2:
-            title = await self.create_title(f"{scrape_item.url.parts[2]} [categorie]", None, None)
+            title = self.create_title(f"{scrape_item.url.parts[2]} [categorie]", None, None)
 
         # Not a valid URL
         else:

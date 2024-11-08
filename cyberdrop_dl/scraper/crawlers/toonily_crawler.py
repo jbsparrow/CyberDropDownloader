@@ -29,7 +29,7 @@ class ToonilyCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
+        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         if "chapter" in scrape_item.url.name:
             await self.chapter(scrape_item)
@@ -38,7 +38,7 @@ class ToonilyCrawler(Crawler):
         else:
             await self.handle_direct_link(scrape_item)
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def series(self, scrape_item: ScrapeItem) -> None:
@@ -93,7 +93,7 @@ class ToonilyCrawler(Crawler):
         title_parts = soup.select_one("title").get_text().split(" - ")
         series_name = title_parts[0]
         chapter_title = title_parts[1]
-        series_title = await self.create_title(series_name, None, None)
+        series_title = self.create_title(series_name, None, None)
         scrape_item.add_to_parent_title(series_title)
         scrape_item.add_to_parent_title(chapter_title)
 

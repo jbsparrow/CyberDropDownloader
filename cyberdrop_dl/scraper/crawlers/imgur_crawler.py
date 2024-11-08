@@ -29,7 +29,7 @@ class ImgurCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
+        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         if "i.imgur.com" in scrape_item.url.host:
             await self.handle_direct(scrape_item)
@@ -38,7 +38,7 @@ class ImgurCrawler(Crawler):
         else:
             await self.image(scrape_item)
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
@@ -67,7 +67,7 @@ class ImgurCrawler(Crawler):
                 origin=scrape_item,
             )
         title_part = JSON_Obj["data"].get("title", album_id)
-        title = await self.create_title(title_part, scrape_item.url.parts[2], None)
+        title = self.create_title(title_part, scrape_item.url.parts[2], None)
 
         async with self.request_limiter:
             JSON_Obj = await self.client.get_json(

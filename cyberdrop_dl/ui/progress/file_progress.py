@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
-async def adjust_title(s: str, length: int = 40, placeholder: str = "...") -> str:
+def adjust_title(s: str, length: int = 40, placeholder: str = "...") -> str:
     """Collapse and truncate or pad the given string to fit in the given length."""
     return f"{s[:length - len(placeholder)]}{placeholder}" if len(s) >= length else s.ljust(length)
 
@@ -67,11 +67,11 @@ class FileProgress:
         self.tasks_visibility_limit = visible_tasks_limit
         self.downloaded_data = 0
 
-    async def get_progress(self) -> Panel:
+    def get_progress(self) -> Panel:
         """Returns the progress bar."""
         return Panel(self.progress_group, title="Downloads", border_style="green", padding=(1, 1))
 
-    async def get_queue_length(self) -> int:
+    def get_queue_length(self) -> int:
         """Returns the number of tasks in the downloader queue."""
         total = 0
 
@@ -81,7 +81,7 @@ class FileProgress:
 
         return total
 
-    async def redraw(self, passed: bool = False) -> None:
+    def redraw(self, passed: bool = False) -> None:
         """Redraws the progress bar."""
         while len(self.visible_tasks) > self.tasks_visibility_limit:
             task_id = self.visible_tasks.pop(0)
@@ -105,7 +105,7 @@ class FileProgress:
         else:
             self.overflow.update(self.overflow_task_id, visible=False)
 
-        queue_length = await self.get_queue_length()
+        queue_length = self.get_queue_length()
         if queue_length > 0:
             self.queue.update(
                 self.queue_task_id,
@@ -116,13 +116,13 @@ class FileProgress:
             self.queue.update(self.queue_task_id, visible=False)
 
         if not passed:
-            await self.manager.progress_manager.scraping_progress.redraw(True)
+            self.manager.progress_manager.scraping_progress.redraw(True)
 
-    async def add_task(self, file: str, expected_size: int | None) -> TaskID:
+    def add_task(self, file: str, expected_size: int | None) -> TaskID:
         """Adds a new task to the progress bar."""
         description = file.split("/")[-1]
         description = description.encode("ascii", "ignore").decode().strip()
-        description = await adjust_title(description)
+        description = adjust_title(description)
 
         if len(self.visible_tasks) >= self.tasks_visibility_limit:
             task_id = self.progress.add_task(
@@ -137,10 +137,10 @@ class FileProgress:
                 total=expected_size,
             )
             self.visible_tasks.append(task_id)
-        await self.redraw()
+        self.redraw()
         return task_id
 
-    async def remove_file(self, task_id: TaskID) -> None:
+    def remove_file(self, task_id: TaskID) -> None:
         """Removes the given task from the progress bar."""
         if task_id in self.visible_tasks:
             self.visible_tasks.remove(task_id)
@@ -152,13 +152,13 @@ class FileProgress:
         else:
             msg = "Task ID not found"
             raise ValueError(msg)
-        await self.redraw()
+        self.redraw()
 
-    async def advance_file(self, task_id: TaskID, amount: int) -> None:
+    def advance_file(self, task_id: TaskID, amount: int) -> None:
         """Advances the progress of the given task by the given amount."""
         self.downloaded_data += amount
         if task_id in self.uninitiated_tasks:
             self.uninitiated_tasks.remove(task_id)
             self.invisible_tasks.append(task_id)
-            await self.redraw()
+            self.redraw()
         self.progress.advance(task_id, amount)

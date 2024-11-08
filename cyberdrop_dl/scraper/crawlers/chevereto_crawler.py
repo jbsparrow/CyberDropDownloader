@@ -66,7 +66,7 @@ class CheveretoCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
+        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         if await self.check_direct_link(scrape_item.url):
             await self.handle_direct_link(scrape_item)
@@ -81,7 +81,7 @@ class CheveretoCrawler(Crawler):
             else:
                 await self.profile(scrape_item)
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
@@ -89,7 +89,7 @@ class CheveretoCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        title = await self.create_title(soup.select_one(self.profile_title_selector).get("content"), None, None)
+        title = self.create_title(soup.select_one(self.profile_title_selector).get("content"), None, None)
 
         async for soup in self.web_pager(scrape_item.url):
             links = soup.select(self.profile_item_selector)
@@ -142,7 +142,7 @@ class CheveretoCrawler(Crawler):
         if "This content is password protected" in sub_albums_soup.text:
             raise PasswordProtectedError(message="Wrong password" if password else None, origin=scrape_item)
 
-        title = await self.create_title(
+        title = self.create_title(
             sub_albums_soup.select_one(self.album_title_selector).get_text(),
             album_id,
             None,

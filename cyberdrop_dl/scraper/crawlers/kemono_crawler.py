@@ -32,7 +32,7 @@ class KemonoCrawler(Crawler):
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
+        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         if "thumbnails" in scrape_item.url.parts:
             parts = [x for x in scrape_item.url.parts if x not in ("thumbnail", "/")]
@@ -48,7 +48,7 @@ class KemonoCrawler(Crawler):
         else:
             await self.handle_direct_link(scrape_item)
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
@@ -150,12 +150,12 @@ class KemonoCrawler(Crawler):
             await self.create_new_scrape_item(link, scrape_item, user_str, post_title, post_id, date)
 
         files = []
-        if post.get('file'):
-            files.append(post['file'])
+        if post.get("file"):
+            files.append(post["file"])
 
-        if post.get('attachments'):
-            files.extend(post['attachments'])
-            
+        if post.get("attachments"):
+            files.extend(post["attachments"])
+
         for file in files:
             if scrape_item.children_limit:
                 if scrape_item.children >= scrape_item.children_limit:
@@ -181,7 +181,7 @@ class KemonoCrawler(Crawler):
             if self.manager.config_manager.settings_data["Download_Options"]["include_album_id_in_folder_name"]:
                 post_title = post_id + " - " + post_title
 
-        new_title = await self.create_title(user, None, None)
+        new_title = self.create_title(user, None, None)
         scrape_item = await self.create_scrape_item(
             scrape_item,
             scrape_item.url,
@@ -252,7 +252,7 @@ class KemonoCrawler(Crawler):
             if self.manager.config_manager.settings_data["Download_Options"]["include_album_id_in_folder_name"]:
                 post_title = post_id + " - " + post_title
 
-        new_title = await self.create_title(user, None, None)
+        new_title = self.create_title(user, None, None)
         new_scrape_item = await self.create_scrape_item(
             old_scrape_item,
             link,

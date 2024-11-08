@@ -41,11 +41,11 @@ class DownloadsProgress:
             subtitle=f"Total Files: [white]{self.total_files}",
         )
 
-    async def get_progress(self) -> Panel:
+    def get_progress(self) -> Panel:
         """Returns the progress bar."""
         return self.panel
 
-    async def update_total(self) -> None:
+    def update_total(self) -> None:
         """Updates the total number of files to be downloaded."""
         self.total_files = self.total_files + 1
         self.progress.update(self.completed_files_task_id, total=self.total_files)
@@ -54,24 +54,24 @@ class DownloadsProgress:
         self.progress.update(self.failed_files_task_id, total=self.total_files)
         self.panel.subtitle = f"Total Files: [white]{self.total_files}"
 
-    async def add_completed(self) -> None:
+    def add_completed(self) -> None:
         """Adds a completed file to the progress bar."""
         self.progress.advance(self.completed_files_task_id, 1)
         self.completed_files += 1
 
-    async def add_previously_completed(self, increase_total: bool = True) -> None:
+    def add_previously_completed(self, increase_total: bool = True) -> None:
         """Adds a previously completed file to the progress bar."""
         if increase_total:
-            await self.update_total()
+            self.update_total()
         self.previously_completed_files += 1
         self.progress.advance(self.previously_completed_files_task_id, 1)
 
-    async def add_skipped(self) -> None:
+    def add_skipped(self) -> None:
         """Adds a skipped file to the progress bar."""
         self.progress.advance(self.skipped_files_task_id, 1)
         self.skipped_files += 1
 
-    async def add_failed(self) -> None:
+    def add_failed(self) -> None:
         """Adds a failed file to the progress bar."""
         self.progress.advance(self.failed_files_task_id, 1)
         self.failed_files += 1
