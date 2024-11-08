@@ -157,9 +157,8 @@ class KemonoCrawler(Crawler):
             files.extend(post["attachments"])
 
         for file in files:
-            if scrape_item.children_limit:
-                if scrape_item.children >= scrape_item.children_limit:
-                    raise MaxChildrenError(origin=scrape_item)
+            if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
+                raise MaxChildrenError(origin=scrape_item)
             await handle_file(file)
             scrape_item.children += 1
 

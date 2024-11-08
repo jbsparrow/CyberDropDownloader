@@ -25,12 +25,12 @@ def transfer_v4_config(manager: Manager, old_config_path: Path, new_config_name:
     new_auth_data = manager.config_manager.authentication_data
     new_user_data = copy.deepcopy(settings)
 
-    from cyberdrop_dl.managers.path_manager import APP_STORAGE, DOWNLOAD_STORAGE
+    from cyberdrop_dl.managers.path_manager import constants
 
-    new_user_data["Files"]["input_file"] = APP_STORAGE / "Configs" / new_config_name / "URLs.txt"
-    new_user_data["Files"]["download_folder"] = DOWNLOAD_STORAGE / "Cyberdrop-DL Downloads"
-    new_user_data["Logs"]["log_folder"] = APP_STORAGE / "Configs" / new_config_name / "Logs"
-    new_user_data["Sorting"]["sort_folder"] = DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"
+    new_user_data["Files"]["input_file"] = constants.APP_STORAGE / "Configs" / new_config_name / "URLs.txt"
+    new_user_data["Files"]["download_folder"] = constants.DOWNLOAD_STORAGE / "Cyberdrop-DL Downloads"
+    new_user_data["Logs"]["log_folder"] = constants.APP_STORAGE / "Configs" / new_config_name / "Logs"
+    new_user_data["Sorting"]["sort_folder"] = constants.DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"
 
     new_global_data = manager.config_manager.global_settings_data
     old_data = _load_yaml(old_config_path)

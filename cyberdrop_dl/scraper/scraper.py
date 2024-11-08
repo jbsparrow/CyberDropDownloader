@@ -409,7 +409,7 @@ class ScrapeMapper:
         return yarl_links
 
     async def parse_input_file_groups(self) -> dict[str, URL]:
-        """Split URLs from input file by their groups"""
+        """Split URLs from input file by their groups."""
         input_file = self.manager.path_manager.input_file
         links = {"": []}
         block_quote = False

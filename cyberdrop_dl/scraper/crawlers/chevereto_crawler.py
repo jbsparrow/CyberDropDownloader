@@ -3,7 +3,7 @@ from __future__ import annotations
 import calendar
 import datetime
 import re
-from typing import TYPE_CHECKING, AsyncGenerator
+from typing import TYPE_CHECKING, AsyncGenerator, ClassVar
 
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
@@ -48,7 +48,11 @@ class CheveretoCrawler(Crawler):
         "img.kiwi": URL("https://img.kiwi"),
     }
 
-    FOLDER_DOMAINS = {"imagepond.net": "ImagePond", "jpg.church": "JPGChurch", "img.kiwi": "ImgKiwi"}
+    FOLDER_DOMAINS: ClassVar[dict[str, str]] = {
+        "imagepond.net": "ImagePond",
+        "jpg.church": "JPGChurch",
+        "img.kiwi": "ImgKiwi",
+    }
 
     DOMAINS = PRIMARY_BASE_DOMAINS.keys() | JPG_CHURCH_DOMAINS
 

@@ -94,7 +94,7 @@ class InsufficientFreeSpaceError(CDLBaseError):
 class RestrictedFiletypeError(CDLBaseError):
     def __init__(self, origin: ScrapeItem | URL | None = None) -> None:
         """This error will be thrown when has a filytpe not allowed by config."""
-        ui_message = "Insufficient Free Space"
+        ui_message = "Restricted Filetype"
         super().__init__(ui_message, origin=origin)
 
 

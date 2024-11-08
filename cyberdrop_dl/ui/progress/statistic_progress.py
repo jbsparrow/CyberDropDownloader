@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from http import HTTPStatus
-from typing import NamedTuple, Union
+from typing import NamedTuple
 
 from rich.console import Group
 from rich.panel import Panel
@@ -81,7 +83,7 @@ class DownloadStatsProgress:
                     completed=task.completed,
                 )
 
-    def add_failure(self, failure_type: Union[str, int]) -> None:
+    def add_failure(self, failure_type: str | int) -> None:
         """Adds a failed file to the progress bar."""
         self.failed_files += 1
         if isinstance(failure_type, int):
@@ -159,7 +161,7 @@ class ScrapeStatsProgress:
                     completed=task.completed,
                 )
 
-    def add_failure(self, failure_type: Union[str, int]) -> None:
+    def add_failure(self, failure_type: str | int) -> None:
         """Adds a failed site to the progress bar."""
         self.failed_files += 1
         if isinstance(failure_type, int):

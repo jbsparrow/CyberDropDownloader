@@ -47,11 +47,11 @@ def startup() -> Manager:
 
     except InvalidYamlError as e:
         print_to_console(e.message_rich)
-        exit(1)
+        sys.exit(1)
 
     except KeyboardInterrupt:
         print_to_console("Exiting...")
-        exit(0)
+        sys.exit(0)
 
 
 async def runtime(manager: Manager) -> None:
@@ -225,7 +225,7 @@ def main() -> None:
             print_to_console("Trying to Exit ...")
             with contextlib.suppress(Exception):
                 asyncio.run(manager.close())
-            exit(1)
+            sys.exit(1)
     loop.close()
     sys.exit(0)
 

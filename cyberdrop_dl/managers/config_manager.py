@@ -107,14 +107,16 @@ class ConfigManager:
         if self.settings.is_file():
             self._verify_settings_config()
         else:
-            from cyberdrop_dl.managers.path_manager import APP_STORAGE, DOWNLOAD_STORAGE
+            from cyberdrop_dl.utils import constants
 
             self.settings_data = copy.deepcopy(settings)
-            self.settings_data["Files"]["input_file"] = APP_STORAGE / "Configs" / self.loaded_config / "URLs.txt"
-            self.settings_data["Files"]["download_folder"] = DOWNLOAD_STORAGE / "Cyberdrop-DL Downloads"
-            self.settings_data["Logs"]["log_folder"] = APP_STORAGE / "Configs" / self.loaded_config / "Logs"
+            self.settings_data["Files"]["input_file"] = (
+                constants.APP_STORAGE / "Configs" / self.loaded_config / "URLs.txt"
+            )
+            self.settings_data["Files"]["download_folder"] = constants.DOWNLOAD_STORAGE / "Cyberdrop-DL Downloads"
+            self.settings_data["Logs"]["log_folder"] = constants.APP_STORAGE / "Configs" / self.loaded_config / "Logs"
             self.settings_data["Logs"]["webhook_url"] = ""
-            self.settings_data["Sorting"]["sort_folder"] = DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"
+            self.settings_data["Sorting"]["sort_folder"] = constants.DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"
             self.settings_data["Sorting"]["scan_folder"] = None
             self.write_updated_settings_config()
 

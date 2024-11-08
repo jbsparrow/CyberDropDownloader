@@ -1,5 +1,6 @@
 import re
 from enum import IntEnum
+from pathlib import Path
 
 from rich.text import Text
 
@@ -21,7 +22,6 @@ RICH_HANDLER_DEBUG_CONFIG = {
     "locals_max_length": 20,
 }
 
-BLOCKED_DOMAINS = ("facebook", "instagram", "fbcdn")
 
 # regex
 RAR_MULTIPART_PATTERN = re.compile(r"^part\d+")
@@ -35,12 +35,17 @@ class CustomHTTPStatus(IntEnum):
     DDOS_GUARD = 429
 
 
+BLOCKED_DOMAINS = ("facebook", "instagram", "fbcdn")
+
 STYLE_TO_DIFF_FORMAT_MAP = {
     "default": "{}",
     "green": "+   {}",
     "red": "-   {}",
     "yellow": "*** {}",
 }
+
+APP_STORAGE = Path("./AppData")
+DOWNLOAD_STORAGE = Path("./Downloads")
 
 
 # Pypi

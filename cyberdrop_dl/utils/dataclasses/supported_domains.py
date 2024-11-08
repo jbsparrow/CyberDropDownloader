@@ -74,7 +74,7 @@ class SupportedDomains:
         "nudostar.com",
         "xbunker.nu",
     )
-    supported_forums_map = {
+    supported_forums_map: ClassVar[dict[str, str]] = {
         "celebforum.to": "celebforum",
         "f95zone.to": "f95zone",
         "forums.socialmediagirls.com": "socialmediagirls",

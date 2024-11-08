@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from cyberdrop_dl.managers.path_manager import APP_STORAGE, DOWNLOAD_STORAGE
+from cyberdrop_dl.utils import constants
 
 authentication_settings: dict = {
     "Forums": {
@@ -71,11 +71,11 @@ settings: dict = {
         "maximum_number_of_children": [],
     },
     "Files": {
-        "input_file": str(APP_STORAGE / "Configs" / "{config}" / "URLs.txt"),
-        "download_folder": str(DOWNLOAD_STORAGE),
+        "input_file": str(constants.APP_STORAGE / "Configs" / "{config}" / "URLs.txt"),
+        "download_folder": str(constants.DOWNLOAD_STORAGE),
     },
     "Logs": {
-        "log_folder": str(APP_STORAGE / "Configs" / "{config}" / "Logs"),
+        "log_folder": str(constants.APP_STORAGE / "Configs" / "{config}" / "Logs"),
         "webhook_url": "",
         "main_log_filename": "downloader.log",
         "last_forum_post_filename": "Last_Scraped_Forum_Posts.csv",
@@ -116,7 +116,7 @@ settings: dict = {
     },
     "Sorting": {
         "sort_downloads": False,
-        "sort_folder": str(DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"),
+        "sort_folder": str(constants.DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"),
         "scan_folder": None,
         "sort_cdl_only": True,
         "sort_incremementer_format": " ({i})",

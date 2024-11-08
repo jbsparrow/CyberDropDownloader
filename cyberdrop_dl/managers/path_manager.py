@@ -5,19 +5,17 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from cyberdrop_dl.utils.constants import DEBUG_VAR
+from cyberdrop_dl.utils import constants
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem
 
-APP_STORAGE = Path("./AppData")
-DOWNLOAD_STORAGE = Path("./Downloads")
 
-if DEBUG_VAR and Path.cwd().name == "cyberdrop_dl":
+if constants.DEBUG_VAR and Path.cwd().name == "cyberdrop_dl":
     """This is for testing purposes only"""
-    APP_STORAGE = Path("../AppData")
-    DOWNLOAD_STORAGE = Path("../Downloads")
+    constants.APP_STORAGE = Path("../AppData")
+    constants.DOWNLOAD_STORAGE = Path("../Downloads")
 
 
 class PathManager:
@@ -48,11 +46,10 @@ class PathManager:
 
     def pre_startup(self) -> None:
         if self.manager.args_manager.appdata_dir:
-            global APP_STORAGE
-            APP_STORAGE = Path(self.manager.args_manager.appdata_dir) / "AppData"
+            constants.APP_STORAGE = Path(self.manager.args_manager.appdata_dir) / "AppData"
 
-        self.cache_dir = APP_STORAGE / "Cache"
-        self.config_dir = APP_STORAGE / "Configs"
+        self.cache_dir = constants.APP_STORAGE / "Cache"
+        self.config_dir = constants.APP_STORAGE / "Configs"
 
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.config_dir.mkdir(parents=True, exist_ok=True)

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import platformdirs
 import yaml
 
-from cyberdrop_dl.managers.path_manager import APP_STORAGE, DOWNLOAD_STORAGE
+from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.transfer.transfer_v4_db import transfer_v4_db
 
 if TYPE_CHECKING:
@@ -21,11 +21,11 @@ class TransitionManager:
 
     def startup(self) -> None:
         """Startup."""
-        OLD_APP_STORAGE: Path = Path(platformdirs.user_config_dir("Cyberdrop-DL"))
+        OLD_APP_STORAGE = Path(platformdirs.user_config_dir("Cyberdrop-DL"))
         OLD_DOWNLOAD_STORAGE = Path(platformdirs.user_downloads_path()) / "Cyberdrop-DL Downloads"
 
-        if APP_STORAGE.exists():
-            cache_file = APP_STORAGE / "Cache" / "cache.yaml"
+        if constants.APP_STORAGE.exists():
+            cache_file = constants.APP_STORAGE / "Cache" / "cache.yaml"
             if cache_file.is_file() and self.check_cache_for_moved(cache_file):
                 return
 
@@ -33,29 +33,31 @@ class TransitionManager:
         OLD_FILES.mkdir(parents=True, exist_ok=True)
 
         if OLD_APP_STORAGE.exists():
-            if APP_STORAGE.exists():
-                if APP_STORAGE.with_name("AppData_OLD").exists():
-                    APP_STORAGE.rename(APP_STORAGE.with_name("AppData_OLD2"))
-                APP_STORAGE.rename(APP_STORAGE.with_name("AppData_OLD"))
-            shutil.copytree(OLD_APP_STORAGE, APP_STORAGE, dirs_exist_ok=True)
+            if constants.APP_STORAGE.exists():
+                if constants.APP_STORAGE.with_name("AppData_OLD").exists():
+                    constants.APP_STORAGE.rename(constants.APP_STORAGE.with_name("AppData_OLD2"))
+                constants.APP_STORAGE.rename(constants.APP_STORAGE.with_name("AppData_OLD"))
+            shutil.copytree(OLD_APP_STORAGE, constants.APP_STORAGE, dirs_exist_ok=True)
             shutil.rmtree(OLD_APP_STORAGE)
 
         if OLD_DOWNLOAD_STORAGE.exists():
-            shutil.copytree(OLD_DOWNLOAD_STORAGE, DOWNLOAD_STORAGE, dirs_exist_ok=True)
+            shutil.copytree(OLD_DOWNLOAD_STORAGE, constants.DOWNLOAD_STORAGE, dirs_exist_ok=True)
             shutil.rmtree(OLD_DOWNLOAD_STORAGE)
 
         if Path("./download_history.sqlite").is_file():
-            transfer_v4_db(Path("./download_history.sqlite"), APP_STORAGE / "Cache" / "cyberdrop.db")
+            transfer_v4_db(Path("./download_history.sqlite"), constants.APP_STORAGE / "Cache" / "cyberdrop.db")
             Path("./download_history.sqlite").rename(OLD_FILES / "download_history1.sqlite")
 
-        if (APP_STORAGE / "download_history.sqlite").is_file():
-            transfer_v4_db(APP_STORAGE / "download_history.sqlite", APP_STORAGE / "Cache" / "cyberdrop.db")
-            (APP_STORAGE / "download_history.sqlite").rename(OLD_FILES / "download_history2.sqlite")
+        if (constants.APP_STORAGE / "download_history.sqlite").is_file():
+            transfer_v4_db(
+                constants.APP_STORAGE / "download_history.sqlite", constants.APP_STORAGE / "Cache" / "cyberdrop.db"
+            )
+            (constants.APP_STORAGE / "download_history.sqlite").rename(OLD_FILES / "download_history2.sqlite")
 
         if Path("./config.yaml").is_file():
             try:
                 self.transfer_v4_config(Path("./config.yaml"), "Imported V4")
-                self.update_default_config(APP_STORAGE / "Cache" / "cache.yaml", "Imported V4")
+                self.update_default_config(constants.APP_STORAGE / "Cache" / "cache.yaml", "Imported V4")
             except OSError:
                 pass
             Path("./config.yaml").rename(OLD_FILES / "config.yaml")
@@ -69,7 +71,7 @@ class TransitionManager:
         if Path("./Unsupported_URLs.csv").is_file():
             Path("./Unsupported_URLs.csv").rename(OLD_FILES / "Unsupported_URLs.csv")
 
-        self.update_cache(APP_STORAGE / "Cache" / "cache.yaml")
+        self.update_cache(constants.APP_STORAGE / "Cache" / "cache.yaml")
 
     @staticmethod
     def check_cache_for_moved(cache_file: Path) -> bool:
@@ -120,10 +122,10 @@ class TransitionManager:
         if Path("./URLs.txt").is_file():
             new_user_data["Files"]["input_file"] = Path("./URLs.txt")
         else:
-            new_user_data["Files"]["input_file"] = APP_STORAGE / "Configs" / new_config_name / "URLs.txt"
-        new_user_data["Files"]["download_folder"] = DOWNLOAD_STORAGE
-        new_user_data["Logs"]["log_folder"] = APP_STORAGE / "Configs" / new_config_name / "Logs"
-        new_user_data["Sorting"]["sort_folder"] = DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"
+            new_user_data["Files"]["input_file"] = constants.APP_STORAGE / "Configs" / new_config_name / "URLs.txt"
+        new_user_data["Files"]["download_folder"] = constants.DOWNLOAD_STORAGE
+        new_user_data["Logs"]["log_folder"] = constants.APP_STORAGE / "Configs" / new_config_name / "Logs"
+        new_user_data["Sorting"]["sort_folder"] = constants.DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"
 
         with old_config_path.open() as yaml_file:
             old_data = yaml.load(yaml_file.read(), Loader=yaml.FullLoader)
@@ -220,13 +222,13 @@ class TransitionManager:
         new_user_data["Sorting"]["sort_folder"] = str(new_user_data["Sorting"]["sort_folder"])
 
         # Write config
-        new_config_path = APP_STORAGE / "Configs" / new_config_name / "settings.yaml"
+        new_config_path = constants.APP_STORAGE / "Configs" / new_config_name / "settings.yaml"
         new_config_path.parent.mkdir(parents=True, exist_ok=True)
         with new_config_path.open("w") as yaml_file:
             yaml.dump(new_user_data, yaml_file)
-        new_auth_path = APP_STORAGE / "Configs" / "authentication.yaml"
+        new_auth_path = constants.APP_STORAGE / "Configs" / "authentication.yaml"
         with new_auth_path.open("w") as yaml_file:
             yaml.dump(new_auth_data, yaml_file)
-        new_global_settings_path = APP_STORAGE / "Configs" / "global_settings.yaml"
+        new_global_settings_path = constants.APP_STORAGE / "Configs" / "global_settings.yaml"
         with new_global_settings_path.open("w") as yaml_file:
             yaml.dump(new_global_settings_data, yaml_file)

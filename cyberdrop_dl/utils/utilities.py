@@ -146,7 +146,7 @@ def remove_file_id(manager: Manager, filename: str, ext: str) -> tuple[str, str]
 
 
 def parse_bytes(size: int) -> tuple[int, str]:
-    """Get human repr of bytes as a tuple of (VALUE , UNIT)"""
+    """Get human repr of bytes as a tuple of (VALUE , UNIT)."""
     for unit in ["B", "KB", "MB", "GB", "TB", "PB", "EB"]:
         if size < 1024:
             return size, unit
