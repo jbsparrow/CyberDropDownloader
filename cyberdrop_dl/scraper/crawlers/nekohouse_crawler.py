@@ -189,7 +189,7 @@ class NekohouseCrawler(Crawler):
     @error_handling_wrapper
     async def handle_post_content(self, scrape_item: ScrapeItem, post: Dict, user: str, user_str: str) -> None:
         """Handles the content of a post"""
-        date = post["published"].replace("T", " ")
+        date = post.get("published", datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")).replace("T", " ")
         post_id = post["id"]
         post_title = post.get("title", "")
 
