@@ -40,6 +40,7 @@ class MediaItem:
         self.original_filename: str = str(original_filename) if original_filename else self.filename
         self.file_lock_reference_name: str = field(init=False)
         self.datetime: str = field(init=False)
+        self.parents = origin.parents.copy()
 
         self.filesize: int = field(init=False)
         self.current_attempt: int = field(init=False)
