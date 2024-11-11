@@ -82,8 +82,7 @@ class ScraperClient:
         url: URL,
         client_session: ClientSession,
         origin: ScrapeItem | URL | None = None,
-        with_response_url: bool = False,
-    ) -> tuple[str, URL | None]:
+    ) -> tuple[BeautifulSoup, URL]:
         """Returns the resolved URL from the given URL."""
         if not self.client_manager.flaresolverr:
             raise DDOSGuardError(message="FlareSolverr is not configured", origin=origin)
@@ -104,10 +103,12 @@ class ScraperClient:
                 raise DDOSGuardError(message="Failed to resolve URL with flaresolverr", origin=origin)
 
             solution: dict = json_obj.get("solution")
-            response: str = solution.get("response")
-            response_url = solution.get("url") if with_response_url else None
-            if response_url:
-                response_url = URL(response_url)
+            response = BeautifulSoup(solution.get("response"), "html.parser")
+            response_url = URL(solution.get("url"))
+
+            if self.client_manager.check_ddos_guard(response):
+                raise DDOSGuardError(message="Invalid response from flaresolverr", origin=origin)
+
             return response, response_url
 
     @limiter
@@ -133,11 +134,10 @@ class ScraperClient:
                     domain,
                     url,
                     origin=origin,
-                    with_response_url=with_response_url,
                 )
                 if with_response_url:
-                    return BeautifulSoup(response, "html.parser"), response_URL
-                return BeautifulSoup(response, "html.parser")
+                    return response, response_URL
+                return response
 
             content_type = response.headers.get("Content-Type")
             assert content_type is not None
@@ -202,8 +202,8 @@ class ScraperClient:
             try:
                 await self.client_manager.check_http_status(response, origin=origin)
             except DDOSGuardError:
-                response_text, _ = await self.flaresolverr(domain, url)
-                return response_text
+                response_text, _ = await self.flaresolverr(domain, url, origin=origin)
+                return str(response_text)
             return await response.text()
 
     @limiter

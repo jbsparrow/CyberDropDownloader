@@ -10,6 +10,7 @@ import aiohttp
 import certifi
 from aiohttp import ClientResponse, ContentTypeError
 from aiolimiter import AsyncLimiter
+from bs4 import BeautifulSoup
 
 from cyberdrop_dl.clients.download_client import DownloadClient
 from cyberdrop_dl.clients.errors import DDOSGuardError, DownloadError, ScrapeError
@@ -18,6 +19,7 @@ from cyberdrop_dl.managers.leaky import LeakyBucket
 from cyberdrop_dl.utils.constants import CustomHTTPStatus
 
 if TYPE_CHECKING:
+    from bs4 import BeautifulSoup
     from yarl import URL
 
     from cyberdrop_dl.managers.manager import Manager
@@ -27,6 +29,18 @@ DOWNLOAD_ERROR_ETAGS = {
     "d835884373f4d6c8f24742ceabe74946": "Imgur image has been removed",
     "65b7753c-528a": "SC Scrape Image",
 }
+
+DDOS_GUARD_CHALLENGE_TITLES = ["Just a moment...", "DDoS-Guard"]
+DDOS_GUARD_CHALLENGE_SELECTORS = [
+    "#cf-challenge-running",
+    ".ray_id",
+    ".attack-box",
+    "#cf-please-wait",
+    "#challenge-spinner",
+    "#trk_jschal_js",
+    "#turnstile-wrapper",
+    ".lds-ring",
+]
 
 
 class ClientManager:
@@ -105,8 +119,9 @@ class ClientManager:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @staticmethod
+    @classmethod
     async def check_http_status(
+        cls,
         response: ClientResponse,
         download: bool = False,
         origin: ScrapeItem | URL | None = None,
@@ -132,7 +147,8 @@ class ClientManager:
 
         with contextlib.suppress(UnicodeDecodeError):
             response_text = await response.text()
-            if "<title>DDoS-Guard</title>" in response_text:
+            soup = BeautifulSoup(response_text)
+            if cls.check_ddos_guard(soup):
                 raise DDOSGuardError(origin=origin)
 
         status = status if headers.get("Content-Type") else CustomHTTPStatus.IM_A_TEAPOT
@@ -147,3 +163,17 @@ class ClientManager:
 
     async def check_bucket(self, size: float) -> None:
         await self._leaky_bucket.acquire(size)
+
+    @staticmethod
+    def check_ddos_guard(soup: BeautifulSoup) -> bool:
+        for title in DDOS_GUARD_CHALLENGE_TITLES:
+            challenge_found = title.casefold() == soup.title.string.casefold()
+            if challenge_found:
+                return True
+
+        for selector in DDOS_GUARD_CHALLENGE_SELECTORS:
+            challenge_found = soup.find(selector)
+            if challenge_found:
+                return True
+
+        return False
