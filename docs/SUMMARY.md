@@ -20,3 +20,4 @@
   * [Settings](reference/configuration-options/settings.md)
   * [Global Settings](reference/configuration-options/global-settings.md)
 * [CLI Arguments](reference/cli-arguments.md)
+* [Notifications](reference/notifications.md)
