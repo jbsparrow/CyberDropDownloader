@@ -1,27 +1,86 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import ClassVar, Tuple, List
+from typing import ClassVar
 
 
 @dataclass
 class SupportedDomains:
-    """The allows options for domains to skip when scraping and mappings"""
-    supported_hosts: ClassVar[Tuple[str, ...]] = ("bunkr", "bunkrr", "celebforum", "coomer", "cyberdrop", "cyberfile",
-                                                "e-hentai", "erome", "fapello", "f95zone", "gofile", "hotpic",
-                                                "ibb.co", "imageban", "imgbox", "imgur", "img.kiwi", "jpg.church",
-                                                "jpg.homes", "jpg.fish", "jpg.fishing", "jpg.pet", "jpeg.pet",
-                                                "jpg1.su", "jpg2.su", "jpg3.su", "jpg4.su", "jpg5.su", "host.church",
-                                                "kemono",
-                                                "leakedmodels", "mediafire", "nudostar.com", "nudostar.tv",
-                                                "omegascans", "pimpandhost", "pixeldrain", "postimg", "realbooru",
-                                                "reddit", "redd.it", "redgifs", "rule34.xxx", "rule34.xyz",
-                                                "rule34vault", "saint",
-                                                "scrolller", "socialmediagirls", "toonily", "xbunker",
-                                                "xbunkr")
+    """The allows options for domains to skip when scraping and mappings."""
 
-    supported_forums: ClassVar[Tuple[str, ...]] = ("celebforum.to", "f95zone.to", "leakedmodels.com", "nudostar.com",
-                                                "forums.socialmediagirls.com", "xbunker.nu")
-    supported_forums_map = {"celebforum.to": "celebforum", "f95zone.to": "f95zone", "leakedmodels.com": "leakedmodels",
-                            "nudostar.com": "nudostar",
-                            "forums.socialmediagirls.com": "socialmediagirls", "xbunker.nu": "xbunker"}
+    supported_hosts: ClassVar[tuple[str, ...]] = (
+        "bunkr",
+        "bunkrr",
+        "celebforum",
+        "coomer",
+        "cyberdrop",
+        "cyberfile",
+        "e-hentai",
+        "erome",
+        "f95zone",
+        "fapello",
+        "gofile",
+        "host.church",
+        "hotpic",
+        "ibb.co",
+        "imageban",
+        "imagepond.net",
+        "img.kiwi",
+        "imgbox",
+        "imgur",
+        "jpeg.pet",
+        "jpg.church",
+        "jpg.fish",
+        "jpg.fishing",
+        "jpg.homes",
+        "jpg.pet",
+        "jpg1.su",
+        "jpg2.su",
+        "jpg3.su",
+        "jpg4.su",
+        "jpg5.su",
+        "kemono",
+        "leakedmodels",
+        "mediafire",
+        "nudostar.com",
+        "nudostar.tv",
+        "omegascans",
+        "pimpandhost",
+        "pixeldrain",
+        "postimg",
+        "realbooru",
+        "real-debrid",
+        "redd.it",
+        "reddit",
+        "redgifs",
+        "rule34.xxx",
+        "rule34.xyz",
+        "rule34vault",
+        "saint",
+        "scrolller",
+        "socialmediagirls",
+        "toonily",
+        "tokyomotion.net",
+        "xbunker",
+        "xbunkr",
+        "xxxbunker",
+    )
 
-    sites: List[str]
+    supported_forums: ClassVar[tuple[str, ...]] = (
+        "celebforum.to",
+        "f95zone.to",
+        "forums.socialmediagirls.com",
+        "leakedmodels.com",
+        "nudostar.com",
+        "xbunker.nu",
+    )
+    supported_forums_map: ClassVar[dict[str, str]] = {
+        "celebforum.to": "celebforum",
+        "f95zone.to": "f95zone",
+        "forums.socialmediagirls.com": "socialmediagirls",
+        "leakedmodels.com": "leakedmodels",
+        "nudostar.com": "nudostar",
+        "xbunker.nu": "xbunker",
+    }
+
+    sites: list[str]

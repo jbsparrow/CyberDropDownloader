@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-from typing import Dict
+from cyberdrop_dl.utils import constants
 
-from cyberdrop_dl.managers.path_manager import APP_STORAGE, DOWNLOAD_STORAGE
-
-authentication_settings: Dict = {
+authentication_settings: dict = {
     "Forums": {
         "celebforum_xf_user_cookie": "",
         "celebforum_username": "",
@@ -54,10 +52,10 @@ authentication_settings: Dict = {
     "Reddit": {
         "reddit_personal_use_script": "",
         "reddit_secret": "",
-    }
+    },
 }
 
-settings: Dict = {
+settings: dict = {
     "Download_Options": {
         "block_download_sub_folders": False,
         "disable_download_attempt_limit": False,
@@ -70,21 +68,21 @@ settings: Dict = {
         "separate_posts": False,
         "skip_download_mark_completed": False,
         "skip_referer_seen_before": False,
-        "maximum_number_of_children": []
+        "maximum_number_of_children": [],
     },
     "Files": {
-        "input_file": str(APP_STORAGE / "Configs" / "{config}" / "URLs.txt"),
-        "download_folder": str(DOWNLOAD_STORAGE),
+        "input_file": str(constants.APP_STORAGE / "Configs" / "{config}" / "URLs.txt"),
+        "download_folder": str(constants.DOWNLOAD_STORAGE),
     },
     "Logs": {
-        "log_folder": str(APP_STORAGE / "Configs" / "{config}" / "Logs"),
+        "log_folder": str(constants.APP_STORAGE / "Configs" / "{config}" / "Logs"),
         "webhook_url": "",
         "main_log_filename": "downloader.log",
         "last_forum_post_filename": "Last_Scraped_Forum_Posts.csv",
         "unsupported_urls_filename": "Unsupported_URLs.csv",
         "download_error_urls_filename": "Download_Error_URLs.csv",
         "scrape_error_urls_filename": "Scrape_Error_URLs.csv",
-        "rotate_logs": False
+        "rotate_logs": False,
     },
     "File_Size_Limits": {
         "maximum_image_size": 0,
@@ -114,11 +112,11 @@ settings: Dict = {
         "send_unsupported_to_jdownloader": False,
         "jdownloader_download_dir": None,
         "jdownloader_autostart": False,
-        "jdownloader_whitelist": []
+        "jdownloader_whitelist": [],
     },
     "Sorting": {
         "sort_downloads": False,
-        "sort_folder": str(DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"),
+        "sort_folder": str(constants.DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"),
         "scan_folder": None,
         "sort_cdl_only": True,
         "sort_incremementer_format": " ({i})",
@@ -126,10 +124,10 @@ settings: Dict = {
         "sorted_image": "{sort_dir}/{base_dir}/Images/{filename}{ext}",
         "sorted_other": "{sort_dir}/{base_dir}/Other/{filename}{ext}",
         "sorted_video": "{sort_dir}/{base_dir}/Videos/{filename}{ext}",
-    }
+    },
 }
 
-global_settings: Dict = {
+global_settings: dict = {
     "General": {
         "allow_insecure_connections": False,
         "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0",
@@ -147,23 +145,20 @@ global_settings: Dict = {
         "download_delay": 0.5,
         "max_simultaneous_downloads": 15,
         "max_simultaneous_downloads_per_domain": 3,
-        "download_speed_limit": 0
+        "download_speed_limit": 0,
     },
-    "Dupe_Cleanup_Options":
-        {
-            "delete_after_download": False,
-            "hash_while_downloading": False,
-            "keep_prev_download": False,
-            "keep_new_download": True,
-            "dedupe_already_downloaded": False,
-            "delete_off_disk": False
-
-        },
-
+    "Dupe_Cleanup_Options": {
+        "delete_after_download": False,
+        "hash_while_downloading": False,
+        "keep_prev_download": False,
+        "keep_new_download": True,
+        "dedupe_already_downloaded": False,
+        "delete_off_disk": False,
+    },
     "UI_Options": {
         "vi_mode": False,
         "refresh_rate": 10,
         "scraping_item_limit": 5,
         "downloading_item_limit": 5,
-    }
+    },
 }

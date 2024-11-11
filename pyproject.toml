@@ -43,7 +43,7 @@ ruff = "^0.7.2"
 
 [tool.ruff]
 line-length = 120
-fix = true
+target-version = "py311"
 
 [tool.ruff.lint]
 select = [

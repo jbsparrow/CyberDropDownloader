@@ -1,23 +1,25 @@
 from __future__ import annotations
 
+import contextlib
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
-from bs4 import Tag
 from yarl import URL
 
+from cyberdrop_dl.clients.errors import MaxChildrenError
 from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem, FORUM, FORUM_POST
-from cyberdrop_dl.utils.utilities import get_filename_and_ext, error_handling_wrapper, log
-from cyberdrop_dl.clients.errors import ScrapeItemMaxChildrenReached
+from cyberdrop_dl.utils.dataclasses.url_objects import FORUM, FORUM_POST, ScrapeItem
+from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
+    from bs4 import BeautifulSoup, Tag
+
     from cyberdrop_dl.managers.manager import Manager
-    from bs4 import BeautifulSoup
 
 
 class LeakedModelsCrawler(Crawler):
-    def __init__(self, manager: Manager):
+    def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "leakedmodels", "LeakedModels")
         self.primary_base_domain = URL("https://LeakedModels.com")
         self.logged_in = False
@@ -51,16 +53,17 @@ class LeakedModelsCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url"""
-        task_id = await self.scraping_progress.add_task(scrape_item.url)
+        """Determines where to send the scrape item based on the url."""
+        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         if "threads" in scrape_item.url.parts:
             if not self.logged_in:
                 login_url = self.primary_base_domain / "forum" / "login"
-                session_cookie = self.manager.config_manager.authentication_data['Forums'][
-                    'leakedmodels_xf_user_cookie']
-                username = self.manager.config_manager.authentication_data['Forums']['leakedmodels_username']
-                password = self.manager.config_manager.authentication_data['Forums']['leakedmodels_password']
+                session_cookie = self.manager.config_manager.authentication_data["Forums"][
+                    "leakedmodels_xf_user_cookie"
+                ]
+                username = self.manager.config_manager.authentication_data["Forums"]["leakedmodels_username"]
+                password = self.manager.config_manager.authentication_data["Forums"]["leakedmodels_password"]
                 wait_time = 5
 
                 await self.forum_login(login_url, session_cookie, username, password, wait_time)
@@ -68,58 +71,69 @@ class LeakedModelsCrawler(Crawler):
             if self.logged_in:
                 await self.forum(scrape_item)
             else:
-                await log("LeakedModels login failed. Skipping.", 40)
+                log("LeakedModels login failed. Skipping.", 40)
         else:
-            await log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
-            await self.manager.log_manager.write_unsupported_urls_log(scrape_item.url, scrape_item.parents[
-                0] if scrape_item.parents else None)
+            log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
+            await self.manager.log_manager.write_unsupported_urls_log(
+                scrape_item.url,
+                scrape_item.parents[0] if scrape_item.parents else None,
+            )
 
-        await self.scraping_progress.remove_task(task_id)
+        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def forum(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album"""
+        """Scrapes an album."""
         continue_scraping = True
 
         thread_url = scrape_item.url
         post_number = 0
         scrape_item.type = FORUM
         scrape_item.children = scrape_item.children_limit = 0
-        
-        try:
-            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
-        except (IndexError, TypeError):
-            pass
-        if len(scrape_item.url.parts) > 4:
-            if "post-" in str(scrape_item.url.parts[4]) or "post-" in scrape_item.url.fragment:
-                url_parts = str(scrape_item.url).rsplit("post-", 1)
-                thread_url = URL(url_parts[0].rstrip("#"))
-                post_number = int(url_parts[-1].strip("/")) if len(url_parts) == 2 else 0
+
+        with contextlib.suppress(IndexError, TypeError):
+            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
+                "maximum_number_of_children"
+            ][scrape_item.type]
+        post_sections = (scrape_item.url.parts[3], scrape_item.url.fragment)
+        if len(scrape_item.url.parts) > 3 and any("post-" in sec for sec in post_sections):
+            url_parts = str(scrape_item.url).rsplit("post-", 1)
+            thread_url = URL(url_parts[0].rstrip("#"))
+            post_number = int(url_parts[-1].strip("/")) if len(url_parts) == 2 else 0
 
         current_post_number = 0
         while True:
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_BS4(self.domain, thread_url, origin=scrape_item)
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, thread_url, origin=scrape_item)
 
             title_block = soup.select_one(self.title_selector)
             for elem in title_block.find_all(self.title_trash_selector):
                 elem.decompose()
 
-            thread_id = thread_url.parts[2].split('.')[-1]
-            title = await self.create_title(title_block.text.replace("\n", ""), None, thread_id)
+            thread_id = thread_url.parts[2].split(".")[-1]
+            title = self.create_title(title_block.text.replace("\n", ""), None, thread_id)
 
             posts = soup.select(self.posts_selector)
             for post in posts:
                 current_post_number = int(
-                    post.select_one(self.posts_number_selector).get(self.posts_number_attribute).split('/')[-1].split(
-                        'post-')[-1])
+                    post.select_one(self.posts_number_selector)
+                    .get(self.posts_number_attribute)
+                    .split("/")[-1]
+                    .split("post-")[-1],
+                )
                 scrape_post, continue_scraping = await self.check_post_number(post_number, current_post_number)
 
                 if scrape_post:
                     date = int(post.select_one(self.post_date_selector).get(self.post_date_attribute))
-                    new_scrape_item = await self.create_scrape_item(scrape_item, thread_url, title, False, None, date,
-                                                                    add_parent=scrape_item.url.joinpath(
-                                                                        f"post-{current_post_number}"))
+                    new_scrape_item = self.create_scrape_item(
+                        scrape_item,
+                        thread_url,
+                        title,
+                        False,
+                        None,
+                        date,
+                        add_parent=scrape_item.url.joinpath(f"post-{current_post_number}"),
+                    )
 
                     for elem in post.find_all(self.quotes_selector):
                         elem.decompose()
@@ -127,9 +141,8 @@ class LeakedModelsCrawler(Crawler):
                     await self.post(new_scrape_item, post_content, current_post_number)
 
                     scrape_item.children += 1
-                    if scrape_item.children_limit:
-                        if scrape_item.children >= scrape_item.children_limit:
-                            raise ScrapeItemMaxChildrenReached(origin = scrape_item)
+                    if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
+                        raise MaxChildrenError(origin=scrape_item)
 
                 if not continue_scraping:
                     break
@@ -153,30 +166,29 @@ class LeakedModelsCrawler(Crawler):
 
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem, post_content: Tag, post_number: int) -> None:
-        """Scrapes a post"""
-        if self.manager.config_manager.settings_data['Download_Options']['separate_posts']:
-            scrape_item = await self.create_scrape_item(scrape_item, scrape_item.url, "")
-            await scrape_item.add_to_parent_title("post-" + str(post_number))
+        """Scrapes a post."""
+        if self.manager.config_manager.settings_data["Download_Options"]["separate_posts"]:
+            scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, "")
+            scrape_item.add_to_parent_title("post-" + str(post_number))
 
         scrape_item.type = FORUM_POST
         scrape_item.children = scrape_item.children_limit = 0
-        
-        try:
-            scrape_item.children_limit = self.manager.config_manager.settings_data['Download_Options']['maximum_number_of_children'][scrape_item.type]
-        except (IndexError, TypeError):
-            pass
+
+        with contextlib.suppress(IndexError, TypeError):
+            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
+                "maximum_number_of_children"
+            ][scrape_item.type]
 
         posts_scrapers = [self.links, self.images, self.videos, self.embeds, self.attachments]
 
         for scraper in posts_scrapers:
             scrape_item.children += await scraper(scrape_item, post_content)
-            if scrape_item.children_limit:
-                if scrape_item.children >= scrape_item.children_limit:
-                    raise ScrapeItemMaxChildrenReached(origin = scrape_item)
+            if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
+                raise MaxChildrenError(origin=scrape_item)
 
     @error_handling_wrapper
     async def links(self, scrape_item: ScrapeItem, post_content: Tag) -> int:
-        """Scrapes links from a post"""
+        """Scrapes links from a post."""
         links = post_content.select(self.links_selector)
         new_children = 0
         for link_obj in links:
@@ -201,23 +213,22 @@ class LeakedModelsCrawler(Crawler):
 
             try:
                 if self.domain not in link.host:
-                    new_scrape_item = await self.create_scrape_item(scrape_item, link, "")
+                    new_scrape_item = self.create_scrape_item(scrape_item, link, "")
                     await self.handle_external_links(new_scrape_item)
                 elif self.attachment_url_part in link.parts:
                     await self.handle_internal_links(link, scrape_item)
                 else:
-                    await log(f"Unknown link type: {link}", 30)
+                    log(f"Unknown link type: {link}", 30)
             except TypeError:
-                await log(f"Scrape Failed: encountered while handling {link}", 40)
-            new_children +=1
-            if scrape_item.children_limit:
-                if (new_children + scrape_item.children) >= scrape_item.children_limit:
-                    break
+                log(f"Scrape Failed: encountered while handling {link}", 40)
+            new_children += 1
+            if scrape_item.children_limit and (new_children + scrape_item.children) >= scrape_item.children_limit:
+                break
         return new_children
 
     @error_handling_wrapper
     async def images(self, scrape_item: ScrapeItem, post_content: Tag) -> int:
-        """Scrapes images from a post"""
+        """Scrapes images from a post."""
         images = post_content.select(self.images_selector)
         new_children = 0
         for image in images:
@@ -236,21 +247,20 @@ class LeakedModelsCrawler(Crawler):
             link = URL(link)
 
             if self.domain not in link.host:
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, "")
+                new_scrape_item = self.create_scrape_item(scrape_item, link, "")
                 await self.handle_external_links(new_scrape_item)
             elif self.attachment_url_part in link.parts:
                 await self.handle_internal_links(link, scrape_item)
             else:
-                await log(f"Unknown image type: {link}", 30)
-            new_children +=1
-            if scrape_item.children_limit:
-                if (new_children + scrape_item.children) >= scrape_item.children_limit:
-                    break
+                log(f"Unknown image type: {link}", 30)
+            new_children += 1
+            if scrape_item.children_limit and (new_children + scrape_item.children) >= scrape_item.children_limit:
+                break
         return new_children
-    
+
     @error_handling_wrapper
     async def videos(self, scrape_item: ScrapeItem, post_content: Tag) -> int:
-        """Scrapes videos from a post"""
+        """Scrapes videos from a post."""
         videos = post_content.select(self.videos_selector)
         videos.extend(post_content.select(self.iframe_selector))
         new_children = 0
@@ -266,17 +276,16 @@ class LeakedModelsCrawler(Crawler):
                 link = "https:" + link
 
             link = URL(link)
-            new_scrape_item = await self.create_scrape_item(scrape_item, link, "")
+            new_scrape_item = self.create_scrape_item(scrape_item, link, "")
             await self.handle_external_links(new_scrape_item)
-            new_children +=1
-            if scrape_item.children_limit:
-                if (new_children + scrape_item.children) >= scrape_item.children_limit:
-                    break
+            new_children += 1
+            if scrape_item.children_limit and (new_children + scrape_item.children) >= scrape_item.children_limit:
+                break
         return new_children
 
     @error_handling_wrapper
     async def embeds(self, scrape_item: ScrapeItem, post_content: Tag) -> int:
-        """Scrapes embeds from a post"""
+        """Scrapes embeds from a post."""
         embeds = post_content.select(self.embeds_selector)
         new_children = 0
         for embed in embeds:
@@ -287,17 +296,16 @@ class LeakedModelsCrawler(Crawler):
             link = link.replace("ifr", "watch")
 
             link = URL(link)
-            new_scrape_item = await self.create_scrape_item(scrape_item, link, "")
+            new_scrape_item = self.create_scrape_item(scrape_item, link, "")
             await self.handle_external_links(new_scrape_item)
-            new_children +=1
-            if scrape_item.children_limit:
-                if (new_children + scrape_item.children) >= scrape_item.children_limit:
-                    break
+            new_children += 1
+            if scrape_item.children_limit and (new_children + scrape_item.children) >= scrape_item.children_limit:
+                break
         return new_children
 
     @error_handling_wrapper
     async def attachments(self, scrape_item: ScrapeItem, post_content: Tag) -> int:
-        """Scrapes attachments from a post"""
+        """Scrapes attachments from a post."""
         attachment_block = post_content.select_one(self.attachments_block_selector)
         new_children = 0
         if not attachment_block:
@@ -318,22 +326,22 @@ class LeakedModelsCrawler(Crawler):
             link = URL(link)
 
             if self.domain not in link.host:
-                new_scrape_item = await self.create_scrape_item(scrape_item, link, "")
+                new_scrape_item = self.create_scrape_item(scrape_item, link, "")
                 await self.handle_external_links(new_scrape_item)
             elif self.attachment_url_part in link.parts:
                 await self.handle_internal_links(link, scrape_item)
             else:
-                await log(f"Unknown image type: {link}", 30)
-            new_children +=1
-            if scrape_item.children_limit:
-                if (new_children + scrape_item.children) >= scrape_item.children_limit:
-                    break
+                log(f"Unknown image type: {link}", 30)
+            new_children += 1
+            if scrape_item.children_limit and (new_children + scrape_item.children) >= scrape_item.children_limit:
+                break
         return new_children
+
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @error_handling_wrapper
     async def handle_internal_links(self, link: URL, scrape_item: ScrapeItem) -> None:
-        """Handles internal links"""
-        filename, ext = await get_filename_and_ext(link.name, True)
-        new_scrape_item = await self.create_scrape_item(scrape_item, link, "Attachments", True)
+        """Handles internal links."""
+        filename, ext = get_filename_and_ext(link.name, True)
+        new_scrape_item = self.create_scrape_item(scrape_item, link, "Attachments", True)
         await self.handle_file(link, new_scrape_item, filename, ext)

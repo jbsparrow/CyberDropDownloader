@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from http import HTTPStatus
 from typing import TYPE_CHECKING
 
@@ -43,25 +45,26 @@ ERROR_CODES = {
     33: "Torrent already active",
     34: "Too many requests",
     35: "Infringing file",
-    36: "Fair Usage Limit"
+    36: "Fair Usage Limit",
 }
 
 
 class RealDebridError(BaseException):
-    """Base RealDebrid API error"""
+    """Base RealDebrid API error."""
 
-    def __init__(self, response: 'Response'):
+    def __init__(self, response: Response) -> None:
         self.path = URL(response.url).path
         try:
             JSONResp: dict = response.json()
-            self.code = JSONResp.get('error_code')
+            self.code = JSONResp.get("error_code")
             if self.code == 16:
                 self.code = 7
-            self.error = ERROR_CODES.get(self.code, 'Unknown error')
+            self.error = ERROR_CODES.get(self.code, "Unknown error")
 
         except AttributeError:
             self.code = response.status_code
             self.error = f"{self.code} - {HTTPStatus(self.code).phrase}"
 
-        self.msg = f'{self.code}: {self.error} at {self.path}'
+        self.error = self.error.capitalize()
+        self.msg = f"{self.code}: {self.error} at {self.path}"
         super().__init__(self.msg)
