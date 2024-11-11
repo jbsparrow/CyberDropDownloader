@@ -9,11 +9,8 @@ jobs:
 
       - name: ruff lint
         uses: astral-sh/ruff-action@v1
-        with:
-          changed-files: "true"
 
       - name: ruff format check
         uses: astral-sh/ruff-action@v1
         with:
           args: "format --check"
-          changed-files: "true"
