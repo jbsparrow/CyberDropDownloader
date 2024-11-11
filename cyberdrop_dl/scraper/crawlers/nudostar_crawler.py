@@ -203,7 +203,7 @@ class NudoStarCrawler(Crawler):
             try:
                 if self.domain not in link.host:
                     new_scrape_item = self.create_scrape_item(scrape_item, link, "")
-                    await self.handle_external_links(new_scrape_item)
+                    self.handle_external_links(new_scrape_item)
                 elif self.attachment_url_part in link.parts:
                     await self.handle_internal_links(link, scrape_item)
                 else:
@@ -239,7 +239,7 @@ class NudoStarCrawler(Crawler):
 
             if self.domain not in link.host:
                 new_scrape_item = self.create_scrape_item(scrape_item, link, "")
-                await self.handle_external_links(new_scrape_item)
+                self.handle_external_links(new_scrape_item)
             elif self.attachment_url_part in link.parts:
                 await self.handle_internal_links(link, scrape_item)
             else:
@@ -266,7 +266,7 @@ class NudoStarCrawler(Crawler):
 
             link = URL(link)
             new_scrape_item = self.create_scrape_item(scrape_item, link, "")
-            await self.handle_external_links(new_scrape_item)
+            self.handle_external_links(new_scrape_item)
             new_children += 1
             if scrape_item.children_limit and (new_children + scrape_item.children) >= scrape_item.children_limit:
                 break
@@ -301,7 +301,7 @@ class NudoStarCrawler(Crawler):
                     link = link[:-1]
                 link = URL(link)
                 new_scrape_item = self.create_scrape_item(scrape_item, link, "")
-                await self.handle_external_links(new_scrape_item)
+                self.handle_external_links(new_scrape_item)
                 new_children += 1
             if scrape_item.children_limit and (new_children + scrape_item.children) >= scrape_item.children_limit:
                 break
@@ -328,7 +328,7 @@ class NudoStarCrawler(Crawler):
 
             if self.domain not in link.host:
                 new_scrape_item = self.create_scrape_item(scrape_item, link, "")
-                await self.handle_external_links(new_scrape_item)
+                self.handle_external_links(new_scrape_item)
             elif self.attachment_url_part in link.parts:
                 await self.handle_internal_links(link, scrape_item)
             else:

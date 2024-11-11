@@ -121,7 +121,7 @@ class PixelDrainCrawler(Crawler):
                         date,
                         add_parent=scrape_item.url,
                     )
-                    await self.handle_external_links(new_scrape_item)
+                    self.handle_external_links(new_scrape_item)
             elif "image" in JSON_Resp["mime_type"] or "video" in JSON_Resp["mime_type"]:
                 filename, ext = get_filename_and_ext(
                     JSON_Resp["name"] + "." + JSON_Resp["mime_type"].split("/")[-1],

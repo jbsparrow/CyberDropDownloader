@@ -75,7 +75,7 @@ class FapelloCrawler(Crawler):
                     True,
                     add_parent=scrape_item.url,
                 )
-                await self.handle_external_links(new_scrape_item)
+                self.handle_external_links(new_scrape_item)
             else:
                 link = URL(post.get("href"))
                 new_scrape_item = self.create_scrape_item(
@@ -85,7 +85,7 @@ class FapelloCrawler(Crawler):
                     True,
                     add_parent=scrape_item.url,
                 )
-                await self.handle_external_links(new_scrape_item)
+                self.handle_external_links(new_scrape_item)
             if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
                 raise MaxChildrenError(origin=scrape_item)
 
