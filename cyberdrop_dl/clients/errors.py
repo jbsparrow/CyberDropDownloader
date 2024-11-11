@@ -10,6 +10,7 @@ if TYPE_CHECKING:
     from yaml.constructor import ConstructorError
 
     from cyberdrop_dl.scraper.crawler import ScrapeItem
+    from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem
 
 
 class CDLBaseError(Exception):
@@ -21,7 +22,7 @@ class CDLBaseError(Exception):
         *,
         message: str | None = None,
         status: str | int | None = None,
-        origin: ScrapeItem | URL | Path | None = None,
+        origin: ScrapeItem | MediaItem | URL | Path | None = None,
     ) -> None:
         self.ui_message = ui_message
         self.message = message or ui_message
@@ -35,21 +36,21 @@ class CDLBaseError(Exception):
 
 
 class InvalidContentTypeError(CDLBaseError):
-    def __init__(self, *, message: str | None = None, origin: ScrapeItem | URL | None = None) -> None:
+    def __init__(self, *, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
         """This error will be thrown when the content type isn't as expected."""
         ui_message = "Invalid Content Type"
         super().__init__(ui_message, message=message, origin=origin)
 
 
 class NoExtensionError(CDLBaseError):
-    def __init__(self, *, message: str | None = None, origin: ScrapeItem | URL | None = None) -> None:
+    def __init__(self, *, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
         """This error will be thrown when no extension is given for a file."""
         ui_message = "No File Extension"
         super().__init__(ui_message, message=message, origin=origin)
 
 
 class PasswordProtectedError(CDLBaseError):
-    def __init__(self, *, message: str | None = None, origin: ScrapeItem | URL | None = None) -> None:
+    def __init__(self, *, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
         """This error will be thrown when a file is password protected."""
         ui_message = "Password Protected"
         message = message or "File/Folder is password protected"
@@ -57,7 +58,7 @@ class PasswordProtectedError(CDLBaseError):
 
 
 class MaxChildrenError(CDLBaseError):
-    def __init__(self, *, message: str | None = None, origin: ScrapeItem | URL | None = None) -> None:
+    def __init__(self, *, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
         """This error will be thrown when an scrape item reaches its max number or children."""
         ui_message = "Max Children Reached"
         message = message or "Max number of children reached"
@@ -65,7 +66,7 @@ class MaxChildrenError(CDLBaseError):
 
 
 class DDOSGuardError(CDLBaseError):
-    def __init__(self, *, message: str | None = None, origin: ScrapeItem | URL | None = None) -> None:
+    def __init__(self, *, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
         """This error will be thrown when DDoS-Guard is detected."""
         ui_message = "DDoS-Guard"
         message = message or "DDoS-Guard detected"
@@ -73,7 +74,9 @@ class DDOSGuardError(CDLBaseError):
 
 
 class DownloadError(CDLBaseError):
-    def __init__(self, status: str | int, message: str | None = None, origin: ScrapeItem | URL | None = None) -> None:
+    def __init__(
+        self, status: str | int, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None
+    ) -> None:
         """This error will be thrown when a download fails."""
         ui_message = str(status)
         if isinstance(status, int):
@@ -85,21 +88,23 @@ class DownloadError(CDLBaseError):
 
 
 class InsufficientFreeSpaceError(CDLBaseError):
-    def __init__(self, origin: ScrapeItem | URL | None = None) -> None:
+    def __init__(self, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
         """This error will be thrown when no enough storage is available."""
         ui_message = "Insufficient Free Space"
         super().__init__(ui_message, origin=origin)
 
 
 class RestrictedFiletypeError(CDLBaseError):
-    def __init__(self, origin: ScrapeItem | URL | None = None) -> None:
+    def __init__(self, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
         """This error will be thrown when has a filytpe not allowed by config."""
         ui_message = "Restricted Filetype"
         super().__init__(ui_message, origin=origin)
 
 
 class ScrapeError(CDLBaseError):
-    def __init__(self, status: str | int, message: str | None = None, origin: ScrapeItem | URL | None = None) -> None:
+    def __init__(
+        self, status: str | int, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None
+    ) -> None:
         """This error will be thrown when a scrape fails."""
         ui_message = str(status)
         if isinstance(status, int):
@@ -111,7 +116,7 @@ class ScrapeError(CDLBaseError):
 
 
 class LoginError(CDLBaseError):
-    def __init__(self, *, message: str | None = None, origin: ScrapeItem | URL | None = None) -> None:
+    def __init__(self, *, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
         """This error will be thrown when the login fails for a site."""
         ui_message = "Failed Login"
         super().__init__(ui_message, message=message, origin=origin)
