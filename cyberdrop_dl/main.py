@@ -60,11 +60,11 @@ async def runtime(manager: Manager) -> None:
     if manager.args_manager.sort_all_configs:
         return
 
-    scrape_mapper = ScrapeMapper(manager)
-
-    async with asyncio.TaskGroup() as task_group:
-        manager.task_group = task_group
-        await scrape_mapper.start()
+    with manager.live_manager.get_main_live(stop=True):
+        scrape_mapper = ScrapeMapper(manager)
+        async with asyncio.TaskGroup() as task_group:
+            manager.task_group = task_group
+            await scrape_mapper.start()
 
 
 async def post_runtime(manager: Manager) -> None:
@@ -183,9 +183,8 @@ async def director(manager: Manager) -> None:
         log("Starting CDL...\n", 20)
 
         try:
-            with manager.live_manager.get_main_live(stop=True):
-                await runtime(manager)
-                await post_runtime(manager)
+            await runtime(manager)
+            await post_runtime(manager)
         except* Exception as e:
             log_with_color(
                 f"An error occurred, please report this to the developer: {e}",
