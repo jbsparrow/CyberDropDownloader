@@ -49,8 +49,8 @@ def get_forum_cookies(manager: Manager, browser: str=None) -> None:
     for forum in SupportedDomains.supported_forums:
         forum_key = f"{SupportedDomains.supported_forums_map[forum]}_xf_user_cookie"
         cookie = get_cookie(browser, forum)
-        posible_cookie_keys = [forum, f"www.{forum}"]
-        cookie_key = next((key for key in posible_cookie_keys if key in cookie._cookies), None)
+        possible_cookie_keys = [forum, f"www.{forum}"]
+        cookie_key = next((key for key in possible_cookie_keys if key in cookie._cookies), None)
         if not cookie_key:
             continue
         auth_args["Forums"][forum_key] = cookie._cookies[cookie_key]["/"]["xf_user"].value
