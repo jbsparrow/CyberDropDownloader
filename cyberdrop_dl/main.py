@@ -28,7 +28,7 @@ from cyberdrop_dl.utils.utilities import (
     send_webhook_message,
     sent_apprise_notifications,
 )
-from cyberdrop_dl.utils.args.browser_cookie_extraction import get_forum_cookies
+from cyberdrop_dl.utils.args.browser_cookie_extraction import get_cookies_from_browser
 
 
 
@@ -71,7 +71,7 @@ async def runtime(manager: Manager) -> None:
 def pre_runtime(manager):
     """Actions to complete before main runtime"""
     if manager.config_manager.settings_data["Browser_Cookies"]["auto_import"]:
-        get_forum_cookies(manager)
+        get_cookies_from_browser(manager)
 async def post_runtime(manager: Manager) -> None:
     """Actions to complete after main runtime, and before ui shutdown."""
     log_spacer(20)

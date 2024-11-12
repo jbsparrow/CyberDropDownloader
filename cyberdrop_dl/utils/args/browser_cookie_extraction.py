@@ -8,6 +8,8 @@ from InquirerPy import inquirer
 from rich.console import Console
 
 from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
+from http.cookiejar import MozillaCookieJar
+
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -56,6 +58,19 @@ def get_forum_cookies(manager: Manager, browser: str=None) -> None:
         auth_args["Forums"][forum_key] = cookie._cookies[cookie_key]["/"]["xf_user"].value
 
     manager.cache_manager.save("browser", browser)
+def get_cookies_from_browser(manager: Manager, browser: str=None) -> None:
+    """Get the cookies for the supported sites"""
+    manager.path_manager.cookies_dir.mkdir(exist_ok=True)
+    browser=browser or manager.config_manager.settings_data["Browser_Cookies"]["browser"]
+    for domain in SupportedDomains.supported_forums:
+        cookies = get_cookie(browser, domain)
+        cookie_jar = MozillaCookieJar()
+        cookie_file_path = manager.path_manager.cookies_dir / f"{domain}.txt"
+
+        for cookie in cookies:
+            cookie_jar.set_cookie(cookie)
+
+        cookie_jar.save(cookie_file_path, ignore_discard=True, ignore_expires=True)
 
 
 def get_cookie(browser: str, domain: str) -> CookieJar:
