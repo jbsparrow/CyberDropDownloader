@@ -22,8 +22,6 @@ from cyberdrop_dl.utils.constants import CustomHTTPStatus
 from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
-
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.scraper.crawler import ScrapeItem
 
@@ -182,7 +180,7 @@ class ClientManager:
 
 
 class Flaresolverr:
-    """Class that handles communication with flaresolverr"""
+    """Class that handles communication with flaresolverr."""
 
     def __init__(self, client_manager: ClientManager) -> None:
         self.client_manager = client_manager
