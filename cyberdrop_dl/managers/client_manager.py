@@ -189,9 +189,17 @@ class Flaresolverr:
         self.enabled = bool(self.flaresolverr_host)
         self.session_id = None
         self.default_session = ClientSession()
+        flaresolverr_url = URL(self.flaresolverr_host)
+        if not flaresolverr_url.scheme:
+            flaresolverr_url = URL(f"http://{self.flaresolverr_host}")
+        self.flaresolverr_host = flaresolverr_url
 
     async def _request(
-        self, command: str, client_session: ClientSession, origin: ScrapeItem | URL | None = None, **kwargs
+        self,
+        command: str,
+        client_session: ClientSession,
+        origin: ScrapeItem | URL | None = None,
+        **kwargs,
     ) -> dict:
         """Returns the resolved URL from the given URL."""
         if not self.enabled:
