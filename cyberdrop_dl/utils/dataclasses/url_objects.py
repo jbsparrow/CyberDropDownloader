@@ -2,12 +2,11 @@ from __future__ import annotations
 
 from dataclasses import field
 from typing import TYPE_CHECKING
+from pathlib import Path
 
 from cyberdrop_dl.utils.utilities import sanitize_folder
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from rich.progress import TaskID
     from yarl import URL
 
