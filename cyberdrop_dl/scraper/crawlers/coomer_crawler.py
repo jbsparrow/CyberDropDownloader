@@ -95,21 +95,22 @@ class CoomerCrawler(Crawler):
 
         while offset <= maximum_offset:
             async with self.request_limiter:
+                query_api_call = api_call.with_query({"o": offset, "omax": maximum_offset})
                 if offset == initial_offset:
                     JSON_Resp = await self.client.get_json(
                         self.domain,
-                        api_call.with_query({"o": offset, "omax": maximum_offset}),
+                        query_api_call,
                         origin=scrape_item,
                         cache_disabled=True,
                     )
                     # Check cache to see if responses match
-                    if JSON_Resp != self.client.cache.get(scrape_item.url):
+                    if JSON_Resp != self.client.cache.get(query_api_call):
                         await self.manager.cache_manager.request_cache.delete_url(api_call)
-                        self.client.cache[api_call.with_query({"o": offset, "omax": maximum_offset})] = JSON_Resp
+                        self.client.cache[query_api_call] = JSON_Resp
                 else:
                     JSON_Resp = await self.client.get_json(
                         self.domain,
-                        api_call.with_query({"o": offset, "omax": maximum_offset}),
+                        query_api_call,
                         origin=scrape_item,
                     )
                 offset += 50

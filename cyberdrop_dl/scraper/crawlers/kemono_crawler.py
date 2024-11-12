@@ -57,6 +57,7 @@ class KemonoCrawler(Crawler):
         """Scrapes a profile."""
         soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
         offset, maximum_offset = await self.get_offsets(scrape_item, soup)
+        initial_offset = offset
         service, user = await self.get_service_and_user(scrape_item)
         user_str = await self.get_user_str_from_profile(soup)
         api_call = self.api_url / service / "user" / user
@@ -70,11 +71,24 @@ class KemonoCrawler(Crawler):
 
         while offset <= maximum_offset:
             async with self.request_limiter:
-                JSON_Resp = await self.client.get_json(
-                    self.domain,
-                    api_call.with_query({"o": offset, "omax": maximum_offset}),
-                    origin=scrape_item,
-                )
+                query_api_call = api_call.with_query({"o": offset, "omax": maximum_offset})
+                if offset == initial_offset:
+                    JSON_Resp = await self.client.get_json(
+                        self.domain,
+                        query_api_call,
+                        origin=scrape_item,
+                        cache_disabled=True,
+                    )
+                    # Check to see if the responses match
+                    if JSON_Resp != self.client.cache.get(query_api_call):
+                        await self.manager.cache_manager.request_cache.delete_url(api_call)
+                        self.client.cache[query_api_call] = JSON_Resp
+                else:
+                    JSON_Resp = await self.client.get_json(
+                        self.domain,
+                        query_api_call,
+                        origin=scrape_item,
+                    )
                 offset += 50
                 if not JSON_Resp:
                     break
