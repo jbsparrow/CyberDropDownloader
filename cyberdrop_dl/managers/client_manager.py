@@ -19,6 +19,7 @@ from cyberdrop_dl.managers.leaky import LeakyBucket
 from cyberdrop_dl.utils.constants import CustomHTTPStatus
 
 if TYPE_CHECKING:
+    from aiohttp import ClientSession
     from bs4 import BeautifulSoup
     from yarl import URL
 
@@ -68,11 +69,6 @@ class ClientManager:
             if not manager.args_manager.proxy
             else manager.args_manager.proxy
         )
-        self.flaresolverr = (
-            manager.config_manager.global_settings_data["General"]["flaresolverr"]
-            if not manager.args_manager.flaresolverr
-            else manager.args_manager.flaresolverr
-        )
 
         self.domain_rate_limits = {
             "bunkrr": AsyncLimiter(5, 1),
@@ -102,6 +98,7 @@ class ClientManager:
         self.scraper_session = ScraperClient(self)
         self.downloader_session = DownloadClient(manager, self)
         self._leaky_bucket = LeakyBucket(manager)
+        self.flaresolverr = Flaresolverr(self)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -177,3 +174,75 @@ class ClientManager:
                 return True
 
         return False
+
+    async def close(self):
+        self.flaresolverr._destroy_session()
+
+
+class Flaresolverr:
+    def __init__(self, client_manager: ClientManager) -> None:
+        self.client_manager = client_manager
+        self.flaresolverr_host = (
+            client_manager.manager.args_manager.flaresolverr
+            or client_manager.manager.config_manager.global_settings_data["General"]["flaresolverr"]
+        )
+        self.enabled = bool(self.flaresolverr_host)
+        self.session_id = None
+        self.default_session = ClientSession()
+
+    async def _request(
+        self, command: str, client_session: ClientSession, origin: ScrapeItem | URL | None = None, **kwargs
+    ) -> dict:
+        """Returns the resolved URL from the given URL."""
+        if not self.enabled:
+            raise DDOSGuardError(message="FlareSolverr is not configured", origin=origin)
+
+        if not (self.session_id or kwargs.get("session")):
+            await self._get_session()
+
+        headers = client_session.headers | {"Content-Type": "application/json"}
+        data = {"cmd": command, "maxTimeout": 60000, "session": self.session_id} | kwargs
+
+        async with client_session.post(
+            self.flaresolverr_host / "v1",
+            headers=headers,
+            ssl=self.client_manager.ssl_context,
+            proxy=self.client_manager.proxy,
+            json=data,
+        ) as response:
+            json_obj: dict = await response.json()  # type: ignore
+            return json_obj
+
+    async def _get_session(self) -> None:
+        session_id = "cyberdrop-dl"
+        flaresolverr_resp = await self._request("sessions.create", self.default_session, session=session_id)
+        status = flaresolverr_resp.get("status")
+        if status != "ok":
+            raise DDOSGuardError(message="Failed to create flaresolverr session")
+        self.session_id = session_id
+
+    async def _destroy_session(self):
+        if self.session_id:
+            await self._request("sessions.destroy", self.default_session, session=self.session_id)
+
+    async def get(
+        self,
+        url: URL,
+        client_session: ClientSession,
+        origin: ScrapeItem | URL | None = None,
+    ) -> tuple[BeautifulSoup, URL]:
+        """Returns the resolved URL from the given URL."""
+        flaresolverr_resp: dict = await self._request(url, "request.get", client_session, origin, url=url)
+
+        status = flaresolverr_resp.get("status")
+        if status != "ok":
+            raise DDOSGuardError(message="Failed to resolve URL with flaresolverr", origin=origin)
+
+        solution: dict = flaresolverr_resp.get("solution")
+        response = BeautifulSoup(solution.get("response"), "html.parser")
+        response_url = URL(solution.get("url"))
+
+        if self.client_manager.check_ddos_guard(response):
+            raise DDOSGuardError(message="Invalid response from flaresolverr", origin=origin)
+
+        return response, response_url

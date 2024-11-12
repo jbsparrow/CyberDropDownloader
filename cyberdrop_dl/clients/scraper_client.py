@@ -76,42 +76,6 @@ class ScraperClient:
         self.trace_configs.append(trace_config)
 
     @limiter
-    async def flaresolverr(
-        self,
-        domain: str,
-        url: URL,
-        client_session: ClientSession,
-        origin: ScrapeItem | URL | None = None,
-    ) -> tuple[BeautifulSoup, URL]:
-        """Returns the resolved URL from the given URL."""
-        if not self.client_manager.flaresolverr:
-            raise DDOSGuardError(message="FlareSolverr is not configured", origin=origin)
-
-        headers = self._headers | {"Content-Type": "application/json"}
-        data = {"cmd": "request.get", "url": str(url), "maxTimeout": 60000}
-
-        async with client_session.post(
-            f"http://{self.client_manager.flaresolverr}/v1",
-            headers=headers,
-            ssl=self.client_manager.ssl_context,
-            proxy=self.client_manager.proxy,
-            json=data,
-        ) as response:
-            json_obj: dict = await response.json()  # type: ignore
-            status = json_obj.get("status")
-            if status != "ok":
-                raise DDOSGuardError(message="Failed to resolve URL with flaresolverr", origin=origin)
-
-            solution: dict = json_obj.get("solution")
-            response = BeautifulSoup(solution.get("response"), "html.parser")
-            response_url = URL(solution.get("url"))
-
-            if self.client_manager.check_ddos_guard(response):
-                raise DDOSGuardError(message="Invalid response from flaresolverr", origin=origin)
-
-            return response, response_url
-
-    @limiter
     async def get_soup(
         self,
         domain: str,
@@ -130,10 +94,10 @@ class ScraperClient:
             try:
                 await self.client_manager.check_http_status(response, origin=origin)
             except DDOSGuardError:
-                response, response_URL = await self.flaresolverr(
-                    domain,
+                response, response_URL = await self.client_manager.flaresolverr.get(
                     url,
-                    origin=origin,
+                    client_session,
+                    origin,
                 )
                 if with_response_url:
                     return response, response_URL
@@ -168,7 +132,7 @@ class ScraperClient:
         origin: ScrapeItem | URL | None = None,
     ) -> dict:
         """Returns a JSON object from the given URL."""
-        headers = {**self._headers, **headers_inc} if headers_inc else self._headers
+        headers = self._headers | headers_inc if headers_inc else self._headers
 
         async with client_session.get(
             url,
@@ -202,8 +166,8 @@ class ScraperClient:
             try:
                 await self.client_manager.check_http_status(response, origin=origin)
             except DDOSGuardError:
-                response_text, _ = await self.flaresolverr(domain, url, origin=origin)
-                return str(response_text)
+                soup, _ = await self.client_manager.flaresolverr.get(url, client_session, origin)
+                return str(soup)
             return await response.text()
 
     @limiter
