@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+from asyncio import Lock
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -23,6 +24,7 @@ class LogManager:
         self.unsupported_urls_log: Path = manager.path_manager.unsupported_urls_log
         self.download_error_log: Path = manager.path_manager.download_error_log
         self.scrape_error_log: Path = manager.path_manager.scrape_error_log
+        self._csv_locks = {}
 
     def startup(self) -> None:
         """Startup process for the file manager."""
@@ -30,17 +32,18 @@ class LogManager:
             if isinstance(var, Path):
                 var.unlink(missing_ok=True)
 
-    @staticmethod
-    async def write_to_csv(file: Path, **kwargs):
+    async def write_to_csv(self, file: Path, **kwargs):
         """Write to the specified csv file. kwargs are columns for the CSV."""
-        # padding of 1 to the left
-        row = {key: f"{value} " for key, value in kwargs.items()}
-        write_headers = not file.is_file()
-        async with aiofiles.open(file, "a", encoding="utf8") as csv_file:
-            writer = csv.DictWriter(csv_file, fieldnames=row.keys(), delimiter=CSV_DELIMITER, quoting=csv.QUOTE_MINIMAL)
-            if write_headers:
-                await writer.writeheader()
-            await writer.writerow(row)
+        self._csv_locks[file] = self._csv_locks.get(file, Lock())
+        async with self._csv_locks[file]:
+            write_headers = not file.is_file()
+            async with aiofiles.open(file, "a", encoding="utf8", newline="") as csv_file:
+                writer = csv.DictWriter(
+                    csv_file, fieldnames=kwargs.keys(), delimiter=CSV_DELIMITER, quoting=csv.QUOTE_ALL
+                )
+                if write_headers:
+                    await writer.writeheader()
+                await writer.writerow(kwargs)
 
     async def write_last_post_log(self, url: URL) -> None:
         """Writes to the last post log."""
