@@ -144,7 +144,7 @@ class ScraperClient:
             assert content_type is not None
             if not any(s in content_type.lower() for s in ("html", "text")):
                 raise InvalidContentTypeError(message=f"Received {content_type}, was expecting text", origin=origin)
-            text = await response.text()
+            text = await CachedStreamReader(await response.read()).read()
             if with_response_url:
                 return BeautifulSoup(text, "html.parser"), URL(response.url)
             return BeautifulSoup(text, "html.parser")
