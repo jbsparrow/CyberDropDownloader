@@ -12,6 +12,7 @@ from cyberdrop_dl.clients.errors import MaxChildrenError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -107,6 +108,7 @@ class CoomerCrawler(Crawler):
                     cached_response = await self.manager.cache_manager.request_cache.get_response(str(query_api_call))
                     cached_json = await cached_response.json()
                     if JSON_Resp != cached_json:
+                        await log(f"New posts founr for {user_str}, invalidating cache", 20)
                         await self.manager.cache_manager.request_cache.delete_url(api_call)
                         await self.manager.cache_manager.request_cache.save_response(
                             resp,
