@@ -9,7 +9,7 @@
 ![GitHub License](https://img.shields.io/github/license/jbsparrow/CyberDropDownloader)
 ![PyPI - Downloads](https://img.shields.io/pypi/dm/cyberdrop-dl-patched)
 
-[![Discord](https://discordapp.com/api/guilds/1070206871564197908/widget.png?style=banner2)](https://discord.com/invite/kbZCxz22Qp)
+[![Discord](https://discordapp.com/api/guilds/1070206871564197908/widget.png?style=banner2)](https://discord.com/invite/P5nsbKErwy)
 
 
 Brand new and improved! Cyberdrop-DL now has an updated paint job, fantastic new look. It's now easier to use than ever before!
