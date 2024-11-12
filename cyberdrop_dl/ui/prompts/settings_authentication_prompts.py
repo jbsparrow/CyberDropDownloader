@@ -111,6 +111,7 @@ def edit_forum_authentication_values_prompt(manager: Manager) -> None:
                 message="Which browser should we load cookies from?",
                 choices=[
                     Choice("chrome", "Chrome"),
+                    Choice("chromium", "Chromium"),
                     Choice("firefox", "FireFox"),
                     Choice("edge", "Edge"),
                     Choice("safari", "Safari"),
@@ -142,6 +143,14 @@ def edit_forum_authentication_values_prompt(manager: Manager) -> None:
                 get_forum_cookies(manager, "opera")
             elif action == "brave":
                 get_forum_cookies(manager, "brave")
+            elif action == "libreWolf":
+                get_forum_cookies(manager, "libreWolf")
+            elif action == "opera_gx":
+                get_forum_cookies(manager, "opera_gx")
+            elif action == "vivaldi":
+                get_forum_cookies(manager, "vivaldi")
+            elif action =="chromium":
+                get_forum_cookies(manager, "chromium")
             return
 
         # Enter Cred Values Manually
