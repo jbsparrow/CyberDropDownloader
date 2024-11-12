@@ -161,7 +161,7 @@ def edit_forum_authentication_values_prompt(manager: Manager) -> None:
                 vi_mode=manager.vi_mode,
             ).execute()
             celebforum_password = inquirer.text(
-                message="Enter your CelebForum Passwordss:",
+                message="Enter your CelebForum Passwords:",
                 default=manager.config_manager.authentication_data["Forums"]["celebforum_password"],
                 vi_mode=manager.vi_mode,
             ).execute()
