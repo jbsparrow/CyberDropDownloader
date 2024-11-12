@@ -173,7 +173,7 @@ class ConfigManager:
             self.settings_data["Runtime_Options"]["console_log_level"],
         )
         #browser
-        # self.settings_data["Browser_Cookies"]["browser"] = self.settings_data["Browser_Cookies"]["browser"].lower() if  self.settings_data["Browser_Cookies"]["browser"] else None
+        self.settings_data["Browser_Cookies"]["browser"] = self.settings_data["Browser_Cookies"]["browser"].lower() if  self.settings_data["Browser_Cookies"]["browser"] else None
         #convert paths to str
         settings_data=copy.deepcopy(self.settings_data)
         settings_data["Files"]["input_file"] = str(self.settings_data["Files"]["input_file"])
