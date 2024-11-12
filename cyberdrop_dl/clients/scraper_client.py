@@ -5,7 +5,8 @@ from functools import wraps
 from typing import TYPE_CHECKING, Any
 
 import aiohttp
-from aiohttp import ClientSession
+from aiohttp_client_cache import CachedSession as ClientSession
+from aiohttp_client_cache.response import CachedStreamReader
 from bs4 import BeautifulSoup
 from yarl import URL
 
