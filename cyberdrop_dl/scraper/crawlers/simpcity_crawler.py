@@ -60,6 +60,13 @@ class SimpCityCrawler(Crawler):
 
         if not self.logged_in and self.login_attempts == 0:
             login_url = self.primary_base_domain / "login"
+            host_cookies = self.client.client_manager.cookies._cookies.get((self.primary_base_domain.host, ""), {})
+            session_cookie = host_cookies.get("xf_user").value if "xf_user" in host_cookies else None
+            if not session_cookie:
+                session_cookie = self.manager.config_manager.authentication_data["Forums"].get(
+                    "simpcity_xf_user_cookie"
+                )
+
             session_cookie = self.manager.config_manager.authentication_data["Forums"]["simpcity_xf_user_cookie"]
             username = self.manager.config_manager.authentication_data["Forums"]["simpcity_username"]
             password = self.manager.config_manager.authentication_data["Forums"]["simpcity_password"]
@@ -98,6 +105,7 @@ class SimpCityCrawler(Crawler):
 
         current_post_number = 0
         while True:
+            thread_url = scrape_item.url if current_post_number == 0 else thread_url
             async with self.request_limiter:
                 soup: BeautifulSoup = await self.client.get_soup(self.domain, thread_url, origin=scrape_item)
 

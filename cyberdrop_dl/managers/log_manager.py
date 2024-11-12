@@ -32,7 +32,7 @@ class LogManager:
             if isinstance(var, Path):
                 var.unlink(missing_ok=True)
 
-    async def write_to_csv(self, file: Path, **kwargs):
+    async def write_to_csv(self, file: Path, **kwargs) -> None:
         """Write to the specified csv file. kwargs are columns for the CSV."""
         self._csv_locks[file] = self._csv_locks.get(file, Lock())
         async with self._csv_locks[file]:
