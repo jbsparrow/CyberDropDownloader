@@ -79,10 +79,10 @@ class CoomerCrawler(Crawler):
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile."""
-        soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
+        soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
         offset, maximum_offset = await self.get_offsets(scrape_item, soup)
         initial_offset = offset
-        service, user = await self.get_service_and_user(scrape_item)
+        service, user = self.get_service_and_user(scrape_item)
         user_str = await self.get_user_str_from_profile(soup)
         api_call = self.api_url / service / "user" / user
         scrape_item.type = FILE_HOST_PROFILE
@@ -97,16 +97,18 @@ class CoomerCrawler(Crawler):
             async with self.request_limiter:
                 query_api_call = api_call.with_query({"o": offset, "omax": maximum_offset})
                 if offset == initial_offset:
-                    JSON_Resp = await self.client.get_json(
+                    JSON_Resp, resp = await self.client.get_json(
                         self.domain,
                         query_api_call,
                         origin=scrape_item,
                         cache_disabled=True,
                     )
                     # Check cache to see if responses match
-                    if JSON_Resp != self.client.cache.get(query_api_call):
+                    cached_response = await self.manager.cache_manager.request_cache.get_response(str(query_api_call))
+                    cached_json = await cached_response.json()
+                    if JSON_Resp != cached_json:
                         await self.manager.cache_manager.request_cache.delete_url(api_call)
-                        self.client.cache[query_api_call] = JSON_Resp
+                        await self.manager.cache_manager.request_cache.save_response(resp, None, self.manager.config_manager.global_settings_data["Rate_Limiting_Options"]["file_host_cache_length"])
                 else:
                     JSON_Resp = await self.client.get_json(
                         self.domain,

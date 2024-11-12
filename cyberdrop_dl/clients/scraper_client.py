@@ -5,7 +5,7 @@ from functools import wraps
 from typing import TYPE_CHECKING, Any
 
 import aiohttp
-from aiohttp_client_cache import CachedSession as ClientSession
+import aiohttp_client_cache
 from aiohttp_client_cache.response import CachedStreamReader
 from bs4 import BeautifulSoup
 from yarl import URL
@@ -33,12 +33,13 @@ def limiter(func: Callable) -> Any:
             await self._global_limiter.acquire()
             await domain_limiter.acquire()
 
-            async with aiohttp.ClientSession(
+            async with aiohttp_client_cache.CachedSession(
                 headers=self._headers,
                 raise_for_status=False,
                 cookie_jar=self.client_manager.cookies,
                 timeout=self._timeouts,
                 trace_configs=self.trace_configs,
+                cache=self.client_manager.manager.cache_manager.request_cache,
             ) as client:
                 kwargs["client_session"] = client
                 return await func(self, *args, **kwargs)
@@ -81,7 +82,7 @@ class ScraperClient:
         self,
         domain: str,
         url: URL,
-        client_session: ClientSession,
+        client_session: aiohttp_client_cache.CachedSession,
         origin: ScrapeItem | URL | None = None,
         with_response_url: bool = False,
     ) -> tuple[str, URL | None]:
@@ -116,7 +117,7 @@ class ScraperClient:
         self,
         domain: str,
         url: URL,
-        client_session: ClientSession,
+        client_session: aiohttp_client_cache.CachedSession,
         origin: ScrapeItem | URL | None = None,
         with_response_url: bool = False,
         cache_disabled: bool = False,
@@ -198,7 +199,7 @@ class ScraperClient:
         url: URL,
         params: dict | None = None,
         headers_inc: dict | None = None,
-        client_session: ClientSession = None,
+        client_session: aiohttp_client_cache.CachedSession = None,
         origin: ScrapeItem | URL | None = None,
         cache_disabled: bool = False,
     ) -> dict:
@@ -220,7 +221,7 @@ class ScraperClient:
                         raise InvalidContentTypeError(
                             message=f"Received {content_type}, was expecting JSON", origin=origin
                         )
-                    return await response.json()
+                    return await response.json(), response
         else:
             async with client_session.get(
                 url,
@@ -241,7 +242,7 @@ class ScraperClient:
         self,
         domain: str,
         url: URL,
-        client_session: ClientSession,
+        client_session: aiohttp_client_cache.CachedSession,
         origin: ScrapeItem | URL | None = None,
         cache_disabled: bool = False,
     ) -> str:
@@ -279,7 +280,7 @@ class ScraperClient:
         self,
         domain: str,
         url: URL,
-        client_session: ClientSession,
+        client_session: aiohttp_client_cache.CachedSession,
         data: dict,
         req_resp: bool = True,
         raw: bool = False,
@@ -300,7 +301,7 @@ class ScraperClient:
             return {}
 
     @limiter
-    async def get_head(self, domain: str, url: URL, client_session: ClientSession) -> CIMultiDictProxy[str]:
+    async def get_head(self, domain: str, url: URL, client_session: aiohttp_client_cache.CachedSession) -> CIMultiDictProxy[str]:
         """Returns the headers from the given URL."""
         async with client_session.head(
             url,
