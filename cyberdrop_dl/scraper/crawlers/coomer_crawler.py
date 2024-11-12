@@ -108,7 +108,13 @@ class CoomerCrawler(Crawler):
                     cached_json = await cached_response.json()
                     if JSON_Resp != cached_json:
                         await self.manager.cache_manager.request_cache.delete_url(api_call)
-                        await self.manager.cache_manager.request_cache.save_response(resp, None, self.manager.config_manager.global_settings_data["Rate_Limiting_Options"]["file_host_cache_length"])
+                        await self.manager.cache_manager.request_cache.save_response(
+                            resp,
+                            None,
+                            self.manager.config_manager.global_settings_data["Rate_Limiting_Options"][
+                                "file_host_cache_length"
+                            ],
+                        )
                 else:
                     JSON_Resp = await self.client.get_json(
                         self.domain,

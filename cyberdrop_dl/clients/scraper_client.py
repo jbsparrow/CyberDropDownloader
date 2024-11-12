@@ -301,7 +301,9 @@ class ScraperClient:
             return {}
 
     @limiter
-    async def get_head(self, domain: str, url: URL, client_session: aiohttp_client_cache.CachedSession) -> CIMultiDictProxy[str]:
+    async def get_head(
+        self, domain: str, url: URL, client_session: aiohttp_client_cache.CachedSession
+    ) -> CIMultiDictProxy[str]:
         """Returns the headers from the given URL."""
         async with client_session.head(
             url,
