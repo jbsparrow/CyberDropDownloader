@@ -74,7 +74,7 @@ def get_cookie(browser: str, domain: str) -> CookieJar:
         cookie = browser_cookie3.brave(domain_name=domain)
     elif browser == "chromium":
         cookie = browser_cookie3.chromium(domain_name=domain)
-    elif browser == "libreWolf":
+    elif browser == "librewolf":
         cookie = browser_cookie3.librewolf(domain_name=domain)
     elif browser == "opera_gx":
         cookie = browser_cookie3.opera_gx(domain_name=domain)
