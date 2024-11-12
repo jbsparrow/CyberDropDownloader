@@ -27,6 +27,8 @@ class KemonoCrawler(Crawler):
         self.api_url = URL("https://kemono.su/api/v1")
         self.services = ["afdian", "boosty", "dlsite", "fanbox", "fantia", "gumroad", "patreon", "subscribestar"]
         self.request_limiter = AsyncLimiter(10, 1)
+        
+        self.maximum_offset = None
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
