@@ -116,7 +116,12 @@ class CoomerCrawler(Crawler):
                         await self.manager.cache_manager.request_cache.save_response(
                             resp,
                             None,
-                            datetime.datetime.now() + datetime.timedelta(self.manager.config_manager.global_settings_data["Rate_Limiting_Options"]["file_host_cache_length"]),
+                            datetime.datetime.now()
+                            + datetime.timedelta(
+                                self.manager.config_manager.global_settings_data["Rate_Limiting_Options"][
+                                    "file_host_cache_length"
+                                ]
+                            ),
                         )
                 else:
                     JSON_Resp = await self.client.get_json(
