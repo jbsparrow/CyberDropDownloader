@@ -19,7 +19,6 @@ from cyberdrop_dl.clients.errors import DDOSGuardError, DownloadError, ScrapeErr
 from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.managers.leaky import LeakyBucket
 from cyberdrop_dl.utils.constants import CustomHTTPStatus
-from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -266,7 +265,9 @@ class Flaresolverr:
 
         if update_cookies:
             if flaresolverr_user_agent != user_agent:
-                log("Config user_agent and flaresolverr user_agent do not match", 30)
+                raise DDOSGuardError(
+                    message="Config user_agent and flaresolverr user_agent do not match", origin=origin
+                )
             else:
                 for cookie_dict in cookies:
                     cookie = Cookie(**cookie_dict)
