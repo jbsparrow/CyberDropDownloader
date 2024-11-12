@@ -26,6 +26,8 @@ class CoomerCrawler(Crawler):
         self.ddos_guard_domain = URL("https://*.coomer.su")
         self.api_url = URL("https://coomer.su/api/v1")
         self.request_limiter = AsyncLimiter(4, 1)
+        
+        self.maximum_offset = None
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
