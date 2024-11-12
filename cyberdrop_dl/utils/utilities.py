@@ -200,8 +200,8 @@ async def check_partials_and_empty_folders(manager: Manager) -> None:
     if not manager.config_manager.settings_data["Runtime_Options"]["skip_check_for_empty_folders"]:
         log_with_color("Checking for empty folders...", "yellow", 20)
         purge_dir_tree(manager.path_manager.download_dir)
-        if isinstance(manager.path_manager.sorted_dir, Path):
-            purge_dir_tree(manager.path_manager.sorted_dir)
+        # if isinstance(manager.path_manager.sorted_dir, Path):
+        #     purge_dir_tree(manager.path_manager.sorted_dir)
 
 
 def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -> tuple[str, str]:
