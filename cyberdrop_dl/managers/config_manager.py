@@ -85,6 +85,8 @@ class ConfigManager:
 
         self.settings.parent.mkdir(parents=True, exist_ok=True)
         self.load_configs()
+        
+        self.manager.cache_manager.load_request_cache()
 
     def load_configs(self) -> None:
         """Loads all the configs."""
