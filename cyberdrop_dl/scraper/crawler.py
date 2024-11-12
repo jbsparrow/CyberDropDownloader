@@ -15,6 +15,7 @@ from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_download_path, remove_file_id
+from cyberdrop_dl.scraper.filters import set_return_value
 
 if TYPE_CHECKING:
     from cyberdrop_dl.clients.scraper_client import ScraperClient
@@ -171,6 +172,9 @@ class Crawler(ABC):
                     raise LoginError(message="Failed to login after 5 attempts")
 
                 assert login_url.host is not None
+
+                await set_return_value(str(login_url), False, pop=False)
+                await set_return_value(str(login_url / "login"), False, pop=False)
 
                 text = await self.client.get_text(self.domain, login_url)
                 if '<span class="p-navgroup-user-linkText">' in text or "You are already logged in." in text:
