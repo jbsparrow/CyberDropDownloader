@@ -25,7 +25,7 @@ class MediaItem:
         origin: ScrapeItem,
         download_folder: Path,
         filename: Path | str,
-        original_filename: Path | str | None,
+        original_filename: Path | str | None = None,
         debrid_link: URL | None = None,
     ) -> None:
         self.url: URL = url
