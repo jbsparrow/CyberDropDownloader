@@ -41,23 +41,6 @@ def cookie_wrapper(func: Callable) -> CookieJar:
 
     return wrapper
 
-
-# noinspection PyProtectedMember
-@cookie_wrapper
-def get_forum_cookies(manager: Manager, browser: str=None) -> None:
-    """Get the cookies for the forums."""
-    browser=browser or manager.config_manager.settings_data["Browser_Cookies"]["browser"]
-    auth_args: dict = manager.config_manager.authentication_data
-    for forum in SupportedDomains.supported_forums:
-        forum_key = f"{SupportedDomains.supported_forums_map[forum]}_xf_user_cookie"
-        cookie = get_cookie(browser, forum)
-        possible_cookie_keys = [forum, f"www.{forum}"]
-        cookie_key = next((key for key in possible_cookie_keys if key in cookie._cookies), None)
-        if not cookie_key:
-            continue
-        auth_args["Forums"][forum_key] = cookie._cookies[cookie_key]["/"]["xf_user"].value
-
-    manager.cache_manager.save("browser", browser)
 def get_cookies_from_browser(manager: Manager, browser: str=None) -> None:
     """Get the cookies for the supported sites"""
     manager.path_manager.cookies_dir.mkdir(exist_ok=True)
