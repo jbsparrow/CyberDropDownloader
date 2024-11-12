@@ -27,7 +27,7 @@ class KemonoCrawler(Crawler):
         self.api_url = URL("https://kemono.su/api/v1")
         self.services = ["afdian", "boosty", "dlsite", "fanbox", "fantia", "gumroad", "patreon", "subscribestar"]
         self.request_limiter = AsyncLimiter(10, 1)
-        
+
         self.maximum_offset = None
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -55,9 +55,10 @@ class KemonoCrawler(Crawler):
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile."""
-        offset = 0
-        service, user = self.get_service_and_user(scrape_item)
-        user_str = await self.get_user_str_from_profile(scrape_item)
+        soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
+        offset, maximum_offset = await self.get_offsets(scrape_item, soup)
+        service, user = await self.get_service_and_user(scrape_item)
+        user_str = await self.get_user_str_from_profile(soup)
         api_call = self.api_url / service / "user" / user
         scrape_item.type = FILE_HOST_PROFILE
         scrape_item.children = scrape_item.children_limit = 0
@@ -66,7 +67,8 @@ class KemonoCrawler(Crawler):
             scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
                 "maximum_number_of_children"
             ][scrape_item.type]
-        while True:
+
+        while offset <= maximum_offset:
             async with self.request_limiter:
                 JSON_Resp = await self.client.get_json(
                     self.domain,
@@ -96,6 +98,7 @@ class KemonoCrawler(Crawler):
             scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
                 "maximum_number_of_children"
             ][scrape_item.type]
+
         while True:
             async with self.request_limiter:
                 JSON_Resp = await self.client.get_json(
@@ -272,11 +275,28 @@ class KemonoCrawler(Crawler):
         return soup.select_one("a[class=post__user-name]").text
 
     @error_handling_wrapper
-    async def get_user_str_from_profile(self, scrape_item: ScrapeItem) -> str:
+    async def get_user_str_from_profile(self, soup: BeautifulSoup) -> str:
         """Gets the user string from a scrape item."""
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
         return soup.select_one("span[itemprop=name]").text
+
+    async def get_maximum_offset(self, scrape_item: ScrapeItem) -> int:
+        """Gets the maximum offset for a scrape item"""
+        soup = await self.client.get_BS4(self.domain, scrape_item.url)
+        menu = soup.select_one("menu")
+        if menu is None:
+            self.maximum_offset = 0
+            return 0
+        pagination_links = menu.find_all("a", href=True)
+        offsets = [int(x['href'].split('?o=')[-1]) for x in pagination_links]
+        offset = max(offsets)
+        self.maximum_offset = offset
+        return offset
+
+    async def get_offsets(self, scrape_item: ScrapeItem) -> int:
+        """Gets the offset for a scrape item"""
+        current_offset = int(scrape_item.url.query.get("o", 0))
+        maximum_offset = await self.get_maximum_offset(scrape_item)
+        return current_offset, maximum_offset
 
     @staticmethod
     def get_service_and_user(scrape_item: ScrapeItem) -> tuple[str, str]:
