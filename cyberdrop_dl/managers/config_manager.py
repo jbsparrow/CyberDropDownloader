@@ -67,7 +67,7 @@ class ConfigManager:
         self.global_settings_data: dict = field(init=False)
 
     def startup(self) -> None:
-        """Pre-startup process for the config manager."""
+        """startup process for the config manager."""
         if not isinstance(self.loaded_config, str):
             self.loaded_config = self.manager.cache_manager.get("default_config")
             if not self.loaded_config:
@@ -150,6 +150,7 @@ class ConfigManager:
         self.settings_data["File_Size_Limits"]["maximum_image_size"] = int(
             self.settings_data["File_Size_Limits"]["maximum_image_size"],
         )
+
         self.settings_data["File_Size_Limits"]["maximum_video_size"] = int(
             self.settings_data["File_Size_Limits"]["maximum_video_size"],
         )
@@ -172,17 +173,18 @@ class ConfigManager:
             self.settings_data["Runtime_Options"]["console_log_level"],
         )
         #browser
-        self.settings_data["Brower_Cookies"]["browser"] = self.settings_data["Brower_Cookies"]["browser"].lower() if  self.settings_data["Brower_Cookies"]["browser"] else None
-        #convert to str
-        self.settings_data["Files"]["input_file"] = str(self.settings_data["Files"]["input_file"])
-        self.settings_data["Files"]["download_folder"] = str(self.settings_data["Files"]["download_folder"])
-        self.settings_data["Logs"]["log_folder"] = str(self.settings_data["Logs"]["log_folder"])
-        self.settings_data["Logs"]["webhook_url"] = str(self.settings_data["Logs"]["webhook_url"])
-        self.settings_data["Sorting"]["sort_folder"] = str(self.settings_data["Sorting"]["sort_folder"])
-        self.settings_data["Sorting"]["scan_folder"] = str(self.settings_data["Sorting"]["scan_folder"])
+        # self.settings_data["Browser_Cookies"]["browser"] = self.settings_data["Browser_Cookies"]["browser"].lower() if  self.settings_data["Browser_Cookies"]["browser"] else None
+        #convert paths to str
+        settings_data=copy.deepcopy(self.settings_data)
+        settings_data["Files"]["input_file"] = str(self.settings_data["Files"]["input_file"])
+        settings_data["Files"]["download_folder"] = str(self.settings_data["Files"]["download_folder"])
+        settings_data["Logs"]["log_folder"] = str(self.settings_data["Logs"]["log_folder"])
+        settings_data["Logs"]["webhook_url"] = str(self.settings_data["Logs"]["webhook_url"])
+        settings_data["Sorting"]["sort_folder"] = str(self.settings_data["Sorting"]["sort_folder"])
+        settings_data["Sorting"]["scan_folder"] = str(self.settings_data["Sorting"]["scan_folder"])
         if get_keys(default_settings_data) == get_keys(existing_settings_data):
             return
-        _save_yaml(self.settings, self.settings_data)
+        _save_yaml(self.settings, settings_data)
     def _verify_global_settings_config(self) -> None:
         default_global_data = copy.deepcopy(global_settings)
         existing_global_data = _load_yaml(self.global_settings)
