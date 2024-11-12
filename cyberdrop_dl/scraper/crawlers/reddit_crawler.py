@@ -3,9 +3,9 @@ from __future__ import annotations
 import contextlib
 from typing import TYPE_CHECKING
 
-from aiohttp_client_cache import CachedSession as ClientSession
 import asyncpraw
 import asyncprawcore
+from aiohttp_client_cache import CachedSession as ClientSession
 from aiolimiter import AsyncLimiter
 from yarl import URL
 

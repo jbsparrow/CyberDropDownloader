@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING, Any
 import yaml
 from aiohttp_client_cache import SQLiteBackend
 
-from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
 from cyberdrop_dl.scraper.filters import filter_fn
+from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -53,14 +53,19 @@ class CacheManager:
         self._cache = _load_yaml(self.cache_file)
 
     def load_request_cache(self) -> None:
-        urls_expire_after = {'*.simpcity.su': self.manager.config_manager.global_settings_data['Rate_Limiting_Options'][
-            'file_host_cache_length']}
+        urls_expire_after = {
+            "*.simpcity.su": self.manager.config_manager.global_settings_data["Rate_Limiting_Options"][
+                "file_host_cache_length"
+            ]
+        }
         for host in SupportedDomains.supported_hosts:
-            urls_expire_after[f'*.{host}' if '.' in host else f'*.{host}.*'] = \
-            self.manager.config_manager.global_settings_data['Rate_Limiting_Options']['file_host_cache_length']
+            urls_expire_after[f"*.{host}" if "." in host else f"*.{host}.*"] = (
+                self.manager.config_manager.global_settings_data["Rate_Limiting_Options"]["file_host_cache_length"]
+            )
         for forum in SupportedDomains.supported_forums:
-            urls_expire_after[f'{forum}'] = self.manager.config_manager.global_settings_data['Rate_Limiting_Options'][
-                'forum_cache_length']
+            urls_expire_after[f"{forum}"] = self.manager.config_manager.global_settings_data["Rate_Limiting_Options"][
+                "forum_cache_length"
+            ]
         self.request_cache = SQLiteBackend(
             cache_name=self.manager.path_manager.cache_db,
             autoclose=False,
@@ -68,11 +73,12 @@ class CacheManager:
                 HTTPStatus.OK,
                 HTTPStatus.NOT_FOUND,
                 HTTPStatus.GONE,
-                HTTPStatus.UNAVAILABLE_FOR_LEGAL_REASONS),
-            allowed_methods=['GET'],
+                HTTPStatus.UNAVAILABLE_FOR_LEGAL_REASONS,
+            ),
+            allowed_methods=["GET"],
             expire_after=timedelta(days=7),
             urls_expire_after=urls_expire_after,
-            filter_fn=filter_fn
+            filter_fn=filter_fn,
         )
 
     def get(self, key: str) -> Any:

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional
-from aiohttp import ClientResponse
 from http import HTTPStatus
-from bs4 import BeautifulSoup
+from typing import TYPE_CHECKING
 
 import arrow
+from aiohttp import ClientResponse
+from bs4 import BeautifulSoup
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import NoExtensionError
@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 
 return_values = {}
+
 
 def is_valid_url(scrape_item: ScrapeItem) -> bool:
     if not scrape_item.url:
@@ -72,18 +73,21 @@ def has_valid_extension(url: URL) -> bool:
     else:
         return ext in valid_exts
 
-async def set_return_value(url: str, value: bool, pop: Optional[bool] = True) -> None:
+
+async def set_return_value(url: str, value: bool, pop: bool | None = True) -> None:
     """Sets a return value for a url"""
     global return_values
     return_values[url] = (value, pop)
 
-async def get_return_value(url: str) -> Optional[bool]:
+
+async def get_return_value(url: str) -> bool | None:
     """Gets a return value for a url"""
     global return_values
     value, pop = return_values.get(url, None)
     if pop:
         return_values.pop(url, None)
     return value
+
 
 async def filter_fn(response: ClientResponse) -> bool:
     """Filter function for aiohttp_client_cache"""
@@ -103,23 +107,26 @@ async def filter_fn(response: ClientResponse) -> bool:
 
         soup = BeautifulSoup(await response.text(), "html.parser")
         try:
-            last_page = int(soup.select(final_page_selector)[-1].text.split('page-')[-1])
-            current_page = int(soup.select_one(current_page_selector).text.split('page-')[-1])
+            last_page = int(soup.select(final_page_selector)[-1].text.split("page-")[-1])
+            current_page = int(soup.select_one(current_page_selector).text.split("page-")[-1])
         except (AttributeError, IndexError):
             return False, "Last page not found, assuming only one page"
         return current_page != last_page, "Last page not reached" if current_page != last_page else "Last page reached"
 
     async def check_coomer_page(response: ClientResponse):
         """Checks if the last page has been reached"""
-        url_part_responses = {'data': "Data page", "onlyfans": "Onlyfans page", "fansly": "Fansly page"}
+        url_part_responses = {"data": "Data page", "onlyfans": "Onlyfans page", "fansly": "Fansly page"}
         if response.url.parts[1] in url_part_responses:
             return False, url_part_responses[response.url.parts[1]]
         current_offset = int(response.url.query.get("o", 0))
         maximum_offset = int(response.url.query.get("omax", 0))
-        return current_offset != maximum_offset, "Last page not reached" if current_offset != maximum_offset else "Last page reached"
+        return (
+            current_offset != maximum_offset,
+            "Last page not reached" if current_offset != maximum_offset else "Last page reached",
+        )
 
     filter_dict = {"simpcity.su": check_simpcity_page, "coomer.su": check_coomer_page}
 
-    filter_fn=filter_dict.get(response.url.host)
+    filter_fn = filter_dict.get(response.url.host)
     cache_response, reason = await filter_fn(response) if filter_fn else False, "No caching manager for host"
     return cache_response

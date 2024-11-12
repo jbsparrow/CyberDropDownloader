@@ -1,12 +1,12 @@
 from __future__ import annotations
 
+import asyncio
 import sys
 from pathlib import Path
 from textwrap import dedent
 from typing import TYPE_CHECKING
 
 from InquirerPy import inquirer
-import asyncio
 from InquirerPy.validator import PathValidator
 from requests import request
 from rich import print as rprint

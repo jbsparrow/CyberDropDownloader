@@ -76,6 +76,7 @@ class ScrapeMapper:
             "xbunker": self.xbunker,
             "xbunkr": self.xbunkr,
             "xxxbunker": self.xxxbunker,
+            "simpcity": self.simpcity,
         }
 
         self.existing_crawlers: dict[str, Crawler] = {}

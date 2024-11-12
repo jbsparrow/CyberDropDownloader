@@ -64,6 +64,7 @@ class SupportedDomains:
         "xbunker",
         "xbunkr",
         "xxxbunker",
+        "simpcity",
     )
 
     supported_forums: ClassVar[tuple[str, ...]] = (
@@ -73,6 +74,7 @@ class SupportedDomains:
         "leakedmodels.com",
         "nudostar.com",
         "xbunker.nu",
+        "simpcity.su",
     )
     supported_forums_map: ClassVar[dict[str, str]] = {
         "celebforum.to": "celebforum",
@@ -81,6 +83,7 @@ class SupportedDomains:
         "leakedmodels.com": "leakedmodels",
         "nudostar.com": "nudostar",
         "xbunker.nu": "xbunker",
+        "simpcity.su": "simpcity",
     }
 
     sites: list[str]
