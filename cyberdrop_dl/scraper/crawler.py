@@ -88,11 +88,9 @@ class Crawler(ABC):
         download_folder = get_download_path(self.manager, scrape_item, self.folder_domain)
         media_item = MediaItem(
             url,
-            scrape_item.url,
-            scrape_item.album_id,
+            scrape_item,
             download_folder,
             filename,
-            ext,
             original_filename,
             debrid_link,
         )

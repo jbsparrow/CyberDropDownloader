@@ -23,25 +23,24 @@ class MediaItem:
     def __init__(
         self,
         url: URL,
-        referer: URL,
-        album_id: str | None,
+        origin: ScrapeItem,
         download_folder: Path,
-        filename: str,
-        ext: str,
-        original_filename: str,
+        filename: Path | str,
+        original_filename: Path | str | None,
         debrid_link: URL | None = None,
     ) -> None:
         self.url: URL = url
-        self.referer: URL = referer
+        self.referer: URL = origin.url
         self.debrid_link: URL | None = debrid_link
-        self.album_id: str | None = album_id
+        self.album_id: str | None = origin.album_id
         self.download_folder: Path = download_folder
-        self.filename: str = filename
-        self.ext: str = ext
+        self.filename: str = str(filename)
+        self.ext: str = Path(filename).suffix
         self.download_filename: str = field(init=False)
-        self.original_filename: str = original_filename
+        self.original_filename: str = str(original_filename) if original_filename else self.filename
         self.file_lock_reference_name: str = field(init=False)
         self.datetime: str = field(init=False)
+        self.parents = origin.parents.copy()
 
         self.filesize: int = field(init=False)
         self.current_attempt: int = field(init=False)
