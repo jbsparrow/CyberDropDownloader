@@ -66,7 +66,6 @@ async def runtime(manager: Manager) -> None:
             manager.task_group = task_group
             await scrape_mapper.start()
 
-
 async def post_runtime(manager: Manager) -> None:
     """Actions to complete after main runtime, and before ui shutdown."""
     log_spacer(20)
@@ -183,6 +182,7 @@ async def director(manager: Manager) -> None:
         log("Starting CDL...\n", 20)
 
         try:
+            preruntime(manager)
             await runtime(manager)
             await post_runtime(manager)
         except* Exception as e:
