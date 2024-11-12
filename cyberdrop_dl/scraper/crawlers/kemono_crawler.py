@@ -72,7 +72,7 @@ class KemonoCrawler(Crawler):
             async with self.request_limiter:
                 JSON_Resp = await self.client.get_json(
                     self.domain,
-                    api_call.with_query({"o": offset}),
+                    api_call.with_query({"o": offset, "omax": maximum_offset}),
                     origin=scrape_item,
                 )
                 offset += 50

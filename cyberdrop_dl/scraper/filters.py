@@ -125,7 +125,21 @@ async def filter_fn(response: ClientResponse) -> bool:
             "Last page not reached" if current_offset != maximum_offset else "Last page reached",
         )
 
-    filter_dict = {"simpcity.su": check_simpcity_page, "coomer.su": check_coomer_page}
+    async def check_kemono_page(response: ClientResponse):
+        ["afdian", "boosty", "dlsite", "fanbox", "fantia", "gumroad", "patreon", "subscribestar"]
+        url_part_responses = {"data": "Data page", "afdian": "Afdian page", "boosty": "Boosty page", "dlsite": "Dlsite page", "fanbox": "Fanbox page", "fantia": "Fantia page", "gumroad": "Gumroad page", "patreon": "Patreon page", "subscribestar": "Subscribestar page", "discord": "Discord page"}
+        if response.url.parts[1] in url_part_responses:
+            return False, url_part_responses[response.url.parts[1]]
+        elif "discord/channel" in response.url.parts:
+            return False, "Discord channel page"
+        current_offset = int(response.url.query.get("o", 0))
+        maximum_offset = int(response.url.query.get("omax", 0))
+        return (
+            current_offset != maximum_offset,
+            "Last page not reached" if current_offset != maximum_offset else "Last page reached",
+        )
+
+    filter_dict = {"simpcity.su": check_simpcity_page, "coomer.su": check_coomer_page, "kemono.su": check_kemono_page}
 
     filter_fn = filter_dict.get(response.url.host)
     cache_response, reason = await filter_fn(response) if filter_fn else False, "No caching manager for host"
