@@ -44,7 +44,7 @@ class RedditCrawler(Crawler):
             self.scraping_progress.remove_task(task_id)
             return
 
-        async with ClientSession() as reddit_session:
+        async with ClientSession(cache=self.manager.cache_manager.request_cache) as reddit_session:
             reddit = asyncpraw.Reddit(
                 client_id=self.reddit_personal_use_script,
                 client_secret=self.reddit_secret,
