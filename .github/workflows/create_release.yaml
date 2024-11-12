@@ -1,4 +1,4 @@
-name: Create Release
+name: Create GH Release
 
 on:
   workflow_dispatch:
@@ -34,8 +34,9 @@ jobs:
 
       - name: Create zip from subfolder
         run: |
-          cd scripts/release
-          zip -r ../../Cyberdrop-DL.v${VERSION_NUMBER}.zip .
+          mkdir -p zip/Cyberdrop-DL.v${VERSION_NUMBER}
+          cp -r scripts/release/* zip/Cyberdrop-DL.v${VERSION_NUMBER}
+          zip -r Cyberdrop-DL.v${VERSION_NUMBER}.zip zip/*
 
       - name: Create release
         id: create_release
@@ -45,5 +46,5 @@ jobs:
           body: |
             If you install and run the program with PIP yourself, you do not need anything here.
             Download the Cyberdrop-DL zip file below, you do not need to download the source code zip files.
-            The zip file contains start files that will download and install Cyberdrop-DL and keep it up to date. 
-          files: Cyberdrop-DL.v${VERSION_NUMBER}.zip 
+            The zip file contains start files that will download and install Cyberdrop-DL and keep it up to date.
+          files: Cyberdrop-DL.v${VERSION_NUMBER}.zip
