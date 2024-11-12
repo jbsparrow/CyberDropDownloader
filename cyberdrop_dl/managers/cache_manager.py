@@ -72,7 +72,7 @@ class CacheManager:
             allowed_methods=['GET'],
             expire_after=timedelta(days=7),
             urls_expire_after=urls_expire_after,
-            filter_fn=self.filter_fn
+            filter_fn=filter_fn
         )
 
     def get(self, key: str) -> Any:
