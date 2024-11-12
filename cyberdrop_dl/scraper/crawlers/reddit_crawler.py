@@ -156,7 +156,7 @@ class RedditCrawler(Crawler):
                 date,
                 add_parent=scrape_item.url,
             )
-            await self.handle_external_links(new_scrape_item)
+            self.handle_external_links(new_scrape_item)
 
     async def gallery(self, scrape_item: ScrapeItem, submission: Submission, reddit: asyncpraw.Reddit) -> None:
         """Scrapes galleries."""

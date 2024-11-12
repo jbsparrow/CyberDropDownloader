@@ -140,8 +140,6 @@ class KemonoCrawler(Crawler):
         scrape_item.album_id = post_id
         scrape_item.part_of_album = True
 
-        await self.get_content_links(scrape_item, post, user_str)
-
         scrape_item.children += await self.get_content_links(scrape_item, post, user_str)
 
         async def handle_file(file_obj: dict):
@@ -217,7 +215,7 @@ class KemonoCrawler(Crawler):
                 "",
                 add_parent=scrape_item.url.joinpath("post", post_id),
             )
-            await self.handle_external_links(scrape_item)
+            self.handle_external_links(scrape_item)
             new_children += 1
             if scrape_item.children_limit and (new_children + scrape_item.children) >= scrape_item.children_limit:
                 break
