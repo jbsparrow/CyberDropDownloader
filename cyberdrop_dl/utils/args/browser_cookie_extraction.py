@@ -42,8 +42,9 @@ def cookie_wrapper(func: Callable) -> CookieJar:
 
 # noinspection PyProtectedMember
 @cookie_wrapper
-def get_forum_cookies(manager: Manager, browser: str) -> None:
+def get_forum_cookies(manager: Manager, browser: str=None) -> None:
     """Get the cookies for the forums."""
+    browser=browser or manager.config_manager.settings_data["Browser_Cookies"]["browser"]
     auth_args: dict = manager.config_manager.authentication_data
     for forum in SupportedDomains.supported_forums:
         forum_key = f"{SupportedDomains.supported_forums_map[forum]}_xf_user_cookie"
@@ -71,6 +72,8 @@ def get_cookie(browser: str, domain: str) -> CookieJar:
         cookie = browser_cookie3.opera(domain_name=domain)
     elif browser == "brave":
         cookie = browser_cookie3.brave(domain_name=domain)
+    elif browser == "chromium":
+        cookie = browser_cookie3.chromium(domain_name=domain)
     else:
         msg = "Invalid browser specified"
         raise ValueError(msg)

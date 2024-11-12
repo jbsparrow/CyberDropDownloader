@@ -28,6 +28,8 @@ from cyberdrop_dl.utils.utilities import (
     send_webhook_message,
     sent_apprise_notifications,
 )
+from cyberdrop_dl.utils.args.browser_cookie_extraction import get_forum_cookies
+
 
 
 def startup() -> Manager:
@@ -66,6 +68,10 @@ async def runtime(manager: Manager) -> None:
             manager.task_group = task_group
             await scrape_mapper.start()
 
+def pre_runtime(manager):
+    """Actions to complete before main runtime"""
+    if manager.config_manager.settings_data["Browser_Cookies"]["auto_import"]:
+        get_forum_cookies(manager)
 async def post_runtime(manager: Manager) -> None:
     """Actions to complete after main runtime, and before ui shutdown."""
     log_spacer(20)
@@ -182,7 +188,7 @@ async def director(manager: Manager) -> None:
         log("Starting CDL...\n", 20)
 
         try:
-            preruntime(manager)
+            pre_runtime(manager)
             await runtime(manager)
             await post_runtime(manager)
         except* Exception as e:
