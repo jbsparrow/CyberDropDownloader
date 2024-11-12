@@ -83,6 +83,7 @@ class ScraperClient:
         client_session: ClientSession,
         origin: ScrapeItem | URL | None = None,
         with_response_url: bool = False,
+        retry: bool = True,
     ) -> BeautifulSoup:
         """Returns a BeautifulSoup object from the given URL."""
         async with client_session.get(
@@ -94,14 +95,19 @@ class ScraperClient:
             try:
                 await self.client_manager.check_http_status(response, origin=origin)
             except DDOSGuardError:
-                response, response_URL = await self.client_manager.flaresolverr.get(
+                soup, response_URL = await self.client_manager.flaresolverr.get(
                     url,
                     client_session,
                     origin,
                 )
+                # retry request with flaresolverr cookies
+                if self.client_manager.check_ddos_guard(soup):
+                    if not retry:
+                        raise DDOSGuardError(message="Unable to access website with flaresolverr cookies") from None
+                    return self.get_soup(domain, url, client_session, origin, with_response_url, retry=False)
                 if with_response_url:
-                    return response, response_URL
-                return response
+                    return soup, response_URL
+                return soup
 
             content_type = response.headers.get("Content-Type")
             assert content_type is not None
@@ -155,6 +161,7 @@ class ScraperClient:
         url: URL,
         client_session: ClientSession,
         origin: ScrapeItem | URL | None = None,
+        retry: bool = True,
     ) -> str:
         """Returns a text object from the given URL."""
         async with client_session.get(
@@ -167,6 +174,10 @@ class ScraperClient:
                 await self.client_manager.check_http_status(response, origin=origin)
             except DDOSGuardError:
                 soup, _ = await self.client_manager.flaresolverr.get(url, client_session, origin)
+                if self.client_manager.check_ddos_guard(soup):
+                    if not retry:
+                        raise DDOSGuardError(message="Unable to access website with flaresolverr cookies") from None
+                    return self.get_text(domain, url, client_session, origin, retry=False)
                 return str(soup)
             return await response.text()
 

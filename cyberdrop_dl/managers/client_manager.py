@@ -4,24 +4,25 @@ import asyncio
 import contextlib
 import ssl
 from http import HTTPStatus
+from http.cookiejar import Cookie
 from typing import TYPE_CHECKING
 
 import aiohttp
 import certifi
-from aiohttp import ClientResponse, ContentTypeError
+from aiohttp import ClientResponse, ClientSession, ContentTypeError
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
+from yarl import URL
 
 from cyberdrop_dl.clients.download_client import DownloadClient
 from cyberdrop_dl.clients.errors import DDOSGuardError, DownloadError, ScrapeError
 from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.managers.leaky import LeakyBucket
 from cyberdrop_dl.utils.constants import CustomHTTPStatus
+from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
-    from aiohttp import ClientSession
     from bs4 import BeautifulSoup
-    from yarl import URL
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.scraper.crawler import ScrapeItem
@@ -176,10 +177,13 @@ class ClientManager:
         return False
 
     async def close(self):
-        self.flaresolverr._destroy_session()
+        await self.flaresolverr._destroy_session()
+        await self.flaresolverr.default_session.close()
 
 
 class Flaresolverr:
+    """Class that handles communication with flaresolverr"""
+
     def __init__(self, client_manager: ClientManager) -> None:
         self.client_manager = client_manager
         self.flaresolverr_host = (
@@ -187,12 +191,11 @@ class Flaresolverr:
             or client_manager.manager.config_manager.global_settings_data["General"]["flaresolverr"]
         )
         self.enabled = bool(self.flaresolverr_host)
+        if "http" not in self.flaresolverr_host:
+            self.flaresolverr_host = f"http://{self.flaresolverr_host}"
         self.session_id = None
         self.default_session = ClientSession()
-        flaresolverr_url = URL(self.flaresolverr_host)
-        if not flaresolverr_url.scheme:
-            flaresolverr_url = URL(f"http://{self.flaresolverr_host}")
-        self.flaresolverr_host = flaresolverr_url
+        self.flaresolverr_host = URL(self.flaresolverr_host)
 
     async def _request(
         self,
@@ -201,14 +204,19 @@ class Flaresolverr:
         origin: ScrapeItem | URL | None = None,
         **kwargs,
     ) -> dict:
-        """Returns the resolved URL from the given URL."""
+        """Base request function to call flaresolverr."""
         if not self.enabled:
             raise DDOSGuardError(message="FlareSolverr is not configured", origin=origin)
 
         if not (self.session_id or kwargs.get("session")):
-            await self._get_session()
+            await self._create_session()
 
-        headers = client_session.headers | {"Content-Type": "application/json"}
+        headers = client_session.headers.copy()
+        headers.update({"Content-Type": "application/json"})
+        for key, value in kwargs.items():
+            if isinstance(value, URL):
+                kwargs[key] = str(value)
+
         data = {"cmd": command, "maxTimeout": 60000, "session": self.session_id} | kwargs
 
         async with client_session.post(
@@ -221,7 +229,8 @@ class Flaresolverr:
             json_obj: dict = await response.json()  # type: ignore
             return json_obj
 
-    async def _get_session(self) -> None:
+    async def _create_session(self) -> None:
+        """Creates a permanet flaresolverr session."""
         session_id = "cyberdrop-dl"
         flaresolverr_resp = await self._request("sessions.create", self.default_session, session=session_id)
         status = flaresolverr_resp.get("status")
@@ -238,9 +247,10 @@ class Flaresolverr:
         url: URL,
         client_session: ClientSession,
         origin: ScrapeItem | URL | None = None,
+        update_cookies: bool = True,
     ) -> tuple[BeautifulSoup, URL]:
         """Returns the resolved URL from the given URL."""
-        flaresolverr_resp: dict = await self._request(url, "request.get", client_session, origin, url=url)
+        flaresolverr_resp: dict = await self._request("request.get", client_session, origin, url=url)
 
         status = flaresolverr_resp.get("status")
         if status != "ok":
@@ -249,8 +259,19 @@ class Flaresolverr:
         solution: dict = flaresolverr_resp.get("solution")
         response = BeautifulSoup(solution.get("response"), "html.parser")
         response_url = URL(solution.get("url"))
+        cookies = solution.get("cookies")
+        user_agent = client_session.headers.get("User-Agent")
+        flaresolverr_user_agent = solution.get("userAgent")
 
-        if self.client_manager.check_ddos_guard(response):
+        if self.client_manager.check_ddos_guard(response) and not update_cookies:
             raise DDOSGuardError(message="Invalid response from flaresolverr", origin=origin)
+
+        if update_cookies:
+            if flaresolverr_user_agent != user_agent:
+                log("Config user_agent and flaresolverr user_agent do not match", 30)
+            else:
+                for cookie_dict in cookies:
+                    cookie = Cookie(**cookie_dict)
+                    self.client_manager.cookies.update_cookies(cookie)
 
         return response, response_url
