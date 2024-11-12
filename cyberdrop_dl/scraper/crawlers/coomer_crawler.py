@@ -224,6 +224,24 @@ class CoomerCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
         return soup.select_one("span[itemprop=name]").text
 
+    async def get_maximum_offset(self, soup: BeautifulSoup) -> int:
+        """Gets the maximum offset for a scrape item"""
+        menu = soup.select_one("menu")
+        if menu is None:
+            self.maximum_offset = 0
+            return 0
+        pagination_links = menu.find_all("a", href=True)
+        offsets = [int(x['href'].split('?o=')[-1]) for x in pagination_links]
+        offset = max(offsets)
+        self.maximum_offset = offset
+        return offset
+
+    async def get_offsets(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> int:
+        """Gets the offset for a scrape item"""
+        current_offset = int(scrape_item.url.query.get("o", 0))
+        maximum_offset = await self.get_maximum_offset(soup)
+        return current_offset, maximum_offset
+
     @staticmethod
     def get_service_and_user(scrape_item: ScrapeItem) -> tuple[str, str]:
         """Gets the service and user from a scrape item."""
