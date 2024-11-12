@@ -79,9 +79,10 @@ class CoomerCrawler(Crawler):
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile."""
-        offset = 0
-        service, user = self.get_service_and_user(scrape_item)
-        user_str = await self.get_user_str_from_profile(scrape_item)
+        soup: BeautifulSoup = await self.client.get_BS4(self.domain, scrape_item.url)
+        offset, maximum_offset = await self.get_offsets(scrape_item, soup)
+        service, user = await self.get_service_and_user(scrape_item)
+        user_str = await self.get_user_str_from_profile(soup)
         api_call = self.api_url / service / "user" / user
         scrape_item.type = FILE_HOST_PROFILE
         scrape_item.children = scrape_item.children_limit = 0
@@ -91,7 +92,7 @@ class CoomerCrawler(Crawler):
                 "maximum_number_of_children"
             ][scrape_item.type]
 
-        while True:
+        while offset <= maximum_offset:
             async with self.request_limiter:
                 JSON_Resp = await self.client.get_json(
                     self.domain,
@@ -218,10 +219,8 @@ class CoomerCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
         return soup.select_one("a[class=post__user-name]").text
 
-    async def get_user_str_from_profile(self, scrape_item: ScrapeItem) -> str:
+    async def get_user_str_from_profile(self, soup: BeautifulSoup) -> str:
         """Gets the user string from a scrape item."""
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
         return soup.select_one("span[itemprop=name]").text
 
     async def get_maximum_offset(self, soup: BeautifulSoup) -> int:
