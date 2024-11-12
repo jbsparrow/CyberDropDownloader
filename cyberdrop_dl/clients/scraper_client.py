@@ -146,7 +146,9 @@ class ScraperClient:
                     content_type = response.headers.get("Content-Type")
                     assert content_type is not None
                     if not any(s in content_type.lower() for s in ("html", "text")):
-                        raise InvalidContentTypeError(message=f"Received {content_type}, was expecting text", origin=origin)
+                        raise InvalidContentTypeError(
+                            message=f"Received {content_type}, was expecting text", origin=origin
+                        )
                     text = await CachedStreamReader(await response.read()).read()
                     if with_response_url:
                         return BeautifulSoup(text, "html.parser"), URL(response.url)
@@ -215,7 +217,9 @@ class ScraperClient:
                     content_type = response.headers.get("Content-Type")
                     assert content_type is not None
                     if "json" not in content_type.lower():
-                        raise InvalidContentTypeError(message=f"Received {content_type}, was expecting JSON", origin=origin)
+                        raise InvalidContentTypeError(
+                            message=f"Received {content_type}, was expecting JSON", origin=origin
+                        )
                     return await response.json()
         else:
             async with client_session.get(
