@@ -106,7 +106,7 @@ class CoomerCrawler(Crawler):
                     )
                     # Check cache to see if responses match
                     cached_response = await self.manager.cache_manager.request_cache.get_response(str(query_api_call))
-                    cached_json = await cached_response.json()
+                    cached_json = await cached_response.json() if cached_response else None
                     if JSON_Resp != cached_json:
                         await log(f"New posts founr for {user_str}, invalidating cache", 20)
                         await self.manager.cache_manager.request_cache.delete_url(api_call)
