@@ -89,6 +89,7 @@ def get_cookies_from_browser(manager: Manager, browsers: str = None) -> None:
     if isinstance(user_sites,str):
         user_sites=re.split(r'[ ,]+', user_sites)
     for domain in user_sites:
+        domain = domain.lower() if domain else None
         if domain not in all_sites:
             continue
         for browser in browsers:
