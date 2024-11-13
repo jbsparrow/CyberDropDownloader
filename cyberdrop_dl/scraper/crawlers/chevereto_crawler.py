@@ -143,6 +143,7 @@ class CheveretoCrawler(Crawler):
                         raw=True,
                         origin=scrape_item,
                     ),
+                    "html.parser",
                 )
 
         if "This content is password protected" in sub_albums_soup.text:

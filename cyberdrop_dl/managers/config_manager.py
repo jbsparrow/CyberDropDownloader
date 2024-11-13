@@ -143,7 +143,7 @@ class ConfigManager:
         self.settings_data["Logs"]["webhook_url"] = str(self.settings_data["Logs"]["webhook_url"])
         self.settings_data["Sorting"]["sort_folder"] = Path(self.settings_data["Sorting"]["sort_folder"])
         self.settings_data["Sorting"]["scan_folder"] = (
-            Path(self.settings_data["Sorting"]["scan_folder"]) if self.settings_data["Sorting"]["scan_folder"] else None
+            Path(self.settings_data["Sorting"]["scan_folder"]) if self.settings_data["Sorting"]["scan_folder"] != 'None' else None
         )
 
         # change to ints
