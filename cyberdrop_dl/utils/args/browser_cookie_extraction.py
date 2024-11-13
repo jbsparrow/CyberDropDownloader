@@ -77,18 +77,22 @@ def cookie_wrapper(func: Callable) -> CookieJar:
 
 
 @cookie_wrapper
-def get_cookies_from_browser(manager: Manager, browser: str = None) -> None:
+def get_cookies_from_browser(manager: Manager, browsers: str = None) -> None:
     """Get the cookies for the supported sites"""
     manager.path_manager.cookies_dir.mkdir(exist_ok=True)
-    browser = browser or manager.config_manager.settings_data["Browser_Cookies"]["browser"]
-    browser = browser.lower() if browser else None
-    for domain in SupportedDomains.supported_forums:
-        cookies = get_cookie(browser, domain)
-        cookie_jar = MozillaCookieJar()
-        cookie_file_path = manager.path_manager.cookies_dir / f"{domain}.txt"
+    browsers = browsers or manager.config_manager.settings_data["Browser_Cookies"]["browser"]
+    if not isinstance(browsers,list):
+        browsers = [browsers]
 
-        for cookie in cookies:
-            cookie_jar.set_cookie(cookie)
+    for domain in SupportedDomains.supported_forums:
+        for browser in browsers:
+            browser = browser.lower() if browser else None
+            cookies = get_cookie(browser, domain)
+            cookie_jar = MozillaCookieJar()
+            cookie_file_path = manager.path_manager.cookies_dir / f"{domain}.txt"
+
+            for cookie in cookies:
+                cookie_jar.set_cookie(cookie)
 
         cookie_jar.save(cookie_file_path, ignore_discard=True, ignore_expires=True)
 
