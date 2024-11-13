@@ -128,6 +128,7 @@ settings: dict = {
     "Browser_Cookies": {
         "browser": "Chrome",
         "auto_import": False,
+        "sites": None
     },
 }
 

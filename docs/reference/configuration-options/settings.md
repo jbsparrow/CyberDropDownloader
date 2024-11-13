@@ -495,3 +495,56 @@ Unique Path Flags:
 This is the format for the directory structure and naming scheme for other files.
 
 </details>
+
+<details>
+
+<summary>Browser Cookies</summary>
+Cyberdrop-DL can extract cookies from your browser
+Only cookies from supported websites are extracted
+***
+* auto_import
+
+toggles automatic import of cookies at the start of each run
+
+* **browser**
+  The browser to extract cookies from
+
+  Value can be a single word string or a list of single word strings
+  Supported Values:
+  * **Chrome**
+    * Supports: Linux, MacOS, Windows
+  * **Firefox**
+    * Supports: Linux, MacOS, Windows
+  * **LibreWolf**
+    * Supports: Linux, MacOS, Windows
+  * **Opera**
+    * Supports: Linux, MacOS, Windows
+  * **Opera_GX**
+    * Supports: MacOS, Windows
+  * **Edge**
+    * Supports: Linux, MacOS, Windows
+  * **Chromium**
+    * Supports: Linux, MacOS, Windows
+  * **Brave**
+    * Supports: Linux, MacOS, Windows
+  * **Vivaldi**
+    * Supports: Linux, MacOS, Windows
+  * **Safari**
+    * Supports: MacOS
+
+
+Note: if cookies exists on multiple selected browsers then the last browser later in the list will have priority
+
+
+* sites
+Selection of which sites to extract cookies from only sites supported by script will be extracted from given list
+
+
+***
+
+
+     "browser": "Chrome",
+        "auto_import": False,
+        "sites": None
+
+</details>
