@@ -502,9 +502,12 @@ This is the format for the directory structure and naming scheme for other files
 Cyberdrop-DL can extract cookies from your browser
 Only cookies from supported websites are extracted
 ***
+
 * auto_import
 
 toggles automatic import of cookies at the start of each run
+
+***
 
 * **browser**
   The browser to extract cookies from
@@ -534,6 +537,7 @@ toggles automatic import of cookies at the start of each run
 
 
 Note: if cookies exists on multiple selected browsers then the last browser later in the list will have priority
+***
 
 
 * sites
@@ -542,7 +546,6 @@ Selection of which sites to extract cookies from only sites supported by script 
 Value can be a single word string or a list of single word strings
 
 
-***
 
 
 </details>
