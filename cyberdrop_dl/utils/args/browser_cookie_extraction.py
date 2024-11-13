@@ -41,7 +41,7 @@ def cookie_wrapper(func: Callable) -> CookieJar:
         except ValueError as E:
             console = Console()
             console.clear()
-            if str(E) == "Value cannot be None": 
+            if str(E) == "Value cannot be None":
                 console.print(
                     "No browser selected",
                     style="bold red",
