@@ -141,7 +141,7 @@ class ConfigManager:
         self.settings_data["Files"]["download_folder"] = Path(self.settings_data["Files"]["download_folder"])
         self.settings_data["Logs"]["log_folder"] = Path(self.settings_data["Logs"]["log_folder"])
         self.settings_data["Logs"]["webhook_url"] = (
-            str(self.settings_data["Logs"]["webhook_url"]) if self.settings_data["Logs"]["webhook_url"] else None
+            str(self.settings_data["Logs"]["webhook_url"]) if self.settings_data["Logs"]["webhook_url"] is not None else None
         )
         self.settings_data["Sorting"]["sort_folder"] = Path(self.settings_data["Sorting"]["sort_folder"])
         self.settings_data["Sorting"]["scan_folder"] = (
@@ -305,7 +305,7 @@ class ConfigManager:
             else None
         )
         settings_data["Sorting"]["scan_folder"] = (
-            str(settings_data["Sorting"]["scan_folder"]) if settings_data["Sorting"]["scan_folder"] else None
+            str(settings_data["Sorting"]["scan_folder"]) if settings_data["Sorting"]["scan_folder"] is not None else None
         )
         _save_yaml(new_settings, settings_data)
 
