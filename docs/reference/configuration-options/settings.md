@@ -539,6 +539,9 @@ Note: if cookies exists on multiple selected browsers then the last browser late
 * sites
 Selection of which sites to extract cookies from only sites supported by script will be extracted from given list
 
+Value can be a single word string or a list of single word strings
+
+
 ***
 
 
