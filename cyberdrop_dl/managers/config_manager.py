@@ -140,7 +140,9 @@ class ConfigManager:
         self.settings_data["Files"]["input_file"] = Path(self.settings_data["Files"]["input_file"])
         self.settings_data["Files"]["download_folder"] = Path(self.settings_data["Files"]["download_folder"])
         self.settings_data["Logs"]["log_folder"] = Path(self.settings_data["Logs"]["log_folder"])
-        self.settings_data["Logs"]["webhook_url"] = str(self.settings_data["Logs"]["webhook_url"]) if self.settings_data["Logs"]["webhook_url"] else None
+        self.settings_data["Logs"]["webhook_url"] = (
+            str(self.settings_data["Logs"]["webhook_url"]) if self.settings_data["Logs"]["webhook_url"] else None
+        )
         self.settings_data["Sorting"]["sort_folder"] = Path(self.settings_data["Sorting"]["sort_folder"])
         self.settings_data["Sorting"]["scan_folder"] = (
             Path(self.settings_data["Sorting"]["scan_folder"]) if self.settings_data["Sorting"]["scan_folder"] else None
@@ -283,11 +285,25 @@ class ConfigManager:
     @staticmethod
     def create_new_config(new_settings: Path, settings_data: dict) -> None:
         """Creates a new settings config file."""
-        settings_data["Files"]["input_file"] = str(settings_data["Files"]["input_file"]) if settings_data["Files"]["input_file"] is not None else None
-        settings_data["Files"]["download_folder"] = str(settings_data["Files"]["download_folder"]) if settings_data["Files"]["download_folder"] is not None else None
-        settings_data["Logs"]["log_folder"] = str(settings_data["Logs"]["log_folder"]) if settings_data["Logs"]["log_folder"] is not None else None
-        settings_data["Logs"]["webhook_url"] = str(settings_data["Logs"]["webhook_url"]) if settings_data["Logs"]["webhook_url"] is not None else None
-        settings_data["Sorting"]["sort_folder"] = str(settings_data["Sorting"]["sort_folder"]) if settings_data["Sorting"]["sort_folder"] is not None else None
+        settings_data["Files"]["input_file"] = (
+            str(settings_data["Files"]["input_file"]) if settings_data["Files"]["input_file"] is not None else None
+        )
+        settings_data["Files"]["download_folder"] = (
+            str(settings_data["Files"]["download_folder"])
+            if settings_data["Files"]["download_folder"] is not None
+            else None
+        )
+        settings_data["Logs"]["log_folder"] = (
+            str(settings_data["Logs"]["log_folder"]) if settings_data["Logs"]["log_folder"] is not None else None
+        )
+        settings_data["Logs"]["webhook_url"] = (
+            str(settings_data["Logs"]["webhook_url"]) if settings_data["Logs"]["webhook_url"] is not None else None
+        )
+        settings_data["Sorting"]["sort_folder"] = (
+            str(settings_data["Sorting"]["sort_folder"])
+            if settings_data["Sorting"]["sort_folder"] is not None
+            else None
+        )
         settings_data["Sorting"]["scan_folder"] = (
             str(settings_data["Sorting"]["scan_folder"]) if settings_data["Sorting"]["scan_folder"] else None
         )
@@ -300,12 +316,30 @@ class ConfigManager:
     def write_updated_settings_config(self) -> None:
         """Write updated settings data."""
         settings_data = copy.deepcopy(self.settings_data)
-        settings_data["Files"]["input_file"] = str(settings_data["Files"]["input_file"]) if settings_data["Files"]["input_file"] is not None else None
-        settings_data["Files"]["download_folder"] = str(settings_data["Files"]["download_folder"]) if settings_data["Files"]["download_folder"] is not None else None
-        settings_data["Logs"]["log_folder"] = str(settings_data["Logs"]["log_folder"]) if settings_data["Logs"]["log_folder"] is not None else None
-        settings_data["Logs"]["webhook_url"] = str(settings_data["Logs"]["webhook_url"]) if settings_data["Logs"]["webhook_url"] is not None else None
-        settings_data["Sorting"]["sort_folder"] = str(settings_data["Sorting"]["sort_folder"]) if settings_data["Sorting"]["sort_folder"] is not None else None
-        settings_data["Sorting"]["scan_folder"] = str(settings_data["Sorting"]["scan_folder"]) if settings_data["Sorting"]["scan_folder"] is not None else None
+        settings_data["Files"]["input_file"] = (
+            str(settings_data["Files"]["input_file"]) if settings_data["Files"]["input_file"] is not None else None
+        )
+        settings_data["Files"]["download_folder"] = (
+            str(settings_data["Files"]["download_folder"])
+            if settings_data["Files"]["download_folder"] is not None
+            else None
+        )
+        settings_data["Logs"]["log_folder"] = (
+            str(settings_data["Logs"]["log_folder"]) if settings_data["Logs"]["log_folder"] is not None else None
+        )
+        settings_data["Logs"]["webhook_url"] = (
+            str(settings_data["Logs"]["webhook_url"]) if settings_data["Logs"]["webhook_url"] is not None else None
+        )
+        settings_data["Sorting"]["sort_folder"] = (
+            str(settings_data["Sorting"]["sort_folder"])
+            if settings_data["Sorting"]["sort_folder"] is not None
+            else None
+        )
+        settings_data["Sorting"]["scan_folder"] = (
+            str(settings_data["Sorting"]["scan_folder"])
+            if settings_data["Sorting"]["scan_folder"] is not None
+            else None
+        )
 
         _save_yaml(self.settings, settings_data)
 
