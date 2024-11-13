@@ -88,7 +88,6 @@ def get_cookies_from_browser(manager: Manager, browsers: str = None) -> None:
     user_sites= manager.config_manager.settings_data["Browser_Cookies"]["sites"] or SupportedDomains.supported_hosts
     if isinstance(user_sites,str):
         user_sites=re.split(r'[ ,]+', user_sites)
-               
 
     for domain in user_sites:
         domain = domain.lower() if domain else None
