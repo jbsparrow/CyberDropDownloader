@@ -181,7 +181,11 @@ class ConfigManager:
         save_data["Logs"]["log_folder"] = str(save_data["Logs"]["log_folder"])
         save_data["Logs"]["webhook_url"] = str(save_data["Logs"]["webhook_url"])
         save_data["Sorting"]["sort_folder"] = str(save_data["Sorting"]["sort_folder"])
-        save_data["Sorting"]["scan_folder"] = str(save_data["Sorting"]["scan_folder"]) if save_data["Sorting"]["scan_folder"] not in ['None', None] else None
+        save_data["Sorting"]["scan_folder"] = (
+            str(save_data["Sorting"]["scan_folder"])
+            if save_data["Sorting"]["scan_folder"] not in ["None", None]
+            else None
+        )
         _save_yaml(self.settings, save_data)
 
     def _verify_global_settings_config(self) -> None:
@@ -196,7 +200,9 @@ class ConfigManager:
         for key, value in default_global_settings_data.items():
             for subkey, subvalue in value.items():
                 _type = type(subvalue)
-                self.global_settings_data[key][subkey] = self.return_verified(_type, self.global_settings_data[key][subkey])
+                self.global_settings_data[key][subkey] = self.return_verified(
+                    _type, self.global_settings_data[key][subkey]
+                )
 
         self.global_settings_data = _match_config_dicts(default_global_settings_data, existing_global_settings_data)
         _save_yaml(self.global_settings, self.global_settings_data)
@@ -211,8 +217,12 @@ class ConfigManager:
         settings_data["Logs"]["log_folder"] = str(settings_data["Logs"]["log_folder"])
         settings_data["Logs"]["webhook_url"] = str(settings_data["Logs"]["webhook_url"])
         settings_data["Sorting"]["sort_folder"] = str(settings_data["Sorting"]["sort_folder"])
-        settings_data["Sorting"]["scan_folder"] = str(settings_data["Sorting"]["scan_folder"]) if settings_data["Sorting"]["scan_folder"] not in ['None', None] else None
-        
+        settings_data["Sorting"]["scan_folder"] = (
+            str(settings_data["Sorting"]["scan_folder"])
+            if settings_data["Sorting"]["scan_folder"] not in ["None", None]
+            else None
+        )
+
         _save_yaml(new_settings, settings_data)
 
     def write_updated_authentication_config(self) -> None:
@@ -227,7 +237,11 @@ class ConfigManager:
         settings_data["Logs"]["log_folder"] = str(settings_data["Logs"]["log_folder"])
         settings_data["Logs"]["webhook_url"] = str(settings_data["Logs"]["webhook_url"])
         settings_data["Sorting"]["sort_folder"] = str(settings_data["Sorting"]["sort_folder"])
-        settings_data["Sorting"]["scan_folder"] = str(settings_data["Sorting"]["scan_folder"]) if settings_data["Sorting"]["scan_folder"] not in ['None', None] else None
+        settings_data["Sorting"]["scan_folder"] = (
+            str(settings_data["Sorting"]["scan_folder"])
+            if settings_data["Sorting"]["scan_folder"] not in ["None", None]
+            else None
+        )
 
         _save_yaml(self.settings, settings_data)
 
