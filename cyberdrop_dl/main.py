@@ -74,6 +74,7 @@ def pre_runtime(manager):
         get_cookies_from_browser(manager)
 
 
+
 async def post_runtime(manager: Manager) -> None:
     """Actions to complete after main runtime, and before ui shutdown."""
     log_spacer(20)
