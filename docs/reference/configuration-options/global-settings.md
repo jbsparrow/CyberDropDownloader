@@ -160,7 +160,7 @@ prev downloads are files that are match with the hash and size given, and are no
 
 Current files are files that were either downloaded or a file was skipped for already existing when dedupe_already_downloaded is true
 
-If enabled then at least one existing previous download will be kept on system. 
+If enabled then at least one existing previous download will be kept on system.
 If not enabled all previous downloads will be deleted
 
 </details>

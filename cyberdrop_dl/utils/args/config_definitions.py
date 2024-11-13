@@ -126,9 +126,10 @@ settings: dict = {
         "sorted_video": "{sort_dir}/{base_dir}/Videos/{filename}{ext}",
     },
     "Browser_Cookies": {
-        "browser":"Chrome",
+        "browser": "Chrome",
         "auto_import": False,
-}}
+    },
+}
 
 global_settings: dict = {
     "General": {

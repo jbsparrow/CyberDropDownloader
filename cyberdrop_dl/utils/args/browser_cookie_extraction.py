@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from functools import wraps
+from http.cookiejar import MozillaCookieJar
 from typing import TYPE_CHECKING
 
 import browser_cookie3
@@ -9,8 +10,6 @@ from InquirerPy import inquirer
 from rich.console import Console
 
 from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
-from http.cookiejar import MozillaCookieJar
-
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -69,12 +68,14 @@ def cookie_wrapper(func: Callable) -> CookieJar:
             inquirer.confirm(message="Press enter to continue").execute()
 
     return wrapper
+
+
 @cookie_wrapper
-def get_cookies_from_browser(manager: Manager, browser: str=None) -> None:
+def get_cookies_from_browser(manager: Manager, browser: str = None) -> None:
     """Get the cookies for the supported sites"""
     manager.path_manager.cookies_dir.mkdir(exist_ok=True)
-    browser=browser or manager.config_manager.settings_data["Browser_Cookies"]["browser"]
-    browser=browser.lower()  if browser else None
+    browser = browser or manager.config_manager.settings_data["Browser_Cookies"]["browser"]
+    browser = browser.lower() if browser else None
     for domain in SupportedDomains.supported_forums:
         cookies = get_cookie(browser, domain)
         cookie_jar = MozillaCookieJar()

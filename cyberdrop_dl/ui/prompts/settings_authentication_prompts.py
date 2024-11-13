@@ -149,7 +149,7 @@ def edit_forum_authentication_values_prompt(manager: Manager) -> None:
                 get_cookies_from_browser(manager, "opera_gx")
             elif action == "vivaldi":
                 get_cookies_from_browser(manager, "vivaldi")
-            elif action =="chromium":
+            elif action == "chromium":
                 get_cookies_from_browser(manager, "chromium")
             return
 

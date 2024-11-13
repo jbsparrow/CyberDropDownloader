@@ -123,7 +123,7 @@ Only grab the first POST/ALBUM from a FILE_HOST_PROFILE
 No FORUM limit, no FORUM_POST limit, no FILE_HOST_PROFILE limit, maximum of 20 items from any FILE_HOST_ALBUM:
 
     --maximum-number-of-children 0 0 0 20
-``` 
+```
 
 </details>
 
@@ -193,7 +193,7 @@ Cyberdrop-DL will output the links it fails to scrape, and the reason in CSV for
 
 * discord\_webhook\_url
 
-The URL of the Discord webhook that you want to send download stats to. You can add the optional tag `attach_logs=` as a prefix to include a copy of the main log as an attachment. 
+The URL of the Discord webhook that you want to send download stats to. You can add the optional tag `attach_logs=` as a prefix to include a copy of the main log as an attachment.
 
 Ex: `attach_logs=https://discord.com/api/webhooks/webhook_id/webhook_token`
 
