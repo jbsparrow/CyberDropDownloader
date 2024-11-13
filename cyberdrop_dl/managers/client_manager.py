@@ -142,7 +142,7 @@ class ClientManager:
 
         with contextlib.suppress(UnicodeDecodeError):
             response_text = await response.text()
-            soup = BeautifulSoup(response_text)
+            soup = BeautifulSoup(response_text, "html.parser")
             if cls.check_ddos_guard(soup):
                 raise DDOSGuardError(origin=origin)
 
