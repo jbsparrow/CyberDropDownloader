@@ -239,6 +239,7 @@ class CyberfileCrawler(Crawler):
                         raw=True,
                         origin=scrape_item,
                     ),
+                    "html.parser",
                 )
                 if "File password is invalid" in soup.text:
                     raise PasswordProtectedError(origin=scrape_item)
