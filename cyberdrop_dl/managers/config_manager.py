@@ -120,16 +120,16 @@ class ConfigManager:
             self.settings_data["Sorting"]["scan_folder"] = None
             self.write_updated_settings_config()
 
-    def return_verified(self, _type, value) -> any:
-        if _type == int:
+    def return_verified(self, value) -> any:
+        if isinstance(value, int):
             return int(value)
-        elif _type == bool:
+        elif isinstance(value, bool):
             return bool(value)
-        elif _type == str:
+        elif isinstance(value, str):
             return str(value)
-        elif _type == list:
+        elif isinstance(value, list):
             return list(value)
-        elif _type == dict:
+        elif isinstance(value, dict):
             return dict(value)
         else:
             return value
@@ -161,8 +161,7 @@ class ConfigManager:
 
         for key, value in default_settings_data.items():
             for subkey, subvalue in value.items():
-                _type = type(subvalue)
-                self.settings_data[key][subkey] = self.return_verified(_type, self.settings_data[key][subkey])
+                self.settings_data[key][subkey] = self.return_verified(subvalue)
 
                 for path_item in paths:
                     if key == path_item[0] and subkey == path_item[1]:
@@ -199,10 +198,7 @@ class ConfigManager:
 
         for key, value in default_global_settings_data.items():
             for subkey, subvalue in value.items():
-                _type = type(subvalue)
-                self.global_settings_data[key][subkey] = self.return_verified(
-                    _type, self.global_settings_data[key][subkey]
-                )
+                self.global_settings_data[key][subkey] = self.return_verified(subvalue)
 
         self.global_settings_data = _match_config_dicts(default_global_settings_data, existing_global_settings_data)
         _save_yaml(self.global_settings, self.global_settings_data)
