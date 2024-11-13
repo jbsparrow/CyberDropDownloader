@@ -45,7 +45,7 @@ def cookie_wrapper(func: Callable) -> CookieJar:
 def get_forum_cookies(manager: Manager, browser: str) -> None:
     """Get the cookies for the forums."""
     auth_args: dict = manager.config_manager.authentication_data
-    for forum in SupportedDomains.supported_forums:
+    for forum in SupportedDomains.supported_hosts:
         forum_key = f"{SupportedDomains.supported_forums_map[forum]}_xf_user_cookie"
         cookie = get_cookie(browser, forum)
         posible_cookie_keys = [forum, f"www.{forum}"]
