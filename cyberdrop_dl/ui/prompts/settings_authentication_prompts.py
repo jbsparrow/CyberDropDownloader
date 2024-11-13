@@ -144,7 +144,7 @@ def edit_forum_authentication_values_prompt(manager: Manager) -> None:
             elif action == "brave":
                 get_cookies_from_browser(manager, "brave")
             elif action == "libreWolf":
-                get_cookies_from_browser(manager, "libreWolf")
+                get_cookies_from_browser(manager, "librewolf")
             elif action == "opera_gx":
                 get_cookies_from_browser(manager, "opera_gx")
             elif action == "vivaldi":

@@ -45,6 +45,7 @@ def get_cookies_from_browser(manager: Manager, browser: str=None) -> None:
     """Get the cookies for the supported sites"""
     manager.path_manager.cookies_dir.mkdir(exist_ok=True)
     browser=browser or manager.config_manager.settings_data["Browser_Cookies"]["browser"]
+    browser=browser.lower()  if browser else None
     for domain in SupportedDomains.supported_forums:
         cookies = get_cookie(browser, domain)
         cookie_jar = MozillaCookieJar()
