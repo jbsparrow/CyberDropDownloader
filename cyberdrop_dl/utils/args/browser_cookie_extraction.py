@@ -94,11 +94,9 @@ def get_cookies_from_browser(manager: Manager, browsers: str = None) -> None:
             browser = browser.lower() if browser else None
             cookies = get_cookie(browser, domain)
             cookie_jar = MozillaCookieJar()
-            cookie_file_path = manager.path_manager.cookies_dir / f"{domain}.txt"
-
             for cookie in cookies:
                 cookie_jar.set_cookie(cookie)
-
+        cookie_file_path = manager.path_manager.cookies_dir / f"{domain}.txt"
         cookie_jar.save(cookie_file_path, ignore_discard=True, ignore_expires=True)
 
 
