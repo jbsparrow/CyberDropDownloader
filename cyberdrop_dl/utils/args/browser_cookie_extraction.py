@@ -40,7 +40,7 @@ def cookie_wrapper(func: Callable) -> CookieJar:
             inquirer.confirm(message="Press enter to return menu.").execute()
 
     return wrapper
-
+@cookie_wrapper
 def get_cookies_from_browser(manager: Manager, browser: str=None) -> None:
     """Get the cookies for the supported sites"""
     manager.path_manager.cookies_dir.mkdir(exist_ok=True)
