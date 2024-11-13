@@ -124,7 +124,7 @@ class SimpCityCrawler(Crawler):
                     .split("/")[-1]
                     .split("post-")[-1],
                 )
-                scrape_post, continue_scraping = await self.check_post_number(post_number, current_post_number)
+                scrape_post, continue_scraping = self.check_post_number(post_number, current_post_number)
 
                 if scrape_post:
                     date = None
