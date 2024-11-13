@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 This update introduces the following changes:
 
-1. Adds the option to limit how many items are scraped 
+1. Adds the option to limit how many items are scraped
 2. Add support for scraping a users' coomer favorites
 3. Add integration to handle downloads supported by https://real-debrid.com
 4. Add support for https://nekohouse.su profiles and posts
@@ -29,7 +29,7 @@ This update introduces the following changes:
 
 - Users can limit the number of items to scrape by type, using the `--maximum-number-of-children` parameter. For more details on how to use this feature, visit the wiki: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings#download-options
 - Add support for scraping a users' coomer favorites by allowing the user to pass the coomer favorites page URL as an input URL (https://coomer.su/favorites). This requires them to have their coomer session token in the `authentication.yaml` file.
-- Add real-debrid integration to download from any site that they support (`mega.nz`,`rapidgator`, `google drive`, `k2s`, etc). User needs to provide their API key in the `authentication.yaml` file in order to allow downloads 
+- Add real-debrid integration to download from any site that they support (`mega.nz`,`rapidgator`, `google drive`, `k2s`, etc). User needs to provide their API key in the `authentication.yaml` file in order to allow downloads
 - Nekohouse URLs can now be scraped and downloaded by CDL
 - Users can now get the stats report of the run via multiple services and include the main log as an attachment. For more information on how to setup notifications, visit: https://script-ware.gitbook.io/cyberdrop-dl/reference/notifications
 - Fix parsing of bunkr file extensions when `--remove-generated-id` is enabled
@@ -41,7 +41,7 @@ This update introduces the following changes:
 ## [5.7.0] - 2024-10-25
 
 This update introduces the following changes:
-1. Rotating log files 
+1. Rotating log files
 2. Overhaul hashing functions
 3. Add support for https://tokyomotion.net URLs
 4. Add support for https://xxxbunker.com URLs
@@ -69,7 +69,7 @@ This update introduces the following changes:
 - Fix error during program exit when referers table no longer exists
 - Prevents crashes when there are insufficient permissions to move a file
 - Fix an issue where CDL would delete URLs input file
-- Move functions for after download to `post_runtime` 
+- Move functions for after download to `post_runtime`
 - Fix handling of deleted imgbox albums if they return `HTTP 200`
 - Fix cyberfile deleted folders not being correctly scraped
 - Update logging to include when a file is being downloaded with no crawler
@@ -164,7 +164,7 @@ This update introduces the following changes:
 ## [5.6.40] - 2024-10-01
 
 This update introduces the following changes:
-1. Fixes empty folder cleanup 
+1. Fixes empty folder cleanup
 
 #### Details:
 - Fixes incorrent path objects on post-runtime folder cleanup

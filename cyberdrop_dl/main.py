@@ -66,6 +66,7 @@ async def runtime(manager: Manager) -> None:
             manager.task_group = task_group
             await scrape_mapper.start()
 
+
 async def post_runtime(manager: Manager) -> None:
     """Actions to complete after main runtime, and before ui shutdown."""
     log_spacer(20)

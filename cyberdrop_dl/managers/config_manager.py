@@ -172,8 +172,8 @@ class ConfigManager:
         self.settings_data["Runtime_Options"]["console_log_level"] = int(
             self.settings_data["Runtime_Options"]["console_log_level"],
         )
-        #convert paths to str
-        settings_data=copy.deepcopy(self.settings_data)
+        # convert paths to str
+        settings_data = copy.deepcopy(self.settings_data)
         settings_data["Files"]["input_file"] = str(self.settings_data["Files"]["input_file"])
         settings_data["Files"]["download_folder"] = str(self.settings_data["Files"]["download_folder"])
         settings_data["Logs"]["log_folder"] = str(self.settings_data["Logs"]["log_folder"])
@@ -183,6 +183,7 @@ class ConfigManager:
         if get_keys(default_settings_data) == get_keys(existing_settings_data):
             return
         _save_yaml(self.settings, settings_data)
+
     def _verify_global_settings_config(self) -> None:
         default_global_data = copy.deepcopy(global_settings)
         existing_global_data = _load_yaml(self.global_settings)
@@ -229,7 +230,7 @@ class ConfigManager:
             self.global_settings_data["UI_Options"]["downloading_item_limit"],
         )
 
-        #other changes
+        # other changes
 
         self.global_settings_data["Dupe_Cleanup_Options"]["delete_after_download"] = self.global_settings_data[
             "Dupe_Cleanup_Options"
@@ -251,9 +252,7 @@ class ConfigManager:
         ]["delete_off_disk"]
         if get_keys(default_global_data) == get_keys(existing_global_data):
             return
-        _save_yaml(self.global_settings,self.global_settings_data)
-
-
+        _save_yaml(self.global_settings, self.global_settings_data)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
