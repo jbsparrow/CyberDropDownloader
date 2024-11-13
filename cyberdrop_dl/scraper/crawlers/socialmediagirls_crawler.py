@@ -121,7 +121,7 @@ class SocialMediaGirlsCrawler(Crawler):
                     .split("/")[-1]
                     .split("post-")[-1],
                 )
-                scrape_post, continue_scraping = await self.check_post_number(post_number, current_post_number)
+                scrape_post, continue_scraping = self.check_post_number(post_number, current_post_number)
 
                 if scrape_post:
                     date = int(post.select_one(self.post_date_selector).get(self.post_date_attribute))
