@@ -495,3 +495,121 @@ Unique Path Flags:
 This is the format for the directory structure and naming scheme for other files.
 
 </details>
+
+<details>
+
+<summary>Browser Cookies</summary>
+Cyberdrop-DL can extract cookies from your browser
+Only cookies from supported websites are extracted
+***
+
+* auto_import
+
+toggles automatic import of cookies at the start of each run
+
+***
+
+* **browser**
+
+The browser to extract cookies from
+  
+  <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #f9f9f9;"> <strong>Hint:</strong> If the value  entered is null then no browser will be extracted from </div>
+
+  <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #f9f9f9;"> <strong>Hint:</strong> This also effects manually extraction </div>
+
+
+**Supported Browsers**:
+  Value can be a single word string or a list of single word strings
+
+  * **Chrome**
+    * Supports: Linux, MacOS, Windows
+  * **Firefox**
+    * Supports: Linux, MacOS, Windows
+  * **LibreWolf**
+    * Supports: Linux, MacOS, Windows
+  * **Opera**
+    * Supports: Linux, MacOS, Windows
+  * **Opera_GX**
+    * Supports: MacOS, Windows
+  * **Edge**
+    * Supports: Linux, MacOS, Windows
+  * **Chromium**
+    * Supports: Linux, MacOS, Windows
+  * **Brave**
+    * Supports: Linux, MacOS, Windows
+  * **Vivaldi**
+    * Supports: Linux, MacOS, Windows
+  * **Safari**
+    * Supports: MacOS
+
+
+Note: if cookies exists on multiple selected browsers then the last browser later in the list will have priority
+***
+
+* sites
+
+Selection of which sites to extract cookies from
+only sites supported by script will be extracted from given list
+
+
+  <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #f9f9f9;"> <strong>Hint:</strong> If the value  entered is null then all sites will be extracted from </div>
+
+  <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #f9f9f9;"> <strong>Hint:</strong> This also effects manually extraction </div>
+
+
+  **Supported Sites:**
+  Value can be a single word string or a list of single word strings
+  Note: list provided may not always be up to date with changes
+
+  * bunkr
+  * bunkrr
+  * celebforum
+  * coomer
+  * cyberdrop
+  * cyberfile
+  * e-hentai
+  * erome
+  * f95zone
+  * fapello
+  * gofile
+  * host.church
+  * hotpic
+  * ibb.co
+  * imageban
+  * imagepond.net
+  * img.kiwi
+  * imgbox
+  * imgur
+  * jpeg.pet
+  * jpg.church
+  * jpg.fish
+  * jpg.fishing
+  * jpg.homes
+  * jpg.pet
+  * jpg1.su
+  * jpg2.su
+  * jpg3.su
+  * jpg4.su
+  * jpg5.su
+  * kemono
+  * leakedmodels
+  * mediafire
+  * nudostar.com
+  * nudostar.tv
+  * omegascans
+  * pimpandhost
+  * pixeldrain
+  * postimg
+  * realbooru
+  * real-debrid
+  * redd.it
+  * reddit
+  * redgifs
+  * rule34.xxx
+  * rule34.xyz
+  * rule34vault
+  * saint
+  * scrolller
+  * socialmediagirls
+
+</details>
