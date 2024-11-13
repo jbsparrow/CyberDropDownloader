@@ -7,7 +7,7 @@ from InquirerPy.base.control import Choice
 from rich.console import Console
 
 from cyberdrop_dl.managers.manager import Manager
-from cyberdrop_dl.utils.args.browser_cookie_extraction import get_forum_cookies
+from cyberdrop_dl.utils.args.browser_cookie_extraction import get_cookies_from_browser
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -111,10 +111,14 @@ def edit_forum_authentication_values_prompt(manager: Manager) -> None:
                 message="Which browser should we load cookies from?",
                 choices=[
                     Choice("chrome", "Chrome"),
+                    Choice("chromium", "Chromium"),
                     Choice("firefox", "FireFox"),
                     Choice("edge", "Edge"),
                     Choice("safari", "Safari"),
                     Choice("opera", "Opera"),
+                    Choice("opera_gx", "Opera_GX"),
+                    Choice("librewolf", "LibreWolf"),
+                    Choice("vivaldi", "Vivaldi"),
                     Choice("brave", "Brave"),
                     Choice(1, "Done"),
                 ],
@@ -128,17 +132,25 @@ def edit_forum_authentication_values_prompt(manager: Manager) -> None:
 
             # Browser Selection
             if action == "chrome":
-                get_forum_cookies(manager, "chrome")
+                get_cookies_from_browser(manager, "chrome")
             elif action == "firefox":
-                get_forum_cookies(manager, "firefox")
+                get_cookies_from_browser(manager, "firefox")
             elif action == "edge":
-                get_forum_cookies(manager, "edge")
+                get_cookies_from_browser(manager, "edge")
             elif action == "safari":
-                get_forum_cookies(manager, "safari")
+                get_cookies_from_browser(manager, "safari")
             elif action == "opera":
-                get_forum_cookies(manager, "opera")
+                get_cookies_from_browser(manager, "opera")
             elif action == "brave":
-                get_forum_cookies(manager, "brave")
+                get_cookies_from_browser(manager, "brave")
+            elif action == "libreWolf":
+                get_cookies_from_browser(manager, "librewolf")
+            elif action == "opera_gx":
+                get_cookies_from_browser(manager, "opera_gx")
+            elif action == "vivaldi":
+                get_cookies_from_browser(manager, "vivaldi")
+            elif action == "chromium":
+                get_cookies_from_browser(manager, "chromium")
             return
 
         # Enter Cred Values Manually
