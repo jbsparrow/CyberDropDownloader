@@ -137,42 +137,72 @@ class ConfigManager:
         default_settings_data = copy.deepcopy(settings)
         existing_settings_data = _load_yaml(self.settings)
         self.settings_data = _match_config_dicts(default_settings_data, existing_settings_data)
-        self.settings_data["Files"]["input_file"] = Path(self.settings_data["Files"]["input_file"])
-        self.settings_data["Files"]["download_folder"] = Path(self.settings_data["Files"]["download_folder"])
-        self.settings_data["Logs"]["log_folder"] = Path(self.settings_data["Logs"]["log_folder"])
-        self.settings_data["Logs"]["webhook_url"] = str(self.settings_data["Logs"]["webhook_url"])
-        self.settings_data["Sorting"]["sort_folder"] = Path(self.settings_data["Sorting"]["sort_folder"])
-        self.settings_data["Sorting"]["scan_folder"] = (
-            Path(self.settings_data["Sorting"]["scan_folder"])
-            if self.settings_data["Sorting"]["scan_folder"] != "None"
-            else None
-        )
+        paths = [
+            ("Files", "input_file"),
+            ("Files", "download_folder"),
+            ("Logs", "log_folder"),
+            ("Sorting", "sort_folder"),
+            ("Sorting", "scan_folder"),
+        ]
+        # self.settings_data["Files"]["input_file"] = Path(self.settings_data["Files"]["input_file"])
+        # self.settings_data["Files"]["download_folder"] = Path(self.settings_data["Files"]["download_folder"])
+        # self.settings_data["Logs"]["log_folder"] = Path(self.settings_data["Logs"]["log_folder"])
+        # self.settings_data["Sorting"]["sort_folder"] = Path(self.settings_data["Sorting"]["sort_folder"])
+        # self.settings_data["Sorting"]["scan_folder"] = (
+        #     Path(self.settings_data["Sorting"]["scan_folder"])
+        #     if self.settings_data["Sorting"]["scan_folder"] != "None"
+        #     else None
+        # )
+
+        def return_verified(_type, value):
+            if _type == int:
+                return int(value)
+            elif _type == bool:
+                return bool(value)
+            elif _type == str:
+                return str(value)
+            elif _type == list:
+                return list(value)
+            elif _type == dict:
+                return dict(value)
+            else:
+                return value
+
+        # iterate through default, determine type (what to convert to), then convert to verify.
+        for key, value in default_settings_data.items():
+            for subkey, subvalue in value.items():
+                for path_item in paths:
+                    if key == path_item[0] and subkey == path_item[1]:
+                        path = self.settings_data[key][subkey]
+                        self.settings_data[key][subkey] = Path(path) if path != "None" and path != None else ""
+                _type = type(subvalue)
+                self.settings_data[key][subkey] = return_verified(_type, self.settings_data[key][subkey])
 
         # change to ints
-        self.settings_data["File_Size_Limits"]["maximum_image_size"] = int(
-            self.settings_data["File_Size_Limits"]["maximum_image_size"],
-        )
-        self.settings_data["File_Size_Limits"]["maximum_video_size"] = int(
-            self.settings_data["File_Size_Limits"]["maximum_video_size"],
-        )
-        self.settings_data["File_Size_Limits"]["maximum_other_size"] = int(
-            self.settings_data["File_Size_Limits"]["maximum_other_size"],
-        )
-        self.settings_data["File_Size_Limits"]["minimum_image_size"] = int(
-            self.settings_data["File_Size_Limits"]["minimum_image_size"],
-        )
-        self.settings_data["File_Size_Limits"]["minimum_video_size"] = int(
-            self.settings_data["File_Size_Limits"]["minimum_video_size"],
-        )
-        self.settings_data["File_Size_Limits"]["minimum_other_size"] = int(
-            self.settings_data["File_Size_Limits"]["minimum_other_size"],
-        )
+        # self.settings_data["File_Size_Limits"]["maximum_image_size"] = int(
+        #     self.settings_data["File_Size_Limits"]["maximum_image_size"],
+        # )
+        # self.settings_data["File_Size_Limits"]["maximum_video_size"] = int(
+        #     self.settings_data["File_Size_Limits"]["maximum_video_size"],
+        # )
+        # self.settings_data["File_Size_Limits"]["maximum_other_size"] = int(
+        #     self.settings_data["File_Size_Limits"]["maximum_other_size"],
+        # )
+        # self.settings_data["File_Size_Limits"]["minimum_image_size"] = int(
+        #     self.settings_data["File_Size_Limits"]["minimum_image_size"],
+        # )
+        # self.settings_data["File_Size_Limits"]["minimum_video_size"] = int(
+        #     self.settings_data["File_Size_Limits"]["minimum_video_size"],
+        # )
+        # self.settings_data["File_Size_Limits"]["minimum_other_size"] = int(
+        #     self.settings_data["File_Size_Limits"]["minimum_other_size"],
+        # )
 
-        self.settings_data["Runtime_Options"]["log_level"] = int(self.settings_data["Runtime_Options"]["log_level"])
+        # self.settings_data["Runtime_Options"]["log_level"] = int(self.settings_data["Runtime_Options"]["log_level"])
 
-        self.settings_data["Runtime_Options"]["console_log_level"] = int(
-            self.settings_data["Runtime_Options"]["console_log_level"],
-        )
+        # self.settings_data["Runtime_Options"]["console_log_level"] = int(
+        #     self.settings_data["Runtime_Options"]["console_log_level"],
+        # )
 
         self.global_settings_data["General"]["max_file_name_length"] = int(
             self.global_settings_data["General"]["max_file_name_length"],
