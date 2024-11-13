@@ -18,7 +18,7 @@ platformdirs = "^4.2.2"
 rich = "^13.7.0"
 pyyaml = "^6.0.1"
 certifi = "^2024.2.2"
-browser-cookie3 = {git = "https://github.com/borisbabic/browser_cookie3.git", rev = "refs/pull/215/head"}
+browser-cookie3 = {git = "https://github.com/Arth-ur/browser_cookie3.git", rev = "a3790b9d4d84af96142c0e1c2ea9e207ffed6748"}
 beautifulsoup4 = "^4.12.2"
 filedate = "^3.0"
 aiosqlite = "0.17.0"

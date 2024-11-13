@@ -312,8 +312,8 @@ pycryptodomex = "*"
 
 [package.source]
 type = "git"
-url = "https://github.com/borisbabic/browser_cookie3.git"
-reference = "refs/pull/215/head"
+url = "https://github.com/Arth-ur/browser_cookie3.git"
+reference = "a3790b9d4d84af96142c0e1c2ea9e207ffed6748"
 resolved_reference = "a3790b9d4d84af96142c0e1c2ea9e207ffed6748"
 
 [[package]]
@@ -2591,4 +2591,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.13"
-content-hash = "6b748d10a0a048a62ec9eaacd9b49da788f6add7516e3547cc17fa623641c773"
+content-hash = "a756ee102dc7ac825d29b32fa91befa19d824f3760cfcb54d571c8e542548c8f"
