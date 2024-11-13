@@ -174,12 +174,36 @@ class ConfigManager:
         )
         # convert paths to str
         settings_data = copy.deepcopy(self.settings_data)
-        settings_data["Files"]["input_file"] = str(self.settings_data["Files"]["input_file"]) if self.settings_data["Files"]["input_file"] is not None else None 
-        settings_data["Files"]["download_folder"] = str(self.settings_data["Files"]["download_folder"]) if self.settings_data["Files"]["download_folder"] is not None else None 
-        settings_data["Logs"]["log_folder"] = str(self.settings_data["Logs"]["log_folder"]) if self.settings_data["Logs"]["log_folder"] is not None else None 
-        settings_data["Logs"]["webhook_url"] = str(self.settings_data["Logs"]["webhook_url"]) if self.settings_data["Logs"]["webhook_url"] is not None else None 
-        settings_data["Sorting"]["sort_folder"] = str(self.settings_data["Sorting"]["sort_folder"]) if self.settings_data["Sorting"]["sort_folder"] is not None else None 
-        settings_data["Sorting"]["scan_folder"] = str(self.settings_data["Sorting"]["scan_folder"]) if self.settings_data["Sorting"]["scan_folder"] is not None else None
+        settings_data["Files"]["input_file"] = (
+            str(self.settings_data["Files"]["input_file"])
+            if self.settings_data["Files"]["input_file"] is not None
+            else None
+        )
+        settings_data["Files"]["download_folder"] = (
+            str(self.settings_data["Files"]["download_folder"])
+            if self.settings_data["Files"]["download_folder"] is not None
+            else None
+        )
+        settings_data["Logs"]["log_folder"] = (
+            str(self.settings_data["Logs"]["log_folder"])
+            if self.settings_data["Logs"]["log_folder"] is not None
+            else None
+        )
+        settings_data["Logs"]["webhook_url"] = (
+            str(self.settings_data["Logs"]["webhook_url"])
+            if self.settings_data["Logs"]["webhook_url"] is not None
+            else None
+        )
+        settings_data["Sorting"]["sort_folder"] = (
+            str(self.settings_data["Sorting"]["sort_folder"])
+            if self.settings_data["Sorting"]["sort_folder"] is not None
+            else None
+        )
+        settings_data["Sorting"]["scan_folder"] = (
+            str(self.settings_data["Sorting"]["scan_folder"])
+            if self.settings_data["Sorting"]["scan_folder"] is not None
+            else None
+        )
         if get_keys(default_settings_data) == get_keys(existing_settings_data):
             return
         _save_yaml(self.settings, settings_data)
@@ -259,11 +283,11 @@ class ConfigManager:
     @staticmethod
     def create_new_config(new_settings: Path, settings_data: dict) -> None:
         """Creates a new settings config file."""
-        settings_data["Files"]["input_file"] = str(settings_data["Files"]["input_file"])
-        settings_data["Files"]["download_folder"] = str(settings_data["Files"]["download_folder"])
-        settings_data["Logs"]["log_folder"] = str(settings_data["Logs"]["log_folder"])
-        settings_data["Logs"]["webhook_url"] = str(settings_data["Logs"]["webhook_url"])
-        settings_data["Sorting"]["sort_folder"] = str(settings_data["Sorting"]["sort_folder"])
+        settings_data["Files"]["input_file"] = str(settings_data["Files"]["input_file"]) if settings_data["Files"]["input_file"] is not None else None
+        settings_data["Files"]["download_folder"] = str(settings_data["Files"]["download_folder"]) if settings_data["Files"]["download_folder"] is not None else None
+        settings_data["Logs"]["log_folder"] = str(settings_data["Logs"]["log_folder"]) if settings_data["Logs"]["log_folder"] is not None else None
+        settings_data["Logs"]["webhook_url"] = str(settings_data["Logs"]["webhook_url"]) if settings_data["Logs"]["webhook_url"] is not None else None
+        settings_data["Sorting"]["sort_folder"] = str(settings_data["Sorting"]["sort_folder"]) if settings_data["Sorting"]["sort_folder"] is not None else None
         settings_data["Sorting"]["scan_folder"] = (
             str(settings_data["Sorting"]["scan_folder"]) if settings_data["Sorting"]["scan_folder"] else None
         )
