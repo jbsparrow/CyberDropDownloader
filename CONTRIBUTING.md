@@ -23,7 +23,7 @@ If your issue appears to be a bug, and hasn't been reported, open a new issue. P
 Providing the following information will allow your issue to be dealt with quickly:
 
 - **Overview of the Issue** - always attach you logs to any new issue.
-- **Version** - what version of Cyberdrop-DL are you running. You should always update to the latest release before opening an issue since 
+- **Version** - what version of Cyberdrop-DL are you running. You should always update to the latest release before opening an issue since
 the issue may have been fixed already
 - **Motivation for or Use Case** - explain what are you trying to do and why the current behavior is a bug for you
 - **Operating System** - what OS and version are you using
@@ -44,10 +44,10 @@ Before you submit your Pull Request (PR) consider the following guidelines:
 - Follow [code style conventions](#code-style)
 - Commit your changes using a descriptive commit message
 - Push your fork to GitHub
-- In GitHub, create a pull request to the `master` branch of the repository. 
-- Add a description to your PR. If the PR is small (such as a typo fix), you can go brief. 
+- In GitHub, create a pull request to the `master` branch of the repository.
+- Add a description to your PR. If the PR is small (such as a typo fix), you can go brief.
 If it contains a lot of changes, it's better to write more details.
-If your changes are user-facing (e.g. a new feature in the UI, a change in behavior, or a bugfix) 
+If your changes are user-facing (e.g. a new feature in the UI, a change in behavior, or a bugfix)
 please include a short message to add to the changelog.
 - Wait for a maintainer to review your PR and then address any comments they might have.
 

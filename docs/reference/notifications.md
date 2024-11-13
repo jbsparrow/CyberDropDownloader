@@ -14,7 +14,7 @@ To get notifications via discord, you need to provide a discord `webhook_url` in
 
 You can learn how to setup a webhook following the [official discord guide](https://support.discord.com/hc/en-us/articles/228383668-Intro-to-Webhooks).
 
-Optionally, you can add the tag `attach_logs=` as a prefix to your webhook url. This will tell CDL to include a copy of the main log as an attachment to Discord. 
+Optionally, you can add the tag `attach_logs=` as a prefix to your webhook url. This will tell CDL to include a copy of the main log as an attachment to Discord.
 
 ## Notifications to other services (via Apprise)
 
@@ -25,7 +25,7 @@ Cyberdrop-DL uses [Apprise](https://github.com/caronc/apprise) to send notificat
 To send notifications via Apprise, you need to create an `apprise.txt` file inside `AppData/Configs/<config_name>`, where `<config_name>` if the config you want to use. The file must contain a list of URLs and they must be in the format of one of the supported apprise services.
 
 You can check the full list of supported services [here](https://github.com/caronc/apprise/wiki) and the URL format than each one uses [here]( https://github.com/caronc/apprise?tab=readme-ov-file#supported-notifications).
- 
+
 Apprise services also support the `attach_logs=` tag to send the main log as an attachment.
 
 ### Troubleshooting Apprise notifications
@@ -35,15 +35,14 @@ Cyberdrop-DL will show you a message at the end of a run telling you if the appr
 
 ## Examples
 
-To get notifications via email, use this URL format in your `apprise.txt` file: 
+To get notifications via email, use this URL format in your `apprise.txt` file:
 
 > mailto://user:password@domain.com
 
-With the tag `attach_logs` it would look like this: 
+With the tag `attach_logs` it would look like this:
 
 > attach_logs=mailto://user:password@domain.com
 
-Using `attach_logs` on the `webhook_url` config option: 
+Using `attach_logs` on the `webhook_url` config option:
 
 > attach_logs=https://discord.com/api/webhooks/webhook_id/webhook_token
-
