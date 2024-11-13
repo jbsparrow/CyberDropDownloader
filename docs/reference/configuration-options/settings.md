@@ -559,6 +559,7 @@ only sites supported by script will be extracted from given list
 
   **Supported Sites:**
   Value can be a single word string or a list of single word strings
+  Note: list provided may not always be up to date with changes
 
   * bunkr
   * bunkrr
