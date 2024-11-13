@@ -166,7 +166,7 @@ class ConfigManager:
                 for path_item in paths:
                     if key == path_item[0] and subkey == path_item[1]:
                         path = self.settings_data[key][subkey]
-                        if (path == "None" or path == None) and subkey == "scan_folder":
+                        if (path == "None" or path is None) and subkey == "scan_folder":
                             self.settings_data[key][subkey] = None
                         else:
                             self.settings_data[key][subkey] = Path(path)
