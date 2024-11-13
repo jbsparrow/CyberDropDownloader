@@ -38,7 +38,7 @@ def error_handling_wrapper(func: Callable) -> None:
             return await func(self, *args, **kwargs)
         except CDLBaseError as e:
             log_message_short = e_ui_failure = e.ui_message
-            log_message = e.message
+            log_message = f"{e.ui_message} - {e.message}" if e.ui_message != e.message else e.message
             origin = e.origin
         except RealDebridError as e:
             log_message_short = log_message = f"RealDebridError - {e.error}"
