@@ -66,10 +66,9 @@ class Crawler(ABC):
         await self._lock.acquire()
         self.waiting_items -= 1
         if item.url.path_qs not in self.scraped_items:
-            log(f"Scrape Starting: {item.url}", 20)
+            log(f"Scraping: {item.url}", 20)
             self.scraped_items.append(item.url.path_qs)
             await self.fetch(item)
-            log(f"Scrape Finished: {item.url}", 20)
         else:
             log(f"Skipping {item.url} as it has already been scraped", 10)
         self._lock.release()
