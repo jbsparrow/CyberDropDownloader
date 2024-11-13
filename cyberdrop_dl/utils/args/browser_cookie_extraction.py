@@ -1,4 +1,5 @@
 from __future__ import annotations
+import re
 
 from functools import wraps
 from http.cookiejar import MozillaCookieJar
@@ -81,12 +82,12 @@ def get_cookies_from_browser(manager: Manager, browsers: str = None) -> None:
     """Get the cookies for the supported sites"""
     manager.path_manager.cookies_dir.mkdir(exist_ok=True)
     browsers = browsers or manager.config_manager.settings_data["Browser_Cookies"]["browser"]
-    if not isinstance(browsers,list):
-        browsers = [browsers]
+    if isinstance(browsers,str):
+        browsers=re.split(r'[ ,]+', browsers)
     all_sites=set(SupportedDomains.supported_forums)
     user_sites= manager.config_manager.settings_data["Browser_Cookies"]["sites"] or SupportedDomains.supported_forums
-    if not isinstance(user_sites,list):
-        user_sites= [user_sites]
+    if isinstance(user_sites,str):
+        user_sites=re.split(r'[ ,]+', user_sites)
     for domain in user_sites:
         if domain not in all_sites:
             continue
