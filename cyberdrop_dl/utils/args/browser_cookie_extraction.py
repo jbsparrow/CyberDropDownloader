@@ -4,6 +4,7 @@ from functools import wraps
 from typing import TYPE_CHECKING
 
 import browser_cookie3
+from browser_cookie3 import BrowserCookieError
 from InquirerPy import inquirer
 from rich.console import Console
 
@@ -25,7 +26,7 @@ def cookie_wrapper(func: Callable) -> CookieJar:
     def wrapper(*args, **kwargs) -> CookieJar:
         try:
             return func(*args, **kwargs)
-        except PermissionError:
+        except PermissionError as E:
             console = Console()
             console.clear()
             console.print(
@@ -37,7 +38,35 @@ def cookie_wrapper(func: Callable) -> CookieJar:
                 style="bold red",
             )
             console.print("Nothing has been saved.", style="bold red")
-            inquirer.confirm(message="Press enter to return menu.").execute()
+            raise E
+        except ValueError as E:
+            console = Console()
+            console.clear()
+            console.print(
+                "The browser provided is not supported for extraction",
+                style="bold red",
+            )
+            console.print("Nothing has been saved.", style="bold red")
+            raise E
+        except BrowserCookieError as E:
+            console = Console()
+            console.clear()
+            console.print(
+                "browser extraction ran into an error, the selected browser may not be available on your system",
+                style="bold red",
+            )
+            console.print(
+                str(E),
+                style="bold red",
+            )
+            console.print(
+                "If you are still having issues, make sure all browsers processes are closed in a Task Manager.",
+                style="bold red",
+            )
+            console.print("Nothing has been saved.", style="bold red")
+            raise E
+        except Exception:
+            inquirer.confirm(message="Press enter to continue").execute()
 
     return wrapper
 @cookie_wrapper
