@@ -510,9 +510,10 @@ toggles automatic import of cookies at the start of each run
 ***
 
 * **browser**
-  The browser to extract cookies from
 
-  Value can be a single word string or a list of single word strings
+The browser to extract cookies from
+
+Value can be a single word string or a list of single word strings
   Supported Values:
   * **Chrome**
     * Supports: Linux, MacOS, Windows
@@ -539,13 +540,13 @@ toggles automatic import of cookies at the start of each run
 Note: if cookies exists on multiple selected browsers then the last browser later in the list will have priority
 ***
 
-
 * sites
-Selection of which sites to extract cookies from only sites supported by script will be extracted from given list
+
+Selection of which sites to extract cookies from
+only sites supported by script will be extracted from given list
 
 Value can be a single word string or a list of single word strings
-
-
+all supported sites will be extracted if empty
 
 
 </details>
