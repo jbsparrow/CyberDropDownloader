@@ -41,11 +41,17 @@ def cookie_wrapper(func: Callable) -> CookieJar:
         except ValueError as E:
             console = Console()
             console.clear()
-            console.print(
-                "The browser provided is not supported for extraction",
-                style="bold red",
-            )
-            console.print("Nothing has been saved.", style="bold red")
+            if str(E) == "Value cannot be None": 
+                console.print(
+                    "No browser selected",
+                    style="bold red",
+                )
+            else:
+                console.print(
+                    "The browser provided is not supported for extraction",
+                    style="bold red",
+                )
+                console.print("Nothing has been saved.", style="bold red")
             raise E
         except BrowserCookieError as E:
             console = Console()
@@ -109,6 +115,9 @@ def get_cookie(browser: str, domain: str) -> CookieJar:
         cookie = browser_cookie3.opera_gx(domain_name=domain)
     elif browser == "vivaldi":
         cookie = browser_cookie3.vivaldi(domain_name=domain)
+    elif browser is None:
+        msg = "Value cannot be None"
+        raise ValueError(msg)
     else:
         msg = "Invalid browser specified"
         raise ValueError(msg)
