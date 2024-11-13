@@ -84,18 +84,20 @@ def get_cookies_from_browser(manager: Manager, browsers: str = None) -> None:
     browsers = browsers or manager.config_manager.settings_data["Browser_Cookies"]["browser"]
     if isinstance(browsers,str):
         browsers=re.split(r'[ ,]+', browsers)
-    all_sites=set(SupportedDomains.supported_forums)
+    all_sites=set(SupportedDomains.supported_hosts)
     user_sites= manager.config_manager.settings_data["Browser_Cookies"]["sites"] or SupportedDomains.supported_hosts
     if isinstance(user_sites,str):
         user_sites=re.split(r'[ ,]+', user_sites)
+               
+
     for domain in user_sites:
         domain = domain.lower() if domain else None
         if domain not in all_sites:
             continue
+        cookie_jar = MozillaCookieJar()
         for browser in browsers:
             browser = browser.lower() if browser else None
             cookies = get_cookie(browser, domain)
-            cookie_jar = MozillaCookieJar()
             for cookie in cookies:
                 cookie_jar.set_cookie(cookie)
         cookie_file_path = manager.path_manager.cookies_dir / f"{domain}.txt"
