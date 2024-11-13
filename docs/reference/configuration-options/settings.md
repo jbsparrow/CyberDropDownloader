@@ -539,12 +539,7 @@ Note: if cookies exists on multiple selected browsers then the last browser late
 * sites
 Selection of which sites to extract cookies from only sites supported by script will be extracted from given list
 
-
 ***
 
-
-     "browser": "Chrome",
-        "auto_import": False,
-        "sites": None
 
 </details>
