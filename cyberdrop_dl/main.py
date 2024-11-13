@@ -182,7 +182,6 @@ async def director(manager: Manager) -> None:
         log("Starting CDL...\n", 20)
 
         try:
-            preruntime(manager)
             await runtime(manager)
             await post_runtime(manager)
         except* Exception as e:
