@@ -83,8 +83,11 @@ def get_cookies_from_browser(manager: Manager, browsers: str = None) -> None:
     browsers = browsers or manager.config_manager.settings_data["Browser_Cookies"]["browser"]
     if not isinstance(browsers,list):
         browsers = [browsers]
-
-    for domain in SupportedDomains.supported_forums:
+    all_sites=set(SupportedDomains.supported_forums)
+    user_sites= manager.config_manager.settings_data["Browser_Cookies"]["sites"] or SupportedDomains.supported_forums
+    if not isinstance(user_sites,list):
+        user_sites= [user_sites]
+    for domain in [domain for domain in user_sites if domain in all_sites]:
         for browser in browsers:
             browser = browser.lower() if browser else None
             cookies = get_cookie(browser, domain)
