@@ -173,7 +173,7 @@ class ClientManager:
 
         return False
 
-    async def close(self):
+    async def close(self) -> None:
         await self.flaresolverr._destroy_session()
         await self.flaresolverr.default_session.close()
 
@@ -268,9 +268,8 @@ class Flaresolverr:
                 raise DDOSGuardError(
                     message="Config user_agent and flaresolverr user_agent do not match", origin=origin
                 )
-            else:
-                for cookie_dict in cookies:
-                    cookie = Cookie(**cookie_dict)
-                    self.client_manager.cookies.update_cookies(cookie)
+            for cookie_dict in cookies:
+                cookie = Cookie(**cookie_dict)
+                self.client_manager.cookies.update_cookies(cookie)
 
         return response, response_url

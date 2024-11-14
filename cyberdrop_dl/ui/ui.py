@@ -104,7 +104,7 @@ def program_ui(manager: Manager) -> None:
 
         # Scanning folder to create hashes
         if action == 4:
-            path = path_prompt(manager)
+            path = path_prompt()
             hash_directory_scanner(manager, path)
 
         # Sort All Configs

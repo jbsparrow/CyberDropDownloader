@@ -9,10 +9,8 @@ from InquirerPy.validator import PathValidator
 if TYPE_CHECKING:
     from pathlib import Path
 
-    from cyberdrop_dl.managers.manager import Manager
 
-
-def path_prompt(manager: Manager) -> Path:
+def path_prompt() -> Path:
     home_path = "~/" if os.name == "posix" else "C:\\"
     return inquirer.filepath(
         message="Select the directory to scan",

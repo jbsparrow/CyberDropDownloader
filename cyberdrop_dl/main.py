@@ -68,8 +68,8 @@ async def runtime(manager: Manager) -> None:
             await scrape_mapper.start()
 
 
-def pre_runtime(manager):
-    """Actions to complete before main runtime"""
+def pre_runtime(manager: Manager) -> None:
+    """Actions to complete before main runtime."""
     if manager.config_manager.settings_data["Browser_Cookies"]["auto_import"]:
         get_cookies_from_browser(manager)
 
