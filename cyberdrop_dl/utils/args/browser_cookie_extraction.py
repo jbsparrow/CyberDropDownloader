@@ -6,7 +6,7 @@ from http.cookiejar import MozillaCookieJar
 from typing import TYPE_CHECKING
 
 from cyberdrop_dl.dependencies.browser_cookie3 import BrowserCookieError
-import cyberdrop_dl.dependencies.browser_cookie3
+import cyberdrop_dl.dependencies.browser_cookie3 as browser_cookie3
 from InquirerPy import inquirer
 from rich.console import Console
 
