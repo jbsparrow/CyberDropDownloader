@@ -6,6 +6,7 @@ import logging
 import os
 import sys
 from pathlib import Path
+from textwrap import indent
 from time import perf_counter
 
 from rich.console import Console
@@ -194,13 +195,12 @@ async def director(manager: Manager) -> None:
             await runtime(manager)
             await post_runtime(manager)
         except* Exception as e:
-            log_with_color(
-                f"An error occurred, please report this to the developer: {e}",
-                "bold red",
-                50,
-                show_in_stats=False,
-                exc_info=True,
-            )
+            exc_list = str(e)
+            if isinstance(e,ExceptionGroup):
+                exc_list = "\n".join(map(str,e.exceptions))
+            exc_list = indent(exc_list, "  ")
+            msg = f"An error occurred, please report this to the developer with your logs file:\n{exc_list}"
+            log_with_color(msg,"bold red",50,show_in_stats=False,exc_info=e)
             sys.exit(1)
 
         log_spacer(20)
@@ -212,7 +212,6 @@ async def director(manager: Manager) -> None:
             check_latest_pypi()
             log_spacer(20)
             log("Closing Program...", 20)
-            await manager.close()
             log_with_color("Finished downloading. Enjoy :)", "green", 20, show_in_stats=False)
 
         await send_webhook_message(manager)
@@ -231,12 +230,9 @@ def main() -> None:
             exit_code = 0
         except KeyboardInterrupt:
             print_to_console("Trying to Exit ...")
+        finally:
             with contextlib.suppress(Exception):
                 asyncio.run(manager.close())
-            sys.exit(1)
-    loop.close()
-    sys.exit(0)
-
     loop.close()
     sys.exit(exit_code)
 
