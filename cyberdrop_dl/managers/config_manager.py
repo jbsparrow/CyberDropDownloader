@@ -191,6 +191,7 @@ class ConfigManager:
         """Verifies the global settings config file and creates it if it doesn't exist."""
         default_global_settings_data = copy.deepcopy(global_settings)
         existing_global_settings_data = _load_yaml(self.global_settings)
+        self.global_settings_data = _match_config_dicts(default_global_settings_data, existing_global_settings_data)
 
         if get_keys(default_global_settings_data) == get_keys(existing_global_settings_data):
             self.global_settings_data = existing_global_settings_data
@@ -199,8 +200,6 @@ class ConfigManager:
         for key, value in default_global_settings_data.items():
             for subkey, subvalue in value.items():
                 self.global_settings_data[key][subkey] = self.return_verified(subvalue)
-
-        self.global_settings_data = _match_config_dicts(default_global_settings_data, existing_global_settings_data)
 
         _save_yaml(self.global_settings, self.global_settings_data)
 
