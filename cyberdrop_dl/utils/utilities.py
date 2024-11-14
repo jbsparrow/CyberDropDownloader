@@ -45,7 +45,7 @@ def error_handling_wrapper(func: Callable) -> None:
             e_ui_failure = f"RD - {e.error}"
         except TimeoutError:
             log_message_short = log_message = e_ui_failure = "Timeout"
-        except Exception as e:  # noqa
+        except Exception as e:
             exc_info = e
             if hasattr(e, "status") and hasattr(e, "message"):
                 log_message_short = log_message = e_ui_failure = f"{e.status} - {e.message}"

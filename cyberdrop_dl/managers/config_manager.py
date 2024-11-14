@@ -67,7 +67,7 @@ class ConfigManager:
         self.global_settings_data: dict = field(init=False)
 
     def startup(self) -> None:
-        """startup process for the config manager."""
+        """Startup process for the config manager."""
         if not isinstance(self.loaded_config, str):
             self.loaded_config = self.manager.cache_manager.get("default_config")
             if not self.loaded_config:
@@ -123,16 +123,15 @@ class ConfigManager:
     def return_verified(self, value) -> any:
         if isinstance(value, int):
             return int(value)
-        elif isinstance(value, bool):
+        if isinstance(value, bool):
             return bool(value)
-        elif isinstance(value, str):
+        if isinstance(value, str):
             return str(value)
-        elif isinstance(value, list):
+        if isinstance(value, list):
             return list(value)
-        elif isinstance(value, dict):
+        if isinstance(value, dict):
             return dict(value)
-        else:
-            return value
+        return value
 
     def _verify_authentication_config(self) -> None:
         """Verifies the authentication config file and creates it if it doesn't exist."""
