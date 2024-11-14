@@ -179,7 +179,6 @@ class ClientManager:
 
     async def close(self) -> None:
         await self.flaresolverr._destroy_session()
-        await self.flaresolverr.default_session.close()
 
 
 class Flaresolverr:
@@ -195,14 +194,13 @@ class Flaresolverr:
         if "http" not in self.flaresolverr_host:
             self.flaresolverr_host = f"http://{self.flaresolverr_host}"
         self.session_id = None
-        self.default_session = ClientSession()
         self.flaresolverr_host = URL(self.flaresolverr_host)
 
     async def _request(
         self,
         command: str,
-        client_session: ClientSession,
         origin: ScrapeItem | URL | None = None,
+        client_session: ClientSession | None = None,
         **kwargs,
     ) -> dict:
         """Base request function to call flaresolverr."""
@@ -212,7 +210,8 @@ class Flaresolverr:
         if not (self.session_id or kwargs.get("session")):
             await self._create_session()
 
-        headers = client_session.headers.copy()
+        current_session = client_session or ClientSession()
+        headers = current_session.headers.copy()
         headers.update({"Content-Type": "application/json"})
         for key, value in kwargs.items():
             if isinstance(value, URL):
@@ -220,7 +219,7 @@ class Flaresolverr:
 
         data = {"cmd": command, "maxTimeout": 60000, "session": self.session_id} | kwargs
 
-        async with client_session.post(
+        async with current_session.post(
             self.flaresolverr_host / "v1",
             headers=headers,
             ssl=self.client_manager.ssl_context,
@@ -228,12 +227,15 @@ class Flaresolverr:
             json=data,
         ) as response:
             json_obj: dict = await response.json()  # type: ignore
-            return json_obj
+
+        if not client_session:
+            current_session.close()
+        return json_obj
 
     async def _create_session(self) -> None:
         """Creates a permanet flaresolverr session."""
         session_id = "cyberdrop-dl"
-        flaresolverr_resp = await self._request("sessions.create", self.default_session, session=session_id)
+        flaresolverr_resp = await self._request("sessions.create", session=session_id)
         status = flaresolverr_resp.get("status")
         if status != "ok":
             raise DDOSGuardError(message="Failed to create flaresolverr session")
@@ -241,7 +243,7 @@ class Flaresolverr:
 
     async def _destroy_session(self):
         if self.session_id:
-            await self._request("sessions.destroy", self.default_session, session=self.session_id)
+            await self._request("sessions.destroy", session=self.session_id)
 
     async def get(
         self,
@@ -251,7 +253,7 @@ class Flaresolverr:
         update_cookies: bool = True,
     ) -> tuple[BeautifulSoup, URL]:
         """Returns the resolved URL from the given URL."""
-        flaresolverr_resp: dict = await self._request("request.get", client_session, origin, url=url)
+        flaresolverr_resp: dict = await self._request("request.get", origin, client_session, url=url)
 
         status = flaresolverr_resp.get("status")
         if status != "ok":
