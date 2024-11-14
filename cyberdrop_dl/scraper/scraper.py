@@ -10,6 +10,7 @@ import aiofiles
 import arrow
 from yarl import URL
 
+from cyberdrop_dl import __version__ as current_version
 from cyberdrop_dl.clients.errors import JDownloaderError
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.scraper.filters import (
@@ -20,7 +21,7 @@ from cyberdrop_dl.scraper.filters import (
     remove_trailing_slash,
 )
 from cyberdrop_dl.scraper.jdownloader import JDownloader
-from cyberdrop_dl.utils.constants import BLOCKED_DOMAINS, REGEX_LINKS
+from cyberdrop_dl.utils.constants import BLOCKED_DOMAINS, PRELEASE_TAGS, REGEX_LINKS
 from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext
@@ -77,6 +78,10 @@ class ScrapeMapper:
             "xbunkr": self.xbunkr,
             "xxxbunker": self.xxxbunker,
         }
+
+        is_testing = next((tag for tag in PRELEASE_TAGS if tag in current_version), False)
+        if is_testing:
+            self.mapping["simpcity"] = self.simpcity
 
         self.existing_crawlers: dict[str, Crawler] = {}
         self.no_crawler_downloader = Downloader(self.manager, "no_crawler")
