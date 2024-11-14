@@ -95,7 +95,8 @@ class SocialMediaGirlsCrawler(Crawler):
             scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
                 "maximum_number_of_children"
             ][scrape_item.type]
-        post_sections = (scrape_item.url.parts[3], scrape_item.url.fragment)
+        thread_index=scrape_item.url.parts.index("threads")
+        post_sections = (scrape_item.url.parts[thread_index+1], scrape_item.url.fragment)
         if len(scrape_item.url.parts) > 3 and any("post-" in sec for sec in post_sections):
             url_parts = str(scrape_item.url).rsplit("post-", 1)
             thread_url = URL(url_parts[0].rstrip("#"))
@@ -121,7 +122,7 @@ class SocialMediaGirlsCrawler(Crawler):
                     .split("/")[-1]
                     .split("post-")[-1],
                 )
-                scrape_post, continue_scraping = await self.check_post_number(post_number, current_post_number)
+                scrape_post, continue_scraping = self.check_post_number(post_number, current_post_number)
 
                 if scrape_post:
                     date = int(post.select_one(self.post_date_selector).get(self.post_date_attribute))
