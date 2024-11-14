@@ -4,7 +4,6 @@ import asyncio
 import contextlib
 import ssl
 from http import HTTPStatus
-from http.cookiejar import Cookie
 from typing import TYPE_CHECKING
 
 import aiohttp
@@ -19,6 +18,7 @@ from cyberdrop_dl.clients.errors import DDOSGuardError, DownloadError, ScrapeErr
 from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.managers.leaky import LeakyBucket
 from cyberdrop_dl.utils.constants import CustomHTTPStatus
+from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -140,8 +140,11 @@ class ClientManager:
                 if "data" in JSON_Resp and "error" in JSON_Resp["data"]:
                     raise ScrapeError(JSON_Resp["status"], JSON_Resp["data"]["error"], origin=origin)
 
+        response_text = None
         with contextlib.suppress(UnicodeDecodeError):
             response_text = await response.text()
+
+        if response_text:
             soup = BeautifulSoup(response_text, "html.parser")
             if cls.check_ddos_guard(soup):
                 raise DDOSGuardError(origin=origin)
@@ -161,10 +164,11 @@ class ClientManager:
 
     @staticmethod
     def check_ddos_guard(soup: BeautifulSoup) -> bool:
-        for title in DDOS_GUARD_CHALLENGE_TITLES:
-            challenge_found = title.casefold() == soup.title.string.casefold()
-            if challenge_found:
-                return True
+        if soup.title:
+            for title in DDOS_GUARD_CHALLENGE_TITLES:
+                challenge_found = title.casefold() == soup.title.string.casefold()
+                if challenge_found:
+                    return True
 
         for selector in DDOS_GUARD_CHALLENGE_SELECTORS:
             challenge_found = soup.find(selector)
@@ -175,7 +179,6 @@ class ClientManager:
 
     async def close(self) -> None:
         await self.flaresolverr._destroy_session()
-        await self.flaresolverr.default_session.close()
 
 
 class Flaresolverr:
@@ -191,7 +194,6 @@ class Flaresolverr:
         if "http" not in self.flaresolverr_host:
             self.flaresolverr_host = f"http://{self.flaresolverr_host}"
         self.session_id = None
-        self.default_session = ClientSession()
         self.flaresolverr_host = URL(self.flaresolverr_host)
 
     async def _request(
@@ -224,12 +226,14 @@ class Flaresolverr:
             json=data,
         ) as response:
             json_obj: dict = await response.json()  # type: ignore
-            return json_obj
+
+        return json_obj
 
     async def _create_session(self) -> None:
         """Creates a permanet flaresolverr session."""
         session_id = "cyberdrop-dl"
-        flaresolverr_resp = await self._request("sessions.create", self.default_session, session=session_id)
+        async with ClientSession() as client_session:
+            flaresolverr_resp = await self._request("sessions.create", client_session, session=session_id)
         status = flaresolverr_resp.get("status")
         if status != "ok":
             raise DDOSGuardError(message="Failed to create flaresolverr session")
@@ -237,7 +241,8 @@ class Flaresolverr:
 
     async def _destroy_session(self):
         if self.session_id:
-            await self._request("sessions.destroy", self.default_session, session=self.session_id)
+            async with ClientSession() as client_session:
+                await self._request("sessions.destroy", client_session, session=self.session_id)
 
     async def get(
         self,
@@ -254,22 +259,28 @@ class Flaresolverr:
             raise DDOSGuardError(message="Failed to resolve URL with flaresolverr", origin=origin)
 
         solution: dict = flaresolverr_resp.get("solution")
+        if not solution:
+            raise DDOSGuardError(message="Invalid response from flaresolverr", origin=origin)
         response = BeautifulSoup(solution.get("response"), "html.parser")
         response_url = URL(solution.get("url"))
-        cookies = solution.get("cookies")
-        user_agent = client_session.headers.get("User-Agent")
-        flaresolverr_user_agent = solution.get("userAgent")
+        cookies: list[dict] = solution.get("cookies")
+        user_agent = client_session.headers.get("User-Agent").strip()
+        flaresolverr_user_agent = solution.get("userAgent").strip()
+        mismatch_msg = f"Config user_agent and flaresolverr user_agent do not match:\n  Cyberdrop-DL: {user_agent}\n  Flaresolverr: {flaresolverr_user_agent}"
 
-        if self.client_manager.check_ddos_guard(response) and not update_cookies:
-            raise DDOSGuardError(message="Invalid response from flaresolverr", origin=origin)
+        if self.client_manager.check_ddos_guard(response):
+            if not update_cookies:
+                raise DDOSGuardError(message="Invalid response from flaresolverr", origin=origin)
+            if flaresolverr_user_agent != user_agent:
+                raise DDOSGuardError(message=mismatch_msg, origin=origin)
 
         if update_cookies:
             if flaresolverr_user_agent != user_agent:
-                raise DDOSGuardError(
-                    message="Config user_agent and flaresolverr user_agent do not match", origin=origin
+                log(f"{mismatch_msg}\nResponse was successful but cookies will not be valid", 30)
+
+            for cookie in cookies:
+                self.client_manager.cookies.update_cookies(
+                    {cookie["name"]: cookie["value"]}, URL(f"https://{cookie['domain']}")
                 )
-            for cookie_dict in cookies:
-                cookie = Cookie(**cookie_dict)
-                self.client_manager.cookies.update_cookies(cookie)
 
         return response, response_url
