@@ -327,19 +327,15 @@ version = "0.19.1"
 description = "Loads cookies from your browser into a cookiejar object so can download with urllib and other libraries the same content you see in the web browser."
 optional = false
 python-versions = "*"
-files = []
-develop = false
+files = [
+    {file = "browser-cookie3-0.19.1.tar.gz", hash = "sha256:3031ad14b96b47ef1e4c8545f2f463e10ad844ef834dcd0ebdae361e31c6119a"},
+    {file = "browser_cookie3-0.19.1-py3-none-any.whl", hash = "sha256:114e40fe80853211d65f14bc690a7d90c4c287251593dc5767692a950a9006d4"},
+]
 
 [package.dependencies]
 jeepney = {version = "*", markers = "python_version >= \"3.7\" and (sys_platform == \"bsd\" or sys_platform == \"linux\")"}
 lz4 = "*"
 pycryptodomex = "*"
-
-[package.source]
-type = "git"
-url = "https://github.com/Arth-ur/browser_cookie3.git"
-reference = "a3790b9d4d84af96142c0e1c2ea9e207ffed6748"
-resolved_reference = "a3790b9d4d84af96142c0e1c2ea9e207ffed6748"
 
 [[package]]
 name = "certifi"
@@ -1799,4 +1795,4 @@ propcache = ">=0.2.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.13"
-content-hash = "326cc0916d9a91fb984a1364d51dd36ea59eb5ca6f140e2e398f9ce51a4100e3"
+content-hash = "d74c908e36042088b10365d90da9d8531c58adc207e8e80bf105693635af54de"
