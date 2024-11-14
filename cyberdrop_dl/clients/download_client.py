@@ -76,11 +76,11 @@ class DownloadClient:
     def add_request_log_hooks(self) -> None:
         async def on_request_start(*args):
             params: aiohttp.TraceRequestStartParams = args[2]
-            log(f"Starting download {params.method} request to {params.url}", 40)
+            log(f"Starting download {params.method} request to {params.url}", 20)
 
         async def on_request_end(*args):
             params: aiohttp.TraceRequestEndParams = args[2]
-            log(f"Finishing download {params.method} request to {params.url}", 40)
+            log(f"Finishing download {params.method} request to {params.url}", 20)
             log(f"Response status for {params.url}: {params.response.status}", 40)
 
         trace_config = aiohttp.TraceConfig()
