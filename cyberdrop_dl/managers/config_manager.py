@@ -67,7 +67,7 @@ class ConfigManager:
         self.global_settings_data: dict = field(init=False)
 
     def startup(self) -> None:
-        """Pre-startup process for the config manager."""
+        """startup process for the config manager."""
         if not isinstance(self.loaded_config, str):
             self.loaded_config = self.manager.cache_manager.get("default_config")
             if not self.loaded_config:
@@ -122,6 +122,20 @@ class ConfigManager:
             self.settings_data["Sorting"]["scan_folder"] = None
             self.write_updated_settings_config()
 
+    def return_verified(self, value) -> any:
+        if isinstance(value, int):
+            return int(value)
+        elif isinstance(value, bool):
+            return bool(value)
+        elif isinstance(value, str):
+            return str(value)
+        elif isinstance(value, list):
+            return list(value)
+        elif isinstance(value, dict):
+            return dict(value)
+        else:
+            return value
+
     def _verify_authentication_config(self) -> None:
         """Verifies the authentication config file and creates it if it doesn't exist."""
         default_auth_data = copy.deepcopy(authentication_settings)
@@ -139,109 +153,25 @@ class ConfigManager:
         default_settings_data = copy.deepcopy(settings)
         existing_settings_data = _load_yaml(self.settings)
         self.settings_data = _match_config_dicts(default_settings_data, existing_settings_data)
-        self.settings_data["Files"]["input_file"] = Path(self.settings_data["Files"]["input_file"])
-        self.settings_data["Files"]["download_folder"] = Path(self.settings_data["Files"]["download_folder"])
-        self.settings_data["Logs"]["log_folder"] = Path(self.settings_data["Logs"]["log_folder"])
-        self.settings_data["Logs"]["webhook_url"] = str(self.settings_data["Logs"]["webhook_url"])
-        self.settings_data["Sorting"]["sort_folder"] = Path(self.settings_data["Sorting"]["sort_folder"])
-        self.settings_data["Sorting"]["scan_folder"] = (
-            Path(self.settings_data["Sorting"]["scan_folder"]) if self.settings_data["Sorting"]["scan_folder"] else None
-        )
+        paths = [
+            ("Files", "input_file"),
+            ("Files", "download_folder"),
+            ("Logs", "log_folder"),
+            ("Sorting", "sort_folder"),
+            ("Sorting", "scan_folder"),
+        ]
 
-        # change to ints
-        self.settings_data["File_Size_Limits"]["maximum_image_size"] = int(
-            self.settings_data["File_Size_Limits"]["maximum_image_size"],
-        )
-        self.settings_data["File_Size_Limits"]["maximum_video_size"] = int(
-            self.settings_data["File_Size_Limits"]["maximum_video_size"],
-        )
-        self.settings_data["File_Size_Limits"]["maximum_other_size"] = int(
-            self.settings_data["File_Size_Limits"]["maximum_other_size"],
-        )
-        self.settings_data["File_Size_Limits"]["minimum_image_size"] = int(
-            self.settings_data["File_Size_Limits"]["minimum_image_size"],
-        )
-        self.settings_data["File_Size_Limits"]["minimum_video_size"] = int(
-            self.settings_data["File_Size_Limits"]["minimum_video_size"],
-        )
-        self.settings_data["File_Size_Limits"]["minimum_other_size"] = int(
-            self.settings_data["File_Size_Limits"]["minimum_other_size"],
-        )
+        for key, value in default_settings_data.items():
+            for subkey, subvalue in value.items():
+                self.settings_data[key][subkey] = self.return_verified(subvalue)
 
-        self.settings_data["Runtime_Options"]["log_level"] = int(self.settings_data["Runtime_Options"]["log_level"])
-
-        self.settings_data["Runtime_Options"]["console_log_level"] = int(
-            self.settings_data["Runtime_Options"]["console_log_level"],
-        )
-
-        self.global_settings_data["General"]["max_file_name_length"] = int(
-            self.global_settings_data["General"]["max_file_name_length"],
-        )
-        self.global_settings_data["General"]["max_folder_name_length"] = int(
-            self.global_settings_data["General"]["max_folder_name_length"],
-        )
-
-        self.global_settings_data["Rate_Limiting_Options"]["connection_timeout"] = int(
-            self.global_settings_data["Rate_Limiting_Options"]["connection_timeout"],
-        )
-        self.global_settings_data["Rate_Limiting_Options"]["download_attempts"] = int(
-            self.global_settings_data["Rate_Limiting_Options"]["download_attempts"],
-        )
-        self.global_settings_data["Rate_Limiting_Options"]["download_delay"] = int(
-            self.global_settings_data["Rate_Limiting_Options"]["download_delay"],
-        )
-        self.global_settings_data["Rate_Limiting_Options"]["max_simultaneous_downloads"] = int(
-            self.global_settings_data["Rate_Limiting_Options"]["max_simultaneous_downloads"],
-        )
-        self.global_settings_data["Rate_Limiting_Options"]["max_simultaneous_downloads_per_domain"] = int(
-            self.global_settings_data["Rate_Limiting_Options"]["max_simultaneous_downloads_per_domain"],
-        )
-        self.global_settings_data["Rate_Limiting_Options"]["rate_limit"] = int(
-            self.global_settings_data["Rate_Limiting_Options"]["rate_limit"],
-        )
-
-        self.global_settings_data["Rate_Limiting_Options"]["download_speed_limit"] = int(
-            self.global_settings_data["Rate_Limiting_Options"]["download_speed_limit"],
-        )
-        self.global_settings_data["Rate_Limiting_Options"]["read_timeout"] = int(
-            self.global_settings_data["Rate_Limiting_Options"]["read_timeout"],
-        )
-
-        self.global_settings_data["Rate_Limiting_Options"]["file_host_cache_length"] = int(
-            self.global_settings_data["Rate_Limiting_Options"]["file_host_cache_length"]
-        )
-        self.global_settings_data["Rate_Limiting_Options"]["forum_cache_length"] = int(
-            self.global_settings_data["Rate_Limiting_Options"]["forum_cache_length"]
-        )
-
-        self.global_settings_data["Dupe_Cleanup_Options"]["delete_after_download"] = self.global_settings_data[
-            "Dupe_Cleanup_Options"
-        ]["delete_after_download"]
-        self.global_settings_data["Dupe_Cleanup_Options"]["hash_while_downloading"] = self.global_settings_data[
-            "Dupe_Cleanup_Options"
-        ]["hash_while_downloading"]
-        self.global_settings_data["Dupe_Cleanup_Options"]["dedupe_already_downloaded"] = self.global_settings_data[
-            "Dupe_Cleanup_Options"
-        ]["dedupe_already_downloaded"]
-        self.global_settings_data["Dupe_Cleanup_Options"]["keep_prev_download"] = self.global_settings_data[
-            "Dupe_Cleanup_Options"
-        ]["keep_prev_download"]
-        self.global_settings_data["Dupe_Cleanup_Options"]["keep_new_download"] = self.global_settings_data[
-            "Dupe_Cleanup_Options"
-        ]["keep_new_download"]
-        self.global_settings_data["Dupe_Cleanup_Options"]["delete_off_disk"] = self.global_settings_data[
-            "Dupe_Cleanup_Options"
-        ]["delete_off_disk"]
-
-        self.global_settings_data["UI_Options"]["refresh_rate"] = int(
-            self.global_settings_data["UI_Options"]["refresh_rate"],
-        )
-        self.global_settings_data["UI_Options"]["scraping_item_limit"] = int(
-            self.global_settings_data["UI_Options"]["scraping_item_limit"],
-        )
-        self.global_settings_data["UI_Options"]["downloading_item_limit"] = int(
-            self.global_settings_data["UI_Options"]["downloading_item_limit"],
-        )
+                for path_item in paths:
+                    if key == path_item[0] and subkey == path_item[1]:
+                        path = self.settings_data[key][subkey]
+                        if (path == "None" or path is None) and subkey == "scan_folder":
+                            self.settings_data[key][subkey] = None
+                        else:
+                            self.settings_data[key][subkey] = Path(path)
 
         if get_keys(default_settings_data) == get_keys(existing_settings_data):
             return
@@ -252,19 +182,27 @@ class ConfigManager:
         save_data["Logs"]["log_folder"] = str(save_data["Logs"]["log_folder"])
         save_data["Logs"]["webhook_url"] = str(save_data["Logs"]["webhook_url"])
         save_data["Sorting"]["sort_folder"] = str(save_data["Sorting"]["sort_folder"])
-        save_data["Sorting"]["scan_folder"] = str(save_data["Sorting"]["scan_folder"])
+        save_data["Sorting"]["scan_folder"] = (
+            str(save_data["Sorting"]["scan_folder"])
+            if save_data["Sorting"]["scan_folder"] not in ["None", None]
+            else None
+        )
         _save_yaml(self.settings, save_data)
 
     def _verify_global_settings_config(self) -> None:
         """Verifies the global settings config file and creates it if it doesn't exist."""
         default_global_settings_data = copy.deepcopy(global_settings)
         existing_global_settings_data = _load_yaml(self.global_settings)
+        self.global_settings_data = _match_config_dicts(default_global_settings_data, existing_global_settings_data)
 
         if get_keys(default_global_settings_data) == get_keys(existing_global_settings_data):
             self.global_settings_data = existing_global_settings_data
             return
 
-        self.global_settings_data = _match_config_dicts(default_global_settings_data, existing_global_settings_data)
+        for key, value in default_global_settings_data.items():
+            for subkey, subvalue in value.items():
+                self.global_settings_data[key][subkey] = self.return_verified(subvalue)
+
         _save_yaml(self.global_settings, self.global_settings_data)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -272,14 +210,31 @@ class ConfigManager:
     @staticmethod
     def create_new_config(new_settings: Path, settings_data: dict) -> None:
         """Creates a new settings config file."""
-        settings_data["Files"]["input_file"] = str(settings_data["Files"]["input_file"])
-        settings_data["Files"]["download_folder"] = str(settings_data["Files"]["download_folder"])
-        settings_data["Logs"]["log_folder"] = str(settings_data["Logs"]["log_folder"])
-        settings_data["Logs"]["webhook_url"] = str(settings_data["Logs"]["webhook_url"])
-        settings_data["Sorting"]["sort_folder"] = str(settings_data["Sorting"]["sort_folder"])
-        settings_data["Sorting"]["scan_folder"] = (
-            str(settings_data["Sorting"]["scan_folder"]) if settings_data["Sorting"]["scan_folder"] else None
+        settings_data["Files"]["input_file"] = (
+            str(settings_data["Files"]["input_file"]) if settings_data["Files"]["input_file"] is not None else None
         )
+        settings_data["Files"]["download_folder"] = (
+            str(settings_data["Files"]["download_folder"])
+            if settings_data["Files"]["download_folder"] is not None
+            else None
+        )
+        settings_data["Logs"]["log_folder"] = (
+            str(settings_data["Logs"]["log_folder"]) if settings_data["Logs"]["log_folder"] is not None else None
+        )
+        settings_data["Logs"]["webhook_url"] = (
+            str(settings_data["Logs"]["webhook_url"]) if settings_data["Logs"]["webhook_url"] is not None else None
+        )
+        settings_data["Sorting"]["sort_folder"] = (
+            str(settings_data["Sorting"]["sort_folder"])
+            if settings_data["Sorting"]["sort_folder"] is not None
+            else None
+        )
+        settings_data["Sorting"]["scan_folder"] = (
+            str(settings_data["Sorting"]["scan_folder"])
+            if settings_data["Sorting"]["scan_folder"] not in ["None", None]
+            else None
+        )
+
         _save_yaml(new_settings, settings_data)
 
     def write_updated_authentication_config(self) -> None:
@@ -289,13 +244,29 @@ class ConfigManager:
     def write_updated_settings_config(self) -> None:
         """Write updated settings data."""
         settings_data = copy.deepcopy(self.settings_data)
-        settings_data["Files"]["input_file"] = str(settings_data["Files"]["input_file"])
-        settings_data["Files"]["download_folder"] = str(settings_data["Files"]["download_folder"])
-        settings_data["Logs"]["log_folder"] = str(settings_data["Logs"]["log_folder"])
-        settings_data["Logs"]["webhook_url"] = str(settings_data["Logs"]["webhook_url"])
-        settings_data["Sorting"]["sort_folder"] = str(settings_data["Sorting"]["sort_folder"])
+        settings_data["Files"]["input_file"] = (
+            str(settings_data["Files"]["input_file"]) if settings_data["Files"]["input_file"] is not None else None
+        )
+        settings_data["Files"]["download_folder"] = (
+            str(settings_data["Files"]["download_folder"])
+            if settings_data["Files"]["download_folder"] is not None
+            else None
+        )
+        settings_data["Logs"]["log_folder"] = (
+            str(settings_data["Logs"]["log_folder"]) if settings_data["Logs"]["log_folder"] is not None else None
+        )
+        settings_data["Logs"]["webhook_url"] = (
+            str(settings_data["Logs"]["webhook_url"]) if settings_data["Logs"]["webhook_url"] is not None else None
+        )
+        settings_data["Sorting"]["sort_folder"] = (
+            str(settings_data["Sorting"]["sort_folder"])
+            if settings_data["Sorting"]["sort_folder"] is not None
+            else None
+        )
         settings_data["Sorting"]["scan_folder"] = (
-            str(settings_data["Sorting"]["scan_folder"]) if settings_data["Sorting"]["scan_folder"] else None
+            str(settings_data["Sorting"]["scan_folder"])
+            if settings_data["Sorting"]["scan_folder"] not in ["None", None]
+            else None
         )
 
         _save_yaml(self.settings, settings_data)

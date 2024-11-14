@@ -24,7 +24,7 @@ If applicable, add screenshots to help explain your problem.
  - Cyberdrop Downloader Version #
 
 **Downloader.log file**
-You need to include the downloader.log file after the issue occurs. Majority of the time it's the only way to diagnose issues. 
+You need to include the downloader.log file after the issue occurs. Majority of the time it's the only way to diagnose issues.
 If you open a bug report and don't include the log file, it will be closed.
 
 **Additional context**
