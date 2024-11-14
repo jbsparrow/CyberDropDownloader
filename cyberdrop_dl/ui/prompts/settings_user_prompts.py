@@ -516,7 +516,7 @@ def edit_cookies_prompt(manager: Manager, config: dict) -> None:
         browser_default=re.split(r'[ ,]+', config["Browser_Cookies"]["browsers"])
     else:
         browser_default=config["Browser_Cookies"]["browsers"] or []
-    browser_select = inquirer.select( message="Select the browser for cookie extraction",
+    browser_select = inquirer.checkbox( message="Select the browser for cookie extraction",
     default=browser_default,
     vi_mode=manager.vi_mode, choices=[ Choice(value="chrome", name="Chrome"), Choice(value="firefox", name="Firefox"), Choice(value="edge", name="Edge"), Choice(value="safari", name="Safari"), Choice(value="opera", name="Opera"), Choice(value="brave", name="Brave"), Choice(value="librewolf", name="LibreWolf"), Choice(value="opera_gx", name="Opera GX"), Choice(value="vivaldi", name="Vivaldi"), Choice(value="chromium", name="Chromium"), ] ).execute()
 
@@ -526,7 +526,7 @@ def edit_cookies_prompt(manager: Manager, config: dict) -> None:
         sites_default=config["Browser_Cookies"]["browsers"] or []
 
     
-    sites_select = inquirer.select(
+    sites_select = inquirer.checkbox(
     message="Select the site for cookie extraction",
     default=config["Browser_Cookies"]["supported_site"],
     vi_mode=manager.vi_mode,
