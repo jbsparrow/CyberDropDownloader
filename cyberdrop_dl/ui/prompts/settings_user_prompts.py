@@ -521,7 +521,7 @@ def edit_cookies_options_prompt(manager: Manager, config: dict) -> None:
     else:
         browser_default = config["Browser_Cookies"]["browsers"] or []
     browser_select = inquirer.checkbox(
-        message="Select the browser for cookie extraction",
+        message="Select the browser(s) for cookie extraction",
         default=browser_default,
         vi_mode=manager.vi_mode,
         choices=[
@@ -536,6 +536,7 @@ def edit_cookies_options_prompt(manager: Manager, config: dict) -> None:
             Choice(value="vivaldi", name="Vivaldi"),
             Choice(value="chromium", name="Chromium"),
         ],
+        long_instruction="ARROW KEYS: Navigate | TAB: Select | ENTER: Confirm",
     ).execute()
 
     if isinstance(config["Browser_Cookies"]["sites"], str):
@@ -604,6 +605,7 @@ def edit_cookies_options_prompt(manager: Manager, config: dict) -> None:
             Choice(value="xbunkr", name="xbunkr"),
             Choice(value="xxxbunker", name="xxxbunker"),
         ],
+        long_instruction="ARROW KEYS: Navigate | TAB: Select | ENTER: Confirm",
     ).execute()
 
     config["Browser_Cookies"]["auto_import"] = auto_import
