@@ -229,11 +229,9 @@ class ConfigManager:
             else None
         )
         settings_data["Sorting"]["scan_folder"] = (
-
             str(settings_data["Sorting"]["scan_folder"])
             if settings_data["Sorting"]["scan_folder"] not in ["None", None]
             else None
-
         )
 
         _save_yaml(new_settings, settings_data)
