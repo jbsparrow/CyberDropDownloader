@@ -5,8 +5,8 @@ from functools import wraps
 from http.cookiejar import MozillaCookieJar
 from typing import TYPE_CHECKING
 
-import browser_cookie3
-from browser_cookie3 import BrowserCookieError
+from cyberdrop_dl.dependencies.browser_cookie3 import BrowserCookieError
+import cyberdrop_dl.dependencies.browser_cookie3
 from InquirerPy import inquirer
 from rich.console import Console
 
