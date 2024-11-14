@@ -305,7 +305,7 @@ class Torrents:
         *,
         offset: int | None = None,
         page: int | None = None,
-        filter: str | None = None,  # noqa
+        filter: str | None = None,
     ) -> dict:
         """Get user torrents list.
 
