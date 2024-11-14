@@ -322,22 +322,6 @@ html5lib = ["html5lib"]
 lxml = ["lxml"]
 
 [[package]]
-name = "browser-cookie3"
-version = "0.19.1"
-description = "Loads cookies from your browser into a cookiejar object so can download with urllib and other libraries the same content you see in the web browser."
-optional = false
-python-versions = "*"
-files = [
-    {file = "browser-cookie3-0.19.1.tar.gz", hash = "sha256:3031ad14b96b47ef1e4c8545f2f463e10ad844ef834dcd0ebdae361e31c6119a"},
-    {file = "browser_cookie3-0.19.1-py3-none-any.whl", hash = "sha256:114e40fe80853211d65f14bc690a7d90c4c287251593dc5767692a950a9006d4"},
-]
-
-[package.dependencies]
-jeepney = {version = "*", markers = "python_version >= \"3.7\" and (sys_platform == \"bsd\" or sys_platform == \"linux\")"}
-lz4 = "*"
-pycryptodomex = "*"
-
-[[package]]
 name = "certifi"
 version = "2024.8.30"
 description = "Python package for providing Mozilla's CA Bundle."
@@ -1795,4 +1779,4 @@ propcache = ">=0.2.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.13"
-content-hash = "d74c908e36042088b10365d90da9d8531c58adc207e8e80bf105693635af54de"
+content-hash = "a1fe49f3a29d4a6c0cc2b2386004b6a93b2dd544a1a3342f46087331d462071e"

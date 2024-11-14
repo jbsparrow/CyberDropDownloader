@@ -5,11 +5,11 @@ from functools import wraps
 from http.cookiejar import MozillaCookieJar
 from typing import TYPE_CHECKING
 
-import browser_cookie3
-from browser_cookie3 import BrowserCookieError
 from InquirerPy import inquirer
 from rich.console import Console
 
+import cyberdrop_dl.dependencies.browser_cookie3 as browser_cookie3
+from cyberdrop_dl.dependencies.browser_cookie3 import BrowserCookieError
 from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
 
 if TYPE_CHECKING:
