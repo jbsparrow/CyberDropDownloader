@@ -46,6 +46,7 @@ ruff = "^0.7.2"
 [tool.ruff]
 line-length = 120
 target-version = "py311"
+exclude = ["cyberdrop_dl/dependencies/browser_cookie3/__init__.py"]
 
 [tool.ruff.lint]
 select = [
