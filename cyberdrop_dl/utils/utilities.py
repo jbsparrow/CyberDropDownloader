@@ -38,7 +38,7 @@ def error_handling_wrapper(func: Callable) -> None:
             return await func(self, *args, **kwargs)
         except CDLBaseError as e:
             log_message_short = e_ui_failure = e.ui_message
-            log_message = e.message
+            log_message = f"{e.ui_message} - {e.message}" if e.ui_message != e.message else e.message
             origin = e.origin
         except RealDebridError as e:
             log_message_short = log_message = f"RealDebridError - {e.error}"
@@ -220,12 +220,13 @@ def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -
     releases = data["releases"].keys()
     message = color = None
     level = 30
-    is_prelease, message = check_prelease_version(current_version, releases)
+    is_prerelease, latest_testing_version, message = check_prelease_version(current_version, releases)
 
     if current_version not in releases:
         message = Text("You are on an unreleased version, skipping version check")
         color = "bold_yellow"
-    elif is_prelease:
+    elif is_prerelease:
+        latest_version = latest_testing_version
         color = "bold_red"
     elif current_version != latest_version:
         message = f"A new version of Cyberdrop-DL is available: [cyan]{latest_version}[/cyan]"
@@ -243,11 +244,11 @@ def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -
 
 
 def check_prelease_version(current_version: str, releases: list[str]) -> tuple[str, Text]:
-    is_prelease = next((tag for tag in constants.PRELEASE_TAGS if tag in current_version), False)
+    is_prerelease = next((tag for tag in constants.PRELEASE_TAGS if tag in current_version), False)
     match = re.match(constants.PRELEASE_VERSION_PATTERN, current_version)
     latest_testing_version = message = None
 
-    if is_prelease and match:
+    if is_prerelease and match:
         major_version, minor_version, patch_version, dot_tag, no_dot_tag = match.groups()
         test_tag = dot_tag if dot_tag else no_dot_tag
 
@@ -260,17 +261,16 @@ def check_prelease_version(current_version: str, releases: list[str]) -> tuple[s
             )
         ]
         latest_testing_version = max(rough_matches, key=lambda x: int(re.search(r"(\d+)$", x).group()))  # type: ignore
-        latest_testing_version = Text(latest_testing_version, style="cyan")
         ui_tag = constants.PRELEASE_TAGS.get(test_tag, "Testing").lower()
 
         if current_version != latest_testing_version:
             message = f"A new {ui_tag} version of Cyberdrop-DL is available: "
-            message = Text(message).append_text(latest_testing_version)
+            message = Text(message).append_text(Text(latest_testing_version, style="cyan"))
         else:
             message = f"You are currently on the latest {ui_tag} version of [b cyan]{major_version}.{minor_version}.{patch_version}[/b cyan]"
             message = Text.from_markup(message)
 
-    return latest_testing_version, message
+    return is_prerelease, latest_testing_version, message
 
 
 def sent_apprise_notifications(manager: Manager) -> None:

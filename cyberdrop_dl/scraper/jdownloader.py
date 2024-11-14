@@ -93,5 +93,5 @@ class JDownloader:
                     },
                 ],
             )
-        except (AssertionError, myjdapi.MYJDApiException) as e:
+        except (AssertionError, myjdapi.MYJDException) as e:
             raise JDownloaderError(e) from e

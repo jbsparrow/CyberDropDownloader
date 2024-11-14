@@ -144,8 +144,6 @@ class Downloader:
                     log(f"{self.log_prefix} failed: {media_item.url} with error {e}", 40, exc_info=True)
                     self.manager.progress_manager.download_stats_progress.add_failure("Unknown")
                     self.manager.progress_manager.download_progress.add_failed()
-                else:
-                    log(f"{self.log_prefix} finished: {media_item.url}", 20)
                 finally:
                     await self._file_lock.release_lock(media_item.file_lock_reference_name)
         self._semaphore.release()
@@ -195,6 +193,7 @@ class Downloader:
                 self.set_file_datetime(media_item, media_item.complete_file)
                 self.attempt_task_removal(media_item)
                 self.manager.progress_manager.download_progress.add_completed()
+                log(f"Download finished: {media_item.url}", 20)
 
         except RestrictedFiletypeError:
             self.manager.progress_manager.download_progress.add_skipped()

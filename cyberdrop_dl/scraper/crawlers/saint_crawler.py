@@ -62,7 +62,7 @@ class SaintCrawler(Crawler):
             match: Match = re.search(r"\('(.+?)'\)", video.get("onclick"))
             link = URL(match.group(1)) if match else None
             filename, ext = get_filename_and_ext(link.name)
-            if not await self.check_album_results(link, results):
+            if not self.check_album_results(link, results):
                 await self.handle_file(link, scrape_item, filename, ext)
 
     @error_handling_wrapper
