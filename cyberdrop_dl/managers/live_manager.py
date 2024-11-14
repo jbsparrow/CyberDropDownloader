@@ -24,6 +24,7 @@ class LiveManager:
             refresh_per_second=self.manager.config_manager.global_settings_data["UI_Options"]["refresh_rate"],
             console=console,
             transient=True,
+            screen=not self.manager.args_manager.no_ui,
         )
 
         self.placeholder = Progress(
