@@ -18,7 +18,6 @@ platformdirs = "^4.2.2"
 rich = "^13.7.0"
 pyyaml = "^6.0.1"
 certifi = "^2024.2.2"
-browser-cookie3 = {git = "https://github.com/Arth-ur/browser_cookie3.git", rev = "a3790b9d4d84af96142c0e1c2ea9e207ffed6748"}
 beautifulsoup4 = "^4.12.2"
 filedate = "^3.0"
 aiosqlite = "0.17.0"
@@ -33,6 +32,9 @@ humanfriendly = "^10.0"
 send2trash = "^1.8.3"
 arrow = "^1.3.0"
 apprise = "^1.9.0"
+lz4 = "^4.3.3"
+pycryptodomex = "^3.21.0"
+jeepney = {version = "^0.8.0", extras = ["python_version", ">=", "\"3.7\"", "and", "(\"bsd\"", "in", "sys_platform", "or", "sys_platform", "==", "\"linux\")"]}
 
 [tool.poetry.scripts]
 cyberdrop-dl = "cyberdrop_dl.main:main"
@@ -44,6 +46,7 @@ ruff = "^0.7.2"
 [tool.ruff]
 line-length = 120
 target-version = "py311"
+exclude = ["cyberdrop_dl/dependencies/browser_cookie3/__init__.py"]
 
 [tool.ruff.lint]
 select = [
