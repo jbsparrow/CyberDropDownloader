@@ -81,7 +81,7 @@ def cookie_wrapper(func: Callable) -> CookieJar:
 def get_cookies_from_browser(manager: Manager, browsers: str = None) -> None:
     """Get the cookies for the supported sites"""
     manager.path_manager.cookies_dir.mkdir(exist_ok=True)
-    browsers = browsers or manager.config_manager.settings_data["Browser_Cookies"]["browser"]
+    browsers = browsers or manager.config_manager.settings_data["Browser_Cookies"]["browsers"]
     if isinstance(browsers,str):
         browsers=re.split(r'[ ,]+', browsers)
     all_sites=set(SupportedDomains.supported_forums)

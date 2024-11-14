@@ -512,10 +512,10 @@ def edit_cookies_prompt(manager: Manager, config: dict) -> None:
                 name="Enable auto cookie extraction",
             ),]
     ).execute()
-    if isinstance(config["Browser_Cookies"]["browser"],str):
-        browser_default=re.split(r'[ ,]+', config["Browser_Cookies"]["browser"])
+    if isinstance(config["Browser_Cookies"]["browsers"],str):
+        browser_default=re.split(r'[ ,]+', config["Browser_Cookies"]["browsers"])
     else:
-        browser_default=config["Browser_Cookies"]["browser"] or []
+        browser_default=config["Browser_Cookies"]["browsers"] or []
     browser_select = inquirer.select( message="Select the browser for cookie extraction",
     default=browser_default,
     vi_mode=manager.vi_mode, choices=[ Choice(value="chrome", name="Chrome"), Choice(value="firefox", name="Firefox"), Choice(value="edge", name="Edge"), Choice(value="safari", name="Safari"), Choice(value="opera", name="Opera"), Choice(value="brave", name="Brave"), Choice(value="librewolf", name="LibreWolf"), Choice(value="opera_gx", name="Opera GX"), Choice(value="vivaldi", name="Vivaldi"), Choice(value="chromium", name="Chromium"), ] ).execute()
@@ -523,7 +523,7 @@ def edit_cookies_prompt(manager: Manager, config: dict) -> None:
     if isinstance(config["Browser_Cookies"]["sites"],str):
         sites_default=re.split(r'[ ,]+', config["Browser_Cookies"]["sites"])
     else:
-        sites_default=config["Browser_Cookies"]["browser"] or []
+        sites_default=config["Browser_Cookies"]["browsers"] or []
 
     
     sites_select = inquirer.select(
@@ -593,5 +593,5 @@ def edit_cookies_prompt(manager: Manager, config: dict) -> None:
 
 
     config["Browser_Cookies"]["auto_import"] = auto_import
-    config["Browser_Cookies"]["browser"] = browser_select
+    config["Browser_Cookies"]["browsers"] = browser_select
     config["Browser_Cookies"]["sites"] = sites_select
