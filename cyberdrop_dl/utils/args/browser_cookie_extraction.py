@@ -81,7 +81,6 @@ def cookie_wrapper(func: Callable) -> CookieJar:
 def get_cookies_from_browser(manager: Manager, browsers: str = None) -> None:
     """Get the cookies for the supported sites"""
     manager.path_manager.cookies_dir.mkdir(exist_ok=True)
-<<<<<<< HEAD
     browsers = browsers or manager.config_manager.settings_data["Browser_Cookies"]["browsers"]
     if isinstance(browsers,str):
         browsers=re.split(r'[ ,]+', browsers)
@@ -89,16 +88,6 @@ def get_cookies_from_browser(manager: Manager, browsers: str = None) -> None:
     user_sites= manager.config_manager.settings_data["Browser_Cookies"]["sites"] or SupportedDomains.supported_hosts
     if isinstance(user_sites,str):
         user_sites=re.split(r'[ ,]+', user_sites)
-=======
-    browsers = browsers or manager.config_manager.settings_data["Browser_Cookies"]["browser"]
-    if isinstance(browsers, str):
-        browsers = re.split(r"[ ,]+", browsers)
-    all_sites = set(SupportedDomains.supported_hosts)
-    user_sites = manager.config_manager.settings_data["Browser_Cookies"]["sites"] or SupportedDomains.supported_hosts
-    if isinstance(user_sites, str):
-        user_sites = re.split(r"[ ,]+", user_sites)
-
->>>>>>> dbac16ca63689caf79567225afcfcf82324d9eb7
     for domain in user_sites:
         domain = domain.lower() if domain else None
         if domain not in all_sites:

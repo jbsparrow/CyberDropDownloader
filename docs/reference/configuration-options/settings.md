@@ -512,7 +512,7 @@ toggles automatic import of cookies at the start of each run
 * **browsers**
 
 The browser(s) to extract cookies from
-  
+
   <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #f9f9f9;"> <strong>Hint:</strong> If the value  entered is null then no browser will be extracted from </div>
 
   <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #f9f9f9;"> <strong>Hint:</strong> This also effects manually extraction </div>
