@@ -25,21 +25,21 @@ class FileLock:
     async def check_lock(self, filename: str) -> None:
         """Checks if the file is locked."""
         try:
-            log_debug(f"Checking lock for {filename}", 40)
+            log_debug(f"Checking lock for {filename}", 20)
             await self._locked_files[filename].acquire()
-            log_debug(f"Lock for {filename} acquired", 40)
+            log_debug(f"Lock for {filename} acquired", 20)
         except KeyError:
-            log_debug(f"Lock for {filename} does not exist", 40)
+            log_debug(f"Lock for {filename} does not exist", 20)
             self._locked_files[filename] = asyncio.Lock()
             await self._locked_files[filename].acquire()
-            log_debug(f"Lock for {filename} acquired", 40)
+            log_debug(f"Lock for {filename} acquired", 20)
 
     async def release_lock(self, filename: str) -> None:
         """Releases the file lock."""
         with contextlib.suppress(KeyError, RuntimeError):
-            log_debug(f"Releasing lock for {filename}", 40)
+            log_debug(f"Releasing lock for {filename}", 20)
             self._locked_files[filename].release()
-            log_debug(f"Lock for {filename} released", 40)
+            log_debug(f"Lock for {filename} released", 20)
 
 
 class DownloadManager:
