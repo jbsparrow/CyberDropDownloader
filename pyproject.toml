@@ -47,20 +47,24 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = [
-    "E",  # pycodestyle errors
-    "W",  # pycodestyle warnings
-    "F",  # pyflakes
-    "I",  # isort
-    "B",  # flake8-bugbear
-    "C4", # flake8-comprehensions
-    "UP", # pyupgrade
-    "N",  # PEP8 naming conventions
-    "TCH",# flake8-type-checking
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "UP",   # pyupgrade
+    "N",    # PEP8 naming conventions
+    "TCH",  # flake8-type-checking
+    "COM8", # flake8-commas linter
+    "RUF",  # RUF specific fixes
+    "Q",    # flake8-quotes
 ]
 
 ignore = [
-    "N806", # Uppercase variables in functions
-    "E501", # Suppress line-too-long, let formatter decide
+    "N806",   # Uppercase variables in functions
+    "E501",   # Suppress line-too-long, let formatter decide
+    "COM812", # missing-trailing-comma
 ]
 
 
