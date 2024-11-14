@@ -5,9 +5,11 @@ import contextlib
 import logging
 import os
 import sys
+from functools import wraps
 from pathlib import Path
 from textwrap import indent
 from time import perf_counter
+from typing import TYPE_CHECKING
 
 from rich.console import Console
 from rich.logging import RichHandler
@@ -30,6 +32,9 @@ from cyberdrop_dl.utils.utilities import (
     send_webhook_message,
     sent_apprise_notifications,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def startup() -> Manager:
@@ -166,6 +171,25 @@ def setup_logger(manager: Manager, config_name: str) -> None:
     constants.CONSOLE_LEVEL = manager.config_manager.settings_data["Runtime_Options"]["console_log_level"]
 
 
+def ui_error_handling_wrapper(func: Callable) -> None:
+    """Wrapper handles errors from the main UI"""
+
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        try:
+            return await func(*args, **kwargs)
+        except* Exception as e:
+            exc_list = str(e)
+            if isinstance(e, ExceptionGroup):
+                exc_list = "\n".join(map(str, e.exceptions))
+            exc_list = indent(exc_list, "  ")
+            msg = f"An error occurred, please report this to the developer with your logs file:\n{exc_list}"
+            log_with_color(msg, "bold red", 50, show_in_stats=False, exc_info=e)
+
+    return wrapper
+
+
+@ui_error_handling_wrapper
 async def director(manager: Manager) -> None:
     """Runs the program and handles the UI."""
     manager.path_manager.startup()
@@ -190,18 +214,9 @@ async def director(manager: Manager) -> None:
         log_spacer(20)
         log("Starting CDL...\n", 20)
 
-        try:
-            pre_runtime(manager)
-            await runtime(manager)
-            await post_runtime(manager)
-        except* Exception as e:
-            exc_list = str(e)
-            if isinstance(e,ExceptionGroup):
-                exc_list = "\n".join(map(str,e.exceptions))
-            exc_list = indent(exc_list, "  ")
-            msg = f"An error occurred, please report this to the developer with your logs file:\n{exc_list}"
-            log_with_color(msg,"bold red",50,show_in_stats=False,exc_info=e)
-            sys.exit(1)
+        pre_runtime(manager)
+        await runtime(manager)
+        await post_runtime(manager)
 
         log_spacer(20)
         manager.progress_manager.print_stats(start_time)
@@ -224,15 +239,14 @@ def main() -> None:
     asyncio.set_event_loop(loop)
     exit_code = 1
     manager = startup()
-    with contextlib.suppress(RuntimeError):
+    with contextlib.suppress(Exception):
         try:
             asyncio.run(director(manager))
             exit_code = 0
         except KeyboardInterrupt:
             print_to_console("Trying to Exit ...")
         finally:
-            with contextlib.suppress(Exception):
-                asyncio.run(manager.close())
+            asyncio.run(manager.close())
     loop.close()
     sys.exit(exit_code)
 

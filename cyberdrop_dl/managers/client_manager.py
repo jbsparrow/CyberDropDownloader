@@ -263,7 +263,7 @@ class Flaresolverr:
             raise DDOSGuardError(message="Invalid response from flaresolverr", origin=origin)
         response = BeautifulSoup(solution.get("response"), "html.parser")
         response_url = URL(solution.get("url"))
-        cookies: list [dict] = solution.get("cookies")
+        cookies: list[dict] = solution.get("cookies")
         user_agent = client_session.headers.get("User-Agent").strip()
         flaresolverr_user_agent = solution.get("userAgent").strip()
         mismatch_msg = f"Config user_agent and flaresolverr user_agent do not match:\n  Cyberdrop-DL: {user_agent}\n  Flaresolverr: {flaresolverr_user_agent}"
@@ -279,6 +279,8 @@ class Flaresolverr:
                 log(f"{mismatch_msg}\nResponse was successful but cookies will not be valid", 30)
 
             for cookie in cookies:
-                self.client_manager.cookies.update_cookies({cookie['name']: cookie['value']}, URL(f"https://{cookie['domain']}"))
+                self.client_manager.cookies.update_cookies(
+                    {cookie["name"]: cookie["value"]}, URL(f"https://{cookie['domain']}")
+                )
 
         return response, response_url

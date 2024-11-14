@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from rich.live import Live
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
-from cyberdrop_dl.utils.logger import console, log
+from cyberdrop_dl.utils.logger import console
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -40,15 +40,6 @@ class LiveManager:
             self.live.start()
             self.live.update(show, refresh=True)
             yield self.live
-
-        except* Exception as e:
-            msg = f"Issue with rich live: {e}"
-            log(msg, 50, exc_info=True)
-            if isinstance(e, ExceptionGroup):
-                for sub_exception in e.exceptions:
-                    msg = f"Multiple exception caught: {type(sub_exception).__name__} - {sub_exception}"
-                    log(msg, 50, exc_info=sub_exception)
-            raise
         finally:
             if stop:
                 self.live.stop()
