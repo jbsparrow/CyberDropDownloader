@@ -509,9 +509,9 @@ toggles automatic import of cookies at the start of each run
 
 ***
 
-* **browser**
+* **browsers**
 
-The browser to extract cookies from
+The browser(s) to extract cookies from
   
   <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #f9f9f9;"> <strong>Hint:</strong> If the value  entered is null then no browser will be extracted from </div>
 
