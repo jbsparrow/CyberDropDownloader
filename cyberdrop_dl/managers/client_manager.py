@@ -140,8 +140,11 @@ class ClientManager:
                 if "data" in JSON_Resp and "error" in JSON_Resp["data"]:
                     raise ScrapeError(JSON_Resp["status"], JSON_Resp["data"]["error"], origin=origin)
 
+        response_text = None
         with contextlib.suppress(UnicodeDecodeError):
             response_text = await response.text()
+
+        if response_text:
             soup = BeautifulSoup(response_text, "html.parser")
             if cls.check_ddos_guard(soup):
                 raise DDOSGuardError(origin=origin)
@@ -161,10 +164,11 @@ class ClientManager:
 
     @staticmethod
     def check_ddos_guard(soup: BeautifulSoup) -> bool:
-        for title in DDOS_GUARD_CHALLENGE_TITLES:
-            challenge_found = title.casefold() == soup.title.string.casefold()
-            if challenge_found:
-                return True
+        if soup.title:
+            for title in DDOS_GUARD_CHALLENGE_TITLES:
+                challenge_found = title.casefold() == soup.title.string.casefold()
+                if challenge_found:
+                    return True
 
         for selector in DDOS_GUARD_CHALLENGE_SELECTORS:
             challenge_found = soup.find(selector)
