@@ -87,8 +87,8 @@ def edit_config_values_prompt(manager: Manager) -> None:
             edit_sort_options_prompt(manager, config)
 
         # Edit Cookie extraction Options
-        elif action == 7:
-            edit_cookie_options_prompt(manager, config)
+        elif action == 8:
+            edit_cookies_options_prompt(manager, config)
 
         # Done
         elif action == 9:
@@ -496,7 +496,7 @@ def edit_sort_options_prompt(manager: Manager, config: dict) -> None:
         config["Sorting"]["sorted_image"] = sorted_image
         config["Sorting"]["sorted_other"] = sorted_other
 
-def edit_cookies_prompt(manager: Manager, config: dict) -> None:
+def edit_cookies_options_prompt(manager: Manager, config: dict) -> None:
     """Edit the file size limits."""
     console.clear()
     console.print("Editing Automatic Cookie Extraction Settings")
