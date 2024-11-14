@@ -528,7 +528,6 @@ def edit_cookies_prompt(manager: Manager, config: dict) -> None:
     
     sites_select = inquirer.checkbox(
     message="Select the site for cookie extraction",
-    default=config["Browser_Cookies"]["supported_site"],
     vi_mode=manager.vi_mode,
     default=sites_default,
     choices=[
