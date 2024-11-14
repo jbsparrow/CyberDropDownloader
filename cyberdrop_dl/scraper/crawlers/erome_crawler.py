@@ -102,7 +102,7 @@ class EromeCrawler(Crawler):
 
         for link in image_links + video_links:
             filename, ext = get_filename_and_ext(link.name)
-            if not await self.check_album_results(link, results):
+            if not self.check_album_results(link, results):
                 await self.handle_file(link, scrape_item, filename, ext)
             scrape_item.children += 1
             if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:

@@ -180,7 +180,7 @@ class CheveretoCrawler(Crawler):
                     album_id,
                     add_parent=scrape_item.url,
                 )
-                if not await self.check_album_results(link, results):
+                if not self.check_album_results(link, results):
                     await self.handle_direct_link(new_scrape_item)
 
     @error_handling_wrapper

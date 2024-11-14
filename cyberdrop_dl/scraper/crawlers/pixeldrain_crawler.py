@@ -79,7 +79,7 @@ class PixelDrainCrawler(Crawler):
                 date,
                 add_parent=scrape_item.url,
             )
-            if not await self.check_album_results(link, results):
+            if not self.check_album_results(link, results):
                 await self.handle_file(link, new_scrape_item, filename, ext)
             scrape_item.children += 1
             if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
