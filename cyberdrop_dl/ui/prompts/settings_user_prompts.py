@@ -1,4 +1,5 @@
 from __future__ import annotations
+import re
 
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -50,7 +51,8 @@ def edit_config_values_prompt(manager: Manager) -> None:
                 Choice(5, "Edit Ignore Options"),
                 Choice(6, "Edit Runtime Options"),
                 Choice(7, "Edit Sorting Options"),
-                Choice(8, "Done"),
+                Choice(8, "Edit Cookie Extraction Options"),
+                Choice(9, "Done"),
             ],
             long_instruction="ARROW KEYS: Navigate | ENTER: Select",
             vi_mode=manager.vi_mode,
@@ -84,8 +86,12 @@ def edit_config_values_prompt(manager: Manager) -> None:
         elif action == 7:
             edit_sort_options_prompt(manager, config)
 
+        # Edit Cookie extraction Options
+        elif action == 7:
+            edit_cookie_options_prompt(manager, config)
+
         # Done
-        elif action == 8:
+        elif action == 9:
             manager.config_manager.settings_data = config
             manager.config_manager.write_updated_settings_config()
             return
@@ -489,3 +495,30 @@ def edit_sort_options_prompt(manager: Manager, config: dict) -> None:
         config["Sorting"]["sorted_video"] = sorted_video
         config["Sorting"]["sorted_image"] = sorted_image
         config["Sorting"]["sorted_other"] = sorted_other
+
+def edit_cookies_prompt(manager: Manager, config: dict) -> None:
+    """Edit the file size limits."""
+    console.clear()
+    console.print("Editing Automatic Cookie Extraction Settings")
+    auto_import = inquirer.select(
+        message="Toggles auto cookie extraction",
+        default=config["Browser_Cookies"]["auto_import"],
+        vi_mode=manager.vi_mode,
+        choices=[ Choice(
+                value=False,
+                name="Disable auto cookie extraction",
+            ), Choice(
+             value=True,
+                name="Enable auto cookie extraction",
+            ),]
+    ).execute()
+    if isinstance(config["Browser_Cookies"]["browser"],str):
+        browser_default=re.split(r'[ ,]+', config["Browser_Cookies"]["browsers"])
+    else:
+        browser_default=config["Browser_Cookies"]["browser"] or []
+    browser_select = inquirer.select( message="Select the browser for cookie extraction",
+    default=browser_default,
+    vi_mode=manager.vi_mode, choices=[ Choice(value="chrome", name="Chrome"), Choice(value="firefox", name="Firefox"), Choice(value="edge", name="Edge"), Choice(value="safari", name="Safari"), Choice(value="opera", name="Opera"), Choice(value="brave", name="Brave"), Choice(value="librewolf", name="LibreWolf"), Choice(value="opera_gx", name="Opera GX"), Choice(value="vivaldi", name="Vivaldi"), Choice(value="chromium", name="Chromium"), ] ).execute()
+
+    config["Browser_Cookies"]["auto_import"] = auto_import
+    config["Browser_Cookies"]["browsers"] = browser_select
