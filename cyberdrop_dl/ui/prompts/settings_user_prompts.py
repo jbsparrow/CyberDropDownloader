@@ -513,12 +513,85 @@ def edit_cookies_prompt(manager: Manager, config: dict) -> None:
             ),]
     ).execute()
     if isinstance(config["Browser_Cookies"]["browser"],str):
-        browser_default=re.split(r'[ ,]+', config["Browser_Cookies"]["browsers"])
+        browser_default=re.split(r'[ ,]+', config["Browser_Cookies"]["browser"])
     else:
         browser_default=config["Browser_Cookies"]["browser"] or []
     browser_select = inquirer.select( message="Select the browser for cookie extraction",
     default=browser_default,
     vi_mode=manager.vi_mode, choices=[ Choice(value="chrome", name="Chrome"), Choice(value="firefox", name="Firefox"), Choice(value="edge", name="Edge"), Choice(value="safari", name="Safari"), Choice(value="opera", name="Opera"), Choice(value="brave", name="Brave"), Choice(value="librewolf", name="LibreWolf"), Choice(value="opera_gx", name="Opera GX"), Choice(value="vivaldi", name="Vivaldi"), Choice(value="chromium", name="Chromium"), ] ).execute()
 
+    if isinstance(config["Browser_Cookies"]["sites"],str):
+        sites_default=re.split(r'[ ,]+', config["Browser_Cookies"]["sites"])
+    else:
+        sites_default=config["Browser_Cookies"]["browser"] or []
+
+    
+    sites_select = inquirer.select(
+    message="Select the site for cookie extraction",
+    default=config["Browser_Cookies"]["supported_site"],
+    vi_mode=manager.vi_mode,
+    default=sites_default,
+    choices=[
+        Choice(value="bunkr", name="bunkr"),
+        Choice(value="bunkrr", name="bunkrr"),
+        Choice(value="celebforum", name="celebforum"),
+        Choice(value="coomer", name="coomer"),
+        Choice(value="cyberdrop", name="cyberdrop"),
+        Choice(value="cyberfile", name="cyberfile"),
+        Choice(value="e-hentai", name="e-hentai"),
+        Choice(value="erome", name="erome"),
+        Choice(value="f95zone", name="f95zone"),
+        Choice(value="fapello", name="fapello"),
+        Choice(value="gofile", name="gofile"),
+        Choice(value="host.church", name="host.church"),
+        Choice(value="hotpic", name="hotpic"),
+        Choice(value="ibb.co", name="ibb.co"),
+        Choice(value="imageban", name="imageban"),
+        Choice(value="imagepond.net", name="imagepond.net"),
+        Choice(value="img.kiwi", name="img.kiwi"),
+        Choice(value="imgbox", name="imgbox"),
+        Choice(value="imgur", name="imgur"),
+        Choice(value="jpeg.pet", name="jpeg.pet"),
+        Choice(value="jpg.church", name="jpg.church"),
+        Choice(value="jpg.fish", name="jpg.fish"),
+        Choice(value="jpg.fishing", name="jpg.fishing"),
+        Choice(value="jpg.homes", name="jpg.homes"),
+        Choice(value="jpg.pet", name="jpg.pet"),
+        Choice(value="jpg1.su", name="jpg1.su"),
+        Choice(value="jpg2.su", name="jpg2.su"),
+        Choice(value="jpg3.su", name="jpg3.su"),
+        Choice(value="jpg4.su", name="jpg4.su"),
+        Choice(value="jpg5.su", name="jpg5.su"),
+        Choice(value="kemono", name="kemono"),
+        Choice(value="leakedmodels", name="leakedmodels"),
+        Choice(value="mediafire", name="mediafire"),
+        Choice(value="nudostar.com", name="nudostar.com"),
+        Choice(value="nudostar.tv", name="nudostar.tv"),
+        Choice(value="omegascans", name="omegascans"),
+        Choice(value="pimpandhost", name="pimpandhost"),
+        Choice(value="pixeldrain", name="pixeldrain"),
+        Choice(value="postimg", name="postimg"),
+        Choice(value="realbooru", name="realbooru"),
+        Choice(value="real-debrid", name="real-debrid"),
+        Choice(value="redd.it", name="redd.it"),
+        Choice(value="reddit", name="reddit"),
+        Choice(value="redgifs", name="redgifs"),
+        Choice(value="rule34.xxx", name="rule34.xxx"),
+        Choice(value="rule34.xyz", name="rule34.xyz"),
+        Choice(value="rule34vault", name="rule34vault"),
+        Choice(value="saint", name="saint"),
+        Choice(value="scrolller", name="scrolller"),
+        Choice(value="socialmediagirls", name="socialmediagirls"),
+        Choice(value="toonily", name="toonily"),
+        Choice(value="tokyomotion.net", name="tokyomotion.net"),
+        Choice(value="xbunker", name="xbunker"),
+        Choice(value="xbunkr", name="xbunkr"),
+        Choice(value="xxxbunker", name="xxxbunker"),
+    ]
+    ).execute()
+
+
+
     config["Browser_Cookies"]["auto_import"] = auto_import
-    config["Browser_Cookies"]["browsers"] = browser_select
+    config["Browser_Cookies"]["browser"] = browser_select
+    config["Browser_Cookies"]["sites"] = sites_select
