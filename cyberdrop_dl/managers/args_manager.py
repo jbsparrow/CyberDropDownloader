@@ -153,7 +153,7 @@ class ArgsManager:
         del self.parsed_args["download_dir"]
         del self.parsed_args["appdata_dir"]
         del self.parsed_args["config_file"]
-        del self.parsed_args["log_folder"]
+        del self.parsed_args["log_dir"]
         del self.parsed_args["proxy"]
         del self.parsed_args["links"]
         del self.parsed_args["sort_downloads"]
