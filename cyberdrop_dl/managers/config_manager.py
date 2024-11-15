@@ -121,10 +121,10 @@ class ConfigManager:
             self.write_updated_settings_config()
 
     def return_verified(self, value) -> any:
-        if isinstance(value, int):
-            return int(value)
         if isinstance(value, bool):
             return bool(value)
+        if isinstance(value, int):
+            return int(value)
         if isinstance(value, str):
             return str(value)
         if isinstance(value, list):
