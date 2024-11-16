@@ -32,10 +32,11 @@ humanfriendly = "^10.0"
 send2trash = "^1.8.3"
 arrow = "^1.3.0"
 apprise = "^1.9.0"
-aiohttp-client-cache = "^0.12.4"
 lz4 = "^4.3.3"
 pycryptodomex = "^3.21.0"
-jeepney = {version = "^0.8.0", extras = ["python_version", ">=", "\"3.7\"", "and", "(\"bsd\"", "in", "sys_platform", "or", "sys_platform", "==", "\"linux\")"]}
+jeepney =   [{platform = "linux", version = "^0.8.0"},{platform = "bsd", version = "^0.8.0"}]
+xxhash = "^3.5.0"
+aiohttp-client-cache = "^0.12.4"
 
 [tool.poetry.scripts]
 cyberdrop-dl = "cyberdrop_dl.main:main"
