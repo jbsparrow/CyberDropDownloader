@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from rich.console import Console
 
-from cyberdrop_dl.utils.database.table_definitions import create_hash
+from cyberdrop_dl.utils.database.table_definitions import create_hash,create_temp_hash,create_files
 
 if TYPE_CHECKING:
     import aiosqlite
@@ -21,10 +21,49 @@ class HashTable:
 
     async def startup(self) -> None:
         """Startup process for the HistoryTable."""
+        await self.transer_old_hash_table()
+        await self.create_hash_tables()
+        pass
+
+
+    async def create_hash_tables(self):
+        await self.db_conn.execute(create_files)
         await self.db_conn.execute(create_hash)
-        await self.add_columns_hash()
         await self.db_conn.commit()
 
+
+    async def transer_old_hash_table(self):
+        cursor = await self.db_conn.cursor()
+        results = await cursor.execute("""pragma table_info(hash)""")
+        results = await results.fetchall()
+        if  len(list(filter(lambda x: x[1]=="download_filename",results)))>0:
+            await cursor.execute(create_files)
+            await cursor.execute(create_temp_hash)
+            old_table_results=await cursor.execute(
+                "SELECT * FROM hash" ,
+                (),
+            )
+            for  old_result in await old_table_results.fetchall():
+                folder=old_result[0]
+                dl_name=old_result[1]
+                original_filename=old_result[2]
+                size=old_result[3]
+                hash=old_result[4]
+                referer=old_result[5]
+                hash_type="md5"
+                await cursor.execute(
+                    "INSERT OR IGNORE INTO files (folder, download_filename, original_filename, file_size,  referer) VALUES (?,?,?,?,?);",
+                    (folder, dl_name, original_filename, size,   referer),
+                )
+                await cursor.execute(
+                    "INSERT OR IGNORE INTO temp_hash (folder, original_filename, hash_type, hash) VALUES (?,?,?,?);",
+                    (folder, original_filename,  hash_type,hash),
+                )
+            await cursor.execute("""DROP TABLE IF EXISTS hash""")
+            await cursor.execute("ALTER TABLE temp_hash RENAME TO hash")
+            await self.db_conn.commit()
+
+        
     async def add_columns_hash(self) -> None:
         cursor = await self.db_conn.cursor()
         result = await cursor.execute("""pragma table_info(hash)""")
