@@ -79,7 +79,7 @@ class SimpCityCrawler(Crawler):
         if not self.logged_in and self.login_attempts == 1:
             log("SimpCity login failed. Scraping without an account.", 40)
 
-        self.client.client_manager.cookies.update_cookies({name: cookie for name, cookie in self.client.client_manager.cookies.items() if 'ddg' in name}, response_url=self.primary_base_domain)
+        self.client.client_manager.cookies.update_cookies({name: cookie for name, cookie in host_cookies.items() if 'ddg' in name}, response_url=self.primary_base_domain)
 
         await self.forum(scrape_item)
 
