@@ -145,8 +145,11 @@ class HashClient:
                 # Filter files based  on if the file exists
                 existing_other_matches = [file for file in other_matches if file.exists()]
 
+
+                if self.delete_no_prev_downloads():
+                    pass
                 # delete all prev files
-                if self.delete_all_prev_download():
+                elif self.delete_all_prev_downloads():
                     for ele in existing_other_matches:
                         if not ele.exists():
                             continue
@@ -157,7 +160,7 @@ class HashClient:
                         except OSError:
                             continue
                 # keep a previous downloads
-                else:
+                elif self.delete_all_but_one_prev_downloads():
                     for ele in existing_other_matches[1:]:
                         if not ele.exists():
                             continue
@@ -168,7 +171,7 @@ class HashClient:
                         except OSError:
                             continue
                 # delete current download
-                if self.delete_current_download(hash, selected_file):
+                if self.delete_selected_current_download(hash, selected_file):
                     try:
                         if selected_file.exists():
                             self.send2trash(selected_file)
@@ -193,7 +196,7 @@ class HashClient:
         return hashes_dict
 
     def get_candiate_per_group(self, hashes_dict: dict[str, dict[int, list[Path]]]) -> dict:
-        # remove downloaded files, so each group only has the one previously downloaded file or the first downloaded file
+        # create dictionary with one selected file, per value and list of other files with matching hashes
         for hash, size_dict in hashes_dict.items():
             for size, files in size_dict.items():
                 selected_file = None
@@ -203,14 +206,15 @@ class HashClient:
                         if file in self.manager.path_manager.prev_downloads_paths:
                             break
                         continue
-                for file in filter(lambda x: x != selected_file, files):
-                    try:
-                        self.send2trash(file)
-                        log(f"Sent new download : {file} to trash with hash {hash}", 10)
-                        self.manager.progress_manager.hash_progress.add_removed_file()
-                    except OSError:
-                        pass
 
+                if self.delete_other_current_downloads():
+                    for file in filter(lambda x: x != selected_file, files):
+                        try:
+                            self.send2trash(file)
+                            log(f"Sent new download : {file} to trash with hash {hash}", 10)
+                            self.manager.progress_manager.hash_progress.add_removed_file()
+                        except OSError:
+                            pass
                 if selected_file:
                     size_dict[size] = {
                         "selected": selected_file,
@@ -226,18 +230,37 @@ class HashClient:
         else:
             send2trash(path)
 
-    def delete_all_prev_download(self) -> bool:
-        return not self.keep_prev_file()
+    def delete_all_prev_downloads(self) -> bool:
+        return not self.keep_all_prev_files() and not self.keep_prev_file()
+    
+    def delete_all_but_one_prev_downloads(self) -> bool:
+        return not self.keep_all_prev_files() and self.keep_prev_file()
 
-    def delete_current_download(self, hash: str, selected_file: Path | str) -> bool:
-        return not self.keep_new_download(hash, selected_file)
+    def delete_no_prev_downloads(self) -> bool:
+        return self.keep_all_prev_files()
+    
+    def delete_selected_current_download(self, hash: str, selected_file: Path | str) -> bool:
+        return not self.keep_selected_current_download(hash, selected_file) and not self.keep_all_current_downloads()
+    
+    def delete_other_current_downloads(self) -> bool:
+        return not self.keep_all_current_downloads()
 
-    def keep_new_download(self, hash: str, selected_file: Path | str) -> bool:
+    def keep_selected_current_download(self, hash: str, selected_file: Path | str) -> bool:
         return bool(
             self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["keep_new_download"]
             or hash not in self.prev_hashes
             or Path(selected_file) in self.manager.path_manager.prev_downloads_paths,
         )
+    
+    def keep_all_current_downloads(self) -> bool:
+        return bool(
+            self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["keep_new_download"]==None
+        )
+
 
     def keep_prev_file(self) -> bool:
         return self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["keep_prev_download"]
+    
+
+    def keep_all_prev_files(self) -> bool:
+        return self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["keep_prev_download"]==None

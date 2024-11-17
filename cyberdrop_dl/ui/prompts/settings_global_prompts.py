@@ -219,7 +219,7 @@ def edit_dupe_settings_prompt(manager: Manager) -> None:
 
     delete_after = inquirer.select(
         message="Toggle duplicate files deletion using hashes:",
-        default=manager.config_manager.settings_data["Dupe_Cleanup_Options"]["delete_after_download"],
+        default=manager.config_manager.settings_data["s"]["delete_after_download"],
         choices=[Choice(True, "True"), Choice(False, "False")],
         vi_mode=manager.vi_mode,
     ).execute()
@@ -235,7 +235,7 @@ def edit_dupe_settings_prompt(manager: Manager) -> None:
         message="What to do with new file when deduping: ",
         long_instruction="Keep a curent file. Current files are files that were either downloaded or a file was skipped for already existing when dedupe_already_downloaded is true",
         default=manager.config_manager.settings_data["Dupe_Cleanup_Options"]["keep_new_download"],
-        choices=[Choice(True, "Keep a newfile"), Choice(False, "Delete all new files")],
+        choices=[Choice(True, "Keep one current file"), Choice(False, "Delete selected current file"), Choice(None, "Keep all current files wth same hash")],
         vi_mode=manager.vi_mode,
     ).execute()
 
@@ -243,7 +243,7 @@ def edit_dupe_settings_prompt(manager: Manager) -> None:
         message="What to do with previous file(s) when deduping:",
         default=manager.config_manager.settings_data["Dupe_Cleanup_Options"],
         long_instruction="Any file that is not in the list of current files with a matching hash",
-        choices=[Choice(True, "Keep a previous file "), Choice(False, "Delete all previous files")],
+        choices=[Choice(True, "Keep a previous file "),Choice(None, "Keep all previous files")],
         vi_mode=manager.vi_mode,
     ).execute()
 

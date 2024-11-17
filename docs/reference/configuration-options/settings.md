@@ -513,9 +513,14 @@ and enable/disable dupe clean up
 
 <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #f9f9f9;"> <strong>Hint:</strong>Once a hash is in the database for a given file path and file size, it  will not be recalculated</div>
 
+### Main Settings
+These setting enable/disable the hashing and deduplication processes
+
 ***
 * delete\_after\_download
-This toggles enables hashing of files, along with after all downloads deduplication
+This is the master switch 
+
+Toggles enables hashing of files, along with after all downloads deduplication
 
 After enabled the timing of hashing depends on disable_individual_download_hashing option
 
@@ -523,10 +528,28 @@ The files compared and deduped depends on the files that were downloaded, and de
 ***
 * dedupe\_already\_downloaded
 Allows files skipped for already existing on the filesystem to be added to the list of files to process for hashing and deduping
+***
+
+### Hash Settings
+These settings modify the hashing process, and are only in effect when delete_after_download is True
 
 ***
+
 * disable\_individual\_download\_hashing
 An additional toggle to disable hashing for individual downloads. Prior to all downloads completing, and the after download deduplication process starting
+***
+
+
+* add\_md5_hash
+adds md5 hash when hashing files from the disk
+
+***
+* add\_sha256_hash
+adds sha256 hash when hashing files from the disk
+***
+### Deletion Settings
+These settings modify how files are deleted, and are only effect when delete_after_download is True
+
 ***
 
 * keep\_new\_download
@@ -538,6 +561,8 @@ If disabled all current files will be deleted if the following is all true
 - The hash must have already existing on the system prior to the current run
 
 current files always include new files written to disk, during the previous download process. Along with files already on disk if dedupe_already_downloaded is true
+
+Note: if set to null, all current files will be kept even if  they have matching hashes
 
 ***
 
@@ -551,16 +576,9 @@ current files always include new files written to disk, during the previous down
 
 If enabled then at least one existing previous download will be kept on system.
 If not enabled all previous downloads will be deleted
-Note: changing this to null will disable any file deletion
-***
 
+Note: if set to null, all prev files will be kept even if  they have matching hashes
 
-* add\_md5_hash
-adds md5 hash when hashing files from the disk
-
-***
-* add\_sha256_hash
-adds sha256 hash when hashing files from the disk
 
 ***
 
