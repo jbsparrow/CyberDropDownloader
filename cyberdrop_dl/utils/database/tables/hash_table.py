@@ -195,19 +195,25 @@ class HashTable:
             return False
         return True
 
-    async def get_all_unique_hashes(self) -> list:
-        """Retrieves a list of (folder, filename) tuples based on a given hash.
+    async def get_all_unique_hashes(self,hash_type=None) -> list:
+        """Retrieves a list of hashes
 
         Args:
             hash_value: The hash value to search for.
+            hash_type: The type of hash[optional]
 
         Returns:
             A list of (folder, filename) tuples, or an empty list if no matches found.
         """
         cursor = await self.db_conn.cursor()
-
         try:
-            await cursor.execute("SELECT DISTINCT hash FROM hash")
+            if hash_type:
+                await cursor.execute(
+                    "SELECT DISTINCT hash FROM hash WHERE hash_type =?",
+                    (hash_type,),
+                )
+            else:
+                await cursor.execute("SELECT DISTINCT hash FROM hash")
             results = await cursor.fetchall()
             return [x[0] for x in results]
         except Exception as e:

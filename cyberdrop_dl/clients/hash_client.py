@@ -49,7 +49,7 @@ class HashClient:
         self.prev_hashes = None
 
     async def startup(self) -> None:
-        self.prev_hashes = set(await self.manager.db_manager.hash_table.get_all_unique_hashes())
+        self.prev_hashes = set(await self.manager.db_manager.hash_table.get_all_unique_hashes("xxh128"))
 
     async def hash_directory(self, path: Path) -> None:
         path = Path(path)
