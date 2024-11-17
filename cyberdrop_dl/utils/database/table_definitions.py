@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS files (
   original_filename TEXT,
   file_size INT,
   referer TEXT,
-  PRIMARY KEY (folder, original_filename)
+  PRIMARY KEY (folder, download_filename)
 );
 
 """
@@ -44,11 +44,11 @@ CREATE TABLE IF NOT EXISTS files (
 create_hash= """
 CREATE TABLE IF NOT EXISTS hash (
   folder TEXT,
-  original_filename TEXT,
+  download_filename TEXT,
   hash_type TEXT,
   hash TEXT,
-  PRIMARY KEY (folder, original_filename, hash_type),
-  FOREIGN KEY (folder, original_filename) REFERENCES files(folder, original_filename)
+  PRIMARY KEY (folder, download_filename, hash_type),
+  FOREIGN KEY (folder, download_filename) REFERENCES files(folder, download_filename)
 );
 
 """
@@ -56,10 +56,10 @@ CREATE TABLE IF NOT EXISTS hash (
 create_temp_hash= """
 CREATE TABLE IF NOT EXISTS temp_hash (
   folder TEXT,
-  original_filename TEXT,
+  download_filename TEXT,
   hash_type TEXT,
   hash TEXT,
-  PRIMARY KEY (folder, original_filename, hash_type),
-  FOREIGN KEY (folder, original_filename) REFERENCES files(folder, original_filename)
+  PRIMARY KEY (folder, download_filename, hash_type),
+  FOREIGN KEY (folder, download_filename) REFERENCES files(folder, download_filename)
 );
 """

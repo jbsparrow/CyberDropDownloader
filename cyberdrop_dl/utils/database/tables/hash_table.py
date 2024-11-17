@@ -36,7 +36,7 @@ class HashTable:
         cursor = await self.db_conn.cursor()
         results = await cursor.execute("""pragma table_info(hash)""")
         results = await results.fetchall()
-        if  len(list(filter(lambda x: x[1]=="download_filename",results)))>0:
+        if  len(list(filter(lambda x: x[1]=="hash_type",results)))==0:
             await cursor.execute(create_files)
             await cursor.execute(create_temp_hash)
             old_table_results=await cursor.execute(
@@ -56,8 +56,8 @@ class HashTable:
                     (folder, dl_name, original_filename, size,   referer),
                 )
                 await cursor.execute(
-                    "INSERT OR IGNORE INTO temp_hash (folder, original_filename, hash_type, hash) VALUES (?,?,?,?);",
-                    (folder, original_filename,  hash_type,hash),
+                    "INSERT OR IGNORE INTO temp_hash (folder, download_filename, hash_type, hash) VALUES (?,?,?,?);",
+                    (folder, dl_name,  hash_type,hash),
                 )
             await cursor.execute("""DROP TABLE IF EXISTS hash""")
             await cursor.execute("ALTER TABLE temp_hash RENAME TO hash")
@@ -65,7 +65,7 @@ class HashTable:
 
 
     async def get_file_hash_exists(self, full_path: Path | str,hash_type:str) -> str | None:
-        """Checks if a file exists in the database based on its folder, filename, and size.
+        """gets the hash from a complete file path
 
         Args:
             full_path: Full path to the file to check.
@@ -84,12 +84,12 @@ class HashTable:
 
             # Check if the file exists with matching folder, filename, and size
             await cursor.execute(
-                "SELECT hash FROM hash WHERE folder=? AND original_filename=? AND hash_type=? AND hash IS NOT NULL",
+                "SELECT hash FROM hash WHERE folder=? AND download_filename=? AND hash_type=? AND hash IS NOT NULL",
                 (folder, filename,hash_type),
             )
-            results = await cursor.fetchall()
-            if results:
-                return results
+            result = await cursor.fetchone()
+            if result:
+                return result[0]
         except Exception as e:
             console.print(f"Error checking file: {e}")
         return None
@@ -109,13 +109,13 @@ class HashTable:
         try:
             if hash_type:
                 await cursor.execute(
-                    "SELECT files.folder, files.download_filename FROM hash JOIN files ON hash.folder = files.folder AND hash.original_filename = files.original_filename WHERE hash.hash = ? AND files.file_size = ? AND hash.hash_type = ?;",
+                    "SELECT files.folder, files.download_filename FROM hash JOIN files ON hash.folder = files.folder AND hash.download_filename = files.download_filename WHERE hash.hash = ? AND files.file_size = ? AND hash.hash_type = ?;",
                     (hash_value, size,hash_type),
                 )
                 return await cursor.fetchall()
             else:
                 await cursor.execute(
-                    "SELECT files.folder, files.download_filename FROM hash JOIN files ON hash.folder = files.folder AND hash.original_filename = files.original_filename WHERE hash.hash = ? AND files.file_size = ? AND hash.hash_type = ?;",
+                    "SELECT files.folder, files.download_filename FROM hash JOIN files ON hash.folder = files.folder AND hash.download_filename = files.download_filename WHERE hash.hash = ? AND files.file_size = ? AND hash.hash_type = ?;",
                     (hash_value, size,hash_type),
                 )
                 return await cursor.fetchall()
@@ -142,29 +142,28 @@ class HashTable:
         file_size = full_path.stat().st_size
 
         download_filename = full_path.name
-        original_filename = referer or download_filename
         folder = str(full_path.parent)
-        hash=await self.insert_or_update_hashes(hash_value,hash_type,folder, original_filename)
+        hash=await self.insert_or_update_hashes(hash_value,hash_type,folder, download_filename)
         file=await self.insert_or_update_file(folder, original_filename,download_filename,file_size,referer)
         return file and hash
 
-    async def insert_or_update_hashes(self,hash_value,hash_type,folder, original_filename):
+    async def insert_or_update_hashes(self,hash_value,hash_type,folder, download_filename):
         cursor = await self.db_conn.cursor()
         try:
-            await cursor.execute(
-                "INSERT INTO hash (hash,hash_type,folder,original_filename) VALUES (?, ?, ?, ?)",
-                (hash_value,hash_type,folder, original_filename),
+            await cursor.execute(                                        
+                "INSERT INTO hash (hash,hash_type,folder,download_filename) VALUES (?, ?, ?, ?)",
+                (hash_value,hash_type,folder, download_filename),
             )
             await self.db_conn.commit()
         except IntegrityError as _:
-            # Handle potential duplicate key (assuming a unique constraint on (folder, original_filename, hash_type)
+            # Handle potential duplicate key (assuming a unique constraint on (folder, download_filename, hash_type)
             await cursor.execute(
                 """UPDATE hash
                 SET hash = ?
-                WHERE original_filename = ? AND folder = ? AND hash_type = ?;""",
+                WHERE download_filename = ? AND folder = ? AND hash_type = ?;""",
                 (
                     hash_value,
-                    original_filename,
+                    download_filename,
                     folder,
                     hash_type,
                 ),
@@ -186,13 +185,13 @@ class HashTable:
             # Handle potential duplicate key (assuming a unique constraint on  (filename, and folder)
             await cursor.execute(
     """UPDATE files
-    SET download_filename = ?, file_size = ?, referer = ?
-    WHERE original_filename = ? AND folder = ?;""",
+    SET original_filename = ?, file_size = ?, referer = ?
+    WHERE download_filename = ? AND folder = ?;""",
     (
-        download_filename,
+        original_filename,
         file_size,
         referer,
-        original_filename,
+        download_filename,
         folder,
     ),
 )
