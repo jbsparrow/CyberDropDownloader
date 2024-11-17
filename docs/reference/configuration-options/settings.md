@@ -496,6 +496,89 @@ This is the format for the directory structure and naming scheme for other files
 
 </details>
 
+
+
+<details>
+
+<summary>Dupe Options</summary>
+
+These are options for enable/disable dupe clean up
+
+
+<div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #f9f9f9;"> <strong>Hint:</strong> Afer Download Deduplication is done through 100 percent size+xxh128 hash matches</div>
+
+***
+* dedupe\_already\_downloaded
+Allows files skipped for already existing on the filesystem to be added to the list of files to process for deduping
+
+***
+
+* delete\_after\_download
+This toggles the deduping process, which happens after all downloads have finished
+only current files are processed and deduped across all files in the hash database
+
+current files are files that were either downloaded or a file was skipped for already existing when dedupe_already_downloaded is true
+
+***
+
+
+* keep_new_download
+
+If enabled for each hash and size match one current file will be kept on the system
+
+If disabled all current files will be deleted if the following is all true
+- The file did not exist on the filesystem prior to the current run
+- The hash must have already existing on the system prior to the current run
+
+Current files are files that were either downloaded or a file was skipped for already existing when dedupe_already_downloaded is true
+
+* keep\_prev\_download
+prev downloads are files that are match with the hash and size given, and are not a part of the current files list
+
+Current files are files that were either downloaded or a file was skipped for already existing when dedupe_already_downloaded is true
+
+If enabled then at least one existing previous download will be kept on system.
+If not enabled all previous downloads will be deleted
+
+</details>
+
+<details>
+
+<summary>Hashing Options</summary>
+
+These are options for how to hash files from the disk
+***
+
+<div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #f9f9f9;"> <strong>Hint:</strong> Afer Download Deduplication is done through 100 percent size+xxh128 hash matches</div>
+
+
+<div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #f9f9f9;"> <strong>Hint:</strong>Before Download Deduplication is done through matching information given by site, to matching hashes of the same type+ file size</div>
+
+<div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #f9f9f9;"> <strong>Hint:</strong>Once a hash is in the database for a given file path and file size, it  will not be recalculated</div>
+
+
+***
+* hash\_while\_downloading
+
+With this set as True. Files can be hash after each download, rather than all together
+
+***
+
+* add\_md5_hash
+
+adds md5 hash when hashing files from the disk
+
+***
+
+* add\_sha256_hash
+
+adds sha256 hash when hashing files from the disk
+
+***
+
+</details>
+
+
 <details>
 
 <summary>Browser Cookies</summary>
@@ -503,7 +586,7 @@ Cyberdrop-DL can extract cookies from your browser
 Only cookies from supported websites are extracted
 ***
 
-* auto_import
+* auto\_import
 
 toggles automatic import of cookies at the start of each run
 
