@@ -111,6 +111,9 @@ class HashClient:
 
     async def hash_item_during_download(self, media_item: MediaItem) -> None:
         try:
+                
+            if self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["delete_after_download"]:
+    
                 await self.hash_item_helper(media_item.complete_file, media_item.original_filename, media_item.referer)
         except Exception as e:
             log(f"After hash processing failed: {media_item.complete_file} with error {e}", 40, exc_info=True)
