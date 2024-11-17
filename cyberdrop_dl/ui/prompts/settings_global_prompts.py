@@ -219,24 +219,14 @@ def edit_dupe_settings_prompt(manager: Manager) -> None:
 
     delete_after = inquirer.select(
         message="Toggle duplicate files deletion using hashes:",
-        default=manager.config_manager.global_settings_data["Dupe_Cleanup_Options"]["delete_after_download"],
-        choices=[Choice(True, "True"), Choice(False, "False")],
-        vi_mode=manager.vi_mode,
-    ).execute()
-    hash_while_downloading = inquirer.select(
-        message="Hash Files during downloading:",
-        long_instruction="""
-        Generate file hashes after each download, instead of batched
-        together during deduplication process
-        """,
-        default=manager.config_manager.global_settings_data["Dupe_Cleanup_Options"]["hash_while_downloading"],
+        default=manager.config_manager.settings_data["Dupe_Cleanup_Options"]["delete_after_download"],
         choices=[Choice(True, "True"), Choice(False, "False")],
         vi_mode=manager.vi_mode,
     ).execute()
 
     dedupe_already_downloaded = inquirer.select(
         message="How to handle files already on system: ",
-        default=manager.config_manager.global_settings_data["Dupe_Cleanup_Options"]["dedupe_already_downloaded"],
+        default=manager.config_manager.settings_data["Dupe_Cleanup_Options"]["dedupe_already_downloaded"],
         choices=[Choice(True, "Mark Existing Files as 'new'"), Choice(False, "Skip Existing Files")],
         vi_mode=manager.vi_mode,
     ).execute()
@@ -244,14 +234,14 @@ def edit_dupe_settings_prompt(manager: Manager) -> None:
     keep_current = inquirer.select(
         message="What to do with new file when deduping: ",
         long_instruction="Keep a curent file. Current files are files that were either downloaded or a file was skipped for already existing when dedupe_already_downloaded is true",
-        default=manager.config_manager.global_settings_data["Dupe_Cleanup_Options"]["keep_new_download"],
+        default=manager.config_manager.settings_data["Dupe_Cleanup_Options"]["keep_new_download"],
         choices=[Choice(True, "Keep a newfile"), Choice(False, "Delete all new files")],
         vi_mode=manager.vi_mode,
     ).execute()
 
     keep_prev = inquirer.select(
         message="What to do with previous file(s) when deduping:",
-        default=manager.config_manager.global_settings_data["Dupe_Cleanup_Options"],
+        default=manager.config_manager.settings_data["Dupe_Cleanup_Options"],
         long_instruction="Any file that is not in the list of current files with a matching hash",
         choices=[Choice(True, "Keep a previous file "), Choice(False, "Delete all previous files")],
         vi_mode=manager.vi_mode,
@@ -259,20 +249,17 @@ def edit_dupe_settings_prompt(manager: Manager) -> None:
 
     delete_off_disk = inquirer.select(
         message="How to handle removal of files: ",
-        default=manager.config_manager.global_settings_data["Dupe_Cleanup_Options"]["delete_off_disk"],
+        default=manager.config_manager.settings_data["Dupe_Cleanup_Options"]["delete_off_disk"],
         choices=[Choice(True, "Permanently Delete File"), Choice(False, "Send to Trash")],
         vi_mode=manager.vi_mode,
     ).execute()
 
-    manager.config_manager.global_settings_data["Dupe_Cleanup_Options"]["delete_after_download"] = delete_after
-    manager.config_manager.global_settings_data["Dupe_Cleanup_Options"]["hash_while_downloading"] = (
-        hash_while_downloading
-    )
-    manager.config_manager.global_settings_data["Dupe_Cleanup_Options"]["keep_prev_download"] = keep_prev
-    manager.config_manager.global_settings_data["Dupe_Cleanup_Options"]["keep_new_download"] = keep_current
+    manager.config_manager.settings_data["Dupe_Cleanup_Options"]["delete_after_download"] = delete_after
+    manager.config_manager.settings_data["Dupe_Cleanup_Options"]["keep_prev_download"] = keep_prev
+    manager.config_manager.settings_data["Dupe_Cleanup_Options"]["keep_new_download"] = keep_current
 
-    manager.config_manager.global_settings_data["Dupe_Cleanup_Options"]["dedupe_already_downloaded"] = (
+    manager.config_manager.settings_data["Dupe_Cleanup_Options"]["dedupe_already_downloaded"] = (
         dedupe_already_downloaded
     )
 
-    manager.config_manager.global_settings_data["Dupe_Cleanup_Options"]["delete_off_disk"] = delete_off_disk
+    manager.config_manager.settings_data["Dupe_Cleanup_Options"]["delete_off_disk"] = delete_off_disk
