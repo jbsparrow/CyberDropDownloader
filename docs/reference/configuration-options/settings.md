@@ -525,6 +525,8 @@ This toggles downloaded files to be hashed, and then deduped
 Files are hashed after each download, and then deduped after all downloads
 
 The files deduped are those downloaded or files those skipped for already existing when dedupe_already_downloaded is true
+
+
 ***
 
 * keep\_new\_download

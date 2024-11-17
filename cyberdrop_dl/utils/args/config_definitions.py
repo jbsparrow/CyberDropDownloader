@@ -136,12 +136,10 @@ settings: dict = {
         "keep_new_download": True,
         "dedupe_already_downloaded": False,
         "delete_off_disk": False,
-    },
-    "Hashing_Options": {
-    "hash_while_downloading": False,
-    "add_md5_hash": False,
+        "add_md5_hash": False,
     "add_sha256_hash": False,
-    }
+    },
+   
 }
 
 global_settings: dict = {

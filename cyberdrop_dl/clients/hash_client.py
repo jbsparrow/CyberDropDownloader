@@ -67,9 +67,9 @@ class HashClient:
         return str(Path(file).absolute())
     async def hash_item_helper(self, file: Path | str, original_filename: str, referer: URL):
         hash=await self.hash_item(file, original_filename,referer,hash_type=self.xxhash)
-        if self.manager.config_manager.settings_data["Hashing_Options"]["add_md5_hash"]:
+        if self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["add_md5_hash"]:
             await self.hash_item(file, original_filename,referer,hash_type=self.md5)
-        if self.manager.config_manager.settings_data["Hashing_Options"]["add_sha256_hash"]:
+        if self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["add_sha256_hash"]:
             await self.hash_item(file, original_filename, referer, hash_type=self.sha256)
         return hash
 
@@ -111,7 +111,6 @@ class HashClient:
 
     async def hash_item_during_download(self, media_item: MediaItem) -> None:
         try:
-            if self.manager.config_manager.settings_data["Hashing_Options"]["hash_while_downloading"]:
                 await self.hash_item_helper(media_item.complete_file, media_item.original_filename, media_item.referer)
         except Exception as e:
             log(f"After hash processing failed: {media_item.complete_file} with error {e}", 40, exc_info=True)
