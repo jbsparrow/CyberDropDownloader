@@ -133,7 +133,7 @@ class HashClient:
                 # Get all matches from the database
                 all_matches = [
                     Path(x[0], x[1])
-                    for x in await self.manager.db_manager.hash_table.get_files_with_hash_matches(hash, size,"xxh128")
+                    for x in await self.manager.db_manager.hash_table.get_files_with_hash_matches(hash, size,self.xxhash)
                 ]
                 # Filter out files with the same path as any file in other_files
                 other_matches = [match for match in all_matches if str(match) not in other_files]
@@ -231,7 +231,7 @@ class HashClient:
         return bool(
             self.manager.config_manager.global_settings_data["Dupe_Cleanup_Options"]["keep_new_download"]
             or hash not in self.prev_hashes
-            or str(selected_file) in self.manager.path_manager.prev_downloads_paths,
+            or Path(selected_file) in self.manager.path_manager.prev_downloads_paths,
         )
 
     def keep_prev_file(self) -> bool:

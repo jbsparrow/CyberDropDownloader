@@ -109,14 +109,14 @@ class HashTable:
         try:
             if hash_type:
                 await cursor.execute(
-                    "SELECT folder, download_filename FROM hash WHERE hash = ? and file_size=? and hash_type=?",
+                    "SELECT files.folder, files.download_filename FROM hash JOIN files ON hash.folder = files.folder AND hash.original_filename = files.original_filename WHERE hash.hash = ? AND files.file_size = ? AND hash.hash_type = ?;",
                     (hash_value, size,hash_type),
                 )
                 return await cursor.fetchall()
             else:
                 await cursor.execute(
-                    "SELECT folder, download_filename FROM hash WHERE hash = ? and file_size=?",
-                    (hash_value, size),
+                    "SELECT files.folder, files.download_filename FROM hash JOIN files ON hash.folder = files.folder AND hash.original_filename = files.original_filename WHERE hash.hash = ? AND files.file_size = ? AND hash.hash_type = ?;",
+                    (hash_value, size,hash_type),
                 )
                 return await cursor.fetchall()
 
