@@ -47,9 +47,12 @@ class HashClient:
         self.manager = manager
         self.hashes = defaultdict(lambda: None)
         self.prev_hashes = None
+        self.xxhash="xxh128"
+        self.md5="md5"
+        self.sha256="sha256"
 
     async def startup(self) -> None:
-        self.prev_hashes = set(await self.manager.db_manager.hash_table.get_all_unique_hashes("xxh128"))
+        self.prev_hashes = set(await self.manager.db_manager.hash_table.get_all_unique_hashes(self.xxhash))
 
     async def hash_directory(self, path: Path) -> None:
         path = Path(path)
@@ -63,11 +66,11 @@ class HashClient:
     def _get_key_from_file(file: Path | str):
         return str(Path(file).absolute())
     async def hash_item_helper(self, file: Path | str, original_filename: str, referer: URL):
-        hash=await self.hash_item(file, original_filename,referer,hash_type="xxh128")
+        hash=await self.hash_item(file, original_filename,referer,hash_type=self.xxhash)
         if "md5":
-            await self.hash_item(file, original_filename,referer,hash_type="md5")
+            await self.hash_item(file, original_filename,referer,hash_type=self.md5)
         elif "sha256":
-            await self.hash_item(file, original_filename, referer, hash_type="sha256")
+            await self.hash_item(file, original_filename, referer, hash_type=self.sha256)
         return hash
 
 
@@ -127,13 +130,11 @@ class HashClient:
             for size, data in size_dict.items():
                 selected_file = Path(data["selected"])
                 other_files = data["others"]
-
                 # Get all matches from the database
                 all_matches = [
                     Path(x[0], x[1])
-                    for x in await self.manager.db_manager.hash_table.get_files_with_hash_matches(hash, size)
+                    for x in await self.manager.db_manager.hash_table.get_files_with_hash_matches(hash, size,"xxh128")
                 ]
-
                 # Filter out files with the same path as any file in other_files
                 other_matches = [match for match in all_matches if str(match) not in other_files]
                 # Filter files based  on if the file exists
