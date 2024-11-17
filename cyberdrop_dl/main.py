@@ -17,8 +17,8 @@ from rich.logging import RichHandler
 from cyberdrop_dl.clients.errors import InvalidYamlError
 from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.scraper.scraper import ScrapeMapper
-from cyberdrop_dl.ui.ui import program_ui
-from cyberdrop_dl.utils.args.browser_cookie_extraction import get_cookies_from_browser
+from cyberdrop_dl.ui.program_ui import ProgramUI
+from cyberdrop_dl.ui.prompts.user_prompts import get_cookies_from_browsers
 from cyberdrop_dl.utils.logger import (
     log,
     log_spacer,
@@ -48,7 +48,7 @@ def startup() -> Manager:
         manager.startup()
 
         if not manager.args_manager.immediate_download:
-            program_ui(manager)
+            ProgramUI(manager)
 
     except InvalidYamlError as e:
         print_to_console(e.message_rich)
@@ -77,12 +77,12 @@ async def runtime(manager: Manager) -> None:
 def pre_runtime(manager: Manager) -> None:
     """Actions to complete before main runtime."""
     if manager.config_manager.settings_data["Browser_Cookies"]["auto_import"]:
-        get_cookies_from_browser(manager)
+        get_cookies_from_browsers(manager)
 
 
 async def post_runtime(manager: Manager) -> None:
     """Actions to complete after main runtime, and before ui shutdown."""
-    log_spacer(20)
+    log_spacer(20, log_to_console=False)
     log_with_color(
         f"Running Post-Download Processes For Config: {manager.config_manager.loaded_config}",
         "green",
@@ -172,7 +172,7 @@ def setup_logger(manager: Manager, config_name: str) -> None:
 
 
 def ui_error_handling_wrapper(func: Callable) -> None:
-    """Wrapper handles errors from the main UI"""
+    """Wrapper handles errors from the main UI."""
 
     @wraps(func)
     async def wrapper(*args, **kwargs):

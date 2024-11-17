@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from send2trash import send2trash
 
-from cyberdrop_dl.ui.prompts.continue_prompt import enter_to_continue
+from cyberdrop_dl.ui.prompts.basic_prompts import enter_to_continue
 from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
@@ -53,7 +53,7 @@ class HashClient:
 
     async def hash_directory(self, path: Path) -> None:
         path = Path(path)
-        async with self.manager.live_manager.get_hash_live(stop=True):
+        with self.manager.live_manager.get_hash_live(stop=True):
             if not path.is_dir():
                 raise NotADirectoryError
             for file in path.rglob("*"):
