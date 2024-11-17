@@ -526,8 +526,7 @@ Allows files skipped for already existing on the filesystem to be added to the l
 
 ***
 * disable\_individual\_download\_hashing
-An additional toggle to disable hashing for individual downloads, prior to the after all downloads deduplication process
-
+An additional toggle to disable hashing for individual downloads. Prior to all downloads completing, and the after download deduplication process starting
 ***
 
 * keep\_new\_download
@@ -538,16 +537,21 @@ If disabled all current files will be deleted if the following is all true
 - The file did not exist on the filesystem prior to the current run
 - The hash must have already existing on the system prior to the current run
 
-Current files are files that were either downloaded or a file was skipped for already existing when dedupe_already_downloaded is true
+current files always include new files written to disk, during the previous download process. Along with files already on disk if dedupe_already_downloaded is true
+
 ***
 
 * keep\_prev\_download
+When delete_after_downloaded is true
+This toggles how many previously downloaded files to keep in system
+
 prev downloads are files that are match with the hash and size given, and are not a part of the current files list
 
-Current files are files that were either downloaded or a file was skipped for already existing when dedupe_already_downloaded is true
+current files always include new files written to disk, during the previous download process.Along with files already on disk if dedupe_already_downloaded is true
 
 If enabled then at least one existing previous download will be kept on system.
 If not enabled all previous downloads will be deleted
+Note: changing this to null will disable any file deletion
 ***
 
 
