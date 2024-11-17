@@ -64,7 +64,7 @@ class HashTable:
             await self.db_conn.commit()
 
 
-    async def get_file_hash_exists(self, full_path: Path | str) -> str | None:
+    async def get_file_hash_exists(self, full_path: Path | str,hash_type:str) -> str | None:
         """Checks if a file exists in the database based on its folder, filename, and size.
 
         Args:
@@ -78,19 +78,18 @@ class HashTable:
             path = Path(full_path).absolute()
             folder = str(path.parent)
             filename = path.name
-            size = path.stat().st_size
 
             # Connect to the database
             cursor = await self.db_conn.cursor()
 
             # Check if the file exists with matching folder, filename, and size
             await cursor.execute(
-                "SELECT hash FROM hash WHERE folder=? AND download_filename=? AND file_size=?",
-                (folder, filename, size),
+                "SELECT hash FROM hash WHERE folder=? AND original_filename=? AND hash_type=? AND hash IS NOT NULL",
+                (folder, filename,hash_type),
             )
-            result = await cursor.fetchone()
-            if result and result[0]:
-                return result[0]
+            results = await cursor.fetchall()
+            if results:
+                return results
         except Exception as e:
             console.print(f"Error checking file: {e}")
         return None
@@ -117,7 +116,7 @@ class HashTable:
             console.print(f"Error retrieving folder and filename: {e}")
             return []
 
-    async def insert_or_update_hash_db(self, hash_value: str, file: str, original_filename: str, referer: URL) -> bool:
+    async def insert_or_update_hash_db(self, hash_value: str,hash_type:str, file: str, original_filename: str, referer: URL) -> bool:
         """Inserts or updates a record in the specified SQLite database.
 
         Args:
@@ -125,46 +124,71 @@ class HashTable:
             file: The file path
             original_filename: The name original name of the file.
             referer: referer URL
+            hash_type: The hash type (e.g., md5, sha256)
 
         Returns:
-            True if the record was inserted or updated successfully, False otherwise.
+            True if all the record was inserted or updated successfully, False otherwise.
         """
         referer = str(referer)
-        cursor = await self.db_conn.cursor()
         full_path = Path(file).absolute()
         file_size = full_path.stat().st_size
 
         download_filename = full_path.name
         original_filename = referer or download_filename
         folder = str(full_path.parent)
+        hash=await self.insert_or_update_hashes(hash_value,hash_type,folder, original_filename)
+        file=await self.insert_or_update_file(folder, original_filename,download_filename,file_size,referer)
+        return file and hash
 
-        # Assuming a table named 'file_info' with columns: id (primary key), hash, size, filename, folder
+    async def insert_or_update_hashes(self,hash_value,hash_type,folder, original_filename):
+        cursor = await self.db_conn.cursor()
         try:
             await cursor.execute(
-                "INSERT INTO hash (hash, file_size, download_filename, folder,original_filename,referer) VALUES (?, ?, ?, ?,?,?)",
-                (hash_value, file_size, download_filename, folder, original_filename, referer),
+                "INSERT INTO hash (hash,hash_type,folder,original_filename) VALUES (?, ?, ?, ?)",
+                (hash_value,hash_type,folder, original_filename),
             )
             await self.db_conn.commit()
         except IntegrityError as _:
-            # Handle potential duplicate key (assuming a unique constraint on hash, filename, and folder)
+            # Handle potential duplicate key (assuming a unique constraint on (folder, original_filename, hash_type)
             await cursor.execute(
                 """UPDATE hash
-    SET file_size = ?,
-    hash = ?,
-    referer= CASE WHEN ? IS NOT NULL THEN ? ELSE referer END,
-    original_filename = CASE WHEN ? IS NOT NULL THEN ? ELSE original_filename END
-WHERE download_filename = ? AND folder = ?;""",
+                SET hash = ?
+                WHERE original_filename = ? AND folder = ? AND hash_type = ?;""",
                 (
-                    file_size,
                     hash_value,
-                    referer,
-                    referer,
                     original_filename,
-                    original_filename,
-                    download_filename,
                     folder,
+                    hash_type,
                 ),
             )
+            await self.db_conn.commit()
+        except Exception as e:
+            console.print(f"Error inserting/updating record: {e}")
+            return False
+        return True
+    async def insert_or_update_file(self,folder, original_filename,download_filename,file_size,referer):
+        cursor = await self.db_conn.cursor()
+        try:
+            await cursor.execute(
+                "INSERT INTO files (folder,original_filename,download_filename,file_size,referer) VALUES (?, ?, ?, ?,?)",
+                (folder, original_filename,download_filename,file_size,referer),
+            )
+            await self.db_conn.commit()
+        except IntegrityError as _:
+            # Handle potential duplicate key (assuming a unique constraint on  (filename, and folder)
+            await cursor.execute(
+    """UPDATE files
+    SET download_filename = ?, file_size = ?, referer = ?
+    WHERE original_filename = ? AND folder = ?;""",
+    (
+        download_filename,
+        file_size,
+        referer,
+        original_filename,
+        folder,
+    ),
+)
+
             await self.db_conn.commit()
         except Exception as e:
             console.print(f"Error inserting/updating record: {e}")

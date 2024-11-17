@@ -57,27 +57,36 @@ class HashClient:
             if not path.is_dir():
                 raise NotADirectoryError
             for file in path.rglob("*"):
-                await self.hash_item(file, None, None)
+                await self.hash_item_helper(file, None, None)
 
     @staticmethod
     def _get_key_from_file(file: Path | str):
         return str(Path(file).absolute())
+    async def hash_item_helper(self, file: Path | str, original_filename: str, referer: URL):
+        hash=await self.hash_item(file, original_filename,referer,hash_type="xxh128")
+        if "md5":
+            await self.hash_item(file, original_filename,referer,hash_type="md5")
+        elif "sha256":
+            await self.hash_item(file, original_filename, referer, hash_type="sha256")
+        return hash
 
-    async def hash_item(self, file: Path | str, original_filename: str, referer: URL) -> str:
+
+    async def hash_item(self, file: Path | str, original_filename: str, referer: URL,hash_type=None) -> str:
         """Generates hash of a file."""
         key = self._get_key_from_file(file)
         file = Path(file)
         if not file.is_file():
             return None
-        if self.hashes[key]:
-            return self.hashes[key]
+        if self.hashes[(key,hash_type)]:
+            return self.hashes[(key,hash_type)]
         self.manager.progress_manager.hash_progress.update_currently_hashing(file)
-        hash = await self.manager.db_manager.hash_table.get_file_hash_exists(file)
+        hash = await self.manager.db_manager.hash_table.get_file_hash_exists(file,hash_type)
         try:
             if not hash:
-                hash = await self.manager.hash_manager.hash_file(file)
+                hash = await self.manager.hash_manager.hash_file(file,hash_type)
                 await self.manager.db_manager.hash_table.insert_or_update_hash_db(
                     hash,
+                    hash_type,
                     file,
                     original_filename,
                     referer,
@@ -87,19 +96,20 @@ class HashClient:
                 self.manager.progress_manager.hash_progress.add_prev_hash()
                 await self.manager.db_manager.hash_table.insert_or_update_hash_db(
                     hash,
+                    hash_type,
                     file,
                     original_filename,
                     referer,
                 )
         except Exception as e:
             log(f"Error hashing {file} : {e}", 40, exc_info=True)
-        self.hashes[key] = hash
+        self.hashes[(key,hash_type)] = hash
         return hash
 
     async def hash_item_during_download(self, media_item: MediaItem) -> None:
         try:
             if self.manager.config_manager.global_settings_data["Dupe_Cleanup_Options"]["hash_while_downloading"]:
-                await self.hash_item(media_item.complete_file, media_item.original_filename, media_item.referer)
+                await self.hash_item_helper(media_item.complete_file, media_item.original_filename, media_item.referer)
         except Exception as e:
             log(f"After hash processing failed: {media_item.complete_file} with error {e}", 40, exc_info=True)
 
@@ -166,7 +176,7 @@ class HashClient:
         hashes_dict = defaultdict(lambda: defaultdict(list))
         # first compare downloads to each other
         for media_item in list(self.manager.path_manager.completed_downloads):
-            hash = await self.hash_item(media_item.complete_file, media_item.original_filename, media_item.referer)
+            hash = await self.hash_item_helper(media_item.complete_file, media_item.original_filename, media_item.referer)
             item = media_item.complete_file.absolute()
             try:
                 size = item.stat().st_size
