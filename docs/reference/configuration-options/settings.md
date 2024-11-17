@@ -514,18 +514,19 @@ and enable/disable dupe clean up
 <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #f9f9f9;"> <strong>Hint:</strong>Once a hash is in the database for a given file path and file size, it  will not be recalculated</div>
 
 ***
+* delete\_after\_download
+This toggles enables hashing of files, along with after all downloads deduplication
+
+After enabled the timing of hashing depends on disable_individual_download_hashing option
+
+The files compared and deduped depends on the files that were downloaded, and dedupe_already_downloaded option
+***
 * dedupe\_already\_downloaded
 Allows files skipped for already existing on the filesystem to be added to the list of files to process for hashing and deduping
 
 ***
-
-* delete\_after\_download
-This toggles downloaded files to be hashed, and then deduped
-
-Files are hashed after each download, and then deduped after all downloads
-
-The files deduped are those downloaded or files those skipped for already existing when dedupe_already_downloaded is true
-
+* disable\_individual\_download\_hashing
+An additional toggle to disable hashing for individual downloads, prior to the after all downloads deduplication process
 
 ***
 

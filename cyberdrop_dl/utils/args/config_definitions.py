@@ -137,6 +137,7 @@ settings: dict = {
         "dedupe_already_downloaded": False,
         "delete_off_disk": False,
         "add_md5_hash": False,
+        "disable_individual_download_hashing":False,
     "add_sha256_hash": False,
     },
    
