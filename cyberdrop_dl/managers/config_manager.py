@@ -156,8 +156,8 @@ class ConfigManager:
             ("Logs", "log_folder"),
             ("Sorting", "sort_folder"),
             ("Sorting", "scan_folder")])
-        enums={("Dupe_Cleanup_Options","Hashing"):Hashing,
-               ("Dupe_Cleanup_Options","Dedupe"):Dedupe
+        enums={("Dupe_Cleanup_Options","hashing"):Hashing,
+               ("Dupe_Cleanup_Options","dedupe"):Dedupe
                
                }
         for key, value in default_settings_data.items():
