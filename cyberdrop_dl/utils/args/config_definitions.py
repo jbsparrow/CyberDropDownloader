@@ -131,8 +131,8 @@ settings: dict = {
         "sites": None,
     },
     "Dupe_Cleanup_Options": {
-        "Hashing":0,
-        "Dedupe": 0,
+        "hashing":0,
+        "dedupe": 0,
         "allow_md5_hash": False,
         "allow_sha256_hash": False,
         "send_deleted_to_trash": True,
