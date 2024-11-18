@@ -131,17 +131,18 @@ settings: dict = {
         "sites": None,
     },
     "Dupe_Cleanup_Options": {
-        "delete_after_download": False,
-        "dedupe_already_downloaded": False,
+        "enable_dedupe_settings": False,
+        "dedupe_already_downloaded": True,
         "Hashing_Modications": {
         "allow_md5_hash": False,
-        "disable_individual_download_hashing":False,
+        "hash_after_all_downloads":False,
         "allow_sha256_hash": False,
         },
         "Deletion_Settings": {
-        "delete_off_disk": False,
-        "keep_prev_download": True,
-        "keep_new_download": False
+        "send_deleted_to_trash": True,
+        "disable_all_file_deletions":False,
+        "keep_prev_download":True,
+        "keep_new_download": False,
     },
    
 }}

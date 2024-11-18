@@ -522,7 +522,7 @@ This is the master switch
 
 Toggles enables hashing of files, along with after all downloads deduplication
 
-After enabled the timing of hashing depends on disable_individual_download_hashing option
+After enabled the timing of hashing depends on hash_after_all_downloads option
 
 The files compared and deduped depends on the files that were downloaded, and dedupe_already_downloaded option
 ***
@@ -535,7 +535,7 @@ These settings modify the hashing process, and are only in effect when delete_af
 
 ***
 
-* disable\_individual\_download\_hashing
+* hash\_after\_all\_downloads
 An additional toggle to disable hashing for individual downloads. Prior to all downloads completing, and the after download deduplication process starting
 ***
 
@@ -551,6 +551,14 @@ adds sha256 hash when hashing files from the disk
 These settings modify how files are deleted, and are only effect when delete_after_download is True
 
 ***
+* send\_\deleted\_to\_trash
+  sends downloads to the trash folder rather than permenatly deleting off the disk
+***
+
+***
+* disable\_\all\_file\_deletions
+  prevents any files from being deleted, has priority over all other deletion settings
+***
 
 * keep\_new\_download
 
@@ -561,9 +569,6 @@ If disabled all current files will be deleted if the following is all true
 - The hash must have already existing on the system prior to the current run
 
 current files always include new files written to disk, during the previous download process. Along with files already on disk if dedupe_already_downloaded is true
-
-Note: if set to null, all current files will be kept even if  they have matching hashes
-
 ***
 
 * keep\_prev\_download
@@ -576,8 +581,6 @@ current files always include new files written to disk, during the previous down
 
 If enabled then at least one existing previous download will be kept on system.
 If not enabled all previous downloads will be deleted
-
-Note: if set to null, all prev files will be kept even if  they have matching hashes
 
 
 ***

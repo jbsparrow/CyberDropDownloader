@@ -67,9 +67,9 @@ class HashClient:
         return str(Path(file).absolute())
     async def hash_item_helper(self, file: Path | str, original_filename: str, referer: URL):
         hash=await self.hash_item(file, original_filename,referer,hash_type=self.xxhash)
-        if self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["add_md5_hash"]:
+        if self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["Hashing_Modications"]["allow_md5_hash"]:
             await self.hash_item(file, original_filename,referer,hash_type=self.md5)
-        if self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["add_sha256_hash"]:
+        if self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["Hashing_Modications"]["allow_sha256_hash"]:
             await self.hash_item(file, original_filename, referer, hash_type=self.sha256)
         return hash
 
@@ -112,18 +112,17 @@ class HashClient:
     async def hash_item_during_download(self, media_item: MediaItem) -> None:
         try:
                 
-            if not self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["delete_after_download"]:
+            if not self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["enable_dedupe_settings"]:
                 return
-            if self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["disable_individual_download_hashing"]:
+            if self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["Hashing_Modications"]["hash_after_all_downloads"]:
                 return
-    
             await self.hash_item_helper(media_item.complete_file, media_item.original_filename, media_item.referer)
         except Exception as e:
             log(f"After hash processing failed: {media_item.complete_file} with error {e}", 40, exc_info=True)
 
     async def cleanup_dupes(self) -> None:
         with self.manager.live_manager.get_hash_live(stop=True):
-            if not self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["delete_after_download"]:
+            if not self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["enable_dedupe_settings"]:
                 return
             file_hashes_dict = await self.get_file_hashes_dict()
         with self.manager.live_manager.get_remove_file_via_hash_live(stop=True):
@@ -145,37 +144,33 @@ class HashClient:
                 # Filter files based  on if the file exists
                 existing_other_matches = [file for file in other_matches if file.exists()]
 
-
-                if self.delete_no_prev_downloads():
-                    pass
-                # delete all prev files
-                elif self.delete_all_prev_downloads():
+                if self.delete_all_prev_downloads():
                     for ele in existing_other_matches:
                         if not ele.exists():
                             continue
                         try:
-                            self.send2trash(ele)
-                            log(f"Sent prev download: {ele!s} to trash with hash {hash}", 10)
-                            self.manager.progress_manager.hash_progress.add_removed_prev_file()
+                            if self.send2trash(ele):
+                                log(f"removed prev download: {ele!s} with hash {hash}", 10)
+                                self.manager.progress_manager.hash_progress.add_removed_prev_file()
                         except OSError:
                             continue
                 # keep a previous downloads
-                elif self.delete_all_but_one_prev_downloads():
+                else:
                     for ele in existing_other_matches[1:]:
                         if not ele.exists():
                             continue
                         try:
-                            self.send2trash(ele)
-                            log(f"Sent prev download: {ele!s} to trash with hash {hash}", 10)
-                            self.manager.progress_manager.hash_progress.add_removed_prev_file()
+                            if self.send2trash(ele):
+                                log(f"removed prev download: {ele!s} with hash {hash}", 10)
+                                self.manager.progress_manager.hash_progress.add_removed_prev_file()
                         except OSError:
                             continue
-                # delete current download
+                # delete selected current download
                 if self.delete_selected_current_download(hash, selected_file):
                     try:
                         if selected_file.exists():
-                            self.send2trash(selected_file)
-                            log(f"Sent new download:{selected_file} to trash with hash {hash}", 10)
+                            if self.send2trash(selected_file):
+                                log(f"removed new download:{selected_file} with hash {hash}", 10)
                             self.manager.progress_manager.hash_progress.add_removed_file()
 
                     except OSError:
@@ -207,14 +202,13 @@ class HashClient:
                             break
                         continue
 
-                if self.delete_other_current_downloads():
-                    for file in filter(lambda x: x != selected_file, files):
-                        try:
-                            self.send2trash(file)
-                            log(f"Sent new download : {file} to trash with hash {hash}", 10)
+                for file in filter(lambda x: x != selected_file, files):
+                    try:
+                        if self.send2trash(file):
+                            log(f"removed new download : {file} with hash {hash}", 10)
                             self.manager.progress_manager.hash_progress.add_removed_file()
-                        except OSError:
-                            pass
+                    except OSError:
+                        pass
                 if selected_file:
                     size_dict[size] = {
                         "selected": selected_file,
@@ -225,42 +219,32 @@ class HashClient:
         return hashes_dict
 
     def send2trash(self, path: Path) -> None:
-        if self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["delete_off_disk"]:
+        if self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["Deletion_Settings"]["disable_all_file_deletions"]:
+            return False
+        elif not self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["Deletion_Settings"]["send_deleted_to_trash"]:
             Path(path).unlink(missing_ok=True)
+            log(f"permanently deleted file at {path}", 10)
+            return True
         else:
             send2trash(path)
+            log(f"sent file at{path} to trash", 10)
+            return True
 
     def delete_all_prev_downloads(self) -> bool:
-        return not self.keep_all_prev_files() and not self.keep_prev_file()
+        return not self.keep_prev_file()
     
-    def delete_all_but_one_prev_downloads(self) -> bool:
-        return not self.keep_all_prev_files() and self.keep_prev_file()
-
-    def delete_no_prev_downloads(self) -> bool:
-        return self.keep_all_prev_files()
     
     def delete_selected_current_download(self, hash: str, selected_file: Path | str) -> bool:
-        return not self.keep_selected_current_download(hash, selected_file) and not self.keep_all_current_downloads()
-    
-    def delete_other_current_downloads(self) -> bool:
-        return not self.keep_all_current_downloads()
-
+        return not self.keep_selected_current_download(hash, selected_file) 
+   
     def keep_selected_current_download(self, hash: str, selected_file: Path | str) -> bool:
         return bool(
-            self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["keep_new_download"]
+            self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["Deletion_Settings"]["keep_new_download"]
             or hash not in self.prev_hashes
             or Path(selected_file) in self.manager.path_manager.prev_downloads_paths,
         )
     
-    def keep_all_current_downloads(self) -> bool:
-        return bool(
-            self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["keep_new_download"]==None
-        )
-
-
     def keep_prev_file(self) -> bool:
-        return self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["keep_prev_download"]
+        return self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["Deletion_Settings"]["keep_prev_download"]
     
 
-    def keep_all_prev_files(self) -> bool:
-        return self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["keep_prev_download"]==None
