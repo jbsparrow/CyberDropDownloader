@@ -131,21 +131,15 @@ settings: dict = {
         "sites": None,
     },
     "Dupe_Cleanup_Options": {
-        "enable_dedupe_settings": False,
-        "dedupe_already_downloaded": True,
-        "Hashing_Modications": {
+        "Hashing":0,
+        "Dedupe": 0,
         "allow_md5_hash": False,
-        "hash_after_all_downloads":False,
         "allow_sha256_hash": False,
-        },
-        "Deletion_Settings": {
         "send_deleted_to_trash": True,
-        "disable_all_file_deletions":False,
-        "keep_prev_download":True,
-        "keep_new_download": False,
+        "delete_if_seen_before":False,
     },
    
-}}
+}
 
 global_settings: dict = {
     "General": {
