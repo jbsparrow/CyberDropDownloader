@@ -2,7 +2,7 @@ from enum import Enum
 
 class Hashing(Enum):
     OFF= 0
-    IMPLACE = 1
+    IN_PLACE = 1
     POST_DOWNLOAD = 2
 
 class Dedupe(Enum):
