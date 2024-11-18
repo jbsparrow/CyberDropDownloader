@@ -37,6 +37,7 @@ class CustomHTTPStatus(IntEnum):
 
 BLOCKED_DOMAINS = ("facebook", "instagram", "fbcdn")
 
+
 STYLE_TO_DIFF_FORMAT_MAP = {
     "default": "{}",
     "green": "+   {}",
@@ -46,10 +47,12 @@ STYLE_TO_DIFF_FORMAT_MAP = {
 
 APP_STORAGE = Path("./AppData")
 DOWNLOAD_STORAGE = Path("./Downloads")
+RESERVED_CONFIG_NAMES = ["all", "default"]
+BROWSERS = ["chrome", "firefox", "safari", "edge", "opera", "brave", "librewolf", "opera_gx", "vivaldi", "chromium"]
 
 
 # Pypi
-PRELEASE_TAGS = {
+PRERELEASE_TAGS = {
     "dev": "Development",
     "pre": "Pre-Release",
     "post": "Post-Release",
@@ -113,5 +116,11 @@ FILE_FORMATS = {
         ".nfo",
         ".txt",
     },
-    "7z": {".7z", ".tar", ".gz", ".bz2", ".zip"},
+    "7z": {
+        ".7z",
+        ".tar",
+        ".gz",
+        ".bz2",
+        ".zip",
+    },
 }
