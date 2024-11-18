@@ -162,13 +162,13 @@ class ConfigManager:
             for subkey, subvalue in value.items():
                 self.settings_data[key][subkey] = self.return_verified(subvalue)
 
-                for path_item in paths:
-                    if key == path_item[0] and subkey == path_item[1]:
-                        path = self.settings_data[key][subkey]
-                        if (path == "None" or path is None) and subkey == "scan_folder":
-                            self.settings_data[key][subkey] = None
-                        else:
-                            self.settings_data[key][subkey] = Path(path)
+        for path_item in paths:
+            if key == path_item[0] and subkey == path_item[1]:
+                path = self.settings_data[key][subkey]
+                if (path == "None" or path is None) and subkey == "scan_folder":
+                    self.settings_data[key][subkey] = None
+                else:
+                    self.settings_data[key][subkey] = Path(path)
 
         if get_keys(default_settings_data) == get_keys(existing_settings_data):
             return
