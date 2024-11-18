@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.scraper.crawler import Crawler
-    from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
 def error_handling_wrapper(func: Callable) -> None:

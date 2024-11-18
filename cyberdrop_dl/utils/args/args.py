@@ -3,7 +3,7 @@ import argparse
 import arrow
 
 from cyberdrop_dl import __version__
-from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
+from cyberdrop_dl.utils.data_enums_classes.supported_domains import SupportedDomains
 
 
 def parse_args() -> argparse.Namespace:

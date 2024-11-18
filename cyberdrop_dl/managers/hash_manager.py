@@ -24,10 +24,12 @@ class HashManager:
         self.md5_hasher = md5hasher
         self.sha_256_hasher = sha256hasher
         self.hash_client = HashClient(manager)  # Initialize hash client in constructor
+        self.manager = manager
     async def startup(self) -> None:
         await self.hash_client.startup()
+ 
 
-    
+
 
     async def hash_file(self, filename: str,hash_type:str) -> str:
         file_path = Path.cwd() / filename
@@ -51,3 +53,5 @@ class HashManager:
             return self.sha_256_hasher()
         else:
             raise ValueError("Invalid hash type")
+    
+

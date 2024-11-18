@@ -10,7 +10,7 @@ from rich.console import Console
 
 import cyberdrop_dl.dependencies.browser_cookie3 as browser_cookie3
 from cyberdrop_dl.dependencies.browser_cookie3 import BrowserCookieError
-from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
+from cyberdrop_dl.utils.data_enums_classes.supported_domains import SupportedDomains
 
 if TYPE_CHECKING:
     from collections.abc import Callable

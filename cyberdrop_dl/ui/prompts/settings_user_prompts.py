@@ -8,7 +8,7 @@ from InquirerPy.base.control import Choice
 from InquirerPy.validator import EmptyInputValidator, NumberValidator, PathValidator
 from rich.console import Console
 
-from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
+from cyberdrop_dl.utils.data_enums_classes.supported_domains import SupportedDomains
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager

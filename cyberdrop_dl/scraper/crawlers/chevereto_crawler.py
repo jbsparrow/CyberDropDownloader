@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 CDN_PATTERNS = {
     "jpg.church": r"^(?:(jpg.church\/images\/...)|(simp..jpg.church)|(jpg.fish\/images\/...)|(simp..jpg.fish)|(jpg.fishing\/images\/...)|(simp..jpg.fishing)|(simp..host.church)|(simp..jpg..su))",

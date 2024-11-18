@@ -20,7 +20,7 @@ from cyberdrop_dl.managers.path_manager import PathManager
 from cyberdrop_dl.managers.progress_manager import ProgressManager
 from cyberdrop_dl.managers.realdebrid_manager import RealDebridManager
 from cyberdrop_dl.utils.args import config_definitions
-from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
+from cyberdrop_dl.utils.data_enums_classes.supported_domains import SupportedDomains
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.transfer.first_time_setup import TransitionManager
 
