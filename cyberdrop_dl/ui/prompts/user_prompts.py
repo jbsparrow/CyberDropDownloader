@@ -193,26 +193,3 @@ def prompt_header(manager: Manager, title: str | None = None) -> None:
     console.print(f"[bold]Current config:[/bold] [blue]{manager.config_manager.loaded_config}[/blue]")
 
 
-""" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ DEPRECATED PROMPTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-
-def donations_prompt() -> None:
-    """Donations prompt."""
-    clear_term()
-    msg = """
-    [bold]Donations[/bold]
-
-    I started making this program around three years ago at this point,
-    It has grown larger than I could've imagined and I'm very proud of it.
-    I have put a lot of time and effort into this program and I'm glad that people are using it.
-    Thanks to everyone that have supported me,
-    it keeps me motivated to continue working on this program
-
-    If you'd like to support me and my work, you can donate to me via the following methods:
-    BuyMeACoffee: https://www.buymeacoffee.com/jbsparrow
-    Github Sponsor: https://github.com/sponsors/jbsparrow
-
-    Thank you for your support!
-    """
-    console.print(dedent(msg))
-    basic_prompts.enter_to_continue()
