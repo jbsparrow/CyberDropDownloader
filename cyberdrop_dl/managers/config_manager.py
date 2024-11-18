@@ -15,6 +15,7 @@ from cyberdrop_dl.utils.args.config_definitions import authentication_settings, 
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
+from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
 
 
 def _match_config_dicts(default: dict, existing: dict) -> dict:
@@ -150,25 +151,20 @@ class ConfigManager:
         default_settings_data = copy.deepcopy(settings)
         existing_settings_data = _load_yaml(self.settings)
         self.settings_data = _match_config_dicts(default_settings_data, existing_settings_data)
-        paths = [
-            ("Files", "input_file"),
+        paths = set( ("Files", "input_file"),
             ("Files", "download_folder"),
             ("Logs", "log_folder"),
             ("Sorting", "sort_folder"),
-            ("Sorting", "scan_folder"),
-        ]
-
+            ("Sorting", "scan_folder"))
         for key, value in default_settings_data.items():
             for subkey, subvalue in value.items():
                 self.settings_data[key][subkey] = self.return_verified(subvalue)
-
-        for path_item in paths:
-            if key == path_item[0] and subkey == path_item[1]:
-                path = self.settings_data[key][subkey]
-                if (path == "None" or path is None) and subkey == "scan_folder":
-                    self.settings_data[key][subkey] = None
-                else:
-                    self.settings_data[key][subkey] = Path(path)
+                if (key ,subkey) in paths
+                    path = self.settings_data[key][subkey]
+                    if (path == "None" or path is None) and subkey == "scan_folder":
+                        self.settings_data[key][subkey] = None
+                    else:
+                        self.settings_data[key][subkey] = Path(path)
 
         if get_keys(default_settings_data) == get_keys(existing_settings_data):
             return
