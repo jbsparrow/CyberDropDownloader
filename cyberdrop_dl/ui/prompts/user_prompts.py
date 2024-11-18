@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from textwrap import dedent
 from typing import TYPE_CHECKING
 
 from InquirerPy import get_style
