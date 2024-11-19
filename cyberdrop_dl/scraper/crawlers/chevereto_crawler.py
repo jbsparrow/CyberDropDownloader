@@ -20,9 +20,9 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
 
 CDN_PATTERNS = {
-    "jpg.church": r"^(?:(jpg.church\/images\/...)|(simp..jpg.church)|(jpg.fish\/images\/...)|(simp..jpg.fish)|(jpg.fishing\/images\/...)|(simp..jpg.fishing)|(simp..host.church)|(simp..jpg..su))",
-    "imagepond.net": r"(media.imagepond.net)",
-    "img.kiwi": r"^(?:(img.kiwi\/images\/...))",
+    "jpg.church": r"^(?:https?:\/\/?)((jpg.church\/images)|(simp..jpg.church)|(jpg.fish\/images)|(simp..jpg.fish)|(jpg.fishing\/images)|(simp..jpg.fishing)|(simp..host.church)|(simp..jpg..su))(\/.*)",
+    "imagepond.net": r"^(?:https?:\/\/)?(media.imagepond.net\/.*)",
+    "img.kiwi": r"^(?:https?:\/\/)?img\.kiwi\/images\/.*",
 }
 
 CDN_POSSIBILITIES = re.compile("|".join(CDN_PATTERNS.values()))
@@ -74,7 +74,7 @@ class CheveretoCrawler(Crawler):
         """Determines where to send the scrape item based on the url."""
         task_id = self.scraping_progress.add_task(scrape_item.url)
 
-        if await self.check_direct_link(scrape_item.url):
+        if self.check_direct_link(scrape_item.url):
             await self.handle_direct_link(scrape_item)
         else:
             scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path[1:]).with_query(
@@ -251,6 +251,6 @@ class CheveretoCrawler(Crawler):
         return calendar.timegm(date.timetuple())
 
     @staticmethod
-    async def check_direct_link(url: URL) -> bool:
+    def check_direct_link(url: URL) -> bool:
         """Determines if the url is a direct link or not."""
-        return re.match(CDN_POSSIBILITIES, url.host)
+        return bool(CDN_POSSIBILITIES.match(str(url)))
