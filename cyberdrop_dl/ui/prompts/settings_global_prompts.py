@@ -217,50 +217,54 @@ def edit_dupe_settings_prompt(manager: Manager) -> None:
     console.clear()
     console.print("Editing Duplicate File Settings")
 
-    delete_after = inquirer.select(
-        message="Toggle duplicate files deletion using hashes:",
-        default=manager.config_manager.settings_data["s"]["delete_after_download"],
-        choices=[Choice(True, "True"), Choice(False, "False")],
+    hashing = inquirer.select(
+        message="Enable File Hashing from disk",
+        default=manager.config_manager.settings_data["Dupe_Cleanup_Options"]["hashing"],
+        choices=[Choice(0, "Turn Hashing OFF"), Choice(1, "Hash via xxh128 after each download"),Choice(2, "Hash via xxh128 after all downloads")],
         vi_mode=manager.vi_mode,
     ).execute()
 
-    dedupe_already_downloaded = inquirer.select(
-        message="How to handle files already on system: ",
-        default=manager.config_manager.settings_data["Dupe_Cleanup_Options"]["dedupe_already_downloaded"],
-        choices=[Choice(True, "Mark Existing Files as 'new'"), Choice(False, "Skip Existing Files")],
+
+    dedupe = inquirer.select(
+        message="Modify How files are deduped",
+        default=manager.config_manager.settings_data["Dupe_Cleanup_Options"]["hashing"],
+        choices=[Choice(0, "Turn Deduping OFF"), Choice(1, "KEEP_OLDEST"),Choice(2, "KEEP_NEWEST"),Choice(3, "KEEP_OLDEST_ALL"),Choice(4, "KEEP_NEWEST_ALL")],
         vi_mode=manager.vi_mode,
     ).execute()
 
-    keep_current = inquirer.select(
-        message="What to do with new file when deduping: ",
-        long_instruction="Keep a curent file. Current files are files that were either downloaded or a file was skipped for already existing when dedupe_already_downloaded is true",
-        default=manager.config_manager.settings_data["Dupe_Cleanup_Options"]["keep_new_download"],
-        choices=[Choice(True, "Keep one current file"), Choice(False, "Delete selected current file"), Choice(None, "Keep all current files wth same hash")],
-        vi_mode=manager.vi_mode,
-    ).execute()
-
-    keep_prev = inquirer.select(
-        message="What to do with previous file(s) when deduping:",
-        default=manager.config_manager.settings_data["Dupe_Cleanup_Options"],
-        long_instruction="Any file that is not in the list of current files with a matching hash",
-        choices=[Choice(True, "Keep a previous file "),Choice(None, "Keep all previous files")],
-        vi_mode=manager.vi_mode,
-    ).execute()
-
-    delete_off_disk = inquirer.select(
+    send_deleted_to_trash = inquirer.select(
         message="How to handle removal of files: ",
-        default=manager.config_manager.settings_data["Dupe_Cleanup_Options"]["delete_off_disk"],
-        choices=[Choice(True, "Permanently Delete File"), Choice(False, "Send to Trash")],
+        default=manager.config_manager.settings_data["Dupe_Cleanup_Options"]["send_deleted_to_trash"],
+        choices=[ Choice(True, "Send to Trash"),Choice(False, "Permanently Delete File")],
         vi_mode=manager.vi_mode,
     ).execute()
 
-    manager.config_manager.settings_data["Dupe_Cleanup_Options"]["delete_after_download"] = delete_after
-    manager.config_manager.settings_data["Dupe_Cleanup_Options"]["keep_prev_download"] = keep_prev
-    manager.config_manager.settings_data["Dupe_Cleanup_Options"]["keep_new_download"] = keep_current
 
-    manager.config_manager.settings_data["Dupe_Cleanup_Options"]["dedupe_already_downloaded"] = (
-        dedupe_already_downloaded
-    )
+    add_md5_hash = inquirer.select(
+        message="md5 hashing: ",
+        default=manager.config_manager.settings_data["Dupe_Cleanup_Options"]["add_md5_hash"],
+        choices=[ Choice(True, "Add md5 hashes when hashing from disk"),Choice(False, "skip md5 hashing when hashing from disk")],
+        vi_mode=manager.vi_mode,
+    ).execute()
 
-    manager.config_manager.settings_data["Dupe_Cleanup_Options"]["delete_off_disk"] = delete_off_disk
+
+    add_sha256_hash = inquirer.select(
+        message="md5 hashing: ",
+        default=manager.config_manager.settings_data["Dupe_Cleanup_Options"]["add_sha256_hash"],
+        choices=[ Choice(True, "Add sha256 hashes when hashing from disk"),Choice(False, "skip sha256 hashing when hashing from disk")],
+        vi_mode=manager.vi_mode,
+    ).execute()
+
+    manager.config_manager.settings_data["Dupe_Cleanup_Options"]["hashing"] = hashing
+    manager.config_manager.settings_data["Dupe_Cleanup_Options"]["dedupe"] = dedupe
+
+    
+
+    manager.config_manager.settings_data["Dupe_Cleanup_Options"]["send_deleted_to_trash"] = send_deleted_to_trash
+
+    manager.config_manager.settings_data["Dupe_Cleanup_Options"]["add_md5_hash"] = add_md5_hash
+
+    manager.config_manager.settings_data["Dupe_Cleanup_Options"]["add_sha256_hash"] = add_sha256_hash
+
+
 

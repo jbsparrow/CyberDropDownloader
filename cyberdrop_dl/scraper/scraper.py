@@ -21,7 +21,7 @@ from cyberdrop_dl.scraper.filters import (
     remove_trailing_slash,
 )
 from cyberdrop_dl.scraper.jdownloader import JDownloader
-from cyberdrop_dl.utils.constants import BLOCKED_DOMAINS, PRELEASE_TAGS, REGEX_LINKS
+from cyberdrop_dl.utils.constants import BLOCKED_DOMAINS,REGEX_LINKS
 from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext

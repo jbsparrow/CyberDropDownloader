@@ -133,8 +133,8 @@ settings: dict = {
     "Dupe_Cleanup_Options": {
         "hashing":"IN_PLACE",
         "dedupe": "KEEP_OLDEST_ALL",
-        "allow_md5_hash": False,
-        "allow_sha256_hash": False,
+        "add_md5_hash": False,
+        "add_sha256_hash": False,
         "send_deleted_to_trash": True,
     },
    
