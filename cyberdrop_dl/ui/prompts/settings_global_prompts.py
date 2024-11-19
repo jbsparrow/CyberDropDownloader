@@ -263,3 +263,4 @@ def edit_dupe_settings_prompt(manager: Manager) -> None:
     )
 
     manager.config_manager.settings_data["Dupe_Cleanup_Options"]["delete_off_disk"] = delete_off_disk
+

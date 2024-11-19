@@ -12,8 +12,8 @@ from PIL import Image
 from videoprops import get_audio_properties, get_video_properties
 
 from cyberdrop_dl.utils.constants import FILE_FORMATS
-from cyberdrop_dl.utils.logger import console, log, log_with_color
-from cyberdrop_dl.utils.utilities import purge_dir_tree
+from cyberdrop_dl.utils.logger import log, log_with_color
+from cyberdrop_dl.utils.utilities import clear_term, purge_dir_tree
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -137,7 +137,7 @@ class Sorter:
         await asyncio.sleep(1)
         purge_dir_tree(self.download_dir)
 
-        console.clear()
+        clear_term()
 
     async def get_download_folder(self) -> list[Path]:
         """Gets the download folder."""

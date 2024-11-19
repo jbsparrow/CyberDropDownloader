@@ -79,7 +79,7 @@ class ScrapeMapper:
             "xxxbunker": self.xxxbunker,
         }
 
-        is_testing = next((tag for tag in PRELEASE_TAGS if tag in current_version), False)
+        is_testing = next((tag for tag in PRERELEASE_TAGS if tag in current_version), False)
         if is_testing:
             self.mapping["simpcity"] = self.simpcity
 

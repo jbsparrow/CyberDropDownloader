@@ -77,6 +77,7 @@ def parse_args() -> argparse.Namespace:
     )
     file_paths.add_argument(
         "--log-folder",
+        dest="log_dir",
         type=str,
         help="path to where you want CDL to store it's log files",
         default="",

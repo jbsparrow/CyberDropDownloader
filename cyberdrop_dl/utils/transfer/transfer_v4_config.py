@@ -20,7 +20,7 @@ def _load_yaml(file: Path) -> dict:
         return yaml.load(yaml_file.read(), Loader=yaml.FullLoader)
 
 
-def transfer_v4_config(manager: Manager, old_config_path: Path, new_config_name: str) -> None:
+def transfer_v4_config(manager: Manager, new_config_name: str, old_config_path: Path) -> None:
     """Transfers a V4 config into V5 possession."""
     new_auth_data = manager.config_manager.authentication_data
     new_user_data = copy.deepcopy(settings)
