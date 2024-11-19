@@ -11,6 +11,7 @@ from cyberdrop_dl.utils.database.table_definitions import create_hash,create_tem
 if TYPE_CHECKING:
     import aiosqlite
     from yarl import URL
+import arrow
 
 console = Console()
 
@@ -36,7 +37,9 @@ class HashTable:
         cursor = await self.db_conn.cursor()
         results = await cursor.execute("""pragma table_info(hash)""")
         results = await results.fetchall()
-        if  len(list(filter(lambda x: x[1]=="hash_type",results)))==0:
+        if len(results) == 0:
+            pass
+        elif  len(list(filter(lambda x: x[1]=="hash_type",results)))==0:
             await cursor.execute(create_files)
             await cursor.execute(create_temp_hash)
             old_table_results=await cursor.execute(
@@ -51,9 +54,10 @@ class HashTable:
                 hash=old_result[4]
                 referer=old_result[5]
                 hash_type="md5"
+                file_date=Path(folder,dl_name).stat().st_mtime if Path(folder,dl_name).exists() else int(arrow.now().float_timestamp)
                 await cursor.execute(
-                    "INSERT OR IGNORE INTO files (folder, download_filename, original_filename, file_size,  referer) VALUES (?,?,?,?,?);",
-                    (folder, dl_name, original_filename, size,   referer),
+                    "INSERT OR IGNORE INTO files (folder, download_filename, original_filename, file_size,  referer,date) VALUES (?,?,?,?,?);",
+                    (folder, dl_name, original_filename, size,   referer,file_date),
                 )
                 await cursor.execute(
                     "INSERT OR IGNORE INTO temp_hash (folder, download_filename, hash_type, hash) VALUES (?,?,?,?);",
@@ -104,12 +108,12 @@ class HashTable:
         Returns:
             A list of (folder, filename) tuples, or an empty list if no matches found.
         """
-        cursor = await self.db_conn.cursor()
 
         try:
+            cursor = await self.db_conn.cursor()
             if hash_type:
                 await cursor.execute(
-                    "SELECT files.folder, files.download_filename FROM hash JOIN files ON hash.folder = files.folder AND hash.download_filename = files.download_filename WHERE hash.hash = ? AND files.file_size = ? AND hash.hash_type = ?;",
+                    "SELECT files.folder, files.download_filename,files.date FROM hash JOIN files ON hash.folder = files.folder AND hash.download_filename = files.download_filename WHERE hash.hash = ? AND files.file_size = ? AND hash.hash_type = ?;",
                     (hash_value, size,hash_type),
                 )
                 return await cursor.fetchall()
@@ -137,19 +141,18 @@ class HashTable:
         Returns:
             True if all the record was inserted or updated successfully, False otherwise.
         """
-        referer = str(referer)
-        full_path = Path(file).absolute()
-        file_size = full_path.stat().st_size
-
-        download_filename = full_path.name
-        folder = str(full_path.parent)
-        hash=await self.insert_or_update_hashes(hash_value,hash_type,folder, download_filename)
-        file=await self.insert_or_update_file(folder, original_filename,download_filename,file_size,referer)
+      
+        hash=await self.insert_or_update_hashes(hash_value,hash_type,file)
+        file=await self.insert_or_update_file(original_filename,referer,file)
         return file and hash
 
-    async def insert_or_update_hashes(self,hash_value,hash_type,folder, download_filename):
-        cursor = await self.db_conn.cursor()
+    async def insert_or_update_hashes(self,hash_value,hash_type,file):
         try:
+            full_path = Path(file).absolute()
+            download_filename = full_path.name
+            folder = str(full_path.parent)
+            cursor = await self.db_conn.cursor()
+            
             await cursor.execute(                                        
                 "INSERT INTO hash (hash,hash_type,folder,download_filename) VALUES (?, ?, ?, ?)",
                 (hash_value,hash_type,folder, download_filename),
@@ -173,24 +176,33 @@ class HashTable:
             console.print(f"Error inserting/updating record: {e}")
             return False
         return True
-    async def insert_or_update_file(self,folder, original_filename,download_filename,file_size,referer):
-        cursor = await self.db_conn.cursor()
+    async def insert_or_update_file(self,original_filename,referer,file):
         try:
+            referer = str(referer)
+            full_path = Path(file).absolute()
+            file_size = full_path.stat().st_size
+            file_date=full_path.stat().st_mtime
+            download_filename = full_path.name
+            folder = str(full_path.parent)
+
+            cursor = await self.db_conn.cursor()
+
             await cursor.execute(
-                "INSERT INTO files (folder,original_filename,download_filename,file_size,referer) VALUES (?, ?, ?, ?,?)",
-                (folder, original_filename,download_filename,file_size,referer),
+                "INSERT INTO files (folder,original_filename,download_filename,file_size,referer,date) VALUES (?, ?, ?, ?,?,?)",
+                (folder, original_filename,download_filename,file_size,referer,file_date),
             )
             await self.db_conn.commit()
         except IntegrityError as _:
             # Handle potential duplicate key (assuming a unique constraint on  (filename, and folder)
             await cursor.execute(
     """UPDATE files
-    SET original_filename = ?, file_size = ?, referer = ?
+    SET original_filename = ?, file_size = ?, referer = ?,date=?
     WHERE download_filename = ? AND folder = ?;""",
     (
         original_filename,
         file_size,
         referer,
+        file_date,
         download_filename,
         folder,
     ),
@@ -212,8 +224,9 @@ class HashTable:
         Returns:
             A list of (folder, filename) tuples, or an empty list if no matches found.
         """
-        cursor = await self.db_conn.cursor()
         try:
+            cursor = await self.db_conn.cursor()
+
             if hash_type:
                 await cursor.execute(
                     "SELECT DISTINCT hash FROM hash WHERE hash_type =?",

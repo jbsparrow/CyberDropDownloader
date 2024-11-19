@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS files (
   original_filename TEXT,
   file_size INT,
   referer TEXT,
+  date INT,
   PRIMARY KEY (folder, download_filename)
 );
 

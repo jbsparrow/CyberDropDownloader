@@ -244,13 +244,7 @@ class DownloadClient:
         """Sends to hash client to handle hashing and marks as completed/current download."""
         try:
             await self.manager.hash_manager.hash_client.hash_item_during_download(media_item)
-            if (
-                downloaded
-                or self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["dedupe_already_downloaded"]
-            ):
-                self.manager.path_manager.add_completed(media_item)
-            if not downloaded:
-                self.manager.path_manager.add_prev(media_item)
+            self.manager.path_manager.add_completed(media_item)
         except Exception:
             log(f"Error handling media item completion of: {media_item.complete_file}", 10, exc_info=True)
 

@@ -131,12 +131,11 @@ settings: dict = {
         "sites": None,
     },
     "Dupe_Cleanup_Options": {
-        "hashing":0,
-        "dedupe": 0,
+        "hashing":"IN_PLACE",
+        "dedupe": "KEEP_OLDEST_ALL",
         "allow_md5_hash": False,
         "allow_sha256_hash": False,
         "send_deleted_to_trash": True,
-        "delete_if_seen_before":False,
     },
    
 }

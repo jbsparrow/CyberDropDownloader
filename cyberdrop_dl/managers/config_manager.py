@@ -19,19 +19,29 @@ from cyberdrop_dl.utils.data_enums_classes.hash import Hashing,Dedupe
 
 
 def _match_config_dicts(default: dict, existing: dict) -> dict:
-    """Matches the keys of two dicts and returns the default dict with the values of the existing dict."""
+    """Matches the keys of two dicts and returns the new dict with the values of the existing dict."""
     for group in default:
         for key in default[group]:
             if group in existing and key in existing[group]:
                 default[group][key] = existing[group][key]
-    return default
+    return copy.deepcopy(default)
 
+
+
+# Custom representer function for YAML
+def _enum_representer(dumper, data):
+    return dumper.represent_int(data.value)
 
 def _save_yaml(file: Path, data: dict) -> None:
     """Saves a dict to a yaml file."""
     file.parent.mkdir(parents=True, exist_ok=True)
+    # Register the custom representer
+    yaml.add_representer(Dedupe, _enum_representer)
+    yaml.add_representer(Hashing, _enum_representer)
+    #dump
     with file.open("w") as yaml_file:
         yaml.dump(data, yaml_file)
+    pass
 
 
 def _load_yaml(file: Path) -> dict:
@@ -173,7 +183,11 @@ class ConfigManager:
                 if (key ,subkey) in enums:
                     enum_value= self.settings_data[key][subkey]
                     enum_class=enums[(key ,subkey)]
-                    self.settings_data[key][subkey]=enum_class(enum_value)
+                    if enum_value and str(enum_value).isnumeric():
+                        self.settings_data[key][subkey]=enum_class(int(enum_value))
+                    else:
+                        self.settings_data[key][subkey]=enum_class(enum_value)
+
                 
 
         if get_keys(default_settings_data) == get_keys(existing_settings_data):
