@@ -502,41 +502,33 @@ This is the format for the directory structure and naming scheme for other files
 
 <summary>Dupe Options</summary>
 These are options for how to hash files from the disk
-and enable/disable dupe clean up
+and enable/disable dupe cleanup
 
+Files can be hashed by changing the hashing setting from 'OFF'. To enable deduplication, both the hash and dedupe settings must not be set to 'OFF'
 
+<div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #f9f9f9;"> <strong>Hint:</strong> All deduplication in cyberdrop-dl requires a 100 percent size match, hash match, and algorithm match</div>
 
-<div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #f9f9f9;"> <strong>Hint:</strong> Afer Download Deduplication is done through 100 percent size+xxh128 hash matches</div>
+<div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #f9f9f9;"> <strong>Hint:</strong>Once a hash is in the database for a given file path file size,and hash type it  will not be recalculated</div>
 
+* hashing
+enables hashing and allows for deduplication
 
-<div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #f9f9f9;"> <strong>Hint:</strong>Before Download Deduplication is done through matching information given by site, to matching hashes of the same type+ file size</div>
-
-<div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #f9f9f9;"> <strong>Hint:</strong>Once a hash is in the database for a given file path and file size, it  will not be recalculated</div>
-
-### Main Settings
-These setting enable/disable the hashing and deduplication processes
-
+Value | Description
+-- | -- |
+`OFF` | Do not hash any file
+`IN_PLACE` | Hash a file immediately after its download finishes
+`POST_DOWNLOAD`| Hashes all files at once, after all the downloads have finished
 ***
-* delete\_after\_download
-This is the master switch 
-
-Toggles enables hashing of files, along with after all downloads deduplication
-
-After enabled the timing of hashing depends on hash_after_all_downloads option
-
-The files compared and deduped depends on the files that were downloaded, and dedupe_already_downloaded option
-***
-* dedupe\_already\_downloaded
-Allows files skipped for already existing on the filesystem to be added to the list of files to process for hashing and deduping
-***
-
-### Hash Settings
-These settings modify the hashing process, and are only in effect when delete_after_download is True
-
-***
-
-* hash\_after\_all\_downloads
-An additional toggle to disable hashing for individual downloads. Prior to all downloads completing, and the after download deduplication process starting
+* dedupe
+* 
+selection for how to dedupe files
+Value  |Description
+-- | -- | 
+`OFF` | Do nothing
+`KEEP_OLDEST` | Keep the oldest file for each hash, considering only the files that exist at the location saved in the database
+`KEEP_NEWEST`  | Keep the newest file for each hash, considering only the files that exist at the location saved in the database
+`KEEP_OLDEST_ALL`    | Keep the oldest file for each hash, considering all files regardless of whether they have been removed or moved
+`KEEP_NEWEST_ALL` |  Keep the newesst file for each hash, considering all files regardless of whether they have been removed or moved
 ***
 
 
@@ -547,43 +539,10 @@ adds md5 hash when hashing files from the disk
 * add\_sha256_hash
 adds sha256 hash when hashing files from the disk
 ***
-### Deletion Settings
-These settings modify how files are deleted, and are only effect when delete_after_download is True
-
-***
-* send\_\deleted\_to\_trash
+* send\_deleted\_to\_trash
   sends downloads to the trash folder rather than permenatly deleting off the disk
 ***
 
-***
-* disable\_\all\_file\_deletions
-  prevents any files from being deleted, has priority over all other deletion settings
-***
-
-* keep\_new\_download
-
-If enabled for each hash and size match one current file will be kept on the system
-
-If disabled all current files will be deleted if the following is all true
-- The file did not exist on the filesystem prior to the current run
-- The hash must have already existing on the system prior to the current run
-
-current files always include new files written to disk, during the previous download process. Along with files already on disk if dedupe_already_downloaded is true
-***
-
-* keep\_prev\_download
-When delete_after_downloaded is true
-This toggles how many previously downloaded files to keep in system
-
-prev downloads are files that are match with the hash and size given, and are not a part of the current files list
-
-current files always include new files written to disk, during the previous download process.Along with files already on disk if dedupe_already_downloaded is true
-
-If enabled then at least one existing previous download will be kept on system.
-If not enabled all previous downloads will be deleted
-
-
-***
 
 </details>
 
