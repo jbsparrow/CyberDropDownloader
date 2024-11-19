@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 from sqlite3 import IntegrityError
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 from rich.console import Console
 
-from cyberdrop_dl.utils.database.table_definitions import create_hash,create_temp_hash,create_files
+from cyberdrop_dl.utils.database.table_definitions import create_files, create_hash, create_temp_hash
 
 if TYPE_CHECKING:
     import aiosqlite
@@ -26,12 +26,10 @@ class HashTable:
         await self.create_hash_tables()
         pass
 
-
     async def create_hash_tables(self):
         await self.db_conn.execute(create_files)
         await self.db_conn.execute(create_hash)
         await self.db_conn.commit()
-
 
     async def transer_old_hash_table(self):
         cursor = await self.db_conn.cursor()
@@ -39,36 +37,39 @@ class HashTable:
         results = await results.fetchall()
         if len(results) == 0:
             pass
-        elif  len(list(filter(lambda x: x[1]=="hash_type",results)))==0:
+        elif len(list(filter(lambda x: x[1] == "hash_type", results))) == 0:
             await cursor.execute(create_files)
             await cursor.execute(create_temp_hash)
-            old_table_results=await cursor.execute(
-                "SELECT * FROM hash" ,
+            old_table_results = await cursor.execute(
+                "SELECT * FROM hash",
                 (),
             )
-            for  old_result in await old_table_results.fetchall():
-                folder=old_result[0]
-                dl_name=old_result[1]
-                original_filename=old_result[2]
-                size=old_result[3]
-                hash=old_result[4]
-                referer=old_result[5]
-                hash_type="md5"
-                file_date=Path(folder,dl_name).stat().st_mtime if Path(folder,dl_name).exists() else int(arrow.now().float_timestamp)
+            for old_result in await old_table_results.fetchall():
+                folder = old_result[0]
+                dl_name = old_result[1]
+                original_filename = old_result[2]
+                size = old_result[3]
+                hash = old_result[4]
+                referer = old_result[5]
+                hash_type = "md5"
+                file_date = (
+                    Path(folder, dl_name).stat().st_mtime
+                    if Path(folder, dl_name).exists()
+                    else int(arrow.now().float_timestamp)
+                )
                 await cursor.execute(
                     "INSERT OR IGNORE INTO files (folder, download_filename, original_filename, file_size,  referer,date) VALUES (?,?,?,?,?);",
-                    (folder, dl_name, original_filename, size,   referer,file_date),
+                    (folder, dl_name, original_filename, size, referer, file_date),
                 )
                 await cursor.execute(
                     "INSERT OR IGNORE INTO temp_hash (folder, download_filename, hash_type, hash) VALUES (?,?,?,?);",
-                    (folder, dl_name,  hash_type,hash),
+                    (folder, dl_name, hash_type, hash),
                 )
             await cursor.execute("""DROP TABLE IF EXISTS hash""")
             await cursor.execute("ALTER TABLE temp_hash RENAME TO hash")
             await self.db_conn.commit()
 
-
-    async def get_file_hash_exists(self, full_path: Path | str,hash_type:str) -> str | None:
+    async def get_file_hash_exists(self, full_path: Path | str, hash_type: str) -> str | None:
         """gets the hash from a complete file path
 
         Args:
@@ -89,7 +90,7 @@ class HashTable:
             # Check if the file exists with matching folder, filename, and size
             await cursor.execute(
                 "SELECT hash FROM hash WHERE folder=? AND download_filename=? AND hash_type=? AND hash IS NOT NULL",
-                (folder, filename,hash_type),
+                (folder, filename, hash_type),
             )
             result = await cursor.fetchone()
             if result:
@@ -98,7 +99,7 @@ class HashTable:
             console.print(f"Error checking file: {e}")
         return None
 
-    async def get_files_with_hash_matches(self, hash_value: str, size: int,hash_type:str=None) -> list:
+    async def get_files_with_hash_matches(self, hash_value: str, size: int, hash_type: Union(str, None) = None) -> list:
         """Retrieves a list of (folder, filename) tuples based on a given hash.
 
         Args:
@@ -114,13 +115,13 @@ class HashTable:
             if hash_type:
                 await cursor.execute(
                     "SELECT files.folder, files.download_filename,files.date FROM hash JOIN files ON hash.folder = files.folder AND hash.download_filename = files.download_filename WHERE hash.hash = ? AND files.file_size = ? AND hash.hash_type = ?;",
-                    (hash_value, size,hash_type),
+                    (hash_value, size, hash_type),
                 )
                 return await cursor.fetchall()
             else:
                 await cursor.execute(
                     "SELECT files.folder, files.download_filename FROM hash JOIN files ON hash.folder = files.folder AND hash.download_filename = files.download_filename WHERE hash.hash = ? AND files.file_size = ? AND hash.hash_type = ?;",
-                    (hash_value, size,hash_type),
+                    (hash_value, size, hash_type),
                 )
                 return await cursor.fetchall()
 
@@ -128,7 +129,9 @@ class HashTable:
             console.print(f"Error retrieving folder and filename: {e}")
             return []
 
-    async def insert_or_update_hash_db(self, hash_value: str,hash_type:str, file: str, original_filename: str, referer: URL) -> bool:
+    async def insert_or_update_hash_db(
+        self, hash_value: str, hash_type: str, file: str, original_filename: str, referer: URL
+    ) -> bool:
         """Inserts or updates a record in the specified SQLite database.
 
         Args:
@@ -141,21 +144,21 @@ class HashTable:
         Returns:
             True if all the record was inserted or updated successfully, False otherwise.
         """
-      
-        hash=await self.insert_or_update_hashes(hash_value,hash_type,file)
-        file=await self.insert_or_update_file(original_filename,referer,file)
+
+        hash = await self.insert_or_update_hashes(hash_value, hash_type, file)
+        file = await self.insert_or_update_file(original_filename, referer, file)
         return file and hash
 
-    async def insert_or_update_hashes(self,hash_value,hash_type,file):
+    async def insert_or_update_hashes(self, hash_value, hash_type, file):
         try:
             full_path = Path(file).absolute()
             download_filename = full_path.name
             folder = str(full_path.parent)
             cursor = await self.db_conn.cursor()
-            
-            await cursor.execute(                                        
+
+            await cursor.execute(
                 "INSERT INTO hash (hash,hash_type,folder,download_filename) VALUES (?, ?, ?, ?)",
-                (hash_value,hash_type,folder, download_filename),
+                (hash_value, hash_type, folder, download_filename),
             )
             await self.db_conn.commit()
         except IntegrityError as _:
@@ -176,12 +179,13 @@ class HashTable:
             console.print(f"Error inserting/updating record: {e}")
             return False
         return True
-    async def insert_or_update_file(self,original_filename,referer,file):
+
+    async def insert_or_update_file(self, original_filename, referer, file):
         try:
             referer = str(referer)
             full_path = Path(file).absolute()
             file_size = full_path.stat().st_size
-            file_date=full_path.stat().st_mtime
+            file_date = full_path.stat().st_mtime
             download_filename = full_path.name
             folder = str(full_path.parent)
 
@@ -189,24 +193,24 @@ class HashTable:
 
             await cursor.execute(
                 "INSERT INTO files (folder,original_filename,download_filename,file_size,referer,date) VALUES (?, ?, ?, ?,?,?)",
-                (folder, original_filename,download_filename,file_size,referer,file_date),
+                (folder, original_filename, download_filename, file_size, referer, file_date),
             )
             await self.db_conn.commit()
         except IntegrityError as _:
             # Handle potential duplicate key (assuming a unique constraint on  (filename, and folder)
             await cursor.execute(
-    """UPDATE files
+                """UPDATE files
     SET original_filename = ?, file_size = ?, referer = ?,date=?
     WHERE download_filename = ? AND folder = ?;""",
-    (
-        original_filename,
-        file_size,
-        referer,
-        file_date,
-        download_filename,
-        folder,
-    ),
-)
+                (
+                    original_filename,
+                    file_size,
+                    referer,
+                    file_date,
+                    download_filename,
+                    folder,
+                ),
+            )
 
             await self.db_conn.commit()
         except Exception as e:
@@ -214,7 +218,7 @@ class HashTable:
             return False
         return True
 
-    async def get_all_unique_hashes(self,hash_type=None) -> list:
+    async def get_all_unique_hashes(self, hash_type=None) -> list:
         """Retrieves a list of hashes
 
         Args:

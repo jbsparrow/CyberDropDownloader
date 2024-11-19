@@ -520,10 +520,10 @@ Value | Description
 `POST_DOWNLOAD`| Hashes all files at once, after all the downloads have finished
 ***
 * dedupe
-* 
+*
 selection for how to dedupe files
 Value  |Description
--- | -- | 
+-- | -- |
 `OFF` | Do nothing
 `KEEP_OLDEST` | Keep the oldest file for each hash, considering only the files that exist at the location saved in the database
 `KEEP_NEWEST`  | Keep the newest file for each hash, considering only the files that exist at the location saved in the database

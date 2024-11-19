@@ -29,7 +29,7 @@ create_temp = """CREATE TABLE IF NOT EXISTS temp (downloaded_filename TEXT);"""
 
 create_temp_referer = """CREATE TABLE IF NOT EXISTS temp_referer (referer TEXT);"""
 
-create_files= """
+create_files = """
 CREATE TABLE IF NOT EXISTS files (
   folder TEXT,
   download_filename TEXT,
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS files (
 
 """
 
-create_hash= """
+create_hash = """
 CREATE TABLE IF NOT EXISTS hash (
   folder TEXT,
   download_filename TEXT,
@@ -54,7 +54,7 @@ CREATE TABLE IF NOT EXISTS hash (
 
 """
 
-create_temp_hash= """
+create_temp_hash = """
 CREATE TABLE IF NOT EXISTS temp_hash (
   folder TEXT,
   download_filename TEXT,

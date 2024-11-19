@@ -25,25 +25,23 @@ class HashManager:
         self.sha_256_hasher = sha256hasher
         self.hash_client = HashClient(manager)  # Initialize hash client in constructor
         self.manager = manager
+
     async def startup(self) -> None:
         await self.hash_client.startup()
- 
 
-
-
-    async def hash_file(self, filename: str,hash_type:str) -> str:
+    async def hash_file(self, filename: str, hash_type: str) -> str:
         file_path = Path.cwd() / filename
         async with aiofiles.open(file_path, "rb") as fp:
             CHUNK_SIZE = 1024 * 1024  # 1MB
             filedata = await fp.read(CHUNK_SIZE)
-            current_hasher = self._get_hasher(hash_type) # Use the initialized hasher
+            current_hasher = self._get_hasher(hash_type)  # Use the initialized hasher
             while filedata:
                 current_hasher.update(filedata)
                 filedata = await fp.read(CHUNK_SIZE)
             return current_hasher.hexdigest()
-    
-    def _get_hasher(self,hash_type):
-        if hash_type =="xx128" and not self.xx_hasher:
+
+    def _get_hasher(self, hash_type):
+        if hash_type == "xx128" and not self.xx_hasher:
             raise ImportError("xxhash module is not installed")
         elif hash_type == "xxh128":
             return self.xx_hasher()
@@ -53,5 +51,3 @@ class HashManager:
             return self.sha_256_hasher()
         else:
             raise ValueError("Invalid hash type")
-    
-

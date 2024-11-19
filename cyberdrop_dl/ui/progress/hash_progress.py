@@ -36,8 +36,7 @@ class HashProgress:
 
         self.current_hashing_text = Progress("{task.description}")
 
-
-        #hashing
+        # hashing
         self.hashed_files = 0
         self.prev_hashed_files = 0
         self.hash_progress_group = Group(self.current_hashing_text, self.hash_progress)
@@ -46,7 +45,7 @@ class HashProgress:
         self.currently_hashing_task_id = self.current_hashing_text.add_task("")
         self.currently_hashing_size_task_id = self.current_hashing_text.add_task("")
 
-        #remove
+        # remove
         self.removed_files = 0
         self.removed_progress_group = Group(self.match_progress, self.remove_progress)
         self.removed_files_task_id = self.remove_progress.add_task(
@@ -89,4 +88,3 @@ class HashProgress:
         """Adds a completed file to the progress bar."""
         self.remove_progress.advance(self.removed_files_task_id, 1)
         self.removed_files += 1
-
