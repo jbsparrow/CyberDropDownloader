@@ -118,12 +118,7 @@ class Crawler(ABC):
             self.manager.progress_manager.download_progress.add_previously_completed()
             return
 
-        check_referer = False
-        if self.manager.config_manager.settings_data["Download_Options"]["skip_referer_seen_before"]:
-            check_referer = await self.manager.db_manager.temp_referer_table.check_referer(scrape_item.url)
-
-        if check_referer:
-            log(f"Skipping {url} as referer has been seen before", 10)
+        if await self.check_skip_by_config(media_item):
             self.manager.progress_manager.download_progress.add_skipped()
             return
 
@@ -133,6 +128,29 @@ class Crawler(ABC):
             self.manager.task_group.create_task(self.downloader.run(media_item))
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+    async def check_skip_by_config(self, media_item: MediaItem) -> bool:
+        skip = False
+
+        if self.manager.config_manager.settings_data["Download_Options"]["skip_referer_seen_before"]:
+            skip = await self.manager.db_manager.temp_referer_table.check_referer(media_item.referer)
+
+        if skip:
+            log(f"Download skip {media_item.url} as referer has been seen before", 10)
+
+        if not skip and self.manager.config_manager.settings_data["Ignore_Options"]["skip_hosts"]:
+            skip_hosts = self.manager.config_manager.settings_data["Ignore_Options"]["skip_hosts"]
+            if any(host in media_item.url.host for host in skip_hosts):
+                log(f"Download skip {media_item.url} due to skip_hosts config", 10)
+                skip = True
+
+        if not skip and self.manager.config_manager.settings_data["Ignore_Options"]["only_hosts"]:
+            only_hosts = self.manager.config_manager.settings_data["Ignore_Options"]["only_hosts"]
+            if not any(host in media_item.url.host for host in only_hosts):
+                log(f"Download skip {media_item.url} due to only_hosts config", 10)
+                skip = True
+
+        return skip
 
     def check_post_number(self, post_number: int, current_post_number: int) -> tuple[bool, bool]:
         """Checks if the program should scrape the current post."""
