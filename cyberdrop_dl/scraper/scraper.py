@@ -246,12 +246,14 @@ class ScrapeMapper:
     async def send_to_crawler(self, scrape_item: ScrapeItem) -> None:
         """Maps URLs to their respective handlers."""
         scrape_item.url = remove_trailing_slash(scrape_item.url)
-        supported_domain = next((key for key in self.existing_crawlers if key in scrape_item.url.host), None)
+        supported_domain = [key for key in self.existing_crawlers if key in scrape_item.url.host]
         jdownloader_whitelisted = True
         if self.jdownloader_whitelist:
             jdownloader_whitelisted = any(domain in scrape_item.url.host for domain in self.jdownloader_whitelist)
 
         if supported_domain:
+            # get most restrictive domain if multiple domain matches
+            supported_domain = max(supported_domain, key=len)
             scraper = self.existing_crawlers[supported_domain]
             if isinstance(scraper.client, Field):
                 scraper.startup()
