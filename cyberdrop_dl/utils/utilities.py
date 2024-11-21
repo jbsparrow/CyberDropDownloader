@@ -378,14 +378,31 @@ async def send_webhook_message(manager: Manager) -> None:
 
 def open_in_text_editor(file_path: Path) -> bool:
     """Opens file in OS text editor."""
+    using_desktop_enviroment = (
+        os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")
+    ) and "SSH_CONNECTION" not in os.environ
+    default_editor = os.environ.get("EDITOR")
     if platform.system() == "Darwin":
         subprocess.Popen(["open", "-a", "TextEdit", file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     elif platform.system() == "Windows":
         subprocess.Popen(["notepad.exe", file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    elif set_default_app_if_none(file_path):
+    elif using_desktop_enviroment and set_default_app_if_none(file_path):
         subprocess.Popen(["xdg-open", file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    elif default_editor:
+        subprocess.call([default_editor, file_path])
+
+    elif subprocess.call(["which", "micro"], stdout=subprocess.DEVNULL) == 0:
+        subprocess.call(["micro", file_path])
+
+    elif subprocess.call(["which", "nano"], stdout=subprocess.DEVNULL) == 0:
+        subprocess.call(["nano", file_path])
+
+    elif subprocess.call(["which", "vim"], stdout=subprocess.DEVNULL) == 0:
+        subprocess.call(["vim", file_path])
+
     else:
         raise ValueError
 
@@ -416,6 +433,6 @@ def set_default_app_if_none(file_path: Path) -> bool:
         check=False,
     ).stdout.strip()
     if text_default:
-        return subprocess.call(["xdg-mime", "default", text_default, mimetype])
+        return subprocess.call(["xdg-mime", "default", text_default, mimetype]) == 0
 
     return False
