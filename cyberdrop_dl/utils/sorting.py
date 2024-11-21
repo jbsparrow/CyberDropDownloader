@@ -246,10 +246,21 @@ class Sorter:
                 resolution = "Unknown"
             frames_per_sec = str(props.get("avg_frame_rate", "Unknown"))
             codec = str(props.get("codec_name", "Unknown"))
+            duration = str(props.get("duration", "Unknown"))
+            if duration == "Unknown":
+                duration_ts = props.get("duration_ts", 0)
+                time_base = props.get("time_base", 0)
+                if (duration_ts != 0) and (time_base != 0):
+                    duration = duration_ts / time_base
+                else:
+                    duration = "Unknown"
+            color_space = str(props.get("color_space", props.get("color_primaries", props.get("color_transfer", "Unknown"))))
         except (RuntimeError, subprocess.CalledProcessError):
             resolution = "Unknown"
             frames_per_sec = "Unknown"
             codec = "Unknown"
+            duration = "Unknown"
+            color_space = "Unknown"
 
         parent_name = file.parent.name
         filename, ext = file.stem, file.suffix
@@ -265,10 +276,23 @@ class Sorter:
                 resolution=resolution,
                 fps=frames_per_sec,
                 codec=codec,
+                color_space=color_space,
                 file_date_us=file_date_us,
                 file_date_ca=file_date_ca,
             ),
         )
+
+        min_video_duration = self.manager.config_manager.settings_data["File_Size_Limits"]["minimum_video_duration"]
+        max_video_duration = self.manager.config_manager.settings_data["File_Size_Limits"]["maximum_video_duration"]
+
+        if duration != "Unknown":
+            if min_video_duration != 0 and duration < min_video_duration:
+                log(f"Video: {file} removed as it preceeds the minimum video duration.", 40)
+                file.unlink()
+                return
+            if max_video_duration != 0 and duration > max_video_duration:
+                log(f"Video: {file} removed as it exceeds the maximum video duration.", 40)
+                file.unlink()
 
         if self.move_cd(file, new_file):
             self.manager.progress_manager.sort_progress.increment_video()

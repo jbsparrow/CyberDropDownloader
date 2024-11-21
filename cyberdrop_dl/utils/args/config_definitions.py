@@ -88,9 +88,13 @@ settings: dict = {
         "maximum_image_size": 0,
         "maximum_other_size": 0,
         "maximum_video_size": 0,
+        "maximum_video_duration": 0,
+        "maximum_audio_duration": 0,
         "minimum_image_size": 0,
         "minimum_other_size": 0,
         "minimum_video_size": 0,
+        "minimum_video_duration": 0,
+        "minimum_audio_duration": 0,
     },
     "Ignore_Options": {
         "exclude_videos": False,
