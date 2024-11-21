@@ -4,7 +4,7 @@ import calendar
 import contextlib
 import datetime
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
@@ -26,8 +26,10 @@ CDN_POSSIBILITIES = re.compile(
 
 
 class BunkrrCrawler(Crawler):
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "bunkrr", "Bunkrr")
+    SUPPORTED_SITES: ClassVar[dict[str, list]] = {"bunkrr": ["bunkrr", "bunkr"]}
+
+    def __init__(self, manager: Manager, site: str) -> None:
+        super().__init__(manager, site, "Bunkrr")
         self.primary_base_domain = URL("https://bunkr.site")
         self.request_limiter = AsyncLimiter(10, 1)
 

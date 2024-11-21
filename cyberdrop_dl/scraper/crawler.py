@@ -5,7 +5,7 @@ import copy
 from abc import ABC, abstractmethod
 from dataclasses import field
 from http.cookiejar import MozillaCookieJar
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from bs4 import BeautifulSoup
 from yarl import URL
@@ -23,7 +23,9 @@ if TYPE_CHECKING:
 
 
 class Crawler(ABC):
-    def __init__(self, manager: Manager, domain: str, folder_domain: str) -> None:
+    SUPPORTED_SITES: ClassVar[dict[str, list]] = {}
+
+    def __init__(self, manager: Manager, domain: str, folder_domain: str | None = None) -> None:
         self.manager = manager
         self.downloader = field(init=False)
         self.scraping_progress = manager.progress_manager.scraping_progress
@@ -31,7 +33,7 @@ class Crawler(ABC):
         self._lock = asyncio.Lock()
 
         self.domain = domain
-        self.folder_domain = folder_domain
+        self.folder_domain = folder_domain or domain.capitalize()
 
         self.logged_in = field(init=False)
 
