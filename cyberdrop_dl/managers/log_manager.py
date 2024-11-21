@@ -71,17 +71,21 @@ class LogManager:
         log("Updating Last Forum Posts...\n", 20)
 
         current_urls, current_base_urls, new_urls, new_base_urls = [], [], [], []
-        async with aiofiles.open(input_file, encoding="utf8") as f:
-            async for line in f:
-                url = base_url = line.strip().removesuffix("/")
+        try:
+            async with aiofiles.open(input_file, encoding="utf8") as f:
+                async for line in f:
+                    url = base_url = line.strip().removesuffix("/")
 
-                if "https" in url and "/post-" in url:
-                    base_url = url.rsplit("/post", 1)[0]
+                    if "https" in url and "/post-" in url:
+                        base_url = url.rsplit("/post", 1)[0]
 
-                # only keep 1 url of the same thread
-                if base_url not in current_base_urls:
-                    current_urls.append(url)
-                    current_base_urls.append(base_url)
+                    # only keep 1 url of the same thread
+                    if base_url not in current_base_urls:
+                        current_urls.append(url)
+                        current_base_urls.append(base_url)
+        except UnicodeDecodeError:
+            log("Unable to read input file, skipping update_last_forum_post", 40)
+            return
 
         async with aiofiles.open(self.last_post_log, encoding="utf8") as f:
             reader = csv.DictReader(await f.readlines())
