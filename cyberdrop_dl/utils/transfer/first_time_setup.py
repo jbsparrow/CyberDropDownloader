@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import shutil
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -114,11 +113,11 @@ class TransitionManager:
     @staticmethod
     def transfer_v4_config(old_config_path: Path, new_config_name: str) -> None:
         """Transfers a V4 config into V5 possession."""
-        from cyberdrop_dl.utils.args.config_definitions import authentication_settings, global_settings, settings
+        from cyberdrop_dl.config_definitions import AuthSettings, ConfigSettings, GlobalSettings
 
-        new_auth_data = copy.deepcopy(authentication_settings)
-        new_user_data = copy.deepcopy(settings)
-        new_global_settings_data = copy.deepcopy(global_settings)
+        new_auth_data = AuthSettings().model_dump()
+        new_user_data = ConfigSettings().model_dump()
+        new_global_settings_data = GlobalSettings().model_dump()
 
         if Path("./URLs.txt").is_file():
             new_user_data["Files"]["input_file"] = Path("./URLs.txt")

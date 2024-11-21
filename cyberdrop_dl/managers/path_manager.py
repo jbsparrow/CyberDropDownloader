@@ -57,30 +57,25 @@ class PathManager:
 
     def startup(self) -> None:
         """Startup process for the Directory Manager."""
-        self.download_dir = (
-            self.manager.args_manager.download_dir
-            or self.manager.config_manager.settings_data["Files"]["download_folder"]
-        )
+        settings_data = self.manager.config_manager.settings_data
 
-        self.sorted_dir = (
-            self.manager.args_manager.sort_folder or self.manager.config_manager.settings_data["Sorting"]["sort_folder"]
-        )
-
-        self.scan_dir = (
-            self.manager.args_manager.scan_folder or self.manager.config_manager.settings_data["Sorting"]["scan_folder"]
-        )
-
-        self.log_dir = (
-            self.manager.args_manager.log_dir or self.manager.config_manager.settings_data["Logs"]["log_folder"]
-        )
-        self.input_file = (
-            self.manager.args_manager.input_file or self.manager.config_manager.settings_data["Files"]["input_file"]
-        )
-
+        self.download_dir = self.manager.args_manager.download_dir or settings_data.files.download_folder
+        self.sorted_dir = self.manager.args_manager.sort_folder or settings_data.sorting.sort_folder
+        self.scan_dir = self.manager.args_manager.scan_folder or settings_data.sorting.scan_folder
+        self.log_dir = self.manager.args_manager.log_dir or settings_data.logs.log_folder
+        self.input_file = self.manager.args_manager.input_file or settings_data.files.input_file
         self.history_db = self.cache_dir / "cyberdrop.db"
 
+        self._set_output_filenames()
+
+        self.log_dir.mkdir(parents=True, exist_ok=True)
+        if not self.input_file.is_file():
+            self.input_file.touch(exist_ok=True)
+        self.history_db.touch(exist_ok=True)
+
+    def _set_output_filenames(self) -> None:
         current_time_iso = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_settings_config = self.manager.config_manager.settings_data["Logs"]
+        log_settings_config = self.manager.config_manager.settings_data.logs
         log_args_config = self.manager.args_manager
         log_options_map = {
             "main_log_filename": "main_log",
@@ -90,18 +85,13 @@ class PathManager:
             "scrape_error_urls_filename": "scrape_error_log",
         }
 
-        for log_config_name, log_internal_name in log_options_map.items():
-            file_name = Path(getattr(log_args_config, log_config_name, None) or log_settings_config[log_config_name])
-            file_ext = ".log" if log_internal_name == "main_log" else ".csv"
-            if log_settings_config["rotate_logs"]:
+        for config_name, internal_name in log_options_map.items():
+            file_name = Path(getattr(log_args_config, config_name, None) or getattr(log_settings_config, config_name))
+            file_ext = ".log" if internal_name == "main_log" else ".csv"
+            if log_settings_config.rotate_logs:
                 file_name = f"{file_name.stem}__{current_time_iso}{file_name.suffix}"
             log_path = self.log_dir.joinpath(file_name).with_suffix(file_ext)
-            setattr(self, log_internal_name, log_path)
-
-        self.log_dir.mkdir(parents=True, exist_ok=True)
-        if not self.input_file.is_file():
-            self.input_file.touch(exist_ok=True)
-        self.history_db.touch(exist_ok=True)
+            setattr(self, internal_name, log_path)
 
     def add_completed(self, media_item: MediaItem) -> None:
         self._completed_downloads.add(media_item)

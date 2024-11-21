@@ -3,25 +3,10 @@ from __future__ import annotations
 from dataclasses import field
 from typing import TYPE_CHECKING, Any
 
-import yaml
-
 if TYPE_CHECKING:
     from pathlib import Path
 
     from cyberdrop_dl.managers.manager import Manager
-
-
-def _save_yaml(file: Path, data: dict) -> None:
-    """Saves a dict to a yaml file."""
-    file.parent.mkdir(parents=True, exist_ok=True)
-    with file.open("w") as yaml_file:
-        yaml.dump(data, yaml_file)
-
-
-def _load_yaml(file: Path) -> dict:
-    """Loads a yaml file and returns it as a dict."""
-    with file.open() as yaml_file:
-        return yaml.load(yaml_file.read(), Loader=yaml.FullLoader)
 
 
 class CacheManager:
@@ -43,7 +28,7 @@ class CacheManager:
 
     def load(self) -> None:
         """Loads the cache file into memory."""
-        self._cache = _load_yaml(self.cache_file)
+        self._cache = self.manager.yaml_manager.load(self.cache_file)
 
     def get(self, key: str) -> Any:
         """Returns the value of a key in the cache."""
@@ -52,10 +37,10 @@ class CacheManager:
     def save(self, key: str, value: Any) -> None:
         """Saves a key and value to the cache."""
         self._cache[key] = value
-        _save_yaml(self.cache_file, self._cache)
+        self.manager.yaml_manager.save(self.cache_file, self._cache)
 
     def remove(self, key: str) -> None:
         """Removes a key from the cache."""
         if key in self._cache:
             del self._cache[key]
-            _save_yaml(self.cache_file, self._cache)
+            self.manager.yaml_manager.save(self.cache_file, self._cache)
