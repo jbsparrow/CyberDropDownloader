@@ -379,8 +379,8 @@ async def send_webhook_message(manager: Manager) -> None:
 def open_in_text_editor(file_path: Path) -> bool:
     """Opens file in OS text editor."""
     using_desktop_enviroment = (
-        os.environ.get("DISPLAY") or os.environ.get("WAYLAND_DISPLAY")
-    ) and "SSH_CONNECTION" not in os.environ
+        any(var in os.environ for var in ("DISPLAY", "WAYLAND_DISPLAY")) and "SSH_CONNECTION" not in os.environ
+    )
     default_editor = os.environ.get("EDITOR")
     if platform.system() == "Darwin":
         subprocess.Popen(["open", "-a", "TextEdit", file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
