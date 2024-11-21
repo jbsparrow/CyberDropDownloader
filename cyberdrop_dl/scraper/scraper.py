@@ -52,8 +52,8 @@ class ScrapeMapper:
         """Starts all scrapers."""
         crawlers = ALL_CRAWLERS
         is_testing = next((tag for tag in PRERELEASE_TAGS if tag in current_version), False)
-        if is_testing:
-            crawlers = ALL_CRAWLERS | DEBUG_CRAWLERS
+        if not is_testing:
+            crawlers -= DEBUG_CRAWLERS
 
         for crawler in crawlers:
             if not crawler.SUPPORTED_SITES:

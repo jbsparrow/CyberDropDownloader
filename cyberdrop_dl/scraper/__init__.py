@@ -48,5 +48,5 @@ from cyberdrop_dl.scraper.crawlers.xxxbunker_crawler import XXXBunkerCrawler
 if TYPE_CHECKING:
     from cyberdrop_dl.scraper.crawler import Crawler
 
+ALL_CRAWLERS: set[type[Crawler]] = {crawler for name, crawler in globals().items() if "Crawler" in name}
 DEBUG_CRAWLERS = {SimpCityCrawler}
-ALL_CRAWLERS: set[type[Crawler]] = set(globals().values()) - DEBUG_CRAWLERS
