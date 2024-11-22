@@ -54,6 +54,7 @@ class PathManager:
 
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.config_dir.mkdir(parents=True, exist_ok=True)
+        self.cookies_dir.mkdir(parents=True, exist_ok=True)
 
     def startup(self) -> None:
         """Startup process for the Directory Manager."""

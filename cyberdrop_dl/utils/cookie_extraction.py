@@ -61,8 +61,8 @@ def get_cookies_from_browsers(
         msg = "No domains selected"
         raise ValueError(msg)
 
-    browsers = browsers or manager.config_manager.settings_data["Browser_Cookies"]["browsers"]
-    domains = domains or manager.config_manager.settings_data["Browser_Cookies"]["sites"]
+    browsers = browsers or manager.config_manager.settings_data.browser_cookies.browsers
+    domains = domains or manager.config_manager.settings_data.browser_cookies.sites
     browsers = list(map(str.lower, browsers))
     domains = list(map(str.lower, domains))
 

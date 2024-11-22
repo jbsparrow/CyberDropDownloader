@@ -38,10 +38,8 @@ def retry(func: Callable) -> None:
             except DownloadError as e:
                 self.attempt_task_removal(media_item)
 
-                max_attempts = self.manager.config_manager.global_settings_data["Rate_Limiting_Options"][
-                    "download_attempts"
-                ]
-                if self.manager.config_manager.settings_data["Download_Options"]["disable_download_attempt_limit"]:
+                max_attempts = self.manager.config_manager.global_settings_data.rate_limiting_options.download_attempts
+                if self.manager.config_manager.settings_data.download_options.disable_download_attempt_limit:
                     max_attempts = 1
 
                 if e.status != 999:
@@ -119,7 +117,7 @@ class Downloader:
         self._semaphore = asyncio.Semaphore(self.manager.download_manager.get_download_limit(self.domain))
 
         self.manager.path_manager.download_dir.mkdir(parents=True, exist_ok=True)
-        if self.manager.config_manager.settings_data["Sorting"]["sort_downloads"]:
+        if self.manager.config_manager.settings_data.sorting.sort_downloads:
             self.manager.path_manager.sorted_dir.mkdir(parents=True, exist_ok=True)
 
     async def run(self, media_item: MediaItem) -> None:
@@ -159,7 +157,7 @@ class Downloader:
 
     def set_file_datetime(self, media_item: MediaItem, complete_file: Path) -> None:
         """Sets the file's datetime."""
-        if self.manager.config_manager.settings_data["Download_Options"]["disable_file_timestamps"]:
+        if self.manager.config_manager.settings_data.download_options.disable_file_timestamps:
             return
         if not isinstance(media_item.datetime, Field):
             file = File(str(complete_file))

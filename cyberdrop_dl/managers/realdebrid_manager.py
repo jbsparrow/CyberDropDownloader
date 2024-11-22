@@ -24,7 +24,7 @@ FOLDER_AS_QUERY = {"sharekey"}
 class RealDebridManager:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
-        self.__api_token = self.manager.config_manager.authentication_data["RealDebrid"]["realdebrid_api_key"]
+        self.__api_token = self.manager.config_manager.authentication_data.realdebrid.realdebrid_api_key
         self.enabled = bool(self.__api_token)
         self.file_regex: Pattern = field(init=False)
         self.folder_regex: Pattern = field(init=False)

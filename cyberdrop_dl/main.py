@@ -76,7 +76,7 @@ async def runtime(manager: Manager) -> None:
 
 def pre_runtime(manager: Manager) -> None:
     """Actions to complete before main runtime."""
-    if manager.config_manager.settings_data["Browser_Cookies"]["auto_import"]:
+    if manager.config_manager.settings_data.browser_cookies.auto_import:
         get_cookies_from_browsers(manager)
 
 
@@ -91,15 +91,17 @@ async def post_runtime(manager: Manager) -> None:
     # checking and removing dupes
     if not manager.args_manager.sort_all_configs:
         await manager.hash_manager.hash_client.cleanup_dupes_after_download()
-    if (isinstance(manager.args_manager.sort_downloads, bool) and manager.args_manager.sort_downloads) or (
-        manager.config_manager.settings_data["Sorting"]["sort_downloads"] and not manager.args_manager.retry_any
+    if (
+        manager.args_manager.sort_downloads
+        or manager.config_manager.settings_data.sorting.sort_downloads
+        and not manager.args_manager.retry_any
     ):
         sorter = Sorter(manager)
         await sorter.sort()
 
     await check_partials_and_empty_folders(manager)
 
-    if manager.config_manager.settings_data["Runtime_Options"]["update_last_forum_post"]:
+    if manager.config_manager.settings_data.runtime_options.update_last_forum_post:
         await manager.log_manager.update_last_forum_post()
 
 
@@ -109,15 +111,15 @@ def setup_debug_logger(manager: Manager) -> Path | None:
     running_in_IDE = os.getenv("PYCHARM_HOSTED") or os.getenv("TERM_PROGRAM") == "vscode"
     from cyberdrop_dl.utils import constants
 
-    if running_in_IDE or manager.config_manager.settings_data["Runtime_Options"]["log_level"] == -1:
-        manager.config_manager.settings_data["Runtime_Options"]["log_level"] = 10
+    if running_in_IDE or manager.config_manager.settings_data.runtime_options.log_level == -1:
+        manager.config_manager.settings_data.runtime_options.log_level = 10
         constants.DEBUG_VAR = True
 
-    if running_in_IDE or manager.config_manager.settings_data["Runtime_Options"]["console_log_level"] == -1:
+    if running_in_IDE or manager.config_manager.settings_data.runtime_options.console_log_level == -1:
         constants.CONSOLE_DEBUG_VAR = True
 
     if constants.DEBUG_VAR:
-        logger_debug.setLevel(manager.config_manager.settings_data["Runtime_Options"]["log_level"])
+        logger_debug.setLevel(manager.config_manager.settings_data.runtime_options.log_level)
         debug_log_file_path = Path(__file__).parent / "cyberdrop_dl_debug.log"
         if running_in_IDE:
             debug_log_file_path = Path(__file__).parents[1] / "cyberdrop_dl_debug.log"
@@ -125,12 +127,12 @@ def setup_debug_logger(manager: Manager) -> Path | None:
         rich_file_handler_debug = RichHandler(
             **constants.RICH_HANDLER_DEBUG_CONFIG,
             console=Console(file=debug_log_file_path.open("w", encoding="utf8"), width=constants.DEFAULT_CONSOLE_WIDTH),
-            level=manager.config_manager.settings_data["Runtime_Options"]["log_level"],
+            level=manager.config_manager.settings_data.runtime_options.log_level,
         )
 
         logger_debug.addHandler(rich_file_handler_debug)
         # aiosqlite_log = logging.getLogger("aiosqlite")
-        # aiosqlite_log.setLevel(manager.config_manager.settings_data['Runtime_Options']['log_level'])
+        # aiosqlite_log.setLevel(manager.config_manager.settings_data.runtime_options.log_level)
         # aiosqlite_log.addHandler(file_handler_debug)
 
     return debug_log_file_path.resolve() if debug_log_file_path else None
@@ -150,10 +152,10 @@ def setup_logger(manager: Manager, config_name: str) -> None:
             logger.removeHandler(logger.handlers[0])
             old_file_handler.close()
 
-    logger.setLevel(manager.config_manager.settings_data["Runtime_Options"]["log_level"])
+    logger.setLevel(manager.config_manager.settings_data.runtime_options.log_level)
 
     if constants.DEBUG_VAR:
-        manager.config_manager.settings_data["Runtime_Options"]["log_level"] = 10
+        manager.config_manager.settings_data.runtime_options.log_level = 10
 
     rich_file_handler = RichHandler(
         **constants.RICH_HANDLER_CONFIG,
@@ -161,11 +163,11 @@ def setup_logger(manager: Manager, config_name: str) -> None:
             file=manager.path_manager.main_log.open("w", encoding="utf8"),
             width=constants.DEFAULT_CONSOLE_WIDTH,
         ),
-        level=manager.config_manager.settings_data["Runtime_Options"]["log_level"],
+        level=manager.config_manager.settings_data.runtime_options.log_level,
     )
 
     logger.addHandler(rich_file_handler)
-    constants.CONSOLE_LEVEL = manager.config_manager.settings_data["Runtime_Options"]["console_log_level"]
+    constants.CONSOLE_LEVEL = manager.config_manager.settings_data.runtime_options.console_log_level
 
 
 def ui_error_handling_wrapper(func: Callable) -> None:

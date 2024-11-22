@@ -47,26 +47,19 @@ class ClientManager:
 
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
-        self.connection_timeout = manager.config_manager.global_settings_data["Rate_Limiting_Options"][
-            "connection_timeout"
-        ]
-        self.read_timeout = manager.config_manager.global_settings_data["Rate_Limiting_Options"]["read_timeout"]
-        self.rate_limit = manager.config_manager.global_settings_data["Rate_Limiting_Options"]["rate_limit"]
+        global_settings_data = manager.config_manager.global_settings_data
+        self.connection_timeout = global_settings_data.rate_limiting_options.connection_timeout
+        self.read_timeout = global_settings_data.rate_limiting_options.read_timeout
+        self.rate_limit = global_settings_data.rate_limiting_options.rate_limit
 
-        self.download_delay = manager.config_manager.global_settings_data["Rate_Limiting_Options"]["download_delay"]
-        self.user_agent = manager.config_manager.global_settings_data["General"]["user_agent"]
-        self.verify_ssl = not manager.config_manager.global_settings_data["General"]["allow_insecure_connections"]
-        self.simultaneous_per_domain = manager.config_manager.global_settings_data["Rate_Limiting_Options"][
-            "max_simultaneous_downloads_per_domain"
-        ]
+        self.download_delay = global_settings_data.rate_limiting_options.download_delay
+        self.user_agent = global_settings_data.general.user_agent
+        self.verify_ssl = not global_settings_data.general.allow_insecure_connections
+        self.simultaneous_per_domain = global_settings_data.rate_limiting_options.max_simultaneous_downloads_per_domain
 
         self.ssl_context = ssl.create_default_context(cafile=certifi.where()) if self.verify_ssl else False
         self.cookies = aiohttp.CookieJar(quote_cookie=False)
-        self.proxy = (
-            manager.config_manager.global_settings_data["General"]["proxy"]
-            if not manager.args_manager.proxy
-            else manager.args_manager.proxy
-        )
+        self.proxy = manager.args_manager.proxy or global_settings_data.general.proxy
 
         self.domain_rate_limits = {
             "bunkrr": AsyncLimiter(5, 1),
@@ -90,7 +83,7 @@ class ClientManager:
         self.global_rate_limiter = AsyncLimiter(self.rate_limit, 1)
         self.session_limit = asyncio.Semaphore(50)
         self.download_session_limit = asyncio.Semaphore(
-            self.manager.config_manager.global_settings_data["Rate_Limiting_Options"]["max_simultaneous_downloads"],
+            self.manager.config_manager.global_settings_data.rate_limiting_options.max_simultaneous_downloads,
         )
 
         self.scraper_session = ScraperClient(self)
@@ -188,7 +181,7 @@ class Flaresolverr:
         self.client_manager = client_manager
         self.flaresolverr_host = (
             client_manager.manager.args_manager.flaresolverr
-            or client_manager.manager.config_manager.global_settings_data["General"]["flaresolverr"]
+            or client_manager.manager.config_manager.global_settings_data.general.flaresolverr
         )
         self.enabled = bool(self.flaresolverr_host)
         if "http" not in self.flaresolverr_host:

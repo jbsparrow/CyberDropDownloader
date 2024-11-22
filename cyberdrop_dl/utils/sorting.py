@@ -31,16 +31,16 @@ class Sorter:
         self.manager = manager
         self.download_dir = manager.path_manager.scan_dir or manager.path_manager.download_dir
         self.sorted_downloads = manager.path_manager.sorted_dir
-        self.incrementer_format: str = manager.config_manager.settings_data["Sorting"]["sort_incremementer_format"]
-        self.sort_cdl_only = manager.config_manager.settings_data["Sorting"]["sort_cdl_only"]
-        if manager.config_manager.settings_data["Download_Options"]["skip_download_mark_completed"]:
+        self.incrementer_format: str = manager.config_manager.settings_data.sorting.sort_incremementer_format
+        self.sort_cdl_only = manager.config_manager.settings_data.sorting.sort_cdl_only
+        if manager.config_manager.settings_data.download_options.skip_download_mark_completed:
             self.sort_cdl_only = False
         self.db_manager = manager.db_manager
 
-        self.audio_format: str = manager.config_manager.settings_data["Sorting"]["sorted_audio"]
-        self.image_format: str = manager.config_manager.settings_data["Sorting"]["sorted_image"]
-        self.video_format: str = manager.config_manager.settings_data["Sorting"]["sorted_video"]
-        self.other_format: str = manager.config_manager.settings_data["Sorting"]["sorted_other"]
+        self.audio_format: str = manager.config_manager.settings_data.sorting.sorted_audio
+        self.image_format: str = manager.config_manager.settings_data.sorting.sorted_image
+        self.video_format: str = manager.config_manager.settings_data.sorting.sorted_video
+        self.other_format: str = manager.config_manager.settings_data.sorting.sorted_other
 
         self.audio_count = 0
         self.image_count = 0

@@ -126,7 +126,7 @@ def get_download_path(manager: Manager, scrape_item: ScrapeItem, domain: str) ->
 def remove_file_id(manager: Manager, filename: str, ext: str) -> tuple[str, str]:
     """Removes the additional string some websites adds to the end of every filename."""
     original_filename = filename
-    if not manager.config_manager.settings_data["Download_Options"]["remove_generated_id_from_filenames"]:
+    if not manager.config_manager.settings_data.download_options.remove_generated_id_from_filenames:
         return original_filename, filename
 
     filename = filename.rsplit(ext, 1)[0]
@@ -187,13 +187,13 @@ def purge_dir_tree(dirname: Path) -> None:
 
 async def check_partials_and_empty_folders(manager: Manager) -> None:
     """Checks for partial downloads and empty folders."""
-    if manager.config_manager.settings_data["Runtime_Options"]["delete_partial_files"]:
+    if manager.config_manager.settings_data.runtime_options.delete_partial_files:
         log_with_color("Deleting partial downloads...", "bold_red", 20)
         partial_downloads = manager.path_manager.download_dir.rglob("*.part")
         for file in partial_downloads:
             file.unlink(missing_ok=True)
 
-    elif not manager.config_manager.settings_data["Runtime_Options"]["skip_check_for_partial_files"]:
+    elif not manager.config_manager.settings_data.runtime_options.skip_check_for_partial_files:
         log_with_color("Checking for partial downloads...", "yellow", 20)
         partial_downloads = any(f.is_file() for f in manager.path_manager.download_dir.rglob("*.part"))
         if partial_downloads:
@@ -203,7 +203,7 @@ async def check_partials_and_empty_folders(manager: Manager) -> None:
             msg = "There are partial downloads from the previous run, please re-run the program."
             log_with_color(msg, "yellow", 20)
 
-    if not manager.config_manager.settings_data["Runtime_Options"]["skip_check_for_empty_folders"]:
+    if not manager.config_manager.settings_data.runtime_options.skip_check_for_empty_folders:
         log_with_color("Checking for empty folders...", "yellow", 20)
         purge_dir_tree(manager.path_manager.download_dir)
         if isinstance(manager.path_manager.sorted_dir, Path):
@@ -340,7 +340,7 @@ def sent_apprise_notifications(manager: Manager) -> None:
 
 async def send_webhook_message(manager: Manager) -> None:
     """Outputs the stats to a code block for webhook messages."""
-    webhook_url: str = manager.config_manager.settings_data["Logs"]["webhook_url"]
+    webhook_url: str = manager.config_manager.settings_data.logs.webhook_url
 
     if not webhook_url:
         return

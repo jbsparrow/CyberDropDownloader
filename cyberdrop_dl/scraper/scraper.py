@@ -40,9 +40,7 @@ class ScrapeMapper:
         self.existing_crawlers: dict[str, Crawler] = {}
         self.no_crawler_downloader = Downloader(self.manager, "no_crawler")
         self.jdownloader = JDownloader(self.manager)
-        self.jdownloader_whitelist = self.manager.config_manager.settings_data["Runtime_Options"][
-            "jdownloader_whitelist"
-        ]
+        self.jdownloader_whitelist = self.manager.config_manager.settings_data.runtime_options.jdownloader_whitelist
         self.lock = asyncio.Lock()
         self.count = 0
 
@@ -322,12 +320,12 @@ class ScrapeMapper:
             log(f"Skipping {scrape_item.url} as it is outside of the desired date range", 10)
             return False
 
-        skip_hosts = self.manager.config_manager.settings_data["Ignore_Options"]["skip_hosts"]
+        skip_hosts = self.manager.config_manager.settings_data.ignore_options.skip_hosts
         if skip_hosts and is_in_domain_list(scrape_item, skip_hosts):
             log(f"Skipping URL by skip_hosts config: {scrape_item.url}", 10)
             return False
 
-        only_hosts = self.manager.config_manager.settings_data["Ignore_Options"]["only_hosts"]
+        only_hosts = self.manager.config_manager.settings_data.ignore_options.only_hosts
         if only_hosts and not is_in_domain_list(scrape_item, only_hosts):
             log(f"Skipping URL by only_hosts config: {scrape_item.url}", 10)
             return False
@@ -347,7 +345,7 @@ class ScrapeMapper:
 
         posible_referer = scrape_item.parents[-1] if scrape_item.parents else scrape_item.url
         check_referer = False
-        if self.manager.config_manager.settings_data["Download_Options"]["skip_referer_seen_before"]:
+        if self.manager.config_manager.settings_data.download_options.skip_referer_seen_before:
             check_referer = await self.manager.db_manager.temp_referer_table.check_referer(posible_referer)
 
         if check_referer:

@@ -13,9 +13,10 @@ if TYPE_CHECKING:
 
 class LeakyBucket(AsyncLimiter):
     def __init__(self, manager: Manager) -> None:
-        self.download_speed_limit = manager.config_manager.global_settings_data["Rate_Limiting_Options"][
-            "download_speed_limit"
-        ]
+        self.download_speed_limit = (
+            manager.config_manager.global_settings_data.rate_limiting_options.download_speed_limit
+        )
+
         self.max_amount = 1024 * 1024 * 10
         super().__init__(self.download_speed_limit * 1024, 1)
 

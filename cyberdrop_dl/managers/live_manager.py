@@ -21,7 +21,7 @@ class LiveManager:
         self.manager = manager
         self.live = Live(
             auto_refresh=True,
-            refresh_per_second=self.manager.config_manager.global_settings_data["UI_Options"]["refresh_rate"],
+            refresh_per_second=self.manager.config_manager.global_settings_data.ui_options.refresh_rate,
             console=console,
             transient=True,
             screen=not self.manager.args_manager.no_ui,
