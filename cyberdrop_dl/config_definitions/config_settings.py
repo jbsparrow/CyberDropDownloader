@@ -2,18 +2,34 @@ from enum import IntEnum
 from pathlib import Path
 from typing import Annotated
 
-from pydantic import AfterValidator, AnyHttpUrl, BaseModel, NonNegativeInt, StringConstraints
+from pydantic import AfterValidator, AnyUrl, BaseModel, HttpUrl, NonNegativeInt, StringConstraints
 from yarl import URL
 
 from cyberdrop_dl.utils import constants
 
 
-def convert_to_yarl(value: AnyHttpUrl) -> URL:
+def convert_to_yarl(value: AnyUrl) -> URL:
     return URL(value)
 
 
-VerifiedURL = Annotated[AnyHttpUrl, AfterValidator(convert_to_yarl)]
-NonEmptyStr = Annotated[str, StringConstraints(min_length=1)]
+HttpURL = Annotated[HttpUrl, AfterValidator(convert_to_yarl)]
+NonEmptyStr = Annotated[str, StringConstraints(min_length=1, strip_whitespace=True)]
+AnyURL = Annotated[AnyUrl, AfterValidator(convert_to_yarl)]
+
+
+class AppriseURL(BaseModel):
+    url: AnyURL
+    tags: set[NonEmptyStr]
+
+    def __init__(self, url: URL | str):
+        actual_url = str(url)
+        tags = set()
+        if not isinstance(url, URL):
+            parts = url.split("://", 1)[0].split("=", 1)
+            if len(parts) == 2:
+                tags = set(parts[0].split(","))
+            actual_url = parts[-1]
+        super().__init__(tags=tags, url=actual_url)
 
 
 class DownloadOptions(BaseModel):
@@ -36,22 +52,9 @@ class Files(BaseModel):
     download_folder: Path
 
 
-class AppriseURL:
-    def __init__(self, url: URL | str):
-        self.value = url
-        self.tags = None
-        if isinstance(url, URL):
-            self.url = url
-            return
-        parts = url.split("://", 1)[0].split("=", 1)
-        if len(parts) == 2:
-            self.tags = parts[0].split(",")
-        self.url = URL(parts[-1])
-
-
 class Logs(BaseModel):
     log_folder: Path = constants.APP_STORAGE / "Configs" / "{config}" / "Logs"
-    webhook_url: VerifiedURL | None = None
+    webhook_url: AppriseURL | None = None
     main_log_filename: NonEmptyStr = "downloader.log"
     last_forum_post_filename: NonEmptyStr = "Last_Scraped_Forum_Posts.csv"
     unsupported_urls_filename: NonEmptyStr = "Unsupported_URLs.csv"
@@ -75,8 +78,8 @@ class IgnoreOptions(BaseModel):
     exclude_audio: bool
     exclude_other: bool
     ignore_coomer_ads: bool
-    skip_hosts: list[str]
-    only_hosts: list[str]
+    skip_hosts: list[NonEmptyStr]
+    only_hosts: list[NonEmptyStr]
 
 
 class LogLevel(IntEnum):

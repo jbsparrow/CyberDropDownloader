@@ -287,22 +287,18 @@ def sent_apprise_notifications(manager: Manager) -> None:
     if not apprise_file.is_file():
         return
 
-    with apprise_file.open(encoding="utf8") as file:
-        lines = [line.strip() for line in file]
+    from cyberdrop_dl.config_definitions.config_settings import AppriseURL
 
-    if not lines:
+    with apprise_file.open(encoding="utf8") as file:
+        apprise_urls = [AppriseURL(line.strip()) for line in file]
+
+    if not apprise_urls:
         return
 
     rich.print("\nSending notifications.. ")
     apprise_obj = apprise.Apprise()
-    for line in lines:
-        parts = line.split("://", 1)[0].split("=", 1)
-        url = line
-        tags = "no_logs"
-        if len(parts) == 2:
-            tags, url = line.split("=", 1)
-            tags = tags.split(",")
-        apprise_obj.add(url, tag=tags)
+    for apprise_url in apprise_urls:
+        apprise_obj.add(apprise_url.url, tag=apprise_url.tags)
 
     results = []
     result = apprise_obj.notify(
@@ -340,26 +336,19 @@ def sent_apprise_notifications(manager: Manager) -> None:
 
 async def send_webhook_message(manager: Manager) -> None:
     """Outputs the stats to a code block for webhook messages."""
-    webhook_url: str = manager.config_manager.settings_data.logs.webhook_url
+    webhook_url = manager.config_manager.settings_data.logs.webhook_url
 
     if not webhook_url:
         return
 
-    url = webhook_url.strip()
-    parts = url.split("://", 1)[0].split("=", 1)
-    tags = ["no_logs"]
-    if len(parts) == 2:
-        tags, url = url.split("=", 1)
-        tags = tags.split(",")
-
-    url = URL(url)
+    url = webhook_url.url
     text: Text = constants.LOG_OUTPUT_TEXT
     plain_text = parse_rich_text_by_style(text, constants.STYLE_TO_DIFF_FORMAT_MAP)
     main_log = manager.path_manager.main_log
 
     form = FormData()
 
-    if "attach_logs" in tags and main_log.is_file():
+    if "attach_logs" in webhook_url.tags and main_log.is_file():
         if main_log.stat().st_size <= 25 * 1024 * 1024:
             async with aiofiles.open(main_log, "rb") as f:
                 form.add_field("file", await f.read(), filename=main_log.name)
