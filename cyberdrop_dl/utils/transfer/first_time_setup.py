@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import platformdirs
-import yaml
 
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.transfer.transfer_v4_db import transfer_v4_db
@@ -71,47 +70,31 @@ class TransitionManager:
         if Path("./Unsupported_URLs.csv").is_file():
             Path("./Unsupported_URLs.csv").rename(OLD_FILES / "Unsupported_URLs.csv")
 
-        self.update_cache(constants.APP_STORAGE / "Cache" / "cache.yaml")
+        self.set_first_startup_completed(constants.APP_STORAGE / "Cache" / "cache.yaml")
 
-    @staticmethod
-    def check_cache_for_moved(cache_file: Path) -> bool:
+    def check_cache_for_moved(self, cache_file: Path) -> bool:
         """Checks the cache for moved files."""
-        with cache_file.open() as yaml_file:
-            cache = yaml.load(yaml_file.read(), Loader=yaml.FullLoader)
-        if cache is None:
-            with cache_file.open("w") as yaml_file:
-                cache = {"first_startup_completed": False}
-                yaml.dump(cache, yaml_file)
+        cache = self.manager.yaml_manager.load(cache_file, create=True)
+        if not cache:
+            cache = {"first_startup_completed": False}
+            self.manager.yaml_manager.save(cache_file, cache)
         return bool(cache.get("first_startup_completed", False))
 
-    @staticmethod
-    def update_cache(cache_file: Path) -> None:
+    def set_first_startup_completed(self, cache_file: Path) -> None:
         """Updates the cache to reflect the new location."""
-        cache_file.parent.mkdir(parents=True, exist_ok=True)
-        cache_file.touch(exist_ok=True)
-        with cache_file.open() as yaml_file:
-            cache = yaml.load(yaml_file.read(), Loader=yaml.FullLoader)
-        if cache is None:
-            cache = {"first_startup_completed": False}
+        cache = self.manager.yaml_manager.load(cache_file, create=True)
         cache["first_startup_completed"] = True
-        with cache_file.open("w") as yaml_file:
-            yaml.dump(cache, yaml_file)
+        self.manager.yaml_manager.save(cache_file, cache)
 
-    @staticmethod
-    def update_default_config(cache_file: Path, config_name: str) -> None:
+    def update_default_config(self, cache_file: Path, config_name: str) -> None:
         """Updates the default config in the cache."""
-        cache_file.parent.mkdir(parents=True, exist_ok=True)
-        cache_file.touch(exist_ok=True)
-        with cache_file.open() as yaml_file:
-            cache = yaml.load(yaml_file.read(), Loader=yaml.FullLoader)
-        if cache is None:
+        cache = self.manager.yaml_manager.load(cache_file, create=True)
+        if not cache:
             cache = {"first_startup_completed": False}
         cache["default_config"] = config_name
-        with cache_file.open("w") as yaml_file:
-            yaml.dump(cache, yaml_file)
+        self.manager.yaml_manager.save(cache_file, cache)
 
-    @staticmethod
-    def transfer_v4_config(old_config_path: Path, new_config_name: str) -> None:
+    def transfer_v4_config(self, old_config_path: Path, new_config_name: str) -> None:
         """Transfers a V4 config into V5 possession."""
         from cyberdrop_dl.config_definitions import AuthSettings, ConfigSettings, GlobalSettings
 
@@ -127,8 +110,7 @@ class TransitionManager:
         new_user_data["Logs"]["log_folder"] = constants.APP_STORAGE / "Configs" / new_config_name / "Logs"
         new_user_data["Sorting"]["sort_folder"] = constants.DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"
 
-        with old_config_path.open() as yaml_file:
-            old_data = yaml.load(yaml_file.read(), Loader=yaml.FullLoader)
+        old_data = self.manager.yaml_manager.load(old_config_path)
         old_data = old_data["Configuration"]
 
         # Auth data transfer
@@ -223,12 +205,9 @@ class TransitionManager:
 
         # Write config
         new_config_path = constants.APP_STORAGE / "Configs" / new_config_name / "settings.yaml"
-        new_config_path.parent.mkdir(parents=True, exist_ok=True)
-        with new_config_path.open("w") as yaml_file:
-            yaml.dump(new_user_data, yaml_file)
         new_auth_path = constants.APP_STORAGE / "Configs" / "authentication.yaml"
-        with new_auth_path.open("w") as yaml_file:
-            yaml.dump(new_auth_data, yaml_file)
         new_global_settings_path = constants.APP_STORAGE / "Configs" / "global_settings.yaml"
-        with new_global_settings_path.open("w") as yaml_file:
-            yaml.dump(new_global_settings_data, yaml_file)
+        new_config_path.parent.mkdir(parents=True, exist_ok=True)
+        self.manager.yaml_manager.save(new_config_path, new_user_data)
+        self.manager.yaml_manager.save(new_auth_path, new_auth_data)
+        self.manager.yaml_manager.save(new_global_settings_path, new_global_settings_data)
