@@ -1,30 +1,31 @@
+from logging import INFO
 from pathlib import Path
 
 from pydantic import BaseModel, ByteSize, NonNegativeInt
 
-from cyberdrop_dl.utils.constants import APP_STORAGE, BROWSERS
+from cyberdrop_dl.utils.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE
 
 from .custom_types import AppriseURL, NonEmptyStr
 
 
 class DownloadOptions(BaseModel):
-    block_download_sub_folders: bool
-    disable_download_attempt_limit: bool
-    disable_file_timestamps: bool
-    include_album_id_in_folder_name: bool
-    include_thread_id_in_folder_name: bool
-    remove_domains_from_folder_names: bool
-    remove_generated_id_from_filenames: bool
-    scrape_single_forum_post: bool
-    separate_posts: bool
-    skip_download_mark_completed: bool
-    skip_referer_seen_before: bool
-    maximum_number_of_children: list[NonNegativeInt]
+    block_download_sub_folders: bool = False
+    disable_download_attempt_limit: bool = False
+    disable_file_timestamps: bool = False
+    include_album_id_in_folder_name: bool = False
+    include_thread_id_in_folder_name: bool = False
+    remove_domains_from_folder_names: bool = False
+    remove_generated_id_from_filenames: bool = False
+    scrape_single_forum_post: bool = False
+    separate_posts: bool = False
+    skip_download_mark_completed: bool = False
+    skip_referer_seen_before: bool = False
+    maximum_number_of_children: list[NonNegativeInt] = []
 
 
 class Files(BaseModel):
-    input_file: Path
-    download_folder: Path
+    input_file: Path = APP_STORAGE / "Configs" / "{config}" / "URLs.txt"
+    download_folder: Path = DOWNLOAD_STORAGE
 
 
 class Logs(BaseModel):
@@ -48,45 +49,45 @@ class FileSizeLimits(BaseModel):
 
 
 class IgnoreOptions(BaseModel):
-    exclude_videos: bool
-    exclude_images: bool
-    exclude_audio: bool
-    exclude_other: bool
-    ignore_coomer_ads: bool
-    skip_hosts: list[NonEmptyStr]
-    only_hosts: list[NonEmptyStr]
+    exclude_videos: bool = False
+    exclude_images: bool = False
+    exclude_audio: bool = False
+    exclude_other: bool = False
+    ignore_coomer_ads: bool = False
+    skip_hosts: list[NonEmptyStr] = []
+    only_hosts: list[NonEmptyStr] = []
 
 
 class RuntimeOptions(BaseModel):
-    ignore_history: bool
-    log_level: int
-    console_log_level: int
-    skip_check_for_partial_files: bool
-    skip_check_for_empty_folders: bool
-    delete_partial_files: bool
-    update_last_forum_post: bool
-    send_unsupported_to_jdownloader: bool
+    ignore_history: bool = False
+    log_level: int = INFO
+    console_log_level: int = 100
+    skip_check_for_partial_files: bool = False
+    skip_check_for_empty_folders: bool = False
+    delete_partial_files: bool = False
+    update_last_forum_post: bool = True
+    send_unsupported_to_jdownloader: bool = False
     jdownloader_download_dir: Path | None
-    jdownloader_autostart: bool
-    jdownloader_whitelist: list[NonEmptyStr]
+    jdownloader_autostart: bool = False
+    jdownloader_whitelist: list[NonEmptyStr] = []
 
 
 class Sorting(BaseModel):
-    sort_downloads: bool
-    sort_folder: Path
-    scan_folder: Path | None
-    sort_cdl_only: bool
-    sort_incremementer_format: NonEmptyStr
-    sorted_audio: NonEmptyStr
-    sorted_image: NonEmptyStr
-    sorted_other: NonEmptyStr
-    sorted_video: NonEmptyStr
+    sort_downloads: bool = False
+    sort_folder: Path = DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"
+    scan_folder: Path | None = None
+    sort_cdl_only: bool = True
+    sort_incremementer_format: NonEmptyStr = " ({i})"
+    sorted_audio: NonEmptyStr = "{sort_dir}/{base_dir}/Audio/{filename}{ext}"
+    sorted_image: NonEmptyStr = "{sort_dir}/{base_dir}/Images/{filename}{ext}"
+    sorted_other: NonEmptyStr = "{sort_dir}/{base_dir}/Other/{filename}{ext}"
+    sorted_video: NonEmptyStr = "{sort_dir}/{base_dir}/Videos/{filename}{ext}"
 
 
 class BrowserCookies(BaseModel):
     browsers: list[BROWSERS]
-    auto_import: bool
-    sites: list[NonEmptyStr]
+    auto_import: bool = False
+    sites: list[NonEmptyStr] = []
 
 
 class ConfigSettings(BaseModel):
