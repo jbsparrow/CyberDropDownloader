@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cyberdrop-dl-patched"
-version = "5.7.2"
+version = "5.7.2.dev10"
 description = "Bulk downloader for multiple file hosts"
 authors = ["Jacob B <admin@script-ware.net>"]
 readme = "README.md"
@@ -35,6 +35,7 @@ apprise = "^1.9.0"
 lz4 = "^4.3.3"
 pycryptodomex = "^3.21.0"
 jeepney =   [{platform = "linux", version = "^0.8.0"},{platform = "bsd", version = "^0.8.0"}]
+aiohttp-client-cache = "^0.12.4"
 
 [tool.poetry.scripts]
 cyberdrop-dl = "cyberdrop_dl.main:main"
