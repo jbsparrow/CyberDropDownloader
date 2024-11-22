@@ -1,35 +1,10 @@
-from enum import IntEnum
 from pathlib import Path
-from typing import Annotated
 
-from pydantic import AfterValidator, AnyUrl, BaseModel, HttpUrl, NonNegativeInt, StringConstraints
-from yarl import URL
+from pydantic import BaseModel, ByteSize, NonNegativeInt
 
-from cyberdrop_dl.utils import constants
+from cyberdrop_dl.utils.constants import APP_STORAGE, BROWSERS
 
-
-def convert_to_yarl(value: AnyUrl) -> URL:
-    return URL(value)
-
-
-HttpURL = Annotated[HttpUrl, AfterValidator(convert_to_yarl)]
-NonEmptyStr = Annotated[str, StringConstraints(min_length=1, strip_whitespace=True)]
-AnyURL = Annotated[AnyUrl, AfterValidator(convert_to_yarl)]
-
-
-class AppriseURL(BaseModel):
-    url: AnyURL
-    tags: set[NonEmptyStr]
-
-    def __init__(self, url: URL | str):
-        actual_url = str(url)
-        tags = set()
-        if not isinstance(url, URL):
-            parts = url.split("://", 1)[0].split("=", 1)
-            if len(parts) == 2:
-                tags = set(parts[0].split(","))
-            actual_url = parts[-1]
-        super().__init__(tags=tags, url=actual_url)
+from .custom_types import AppriseURL, NonEmptyStr
 
 
 class DownloadOptions(BaseModel):
@@ -53,7 +28,7 @@ class Files(BaseModel):
 
 
 class Logs(BaseModel):
-    log_folder: Path = constants.APP_STORAGE / "Configs" / "{config}" / "Logs"
+    log_folder: Path = APP_STORAGE / "Configs" / "{config}" / "Logs"
     webhook_url: AppriseURL | None = None
     main_log_filename: NonEmptyStr = "downloader.log"
     last_forum_post_filename: NonEmptyStr = "Last_Scraped_Forum_Posts.csv"
@@ -64,12 +39,12 @@ class Logs(BaseModel):
 
 
 class FileSizeLimits(BaseModel):
-    maximum_image_size: NonNegativeInt = 0
-    maximum_other_size: NonNegativeInt = 0
-    maximum_video_size: NonNegativeInt = 0
-    minimum_image_size: NonNegativeInt = 0
-    minimum_other_size: NonNegativeInt = 0
-    minimum_video_size: NonNegativeInt = 0
+    maximum_image_size: ByteSize = 0
+    maximum_other_size: ByteSize = 0
+    maximum_video_size: ByteSize = 0
+    minimum_image_size: ByteSize = 0
+    minimum_other_size: ByteSize = 0
+    minimum_video_size: ByteSize = 0
 
 
 class IgnoreOptions(BaseModel):
@@ -82,18 +57,9 @@ class IgnoreOptions(BaseModel):
     only_hosts: list[NonEmptyStr]
 
 
-class LogLevel(IntEnum):
-    CRITICAL = 50
-    ERROR = 40
-    WARNING = 30
-    INFO = 20
-    DEBUG = 10
-    NOTSET = 0
-
-
 class RuntimeOptions(BaseModel):
     ignore_history: bool
-    log_level: LogLevel
+    log_level: int
     console_log_level: int
     skip_check_for_partial_files: bool
     skip_check_for_empty_folders: bool
@@ -102,7 +68,7 @@ class RuntimeOptions(BaseModel):
     send_unsupported_to_jdownloader: bool
     jdownloader_download_dir: Path | None
     jdownloader_autostart: bool
-    jdownloader_whitelist: list[str]
+    jdownloader_whitelist: list[NonEmptyStr]
 
 
 class Sorting(BaseModel):
@@ -118,17 +84,18 @@ class Sorting(BaseModel):
 
 
 class BrowserCookies(BaseModel):
-    browsers: list[str]
+    browsers: list[BROWSERS]
     auto_import: bool
-    sites: list[str]
+    sites: list[NonEmptyStr]
 
 
 class ConfigSettings(BaseModel):
+    browser_cookies: BrowserCookies
     download_options: DownloadOptions
-    files: Files
-    logs: Logs
     file_size_limits: FileSizeLimits
+    files: Files
     ignore_options: IgnoreOptions
+    logs: Logs
     runtime_options: RuntimeOptions
     sorting: Sorting
     browser_cookies: BrowserCookies

@@ -46,9 +46,9 @@ class JDownloader:
 
     def __init__(self, manager: Manager) -> None:
         self.enabled = manager.config_manager.settings_data.runtime_options.send_unsupported_to_jdownloader
-        self.jdownloader_device = manager.config_manager.authentication_data.jdownloader.jdownloader_device
-        self.jdownloader_username = manager.config_manager.authentication_data.jdownloader.jdownloader_username
-        self.jdownloader_password = manager.config_manager.authentication_data.jdownloader.jdownloader_password
+        self.jdownloader_device = manager.config_manager.authentication_data.jdownloader.device
+        self.jdownloader_username = manager.config_manager.authentication_data.jdownloader.username
+        self.jdownloader_password = manager.config_manager.authentication_data.jdownloader.password
         self.jdownloader_download_dir = manager.config_manager.settings_data.runtime_options.jdownloader_download_dir
         self.jdownloader_autostart = manager.config_manager.settings_data.runtime_options.jdownloader_autostart
         if not self.jdownloader_download_dir:

@@ -28,10 +28,8 @@ class RedditCrawler(Crawler):
 
     def __init__(self, manager: Manager, site: str) -> None:
         super().__init__(manager, site, "Reddit")
-        self.reddit_personal_use_script = (
-            self.manager.config_manager.authentication_data.reddit.reddit_personal_use_script
-        )
-        self.reddit_secret = self.manager.config_manager.authentication_data.reddit.reddit_secret
+        self.reddit_personal_use_script = self.manager.config_manager.authentication_data.reddit.personal_use_script
+        self.reddit_secret = self.manager.config_manager.authentication_data.reddit.secret
         self.request_limiter = AsyncLimiter(5, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

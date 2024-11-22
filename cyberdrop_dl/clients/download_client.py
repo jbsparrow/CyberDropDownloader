@@ -96,9 +96,9 @@ class DownloadClient:
         download_headers = copy.deepcopy(self._headers)
         download_headers["Referer"] = str(referer)
         auth_data = self.manager.config_manager.authentication_data
-        if domain == "pixeldrain" and auth_data.pixeldrain.pixeldrain_api_key:
+        if domain == "pixeldrain" and auth_data.pixeldrain.api_key:
             download_headers["Authorization"] = self.manager.download_manager.basic_auth(
-                "Cyberdrop-DL", auth_data.pixeldrain.pixeldrain_api_key
+                "Cyberdrop-DL", auth_data.pixeldrain.api_key
             )
 
     @limiter

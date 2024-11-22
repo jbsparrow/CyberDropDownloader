@@ -158,7 +158,7 @@ class GoFileCrawler(Crawler):
             self.headers["Authorization"] = f"Bearer {self.token}"
             return
 
-        api_token = self.manager.config_manager.authentication_data.gofile.gofile_api_key
+        api_token = self.manager.config_manager.authentication_data.gofile.api_key
         if api_token:
             self.token = api_token
             self.headers["Authorization"] = f"Bearer {self.token}"

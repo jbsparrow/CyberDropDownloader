@@ -287,7 +287,7 @@ def sent_apprise_notifications(manager: Manager) -> None:
     if not apprise_file.is_file():
         return
 
-    from cyberdrop_dl.config_definitions.config_settings import AppriseURL
+    from cyberdrop_dl.config_definitions.custom_types import AppriseURL
 
     with apprise_file.open(encoding="utf8") as file:
         apprise_urls = [AppriseURL(line.strip()) for line in file]

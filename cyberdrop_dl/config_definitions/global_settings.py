@@ -1,16 +1,13 @@
-from typing import Annotated
+from pydantic import BaseModel, NonNegativeInt, PositiveFloat, PositiveInt
 
-from pydantic import BaseModel, NonNegativeInt, PositiveFloat, PositiveInt, StringConstraints
-from yarl import URL
-
-NonEmptyStr = Annotated[str, StringConstraints(min_length=1)]
+from .custom_types import HttpURL, NonEmptyStr
 
 
 class General(BaseModel):
     allow_insecure_connections: bool
     user_agent: NonEmptyStr
-    proxy: URL | None
-    flaresolverr: URL | None
+    proxy: HttpURL | None
+    flaresolverr: HttpURL | None
     max_file_name_length: PositiveInt
     max_folder_name_length: PositiveInt
     required_free_space: PositiveInt

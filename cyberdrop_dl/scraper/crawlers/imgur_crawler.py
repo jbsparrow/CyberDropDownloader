@@ -20,7 +20,7 @@ class ImgurCrawler(Crawler):
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "imgur", "Imgur")
         self.imgur_api = URL("https://api.imgur.com/3/")
-        self.imgur_client_id = self.manager.config_manager.authentication_data.imgur.imgur_client_id
+        self.imgur_client_id = self.manager.config_manager.authentication_data.imgur.client_id
         self.imgur_client_remaining = 12500
         self.headers = {"Authorization": f"Client-ID {self.imgur_client_id}"}
         self.request_limiter = AsyncLimiter(10, 1)

@@ -1,5 +1,5 @@
 import re
-from enum import IntEnum
+from enum import IntEnum, StrEnum, auto
 from pathlib import Path
 
 from rich.text import Text
@@ -48,7 +48,19 @@ STYLE_TO_DIFF_FORMAT_MAP = {
 APP_STORAGE = Path("./AppData")
 DOWNLOAD_STORAGE = Path("./Downloads")
 RESERVED_CONFIG_NAMES = ["all", "default"]
-BROWSERS = ["chrome", "firefox", "safari", "edge", "opera", "brave", "librewolf", "opera_gx", "vivaldi", "chromium"]
+
+
+class BROWSERS(StrEnum):
+    chrome = auto()
+    firefox = auto()
+    safari = auto()
+    edge = auto()
+    opera = auto()
+    brave = auto()
+    librewolf = auto()
+    opera_gx = auto()
+    vivaldi = auto()
+    chromium = auto()
 
 
 # Pypi
