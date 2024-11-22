@@ -22,6 +22,8 @@ Setting this to true will allow the program to connect to websites without ssl (
 
 The user agent is the signature of your browser, it's how it is represented to websites you connect to. You can google "what is my user agent" to see what yours may be.
 
+**Note:** if you use flaresolverr, this value must match with flaresolverr user agent for its cookies to work.
+
 ***
 
 * proxy
@@ -33,8 +35,6 @@ The proxy you want CDL to utilize. Ex. `https://user:pass@ip:port`
 * flaresolverr
 
 The IP for flaresolverr you want CDL to utilize. Ex. `ip:port`
-
-CDL will fill the rest of the URL.
 
 ***
 
@@ -52,7 +52,7 @@ This is the maximum number of characters allowable in a folder name.
 
 * required\_free\_space
 
-This is the amount of free space in gigabytes that the program will stop initiating downloads at.
+This is the amount of free space (in gigabytes) that the program will stop initiating downloads at.
 
 </details>
 
@@ -108,11 +108,12 @@ This is the maximum number of files that can be downloaded from a single domain 
 
 Some domains have internal limits set by the program, such as Bunkrr, CyberFile, etc.
 
+***
 
 * download\_speed\_limit
 
 This is the max rate of downloading in KB for all downloads combined
-Set to  0 or None to disable
+Set to 0 or `null` to disable
 
 
 </details>
@@ -125,6 +126,7 @@ These are options for enable/disable dupe clean up
 ***
 
 * dedupe\_already\_downloaded
+
 Allows files skipped for already existing on the filesystem to be added to the list of files to process for deduping
 
 ***

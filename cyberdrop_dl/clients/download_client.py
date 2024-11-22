@@ -281,21 +281,6 @@ class DownloadClient:
         proceed = True
         skip = False
 
-        if not skip and self.manager.config_manager.settings_data["Ignore_Options"]["skip_hosts"]:
-            skip_hosts = self.manager.config_manager.settings_data["Ignore_Options"]["skip_hosts"]
-            if any(host in media_item.url.host for host in skip_hosts):
-                log(f"Download Skip {media_item.url} due to skip_hosts config", 10)
-                skip = True
-
-        if not skip and self.manager.config_manager.settings_data["Ignore_Options"]["only_hosts"]:
-            only_hosts = self.manager.config_manager.settings_data["Ignore_Options"]["only_hosts"]
-            if not any(host in media_item.url.host for host in only_hosts):
-                log(f"Download Skip {media_item.url} due to only_hosts config", 10)
-                skip = True
-
-        if skip:
-            return proceed, skip
-
         while True:
             if expected_size:
                 file_size_check = self.check_filesize_limits(media_item)

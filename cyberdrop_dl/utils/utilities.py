@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import contextlib
 import os
+import platform
 import re
+import subprocess
 from functools import wraps
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -146,6 +148,10 @@ def remove_file_id(manager: Manager, filename: str, ext: str) -> tuple[str, str]
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
 
+def clear_term():
+    os.system("cls" if os.name == "nt" else "clear")
+
+
 def parse_bytes(size: int) -> tuple[int, str]:
     """Get human repr of bytes as a tuple of (VALUE , UNIT)."""
     for unit in ["B", "KB", "MB", "GB", "TB", "PB", "EB"]:
@@ -232,7 +238,7 @@ def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -
         message = f"A new version of Cyberdrop-DL is available: [cyan]{latest_version}[/cyan]"
         message = Text.from_markup(message)
     else:
-        message = Text("You are currently on the latest version of Cyberdrop-DL")
+        message = Text.from_markup("You are currently on the latest version of Cyberdrop-DL :white_check_mark:")
         level = 20
 
     if call_from_ui:
@@ -244,7 +250,7 @@ def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -
 
 
 def check_prelease_version(current_version: str, releases: list[str]) -> tuple[str, Text]:
-    is_prerelease = next((tag for tag in constants.PRELEASE_TAGS if tag in current_version), False)
+    is_prerelease = next((tag for tag in constants.PRERELEASE_TAGS if tag in current_version), False)
     match = re.match(constants.PRELEASE_VERSION_PATTERN, current_version)
     latest_testing_version = message = None
 
@@ -261,7 +267,7 @@ def check_prelease_version(current_version: str, releases: list[str]) -> tuple[s
             )
         ]
         latest_testing_version = max(rough_matches, key=lambda x: int(re.search(r"(\d+)$", x).group()))  # type: ignore
-        ui_tag = constants.PRELEASE_TAGS.get(test_tag, "Testing").lower()
+        ui_tag = constants.PRERELEASE_TAGS.get(test_tag, "Testing").lower()
 
         if current_version != latest_testing_version:
             message = f"A new {ui_tag} version of Cyberdrop-DL is available: "
@@ -368,3 +374,65 @@ async def send_webhook_message(manager: Manager) -> None:
 
     async with ClientSession() as session, session.post(url, data=form) as response:
         await response.text()
+
+
+def open_in_text_editor(file_path: Path) -> bool:
+    """Opens file in OS text editor."""
+    using_desktop_enviroment = (
+        any(var in os.environ for var in ("DISPLAY", "WAYLAND_DISPLAY")) and "SSH_CONNECTION" not in os.environ
+    )
+    default_editor = os.environ.get("EDITOR")
+    if platform.system() == "Darwin":
+        subprocess.Popen(["open", "-a", "TextEdit", file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    elif platform.system() == "Windows":
+        subprocess.Popen(["notepad.exe", file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    elif using_desktop_enviroment and set_default_app_if_none(file_path):
+        subprocess.Popen(["xdg-open", file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    elif default_editor:
+        subprocess.call([default_editor, file_path])
+
+    elif subprocess.call(["which", "micro"], stdout=subprocess.DEVNULL) == 0:
+        subprocess.call(["micro", file_path])
+
+    elif subprocess.call(["which", "nano"], stdout=subprocess.DEVNULL) == 0:
+        subprocess.call(["nano", file_path])
+
+    elif subprocess.call(["which", "vim"], stdout=subprocess.DEVNULL) == 0:
+        subprocess.call(["vim", file_path])
+
+    else:
+        raise ValueError
+
+
+def set_default_app_if_none(file_path: Path) -> bool:
+    mimetype = subprocess.run(
+        ["xdg-mime", "query", "filetype", str(file_path)],
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout.strip()
+    if not mimetype:
+        return False
+
+    default_app = subprocess.run(
+        ["xdg-mime", "query", "default", mimetype],
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout.strip()
+    if default_app:
+        return True
+
+    text_default = subprocess.run(
+        ["xdg-mime", "query", "default", "text/plain"],
+        capture_output=True,
+        text=True,
+        check=False,
+    ).stdout.strip()
+    if text_default:
+        return subprocess.call(["xdg-mime", "default", text_default, mimetype]) == 0
+
+    return False
