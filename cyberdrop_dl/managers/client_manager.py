@@ -184,10 +184,7 @@ class Flaresolverr:
             or client_manager.manager.config_manager.global_settings_data.general.flaresolverr
         )
         self.enabled = bool(self.flaresolverr_host)
-        if "http" not in self.flaresolverr_host:
-            self.flaresolverr_host = f"http://{self.flaresolverr_host}"
         self.session_id = None
-        self.flaresolverr_host = URL(self.flaresolverr_host)
 
     async def _request(
         self,

@@ -96,8 +96,3 @@ class AppriseURLModel(FrozenModel):
             url_obj = str(value)
         url = AppriseURL(url_obj, validate=False)
         return {"url": url._url, "tags": tags or url.tags}
-
-
-test = AppriseURL(
-    "attach_logs=https://discord.com/api/webhooks/1301181812814643282/j_ESBvkDNzJt0Io7FLdANkXKUjBrdx-lUdoCs05MuMTvPXpzUq6KrE4M5tcdfaq5p95t"
-)

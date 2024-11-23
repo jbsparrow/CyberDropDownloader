@@ -1,65 +1,65 @@
-from pydantic import BaseModel, Field, SecretStr
+from pydantic import BaseModel, Field
 
 from .custom_types import AliasModel
 
 
 class ForumAuth(BaseModel):
-    celebforum_xf_user_cookie: SecretStr = ""
-    celebforum_username: SecretStr = ""
-    celebforum_password: SecretStr = ""
-    f95zone_xf_user_cookie: SecretStr = ""
-    f95zone_username: SecretStr = ""
-    f95zone_password: SecretStr = ""
-    leakedmodels_xf_user_cookie: SecretStr = ""
-    leakedmodels_username: SecretStr = ""
-    leakedmodels_password: SecretStr = ""
-    nudostar_xf_user_cookie: SecretStr = ""
-    nudostar_username: SecretStr = ""
-    nudostar_password: SecretStr = ""
-    simpcity_xf_user_cookie: SecretStr = ""
-    simpcity_username: SecretStr = ""
-    simpcity_password: SecretStr = ""
-    socialmediagirls_xf_user_cookie: SecretStr = ""
-    socialmediagirls_username: SecretStr = ""
-    socialmediagirls_password: SecretStr = ""
-    xbunker_xf_user_cookie: SecretStr = ""
-    xbunker_username: SecretStr = ""
-    xbunker_password: SecretStr = ""
+    celebforum_xf_user_cookie: str = ""
+    celebforum_username: str = ""
+    celebforum_password: str = ""
+    f95zone_xf_user_cookie: str = ""
+    f95zone_username: str = ""
+    f95zone_password: str = ""
+    leakedmodels_xf_user_cookie: str = ""
+    leakedmodels_username: str = ""
+    leakedmodels_password: str = ""
+    nudostar_xf_user_cookie: str = ""
+    nudostar_username: str = ""
+    nudostar_password: str = ""
+    simpcity_xf_user_cookie: str = ""
+    simpcity_username: str = ""
+    simpcity_password: str = ""
+    socialmediagirls_xf_user_cookie: str = ""
+    socialmediagirls_username: str = ""
+    socialmediagirls_password: str = ""
+    xbunker_xf_user_cookie: str = ""
+    xbunker_username: str = ""
+    xbunker_password: str = ""
 
 
 class CoomerAuth(BaseModel):
-    session: SecretStr = ""
+    session: str = ""
 
 
 class XXXBunkerAuth(BaseModel):
-    PHPSESSID: SecretStr = ""
+    PHPSESSID: str = ""
 
 
 class ImgurAuth(BaseModel):
-    client_id: SecretStr = ""
+    client_id: str = ""
 
 
 class JDownloaderAuth(AliasModel):
-    username: SecretStr = Field("", validation_alias="jdownloader_username")
-    password: SecretStr = Field("", validation_alias="jdownloader_password")
-    device: SecretStr = Field("", validation_alias="jdownloader_device")
+    username: str = Field("", validation_alias="jdownloader_username")
+    password: str = Field("", validation_alias="jdownloader_password")
+    device: str = Field("", validation_alias="jdownloader_device")
 
 
 class RedditAuth(BaseModel):
-    personal_use_script: SecretStr = ""
-    secret: SecretStr = ""
+    personal_use_script: str = ""
+    secret: str = ""
 
 
 class GoFileAuth(AliasModel):
-    api_key: SecretStr = Field("", validation_alias="gofile_api_key")
+    api_key: str = Field("", validation_alias="gofile_api_key")
 
 
 class PixeldrainAuth(AliasModel):
-    api_key: SecretStr = Field("", validation_alias="pixeldrain_api_key")
+    api_key: str = Field("", validation_alias="pixeldrain_api_key")
 
 
 class RealDebridAuth(AliasModel):
-    api_key: SecretStr = Field("", validation_alias="realdebrid_api_key")
+    api_key: str = Field("", validation_alias="realdebrid_api_key")
 
 
 class AuthSettings(AliasModel):
