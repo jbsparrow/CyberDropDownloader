@@ -1,4 +1,6 @@
-from pydantic import BaseModel, SecretStr
+from pydantic import BaseModel, Field, SecretStr
+
+from .custom_types import AliasModel
 
 
 class ForumAuth(BaseModel):
@@ -37,14 +39,10 @@ class ImgurAuth(BaseModel):
     client_id: SecretStr = ""
 
 
-class JDownloaderAuth(BaseModel):
-    username: SecretStr = ""
-    password: SecretStr = ""
-    device: SecretStr = ""
-
-
-class ApiKeyAuth(BaseModel):
-    api_key: SecretStr = ""
+class JDownloaderAuth(AliasModel):
+    username: SecretStr = Field("", validation_alias="jdownloader_username")
+    password: SecretStr = Field("", validation_alias="jdownloader_password")
+    device: SecretStr = Field("", validation_alias="jdownloader_device")
 
 
 class RedditAuth(BaseModel):
@@ -52,13 +50,25 @@ class RedditAuth(BaseModel):
     secret: SecretStr = ""
 
 
-class AuthSettings(BaseModel):
-    coomer: CoomerAuth
-    forums: ForumAuth
-    gofile: ApiKeyAuth
-    imgur: ImgurAuth
-    jdownloader: JDownloaderAuth
-    pixeldrain: ApiKeyAuth
-    realdebrid: ApiKeyAuth
-    reddit: RedditAuth
-    xxxbunker: XXXBunkerAuth
+class GoFileAuth(AliasModel):
+    api_key: SecretStr = Field("", validation_alias="gofile_api_key")
+
+
+class PixeldrainAuth(AliasModel):
+    api_key: SecretStr = Field("", validation_alias="pixeldrain_api_key")
+
+
+class RealDebridAuth(AliasModel):
+    api_key: SecretStr = Field("", validation_alias="realdebrid_api_key")
+
+
+class AuthSettings(AliasModel):
+    coomer: CoomerAuth = Field(validation_alias="Coomer", default=CoomerAuth())
+    forums: ForumAuth = Field(validation_alias="Forums", default=ForumAuth())
+    gofile: GoFileAuth = Field(validation_alias="GoFile", default=GoFileAuth())
+    imgur: ImgurAuth = Field(validation_alias="Imgur", default=ImgurAuth())
+    jdownloader: JDownloaderAuth = Field(validation_alias="JDownloader", default=JDownloaderAuth())
+    pixeldrain: PixeldrainAuth = Field(validation_alias="PixelDrain", default=PixeldrainAuth())
+    realdebrid: RealDebridAuth = Field(validation_alias="RealDebrid", default=RealDebridAuth())
+    reddit: RedditAuth = Field(validation_alias="Reddit", default=RedditAuth())
+    xxxbunker: XXXBunkerAuth = Field(validation_alias="XXXBunker", default=XXXBunkerAuth())

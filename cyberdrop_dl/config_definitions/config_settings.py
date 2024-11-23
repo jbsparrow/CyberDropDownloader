@@ -1,11 +1,11 @@
 from logging import INFO
 from pathlib import Path
 
-from pydantic import BaseModel, ByteSize, NonNegativeInt
+from pydantic import BaseModel, ByteSize, Field, NonNegativeInt, field_serializer
 
 from cyberdrop_dl.utils.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE
 
-from .custom_types import AppriseURL, NonEmptyStr
+from .custom_types import AliasModel, AppriseURL, NonEmptyStr
 
 
 class DownloadOptions(BaseModel):
@@ -40,12 +40,25 @@ class Logs(BaseModel):
 
 
 class FileSizeLimits(BaseModel):
-    maximum_image_size: ByteSize = 0
-    maximum_other_size: ByteSize = 0
-    maximum_video_size: ByteSize = 0
-    minimum_image_size: ByteSize = 0
-    minimum_other_size: ByteSize = 0
-    minimum_video_size: ByteSize = 0
+    maximum_image_size: ByteSize = ByteSize(0)
+    maximum_other_size: ByteSize = ByteSize(0)
+    maximum_video_size: ByteSize = ByteSize(0)
+    minimum_image_size: ByteSize = ByteSize(0)
+    minimum_other_size: ByteSize = ByteSize(0)
+    minimum_video_size: ByteSize = ByteSize(0)
+
+    @field_serializer(
+        "maximum_image_size",
+        "maximum_other_size",
+        "maximum_video_size",
+        "minimum_image_size",
+        "minimum_other_size",
+        "minimum_video_size",
+    )
+    def human_readable(self, value: ByteSize | int) -> str:
+        if not isinstance(value, ByteSize):
+            value = ByteSize(value)
+        return value.human_readable(decimal=True)
 
 
 class IgnoreOptions(BaseModel):
@@ -67,7 +80,7 @@ class RuntimeOptions(BaseModel):
     delete_partial_files: bool = False
     update_last_forum_post: bool = True
     send_unsupported_to_jdownloader: bool = False
-    jdownloader_download_dir: Path | None
+    jdownloader_download_dir: Path | None = None
     jdownloader_autostart: bool = False
     jdownloader_whitelist: list[NonEmptyStr] = []
 
@@ -85,26 +98,17 @@ class Sorting(BaseModel):
 
 
 class BrowserCookies(BaseModel):
-    browsers: list[BROWSERS]
+    browsers: list[BROWSERS] = [BROWSERS.chrome]
     auto_import: bool = False
     sites: list[NonEmptyStr] = []
 
 
-class ConfigSettings(BaseModel):
-    browser_cookies: BrowserCookies
-    download_options: DownloadOptions
-    file_size_limits: FileSizeLimits
-    files: Files
-    ignore_options: IgnoreOptions
-    logs: Logs
-    runtime_options: RuntimeOptions
-    sorting: Sorting
-    browser_cookies: BrowserCookies
-
-Dupe_Cleanup_Options = {
-        "hashing": "IN_PLACE",
-        "auto_dedupe": True,
-        "add_md5_hash": False,
-        "add_sha256_hash": False,
-        "send_deleted_to_trash": True,
-    },
+class ConfigSettings(AliasModel):
+    browser_cookies: BrowserCookies = Field(validation_alias="Browser_Cookies", default=BrowserCookies())
+    download_options: DownloadOptions = Field(validation_alias="Download_Options", default=DownloadOptions())
+    file_size_limits: FileSizeLimits = Field(validation_alias="File_Size_Limits", default=FileSizeLimits())
+    files: Files = Field(validation_alias="Files", default=Files())
+    ignore_options: IgnoreOptions = Field(validation_alias="Ignore_Options", default=IgnoreOptions())
+    logs: Logs = Field(validation_alias="Logs", default=Logs())
+    runtime_options: RuntimeOptions = Field(validation_alias="Runtime_Options", default=RuntimeOptions())
+    sorting: Sorting = Field(validation_alias="Sorting", default=Sorting())
