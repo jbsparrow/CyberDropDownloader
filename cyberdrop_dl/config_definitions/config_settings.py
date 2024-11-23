@@ -5,7 +5,7 @@ from pydantic import BaseModel, ByteSize, Field, NonNegativeInt, field_serialize
 
 from cyberdrop_dl.utils.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE
 
-from .custom_types import AliasModel, AppriseURL, NonEmptyStr
+from .custom_types import AliasModel, AppriseURLModel, NonEmptyStr
 
 
 class DownloadOptions(BaseModel):
@@ -28,9 +28,9 @@ class Files(BaseModel):
     download_folder: Path = DOWNLOAD_STORAGE
 
 
-class Logs(BaseModel):
+class Logs(AliasModel):
     log_folder: Path = APP_STORAGE / "Configs" / "{config}" / "Logs"
-    webhook_url: AppriseURL | None = None
+    webhook: AppriseURLModel | None = Field(validation_alias="webhook_url", default=None)
     main_log_filename: NonEmptyStr = "downloader.log"
     last_forum_post_filename: NonEmptyStr = "Last_Scraped_Forum_Posts.csv"
     unsupported_urls_filename: NonEmptyStr = "Unsupported_URLs.csv"
@@ -47,14 +47,7 @@ class FileSizeLimits(BaseModel):
     minimum_other_size: ByteSize = ByteSize(0)
     minimum_video_size: ByteSize = ByteSize(0)
 
-    @field_serializer(
-        "maximum_image_size",
-        "maximum_other_size",
-        "maximum_video_size",
-        "minimum_image_size",
-        "minimum_other_size",
-        "minimum_video_size",
-    )
+    @field_serializer("*")
     def human_readable(self, value: ByteSize | int) -> str:
         if not isinstance(value, ByteSize):
             value = ByteSize(value)

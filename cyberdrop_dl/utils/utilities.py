@@ -336,19 +336,19 @@ def sent_apprise_notifications(manager: Manager) -> None:
 
 async def send_webhook_message(manager: Manager) -> None:
     """Outputs the stats to a code block for webhook messages."""
-    webhook_url = manager.config_manager.settings_data.logs.webhook_url
+    webhook = manager.config_manager.settings_data.logs.webhook
 
-    if not webhook_url:
+    if not webhook:
         return
 
-    url = webhook_url.url
+    url = webhook.url.get_secret_value()
     text: Text = constants.LOG_OUTPUT_TEXT
     plain_text = parse_rich_text_by_style(text, constants.STYLE_TO_DIFF_FORMAT_MAP)
     main_log = manager.path_manager.main_log
 
     form = FormData()
 
-    if "attach_logs" in webhook_url.tags and main_log.is_file():
+    if "attach_logs" in webhook.tags and main_log.is_file():
         if main_log.stat().st_size <= 25 * 1024 * 1024:
             async with aiofiles.open(main_log, "rb") as f:
                 form.add_field("file", await f.read(), filename=main_log.name)

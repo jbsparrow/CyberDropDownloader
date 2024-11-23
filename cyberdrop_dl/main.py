@@ -63,7 +63,7 @@ def startup() -> Manager:
         class YamlFiles:
             GlobalSettings: Path = manager.config_manager.global_settings
             ConfigSettings: Path = manager.config_manager.settings
-            AuthSetting: Path = manager.config_manager.authentication_settings
+            AuthSettings: Path = manager.config_manager.authentication_settings
 
         error_count = e.error_count()
         source: Path = getattr(YamlFiles, e.title, None)
