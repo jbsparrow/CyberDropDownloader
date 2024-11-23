@@ -5,7 +5,7 @@ from pydantic import BaseModel, ByteSize, Field, NonNegativeInt, field_serialize
 
 from cyberdrop_dl.utils.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE
 
-from .custom_types import AliasModel, AppriseURLModel, NonEmptyStr
+from .custom_types import AliasModel, HttpAppriseURLModel, NonEmptyStr
 
 
 class DownloadOptions(BaseModel):
@@ -30,7 +30,7 @@ class Files(BaseModel):
 
 class Logs(AliasModel):
     log_folder: Path = APP_STORAGE / "Configs" / "{config}" / "Logs"
-    webhook: AppriseURLModel | None = Field(validation_alias="webhook_url", default=None)
+    webhook: HttpAppriseURLModel | None = Field(validation_alias="webhook_url", default=None)
     main_log_filename: NonEmptyStr = "downloader.log"
     last_forum_post_filename: NonEmptyStr = "Last_Scraped_Forum_Posts.csv"
     unsupported_urls_filename: NonEmptyStr = "Unsupported_URLs.csv"
