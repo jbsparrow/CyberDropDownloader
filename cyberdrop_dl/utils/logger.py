@@ -11,9 +11,12 @@ logger = logging.getLogger("cyberdrop_dl")
 logger_debug = logging.getLogger("cyberdrop_dl_debug")
 console = Console()
 
+ERROR_PREFIX = "\n[bold red]ERROR: [/bold red]"
 
-def print_to_console(text: Text | str) -> None:
-    console.print(text)
+
+def print_to_console(text: Text | str, *, error: bool = False, **kwargs) -> None:
+    msg = (ERROR_PREFIX + text) if error else text
+    console.print(msg, **kwargs)
 
 
 def log(message: Exception | str, level: int = 10, *, sleep: int | None = None, **kwargs) -> None:
