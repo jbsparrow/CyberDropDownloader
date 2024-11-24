@@ -33,7 +33,6 @@ if TYPE_CHECKING:
 class Manager:
     def __init__(self) -> None:
         self.args_manager: ArgsManager = ArgsManager()
-        self.yaml_manager: YamlManager = YamlManager()
         self.cache_manager: CacheManager = CacheManager(self)
         self.path_manager: PathManager = field(init=False)
         self.config_manager: ConfigManager = field(init=False)

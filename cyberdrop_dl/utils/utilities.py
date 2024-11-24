@@ -13,6 +13,7 @@ import aiofiles
 import apprise
 import rich
 from aiohttp import ClientSession, FormData
+from pydantic import ValidationError
 from rich.text import Text
 from yarl import URL
 
@@ -20,6 +21,7 @@ from cyberdrop_dl.clients.errors import CDLBaseError, NoExtensionError
 from cyberdrop_dl.managers.real_debrid.errors import RealDebridError
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.logger import log, log_with_color
+from cyberdrop_dl.utils.yaml import handle_validation_error
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -289,8 +291,13 @@ def sent_apprise_notifications(manager: Manager) -> None:
 
     from cyberdrop_dl.config_definitions.custom_types import AppriseURL
 
-    with apprise_file.open(encoding="utf8") as file:
-        apprise_urls = [AppriseURL(line.strip()) for line in file]
+    try:
+        with apprise_file.open(encoding="utf8") as file:
+            apprise_urls = [AppriseURL(line.strip()) for line in file]
+    except ValidationError as e:
+        sources = {"AppriseURLModel": apprise_file}
+        handle_validation_error(e, sources)
+        return
 
     if not apprise_urls:
         return

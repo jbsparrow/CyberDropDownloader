@@ -7,7 +7,7 @@ import os
 import sys
 from functools import wraps
 from pathlib import Path
-from textwrap import dedent, indent
+from textwrap import indent
 from time import perf_counter
 from typing import TYPE_CHECKING
 
@@ -33,6 +33,7 @@ from cyberdrop_dl.utils.utilities import (
     send_webhook_message,
     sent_apprise_notifications,
 )
+from cyberdrop_dl.utils.yaml import handle_validation_error
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -56,25 +57,12 @@ def startup() -> Manager:
         sys.exit(1)
 
     except ValidationError as e:
-        footer = """
-        Read the documentation for guidance on how to resolve this error: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options
-        Please note, this is not a bug. Do not open issues related to this"""
-
-        class YamlFiles:
-            GlobalSettings: Path = manager.config_manager.global_settings
-            ConfigSettings: Path = manager.config_manager.settings
-            AuthSettings: Path = manager.config_manager.authentication_settings
-
-        error_count = e.error_count()
-        source: Path = getattr(YamlFiles, e.title, None)
-        source = f"from {source.resolve()}" if source else ""
-        msg = f"found {error_count} error{'s' if error_count>1 else ''} parsing {e.title} {source}"
-        print_to_console(msg, error=True)
-        for error in e.errors(include_url=False):
-            msg = f"\nValue of '{'.'.join(error['loc'])}' is invalid:"
-            print_to_console(msg, markup=False)
-            print_to_console(f"  {error['msg']} (input_value='{error['input']}')", style="bold red")
-        print_to_console(dedent(footer))
+        sources = {
+            "GlobalSettings": manager.config_manager.global_settings,
+            "ConfigSettings": manager.config_manager.settings,
+            "AuthSettings": manager.config_manager.authentication_settings,
+        }
+        handle_validation_error(e, sources)
         sys.exit(1)
 
     except KeyboardInterrupt:

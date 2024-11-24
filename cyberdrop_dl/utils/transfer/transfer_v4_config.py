@@ -2,6 +2,7 @@ from pathlib import Path
 
 from cyberdrop_dl.config_definitions import AuthSettings, ConfigSettings, GlobalSettings
 from cyberdrop_dl.managers.manager import Manager
+from cyberdrop_dl.utils import yaml
 
 
 def transfer_v4_config(manager: Manager, new_config_name: str, old_config_path: Path) -> None:
@@ -9,7 +10,7 @@ def transfer_v4_config(manager: Manager, new_config_name: str, old_config_path: 
     new_auth_data = AuthSettings().model_dump()
     new_user_data = ConfigSettings().model_dump()
     new_global_data = GlobalSettings().model_dump()
-    old_data = manager.yaml_manager.load(old_config_path)
+    old_data = yaml.load(old_config_path)
     old_data = old_data["Configuration"]
 
     from cyberdrop_dl.managers.path_manager import constants

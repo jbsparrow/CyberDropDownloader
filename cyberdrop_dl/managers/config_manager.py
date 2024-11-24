@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from cyberdrop_dl.config_definitions import AuthSettings, ConfigSettings, GlobalSettings
 from cyberdrop_dl.managers.log_manager import LogManager
+from cyberdrop_dl.utils import yaml
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -56,13 +57,11 @@ class ConfigManager:
     def _load_authentication_config(self) -> None:
         """Verifies the authentication config file and creates it if it doesn't exist."""
         if self.authentication_settings.is_file():
-            self.authentication_data = AuthSettings.model_validate(
-                self.manager.yaml_manager.load(self.authentication_settings)
-            )
+            self.authentication_data = AuthSettings.model_validate(yaml.load(self.authentication_settings))
             return
 
         self.authentication_data = AuthSettings()
-        self.manager.yaml_manager.save(self.authentication_settings, self.authentication_data)
+        yaml.save(self.authentication_settings, self.authentication_data)
 
     def _load_settings_config(self) -> None:
         """Verifies the settings config file and creates it if it doesn't exist."""
@@ -71,7 +70,7 @@ class ConfigManager:
             self.loaded_config = "CLI-Arg Specified"
 
         if self.settings.is_file():
-            self.settings_data = ConfigSettings.model_validate(self.manager.yaml_manager.load(self.settings))
+            self.settings_data = ConfigSettings.model_validate(yaml.load(self.settings))
             return
 
         from cyberdrop_dl.utils import constants
@@ -81,35 +80,33 @@ class ConfigManager:
         self.settings_data.files.download_folder = constants.DOWNLOAD_STORAGE / "Cyberdrop-DL Downloads"
         self.settings_data.logs.log_folder = constants.APP_STORAGE / "Configs" / self.loaded_config / "Logs"
         self.settings_data.sorting.sort_folder = constants.DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"
-        self.manager.yaml_manager.save(self.settings, self.settings_data)
+        yaml.save(self.settings, self.settings_data)
 
     def _load_global_settings_config(self) -> None:
         """Verifies the global settings config file and creates it if it doesn't exist."""
         if self.global_settings.is_file():
-            self.global_settings_data = GlobalSettings.model_validate(
-                self.manager.yaml_manager.load(self.global_settings)
-            )
+            self.global_settings_data = GlobalSettings.model_validate(yaml.load(self.global_settings))
             return
         self.global_settings_data = GlobalSettings()
-        self.manager.yaml_manager.save(self.global_settings, self.global_settings_data)
+        yaml.save(self.global_settings, self.global_settings_data)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     def create_new_config(self, new_settings: Path, settings_data: ConfigSettings) -> None:
         """Creates a new settings config file."""
-        self.manager.yaml_manager.save(new_settings, settings_data)
+        yaml.save(new_settings, settings_data)
 
     def write_updated_authentication_config(self) -> None:
         """Write updated authentication data."""
-        self.manager.yaml_manager.save(self.authentication_settings, self.authentication_data)
+        yaml.save(self.authentication_settings, self.authentication_data)
 
     def write_updated_settings_config(self) -> None:
         """Write updated settings data."""
-        self.manager.yaml_manager.save(self.settings, self.settings_data)
+        yaml.save(self.settings, self.settings_data)
 
     def write_updated_global_settings_config(self) -> None:
         """Write updated global settings data."""
-        self.manager.yaml_manager.save(self.global_settings, self.global_settings_data)
+        yaml.save(self.global_settings, self.global_settings_data)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
