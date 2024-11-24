@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import contextlib
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import aiohttp
 import asyncpraw
@@ -24,8 +24,10 @@ if TYPE_CHECKING:
 
 
 class RedditCrawler(Crawler):
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "reddit", "Reddit")
+    SUPPORTED_SITES: ClassVar[dict[str, list]] = {"reddit": ["reddit", "redd.it"]}
+
+    def __init__(self, manager: Manager, site: str) -> None:
+        super().__init__(manager, site, "Reddit")
         self.reddit_personal_use_script = self.manager.config_manager.authentication_data["Reddit"][
             "reddit_personal_use_script"
         ]
