@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import field
+from enum import StrEnum, auto
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -11,11 +12,17 @@ if TYPE_CHECKING:
     from yarl import URL
 
 
-FORUM = 0
-FORUM_POST = 1
-FILE_HOST_PROFILE = 2
-FILE_HOST_ALBUM = 3
-SCRAPE_ITEM_TYPES = [FORUM, FORUM_POST, FILE_HOST_PROFILE, FILE_HOST_ALBUM]
+class ScrapeItemType(StrEnum):
+    FORUM = auto()
+    FORUM_POST = auto()
+    FILE_HOST_PROFILE = auto()
+    FILE_HOST_ALBUM = auto()
+
+
+FORUM = ScrapeItemType.FORUM
+FORUM_POST = ScrapeItemType.FORUM_POST
+FILE_HOST_PROFILE = ScrapeItemType.FILE_HOST_PROFILE
+FILE_HOST_ALBUM = ScrapeItemType.FILE_HOST_ALBUM
 
 
 class MediaItem:
