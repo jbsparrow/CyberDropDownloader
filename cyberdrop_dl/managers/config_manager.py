@@ -56,43 +56,54 @@ class ConfigManager:
 
     def _load_authentication_config(self) -> None:
         """Verifies the authentication config file and creates it if it doesn't exist."""
+        posible_fields = AuthSettings.model_fields.keys()
         if self.authentication_settings.is_file():
             self.authentication_data = AuthSettings.model_validate(yaml.load(self.authentication_settings))
-            return
+            if posible_fields == self.authentication_data.model_fields_set:
+                return
 
-        self.authentication_data = AuthSettings()
+        else:
+            self.authentication_data = AuthSettings()
+
         yaml.save(self.authentication_settings, self.authentication_data)
 
     def _load_settings_config(self) -> None:
         """Verifies the settings config file and creates it if it doesn't exist."""
+        posible_fields = ConfigSettings.model_fields.keys()
         if self.manager.args_manager.config_file:
             self.settings = Path(self.manager.args_manager.config_file)
             self.loaded_config = "CLI-Arg Specified"
 
         if self.settings.is_file():
             self.settings_data = ConfigSettings.model_validate(yaml.load(self.settings))
-            return
+            if posible_fields == self.settings_data.model_fields_set:
+                return
+        else:
+            from cyberdrop_dl.utils import constants
 
-        from cyberdrop_dl.utils import constants
+            self.settings_data = ConfigSettings()
+            self.settings_data.files.input_file = constants.APP_STORAGE / "Configs" / self.loaded_config / "URLs.txt"
+            self.settings_data.files.download_folder = constants.DOWNLOAD_STORAGE / "Cyberdrop-DL Downloads"
+            self.settings_data.logs.log_folder = constants.APP_STORAGE / "Configs" / self.loaded_config / "Logs"
+            self.settings_data.sorting.sort_folder = constants.DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"
 
-        self.settings_data = ConfigSettings()
-        self.settings_data.files.input_file = constants.APP_STORAGE / "Configs" / self.loaded_config / "URLs.txt"
-        self.settings_data.files.download_folder = constants.DOWNLOAD_STORAGE / "Cyberdrop-DL Downloads"
-        self.settings_data.logs.log_folder = constants.APP_STORAGE / "Configs" / self.loaded_config / "Logs"
-        self.settings_data.sorting.sort_folder = constants.DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"
         yaml.save(self.settings, self.settings_data)
 
     def _load_global_settings_config(self) -> None:
         """Verifies the global settings config file and creates it if it doesn't exist."""
+        posible_fields = ConfigSettings.model_fields.keys()
         if self.global_settings.is_file():
             self.global_settings_data = GlobalSettings.model_validate(yaml.load(self.global_settings))
-            return
-        self.global_settings_data = GlobalSettings()
+            if posible_fields == self.global_settings_data.model_fields_set:
+                return
+        else:
+            self.global_settings_data = GlobalSettings()
+
         yaml.save(self.global_settings, self.global_settings_data)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    def create_new_config(self, new_settings: Path, settings_data: ConfigSettings) -> None:
+    def save_as_new_config(self, new_settings: Path, settings_data: ConfigSettings) -> None:
         """Creates a new settings config file."""
         yaml.save(new_settings, settings_data)
 
