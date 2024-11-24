@@ -223,16 +223,14 @@ class ScrapeMapper:
 
     @staticmethod
     def create_item_from_link(link: URL) -> ScrapeItem:
-        item = ScrapeItem(url=link, parent_title="")
-        item.completed_at = None
-        item.created_at = None
+        item = ScrapeItem(url=link)
         return item
 
     @staticmethod
     def create_item_from_entry(entry: list) -> ScrapeItem:
-        link = URL(entry[0])
+        url = URL(entry[0])
         retry_path = Path(entry[1])
-        scrape_item = ScrapeItem(link, parent_title="", part_of_album=True, retry=True, retry_path=retry_path)
+        scrape_item = ScrapeItem(url=url, part_of_album=True, retry=True, retry_path=retry_path)
         completed_at = entry[2]
         created_at = entry[3]
         if not isinstance(scrape_item.url, URL):

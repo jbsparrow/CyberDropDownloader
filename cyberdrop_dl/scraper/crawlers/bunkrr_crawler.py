@@ -87,6 +87,15 @@ class BunkrrCrawler(Crawler):
                 link = URL("https://" + scrape_item.url.host + link)
             link = URL(link)
             link = self.get_stream_link(link)
+            new_scrape_item = self.create_scrape_item(
+                scrape_item,
+                link,
+                "",
+                True,
+                album_id,
+                date,
+                add_parent=scrape_item.url,
+            )
 
             # Try to get final file URL
             valid_extensions = FILE_FORMATS["Images"] | FILE_FORMATS["Videos"]
@@ -104,24 +113,12 @@ class BunkrrCrawler(Crawler):
                     msg = "No image found, reverting to parent"
                     raise FileNotFoundError(msg)
 
-                new_scrape_item = self.create_scrape_item(
-                    scrape_item,
-                    link,
-                    "",
-                    True,
-                    album_id,
-                    date,
-                    add_parent=scrape_item.url,
-                )
-
                 filename, ext = get_filename_and_ext(src.name)
                 if not self.check_album_results(src, results):
                     await self.handle_file(src, new_scrape_item, filename, ext)
 
             except FileNotFoundError:
-                self.manager.task_group.create_task(
-                    self.run(ScrapeItem(link, scrape_item.parent_title, True, album_id, date)),
-                )
+                self.manager.task_group.create_task(self.run(new_scrape_item))
 
             scrape_item.children += 1
             if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
