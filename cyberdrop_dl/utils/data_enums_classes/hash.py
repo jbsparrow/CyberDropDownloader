@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import IntEnum
 
 
-class Hashing(Enum):
+class Hashing(IntEnum):
     OFF = 0
     IN_PLACE = 1
     POST_DOWNLOAD = 2
@@ -13,5 +13,3 @@ class Hashing(Enum):
         except KeyError:
             return cls.OFF
 
-    def __eq__(self, value):
-        return self.value == value or self.name == value or super().__eq__(value)

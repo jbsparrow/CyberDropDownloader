@@ -185,8 +185,7 @@ class Manager:
         print_settings["Logs"]["webhook_url"] = bool(print_settings["Logs"]["webhook_url"])
         print_settings["Sorting"]["sort_folder"] = str(print_settings["Sorting"]["sort_folder"])
         print_settings["Sorting"]["scan_folder"] = str(print_settings["Sorting"]["scan_folder"]) or ""
-        print_settings["Dupe_Cleanup_Options"]["hashing"] = print_settings["Dupe_Cleanup_Options"]["hashing"].value
-        print_settings["Dupe_Cleanup_Options"]["dedupe"] = print_settings["Dupe_Cleanup_Options"]["dedupe"].value
+        print_settings["Dupe_Cleanup_Options"]["hashing"] = print_settings["Dupe_Cleanup_Options"]["hashing"].name
 
         log(f"Starting Cyberdrop-DL Process - Config: {self.config_manager.loaded_config}", 10)
         log(f"Running version {__version__}", 10)
