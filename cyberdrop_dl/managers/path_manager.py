@@ -9,7 +9,7 @@ from cyberdrop_dl.utils import constants
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
 
 if constants.DEBUG_VAR and Path.cwd().name == "cyberdrop_dl":

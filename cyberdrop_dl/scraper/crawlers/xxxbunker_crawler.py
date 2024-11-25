@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 DATE_PATTERN = re.compile(r"(\d+)\s*(weeks?|days?|hours?|minutes?|seconds?)", re.IGNORECASE)
 MIN_RATE_LIMIT = 4  # per minute

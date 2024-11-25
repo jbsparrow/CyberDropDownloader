@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     import aiosqlite
     from yarl import URL
 
-    from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
 
 def get_db_path(url: URL, referer: str = "") -> str:

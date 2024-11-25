@@ -8,7 +8,7 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import MaxChildrenError
 from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, ScrapeItem
+from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 

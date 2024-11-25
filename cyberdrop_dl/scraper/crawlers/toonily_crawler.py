@@ -10,7 +10,7 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import MaxChildrenError
 from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
+from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:

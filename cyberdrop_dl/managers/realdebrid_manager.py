@@ -34,6 +34,8 @@ class RealDebridManager:
 
     def startup(self) -> None:
         """Startup process for Real Debrid manager."""
+        if not self.enabled:
+            return
         try:
             self.api = RealDebridApi(self.__api_token, True)
             file_regex = [pattern[1:-1] for pattern in self.api.hosts.regex()]

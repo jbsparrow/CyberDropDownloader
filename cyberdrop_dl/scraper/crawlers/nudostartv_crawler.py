@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
 class NudoStarTVCrawler(Crawler):

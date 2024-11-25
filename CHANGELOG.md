@@ -5,6 +5,26 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.7.2] - 2024-11-20
+
+This update introduces the following changes:
+
+1. Add option to use cookies from any supported site
+2. Apply cookies from flaresolverr when possible, even if the response is invalid
+3. Add option to automatically import cookies at startup
+4. Better validation of config values
+5. Rework entire TUI user input options
+6. General logging improvements and bug fixes
+
+#### Details
+
+1. User can import cookies from their browser. CDL will use these cookies to login to websites and pass clouflare DDoS challenges. For more information on cookies extraction and configuration, visit: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings#browser-cookies
+2. When using flaresolverr, CDL will try to apply the cookies from the response and make a new request if neccesary.
+3. User can set CDL to automatically import cookies at startup. User must specify browser and domains to export cookies from
+4. Add logic validation for config path values
+5. Remove integrated config edit options. Modifications to the config must be done directly on the config file.
+
+
 ## [5.7.1] - 2024-11-05
 
 ⚠️**BREAKING CHANGES**

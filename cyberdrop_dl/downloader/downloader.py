@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.clients.download_client import DownloadClient
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
 
 def retry(func: Callable) -> None:

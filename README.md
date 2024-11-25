@@ -3,11 +3,11 @@
 # `cyberdrop-dl-patched`
 *Bulk asynchronous downloader for multiple file hosts*
 
-![PyPI - Version](https://img.shields.io/pypi/v/cyberdrop-dl-patched)
-![PyPI - Python Version](https://img.shields.io/pypi/pyversions/cyberdrop-dl-patched)
-![Docs](https://img.shields.io/badge/docs-wiki-blue?link=https%3A%2F%2Fscript-ware.gitbook.io%2Fcyberdrop-dl)
-![GitHub License](https://img.shields.io/github/license/jbsparrow/CyberDropDownloader)
-![PyPI - Downloads](https://img.shields.io/pypi/dm/cyberdrop-dl-patched)
+[![PyPI - Version](https://img.shields.io/pypi/v/cyberdrop-dl-patched)](https://pypi.org/project/cyberdrop-dl-patched/)
+[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/cyberdrop-dl-patched)](https://pypi.org/project/cyberdrop-dl-patched/)
+[![Docs](https://img.shields.io/badge/docs-wiki-blue?link=https%3A%2F%2Fscript-ware.gitbook.io%2Fcyberdrop-dl)](https://script-ware.gitbook.io/cyberdrop-dl)
+[![GitHub License](https://img.shields.io/github/license/jbsparrow/CyberDropDownloader)](https://github.com/jbsparrow/CyberDropDownloader/blob/master/LICENSE)
+[![PyPI - Downloads](https://img.shields.io/pypi/dm/cyberdrop-dl-patched)](https://pypistats.org/packages/cyberdrop-dl-patched)
 
 [![Discord](https://discordapp.com/api/guilds/1070206871564197908/widget.png?style=banner2)](https://discord.com/invite/P5nsbKErwy)
 

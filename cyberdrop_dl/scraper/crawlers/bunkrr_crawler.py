@@ -4,7 +4,7 @@ import calendar
 import contextlib
 import datetime
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
@@ -12,7 +12,7 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import MaxChildrenError, NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.constants import FILE_FORMATS
-from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, ScrapeItem
+from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
@@ -26,8 +26,10 @@ CDN_POSSIBILITIES = re.compile(
 
 
 class BunkrrCrawler(Crawler):
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "bunkrr", "Bunkrr")
+    SUPPORTED_SITES: ClassVar[dict[str, list]] = {"bunkrr": ["bunkrr", "bunkr"]}
+
+    def __init__(self, manager: Manager, site: str) -> None:
+        super().__init__(manager, site, "Bunkrr")
         self.primary_base_domain = URL("https://bunkr.site")
         self.request_limiter = AsyncLimiter(10, 1)
 
