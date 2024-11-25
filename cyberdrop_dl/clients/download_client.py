@@ -118,7 +118,7 @@ class DownloadClient:
         media_item.partial_file = download_dir / f"{downloaded_filename}.part"
 
         resume_point = 0
-        if isinstance(media_item.partial_file, Path) and media_item.partial_file.exists():
+        if media_item.partial_file and media_item.partial_file.exists():
             resume_point = media_item.partial_file.stat().st_size if media_item.partial_file.exists() else 0
             download_headers["Range"] = f"bytes={resume_point}-"
 
@@ -138,7 +138,7 @@ class DownloadClient:
             content_type = resp.headers.get("Content-Type")
 
             media_item.filesize = int(resp.headers.get("Content-Length", "0"))
-            if not isinstance(media_item.complete_file, Path):
+            if not media_item.complete_file:
                 proceed, skip = await self.get_final_file_info(media_item, domain)
                 await self.mark_incomplete(media_item, domain)
                 self.client_manager.check_bunkr_maint(resp.headers)
@@ -237,7 +237,7 @@ class DownloadClient:
         await self.manager.db_manager.history_table.mark_complete(domain, media_item)
 
     async def add_file_size(self, domain: str, media_item: MediaItem) -> None:
-        if not isinstance(media_item.complete_file, Path):
+        if not media_item.complete_file:
             media_item.complete_file = self.get_file_location(media_item)
         if media_item.complete_file.exists():
             await self.manager.db_manager.history_table.add_filesize(domain, media_item)
@@ -273,7 +273,7 @@ class DownloadClient:
         media_item.complete_file = self.get_file_location(media_item)
         media_item.partial_file = media_item.complete_file.with_suffix(media_item.complete_file.suffix + ".part")
 
-        expected_size = media_item.filesize if isinstance(media_item.filesize, int) else None
+        expected_size = media_item.filesize
         proceed = True
         skip = False
 

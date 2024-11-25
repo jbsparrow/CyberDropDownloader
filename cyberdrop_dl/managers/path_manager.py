@@ -58,7 +58,6 @@ class PathManager:
     def startup(self) -> None:
         """Startup process for the Directory Manager."""
         settings_data = self.manager.config_manager.settings_data
-        print(settings_data.files)
         self.download_folder = self.replace_config_in_path(settings_data.files.download_folder)
         self.sorted_folder = self.replace_config_in_path(settings_data.sorting.sort_folder)
         self.scan_folder = self.replace_config_in_path(settings_data.sorting.scan_folder)

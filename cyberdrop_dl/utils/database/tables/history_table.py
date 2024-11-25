@@ -128,7 +128,7 @@ class HistoryTable:
         """Inserts an uncompleted file into the database."""
         domain = get_db_domain(domain)
         url_path = get_db_path(media_item.url, str(media_item.referer))
-        download_filename = media_item.download_filename if isinstance(media_item.download_filename, str) else ""
+        download_filename = media_item.download_filename or ""
         try:
             await self.db_conn.execute(
                 """UPDATE media SET domain = ?, album_id = ? WHERE domain = 'no_crawler' and url_path = ? and referer = ?""",

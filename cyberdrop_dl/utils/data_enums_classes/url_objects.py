@@ -25,7 +25,7 @@ FILE_HOST_PROFILE = ScrapeItemType.FILE_HOST_PROFILE
 FILE_HOST_ALBUM = ScrapeItemType.FILE_HOST_ALBUM
 
 
-@dataclass
+@dataclass(unsafe_hash=True)
 class MediaItem:
     url: URL
     origin: ScrapeItem
@@ -34,14 +34,14 @@ class MediaItem:
     original_filename: str | None = None
     debrid_link: URL | None = None
 
-    download_filename: str = field(init=False)
-    datetime: str = field(init=False)
-    file_lock_reference_name: str = field(init=False)
-    filesize: int = field(init=False)
-    current_attempt: int = field(init=False)
-    partial_file: Path | None = field(init=False)
-    complete_file: Path = field(init=False)
-    task_id: TaskID = field(init=False)
+    file_lock_reference_name: str | None = field(default=None, init=False)
+    download_filename: str | None = field(default=None, init=False)
+    datetime: str | None = field(default=None, init=False)
+    filesize: int | None = field(default=None, init=False)
+    current_attempt: int = field(default=0, init=False)
+    partial_file: Path | None = field(default=None, init=False)
+    complete_file: Path | None = field(default=None, init=False)
+    task_id: TaskID | None = field(default=None, init=False)
 
     def __post_init__(self) -> None:
         self.referer = self.origin.url
