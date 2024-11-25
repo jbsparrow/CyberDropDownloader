@@ -62,7 +62,7 @@ def startup() -> Manager:
             "ConfigSettings": manager.config_manager.settings,
             "AuthSettings": manager.config_manager.authentication_settings,
         }
-        handle_validation_error(e, sources)
+        handle_validation_error(e, sources=sources)
         sys.exit(1)
 
     except KeyboardInterrupt:

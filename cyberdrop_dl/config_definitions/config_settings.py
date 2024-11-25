@@ -24,8 +24,8 @@ class DownloadOptions(BaseModel):
 
 
 class Files(BaseModel):
-    input_file: Path = APP_STORAGE / "Configs" / "{config}" / "URLs.txt"
-    download_folder: Path = DOWNLOAD_STORAGE
+    input_file: Path = Field(APP_STORAGE / "Configs" / "{config}" / "URLs.txt", validation_alias="i")
+    download_folder: Path = Field(DOWNLOAD_STORAGE, validation_alias="d")
 
 
 class Logs(AliasModel):
