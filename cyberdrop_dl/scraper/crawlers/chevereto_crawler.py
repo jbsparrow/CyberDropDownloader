@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 CDN_PATTERNS = {
     "jpg.church": r"^(?:https?:\/\/?)((jpg.church\/images)|(simp..jpg.church)|(jpg.fish\/images)|(simp..jpg.fish)|(jpg.fishing\/images)|(simp..jpg.fishing)|(simp..host.church)|(simp..jpg..su))(\/.*)",
@@ -29,7 +29,7 @@ CDN_POSSIBILITIES = re.compile("|".join(CDN_PATTERNS.values()))
 
 
 class CheveretoCrawler(Crawler):
-    JPG_CHURCH_DOMAINS: ClassVar[tuple[str, ...]] = {
+    JPG_CHURCH_DOMAINS: ClassVar[tuple[str, ...]] = [
         "jpg.homes",
         "jpg.church",
         "jpg.fish",
@@ -42,7 +42,7 @@ class CheveretoCrawler(Crawler):
         "jpg4.su",
         "jpg5.su",
         "host.church",
-    }
+    ]
 
     PRIMARY_BASE_DOMAINS: ClassVar[dict[str, URL]] = {
         "imagepond.net": URL("https://imagepond.net"),
@@ -56,11 +56,15 @@ class CheveretoCrawler(Crawler):
         "img.kiwi": "ImgKiwi",
     }
 
-    DOMAINS = PRIMARY_BASE_DOMAINS.keys() | JPG_CHURCH_DOMAINS
+    SUPPORTED_SITES: ClassVar[dict[str, list]] = {
+        "imagepond.net": ["imagepond.net"],
+        "jpg.church": JPG_CHURCH_DOMAINS,
+        "img.kiwi": ["img.kiwi"],
+    }
 
-    def __init__(self, manager: Manager, domain: str) -> None:
-        super().__init__(manager, domain, self.FOLDER_DOMAINS.get(domain, "Chevereto"))
-        self.primary_base_domain = self.PRIMARY_BASE_DOMAINS.get(domain, URL(f"https://{domain}"))
+    def __init__(self, manager: Manager, site: str) -> None:
+        super().__init__(manager, site, self.FOLDER_DOMAINS.get(site, "Chevereto"))
+        self.primary_base_domain = self.PRIMARY_BASE_DOMAINS.get(site, URL(f"https://{site}"))
         self.request_limiter = AsyncLimiter(10, 1)
         self.next_page_selector = "a[data-pagination=next]"
         self.album_title_selector = "a[data-text=album-name]"

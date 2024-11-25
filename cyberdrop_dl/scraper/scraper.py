@@ -13,6 +13,7 @@ from yarl import URL
 from cyberdrop_dl import __version__ as current_version
 from cyberdrop_dl.clients.errors import JDownloaderError
 from cyberdrop_dl.downloader.downloader import Downloader
+from cyberdrop_dl.scraper import ALL_CRAWLERS, DEBUG_CRAWLERS
 from cyberdrop_dl.scraper.filters import (
     has_valid_extension,
     is_in_domain_list,
@@ -22,7 +23,7 @@ from cyberdrop_dl.scraper.filters import (
 )
 from cyberdrop_dl.scraper.jdownloader import JDownloader
 from cyberdrop_dl.utils.constants import BLOCKED_DOMAINS, PRERELEASE_TAGS, REGEX_LINKS
-from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem, ScrapeItem
+from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext
 
@@ -36,54 +37,6 @@ class ScrapeMapper:
 
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
-        self.mapping = {
-            "bunkr": self.bunkr,
-            "celebforum": self.celebforum,
-            "coomer": self.coomer,
-            "cyberdrop": self.cyberdrop,
-            "cyberfile": self.cyberfile,
-            "e-hentai": self.ehentai,
-            "erome": self.erome,
-            "f95zone": self.f95zone,
-            "fapello": self.fapello,
-            "gofile": self.gofile,
-            "hotpic": self.hotpic,
-            "ibb.co": self.imgbb,
-            "imageban": self.imageban,
-            "imgbox": self.imgbox,
-            "imgur": self.imgur,
-            "jpg.church": self.chevereto,
-            "kemono": self.kemono,
-            "leakedmodels": self.leakedmodels,
-            "mediafire": self.mediafire,
-            "nekohouse": self.nekohouse,
-            "nudostar.com": self.nudostar,
-            "nudostar.tv": self.nudostartv,
-            "omegascans": self.omegascans,
-            "pimpandhost": self.pimpandhost,
-            "pixeldrain": self.pixeldrain,
-            "postimg": self.postimg,
-            "realbooru": self.realbooru,
-            "reddit": self.reddit,
-            "redgifs": self.redgifs,
-            "rule34.xxx": self.rule34xxx,
-            "rule34.xyz": self.rule34xyz,
-            "rule34vault": self.rule34vault,
-            "saint": self.saint,
-            "scrolller": self.scrolller,
-            "socialmediagirls": self.socialmediagirls,
-            "tokyomotion": self.tokyomotion,
-            "toonily": self.toonily,
-            "xbunker": self.xbunker,
-            "xbunkr": self.xbunkr,
-            "xxxbunker": self.xxxbunker,
-            "simpcity": self.simpcity,
-        }
-
-        is_testing = next((tag for tag in PRERELEASE_TAGS if tag in current_version), False)
-        if is_testing:
-            self.mapping["simpcity"] = self.simpcity
-
         self.existing_crawlers: dict[str, Crawler] = {}
         self.no_crawler_downloader = Downloader(self.manager, "no_crawler")
         self.jdownloader = JDownloader(self.manager)
@@ -93,275 +46,25 @@ class ScrapeMapper:
         self.lock = asyncio.Lock()
         self.count = 0
 
-    def bunkr(self) -> None:
-        """Creates a Bunkr Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.bunkrr_crawler import BunkrrCrawler
-
-        self.existing_crawlers["bunkrr"] = BunkrrCrawler(self.manager)
-        self.existing_crawlers["bunkr"] = self.existing_crawlers["bunkrr"]
-
-    def celebforum(self) -> None:
-        """Creates a CelebForum Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.celebforum_crawler import CelebForumCrawler
-
-        self.existing_crawlers["celebforum"] = CelebForumCrawler(self.manager)
-
-    def coomer(self) -> None:
-        """Creates a Coomer Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.coomer_crawler import CoomerCrawler
-
-        self.existing_crawlers["coomer"] = CoomerCrawler(self.manager)
-
-    def cyberdrop(self) -> None:
-        """Creates a Cyberdrop Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.cyberdrop_crawler import CyberdropCrawler
-
-        self.existing_crawlers["cyberdrop"] = CyberdropCrawler(self.manager)
-
-    def cyberfile(self) -> None:
-        """Creates a Cyberfile Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.cyberfile_crawler import CyberfileCrawler
-
-        self.existing_crawlers["cyberfile"] = CyberfileCrawler(self.manager)
-
-    def ehentai(self) -> None:
-        """Creates a EHentai Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.ehentai_crawler import EHentaiCrawler
-
-        self.existing_crawlers["e-hentai"] = EHentaiCrawler(self.manager)
-
-    def erome(self) -> None:
-        """Creates a Erome Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.erome_crawler import EromeCrawler
-
-        self.existing_crawlers["erome"] = EromeCrawler(self.manager)
-
-    def fapello(self) -> None:
-        """Creates a Fappelo Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.fapello_crawler import FapelloCrawler
-
-        self.existing_crawlers["fapello"] = FapelloCrawler(self.manager)
-
-    def f95zone(self) -> None:
-        """Creates a F95Zone Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.f95zone_crawler import F95ZoneCrawler
-
-        self.existing_crawlers["f95zone"] = F95ZoneCrawler(self.manager)
-
-    def gofile(self) -> None:
-        """Creates a GoFile Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.gofile_crawler import GoFileCrawler
-
-        self.existing_crawlers["gofile"] = GoFileCrawler(self.manager)
-
-    def hotpic(self) -> None:
-        """Creates a HotPic Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.hotpic_crawler import HotPicCrawler
-
-        self.existing_crawlers["hotpic"] = HotPicCrawler(self.manager)
-
-    def imageban(self) -> None:
-        """Creates a ImageBan Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.imageban_crawler import ImageBanCrawler
-
-        self.existing_crawlers["imageban"] = ImageBanCrawler(self.manager)
-
-    def imgbb(self) -> None:
-        """Creates a ImgBB Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.imgbb_crawler import ImgBBCrawler
-
-        self.existing_crawlers["ibb.co"] = ImgBBCrawler(self.manager)
-
-    def imgbox(self) -> None:
-        """Creates a ImgBox Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.imgbox_crawler import ImgBoxCrawler
-
-        self.existing_crawlers["imgbox"] = ImgBoxCrawler(self.manager)
-
-    def imgur(self) -> None:
-        """Creates a Imgur Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.imgur_crawler import ImgurCrawler
-
-        self.existing_crawlers["imgur"] = ImgurCrawler(self.manager)
-
-    def chevereto(self) -> None:
-        """Creates a Chevereto Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.chevereto_crawler import CheveretoCrawler
-
-        self.existing_crawlers["jpg.church"] = CheveretoCrawler(self.manager, "jpg.church")
-        for domain in CheveretoCrawler.DOMAINS:
-            if domain in CheveretoCrawler.JPG_CHURCH_DOMAINS:
-                self.existing_crawlers[domain] = self.existing_crawlers["jpg.church"]
-            else:
-                self.existing_crawlers[domain] = CheveretoCrawler(self.manager, domain)
-
-    def kemono(self) -> None:
-        """Creates a Kemono Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.kemono_crawler import KemonoCrawler
-
-        self.existing_crawlers["kemono"] = KemonoCrawler(self.manager)
-
-    def leakedmodels(self) -> None:
-        """Creates a LeakedModels Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.leakedmodels_crawler import LeakedModelsCrawler
-
-        self.existing_crawlers["leakedmodels"] = LeakedModelsCrawler(self.manager)
-
-    def mediafire(self) -> None:
-        """Creates a MediaFire Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.mediafire_crawler import MediaFireCrawler
-
-        self.existing_crawlers["mediafire"] = MediaFireCrawler(self.manager)
-
-    def nekohouse(self) -> None:
-        """Creates a Nekohouse Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.nekohouse_crawler import NekohouseCrawler
-
-        self.existing_crawlers["nekohouse"] = NekohouseCrawler(self.manager)
-
-    def nudostar(self) -> None:
-        """Creates a NudoStar Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.nudostar_crawler import NudoStarCrawler
-
-        self.existing_crawlers["nudostar.com"] = NudoStarCrawler(self.manager)
-
-    def nudostartv(self) -> None:
-        """Creates a NudoStarTV Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.nudostartv_crawler import NudoStarTVCrawler
-
-        self.existing_crawlers["nudostar.tv"] = NudoStarTVCrawler(self.manager)
-
-    def omegascans(self) -> None:
-        """Creates a OmegaScans Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.omegascans_crawler import OmegaScansCrawler
-
-        self.existing_crawlers["omegascans"] = OmegaScansCrawler(self.manager)
-
-    def pimpandhost(self) -> None:
-        """Creates a PimpAndHost Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.pimpandhost_crawler import PimpAndHostCrawler
-
-        self.existing_crawlers["pimpandhost"] = PimpAndHostCrawler(self.manager)
-
-    def pixeldrain(self) -> None:
-        """Creates a PixelDrain Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.pixeldrain_crawler import PixelDrainCrawler
-
-        self.existing_crawlers["pixeldrain"] = PixelDrainCrawler(self.manager)
-
-    def postimg(self) -> None:
-        """Creates a PostImg Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.postimg_crawler import PostImgCrawler
-
-        self.existing_crawlers["postimg"] = PostImgCrawler(self.manager)
-
-    def realbooru(self) -> None:
-        """Creates a RealBooru Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.realbooru_crawler import RealBooruCrawler
-
-        self.existing_crawlers["realbooru"] = RealBooruCrawler(self.manager)
-
-    def realdebrid(self) -> None:
-        """Creates a RealDebrid Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.realdebrid_crawler import RealDebridCrawler
-
-        self.existing_crawlers["real-debrid"] = RealDebridCrawler(self.manager)
-
-    def reddit(self) -> None:
-        """Creates a Reddit Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.reddit_crawler import RedditCrawler
-
-        self.existing_crawlers["reddit"] = RedditCrawler(self.manager)
-        self.existing_crawlers["redd.it"] = self.existing_crawlers["reddit"]
-
-    def redgifs(self) -> None:
-        """Creates a RedGifs Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.redgifs_crawler import RedGifsCrawler
-
-        self.existing_crawlers["redgifs"] = RedGifsCrawler(self.manager)
-
-    def rule34vault(self) -> None:
-        """Creates a Rule34Vault Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.rule34vault_crawler import Rule34VaultCrawler
-
-        self.existing_crawlers["rule34vault"] = Rule34VaultCrawler(self.manager)
-
-    def rule34xxx(self) -> None:
-        """Creates a Rule34XXX Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.rule34xxx_crawler import Rule34XXXCrawler
-
-        self.existing_crawlers["rule34.xxx"] = Rule34XXXCrawler(self.manager)
-
-    def rule34xyz(self) -> None:
-        """Creates a Rule34XYZ Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.rule34xyz_crawler import Rule34XYZCrawler
-
-        self.existing_crawlers["rule34.xyz"] = Rule34XYZCrawler(self.manager)
-
-    def saint(self) -> None:
-        """Creates a Saint Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.saint_crawler import SaintCrawler
-
-        self.existing_crawlers["saint"] = SaintCrawler(self.manager)
-
-    def scrolller(self) -> None:
-        """Creates a Scrolller Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.scrolller_crawler import ScrolllerCrawler
-
-        self.existing_crawlers["scrolller"] = ScrolllerCrawler(self.manager)
-
-    def simpcity(self) -> None:
-        """Creates a SimpCity Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.simpcity_crawler import SimpCityCrawler
-
-        self.existing_crawlers["simpcity"] = SimpCityCrawler(self.manager)
-
-    def socialmediagirls(self) -> None:
-        """Creates a SocialMediaGirls Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.socialmediagirls_crawler import SocialMediaGirlsCrawler
-
-        self.existing_crawlers["socialmediagirls"] = SocialMediaGirlsCrawler(self.manager)
-
-    def tokyomotion(self) -> None:
-        """Creates a Tokyomotion Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.tokyomotion_crawler import TokioMotionCrawler
-
-        self.existing_crawlers["tokyomotion"] = TokioMotionCrawler(self.manager)
-
-    def toonily(self) -> None:
-        """Creates a Toonily Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.toonily_crawler import ToonilyCrawler
-
-        self.existing_crawlers["toonily"] = ToonilyCrawler(self.manager)
-
-    def xbunker(self) -> None:
-        """Creates a XBunker Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.xbunker_crawler import XBunkerCrawler
-
-        self.existing_crawlers["xbunker"] = XBunkerCrawler(self.manager)
-
-    def xbunkr(self) -> None:
-        """Creates a XBunkr Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.xbunkr_crawler import XBunkrCrawler
-
-        self.existing_crawlers["xbunkr"] = XBunkrCrawler(self.manager)
-
-    def xxxbunker(self) -> None:
-        """Creates a XXXBunker Crawler instance."""
-        from cyberdrop_dl.scraper.crawlers.xxxbunker_crawler import XXXBunkerCrawler
-
-        self.existing_crawlers["xxxbunker"] = XXXBunkerCrawler(self.manager)
-
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     def start_scrapers(self) -> None:
         """Starts all scrapers."""
-        for domain in self.mapping:
-            self.mapping[domain]()
+        crawlers = ALL_CRAWLERS
+        is_testing = next((tag for tag in PRERELEASE_TAGS if tag in current_version), False)
+        if not is_testing:
+            crawlers -= DEBUG_CRAWLERS
 
-        for crawler in self.existing_crawlers.values():
-            if isinstance(crawler.client, Field):
-                crawler.startup()
+        for crawler in crawlers:
+            if not crawler.SUPPORTED_SITES:
+                site_crawler = crawler(self.manager)
+                self.existing_crawlers[site_crawler.domain] = site_crawler
+                continue
+
+            for site, domains in crawler.SUPPORTED_SITES.items():
+                site_crawler = crawler(self.manager, site)
+                for domain in domains:
+                    self.existing_crawlers[domain] = site_crawler
 
     def start_jdownloader(self) -> None:
         """Starts JDownloader."""
@@ -374,7 +77,9 @@ class ScrapeMapper:
             self.manager.real_debrid_manager.startup()
 
         if self.manager.real_debrid_manager.enabled:
-            self.realdebrid()
+            from cyberdrop_dl.scraper.crawlers.realdebrid_crawler import RealDebridCrawler
+
+            self.existing_crawlers["real-debrid"] = RealDebridCrawler(self.manager)
             self.existing_crawlers["real-debrid"].startup()
 
     async def start(self) -> None:
@@ -541,13 +246,17 @@ class ScrapeMapper:
     async def send_to_crawler(self, scrape_item: ScrapeItem) -> None:
         """Maps URLs to their respective handlers."""
         scrape_item.url = remove_trailing_slash(scrape_item.url)
-        supported_domain = next((key for key in self.existing_crawlers if key in scrape_item.url.host), None)
+        supported_domain = [key for key in self.existing_crawlers if key in scrape_item.url.host]
         jdownloader_whitelisted = True
         if self.jdownloader_whitelist:
             jdownloader_whitelisted = any(domain in scrape_item.url.host for domain in self.jdownloader_whitelist)
 
         if supported_domain:
+            # get most restrictive domain if multiple domain matches
+            supported_domain = max(supported_domain, key=len)
             scraper = self.existing_crawlers[supported_domain]
+            if isinstance(scraper.client, Field):
+                scraper.startup()
             self.manager.task_group.create_task(scraper.run(scrape_item))
             return
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import contextlib
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import asyncpraw
 import asyncprawcore
@@ -11,7 +11,7 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import MaxChildrenError, NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.dataclasses.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
+from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
@@ -24,8 +24,10 @@ if TYPE_CHECKING:
 
 
 class RedditCrawler(Crawler):
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "reddit", "Reddit")
+    SUPPORTED_SITES: ClassVar[dict[str, list]] = {"reddit": ["reddit", "redd.it"]}
+
+    def __init__(self, manager: Manager, site: str) -> None:
+        super().__init__(manager, site, "Reddit")
         self.reddit_personal_use_script = self.manager.config_manager.authentication_data["Reddit"][
             "reddit_personal_use_script"
         ]

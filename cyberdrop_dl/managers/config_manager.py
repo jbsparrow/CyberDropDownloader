@@ -15,22 +15,32 @@ from cyberdrop_dl.utils.args.config_definitions import authentication_settings, 
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
+from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
 
 
 def _match_config_dicts(default: dict, existing: dict) -> dict:
-    """Matches the keys of two dicts and returns the default dict with the values of the existing dict."""
+    """Matches the keys of two dicts and returns the new dict with the values of the existing dict."""
     for group in default:
         for key in default[group]:
             if group in existing and key in existing[group]:
                 default[group][key] = existing[group][key]
-    return default
+    return copy.deepcopy(default)
+
+
+# Custom representer function for YAML
+def _enum_representer(dumper, data):
+    return dumper.represent_int(data.value)
 
 
 def _save_yaml(file: Path, data: dict) -> None:
     """Saves a dict to a yaml file."""
     file.parent.mkdir(parents=True, exist_ok=True)
+    # Register the custom representer
+    yaml.add_representer(Hashing, _enum_representer)
+    # dump
     with file.open("w") as yaml_file:
         yaml.dump(data, yaml_file)
+    pass
 
 
 def _load_yaml(file: Path) -> dict:
@@ -152,25 +162,35 @@ class ConfigManager:
         default_settings_data = copy.deepcopy(settings)
         existing_settings_data = _load_yaml(self.settings)
         self.settings_data = _match_config_dicts(default_settings_data, existing_settings_data)
-        paths = [
-            ("Files", "input_file"),
-            ("Files", "download_folder"),
-            ("Logs", "log_folder"),
-            ("Sorting", "sort_folder"),
-            ("Sorting", "scan_folder"),
-        ]
-
+        paths = {
+            (
+                [
+                    ("Files", "input_file"),
+                    ("Files", "download_folder"),
+                    ("Logs", "log_folder"),
+                    ("Sorting", "sort_folder"),
+                    ("Sorting", "scan_folder"),
+                ]
+            )
+        }
+        enums = {("Dupe_Cleanup_Options", "hashing"): Hashing}
         for key, value in default_settings_data.items():
             for subkey, subvalue in value.items():
                 self.settings_data[key][subkey] = self.return_verified(subvalue)
+                if (key, subkey) in paths:
+                    path = self.settings_data[key][subkey]
+                    if (path == "None" or path is None) and subkey == "scan_folder":
+                        self.settings_data[key][subkey] = None
+                    else:
+                        self.settings_data[key][subkey] = Path(path)
 
-                for path_item in paths:
-                    if key == path_item[0] and subkey == path_item[1]:
-                        path = self.settings_data[key][subkey]
-                        if (path == "None" or path is None) and subkey == "scan_folder":
-                            self.settings_data[key][subkey] = None
-                        else:
-                            self.settings_data[key][subkey] = Path(path)
+                if (key, subkey) in enums:
+                    enum_value = self.settings_data[key][subkey]
+                    enum_class = enums[(key, subkey)]
+                    if isinstance(enum_value, str):
+                        self.settings_data[key][subkey] = enum_class[enum_value]
+                    else:
+                        self.settings_data[key][subkey] = enum_class(enum_value)
 
         if get_keys(default_settings_data) == get_keys(existing_settings_data):
             return
