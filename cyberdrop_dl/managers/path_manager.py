@@ -34,11 +34,6 @@ class PathManager:
         self.input_file: Path = field(init=False)
         self.history_db: Path = field(init=False)
 
-        self.main_log: Path = field(init=False)
-        self.last_post_log: Path = field(init=False)
-        self.unsupported_urls_log: Path = field(init=False)
-        self.download_error_log: Path = field(init=False)
-        self.scrape_error_log: Path = field(init=False)
         self._completed_downloads: set[MediaItem] = set()
         self._completed_downloads_set = set()
         self._prev_downloads = set()
@@ -56,15 +51,19 @@ class PathManager:
         self.config_folder.mkdir(parents=True, exist_ok=True)
         self.cookies_dir.mkdir(parents=True, exist_ok=True)
 
+    def replace_config_in_path(self, path: Path) -> Path:
+        current_config = self.manager.config_manager.loaded_config
+        return Path(str(path).replace("{config}", current_config))
+
     def startup(self) -> None:
         """Startup process for the Directory Manager."""
         settings_data = self.manager.config_manager.settings_data
-
-        self.download_folder = settings_data.files.download_folder
-        self.sorted_folder = settings_data.sorting.sort_folder
-        self.scan_folder = settings_data.sorting.scan_folder
-        self.log_folder = settings_data.logs.log_folder
-        self.input_file = settings_data.files.input_file
+        print(settings_data.files)
+        self.download_folder = self.replace_config_in_path(settings_data.files.download_folder)
+        self.sorted_folder = self.replace_config_in_path(settings_data.sorting.sort_folder)
+        self.scan_folder = self.replace_config_in_path(settings_data.sorting.scan_folder)
+        self.log_folder = self.replace_config_in_path(settings_data.logs.log_folder)
+        self.input_file = self.replace_config_in_path(settings_data.files.input_file)
         self.history_db = self.cache_folder / "cyberdrop.db"
 
         self._set_output_filenames()
@@ -90,6 +89,11 @@ class PathManager:
                 file_name = f"{path.stem}__{current_time_iso}{path.suffix}"
             log_files[name] = Path(file_name).with_suffix(file_ext).name
         log_settings_config = log_settings_config.model_copy(update=log_files)
+        self.main_log = self.log_folder / log_settings_config.main_log_filename
+        self.last_forum_post_log = self.log_folder / log_settings_config.last_forum_post_filename
+        self.unsupported_urls_log = self.log_folder / log_settings_config.unsupported_urls_filename
+        self.download_error_log = self.log_folder / log_settings_config.download_error_urls_filename
+        self.scrape_error_log = self.log_folder / log_settings_config.scrape_error_urls_filename
 
     def add_completed(self, media_item: MediaItem) -> None:
         self._completed_downloads.add(media_item)

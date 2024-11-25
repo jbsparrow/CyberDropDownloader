@@ -72,6 +72,7 @@ class Manager:
         self.cache_manager.startup(self.path_manager.cache_folder / "cache.yaml")
         self.config_manager = ConfigManager(self)
         self.config_manager.startup()
+        self.args_consolidation()
         self.vi_mode = self.config_manager.global_settings_data.ui_options.vi_mode
 
         self.path_manager.startup()
@@ -100,7 +101,6 @@ class Manager:
 
     async def async_startup(self) -> None:
         """Async startup process for the manager."""
-        self.args_consolidation()
         self.args_logging()
 
         if not isinstance(self.client_manager, ClientManager):
