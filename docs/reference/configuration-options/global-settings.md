@@ -22,6 +22,8 @@ Setting this to true will allow the program to connect to websites without ssl (
 
 The user agent is the signature of your browser, it's how it is represented to websites you connect to. You can google "what is my user agent" to see what yours may be.
 
+**Note:** if you use flaresolverr, this value must match with flaresolverr user agent for its cookies to work.
+
 ***
 
 * proxy
@@ -33,8 +35,6 @@ The proxy you want CDL to utilize. Ex. `https://user:pass@ip:port`
 * flaresolverr
 
 The IP for flaresolverr you want CDL to utilize. Ex. `ip:port`
-
-CDL will fill the rest of the URL.
 
 ***
 
@@ -52,7 +52,7 @@ This is the maximum number of characters allowable in a folder name.
 
 * required\_free\_space
 
-This is the amount of free space in gigabytes that the program will stop initiating downloads at.
+This is the amount of free space (in gigabytes) that the program will stop initiating downloads at.
 
 </details>
 
@@ -108,12 +108,62 @@ This is the maximum number of files that can be downloaded from a single domain 
 
 Some domains have internal limits set by the program, such as Bunkrr, CyberFile, etc.
 
+***
 
 * download\_speed\_limit
 
 This is the max rate of downloading in KB for all downloads combined
-Set to  0 or None to disable
+Set to 0 or `null` to disable
 
+
+</details>
+
+<details>
+
+<summary>Dupe Options</summary>
+
+These are options for enable/disable dupe clean up
+***
+
+* dedupe\_already\_downloaded
+
+Allows files skipped for already existing on the filesystem to be added to the list of files to process for deduping
+
+***
+
+* delete\_after\_download
+
+This toggles the deduping process, which happens after all downloads have finished
+only current files are processed and deduped across all files in the hash database
+
+current files are files that were either downloaded or a file was skipped for already existing when dedupe_already_downloaded is true
+
+***
+
+* hash\_while\_downloading
+
+With this set as True. Files can be hash after each download, rather than all together
+
+***
+
+* keep_new_download
+
+If enabled for each hash and size match one current file will be kept on the system
+
+If disabled all current files will be deleted if the following is all true
+- The file did not exist on the filesystem prior to the current run
+- keep prev_download is set to true, this ignores if file exists on the filesystem or not
+- The hash must have already existing on the system prior to the current run
+
+Current files are files that were either downloaded or a file was skipped for already existing when dedupe_already_downloaded is true
+
+* keep\_prev\_download
+prev downloads are files that are match with the hash and size given, and are not a part of the current files list
+
+Current files are files that were either downloaded or a file was skipped for already existing when dedupe_already_downloaded is true
+
+If enabled then at least one existing previous download will be kept on system.
+If not enabled all previous downloads will be deleted
 
 </details>
 

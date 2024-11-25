@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import copy
 import json
-from dataclasses import field
+from dataclasses import Field, field
 from time import perf_counter
 from typing import TYPE_CHECKING
 
@@ -205,7 +205,7 @@ class Manager:
     async def close(self) -> None:
         """Closes the manager."""
         await self.db_manager.close()
-        if not isinstance(self.client_manager, field):
+        if not isinstance(self.client_manager, Field):
             await self.client_manager.close()
         self.db_manager: DBManager = field(init=False)
         self.cache_manager: CacheManager = field(init=False)

@@ -20,7 +20,7 @@ Once you have put your `session` cookie into the authentication file, you can ad
 
 In order to scrape links/content from forums, you need to provide Cyberdrop-DL with your login details so it can access the website. This section also includes cookies for the support forums.
 
-If you use the cookie extractor to load the XF\_User\_Cookies into the program, you don't need to provide the program with credentials. If you ever log out of the forum in your browser though, you will need to use the cookie extractor again to get new cookies.
+If you use the cookie extractor to load the `XF_User` cookies into the program, you don't need to provide these credentials. If you ever log out of the forum in your browser though, you will need to use the cookie extractor again to get new cookies.
 
 It is best to leave the authentication parameter for SimpCity blank, as they have made their forum public and have asked users scraping the website not to use logged in users.
 
@@ -30,15 +30,15 @@ In order to set specific authentication values for a config instead of the globa
 
 * \<forum>\_xf\_user\_cookie
 
-This is the value for the cookie I was talking about above. If you want to only use credentials, you can leave this blank.
+This is the value for the `XF_User` cookie mentioned above. If you want to only use credentials, you can leave this blank.
 
 * \<forum>\_username
 
-This is your username for the forum. Again, if you use the cookie, you don't need to provide this.
+This is your username for the forum. Again, if you use cookies, you don't need to provide this.
 
 * \<forum>\_password
 
-This is your password for the forum. Again, if you use the cookie, you don't need to provide this.
+This is your password for the forum. Again, if you use cookies, you don't need to provide this.
 
 </details>
 
@@ -66,11 +66,15 @@ In order to scrape images from Imgur, you'll need to create a client on Imgurs w
 
 Some examples of what to put in for what it asks for:
 
-* Application Name: Cyberdrop-DL
-* OAuth2 without a callback URL
-* Website: \<really doesn't matter>
-* Email: Your email
-* Description: Cyberdrop-DL client
+> Application Name: Cyberdrop-DL
+
+> OAuth2 without a callback URL
+
+> Website: <really doesn't matter>
+
+> Email: Your email
+
+> Description: Cyberdrop-DL client
 
 ***
 
@@ -126,18 +130,25 @@ In order to scrape files from Reddit, you'll need to create an app on reddits we
 
 [https://www.reddit.com/prefs/apps](https://www.reddit.com/prefs/apps)
 
-Some examples of what to put in for what it asks for:
-
-* name: Cyberdrop-DL
-* script
-*
-*
-
 ***
 
 * reddit\_personal\_use\_script
 * reddit\_secret
 
 after generating the app, you will need to give Cyberdrop-DL these values.
+
+</details>
+
+<details>
+
+<summary>RealDebrid</summary>
+
+In order to download files from sites supported by real-debrid, you'll need to get the api token from your account.
+
+***
+
+* realdebrid\_api\_key
+
+You can get your API key here (you must be logged in): [https://real-debrid.com/apitoken](https://real-debrid.com/apitoken)
 
 </details>

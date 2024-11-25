@@ -179,8 +179,7 @@ class ProgramUI:
         self._open_in_text_editor(config_file)
 
     def _edit_urls(self) -> None:
-        config_file = self.manager.path_manager.config_dir / self.manager.config_manager.loaded_config / "URLs.txt"
-        self._open_in_text_editor(config_file)
+        self._open_in_text_editor(self.manager.path_manager.input_file)
 
     def _change_default_config(self) -> None:
         configs = self.manager.config_manager.get_configs()

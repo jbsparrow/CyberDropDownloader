@@ -10,7 +10,7 @@ description: These are all of the configuration options for Settings.
 
 * block\_download\_sub\_folders
 
-when this is set to true (or selected) downloads that would be in a folder structure like:
+when this is set to `true` (or selected) downloads that would be in a folder structure like:
 
 `Downloads/ABC/DEF/GHI/image.jpg`
 
@@ -22,7 +22,7 @@ will be changed to:
 
 * disable\_download\_attempts
 
-By default the program will retry a download 10 times. You can customize this, or set this to true (or selected) to disable it and retry links until they complete.
+By default the program will retry a download 10 times. You can customize this, or set this to `true` (or selected) to disable it and retry links until they complete.
 
 However, to make sure the program will not run endlessly, there are certain situations where a file will never be retried, like if the program receives a 404 HTTP status, meaning the link is dead.
 
@@ -32,31 +32,31 @@ However, to make sure the program will not run endlessly, there are certain situ
 
 By default the program will do it's absolute best to try and find when a file was uploaded. It'll then set the last modified/last accessed/created times on the file to match.
 
-Setting this to true (or selecting it) will disable this function, and those times will be the time they were downloaded.
+Setting this to `true` (or selecting it) will disable this function, and those times will be the time they were downloaded.
 
 ***
 
 * include\_album\_id\_in\_folder\_name
 
-Setting this to true (or selecting it) will include the album ID (random alphanumeric string) of the album in the download folder name.
+Setting this to `true` (or selecting it) will include the album ID (random alphanumeric string) of the album in the download folder name.
 
 ***
 
 * include\_thread\_id\_in\_folder\_name
 
-Setting this to true (or selecting it) will include the thread ID (random alphanumeric string) of the album in the download folder name.
+Setting this to `true` (or selecting it) will include the thread ID (random alphanumeric string) of the album in the download folder name.
 
 ***
 
 * remove\_domains\_from\_folder\_names
 
-Setting this to true will remove the "(DOMAIN)" portion of folder names on new downloads.
+Setting this to `true` will remove the "(DOMAIN)" portion of folder names on new downloads.
 
 ***
 
 * remove\_generated\_id\_from\_filenames
 
-Setting this to true (or selecting it) will remove the alphanumeric ID added to the end of filenames on some websites (ex. Bunkrr).
+Setting this to `true` (or selecting it) will remove the alphanumeric ID added to the end of filenames on some websites (ex. Bunkrr).
 
 Multipart archives filenames will be fixed so they have the proper pattern of their format.
 
@@ -67,25 +67,25 @@ Supported formats: `.rar` `.7z` `.tar` `.gz` `.bz2` `.zip`
 
 * scrape\_single\_forum\_post
 
-Setting this to true will result in only a single forum post being scraped on the given link.
+Setting this to `true` will result in only a single forum post being scraped on the given link.
 
 ***
 
 * separate\_posts
 
-Setting this to true (or selecting it) will separate content from forum posts into separate folders.
+Setting this to `true` (or selecting it) will separate content from forum posts into separate folders.
 
 ***
 
 * skip\_download\_mark\_complete
 
-Setting this to true (or selecting it) will skip downloading files and mark them as downloaded in the database.
+Setting this to `true` (or selecting it) will skip downloading files and mark them as downloaded in the database.
 
 ***
 
 * skip\_referer\_seen\_before
 
-Setting this to true (or selecting it) will skip downloading files from any referer that have been scraped before. The file (s) will always be skipped regardless of whether the referer was successfully scraped or not
+Setting this to `true` (or selecting it) will skip downloading files from any referer that have been scraped before. The file (s) will always be skipped regardless of whether the referer was successfully scraped or not
 
 ***
 
@@ -133,7 +133,7 @@ No FORUM limit, no FORUM_POST limit, no FILE_HOST_PROFILE limit, maximum of 20 i
 
 * input\_file
 
-The path to the URLs.txt file you want to use for the config.
+The path to the `URLs.txt` file you want to use for the config.
 
 ***
 
@@ -252,25 +252,25 @@ Cyberdrop-DL comes equipped to ignore various files
 
 * exclude\_videos
 
-When this is set to true (or selected) the program will skip downloading video files.
+When this is set to `true` (or selected) the program will skip downloading video files.
 
 ***
 
 * exclude\_images
 
-When this is set to true (or selected) the program will skip downloading image files.
+When this is set to `true` (or selected) the program will skip downloading image files.
 
 ***
 
 * exclude\_audio
 
-When this is set to true (or selected) the program will skip downloading audio files.
+When this is set to `true` (or selected) the program will skip downloading audio files.
 
 ***
 
 * exclude\_other
 
-When this is set to true (or selected) the program will skip downloading other files.
+When this is set to `true` (or selected) the program will skip downloading other files.
 
 ***
 
@@ -282,21 +282,13 @@ When this is set to true, the program will skip past ads posted by models in coo
 
 * skip\_hosts
 
-You can supply hosts that you'd like the program to skip past, and not scrape/download from.
-
-Options:
-
-"bunkrr", "celebforum", "coomer", "cyberdrop", "cyberfile", "e-hentai", "erome", "fapello", "f95zone", "gofile", "hotpic", "ibb.co", "imageban", "imgbox", "imgur", "img.kiwi", "jpg.church", "jpg.homes", "jpg.fish", "jpg.fishing", "jpg.pet", "jpeg.pet", "jpg1.su", "jpg2.su", "jpg3.su", "kemono", "leakedmodels", "mediafire", "nudostar.com", "nudostar.tv", "omegascans", "pimpandhost", "pixeldrain", "postimg", "reddit", "redd.it", "redgifs", "rule34.xxx", "rule34.xyz", "saint", "scrolller", "simpcity", "socialmediagirls", "toonily", "xbunker", "xbunkr"
+You can supply hosts that you'd like the program to skip past, and not scrape/download from. This setting accepts any domain, even if they are no supported
 
 ***
 
 * only\_hosts
 
-You can supply hosts that you'd like the program to exclusively scrape/download from.
-
-Options:
-
-"bunkrr", "celebforum", "coomer", "cyberdrop", "cyberfile", "e-hentai", "erome", "fapello", "f95zone", "gofile", "hotpic", "ibb.co", "imageban", "imgbox", "imgur", "img.kiwi", "jpg.church", "jpg.homes", "jpg.fish", "jpg.fishing", "jpg.pet", "jpeg.pet", "jpg1.su", "jpg2.su", "jpg3.su", "kemono", "leakedmodels", "mediafire", "nudostar.com", "nudostar.tv", "omegascans", "pimpandhost", "pixeldrain", "postimg", "reddit", "redd.it", "redgifs", "rule34.xxx", "rule34.xyz", "saint", "scrolller", "simpcity", "socialmediagirls", "toonily", "xbunker", "xbunkr"
+You can supply hosts that you'd like the program to exclusively scrape/download from. This setting accepts any domain, even if they are no supported
 
 </details>
 
@@ -312,7 +304,7 @@ These are higher level options that effect the overarching functions of the prog
 
 By default the program keeps track of your downloads to make sure you don't download the same things repeatedly (both for you and for the servers you're downloading from)!
 
-Setting this to true will cause the program to ignore the history, and will allow you to re-download files.
+Setting this to `true` will cause the program to ignore the history, and will allow you to re-download files.
 
 ***
 
@@ -320,7 +312,7 @@ Setting this to true will cause the program to ignore the history, and will allo
 
 After a run is complete, the program will do a check to see if any partially downloaded files remain in the downloads folder and will notify you of them.
 
-Setting this to true will skip this check.
+Setting this to `true` will skip this check.
 
 ***
 
@@ -328,7 +320,7 @@ Setting this to true will skip this check.
 
 After a run is complete, the program will do a check (and remove) any empty files and folders in the download and scan folder.
 
-Setting this to true will disable this functionality.
+Setting this to `true` will disable this functionality.
 
 ***
 
@@ -336,7 +328,7 @@ Setting this to true will disable this functionality.
 
 The program will leave partial files alone as they will be used to resume downloads on subsequent runs.
 
-Setting this to true will remove any partial downloads from the download folder.
+Setting this to `true` will remove any partial downloads from the download folder.
 
 ***
 
@@ -374,7 +366,7 @@ This option has no effect unless `send_unsupported_to_jdownloader` is `true`
 
 * update\_last\_forum\_post
 
-Updates the urls.txt file with the last scraped forum post link for each forum URL.
+Updates the `URLs.txt` file with the last scraped forum post link for each forum URL.
 
 </details>
 
@@ -386,17 +378,21 @@ Cyberdrop-DL has a file sorted built in, but you have to enable it to use it.
 
 You can use the shared path flags below in any part of the sorting schemas. You can also use essentially none of them and have a hard coded path. However, filename and ext must always be used.
 
-Shared Path Flags:
+Shared path flags:
 
-* sort\_dir - sort\_folder path
-* base\_dir - the highest level folder name inside the folder being scanned 'scan\_folder' (model name / thread name)
-* parent\_dir - the folder name of where the file is (album name)
-* filename - the files name (stem)
-* ext - the files extension
+> `sort_dir` - `sort_folder` path
+
+> `base_dir` - the highest level folder name inside the folder being scanned, ex: `scan_folder` (model name / thread name)
+
+> `parent_dir` - the folder name of where the file is (album name)
+
+> `filename` - the files name (stem)
+
+> `ext` - the files extension
 
 It is possible to treat a list of URLs as a group, allowing them to be downloaded to a single folder.
 
-To define a group, put a title above the URLs you want to be in the group by doing the following: `--- {group name}` or `=== {group name}`.
+To define a group, put a title above the URLs you want to be in the group by doing the following: `--- <group_name>` or `=== <group_name>`.
 
 To define the end of a group, insert an group with no name. (`---` or `===`)
 
@@ -426,21 +422,21 @@ Those downloads would be sorted as follows:
 
 Sets the starting point for the file scan
 
-Each direct child of the scan\_folder is recursively scanned ,and files are moved based on your settings
+Each direct child of the `scan_folder` is recursively scanned ,and files are moved based on your settings
 
-If this is not set then the downloads\_dir is used instead
+If this is set to `null` (the default), `downloads_dir` is used instead
 
 ***
 
 * sort\_downloads
 
-Setting this to true will allow Cyberdrop-DL to sort downloads after a run is complete.
+Setting this to `true` will allow Cyberdrop-DL to sort downloads after a run is complete.
 
 ***
 
 * sort\_cdl\_only
 
-Setting this to true will sort only files that were downloaded by Cyberdrop-DL. sort\_downloads must be true for this to work.
+Setting this to `true` will sort only files that were downloaded by Cyberdrop-DL. Does nothing if `sort_downloads` is set to `false`
 
 ***
 
@@ -452,7 +448,7 @@ This is the path to the folder you'd like sorted downloads to be stored in.
 
 * sort\_incrementer\_format
 
-When naming collisions happen, Cyberdrop-DL will rename files (image.jpg -> image (1).jpg by default). You can change the way this is formatted. The format simply needs to include a {i}.
+When naming collisions happen, Cyberdrop-DL will rename files (`image.jpg` -> `image (1).jpg` by default). You can change the way this is formatted. The format simply needs to include `{i}` in it to spscify where to put the auto-increment value.
 
 ***
 
@@ -462,9 +458,11 @@ This is the format for the directory structure and naming scheme for audio files
 
 Unique Path Flags:
 
-* length - runtime
-* bitrate - files bit rate
-* sample\_rate - files sample rate
+> `length` - runtime
+
+> `bitrate` - files bit rate
+
+> `sample_rate` - files sample rate
 
 ***
 
@@ -474,7 +472,7 @@ This is the format for the directory structure and naming scheme for image files
 
 Unique Path Flags:
 
-* resolution - ex. 1080x1920
+> `resolution` - ex. 1080x1920
 
 ***
 
@@ -484,9 +482,11 @@ This is the format for the directory structure and naming scheme for video files
 
 Unique Path Flags:
 
-* resolution - ex. 1080x1920
-* fps - ex. 24
-* codec - ex. h264
+> `resolution` - ex. 1080x1920
+
+> `fps` - ex. 24
+
+> `codec` - ex. h264
 
 ***
 
@@ -550,117 +550,50 @@ adds sha256 hash when hashing files from the disk
 <details>
 
 <summary>Browser Cookies</summary>
-Cyberdrop-DL can extract cookies from your browser
-Only cookies from supported websites are extracted
+
+Cyberdrop-DL can extract cookies from your browser. These can be used for websites that require login or to pass DDos-Guard challenges. Only cookies from supported websites are extracted
 ***
 
 * auto\_import
 
 toggles automatic import of cookies at the start of each run
 
-***
+ ***
 
-* **browsers**
+* browsers
 
-The browser(s) to extract cookies from
-
-  <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #f9f9f9;"> <strong>Hint:</strong> If the value  entered is null then no browser will be extracted from </div>
-
-  <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #f9f9f9;"> <strong>Hint:</strong> This also effects manually extraction </div>
+List of browsers to extract cookies from. Supported browsers:
 
 
-**Supported Browsers**:
-  Value can be a single word string or a list of single word strings
-
-  * **Chrome**
-    * Supports: Linux, MacOS, Windows
-  * **Firefox**
-    * Supports: Linux, MacOS, Windows
-  * **LibreWolf**
-    * Supports: Linux, MacOS, Windows
-  * **Opera**
-    * Supports: Linux, MacOS, Windows
-  * **Opera_GX**
-    * Supports: MacOS, Windows
-  * **Edge**
-    * Supports: Linux, MacOS, Windows
-  * **Chromium**
-    * Supports: Linux, MacOS, Windows
-  * **Brave**
-    * Supports: Linux, MacOS, Windows
-  * **Vivaldi**
-    * Supports: Linux, MacOS, Windows
-  * **Safari**
-    * Supports: MacOS
+ | Browser  | Windows            | Linux              | MacOS              |
+| --------- | ------------------ | ------------------ | ------------------ |
+| Chrome    | Yes | Yes | Yes |
+| Firefox   | Yes | Yes | Yes |
+| LibreWolf | Yes | Yes | Yes |
+| Opera     | Yes | Yes | Yes |
+| Opera_GX  | Yes | Yes |
+| Edge      | Yes | Yes | Yes |
+| Chromium  | Yes | Yes | Yes |
+| Brave     | Yes | Yes | Yes |
+| Vivaldi   | Yes | Yes | Yes |
+| Safari    |     |     | Yes |
 
 
-Note: if cookies exists on multiple selected browsers then the last browser later in the list will have priority
+**Note:** If the value  entered is `null` or an empty list, no cookies will be extracted from any browser
+
+**Note:** If cookies exists on multiple selected browsers, the cookies from the last browser in the list will have priority
+
+
 ***
 
 * sites
 
-Selection of which sites to extract cookies from
-only sites supported by script will be extracted from given list
+List of domains to extract cookies from. Only sites supported by Cyberdrop-DL will be taken into account
 
+**Hint:** If the value entered is `null` or an empty list, cookies will be extract from all supported sites
 
-  <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #f9f9f9;"> <strong>Hint:</strong> If the value  entered is null then all sites will be extracted from </div>
+***
 
-  <div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #f9f9f9;"> <strong>Hint:</strong> This also effects manually extraction </div>
-
-
-  **Supported Sites:**
-  Value can be a single word string or a list of single word strings
-  Note: list provided may not always be up to date with changes
-
-  * bunkr
-  * bunkrr
-  * celebforum
-  * coomer
-  * cyberdrop
-  * cyberfile
-  * e-hentai
-  * erome
-  * f95zone
-  * fapello
-  * gofile
-  * host.church
-  * hotpic
-  * ibb.co
-  * imageban
-  * imagepond.net
-  * img.kiwi
-  * imgbox
-  * imgur
-  * jpeg.pet
-  * jpg.church
-  * jpg.fish
-  * jpg.fishing
-  * jpg.homes
-  * jpg.pet
-  * jpg1.su
-  * jpg2.su
-  * jpg3.su
-  * jpg4.su
-  * jpg5.su
-  * kemono
-  * leakedmodels
-  * mediafire
-  * nudostar.com
-  * nudostar.tv
-  * omegascans
-  * pimpandhost
-  * pixeldrain
-  * postimg
-  * realbooru
-  * real-debrid
-  * redd.it
-  * reddit
-  * redgifs
-  * rule34.xxx
-  * rule34.xyz
-  * rule34vault
-  * saint
-  * scrolller
-  * socialmediagirls
+If cookie extraction fails, you can manually extract the cookies from your browser and save them at `AppData/Cookies/<domain>.txt`, where domain is the domain of the site you exported the cookies from. The file must be a Netscape formated cookie file
 
 </details>
