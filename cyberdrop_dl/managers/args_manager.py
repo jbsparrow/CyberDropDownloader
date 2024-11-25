@@ -5,7 +5,7 @@ from pathlib import Path
 
 import arrow
 
-from cyberdrop_dl.utils.args.args import parse_args
+from cyberdrop_dl.utils.args import parse_args
 
 
 class ArgsManager:
@@ -71,7 +71,7 @@ class ArgsManager:
         if self.parsed_args:
             return
 
-        self.parsed_args = parse_args().__dict__
+        self.parsed_args = parse_args()
 
         self.immediate_download = self.parsed_args["download"]
         self.load_config_name = self.parsed_args["config"]
@@ -137,28 +137,3 @@ class ArgsManager:
         self.before = self.parsed_args["completed_before"] or arrow.get("3000")
         self.max_items = self.parsed_args["max_items_retry"]
         self.webhook_url = self.parsed_args["webhook_url"]
-
-        self.after = self.parsed_args["completed_after"] or arrow.get(0)
-        self.before = self.parsed_args["completed_before"] or arrow.get("3000")
-        self.max_items = self.parsed_args["max_items_retry"]
-
-        del self.parsed_args["download"]
-        del self.parsed_args["download_all_configs"]
-        del self.parsed_args["config"]
-        del self.parsed_args["no_ui"]
-        del self.parsed_args["retry_failed"]
-        del self.parsed_args["retry_all"]
-        del self.parsed_args["retry_maintenance"]
-        del self.parsed_args["input_file"]
-        del self.parsed_args["download_dir"]
-        del self.parsed_args["appdata_dir"]
-        del self.parsed_args["config_file"]
-        del self.parsed_args["log_dir"]
-        del self.parsed_args["proxy"]
-        del self.parsed_args["links"]
-        del self.parsed_args["sort_downloads"]
-        del self.parsed_args["sort_all_downloads"]
-        del self.parsed_args["sort_folder"]
-        del self.parsed_args["scan_folder"]
-        del self.parsed_args["completed_after"]
-        del self.parsed_args["completed_before"]

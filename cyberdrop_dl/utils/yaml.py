@@ -48,14 +48,21 @@ def load(file: Path, *, create: bool = False) -> dict:
         raise InvalidYamlError(file, e) from None
 
 
-def handle_validation_error(e: ValidationError, sources: dict | None = None):
+def handle_validation_error(e: ValidationError, *, title: str | None = None, sources: dict | None = None):
     error_count = e.error_count()
     source: Path = sources.get(e.title, None) if sources else None
+    title = title or e.title
     source = f"from {source.resolve()}" if source else ""
-    msg = f"found {error_count} error{'s' if error_count>1 else ''} parsing {e.title} {source}"
+    msg = f"found {error_count} error{'s' if error_count>1 else ''} parsing {title} {source}"
     print_to_console(msg, error=True)
     for error in e.errors(include_url=False):
-        msg = f"\nValue of '{'.'.join(error['loc'])}' is invalid:"
+        loc = ".".join(map(str, error["loc"]))
+        if title == "CLI arguments":
+            loc = error["loc"][-1]
+            if isinstance(error["loc"][-1], int):
+                loc = ".".join(map(str, error["loc"][-2:]))
+            loc = f"--{loc}"
+        msg = f"\nValue of '{loc}' is invalid:"
         print_to_console(msg, markup=False)
         print_to_console(f"  {error['msg']} (input_value='{error['input']}')", style="bold red")
     print_to_console(VALIDATION_ERROR_FOOTER)
