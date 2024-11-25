@@ -496,6 +496,57 @@ This is the format for the directory structure and naming scheme for other files
 
 </details>
 
+
+
+<details>
+
+<summary>Dupe Options</summary>
+These are options for how to hash files from the disk
+and enable/disable dupe cleanup
+
+Files can be hashed by changing the hashing setting from 'OFF'. To enable deduplication, both the hash and dedupe settings must not be set to 'OFF'
+
+<div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #f9f9f9;"> <strong>Hint:</strong> All deduplication in cyberdrop-dl requires a 100 percent size match, hash match, and algorithm match</div>
+
+<div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #f9f9f9;"> <strong>Hint:</strong>Once a hash is in the database for a given file path file size,and hash type it  will not be recalculated</div>
+
+* hashing
+enables hashing and allows for deduplication
+
+Value | Description
+-- | -- |
+`OFF` | Do not hash any file
+`IN_PLACE` | Hash a file immediately after its download finishes
+`POST_DOWNLOAD`| Hashes all files at once, after all the downloads have finished
+***
+* dedupe
+*
+selection for how to dedupe files
+Value  |Description
+-- | -- |
+`OFF` | Do nothing
+`KEEP_OLDEST` | Keep the oldest file for each hash, considering only the files that exist at the location saved in the database
+`KEEP_NEWEST`  | Keep the newest file for each hash, considering only the files that exist at the location saved in the database
+`KEEP_OLDEST_ALL`    | Keep the oldest file for each hash, considering all files regardless of whether they have been removed or moved
+`KEEP_NEWEST_ALL` |  Keep the newesst file for each hash, considering all files regardless of whether they have been removed or moved
+***
+
+
+* add\_md5_hash
+adds md5 hash when hashing files from the disk
+
+***
+* add\_sha256_hash
+adds sha256 hash when hashing files from the disk
+***
+* send\_deleted\_to\_trash
+  sends downloads to the trash folder rather than permenatly deleting off the disk
+***
+
+
+</details>
+
+
 <details>
 
 <summary>Dupe Options</summary>
@@ -556,7 +607,7 @@ If not enabled all previous downloads will be deleted
 Cyberdrop-DL can extract cookies from your browser. These can be used for websites that require login or to pass DDos-Guard challenges. Only cookies from supported websites are extracted
 ***
 
-* auto_import
+* auto\_import
 
 toggles automatic import of cookies at the start of each run
 

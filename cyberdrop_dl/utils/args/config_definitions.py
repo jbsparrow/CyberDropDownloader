@@ -130,6 +130,13 @@ settings: dict = {
         "auto_import": False,
         "sites": [],
     },
+    "Dupe_Cleanup_Options": {
+        "hashing": "IN_PLACE",
+        "auto_dedupe": True,
+        "add_md5_hash": False,
+        "add_sha256_hash": False,
+        "send_deleted_to_trash": True,
+    },
 }
 
 global_settings: dict = {
@@ -151,14 +158,6 @@ global_settings: dict = {
         "max_simultaneous_downloads": 15,
         "max_simultaneous_downloads_per_domain": 3,
         "download_speed_limit": 0,
-    },
-    "Dupe_Cleanup_Options": {
-        "delete_after_download": False,
-        "hash_while_downloading": False,
-        "keep_prev_download": False,
-        "keep_new_download": True,
-        "dedupe_already_downloaded": False,
-        "delete_off_disk": False,
     },
     "UI_Options": {
         "vi_mode": False,

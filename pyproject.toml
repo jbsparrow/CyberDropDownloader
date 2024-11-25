@@ -35,13 +35,14 @@ apprise = "^1.9.0"
 lz4 = "^4.3.3"
 pycryptodomex = "^3.21.0"
 jeepney =   [{platform = "linux", version = "^0.8.0"},{platform = "bsd", version = "^0.8.0"}]
+xxhash = "^3.5.0"
 
 [tool.poetry.scripts]
 cyberdrop-dl = "cyberdrop_dl.main:main"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^4.0.1"
-ruff = "^0.7.2"
+ruff = "^0.8.0"
 
 [tool.ruff]
 line-length = 120

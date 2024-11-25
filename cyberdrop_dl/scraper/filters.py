@@ -10,7 +10,7 @@ from cyberdrop_dl.utils.constants import FILE_FORMATS
 from cyberdrop_dl.utils.utilities import get_filename_and_ext
 
 if TYPE_CHECKING:
-    from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
 def is_valid_url(scrape_item: ScrapeItem) -> bool:
@@ -35,7 +35,7 @@ def is_outside_date_range(scrape_item: ScrapeItem, before: arrow, after: arrow) 
     item_date = scrape_item.completed_at or scrape_item.created_at
     if not item_date:
         return False
-    if after and arrow.get(item_date) < after or before and arrow.get(item_date) > before:
+    if (after and arrow.get(item_date) < after) or (before and arrow.get(item_date) > before):
         skip = True
 
     return skip

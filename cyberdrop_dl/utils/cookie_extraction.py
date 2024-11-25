@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from rich.console import Console
 
 from cyberdrop_dl.dependencies import browser_cookie3
-from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
+from cyberdrop_dl.utils.data_enums_classes.supported_domains import SupportedDomains
 
 if TYPE_CHECKING:
     from http.cookiejar import CookieJar

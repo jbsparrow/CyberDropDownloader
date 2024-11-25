@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from yaml.constructor import ConstructorError
 
     from cyberdrop_dl.scraper.crawler import ScrapeItem
-    from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
 
 class CDLBaseError(Exception):

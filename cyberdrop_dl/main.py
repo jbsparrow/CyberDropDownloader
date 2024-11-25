@@ -90,12 +90,9 @@ async def post_runtime(manager: Manager) -> None:
     )
     # checking and removing dupes
     if not manager.args_manager.sort_all_configs:
-        await manager.hash_manager.hash_client.cleanup_dupes()
-    if (
-        isinstance(manager.args_manager.sort_downloads, bool)
-        and manager.args_manager.sort_downloads
-        or manager.config_manager.settings_data["Sorting"]["sort_downloads"]
-        and not manager.args_manager.retry_any
+        await manager.hash_manager.hash_client.cleanup_dupes_after_download()
+    if (isinstance(manager.args_manager.sort_downloads, bool) and manager.args_manager.sort_downloads) or (
+        manager.config_manager.settings_data["Sorting"]["sort_downloads"] and not manager.args_manager.retry_any
     ):
         sorter = Sorter(manager)
         await sorter.sort()

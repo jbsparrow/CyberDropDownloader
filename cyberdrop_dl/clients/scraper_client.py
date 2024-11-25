@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from multidict import CIMultiDictProxy
 
     from cyberdrop_dl.managers.client_manager import ClientManager
-    from cyberdrop_dl.utils.dataclasses.url_objects import ScrapeItem
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
 def limiter(func: Callable) -> Any:
