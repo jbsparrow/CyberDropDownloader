@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.dataclasses.url_objects import MediaItem
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
 
 class FileLock:

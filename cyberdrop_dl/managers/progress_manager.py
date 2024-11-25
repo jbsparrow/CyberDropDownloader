@@ -102,8 +102,7 @@ class ProgressManager:
         log_with_color("Dupe Stats:", "cyan", 20)
         log_with_color(f"  Previously Hashed: {self.hash_progress.prev_hashed_files} files", "yellow", 20)
         log_with_color(f"  Newly Hashed: {self.hash_progress.hashed_files} files", "yellow", 20)
-        log_with_color(f"  Removed (Current Downloads): {self.hash_progress.removed_files} files", "yellow", 20)
-        log_with_color(f"  Removed (Previous Downloads): {self.hash_progress.removed_prev_files} files", "yellow", 20)
+        log_with_color(f"  Removed (Downloads): {self.hash_progress.removed_files} files", "yellow", 20)
 
         log_spacer(20, "")
         log_with_color("Sort Stats:", "cyan", 20)
