@@ -15,7 +15,7 @@ from cyberdrop_dl.utils.args.config_definitions import authentication_settings, 
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
-from cyberdrop_dl.utils.data_enums_classes.hash import Dedupe, Hashing
+from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
 
 
 def _match_config_dicts(default: dict, existing: dict) -> dict:
@@ -36,7 +36,6 @@ def _save_yaml(file: Path, data: dict) -> None:
     """Saves a dict to a yaml file."""
     file.parent.mkdir(parents=True, exist_ok=True)
     # Register the custom representer
-    yaml.add_representer(Dedupe, _enum_representer)
     yaml.add_representer(Hashing, _enum_representer)
     # dump
     with file.open("w") as yaml_file:
@@ -172,7 +171,7 @@ class ConfigManager:
                 ]
             )
         }
-        enums = {("Dupe_Cleanup_Options", "hashing"): Hashing, ("Dupe_Cleanup_Options", "dedupe"): Dedupe}
+        enums = {("Dupe_Cleanup_Options", "hashing"): Hashing}
         for key, value in default_settings_data.items():
             for subkey, subvalue in value.items():
                 self.settings_data[key][subkey] = self.return_verified(subvalue)

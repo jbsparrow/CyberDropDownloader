@@ -110,7 +110,7 @@ class HashClient:
 
     async def hash_item_during_download(self, media_item: MediaItem) -> None:
         try:
-            if self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["hashing"] != "IN_PLACE":
+            if self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["hashing"] !=self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["hashing"].IN_PLACE:
                 return
             await self.hash_item_helper(media_item.complete_file, media_item.original_filename, media_item.referer)
         except Exception as e:
@@ -118,9 +118,9 @@ class HashClient:
 
     async def cleanup_dupes_after_download(self) -> None:
         with self.manager.live_manager.get_hash_live(stop=True):
-            if self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["hashing"] == "OFF":
+            if self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["hashing"] == self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["hashing"].OFF:
                 return
-            if self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["dedupe"] == "OFF":
+            if not self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["auto_dedupe"]:
                 return
             file_hashes_dict = await self.get_file_hashes_dict()
         with self.manager.live_manager.get_remove_file_via_hash_live(stop=True):
@@ -137,12 +137,7 @@ class HashClient:
                         hash, size, self.xxhash
                     )
                 ]
-                # reverse
-                if self.keep_newest or self.keep_newest_all:
-                    all_matches = reversed(all_matches)
-                # Filter files based  on if the file exists
-                if self.keep_oldest or self.keep_newest:
-                    all_matches = [file for file in all_matches if file.exists()]
+                all_matches = [file for file in all_matches if file.exists()]
                 for file in all_matches[1:]:
                     try:
                         if not file.exists():
@@ -156,6 +151,7 @@ class HashClient:
     async def get_file_hashes_dict(self) -> dict:
         hashes_dict = defaultdict(lambda: defaultdict(list))
         # first compare downloads to each other
+        #get representive for each hash
         for media_item in list(self.manager.path_manager.completed_downloads):
             hash = await self.hash_item_helper(
                 media_item.complete_file, media_item.original_filename, media_item.referer
@@ -178,19 +174,3 @@ class HashClient:
             send2trash(path)
             log(f"sent file at{path} to trash", 10)
             return True
-
-    @property
-    def keep_oldest_all(self):
-        return self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["dedupe"] == "KEEP_OLDEST_ALL"
-
-    @property
-    def keep_newest_all(self):
-        return self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["dedupe"] == "KEEP_NEWEST_ALL"
-
-    @property
-    def keep_oldest(self):
-        return self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["dedupe"] == "KEEP_OLDEST"
-
-    @property
-    def keep_newest(self):
-        return self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["dedupe"] == "KEEP_NEWEST"
