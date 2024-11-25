@@ -10,6 +10,6 @@ class Hashing(IntEnum):
     def _missing_(cls, value):
         try:
             return cls[str(value.upper())]
-        except KeyError:
-            return cls.OFF
+        except KeyError as e:
+            raise e
 
