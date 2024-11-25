@@ -42,7 +42,7 @@ cyberdrop-dl = "cyberdrop_dl.main:main"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^4.0.1"
-ruff = "^0.7.2"
+ruff = "^0.8.0"
 
 [tool.ruff]
 line-length = 120

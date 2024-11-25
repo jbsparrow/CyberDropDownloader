@@ -12,4 +12,3 @@ class Hashing(IntEnum):
             return cls[str(value.upper())]
         except KeyError as e:
             raise e
-

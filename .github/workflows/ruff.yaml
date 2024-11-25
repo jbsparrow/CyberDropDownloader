@@ -9,8 +9,11 @@ jobs:
 
       - name: ruff lint
         uses: astral-sh/ruff-action@v1
+        with:
+          version: v0.8.0
 
       - name: ruff format check
         uses: astral-sh/ruff-action@v1
         with:
           args: "format --check"
+          version: v0.8.0

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from sqlite3 import IntegrityError
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 from rich.console import Console
 
@@ -99,7 +99,7 @@ class HashTable:
             console.print(f"Error checking file: {e}")
         return None
 
-    async def get_files_with_hash_matches(self, hash_value: str, size: int, hash_type: Union(str, None) = None) -> list:
+    async def get_files_with_hash_matches(self, hash_value: str, size: int, hash_type: str | None = None) -> list:
         """Retrieves a list of (folder, filename) tuples based on a given hash.
 
         Args:
