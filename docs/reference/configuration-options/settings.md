@@ -511,22 +511,9 @@ toggles automatic import of cookies at the start of each run
 
 * browsers
 
-List of browsers to extract cookies from. Supported browsers:
+### Supported browsers:
 
-
- | Browser  | Windows            | Linux              | MacOS              |
-| --------- | ------------------ | ------------------ | ------------------ |
-| Chrome    | Yes | Yes | Yes |
-| Firefox   | Yes | Yes | Yes |
-| LibreWolf | Yes | Yes | Yes |
-| Opera     | Yes | Yes | Yes |
-| Opera_GX  | Yes | Yes |
-| Edge      | Yes | Yes | Yes |
-| Chromium  | Yes | Yes | Yes |
-| Brave     | Yes | Yes | Yes |
-| Vivaldi   | Yes | Yes | Yes |
-| Safari    |     |     | Yes |
-
+![alt text](image.png)
 
 **Note:** If cookies exists on multiple selected browsers, the cookies from the last browser in the list will have priority
 
