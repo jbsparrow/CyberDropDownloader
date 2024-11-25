@@ -498,6 +498,59 @@ This is the format for the directory structure and naming scheme for other files
 
 <details>
 
+<summary>Dupe Options</summary>
+
+These are options for enable/disable hashing and auto dupe delecton
+***
+
+There are two steps for auto deduplication
+1. Turn change hashing to 'POST_DOWNLOAD' or 'IN_PLACE'
+2. Change auto_dedupe to True
+
+
+
+
+
+* hashing 
+There are three possible options for hashing
+1. OFF: disabled hashing
+2. IN_PLACE: hashing after each download
+3. POST_DOWNLOAD: hashing after all downloads have completed
+
+* auto_dedupe:
+  allows for deduping files when hashing is enabled
+  This finds all files in the database with the same hash and size, and keeps the oldest copy of the file
+  If zero or one copies of that file can be found, then no delete is performed
+
+*
+
+
+
+***
+
+* keep_new_download
+
+If enabled for each hash and size match one current file will be kept on the system
+
+If disabled all current files will be deleted if the following is all true
+- The file did not exist on the filesystem prior to the current run
+- keep prev_download is set to true, this ignores if file exists on the filesystem or not
+- The hash must have already existing on the system prior to the current run
+
+Current files are files that were either downloaded or a file was skipped for already existing when dedupe_already_downloaded is true
+
+* keep\_prev\_download
+prev downloads are files that are match with the hash and size given, and are not a part of the current files list
+
+Current files are files that were either downloaded or a file was skipped for already existing when dedupe_already_downloaded is true
+
+If enabled then at least one existing previous download will be kept on system.
+If not enabled all previous downloads will be deleted
+
+</details>
+
+<details>
+
 <summary>Browser Cookies</summary>
 
 Cyberdrop-DL can extract cookies from your browser. These can be used for websites that require login or to pass DDos-Guard challenges. Only cookies from supported websites are extracted
@@ -511,7 +564,7 @@ toggles automatic import of cookies at the start of each run
 
 * browsers
 
-### Supported browsers:
+### Supported browsers
 
 ![alt text](image.png)
 
