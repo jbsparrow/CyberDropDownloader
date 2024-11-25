@@ -549,7 +549,7 @@ adds sha256 hash when hashing files from the disk
 
 <details>
 
-<summary>Dupe Options</summary>
+<summary>Dupe Cleanup Options</summary>
 
 These are options for enable/disable hashing and auto dupe delecton
 ***
@@ -557,10 +557,8 @@ These are options for enable/disable hashing and auto dupe delecton
 There are two steps for auto deduplication
 1. Turn change hashing to 'POST_DOWNLOAD' or 'IN_PLACE'
 2. Change auto_dedupe to True
-
-
-
-
+   
+***
 
 * hashing 
 There are three possible options for hashing
@@ -568,35 +566,29 @@ There are three possible options for hashing
 2. IN_PLACE: hashing after each download
 3. POST_DOWNLOAD: hashing after all downloads have completed
 
-* auto_dedupe:
+when hashing is enabled all files are hashed with xxh128 hashing
+***
+
+* auto\_dedupe:
   allows for deduping files when hashing is enabled
   This finds all files in the database with the same hash and size, and keeps the oldest copy of the file
   If zero or one copies of that file can be found, then no delete is performed
-
-*
-
-
-
 ***
 
-* keep_new_download
+* add\_sha256\_hash
+allows files to be hash with the sha256 algorithm, this enables matching with sites that provide this information
+***
 
-If enabled for each hash and size match one current file will be kept on the system
+* add\_md5\_hash
+allows files to be hash with the md5 algorithm,  this enables matching with sites that provide this information
+***
 
-If disabled all current files will be deleted if the following is all true
-- The file did not exist on the filesystem prior to the current run
-- keep prev_download is set to true, this ignores if file exists on the filesystem or not
-- The hash must have already existing on the system prior to the current run
+* send\_deleted\_to\_trash
+  files are sent to trash instead of permanently deleting, enabling easy restoration
 
-Current files are files that were either downloaded or a file was skipped for already existing when dedupe_already_downloaded is true
 
-* keep\_prev\_download
-prev downloads are files that are match with the hash and size given, and are not a part of the current files list
 
-Current files are files that were either downloaded or a file was skipped for already existing when dedupe_already_downloaded is true
 
-If enabled then at least one existing previous download will be kept on system.
-If not enabled all previous downloads will be deleted
 
 </details>
 

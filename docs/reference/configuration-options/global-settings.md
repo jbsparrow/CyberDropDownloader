@@ -117,8 +117,6 @@ Set to 0 or `null` to disable
 
 </details>
 
-<details>
-
 <summary>UI Options</summary>
 
 These are the options for controlling the UI of the program
