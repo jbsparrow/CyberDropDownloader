@@ -64,5 +64,7 @@ def handle_validation_error(e: ValidationError, *, title: str | None = None, sou
             loc = f"--{loc}"
         msg = f"\nValue of '{loc}' is invalid:"
         print_to_console(msg, markup=False)
-        print_to_console(f"  {error['msg']} (input_value='{error['input']}')", style="bold red")
+        print_to_console(
+            f"  {error['msg']} (input_value='{error['input']}', input_type='{error['type']}')", style="bold red"
+        )
     print_to_console(VALIDATION_ERROR_FOOTER)

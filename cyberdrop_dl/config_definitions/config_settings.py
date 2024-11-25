@@ -23,9 +23,9 @@ class DownloadOptions(BaseModel):
     maximum_number_of_children: list[NonNegativeInt] = []
 
 
-class Files(BaseModel):
-    input_file: Path = Field(APP_STORAGE / "Configs" / "{config}" / "URLs.txt", validation_alias="i")
-    download_folder: Path = Field(DOWNLOAD_STORAGE, validation_alias="d")
+class Files(AliasModel):
+    input_file: Path = Field(validation_alias="i", default=APP_STORAGE / "Configs" / "{config}" / "URLs.txt")
+    download_folder: Path = Field(validation_alias="d", default=DOWNLOAD_STORAGE)
 
 
 class Logs(AliasModel):

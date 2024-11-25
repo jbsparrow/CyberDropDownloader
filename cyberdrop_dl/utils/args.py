@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, ValidationError, computed_field, field_va
 
 from cyberdrop_dl import __version__
 from cyberdrop_dl.config_definitions import ConfigSettings, GlobalSettings
-from cyberdrop_dl.config_definitions.custom_types import HttpURL
+from cyberdrop_dl.config_definitions.custom_types import AliasModel, HttpURL
 from cyberdrop_dl.utils.utilities import handle_validation_error
 
 
@@ -73,11 +73,11 @@ class DeprecatedArgs(BaseModel):
     )
 
 
-class ParsedArgs(BaseModel):
-    cli_only_args: CommandLineOnlyArgs
-    config_settings: ConfigSettings
+class ParsedArgs(AliasModel):
+    cli_only_args: CommandLineOnlyArgs = CommandLineOnlyArgs()
+    config_settings: ConfigSettings = ConfigSettings()
     deprecated_args: DeprecatedArgs
-    global_settings: GlobalSettings
+    global_settings: GlobalSettings = GlobalSettings()
 
     def model_post_init(self, _) -> None:
         if self.cli_only_args.retry_all or self.cli_only_args.retry_maintenance:
@@ -184,8 +184,8 @@ def parse_args() -> ParsedArgs:
     parsed_args["cli_only_args"] = parsed_args["cli_only_args"]["CLI-only Options"]
     try:
         parsed_args = ParsedArgs.model_validate(parsed_args)
+
     except ValidationError as e:
         handle_validation_error(e, title="CLI arguments")
         sys.exit(1)
-
     return parsed_args

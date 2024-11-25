@@ -1,4 +1,5 @@
 from pydantic import BaseModel, ByteSize, Field, NonNegativeFloat, PositiveInt, field_serializer
+from yarl import URL
 
 from .custom_types import AliasModel, HttpURL, NonEmptyStr
 
@@ -17,6 +18,12 @@ class General(BaseModel):
         if not isinstance(value, ByteSize):
             value = ByteSize(value)
         return value.human_readable(decimal=True)
+
+    @field_serializer("flaresolverr", "proxy")
+    def convert_to_str(self, value: URL) -> str:
+        if isinstance(value, URL):
+            return str(value)
+        return value
 
 
 class RateLimitingOptions(BaseModel):

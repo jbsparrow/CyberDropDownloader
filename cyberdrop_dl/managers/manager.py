@@ -6,6 +6,7 @@ from time import perf_counter
 from typing import TYPE_CHECKING
 
 from cyberdrop_dl import __version__
+from cyberdrop_dl.config_definitions import ConfigSettings, GlobalSettings
 from cyberdrop_dl.managers.cache_manager import CacheManager
 from cyberdrop_dl.managers.client_manager import ClientManager
 from cyberdrop_dl.managers.config_manager import ConfigManager
@@ -133,11 +134,32 @@ class Manager:
         cli_config_settings = self.parsed_args.config_settings.model_dump(exclude_unset=True)
         cli_global_settings = self.parsed_args.global_settings.model_dump(exclude_unset=True)
 
-        updated_config_settings = self.config_manager.settings_data.model_copy(update=cli_config_settings)
-        updated_global_settings = self.config_manager.global_settings_data.model_copy(update=cli_global_settings)
+        current_config_settings = self.config_manager.settings_data.model_dump()
+        current_global_settings = self.config_manager.global_settings_data.model_dump()
+
+        merged_config_settings = self.merge_dicts(current_config_settings, cli_config_settings)
+        merged_global_settings = self.merge_dicts(current_global_settings, cli_global_settings)
+
+        updated_config_settings = ConfigSettings.model_validate(merged_config_settings)
+        updated_global_settings = GlobalSettings.model_validate(merged_global_settings)
 
         self.config_manager.settings_data = updated_config_settings
         self.config_manager.global_settings_data = updated_global_settings
+
+    def merge_dicts(self, dict1: dict, dict2: dict):
+        for key, val in dict1.items():
+            if isinstance(val, dict):
+                if key in dict2 and isinstance(dict2[key], dict):
+                    self.merge_dicts(dict1[key], dict2[key])
+            else:
+                if key in dict2:
+                    dict1[key] = dict2[key]
+
+        for key, val in dict2.items():
+            if key not in dict1:
+                dict1[key] = val
+
+        return dict1
 
     def args_logging(self) -> None:
         """Logs the runtime arguments."""
