@@ -185,8 +185,8 @@ class ConfigManager:
                 if (key, subkey) in enums:
                     enum_value = self.settings_data[key][subkey]
                     enum_class = enums[(key, subkey)]
-                    if enum_value and str(enum_value).isnumeric():
-                        self.settings_data[key][subkey] = enum_class(int(enum_value))
+                    if isinstance(enum_value, str):
+                        self.settings_data[key][subkey] = enum_class[enum_value]
                     else:
                         self.settings_data[key][subkey] = enum_class(enum_value)
 
