@@ -528,8 +528,6 @@ List of browsers to extract cookies from. Supported browsers:
 | Safari    |     |     | Yes |
 
 
-**Note:** If the value  entered is `null` or an empty list, no cookies will be extracted from any browser
-
 **Note:** If cookies exists on multiple selected browsers, the cookies from the last browser in the list will have priority
 
 
