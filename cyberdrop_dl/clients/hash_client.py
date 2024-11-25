@@ -110,7 +110,10 @@ class HashClient:
 
     async def hash_item_during_download(self, media_item: MediaItem) -> None:
         try:
-            if self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["hashing"] !=self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["hashing"].IN_PLACE:
+            if (
+                self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["hashing"]
+                != self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["hashing"].IN_PLACE
+            ):
                 return
             await self.hash_item_helper(media_item.complete_file, media_item.original_filename, media_item.referer)
         except Exception as e:
@@ -118,7 +121,10 @@ class HashClient:
 
     async def cleanup_dupes_after_download(self) -> None:
         with self.manager.live_manager.get_hash_live(stop=True):
-            if self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["hashing"] == self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["hashing"].OFF:
+            if (
+                self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["hashing"]
+                == self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["hashing"].OFF
+            ):
                 return
             if not self.manager.config_manager.settings_data["Dupe_Cleanup_Options"]["auto_dedupe"]:
                 return
@@ -151,7 +157,7 @@ class HashClient:
     async def get_file_hashes_dict(self) -> dict:
         hashes_dict = defaultdict(lambda: defaultdict(list))
         # first compare downloads to each other
-        #get representive for each hash
+        # get representive for each hash
         for media_item in list(self.manager.path_manager.completed_downloads):
             hash = await self.hash_item_helper(
                 media_item.complete_file, media_item.original_filename, media_item.referer
