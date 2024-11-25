@@ -6,8 +6,6 @@ from time import perf_counter
 from typing import TYPE_CHECKING
 
 from cyberdrop_dl import __version__
-from cyberdrop_dl.config_definitions import ConfigSettings
-from cyberdrop_dl.managers.args_manager import ArgsManager
 from cyberdrop_dl.managers.cache_manager import CacheManager
 from cyberdrop_dl.managers.client_manager import ClientManager
 from cyberdrop_dl.managers.config_manager import ConfigManager
@@ -19,7 +17,7 @@ from cyberdrop_dl.managers.log_manager import LogManager
 from cyberdrop_dl.managers.path_manager import PathManager
 from cyberdrop_dl.managers.progress_manager import ProgressManager
 from cyberdrop_dl.managers.realdebrid_manager import RealDebridManager
-from cyberdrop_dl.managers.yaml_manager import YamlManager
+from cyberdrop_dl.utils.args import ParsedArgs
 from cyberdrop_dl.utils.data_enums_classes.supported_domains import SupportedDomains
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.transfer.first_time_setup import TransitionManager
@@ -32,7 +30,7 @@ if TYPE_CHECKING:
 
 class Manager:
     def __init__(self) -> None:
-        self.args_manager: ArgsManager = ArgsManager()
+        self.parsed_args: ParsedArgs = field(init=False)
         self.cache_manager: CacheManager = CacheManager(self)
         self.path_manager: PathManager = field(init=False)
         self.config_manager: ConfigManager = field(init=False)
@@ -62,18 +60,19 @@ class Manager:
 
     def startup(self) -> None:
         """Startup process for the manager."""
-        self.args_startup()
+        if isinstance(self.parsed_args, Field):
+            self.parsed_args = ParsedArgs.parse_args()
 
-        if not self.args_manager.appdata_dir:
+        if not self.parsed_args.cli_only_args.appdata_folder:
             self.first_time_setup.startup()
 
         self.path_manager = PathManager(self)
         self.path_manager.pre_startup()
 
-        self.cache_manager.startup(self.path_manager.cache_dir / "cache.yaml")
+        self.cache_manager.startup(self.path_manager.cache_folder / "cache.yaml")
         self.config_manager = ConfigManager(self)
         self.config_manager.startup()
-        self.vi_mode = self.args_manager.vi_mode or self.config_manager.global_settings_data.ui_options.vi_mode
+        self.vi_mode = self.config_manager.global_settings_data.ui_options.vi_mode
 
         self.path_manager.startup()
         self.log_manager = LogManager(self)
@@ -96,11 +95,6 @@ class Manager:
                 rate_limit_options.max_simultaneous_downloads_per_domain = 5
             self.config_manager.write_updated_global_settings_config()
         self.cache_manager.save("simp_settings_adjusted", True)
-
-    def args_startup(self) -> None:
-        """Start the args manager."""
-        if not self.args_manager.parsed_args:
-            self.args_manager.startup()
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -136,22 +130,14 @@ class Manager:
 
     def args_consolidation(self) -> None:
         """Consolidates runtime arguments with config values."""
-        cli_settings_groups = ["download_options", "file_size_limits", "ignore_options", "runtime_options"]
-        parsed_args = self.args_manager.parsed_args
-        default_settings = ConfigSettings().model_dump()
-        current_settings = self.config_manager.settings_data.model_dump()
-        for arg in parsed_args:
-            for cli_settings_group in cli_settings_groups:
-                if (
-                    arg not in default_settings[cli_settings_group]
-                    or parsed_args[arg] == default_settings[cli_settings_group][arg]
-                ):
-                    continue
-                if arg in self.args_manager.additive_args:
-                    current_settings[cli_settings_group][arg] += parsed_args[arg]
-                elif self.args_manager.parsed_args[arg] is not None:
-                    current_settings[cli_settings_group][arg] = parsed_args[arg]
-        self.config_manager.settings_data = ConfigSettings.model_validate(current_settings)
+        cli_config_settings = self.parsed_args.config_settings.model_dump(exclude_unset=True)
+        cli_global_settings = self.parsed_args.global_settings.model_dump(exclude_unset=True)
+
+        updated_config_settings = self.config_manager.settings_data.model_copy(update=cli_config_settings)
+        updated_global_settings = self.config_manager.global_settings_data.model_copy(update=cli_global_settings)
+
+        self.config_manager.settings_data = updated_config_settings
+        self.config_manager.global_settings_data = updated_global_settings
 
     def args_logging(self) -> None:
         """Logs the runtime arguments."""
@@ -183,7 +169,7 @@ class Manager:
         log(f"Using Config: {self.config_manager.loaded_config}", 10)
         log(f"Using Config File: {self.config_manager.settings.resolve()}", 10)
         log(f"Using Input File: {self.path_manager.input_file.resolve()}", 10)
-        log(f"Using Download Folder: {self.path_manager.download_dir.resolve()}", 10)
+        log(f"Using Download Folder: {self.path_manager.download_folder.resolve()}", 10)
         log(f"Using History File: {self.path_manager.history_db.resolve()}", 10)
 
         log(f"Using Authentication: \n{json.dumps(auth_provided, indent=4, sort_keys=True)}", 10)

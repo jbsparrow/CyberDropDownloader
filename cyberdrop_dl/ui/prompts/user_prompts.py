@@ -102,7 +102,7 @@ def _check_valid_new_config_name(answer: str, manager: Manager) -> str | None:
     if answer.casefold() in RESERVED_CONFIG_NAMES:
         msg = f"[bold red]ERROR:[/bold red] Config name '{answer}' is a reserved internal name"
 
-    elif manager.path_manager.config_dir.joinpath(answer).is_dir():
+    elif manager.path_manager.config_folder.joinpath(answer).is_dir():
         msg = f"[bold red]ERROR:[/bold red] Config with name '{answer}' already exists!"
     if msg:
         console.print(msg)

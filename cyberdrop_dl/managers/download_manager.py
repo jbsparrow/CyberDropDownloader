@@ -77,7 +77,7 @@ class DownloadManager:
     def check_free_space(self, folder: Path | None = None) -> bool:
         """Checks if there is enough free space on the drive to continue operating."""
         if not folder:
-            folder = self.manager.path_manager.download_dir
+            folder = self.manager.path_manager.download_folder
 
         folder = folder.resolve()
         while not folder.is_dir() and folder.parents:

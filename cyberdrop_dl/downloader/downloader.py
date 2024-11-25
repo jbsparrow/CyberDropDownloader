@@ -116,9 +116,9 @@ class Downloader:
         self.client = self.manager.client_manager.downloader_session
         self._semaphore = asyncio.Semaphore(self.manager.download_manager.get_download_limit(self.domain))
 
-        self.manager.path_manager.download_dir.mkdir(parents=True, exist_ok=True)
+        self.manager.path_manager.download_folder.mkdir(parents=True, exist_ok=True)
         if self.manager.config_manager.settings_data.sorting.sort_downloads:
-            self.manager.path_manager.sorted_dir.mkdir(parents=True, exist_ok=True)
+            self.manager.path_manager.sorted_folder.mkdir(parents=True, exist_ok=True)
 
     async def run(self, media_item: MediaItem) -> None:
         """Runs the download loop."""

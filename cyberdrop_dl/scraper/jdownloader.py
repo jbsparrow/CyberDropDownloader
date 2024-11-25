@@ -52,7 +52,7 @@ class JDownloader:
         self.jdownloader_download_dir = manager.config_manager.settings_data.runtime_options.jdownloader_download_dir
         self.jdownloader_autostart = manager.config_manager.settings_data.runtime_options.jdownloader_autostart
         if not self.jdownloader_download_dir:
-            self.jdownloader_download_dir = manager.path_manager.download_dir
+            self.jdownloader_download_dir = manager.path_manager.download_folder
         self.jdownloader_download_dir = Path(self.jdownloader_download_dir)
         self.jdownloader_agent = field(init=False)
 

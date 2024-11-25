@@ -59,7 +59,7 @@ class ClientManager:
 
         self.ssl_context = ssl.create_default_context(cafile=certifi.where()) if self.verify_ssl else False
         self.cookies = aiohttp.CookieJar(quote_cookie=False)
-        self.proxy = manager.args_manager.proxy or global_settings_data.general.proxy
+        self.proxy = global_settings_data.general.proxy
 
         self.domain_rate_limits = {
             "bunkrr": AsyncLimiter(5, 1),
@@ -179,10 +179,7 @@ class Flaresolverr:
 
     def __init__(self, client_manager: ClientManager) -> None:
         self.client_manager = client_manager
-        self.flaresolverr_host = (
-            client_manager.manager.args_manager.flaresolverr
-            or client_manager.manager.config_manager.global_settings_data.general.flaresolverr
-        )
+        self.flaresolverr_host = client_manager.manager.config_manager.global_settings_data.general.flaresolverr
         self.enabled = bool(self.flaresolverr_host)
         self.session_id = None
 

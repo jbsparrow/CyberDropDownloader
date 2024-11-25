@@ -25,7 +25,7 @@ class CacheManager:
             self.save("default_config", "Default")
 
         self.load()
-        if self.manager.args_manager.appdata_dir:
+        if self.manager.parsed_args.cli_only_args.appdata_folder:
             self.save("first_startup_completed", True)
 
     def load(self) -> None:

@@ -114,7 +114,7 @@ def get_filename_and_ext(filename: str, forum: bool = False) -> tuple[str, str]:
 
 def get_download_path(manager: Manager, scrape_item: ScrapeItem, domain: str) -> Path:
     """Returns the path to the download folder."""
-    download_dir = manager.path_manager.download_dir
+    download_dir = manager.path_manager.download_folder
 
     if scrape_item.retry:
         return scrape_item.retry_path
@@ -191,13 +191,13 @@ async def check_partials_and_empty_folders(manager: Manager) -> None:
     """Checks for partial downloads and empty folders."""
     if manager.config_manager.settings_data.runtime_options.delete_partial_files:
         log_with_color("Deleting partial downloads...", "bold_red", 20)
-        partial_downloads = manager.path_manager.download_dir.rglob("*.part")
+        partial_downloads = manager.path_manager.download_folder.rglob("*.part")
         for file in partial_downloads:
             file.unlink(missing_ok=True)
 
     elif not manager.config_manager.settings_data.runtime_options.skip_check_for_partial_files:
         log_with_color("Checking for partial downloads...", "yellow", 20)
-        partial_downloads = any(f.is_file() for f in manager.path_manager.download_dir.rglob("*.part"))
+        partial_downloads = any(f.is_file() for f in manager.path_manager.download_folder.rglob("*.part"))
         if partial_downloads:
             log_with_color("There are partial downloads in the downloads folder", "yellow", 20)
         temp_downloads = any(Path(f).is_file() for f in await manager.db_manager.temp_table.get_temp_names())
@@ -207,9 +207,9 @@ async def check_partials_and_empty_folders(manager: Manager) -> None:
 
     if not manager.config_manager.settings_data.runtime_options.skip_check_for_empty_folders:
         log_with_color("Checking for empty folders...", "yellow", 20)
-        purge_dir_tree(manager.path_manager.download_dir)
-        if isinstance(manager.path_manager.sorted_dir, Path):
-            purge_dir_tree(manager.path_manager.sorted_dir)
+        purge_dir_tree(manager.path_manager.download_folder)
+        if isinstance(manager.path_manager.sorted_folder, Path):
+            purge_dir_tree(manager.path_manager.sorted_folder)
 
 
 def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -> tuple[str, str]:
@@ -282,7 +282,7 @@ def check_prelease_version(current_version: str, releases: list[str]) -> tuple[s
 
 
 def sent_apprise_notifications(manager: Manager) -> None:
-    apprise_file = manager.path_manager.config_dir / manager.config_manager.loaded_config / "apprise.txt"
+    apprise_file = manager.path_manager.config_folder / manager.config_manager.loaded_config / "apprise.txt"
     text: Text = constants.LOG_OUTPUT_TEXT
     constants.LOG_OUTPUT_TEXT = Text("")
 

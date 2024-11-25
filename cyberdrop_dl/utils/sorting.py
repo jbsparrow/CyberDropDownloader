@@ -29,8 +29,8 @@ def get_file_date_in_us_ca_formats(file: Path) -> tuple[str, str]:
 class Sorter:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
-        self.download_dir = manager.path_manager.scan_dir or manager.path_manager.download_dir
-        self.sorted_downloads = manager.path_manager.sorted_dir
+        self.download_dir = manager.path_manager.scan_folder or manager.path_manager.download_folder
+        self.sorted_downloads = manager.path_manager.sorted_folder
         self.incrementer_format: str = manager.config_manager.settings_data.sorting.sort_incremementer_format
         self.sort_cdl_only = manager.config_manager.settings_data.sorting.sort_cdl_only
         if manager.config_manager.settings_data.download_options.skip_download_mark_completed:

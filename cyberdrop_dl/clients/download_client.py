@@ -255,11 +255,11 @@ class DownloadClient:
     def get_download_dir(self, media_item: MediaItem) -> Path:
         """Returns the download directory for the media item."""
         download_folder = media_item.download_folder
-        if self.manager.args_manager.retry_any:
+        if self.manager.parsed_args.cli_only_args.retry_any:
             return download_folder
 
         if self.manager.config_manager.settings_data.download_options.block_download_sub_folders:
-            while download_folder.parent != self.manager.path_manager.download_dir:
+            while download_folder.parent != self.manager.path_manager.download_folder:
                 download_folder = download_folder.parent
             media_item.download_folder = download_folder
         return download_folder

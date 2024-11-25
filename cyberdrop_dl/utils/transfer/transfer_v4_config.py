@@ -95,15 +95,15 @@ def transfer_v4_config(manager: Manager, new_config_name: str, old_config_path: 
     ]
 
     # Save Data
-    new_settings = manager.path_manager.config_dir / new_config_name / "settings.yaml"
-    new_logs = manager.path_manager.config_dir / new_config_name / "Logs"
+    new_settings = manager.path_manager.config_folder / new_config_name / "settings.yaml"
+    new_logs = manager.path_manager.config_folder / new_config_name / "Logs"
     new_settings.parent.mkdir(parents=True, exist_ok=True)
     new_logs.mkdir(parents=True, exist_ok=True)
 
     old_config_path = Path(old_config_path).parent
     old_urls_path = Path(old_data["Files"]["input_file"])
 
-    new_urls = manager.path_manager.config_dir / new_config_name / "URLs.txt"
+    new_urls = manager.path_manager.config_folder / new_config_name / "URLs.txt"
     new_urls.touch(exist_ok=True)
 
     if old_urls_path.is_absolute():

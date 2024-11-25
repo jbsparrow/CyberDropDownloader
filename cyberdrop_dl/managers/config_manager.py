@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import shutil
 from dataclasses import field
-from pathlib import Path
 from time import sleep
 from typing import TYPE_CHECKING
 
@@ -11,6 +10,8 @@ from cyberdrop_dl.managers.log_manager import LogManager
 from cyberdrop_dl.utils import yaml
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
 
@@ -34,13 +35,13 @@ class ConfigManager:
             self.loaded_config = self.manager.cache_manager.get("default_config")
             if not self.loaded_config:
                 self.loaded_config = "Default"
-            if self.manager.args_manager.load_config_from_args:
-                self.loaded_config = self.manager.args_manager.load_config_name
+            if self.manager.parsed_args.cli_only_args.config:
+                self.loaded_config = self.manager.parsed_args.cli_only_args.config
 
-        self.settings = self.manager.path_manager.config_dir / self.loaded_config / "settings.yaml"
-        self.global_settings = self.manager.path_manager.config_dir / "global_settings.yaml"
-        self.authentication_settings = self.manager.path_manager.config_dir / "authentication.yaml"
-        auth_override = self.manager.path_manager.config_dir / self.loaded_config / "authentication.yaml"
+        self.settings = self.manager.path_manager.config_folder / self.loaded_config / "settings.yaml"
+        self.global_settings = self.manager.path_manager.config_folder / "global_settings.yaml"
+        self.authentication_settings = self.manager.path_manager.config_folder / "authentication.yaml"
+        auth_override = self.manager.path_manager.config_folder / self.loaded_config / "authentication.yaml"
 
         if auth_override.is_file():
             self.authentication_settings = auth_override
@@ -70,8 +71,8 @@ class ConfigManager:
     def _load_settings_config(self) -> None:
         """Verifies the settings config file and creates it if it doesn't exist."""
         posible_fields = ConfigSettings.model_fields.keys()
-        if self.manager.args_manager.config_file:
-            self.settings = Path(self.manager.args_manager.config_file)
+        if self.manager.parsed_args.cli_only_args.config_file:
+            self.settings = self.manager.parsed_args.cli_only_args.config_file
             self.loaded_config = "CLI-Arg Specified"
 
         if self.settings.is_file():
@@ -123,7 +124,7 @@ class ConfigManager:
 
     def get_configs(self) -> list:
         """Returns a list of all the configs."""
-        return [config.name for config in self.manager.path_manager.config_dir.iterdir() if config.is_dir()]
+        return [config.name for config in self.manager.path_manager.config_folder.iterdir() if config.is_dir()]
 
     def change_default_config(self, config_name: str) -> None:
         """Changes the default config."""
@@ -137,7 +138,7 @@ class ConfigManager:
         if self.manager.cache_manager.get("default_config") == config_name:
             self.manager.cache_manager.save("default_config", configs[0])
 
-        config = self.manager.path_manager.config_dir / config_name
+        config = self.manager.path_manager.config_folder / config_name
         shutil.rmtree(config)
 
     def change_config(self, config_name: str) -> None:

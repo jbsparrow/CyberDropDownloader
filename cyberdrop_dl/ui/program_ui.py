@@ -84,7 +84,7 @@ class ProgramUI:
 
     def _retry_failed_download(self) -> True:
         """Sets retry failed and starts download process."""
-        self.manager.args_manager.retry_failed = True
+        self.manager.parsed_args.cli_only_args.retry_failed = True
         return True
 
     def _scan_and_create_hashes(self) -> None:
@@ -159,15 +159,17 @@ class ProgramUI:
         self.print_error("function reserved for future version")
 
     def _edit_auth_config(self) -> None:
-        config_file = self.manager.path_manager.config_dir / "authentication.yaml"
+        config_file = self.manager.path_manager.config_folder / "authentication.yaml"
         self._open_in_text_editor(config_file)
 
     def _edit_global_config(self) -> None:
-        config_file = self.manager.path_manager.config_dir / "global_settings.yaml"
+        config_file = self.manager.path_manager.config_folder / "global_settings.yaml"
         self._open_in_text_editor(config_file)
 
     def _edit_config(self) -> None:
-        config_file = self.manager.path_manager.config_dir / self.manager.config_manager.loaded_config / "settings.yaml"
+        config_file = (
+            self.manager.path_manager.config_folder / self.manager.config_manager.loaded_config / "settings.yaml"
+        )
         self._open_in_text_editor(config_file)
 
     def _create_new_config(self) -> None:
@@ -175,7 +177,7 @@ class ProgramUI:
         if not config_name:
             return
         self.manager.config_manager.change_config(config_name)
-        config_file = self.manager.path_manager.config_dir / config_name / "settings.yaml"
+        config_file = self.manager.path_manager.config_folder / config_name / "settings.yaml"
         self._open_in_text_editor(config_file)
 
     def _edit_urls(self) -> None:
@@ -245,7 +247,7 @@ class ProgramUI:
 
     def _get_changelog(self) -> str:
         """Get latest changelog file from github. Returns its content."""
-        path = self.manager.path_manager.config_dir.parent / "CHANGELOG.md"
+        path = self.manager.path_manager.config_folder.parent / "CHANGELOG.md"
         url = "https://raw.githubusercontent.com/jbsparrow/CyberDropDownloader/refs/heads/master/CHANGELOG.md"
         _, latest_version = check_latest_pypi(log_to_console=False)
         name = f"{path.stem}_{latest_version}{path.suffix}"

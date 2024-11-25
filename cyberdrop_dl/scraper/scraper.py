@@ -90,11 +90,11 @@ class ScrapeMapper:
 
         self.no_crawler_downloader.startup()
 
-        if self.manager.args_manager.retry_failed:
+        if self.manager.parsed_args.cli_only_args.retry_failed:
             await self.load_failed_links()
-        elif self.manager.args_manager.retry_all:
+        elif self.manager.parsed_args.cli_only_args.retry_all:
             await self.load_all_links()
-        elif self.manager.args_manager.retry_maintenance:
+        elif self.manager.parsed_args.cli_only_args.retry_maintenance:
             await self.load_all_bunkr_failed_links_via_hash()
         else:
             await self.load_links()
@@ -148,11 +148,11 @@ class ScrapeMapper:
             input_file.touch(exist_ok=True)
 
         links = {"": []}
-        if not self.manager.args_manager.other_links:
+        if not self.manager.parsed_args.cli_only_args.links:
             links = await self.parse_input_file_groups()
 
         else:
-            links[""].extend(self.manager.args_manager.other_links)
+            links[""].extend(self.manager.parsed_args.cli_only_args.links)
 
         links = {k: list(filter(None, v)) for k, v in links.items()}
         items = []
@@ -177,24 +177,24 @@ class ScrapeMapper:
             item = self.create_item_from_entry(entry)
             if self.filter_items(item):
                 items.append(item)
-        if self.manager.args_manager.max_items:
-            items = items[: self.manager.args_manager.max_items]
+        if self.manager.parsed_args.cli_only_args.max_items_retry:
+            items = items[: self.manager.parsed_args.cli_only_args.max_items_retry]
         for item in items:
             self.manager.task_group.create_task(self.send_to_crawler(item))
 
     async def load_all_links(self) -> None:
         """Loads all links from database."""
         entries = await self.manager.db_manager.history_table.get_all_items(
-            self.manager.args_manager.after,
-            self.manager.args_manager.before,
+            self.manager.parsed_args.cli_only_args.completed_after,
+            self.manager.parsed_args.cli_only_args.completed_before,
         )
         items = []
         for entry in entries:
             item = self.create_item_from_entry(entry)
             if self.filter_items(item):
                 items.append(item)
-        if self.manager.args_manager.max_items:
-            items = items[: self.manager.args_manager.max_items]
+        if self.manager.parsed_args.cli_only_args.max_items_retry:
+            items = items[: self.manager.parsed_args.cli_only_args.max_items_retry]
         for item in items:
             self.manager.task_group.create_task(self.send_to_crawler(item))
 
@@ -207,8 +207,8 @@ class ScrapeMapper:
             item = self.create_item_from_entry(entry)
             if self.filter_items(item):
                 items.append(item)
-        if self.manager.args_manager.max_items:
-            items = items[: self.manager.args_manager.max_items]
+        if self.manager.parsed_args.cli_only_args.max_items_retry:
+            items = items[: self.manager.parsed_args.cli_only_args.max_items_retry]
         for item in items:
             self.manager.task_group.create_task(self.send_to_crawler(item))
 
@@ -280,7 +280,7 @@ class ScrapeMapper:
             success = False
             try:
                 download_folder = get_download_path(self.manager, scrape_item, "jdownloader")
-                relative_download_dir = download_folder.relative_to(self.manager.path_manager.download_dir)
+                relative_download_dir = download_folder.relative_to(self.manager.path_manager.download_folder)
                 self.jdownloader.direct_unsupported_to_jdownloader(
                     scrape_item.url,
                     scrape_item.parent_title,
@@ -312,8 +312,8 @@ class ScrapeMapper:
             log(f"Skipping {scrape_item.url} as it is a blocked domain", 10)
             return False
 
-        before = self.manager.args_manager.before
-        after = self.manager.args_manager.after
+        before = self.manager.parsed_args.cli_only_args.completed_before
+        after = self.manager.parsed_args.cli_only_args.completed_after
         if is_outside_date_range(scrape_item, before, after):
             log(f"Skipping {scrape_item.url} as it is outside of the desired date range", 10)
             return False
