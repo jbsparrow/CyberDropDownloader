@@ -18,7 +18,7 @@ class LeakyBucket(AsyncLimiter):
         )
 
         self.max_amount = 1024 * 1024 * 10
-        super().__init__(self.download_speed_limit * 1024, 1)
+        super().__init__(self.download_speed_limit, 1)
 
     async def acquire(self, amount: float = 1) -> None:
         if self.download_speed_limit <= 0:
