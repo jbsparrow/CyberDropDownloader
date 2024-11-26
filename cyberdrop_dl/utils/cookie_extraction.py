@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+import re
 import contextlib
 from functools import wraps
 from http.cookiejar import MozillaCookieJar
@@ -62,9 +62,12 @@ def get_cookies_from_browsers(
         raise ValueError(msg)
 
     browsers = browsers or manager.config_manager.settings_data["Browser_Cookies"]["browsers"]
-    domains = domains or manager.config_manager.settings_data["Browser_Cookies"]["sites"]
-    browsers = list(map(str.lower, browsers))
-    domains = list(map(str.lower, domains))
+    if browsers:
+        browsers = list(map(str.lower, re.split(r'[ ,]+', browsers)))
+    if domains:   
+        domains = list(map(str.lower, re.split(r'[ ,]+', domains))) 
+    else:
+        domains =list(SupportedDomains.supported_hosts)
 
     extractors = [getattr(browser_cookie3, b) for b in browsers if hasattr(browser_cookie3, b)]
 
@@ -72,16 +75,16 @@ def get_cookies_from_browsers(
         msg = "None of the provided browsers is not supported for extraction"
         raise ValueError(msg)
 
-    for extractor in extractors:
-        for domain in domains:
-            cookie_jar = MozillaCookieJar()
+    for domain in domains:
+        cookie_jar = MozillaCookieJar()
+        for extractor in extractors:
             cookies = extractor(domain_name=domain)
             for cookie in cookies:
                 cookie_jar.set_cookie(cookie)
             manager.path_manager.cookies_dir.mkdir(parents=True, exist_ok=True)
             cookie_file_path = manager.path_manager.cookies_dir / f"{domain}.txt"
             update_forum_config_cookies(manager, domain, cookies)
-            cookie_jar.save(cookie_file_path, ignore_discard=True, ignore_expires=True)
+        cookie_jar.save(cookie_file_path, ignore_discard=True, ignore_expires=True)
 
 
 def update_forum_config_cookies(manager: Manager, forum: str, cookie: CookieJar) -> None:
