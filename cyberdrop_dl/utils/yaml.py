@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from enum import IntEnum, StrEnum
+from enum import Enum
 from pathlib import Path, PurePath
 
 import yaml
@@ -12,12 +12,13 @@ from cyberdrop_dl.utils.logger import print_to_console
 
 
 def _save_as_str(dumper: yaml.Dumper, value):
+    if isinstance(value, Enum):
+        return dumper.represent_str(value.name)
     return dumper.represent_str(str(value))
 
 
 yaml.add_multi_representer(PurePath, _save_as_str)
-yaml.add_multi_representer(StrEnum, _save_as_str)
-yaml.add_multi_representer(IntEnum, int)
+yaml.add_multi_representer(Enum, _save_as_str)
 yaml.add_representer(URL, _save_as_str)
 
 VALIDATION_ERROR_FOOTER = """

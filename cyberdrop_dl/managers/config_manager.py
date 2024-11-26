@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from cyberdrop_dl.managers.manager import Manager
-from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
 
 
 class ConfigManager:

@@ -4,6 +4,7 @@ from pathlib import Path
 from pydantic import BaseModel, ByteSize, Field, NonNegativeInt, field_serializer
 
 from cyberdrop_dl.utils.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE
+from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
 
 from .custom_types import AliasModel, HttpAppriseURLModel, NonEmptyStr
 
@@ -96,9 +97,20 @@ class BrowserCookies(BaseModel):
     sites: list[NonEmptyStr] = []
 
 
+class DupeCleanupOptions(BaseModel):
+    hashing: Hashing = Hashing.IN_PLACE
+    auto_dedupe: bool = True
+    add_md5_hash: bool = False
+    add_sha256_hash: bool = False
+    send_deleted_to_trash: bool = True
+
+
 class ConfigSettings(AliasModel):
     browser_cookies: BrowserCookies = Field(validation_alias="Browser_Cookies", default=BrowserCookies())
     download_options: DownloadOptions = Field(validation_alias="Download_Options", default=DownloadOptions())
+    dupe_cleanup_options: DupeCleanupOptions = Field(
+        validation_alias="Dupe_Cleanup_Options", default=DupeCleanupOptions()
+    )
     file_size_limits: FileSizeLimits = Field(validation_alias="File_Size_Limits", default=FileSizeLimits())
     files: Files = Field(validation_alias="Files", default=Files())
     ignore_options: IgnoreOptions = Field(validation_alias="Ignore_Options", default=IgnoreOptions())
