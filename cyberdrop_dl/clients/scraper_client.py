@@ -92,6 +92,7 @@ class ScraperClient:
 
         headers = self._headers | {"Content-Type": "application/json"}
         data = {"cmd": "request.get", "url": str(url), "maxTimeout": 60000}
+        
 
         async with client_session.post(
             f"http://{self.client_manager.flaresolverr}/v1",
@@ -134,6 +135,7 @@ class ScraperClient:
                     try:
                         await self.client_manager.check_http_status(response, origin=origin)
                     except DDOSGuardError:
+                        await self.client_manager.manager.cache_manager.request_cache.delete_url(url)
                         response, response_URL = await self.flaresolverr(
                             domain,
                             url,
@@ -164,6 +166,7 @@ class ScraperClient:
                 try:
                     await self.client_manager.check_http_status(response, origin=origin)
                 except DDOSGuardError:
+                    await self.client_manager.manager.cache_manager.request_cache.delete_url(url)
                     response, response_URL = await self.flaresolverr(
                         domain,
                         url,
@@ -258,6 +261,7 @@ class ScraperClient:
                     try:
                         await self.client_manager.check_http_status(response, origin=origin)
                     except DDOSGuardError:
+                        await self.client_manager.manager.cache_manager.request_cache.delete_url(url)
                         response_text, _ = await self.flaresolverr(domain, url)
                         return response_text
                     return await response.text()
@@ -271,6 +275,7 @@ class ScraperClient:
                 try:
                     await self.client_manager.check_http_status(response, origin=origin)
                 except DDOSGuardError:
+                    await self.client_manager.manager.cache_manager.request_cache.delete_url(url)
                     response_text, _ = await self.flaresolverr(domain, url)
                     return response_text
                 return await response.text()
