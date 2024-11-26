@@ -42,7 +42,7 @@ class CommandLineOnlyArgs(BaseModel):
     @computed_field
     @property
     def multiconfig(self) -> bool:
-        return self.config.casefold() == "all"
+        return self.config and self.config.casefold() == "all"
 
     @field_validator("completed_after", "completed_before", mode="after")
     @staticmethod
@@ -189,7 +189,7 @@ def parse_args() -> ParsedArgs:
             if group_dict:
                 parsed_args[name][group.title] = group_dict
 
-    parsed_args["deprecated_args"] = parsed_args["deprecated_args"]["Deprecated"]
+    parsed_args["deprecated_args"] = parsed_args["deprecated_args"].get("Deprecated") or {}
     parsed_args["cli_only_args"] = parsed_args["cli_only_args"]["CLI-only Options"]
     try:
         parsed_args = ParsedArgs.model_validate(parsed_args)
