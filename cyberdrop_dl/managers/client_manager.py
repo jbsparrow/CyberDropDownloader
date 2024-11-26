@@ -141,7 +141,6 @@ class ClientManager:
             if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
                 raise DDOSGuardError(origin=origin)
 
-
         if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
             return
 
@@ -153,11 +152,14 @@ class ClientManager:
                 if "data" in JSON_Resp and "error" in JSON_Resp["data"]:
                     raise ScrapeError(JSON_Resp["status"], JSON_Resp["data"]["error"], origin=origin)
 
+        
 
         status = status if headers.get("Content-Type") else CustomHTTPStatus.IM_A_TEAPOT
         message = "No content-type in response header" if headers.get("Content-Type") else None
 
         raise DownloadError(status=status, message=message, origin=origin)
+
+
     @staticmethod
     def check_bunkr_maint(headers: dict):
         if headers.get("Content-Length") == "322509" and headers.get("Content-Type") == "video/mp4":
