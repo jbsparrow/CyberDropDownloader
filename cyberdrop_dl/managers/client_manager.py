@@ -41,6 +41,8 @@ DDOS_GUARD_CHALLENGE_SELECTORS = [
     ".lds-ring",
 ]
 
+CLOUDFLARE_CHALLENGE_TITLES=["Simpcity Cuck Detection"]
+CLOUDFLARE_CHALLENGE_SELECTORS=['captchawrapper', 'cf-turnstile']
 
 class ClientManager:
     """Creates a 'client' that can be referenced by scraping or download sessions."""
@@ -129,9 +131,6 @@ class ClientManager:
             message = DOWNLOAD_ERROR_ETAGS.get(headers.get("ETag"))
             raise DownloadError(HTTPStatus.NOT_FOUND, message=message, origin=origin)
 
-        if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
-            return
-
         if any(domain in response.url.host for domain in ("gofile", "imgur")):
             with contextlib.suppress(ContentTypeError):
                 JSON_Resp: dict = await response.json()
@@ -146,8 +145,11 @@ class ClientManager:
 
         if response_text:
             soup = BeautifulSoup(response_text, "html.parser")
-            if cls.check_ddos_guard(soup):
+            if cls.check_ddos_protection(soup):
                 raise DDOSGuardError(origin=origin)
+            
+        if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
+            return
 
         status = status if headers.get("Content-Type") else CustomHTTPStatus.IM_A_TEAPOT
         message = "No content-type in response header" if headers.get("Content-Type") else None
@@ -176,7 +178,21 @@ class ClientManager:
                 return True
 
         return False
+    
+    @staticmethod
+    def check_cloudflare(soup: BeautifulSoup) -> bool:
+        if soup.title:
+            for title in CLOUDFLARE_CHALLENGE_TITLES:
+                challenge_found = title.casefold() == soup.title.string.casefold()
+                if challenge_found:
+                    return True
 
+        for selector in CLOUDFLARE_CHALLENGE_SELECTORS:
+            challenge_found = soup.find(selector)
+            if challenge_found:
+                return True
+
+        return False
     async def close(self) -> None:
         await self.flaresolverr._destroy_session()
 
