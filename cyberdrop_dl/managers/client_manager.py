@@ -41,6 +41,9 @@ DDOS_GUARD_CHALLENGE_SELECTORS = [
     ".lds-ring",
 ]
 
+CLOUD_FLARE_TITLES = ["Simpcity Cuck Detection"]
+CLOUD_FLARE_SELECTORS = ["captchawrapper", "cf-turnstile"]
+
 
 class ClientManager:
     """Creates a 'client' that can be referenced by scraping or download sessions."""
@@ -129,9 +132,6 @@ class ClientManager:
             message = DOWNLOAD_ERROR_ETAGS.get(headers.get("ETag"))
             raise DownloadError(HTTPStatus.NOT_FOUND, message=message, origin=origin)
 
-        if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
-            return
-
         if any(domain in response.url.host for domain in ("gofile", "imgur")):
             with contextlib.suppress(ContentTypeError):
                 JSON_Resp: dict = await response.json()
@@ -146,8 +146,10 @@ class ClientManager:
 
         if response_text:
             soup = BeautifulSoup(response_text, "html.parser")
-            if cls.check_ddos_guard(soup):
+            if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
                 raise DDOSGuardError(origin=origin)
+        if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
+            return
 
         status = status if headers.get("Content-Type") else CustomHTTPStatus.IM_A_TEAPOT
         message = "No content-type in response header" if headers.get("Content-Type") else None
@@ -171,6 +173,21 @@ class ClientManager:
                     return True
 
         for selector in DDOS_GUARD_CHALLENGE_SELECTORS:
+            challenge_found = soup.find(selector)
+            if challenge_found:
+                return True
+
+        return False
+
+    @staticmethod
+    def check_cloudflare(soup: BeautifulSoup) -> bool:
+        if soup.title:
+            for title in CLOUD_FLARE_TITLES:
+                challenge_found = title.casefold() == soup.title.string.casefold()
+                if challenge_found:
+                    return True
+
+        for selector in CLOUD_FLARE_SELECTORS:
             challenge_found = soup.find(selector)
             if challenge_found:
                 return True
@@ -268,7 +285,7 @@ class Flaresolverr:
         flaresolverr_user_agent = solution.get("userAgent").strip()
         mismatch_msg = f"Config user_agent and flaresolverr user_agent do not match:\n  Cyberdrop-DL: {user_agent}\n  Flaresolverr: {flaresolverr_user_agent}"
 
-        if self.client_manager.check_ddos_guard(response):
+        if self.client_manager.check_ddos_guard(response) or self.client_manager.check_cloudflare(response):
             if not update_cookies:
                 raise DDOSGuardError(message="Invalid response from flaresolverr", origin=origin)
             if flaresolverr_user_agent != user_agent:
