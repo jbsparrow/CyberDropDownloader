@@ -53,7 +53,7 @@ def startup() -> Manager:
             ProgramUI(manager)
 
     except InvalidYamlError as e:
-        print_to_console(e.message_rich)
+        print_to_console(e.message, error=True)
         sys.exit(1)
 
     except ValidationError as e:
