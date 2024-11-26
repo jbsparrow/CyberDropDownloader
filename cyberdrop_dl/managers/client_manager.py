@@ -285,7 +285,7 @@ class Flaresolverr:
         flaresolverr_user_agent = solution.get("userAgent").strip()
         mismatch_msg = f"Config user_agent and flaresolverr user_agent do not match:\n  Cyberdrop-DL: {user_agent}\n  Flaresolverr: {flaresolverr_user_agent}"
 
-        if self.client_manager.check_ddos_guard(response):
+        if self.client_manager.check_ddos_guard(response) or self.client_manager.check_cloudflare(response):
             if not update_cookies:
                 raise DDOSGuardError(message="Invalid response from flaresolverr", origin=origin)
             if flaresolverr_user_agent != user_agent:
