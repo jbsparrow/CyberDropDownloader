@@ -76,7 +76,7 @@ class DeprecatedArgs(BaseModel):
 class ParsedArgs(AliasModel):
     cli_only_args: CommandLineOnlyArgs = CommandLineOnlyArgs()
     config_settings: ConfigSettings = ConfigSettings()
-    deprecated_args: DeprecatedArgs
+    deprecated_args: DeprecatedArgs = DeprecatedArgs()
     global_settings: GlobalSettings = GlobalSettings()
 
     def model_post_init(self, _) -> None:
@@ -104,7 +104,9 @@ class ParsedArgs(AliasModel):
         return parse_args()
 
 
-def _add_args_from_model(parser: ArgumentParser, model: type[BaseModel], *, cli_args: bool = False) -> None:
+def _add_args_from_model(
+    parser: ArgumentParser, model: type[BaseModel], *, cli_args: bool = False, deprecated: bool = False
+) -> None:
     for name, field in model.model_fields.items():
         cli_name = name.replace("_", "-")
         arg_type = type(field.default)
@@ -120,7 +122,7 @@ def _add_args_from_model(parser: ArgumentParser, model: type[BaseModel], *, cli_
         if arg_type is bool:
             action = BooleanOptionalAction
             default_options.pop("default")
-            if cli_args:
+            if cli_args and not deprecated:
                 action = "store_false" if default else "store_true"
             parser.add_argument(*name_or_flags, action=action, **default_options)
             continue
@@ -164,7 +166,7 @@ def parse_args() -> ParsedArgs:
     }
 
     deprecated = parser.add_argument_group("Deprecated")
-    _add_args_from_model(deprecated, DeprecatedArgs, cli_args=True)
+    _add_args_from_model(deprecated, DeprecatedArgs, cli_args=True, deprecated=True)
     group_lists["deprecated_args"] = [deprecated]
 
     args = parser.parse_args()
