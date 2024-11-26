@@ -157,7 +157,8 @@ class ClientManager:
         status = status if headers.get("Content-Type") else CustomHTTPStatus.IM_A_TEAPOT
         message = "No content-type in response header" if headers.get("Content-Type") else None
 
-        raise DownloadError(status=status, message=message, origin=origin)    @staticmethod
+        raise DownloadError(status=status, message=message, origin=origin)
+    @staticmethod
     def check_bunkr_maint(headers: dict):
         if headers.get("Content-Length") == "322509" and headers.get("Content-Type") == "video/mp4":
             raise DownloadError(status="Bunkr Maintenance", message="Bunkr under maintenance")
