@@ -160,7 +160,7 @@ class ConfigManager:
         default_settings_data = copy.deepcopy(settings)
         existing_settings_data = _load_yaml(self.settings)
         self.settings_data = _match_config_dicts(default_settings_data, existing_settings_data)
-        paths = {
+        paths = set(
             (
                 [
                     ("Files", "input_file"),
@@ -170,7 +170,7 @@ class ConfigManager:
                     ("Sorting", "scan_folder"),
                 ]
             )
-        }
+        )
         enums = {("Dupe_Cleanup_Options", "hashing"): Hashing}
         for key, value in default_settings_data.items():
             for subkey, subvalue in value.items():
