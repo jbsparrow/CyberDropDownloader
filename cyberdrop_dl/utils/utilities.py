@@ -296,7 +296,7 @@ def sent_apprise_notifications(manager: Manager) -> None:
             apprise_urls = [AppriseURL(line.strip()) for line in file]
     except ValidationError as e:
         sources = {"AppriseURLModel": apprise_file}
-        handle_validation_error(e, sources)
+        handle_validation_error(e, sources=sources)
         return
 
     if not apprise_urls:
