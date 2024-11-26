@@ -145,7 +145,7 @@ class ClientManager:
 
         if response_text:
             soup = BeautifulSoup(response_text, "html.parser")
-            if cls.check_ddos_guard(soup) or cls.check_cloudflare():
+            if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
                 raise DDOSGuardError(origin=origin)
             
         if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
