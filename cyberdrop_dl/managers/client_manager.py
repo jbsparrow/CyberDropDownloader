@@ -41,8 +41,9 @@ DDOS_GUARD_CHALLENGE_SELECTORS = [
     ".lds-ring",
 ]
 
-CLOUDFLARE_CHALLENGE_TITLES=["Simpcity Cuck Detection"]
-CLOUDFLARE_CHALLENGE_SELECTORS=['captchawrapper', 'cf-turnstile']
+CLOUDFLARE_CHALLENGE_TITLES = ["Simpcity Cuck Detection"]
+CLOUDFLARE_CHALLENGE_SELECTORS = ["captchawrapper", "cf-turnstile"]
+
 
 class ClientManager:
     """Creates a 'client' that can be referenced by scraping or download sessions."""
@@ -147,7 +148,7 @@ class ClientManager:
             soup = BeautifulSoup(response_text, "html.parser")
             if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
                 raise DDOSGuardError(origin=origin)
-            
+
         if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
             return
 
@@ -178,7 +179,7 @@ class ClientManager:
                 return True
 
         return False
-    
+
     @staticmethod
     def check_cloudflare(soup: BeautifulSoup) -> bool:
         if soup.title:
@@ -193,6 +194,7 @@ class ClientManager:
                 return True
 
         return False
+
     async def close(self) -> None:
         await self.flaresolverr._destroy_session()
 
