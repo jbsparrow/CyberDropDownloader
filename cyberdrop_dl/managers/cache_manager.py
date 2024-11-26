@@ -9,7 +9,7 @@ import yaml
 from aiohttp_client_cache import SQLiteBackend
 
 from cyberdrop_dl.scraper.filters import filter_fn
-from cyberdrop_dl.utils.dataclasses.supported_domains import SupportedDomains
+from cyberdrop_dl.utils.data_enums_classes.supported_domains import SupportedDomains
 
 if TYPE_CHECKING:
     from pathlib import Path
