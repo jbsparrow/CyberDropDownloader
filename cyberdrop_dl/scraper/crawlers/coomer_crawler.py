@@ -217,10 +217,12 @@ class CoomerCrawler(Crawler):
         return soup.select_one("a[class=post__user-name]").text
 
     async def get_user_str_from_profile(self, scrape_item: ScrapeItem) -> str:
-        """Gets the user string from a scrape item."""
+        """Gets the user string from a scrape item"""
+        service, user = await self.get_service_and_user(scrape_item)
+        api_call = self.api_url / service / "user" / user / "profile"
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
-        return soup.select_one("span[itemprop=name]").text
+            user_data = await self.client.get_json(self.domain, api_call)
+            return user_data['name']
 
     @staticmethod
     def get_service_and_user(scrape_item: ScrapeItem) -> tuple[str, str]:
