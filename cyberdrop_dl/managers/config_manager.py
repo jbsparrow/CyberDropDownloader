@@ -46,7 +46,11 @@ class ConfigManager:
             self.authentication_settings = auth_override
 
         self.settings.parent.mkdir(parents=True, exist_ok=True)
+        self.pydantic_config = self.manager.cache_manager.get("pydantic_config")
         self.load_configs()
+        if not self.pydantic_config:
+            self.pydantic_config = True
+            self.manager.cache_manager.save("pydantic_config", True)
 
     def load_configs(self) -> None:
         """Loads all the configs."""
@@ -59,7 +63,7 @@ class ConfigManager:
         posible_fields = AuthSettings.model_fields.keys()
         if self.authentication_settings.is_file():
             self.authentication_data = AuthSettings.model_validate(yaml.load(self.authentication_settings))
-            if posible_fields == self.authentication_data.model_fields_set:
+            if posible_fields == self.authentication_data.model_fields_set and self.pydantic_config:
                 return
 
         else:
@@ -76,7 +80,7 @@ class ConfigManager:
 
         if self.settings.is_file():
             self.settings_data = ConfigSettings.model_validate(yaml.load(self.settings))
-            if posible_fields == self.settings_data.model_fields_set:
+            if posible_fields == self.settings_data.model_fields_set and self.pydantic_config:
                 return
         else:
             from cyberdrop_dl.utils import constants
@@ -94,7 +98,7 @@ class ConfigManager:
         posible_fields = ConfigSettings.model_fields.keys()
         if self.global_settings.is_file():
             self.global_settings_data = GlobalSettings.model_validate(yaml.load(self.global_settings))
-            if posible_fields == self.global_settings_data.model_fields_set:
+            if posible_fields == self.global_settings_data.model_fields_set and self.pydantic_config:
                 return
         else:
             self.global_settings_data = GlobalSettings()
