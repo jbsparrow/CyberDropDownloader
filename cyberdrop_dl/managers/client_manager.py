@@ -131,15 +131,7 @@ class ClientManager:
         if download and headers.get("ETag") in DOWNLOAD_ERROR_ETAGS:
             message = DOWNLOAD_ERROR_ETAGS.get(headers.get("ETag"))
             raise DownloadError(HTTPStatus.NOT_FOUND, message=message, origin=origin)
-
-        if any(domain in response.url.host for domain in ("gofile", "imgur")):
-            with contextlib.suppress(ContentTypeError):
-                JSON_Resp: dict = await response.json()
-                if "status" in JSON_Resp and "notFound" in JSON_Resp["status"]:
-                    raise ScrapeError(HTTPStatus.NOT_FOUND, origin=origin)
-                if "data" in JSON_Resp and "error" in JSON_Resp["data"]:
-                    raise ScrapeError(JSON_Resp["status"], JSON_Resp["data"]["error"], origin=origin)
-
+        
         response_text = None
         with contextlib.suppress(UnicodeDecodeError):
             response_text = await response.text()
@@ -152,10 +144,21 @@ class ClientManager:
         if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
             return
 
+        if any(domain in response.url.host for domain in ("gofile", "imgur")):
+            with contextlib.suppress(ContentTypeError):
+                JSON_Resp: dict = await response.json()
+                if "status" in JSON_Resp and "notFound" in JSON_Resp["status"]:
+                    raise ScrapeError(HTTPStatus.NOT_FOUND, origin=origin)
+                if "data" in JSON_Resp and "error" in JSON_Resp["data"]:
+                    raise ScrapeError(JSON_Resp["status"], JSON_Resp["data"]["error"], origin=origin)
+
+        
+
         status = status if headers.get("Content-Type") else CustomHTTPStatus.IM_A_TEAPOT
         message = "No content-type in response header" if headers.get("Content-Type") else None
 
         raise DownloadError(status=status, message=message, origin=origin)
+
 
     @staticmethod
     def check_bunkr_maint(headers: dict):
