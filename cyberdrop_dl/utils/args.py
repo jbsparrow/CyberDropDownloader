@@ -39,6 +39,11 @@ class CommandLineOnlyArgs(BaseModel):
     def retry_any(self) -> bool:
         return any((self.retry_all, self.retry_failed, self.retry_maintenance))
 
+    @computed_field
+    @property
+    def multiconfig(self) -> bool:
+        return self.config.casefold() == "all"
+
     @field_validator("completed_after", "completed_before", mode="after")
     @staticmethod
     def arrow_date(value: int) -> arrow.Arrow | None:

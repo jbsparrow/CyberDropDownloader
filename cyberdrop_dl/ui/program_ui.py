@@ -129,6 +129,9 @@ class ProgramUI:
     def _change_config(self) -> None:
         configs = self.manager.config_manager.get_configs()
         selected_config = user_prompts.select_config(configs)
+        if selected_config.casefold() == "all":
+            self.manager.multiconfig = True
+            return
         self.manager.config_manager.change_config(selected_config)
 
     def _view_changelog(self) -> None:
@@ -167,6 +170,9 @@ class ProgramUI:
         self._open_in_text_editor(config_file)
 
     def _edit_config(self) -> None:
+        if self.manager.multiconfig:
+            self.print_error("Cannot eddit 'ALL' config")
+            return
         config_file = (
             self.manager.path_manager.config_folder / self.manager.config_manager.loaded_config / "settings.yaml"
         )

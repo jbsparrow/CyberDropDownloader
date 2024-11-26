@@ -58,6 +58,7 @@ class Manager:
         self.vi_mode: bool = False
         self.start_time: float = perf_counter()
         self.downloaded_data: int = 0
+        self.multiconfig: bool = False
 
     def startup(self) -> None:
         """Startup process for the manager."""
@@ -79,6 +80,8 @@ class Manager:
         self.path_manager.startup()
         self.log_manager = LogManager(self)
         self.adjust_for_simpcity()
+        if self.config_manager.loaded_config.casefold() == "all" or self.parsed_args.cli_only_args.multiconfig:
+            self.multiconfig = True
 
     def adjust_for_simpcity(self) -> None:
         # Adjust settings for SimpCity update

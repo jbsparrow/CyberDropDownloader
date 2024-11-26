@@ -145,11 +145,11 @@ def setup_debug_logger(manager: Manager) -> Path | None:
     return debug_log_file_path.resolve() if debug_log_file_path else None
 
 
-def setup_logger(manager: Manager, config_name: str, multiconfig: bool = False) -> None:
+def setup_logger(manager: Manager, config_name: str) -> None:
     from cyberdrop_dl.utils import constants
 
     logger = logging.getLogger("cyberdrop_dl")
-    if multiconfig:
+    if manager.multiconfig:
         if len(logger.handlers) > 0:
             log("Picking new config...", 20)
         manager.config_manager.change_config(config_name)
@@ -203,15 +203,14 @@ async def director(manager: Manager) -> None:
     debug_log_file_path = setup_debug_logger(manager)
 
     configs_to_run = [manager.config_manager.loaded_config]
-    multiconfig = manager.config_manager.loaded_config.casefold() == "all"
-    if multiconfig:
+    if manager.multiconfig:
         configs_to_run = manager.config_manager.get_configs()
         configs_to_run.sort()
 
     start_time = manager.start_time
     while configs_to_run:
         current_config = configs_to_run[0]
-        setup_logger(manager, current_config, multiconfig)
+        setup_logger(manager, current_config)
         configs_to_run.pop(0)
 
         log(f"Using Debug Log: {debug_log_file_path if debug_log_file_path else None}", 10)
