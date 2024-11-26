@@ -92,7 +92,6 @@ class ScraperClient:
 
         headers = self._headers | {"Content-Type": "application/json"}
         data = {"cmd": "request.get", "url": str(url), "maxTimeout": 60000}
-        
 
         async with client_session.post(
             f"http://{self.client_manager.flaresolverr}/v1",

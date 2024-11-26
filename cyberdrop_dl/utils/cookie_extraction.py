@@ -1,6 +1,7 @@
 from __future__ import annotations
-import re
+
 import contextlib
+import re
 from functools import wraps
 from http.cookiejar import MozillaCookieJar
 from textwrap import dedent
@@ -63,11 +64,11 @@ def get_cookies_from_browsers(
 
     browsers = browsers or manager.config_manager.settings_data["Browser_Cookies"]["browsers"]
     if browsers:
-        browsers = list(map(str.lower, re.split(r'[ ,]+', browsers)))
-    if domains:   
-        domains = list(map(str.lower, re.split(r'[ ,]+', domains))) 
+        browsers = list(map(str.lower, re.split(r"[ ,]+", browsers)))
+    if domains:
+        domains = list(map(str.lower, re.split(r"[ ,]+", domains)))
     else:
-        domains =list(SupportedDomains.supported_hosts)
+        domains = list(SupportedDomains.supported_hosts)
 
     extractors = [getattr(browser_cookie3, b) for b in browsers if hasattr(browser_cookie3, b)]
 

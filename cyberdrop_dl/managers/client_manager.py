@@ -41,8 +41,8 @@ DDOS_GUARD_CHALLENGE_SELECTORS = [
     ".lds-ring",
 ]
 
-CLOUD_FLARE_TITLES=["Simpcity Cuck Detection"]
-CLOUD_FLARE_SELECTORS=['captchawrapper', 'cf-turnstile']
+CLOUD_FLARE_TITLES = ["Simpcity Cuck Detection"]
+CLOUD_FLARE_SELECTORS = ["captchawrapper", "cf-turnstile"]
 
 
 class ClientManager:
@@ -150,7 +150,7 @@ class ClientManager:
                 raise DDOSGuardError(origin=origin)
         if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
             return
-           
+
         status = status if headers.get("Content-Type") else CustomHTTPStatus.IM_A_TEAPOT
         message = "No content-type in response header" if headers.get("Content-Type") else None
 
@@ -178,7 +178,6 @@ class ClientManager:
                 return True
 
         return False
-    
 
     @staticmethod
     def check_cloudflare(soup: BeautifulSoup) -> bool:

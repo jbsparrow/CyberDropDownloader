@@ -163,15 +163,13 @@ class ConfigManager:
         existing_settings_data = _load_yaml(self.settings)
         self.settings_data = _match_config_dicts(default_settings_data, existing_settings_data)
         paths = set(
-            (
-                [
-                    ("Files", "input_file"),
-                    ("Files", "download_folder"),
-                    ("Logs", "log_folder"),
-                    ("Sorting", "sort_folder"),
-                    ("Sorting", "scan_folder"),
-                ]
-            )
+            [
+                ("Files", "input_file"),
+                ("Files", "download_folder"),
+                ("Logs", "log_folder"),
+                ("Sorting", "sort_folder"),
+                ("Sorting", "scan_folder"),
+            ]
         )
         enums = {("Dupe_Cleanup_Options", "hashing"): Hashing}
         for key, value in default_settings_data.items():
