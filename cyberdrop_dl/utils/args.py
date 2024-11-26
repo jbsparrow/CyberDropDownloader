@@ -127,8 +127,10 @@ def _add_args_from_model(
         if arg_type is bool:
             action = BooleanOptionalAction
             default_options.pop("default")
-            if cli_args and not deprecated:
+            if cli_args:
                 action = "store_false" if default else "store_true"
+            if deprecated:
+                default_options = default_options | {"default": SUPPRESS}
             parser.add_argument(*name_or_flags, action=action, **default_options)
             continue
         if cli_name == "links":
