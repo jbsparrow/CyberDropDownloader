@@ -43,15 +43,6 @@ class RateLimitingOptions(BaseModel):
         return value.human_readable(decimal=True)
 
 
-class DupeCleanupOptions(BaseModel):
-    delete_after_download: bool = False
-    hash_while_downloading: bool = False
-    keep_prev_download: bool = False
-    keep_new_download: bool = True
-    dedupe_already_downloaded: bool = False
-    delete_off_disk: bool = False
-
-
 class UIOptions(BaseModel):
     vi_mode: bool = False
     refresh_rate: PositiveInt = 10
@@ -63,8 +54,5 @@ class GlobalSettings(AliasModel):
     general: General = Field(validation_alias="General", default=General())
     rate_limiting_options: RateLimitingOptions = Field(
         validation_alias="Rate_Limiting_Options", default=RateLimitingOptions()
-    )
-    dupe_cleanup_options: DupeCleanupOptions = Field(
-        validation_alias="Dupe_Cleanup_Options", default=DupeCleanupOptions()
     )
     ui_options: UIOptions = Field(validation_alias="UI_Options", default=UIOptions())
