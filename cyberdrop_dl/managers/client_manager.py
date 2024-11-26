@@ -131,6 +131,18 @@ class ClientManager:
         if download and headers.get("ETag") in DOWNLOAD_ERROR_ETAGS:
             message = DOWNLOAD_ERROR_ETAGS.get(headers.get("ETag"))
             raise DownloadError(HTTPStatus.NOT_FOUND, message=message, origin=origin)
+        
+        response_text = None
+        with contextlib.suppress(UnicodeDecodeError):
+            response_text = await response.text()
+
+        if response_text:
+            soup = BeautifulSoup(response_text, "html.parser")
+            if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
+                raise DDOSGuardError(origin=origin)
+
+        if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
+            return
 
         if any(domain in response.url.host for domain in ("gofile", "imgur")):
             with contextlib.suppress(ContentTypeError):
@@ -140,16 +152,7 @@ class ClientManager:
                 if "data" in JSON_Resp and "error" in JSON_Resp["data"]:
                     raise ScrapeError(JSON_Resp["status"], JSON_Resp["data"]["error"], origin=origin)
 
-        response_text = None
-        with contextlib.suppress(UnicodeDecodeError):
-            response_text = await response.text()
-
-        if response_text:
-            soup = BeautifulSoup(response_text, "html.parser")
-            if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
-                raise DDOSGuardError(origin=origin)
-        if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
-            return
+        
 
         status = status if headers.get("Content-Type") else CustomHTTPStatus.IM_A_TEAPOT
         message = "No content-type in response header" if headers.get("Content-Type") else None
