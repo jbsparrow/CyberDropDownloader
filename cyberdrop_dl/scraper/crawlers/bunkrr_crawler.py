@@ -20,9 +20,32 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.managers.manager import Manager
 
-CDN_POSSIBILITIES = re.compile(
-    r"^(?:(?:(?:media-files|cdn|c|pizza|cdn-burger|cdn-nugget|burger|taquito|pizza|fries|meatballs|milkshake|kebab|nachos|ramen|wiener)[0-9]{0,2})|(?:(?:big-taco-|cdn-pizza|cdn-meatballs|cdn-milkshake|i.kebab|i.fries|i-nugget|i-milkshake|i-nachos|i-ramen|i-wiener)[0-9]{0,2}(?:redir)?))\.bunkr?\.[a-z]{2,3}$",
-)
+BASE_CDNS = [
+    "big-taco",
+    "burger",
+    "c",
+    "cdn",
+    "fries",
+    "kebab",
+    "meatballs",
+    "milkshake",
+    "nachos",
+    "nugget",
+    "pizza",
+    "ramen",
+    "soup",
+    "taquito",
+    "wiener",
+]
+
+EXTENDED_CDNS = [f"cdn-{cdn}" for cdn in BASE_CDNS]
+
+IMAGE_CDNS = [f"i-{cdn}" for cdn in BASE_CDNS]
+
+CDNS = BASE_CDNS + EXTENDED_CDNS + IMAGE_CDNS
+
+CDN_REGEX_STR = r"^(?:(?:(" + "|".join(CDNS) + r")[0-9]{0,2}(?:redir)?))\.bunkr?\.[a-z]{2,3}$"
+CDN_POSSIBILITIES = re.compile(CDN_REGEX_STR)
 
 
 class BunkrrCrawler(Crawler):
