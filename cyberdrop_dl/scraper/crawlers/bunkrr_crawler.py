@@ -135,9 +135,9 @@ class BunkrrCrawler(Crawler):
                     add_parent=scrape_item.url,
                 )
 
-                filename, ext = get_filename_and_ext(src.name)
+                src_filename, ext = get_filename_and_ext(src.name)
                 if not self.check_album_results(src, results):
-                    await self.handle_file(src, new_scrape_item, filename, ext)
+                    await self.handle_file(src, new_scrape_item, src_filename, ext, custom_filename=filename)
 
             except FileNotFoundError:
                 self.manager.task_group.create_task(
@@ -177,19 +177,20 @@ class BunkrrCrawler(Crawler):
             raise ScrapeError(404, f"Could not find source for: {scrape_item.url}", origin=scrape_item)
 
         link = URL(link)
+        filename = soup.select_one("h1").text
 
         try:
-            filename, ext = get_filename_and_ext(link.name)
+            src_filename, ext = get_filename_and_ext(link.name)
         except NoExtensionError:
             if "get" in link.host:
-                link = await self.reinforced_link(link)
+                link: URL = await self.reinforced_link(link)
                 if not link:
                     return
-                filename, ext = get_filename_and_ext(link.name)
+                src_filename, ext = get_filename_and_ext(link.name)
             else:
-                filename, ext = get_filename_and_ext(scrape_item.url.name)
+                src_filename, ext = get_filename_and_ext(scrape_item.url.name)
 
-        await self.handle_file(link, scrape_item, filename, ext)
+        await self.handle_file(link, scrape_item, src_filename, ext, custom_filename=filename)
 
     @error_handling_wrapper
     async def reinforced_link(self, url: URL) -> URL:
