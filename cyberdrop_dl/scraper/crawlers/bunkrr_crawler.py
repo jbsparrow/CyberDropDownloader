@@ -20,9 +20,29 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.managers.manager import Manager
 
-CDN_POSSIBILITIES = re.compile(
-    r"^(?:(?:(?:media-files|cdn|c|pizza|cdn-burger|cdn-nugget|burger|taquito|pizza|fries|meatballs|milkshake|kebab|nachos|ramen|wiener)[0-9]{0,2})|(?:(?:big-taco-|cdn-pizza|cdn-meatballs|cdn-milkshake|i.kebab|i.fries|i-nugget|i-milkshake|i-nachos|i-ramen|i-wiener)[0-9]{0,2}(?:redir)?))\.bunkr?\.[a-z]{2,3}$",
-)
+BASE_CDNS = [
+    "big-taco",
+    "burger",
+    "c",
+    "cdn",
+    "fries",
+    "kebab",
+    "meatballs",
+    "milkshake",
+    "nachos",
+    "nugget",
+    "pizza",
+    "ramen",
+    "soup",
+    "taquito",
+    "wiener",
+]
+
+EXTENDED_CDNS = [f"cdn-{cdn}" for cdn in BASE_CDNS]
+IMAGE_CDNS = [f"i-{cdn}" for cdn in BASE_CDNS]
+CDNS = BASE_CDNS + EXTENDED_CDNS + IMAGE_CDNS
+CDN_REGEX_STR = r"^(?:(?:(" + "|".join(CDNS) + r")[0-9]{0,2}(?:redir)?))\.bunkr?\.[a-z]{2,3}$"
+CDN_POSSIBILITIES = re.compile(CDN_REGEX_STR)
 
 
 class BunkrrCrawler(Crawler):
@@ -38,16 +58,16 @@ class BunkrrCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
         task_id = self.scraping_progress.add_task(scrape_item.url)
-        scrape_item.url = self.get_stream_link(scrape_item.url)
 
         if scrape_item.url.host.startswith("get"):
             scrape_item.url = await self.reinforced_link(scrape_item.url)
             if not scrape_item.url:
                 return
-            scrape_item.url = self.get_stream_link(scrape_item.url)
 
         if "a" in scrape_item.url.parts:
             await self.album(scrape_item)
+        elif self.is_cdn(scrape_item.url):
+            await self.handle_direct_link(scrape_item)
         else:
             await self.file(scrape_item)
 
@@ -114,9 +134,9 @@ class BunkrrCrawler(Crawler):
                     add_parent=scrape_item.url,
                 )
 
-                filename, ext = get_filename_and_ext(src.name)
+                src_filename, ext = get_filename_and_ext(src.name)
                 if not self.check_album_results(src, results):
-                    await self.handle_file(src, new_scrape_item, filename, ext)
+                    await self.handle_file(src, new_scrape_item, src_filename, ext, custom_filename=filename)
 
             except FileNotFoundError:
                 self.manager.task_group.create_task(
@@ -137,6 +157,11 @@ class BunkrrCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
+        """
+        Some old page details may have the uuid as the title instead of the filename.
+        Commenting out this code ensures we always get the actual filename from `get.bunkr.su`, at the expense of one additional request
+
+
         # try video
         link_container = soup.select_one("video > source")
         src_selector = "src"
@@ -147,8 +172,9 @@ class BunkrrCrawler(Crawler):
 
         # fallback for everything else
         if not link_container:
-            link_container = soup.select_one("a.btn.ic-download-01")
-            src_selector = "href"
+        """
+        link_container = soup.select_one("a.btn.ic-download-01")
+        src_selector = "href"
 
         link = link_container.get(src_selector) if link_container else None
 
@@ -156,19 +182,29 @@ class BunkrrCrawler(Crawler):
             raise ScrapeError(404, f"Could not find source for: {scrape_item.url}", origin=scrape_item)
 
         link = URL(link)
+        await self.handle_direct_link(scrape_item, link, fallback_filename=soup.select_one("h1").text)
 
+    async def handle_direct_link(
+        self, scrape_item: ScrapeItem, url: URL | None = None, fallback_filename: str | None = None
+    ) -> None:
+        """Handles direct links (CDNs URLs) before sending them to the downloader.
+
+        If `link` is not supplied, `scrape_item.url` will be used by default
+
+        `fallback_filename` will only be used if the link has not `n` query parameter"""
+        link = url or scrape_item.url
+        if "get" in link.host:
+            link: URL = await self.reinforced_link(link)
+            if not link:
+                return
         try:
-            filename, ext = get_filename_and_ext(link.name)
+            src_filename, ext = get_filename_and_ext(link.name)
         except NoExtensionError:
-            if "get" in link.host:
-                link = await self.reinforced_link(link)
-                if not link:
-                    return
-                filename, ext = get_filename_and_ext(link.name)
-            else:
-                filename, ext = get_filename_and_ext(scrape_item.url.name)
-
-        await self.handle_file(link, scrape_item, filename, ext)
+            src_filename, ext = get_filename_and_ext(scrape_item.url.name)
+        filename = link.query.get("n") or fallback_filename
+        if not url:
+            scrape_item = self.create_scrape_item(scrape_item, URL("https://get.bunkrr.su/"), "")
+        await self.handle_file(link, scrape_item, src_filename, ext, custom_filename=filename)
 
     @error_handling_wrapper
     async def reinforced_link(self, url: URL) -> URL:
@@ -191,7 +227,9 @@ class BunkrrCrawler(Crawler):
         return bool(re.match(CDN_POSSIBILITIES, url.host))
 
     def get_stream_link(self, url: URL) -> URL:
-        """Gets the stream link for a given url."""
+        """DEPRECATED: NO LONGER WORKS.
+
+        Gets the stream link for a given url."""
         if not self.is_cdn(url):
             return url
 
