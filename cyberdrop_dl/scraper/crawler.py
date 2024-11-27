@@ -93,7 +93,7 @@ class Crawler(ABC):
         """Finishes handling the file and hands it off to the downloader."""
         if custom_filename:
             original_filename, filename = filename, custom_filename
-        elif self.domain in ["cyberdrop", "bunkrr"]:
+        elif self.domain in ["cyberdrop"]:
             original_filename, filename = remove_file_id(self.manager, filename, ext)
         else:
             original_filename = filename
