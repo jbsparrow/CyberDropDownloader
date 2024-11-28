@@ -224,7 +224,7 @@ class XXXBunkerCrawler(Crawler):
 
     async def check_session_cookie(self) -> None:
         """Get Cookie from config file."""
-        self.session_cookie = self.manager.config_manager.authentication_data["XXXBunker"]["PHPSESSID"]
+        self.session_cookie = self.manager.config_manager.authentication_data.xxxbunker.PHPSESSID
         if not self.session_cookie:
             self.session_cookie = ""
             return

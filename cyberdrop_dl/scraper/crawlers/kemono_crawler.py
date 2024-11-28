@@ -16,8 +16,6 @@ from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
-
     from cyberdrop_dl.managers.manager import Manager
 
 
@@ -56,19 +54,18 @@ class KemonoCrawler(Crawler):
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile."""
-        soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+        soup = "Resolve after merge master"
         offset, maximum_offset = await self.get_offsets(scrape_item, soup)
         initial_offset = offset
-        service, user = await self.get_service_and_user(scrape_item)
-        user_str = await self.get_user_str_from_profile(soup)
+        service, user, user_str = await self.get_user_info(scrape_item)
         api_call = self.api_url / service / "user" / user
         scrape_item.type = FILE_HOST_PROFILE
         scrape_item.children = scrape_item.children_limit = 0
 
         with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
-                "maximum_number_of_children"
-            ][scrape_item.type]
+            scrape_item.children_limit = (
+                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
+            )
 
         while offset <= maximum_offset:
             async with self.request_limiter:
@@ -122,10 +119,9 @@ class KemonoCrawler(Crawler):
         scrape_item.children = scrape_item.children_limit = 0
 
         with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
-                "maximum_number_of_children"
-            ][scrape_item.type]
-
+            scrape_item.children_limit = (
+                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
+            )
         while True:
             async with self.request_limiter:
                 JSON_Resp = await self.client.get_json(
@@ -146,11 +142,11 @@ class KemonoCrawler(Crawler):
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a post."""
-        service, user, post_id = await self.get_service_user_and_post(scrape_item)
-        user_str = await self.get_user_str_from_post(scrape_item)
+        service, user, post_id, user_str = await self.get_user_info(scrape_item)
         api_call = self.api_url / service / "user" / user / "post" / post_id
         async with self.request_limiter:
             post = await self.client.get_json(self.domain, api_call, origin=scrape_item)
+            post = post.get("post")
         await self.handle_post_content(scrape_item, post, user, user_str)
 
     @error_handling_wrapper
@@ -160,9 +156,9 @@ class KemonoCrawler(Crawler):
         scrape_item.children = scrape_item.children_limit = 0
 
         with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
-                "maximum_number_of_children"
-            ][scrape_item.type]
+            scrape_item.children_limit = (
+                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
+            )
 
         date = post.get("published") or post.get("added")
         date = date.replace("T", " ")
@@ -205,9 +201,9 @@ class KemonoCrawler(Crawler):
         title = post.get("title", "")
 
         post_title = None
-        if self.manager.config_manager.settings_data["Download_Options"]["separate_posts"]:
+        if self.manager.config_manager.settings_data.download_options.separate_posts:
             post_title = f"{date} - {title}"
-            if self.manager.config_manager.settings_data["Download_Options"]["include_album_id_in_folder_name"]:
+            if self.manager.config_manager.settings_data.download_options.include_album_id_in_folder_name:
                 post_title = post_id + " - " + post_title
 
         new_title = self.create_title(user, None, None)
@@ -276,9 +272,9 @@ class KemonoCrawler(Crawler):
     ) -> None:
         """Creates a new scrape item with the same parent as the old scrape item."""
         post_title = None
-        if self.manager.config_manager.settings_data["Download_Options"]["separate_posts"]:
+        if self.manager.config_manager.settings_data.download_options.separate_posts:
             post_title = f"{date} - {title}"
-            if self.manager.config_manager.settings_data["Download_Options"]["include_album_id_in_folder_name"]:
+            if self.manager.config_manager.settings_data.download_options.include_album_id_in_folder_name:
                 post_title = post_id + " - " + post_title
 
         new_title = self.create_title(user, None, None)
@@ -293,18 +289,6 @@ class KemonoCrawler(Crawler):
         )
         new_scrape_item.add_to_parent_title(post_title)
         self.manager.task_group.create_task(self.run(new_scrape_item))
-
-    @error_handling_wrapper
-    async def get_user_str_from_post(self, scrape_item: ScrapeItem) -> str:
-        """Gets the user string from a scrape item."""
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
-        return soup.select_one("a[class=post__user-name]").text
-
-    @error_handling_wrapper
-    async def get_user_str_from_profile(self, soup: BeautifulSoup) -> str:
-        """Gets the user string from a scrape item."""
-        return soup.select_one("span[itemprop=name]").text
 
     async def get_maximum_offset(self, scrape_item: ScrapeItem) -> int:
         """Gets the maximum offset for a scrape item"""
@@ -325,20 +309,20 @@ class KemonoCrawler(Crawler):
         maximum_offset = await self.get_maximum_offset(scrape_item)
         return current_offset, maximum_offset
 
-    @staticmethod
-    def get_service_and_user(scrape_item: ScrapeItem) -> tuple[str, str]:
-        """Gets the service and user from a scrape item."""
+    async def get_user_info(self, scrape_item: ScrapeItem) -> tuple[str, str, str, str]:
+        """Gets the user info from a scrape item."""
         user = scrape_item.url.parts[3]
         service = scrape_item.url.parts[1]
-        return service, user
-
-    @staticmethod
-    async def get_service_user_and_post(scrape_item: ScrapeItem) -> tuple[str, str, str]:
-        """Gets the service, user and post id from a scrape item."""
-        user = scrape_item.url.parts[3]
-        service = scrape_item.url.parts[1]
-        post = scrape_item.url.parts[5]
-        return service, user, post
+        try:
+            post = scrape_item.url.parts[5]
+        except IndexError:
+            post = None
+        profile_api_url = self.api_url / service / "user" / user / "profile"
+        async with self.request_limiter:
+            profile_json: dict = await self.client.get_json(self.domain, profile_api_url, origin=scrape_item)
+        if post:
+            return service, user, post, profile_json["name"]
+        return service, user, profile_json["name"]
 
     @staticmethod
     def parse_datetime(date: str) -> int:

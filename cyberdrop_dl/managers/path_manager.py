@@ -22,90 +22,81 @@ class PathManager:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
 
-        self.download_dir: Path = field(init=False)
-        self.sorted_dir: Path = field(init=False)
-        self.scan_dir: Path = field(init=False)
+        self.download_folder: Path = field(init=False)
+        self.sorted_folder: Path = field(init=False)
+        self.scan_folder: Path = field(init=False)
 
-        self.log_dir: Path = field(init=False)
+        self.log_folder: Path = field(init=False)
 
-        self.cache_dir: Path = field(init=False)
-        self.config_dir: Path = field(init=False)
+        self.cache_folder: Path = field(init=False)
+        self.config_folder: Path = field(init=False)
 
         self.input_file: Path = field(init=False)
         self.history_db: Path = field(init=False)
         self.cache_db: Path = field(init=False)
 
-        self.main_log: Path = field(init=False)
-        self.last_post_log: Path = field(init=False)
-        self.unsupported_urls_log: Path = field(init=False)
-        self.download_error_log: Path = field(init=False)
-        self.scrape_error_log: Path = field(init=False)
         self._completed_downloads: set[MediaItem] = set()
         self._completed_downloads_set = set()
         self._prev_downloads = set()
         self._prev_downloads_set = set()
 
     def pre_startup(self) -> None:
-        if self.manager.args_manager.appdata_dir:
-            constants.APP_STORAGE = Path(self.manager.args_manager.appdata_dir) / "AppData"
+        if self.manager.parsed_args.cli_only_args.appdata_folder:
+            constants.APP_STORAGE = self.manager.parsed_args.cli_only_args.appdata_folder / "AppData"
 
-        self.cache_dir = constants.APP_STORAGE / "Cache"
-        self.config_dir = constants.APP_STORAGE / "Configs"
+        self.cache_folder = constants.APP_STORAGE / "Cache"
+        self.config_folder = constants.APP_STORAGE / "Configs"
         self.cookies_dir = constants.APP_STORAGE / "Cookies"
 
-        self.cache_dir.mkdir(parents=True, exist_ok=True)
-        self.config_dir.mkdir(parents=True, exist_ok=True)
+        self.cache_folder.mkdir(parents=True, exist_ok=True)
+        self.config_folder.mkdir(parents=True, exist_ok=True)
+        self.cookies_dir.mkdir(parents=True, exist_ok=True)
+
+    def replace_config_in_path(self, path: Path) -> Path:
+        current_config = self.manager.config_manager.loaded_config
+        return Path(str(path).replace("{config}", current_config))
 
         self.cache_db = self.cache_dir / "request_cache.db"
         self.cache_db.touch(exist_ok=True)
 
     def startup(self) -> None:
         """Startup process for the Directory Manager."""
-        self.download_dir = (
-            self.manager.args_manager.download_dir
-            or self.manager.config_manager.settings_data["Files"]["download_folder"]
-        )
+        settings_data = self.manager.config_manager.settings_data
+        self.download_folder = self.replace_config_in_path(settings_data.files.download_folder)
+        self.sorted_folder = self.replace_config_in_path(settings_data.sorting.sort_folder)
+        self.scan_folder = self.replace_config_in_path(settings_data.sorting.scan_folder)
+        self.log_folder = self.replace_config_in_path(settings_data.logs.log_folder)
+        self.input_file = self.replace_config_in_path(settings_data.files.input_file)
+        self.history_db = self.cache_folder / "cyberdrop.db"
 
-        self.sorted_dir = (
-            self.manager.args_manager.sort_folder or self.manager.config_manager.settings_data["Sorting"]["sort_folder"]
-        )
+        self._set_output_filenames()
 
-        self.scan_dir = (
-            self.manager.args_manager.scan_folder or self.manager.config_manager.settings_data["Sorting"]["scan_folder"]
-        )
-
-        self.log_dir = (
-            self.manager.args_manager.log_dir or self.manager.config_manager.settings_data["Logs"]["log_folder"]
-        )
-        self.input_file = (
-            self.manager.args_manager.input_file or self.manager.config_manager.settings_data["Files"]["input_file"]
-        )
-
-        self.history_db = self.cache_dir / "cyberdrop.db"
-
-        current_time_iso = datetime.now().strftime("%Y%m%d_%H%M%S")
-        log_settings_config = self.manager.config_manager.settings_data["Logs"]
-        log_args_config = self.manager.args_manager
-        log_options_map = {
-            "main_log_filename": "main_log",
-            "last_forum_post_filename": "last_post_log",
-            "unsupported_urls_filename": "unsupported_urls_log",
-            "download_error_urls_filename": "download_error_log",
-            "scrape_error_urls_filename": "scrape_error_log",
-        }
-
-        for log_config_name, log_internal_name in log_options_map.items():
-            file_name = Path(getattr(log_args_config, log_config_name, None) or log_settings_config[log_config_name])
-            file_ext = ".log" if log_internal_name == "main_log" else ".csv"
-            if log_settings_config["rotate_logs"]:
-                file_name = f"{file_name.stem}__{current_time_iso}{file_name.suffix}"
-            log_path = self.log_dir.joinpath(file_name).with_suffix(file_ext)
-            setattr(self, log_internal_name, log_path)
-
-        self.log_dir.mkdir(parents=True, exist_ok=True)
+        self.log_folder.mkdir(parents=True, exist_ok=True)
         if not self.input_file.is_file():
             self.input_file.touch(exist_ok=True)
         self.history_db.touch(exist_ok=True)
+
+    def _set_output_filenames(self) -> None:
+        current_time_iso = datetime.now().strftime("%Y%m%d_%H%M%S")
+        log_settings_config = self.manager.config_manager.settings_data.logs
+        log_files = log_settings_config.model_dump()
+
+        for name, log_file in log_files.items():
+            if "filename" not in name:
+                continue
+            is_main_log = log_file == log_settings_config.main_log_filename
+            file_ext = ".log" if is_main_log else ".csv"
+            file_name = log_file
+            path = Path(log_file)
+            if log_settings_config.rotate_logs:
+                file_name = f"{path.stem}__{current_time_iso}{path.suffix}"
+            log_files[name] = Path(file_name).with_suffix(file_ext).name
+        log_settings_config = log_settings_config.model_copy(update=log_files)
+        self.main_log = self.log_folder / log_settings_config.main_log_filename
+        self.last_forum_post_log = self.log_folder / log_settings_config.last_forum_post_filename
+        self.unsupported_urls_log = self.log_folder / log_settings_config.unsupported_urls_filename
+        self.download_error_log = self.log_folder / log_settings_config.download_error_urls_filename
+        self.scrape_error_log = self.log_folder / log_settings_config.scrape_error_urls_filename
 
     def add_completed(self, media_item: MediaItem) -> None:
         self._completed_downloads.add(media_item)

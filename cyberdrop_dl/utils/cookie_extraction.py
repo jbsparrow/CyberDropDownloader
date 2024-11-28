@@ -62,13 +62,10 @@ def get_cookies_from_browsers(
         msg = "No domains selected"
         raise ValueError(msg)
 
-    browsers = browsers or manager.config_manager.settings_data["Browser_Cookies"]["browsers"]
-    if browsers:
-        browsers = list(map(str.lower, re.split(r"[ ,]+", browsers)))
-    if domains:
-        domains = list(map(str.lower, re.split(r"[ ,]+", domains)))
-    else:
-        domains = list(SupportedDomains.supported_hosts)
+    browsers = browsers or manager.config_manager.settings_data.browser_cookies.browsers
+    domains = domains or manager.config_manager.settings_data.browser_cookies.sites
+    browsers = list(map(str.lower, browsers))
+    domains = list(map(str.lower, domains))
 
     extractors = [getattr(browser_cookie3, b) for b in browsers if hasattr(browser_cookie3, b)]
 

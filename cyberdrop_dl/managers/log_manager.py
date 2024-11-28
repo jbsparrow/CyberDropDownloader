@@ -20,7 +20,7 @@ class LogManager:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
         self.main_log: Path = manager.path_manager.main_log
-        self.last_post_log: Path = manager.path_manager.last_post_log
+        self.last_post_log: Path = manager.path_manager.last_forum_post_log
         self.unsupported_urls_log: Path = manager.path_manager.unsupported_urls_log
         self.download_error_log: Path = manager.path_manager.download_error_log
         self.scrape_error_log: Path = manager.path_manager.scrape_error_log

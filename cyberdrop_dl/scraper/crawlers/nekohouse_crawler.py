@@ -264,9 +264,9 @@ class NekohouseCrawler(Crawler):
     ) -> None:
         """Creates a new scrape item with the same parent as the old scrape item."""
         post_title = None
-        if self.manager.config_manager.settings_data["Download_Options"]["separate_posts"]:
+        if self.manager.config_manager.settings_data.download_options.separate_posts:
             post_title = f"{date} - {title}"
-            if self.manager.config_manager.settings_data["Download_Options"]["include_album_id_in_folder_name"]:
+            if self.manager.config_manager.settings_data.download_options.include_album_id_in_folder_name:
                 post_title = post_id + " - " + post_title
 
         new_title = self.create_title(user, None, None)

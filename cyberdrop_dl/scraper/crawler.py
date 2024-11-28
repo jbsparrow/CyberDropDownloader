@@ -96,7 +96,7 @@ class Crawler(ABC):
         """Finishes handling the file and hands it off to the downloader."""
         if custom_filename:
             original_filename, filename = filename, custom_filename
-        elif self.domain in ["cyberdrop", "bunkrr"]:
+        elif self.domain in ["cyberdrop"]:
             original_filename, filename = remove_file_id(self.manager, filename, ext)
         else:
             original_filename = filename
@@ -135,20 +135,20 @@ class Crawler(ABC):
     async def check_skip_by_config(self, media_item: MediaItem) -> bool:
         skip = False
 
-        if self.manager.config_manager.settings_data["Download_Options"]["skip_referer_seen_before"]:
+        if self.manager.config_manager.settings_data.download_options.skip_referer_seen_before:
             skip = await self.manager.db_manager.temp_referer_table.check_referer(media_item.referer)
 
         if skip:
             log(f"Download skip {media_item.url} as referer has been seen before", 10)
 
-        if not skip and self.manager.config_manager.settings_data["Ignore_Options"]["skip_hosts"]:
-            skip_hosts = self.manager.config_manager.settings_data["Ignore_Options"]["skip_hosts"]
+        if not skip and self.manager.config_manager.settings_data.ignore_options.skip_hosts:
+            skip_hosts = self.manager.config_manager.settings_data.ignore_options.skip_hosts
             if any(host in media_item.url.host for host in skip_hosts):
                 log(f"Download skip {media_item.url} due to skip_hosts config", 10)
                 skip = True
 
-        if not skip and self.manager.config_manager.settings_data["Ignore_Options"]["only_hosts"]:
-            only_hosts = self.manager.config_manager.settings_data["Ignore_Options"]["only_hosts"]
+        if not skip and self.manager.config_manager.settings_data.ignore_options.only_hosts:
+            only_hosts = self.manager.config_manager.settings_data.ignore_options.only_hosts
             if not any(host in media_item.url.host for host in only_hosts):
                 log(f"Download skip {media_item.url} due to only_hosts config", 10)
                 skip = True
@@ -158,9 +158,7 @@ class Crawler(ABC):
     def check_post_number(self, post_number: int, current_post_number: int) -> tuple[bool, bool]:
         """Checks if the program should scrape the current post."""
         """Returns (scrape_post, continue_scraping)"""
-        scrape_single_forum_post = self.manager.config_manager.settings_data["Download_Options"][
-            "scrape_single_forum_post"
-        ]
+        scrape_single_forum_post = self.manager.config_manager.settings_data.download_options.scrape_single_forum_post
 
         if scrape_single_forum_post:
             if not post_number:
@@ -262,7 +260,7 @@ class Crawler(ABC):
     def create_scrape_item(
         parent_scrape_item: ScrapeItem,
         url: URL,
-        new_title_part: str,
+        new_title_part: str = "",
         part_of_album: bool = False,
         album_id: str | None = None,
         possible_datetime: int | None = None,
@@ -275,32 +273,25 @@ class Crawler(ABC):
             scrape_item.parents.append(add_parent)
         if new_title_part:
             scrape_item.add_to_parent_title(new_title_part)
-        scrape_item.part_of_album = part_of_album if part_of_album else scrape_item.part_of_album
-        if possible_datetime:
-            scrape_item.possible_datetime = possible_datetime
-        if album_id:
-            scrape_item.album_id = album_id
+        scrape_item.part_of_album = part_of_album or scrape_item.part_of_album
+        scrape_item.possible_datetime = possible_datetime or scrape_item.possible_datetime
+        scrape_item.album_id = album_id or scrape_item.album_id
         return scrape_item
 
     def create_title(self, title: str, album_id: str | None, thread_id: str | None) -> str:
         """Creates the title for the scrape item."""
+        download_options = self.manager.config_manager.settings_data.download_options
         if not title:
             title = "Untitled"
 
         title = title.strip()
-        if (
-            self.manager.config_manager.settings_data["Download_Options"]["include_album_id_in_folder_name"]
-            and album_id
-        ):
+        if download_options.include_album_id_in_folder_name and album_id:
             title = f"{title} {album_id}"
 
-        if (
-            self.manager.config_manager.settings_data["Download_Options"]["include_thread_id_in_folder_name"]
-            and thread_id
-        ):
+        if download_options.include_thread_id_in_folder_name and thread_id:
             title = f"{title} {thread_id}"
 
-        if not self.manager.config_manager.settings_data["Download_Options"]["remove_domains_from_folder_names"]:
+        if not download_options.remove_domains_from_folder_names:
             title = f"{title} ({self.folder_domain})"
 
         return title

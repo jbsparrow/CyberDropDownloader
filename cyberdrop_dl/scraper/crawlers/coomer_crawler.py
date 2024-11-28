@@ -15,8 +15,6 @@ from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
-
     from cyberdrop_dl.managers.manager import Manager
 
 
@@ -55,7 +53,7 @@ class CoomerCrawler(Crawler):
     @error_handling_wrapper
     async def favorites(self, scrape_item: ScrapeItem) -> None:
         """Scrapes the users' favourites and creates scrape items for each artist found."""
-        if not self.manager.config_manager.authentication_data["Coomer"]["session"]:
+        if not self.manager.config_manager.authentication_data.coomer.session:
             raise ScrapeError(
                 401,
                 message="No session cookie found in the config file, cannot scrape favorites",
@@ -64,7 +62,7 @@ class CoomerCrawler(Crawler):
         async with self.request_limiter:
             # Use the session cookie to get the user's favourites
             self.client.client_manager.cookies.update_cookies(
-                {"session": self.manager.config_manager.authentication_data["Coomer"]["session"]},
+                {"session": self.manager.config_manager.authentication_data.coomer.session},
                 response_url=self.primary_base_domain,
             )
             favourites_api_url = (self.api_url / "account/favorites").with_query({"type": "artist"})
@@ -80,19 +78,18 @@ class CoomerCrawler(Crawler):
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile."""
-        soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+        service, user, user_str = await self.get_user_info(scrape_item)
+        soup = "Fix after merging master"
         offset, maximum_offset = await self.get_offsets(scrape_item, soup)
         initial_offset = offset
-        service, user = self.get_service_and_user(scrape_item)
-        user_str = await self.get_user_str_from_profile(soup)
         api_call = self.api_url / service / "user" / user
         scrape_item.type = FILE_HOST_PROFILE
         scrape_item.children = scrape_item.children_limit = 0
 
         with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
-                "maximum_number_of_children"
-            ][scrape_item.type]
+            scrape_item.children_limit = (
+                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
+            )
 
         while offset <= maximum_offset:
             async with self.request_limiter:
@@ -142,29 +139,26 @@ class CoomerCrawler(Crawler):
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a post."""
-        service, user, post_id = await self.get_service_user_and_post(scrape_item)
-        user_str = await self.get_user_str_from_post(scrape_item)
+        service, user, post_id, user_str = await self.get_user_info(scrape_item)
         api_call = self.api_url / service / "user" / user / "post" / post_id
         async with self.request_limiter:
             post = await self.client.get_json(self.domain, api_call, origin=scrape_item)
+            post = post.get("post")
         await self.handle_post_content(scrape_item, post, user, user_str)
 
     @error_handling_wrapper
     async def handle_post_content(self, scrape_item: ScrapeItem, post: dict, user: str, user_str: str) -> None:
         """Handles the content of a post."""
-        if (
-            "#ad" in post["content"]
-            and self.manager.config_manager.settings_data["Ignore_Options"]["ignore_coomer_ads"]
-        ):
+        if "#ad" in post["content"] and self.manager.config_manager.settings_data.ignore_options.ignore_coomer_ads:
             return
 
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
 
         with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
-                "maximum_number_of_children"
-            ][scrape_item.type]
+            scrape_item.children_limit = (
+                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
+            )
 
         date = post.get("published") or post.get("added")
         date = date.replace("T", " ")
@@ -225,9 +219,9 @@ class CoomerCrawler(Crawler):
     ) -> None:
         """Creates a new scrape item with the same parent as the old scrape item."""
         post_title = None
-        if self.manager.config_manager.settings_data["Download_Options"]["separate_posts"]:
+        if self.manager.config_manager.settings_data.download_options.separate_posts:
             post_title = f"{date} - {title}"
-            if self.manager.config_manager.settings_data["Download_Options"]["include_album_id_in_folder_name"]:
+            if self.manager.config_manager.settings_data.download_options.include_album_id_in_folder_name:
                 post_title = post_id + " - " + post_title
 
         new_title = self.create_title(user, None, None)
@@ -242,16 +236,6 @@ class CoomerCrawler(Crawler):
         )
         new_scrape_item.add_to_parent_title(post_title)
         self.manager.task_group.create_task(self.run(new_scrape_item))
-
-    async def get_user_str_from_post(self, scrape_item: ScrapeItem) -> str:
-        """Gets the user string from a scrape item."""
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
-        return soup.select_one("a[class=post__user-name]").text
-
-    async def get_user_str_from_profile(self, soup: BeautifulSoup) -> str:
-        """Gets the user string from a scrape item."""
-        return soup.select_one("span[itemprop=name]").text
 
     async def get_maximum_offset(self, soup: BeautifulSoup) -> int:
         """Gets the maximum offset for a scrape item"""
@@ -271,20 +255,20 @@ class CoomerCrawler(Crawler):
         maximum_offset = await self.get_maximum_offset(soup)
         return current_offset, maximum_offset
 
-    @staticmethod
-    def get_service_and_user(scrape_item: ScrapeItem) -> tuple[str, str]:
-        """Gets the service and user from a scrape item."""
+    async def get_user_info(self, scrape_item: ScrapeItem) -> tuple[str, str, str, str]:
+        """Gets the user info from a scrape item."""
         user = scrape_item.url.parts[3]
         service = scrape_item.url.parts[1]
-        return service, user
-
-    @staticmethod
-    async def get_service_user_and_post(scrape_item: ScrapeItem) -> tuple[str, str, str]:
-        """Gets the service, user and post id from a scrape item."""
-        user = scrape_item.url.parts[3]
-        service = scrape_item.url.parts[1]
-        post = scrape_item.url.parts[5]
-        return service, user, post
+        try:
+            post = scrape_item.url.parts[5]
+        except IndexError:
+            post = None
+        profile_api_url = self.api_url / service / "user" / user / "profile"
+        async with self.request_limiter:
+            profile_json: dict = await self.client.get_json(self.domain, profile_api_url, origin=scrape_item)
+        if post:
+            return service, user, post, profile_json["name"]
+        return service, user, profile_json["name"]
 
     @staticmethod
     def parse_datetime(date: str) -> int:

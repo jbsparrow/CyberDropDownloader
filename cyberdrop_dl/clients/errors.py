@@ -12,6 +12,10 @@ if TYPE_CHECKING:
     from cyberdrop_dl.scraper.crawler import ScrapeItem
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
+VALIDATION_ERROR_FOOTER = """
+Read the documentation for guidance on how to resolve this error: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options
+Please note, this is not a bug. Do not open issues related to this"""
+
 
 class CDLBaseError(Exception):
     """Base exception for cyberdrop-dl errors."""
@@ -130,6 +134,5 @@ class InvalidYamlError(CDLBaseError):
     def __init__(self, file: Path, e: ConstructorError) -> None:
         """This error will be thrown when a yaml config file has invalid values."""
         mark = e.problem_mark if hasattr(e, "problem_mark") else e
-        message = f"ERROR: File '{file}' has an invalid config. Please verify and edit it manually\n {mark}"
-        self.message_rich = message.replace("ERROR:", "[bold red]ERROR:[/bold red]")
+        message = f"File '{file.resolve()}' has an invalid config. Please verify and edit it manually\n {mark}\n\n{VALIDATION_ERROR_FOOTER}"
         super().__init__("Invalid YAML", message=message, origin=file)

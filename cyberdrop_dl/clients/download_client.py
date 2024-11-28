@@ -20,6 +20,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
     from typing import Any
 
+    from yarl import URL
+
     from cyberdrop_dl.managers.client_manager import ClientManager
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
@@ -90,6 +92,15 @@ class DownloadClient:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    def add_api_key_headers(self, domain: str, referer: URL):
+        download_headers = copy.deepcopy(self._headers)
+        download_headers["Referer"] = str(referer)
+        auth_data = self.manager.config_manager.authentication_data
+        if domain == "pixeldrain" and auth_data.pixeldrain.api_key:
+            download_headers["Authorization"] = self.manager.download_manager.basic_auth(
+                "Cyberdrop-DL", auth_data.pixeldrain.api_key
+            )
+
     @limiter
     async def _download(
         self,
@@ -100,23 +111,14 @@ class DownloadClient:
         client_session: ClientSession,
     ) -> bool:
         """Downloads a file."""
-        download_headers = copy.deepcopy(self._headers)
-        download_headers["Referer"] = str(media_item.referer)
-        if (
-            domain == "pixeldrain"
-            and self.manager.config_manager.authentication_data["PixelDrain"]["pixeldrain_api_key"]
-        ):
-            download_headers["Authorization"] = self.manager.download_manager.basic_auth(
-                "Cyberdrop-DL",
-                self.manager.config_manager.authentication_data["PixelDrain"]["pixeldrain_api_key"],
-            )
+        download_headers = self.add_api_key_headers(domain, media_item.referer)
 
         downloaded_filename = await self.manager.db_manager.history_table.get_downloaded_filename(domain, media_item)
         download_dir = self.get_download_dir(media_item)
         media_item.partial_file = download_dir / f"{downloaded_filename}.part"
 
         resume_point = 0
-        if isinstance(media_item.partial_file, Path) and media_item.partial_file.exists():
+        if media_item.partial_file and media_item.partial_file.exists():
             resume_point = media_item.partial_file.stat().st_size if media_item.partial_file.exists() else 0
             download_headers["Range"] = f"bytes={resume_point}-"
 
@@ -136,7 +138,7 @@ class DownloadClient:
             content_type = resp.headers.get("Content-Type")
 
             media_item.filesize = int(resp.headers.get("Content-Length", "0"))
-            if not isinstance(media_item.complete_file, Path):
+            if not media_item.complete_file:
                 proceed, skip = await self.get_final_file_info(media_item, domain)
                 await self.mark_incomplete(media_item, domain)
                 self.client_manager.check_bunkr_maint(resp.headers)
@@ -198,7 +200,7 @@ class DownloadClient:
 
     async def download_file(self, manager: Manager, domain: str, media_item: MediaItem) -> bool:
         """Starts a file."""
-        if self.manager.config_manager.settings_data["Download_Options"]["skip_download_mark_completed"]:
+        if self.manager.config_manager.settings_data.download_options.skip_download_mark_completed:
             log(f"Download Skip {media_item.url} due to mark completed option", 10)
             self.manager.progress_manager.download_progress.add_skipped()
             # set completed path
@@ -235,7 +237,7 @@ class DownloadClient:
         await self.manager.db_manager.history_table.mark_complete(domain, media_item)
 
     async def add_file_size(self, domain: str, media_item: MediaItem) -> None:
-        if not isinstance(media_item.complete_file, Path):
+        if not media_item.complete_file:
             media_item.complete_file = self.get_file_location(media_item)
         if media_item.complete_file.exists():
             await self.manager.db_manager.history_table.add_filesize(domain, media_item)
@@ -253,11 +255,11 @@ class DownloadClient:
     def get_download_dir(self, media_item: MediaItem) -> Path:
         """Returns the download directory for the media item."""
         download_folder = media_item.download_folder
-        if self.manager.args_manager.retry_any:
+        if self.manager.parsed_args.cli_only_args.retry_any:
             return download_folder
 
-        if self.manager.config_manager.settings_data["Download_Options"]["block_download_sub_folders"]:
-            while download_folder.parent != self.manager.path_manager.download_dir:
+        if self.manager.config_manager.settings_data.download_options.block_download_sub_folders:
+            while download_folder.parent != self.manager.path_manager.download_folder:
                 download_folder = download_folder.parent
             media_item.download_folder = download_folder
         return download_folder
@@ -271,7 +273,7 @@ class DownloadClient:
         media_item.complete_file = self.get_file_location(media_item)
         media_item.partial_file = media_item.complete_file.with_suffix(media_item.complete_file.suffix + ".part")
 
-        expected_size = media_item.filesize if isinstance(media_item.filesize, int) else None
+        expected_size = media_item.filesize
         proceed = True
         skip = False
 
@@ -352,13 +354,13 @@ class DownloadClient:
 
     def check_filesize_limits(self, media: MediaItem) -> bool:
         """Checks if the file size is within the limits."""
-        file_size_limits = self.manager.config_manager.settings_data["File_Size_Limits"]
-        max_video_filesize = file_size_limits["maximum_video_size"] or float("inf")
-        min_video_filesize = file_size_limits["minimum_video_size"]
-        max_image_filesize = file_size_limits["maximum_image_size"] or float("inf")
-        min_image_filesize = file_size_limits["minimum_image_size"]
-        max_other_filesize = file_size_limits["maximum_other_size"] or float("inf")
-        min_other_filesize = file_size_limits["minimum_other_size"]
+        file_size_limits = self.manager.config_manager.settings_data.file_size_limits
+        max_video_filesize = file_size_limits.maximum_video_size or float("inf")
+        min_video_filesize = file_size_limits.minimum_video_size
+        max_image_filesize = file_size_limits.maximum_image_size or float("inf")
+        min_image_filesize = file_size_limits.minimum_image_size
+        max_other_filesize = file_size_limits.maximum_other_size or float("inf")
+        min_other_filesize = file_size_limits.minimum_other_size
 
         if media.ext in FILE_FORMATS["Images"]:
             proceed = min_image_filesize < media.filesize < max_image_filesize
