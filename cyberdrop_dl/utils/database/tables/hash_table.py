@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from rich.console import Console
 
 from cyberdrop_dl.utils.database.table_definitions import create_files, create_hash, create_temp_hash
+from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
     import aiosqlite
@@ -36,8 +37,9 @@ class HashTable:
         results = await cursor.execute("""pragma table_info(hash)""")
         results = await results.fetchall()
         if len(results) == 0:
-            pass
-        elif len(list(filter(lambda x: x[1] == "hash_type", results))) == 0:
+            return
+        if len(list(filter(lambda x: x[1] == "hash_type", results))) == 0:
+            log("Migrating history database to new schema..")
             await cursor.execute(create_files)
             await cursor.execute(create_temp_hash)
             old_table_results = await cursor.execute(
@@ -58,7 +60,7 @@ class HashTable:
                     else int(arrow.now().float_timestamp)
                 )
                 await cursor.execute(
-                    "INSERT OR IGNORE INTO files (folder, download_filename, original_filename, file_size,  referer,date) VALUES (?,?,?,?,?);",
+                    "INSERT OR IGNORE INTO files (folder, download_filename, original_filename, file_size,  referer,date) VALUES (?,?,?,?,?,?);",
                     (folder, dl_name, original_filename, size, referer, file_date),
                 )
                 await cursor.execute(
