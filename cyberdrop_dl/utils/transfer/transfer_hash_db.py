@@ -8,7 +8,6 @@ import arrow
 
 from cyberdrop_dl.utils.database.table_definitions import create_files, create_temp_hash
 from cyberdrop_dl.utils.transfer.wrapper import db_transfer_context
-from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
     import sqlite3
