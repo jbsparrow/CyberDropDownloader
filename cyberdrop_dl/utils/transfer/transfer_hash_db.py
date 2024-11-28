@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     import sqlite3
 
 console = Console()
-async def transfer_old_hash_table(db_path):
+async def transfer_from_old_hash_table(db_path):
     """Transfers data from the old 'hash' table to new 'files' and 'temp_hash' tables, handling potential schema differences and errors.
 
     Args:
