@@ -35,6 +35,7 @@ lz4 = "^4.3.3"
 pycryptodomex = "^3.21.0"
 jeepney =   [{platform = "linux", version = "^0.8.0"},{platform = "bsd", version = "^0.8.0"}]
 xxhash = "^3.5.0"
+pydantic = "^2.10.2"
 
 [tool.poetry.scripts]
 cyberdrop-dl = "cyberdrop_dl.main:main"
