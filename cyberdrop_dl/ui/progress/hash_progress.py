@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from humanfriendly import format_size
+from pydantic import ByteSize
 from rich.console import Group
 from rich.panel import Panel
 from rich.progress import BarColumn, Progress
@@ -68,10 +68,10 @@ class HashProgress:
 
     def update_currently_hashing(self, file: Path) -> None:
         self.current_hashing_text.update(self.currently_hashing_task_id, description=f"[blue]{file}")
-
+        file_size = ByteSize(file.stat().st_size)
         self.current_hashing_text.update(
             self.currently_hashing_size_task_id,
-            description=f"[blue]{format_size(file.stat().st_size)}",
+            description=f"[blue]{file_size.human_readable(decimal=True)}",
         )
 
     def add_new_completed_hash(self) -> None:
