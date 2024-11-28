@@ -282,8 +282,8 @@ class Sorter:
             ),
         )
 
-        min_video_duration = self.manager.config_manager.settings_data["File_Size_Limits"]["minimum_video_duration"]
-        max_video_duration = self.manager.config_manager.settings_data["File_Size_Limits"]["maximum_video_duration"]
+        min_video_duration = self.manager.config_manager.settings_data.file_size_limits.minimum_video_length
+        max_video_duration = self.manager.config_manager.settings_data.file_size_limits.maximum_video_length
 
         if duration != "Unknown":
             if min_video_duration != 0 and duration < min_video_duration:

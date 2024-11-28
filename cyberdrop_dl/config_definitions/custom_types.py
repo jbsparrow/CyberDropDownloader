@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 from typing import Annotated
+from datetime import timedelta
+import humanfriendly
+import re
 
 from pydantic import (
     AfterValidator,
@@ -108,3 +111,43 @@ class HttpAppriseURLModel(AppriseURLModel):
 
 class HttpAppriseURL(AppriseURL):
     _validator = HttpAppriseURLModel
+
+
+class MediaDuration(BaseModel):
+    duration: timedelta = timedelta(0)
+
+    @staticmethod
+    def parse_media_duration(value: str) -> timedelta:
+        """
+        Parses a duration string in either timecode format (HH:MM:SS) or human-readable format ('7 days', '2 hours').
+        """
+        # Timecode format (HH:MM:SS or HH:MM:SS.ssssss)
+        timecode_match = re.match(r"^(\d+):([0-5]?\d):([0-5]?\d(?:\.\d+)?)$", value)
+        if timecode_match:
+            hours, minutes, seconds = map(float, timecode_match.groups())
+            return timedelta(hours=hours, minutes=minutes, seconds=seconds)
+
+        try:
+            seconds = humanfriendly.parse_timespan(value)
+            return timedelta(seconds=seconds)
+        except humanfriendly.InvalidTimespan:
+            raise ValueError(f"Invalid media duration format: {value}")
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_media_duration(cls, values):
+        if isinstance(values, dict) and isinstance(values.get("duration"), str):
+            values["duration"] = cls.parse_media_duration(values["duration"])
+        elif isinstance(values, str):
+            return {"duration": cls.parse_media_duration(values)}
+        return values
+
+    @model_serializer()
+    def serialize_media_duration(self):
+        """
+        Serializes the duration into HH:MM:SS format.
+        """
+        total_seconds = int(self.total_seconds())
+        hours, remainder = divmod(total_seconds, 3600)
+        minutes, seconds = divmod(remainder, 60)
+        return f"{hours:02}:{minutes:02}:{seconds:02}"

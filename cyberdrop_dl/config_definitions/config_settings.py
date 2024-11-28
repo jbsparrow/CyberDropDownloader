@@ -2,11 +2,12 @@ from logging import INFO
 from pathlib import Path
 
 from pydantic import BaseModel, ByteSize, Field, NonNegativeInt, field_serializer
+from datetime import timedelta
 
 from cyberdrop_dl.utils.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE
 from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
 
-from .custom_types import AliasModel, HttpAppriseURLModel, NonEmptyStr
+from .custom_types import AliasModel, HttpAppriseURLModel, NonEmptyStr, MediaDuration
 
 
 class DownloadOptions(BaseModel):
@@ -47,6 +48,11 @@ class FileSizeLimits(BaseModel):
     minimum_image_size: ByteSize = ByteSize(0)
     minimum_other_size: ByteSize = ByteSize(0)
     minimum_video_size: ByteSize = ByteSize(0)
+
+    maximum_video_length: MediaDuration = timedelta(seconds=0)
+    maximum_audio_length: MediaDuration = timedelta(seconds=0)
+    minimum_video_length: MediaDuration = timedelta(seconds=0)
+    minimum_audio_length: MediaDuration = timedelta(seconds=0)
 
     @field_serializer("*")
     def human_readable(self, value: ByteSize | int) -> str:
