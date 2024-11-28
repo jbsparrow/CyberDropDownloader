@@ -1,5 +1,6 @@
 ---
 description: This is the walk through for transitioning from V4 to V5
+icon: arrow-up-to-bracket
 ---
 
 # Transition from V4 to V5

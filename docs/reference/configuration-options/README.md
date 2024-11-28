@@ -1,5 +1,6 @@
 ---
 description: Here's how configuration works.
+icon: sliders
 ---
 
 # Configuration Options

@@ -1,5 +1,6 @@
 ---
 description: Common questions or problems.
+icon: comments-question-check
 ---
 
 # Frequently Asked Questions

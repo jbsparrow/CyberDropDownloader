@@ -1,5 +1,6 @@
 ---
 description: Here's the available CLI Arguments
+icon: rectangle-terminal
 ---
 
 # CLI Arguments

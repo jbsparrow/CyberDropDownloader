@@ -1,5 +1,6 @@
 ---
 description: This is Cyberdrop-DL
+icon: hand-wave
 ---
 
 # Welcome!

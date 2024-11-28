@@ -2,6 +2,7 @@
 description: >-
   Due to the recent DDOS attacks on SimpCity, I have made some changes to
   Cyberdrop-DL.
+icon: building-circle-xmark
 ---
 
 # SimpCity Support Dropped

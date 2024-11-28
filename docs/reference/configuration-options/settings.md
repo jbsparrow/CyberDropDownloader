@@ -1,4 +1,5 @@
 ---
+icon: screwdriver-wrench
 description: These are all of the configuration options for Settings.
 ---
 
@@ -8,19 +9,19 @@ description: These are all of the configuration options for Settings.
 
 <summary>Download Options</summary>
 
-* block\_download\_sub\_folders
+### block\_download\_sub\_folders
 
-when this is set to `true` (or selected) downloads that would be in a folder structure like:
+When this is set to `true`, downloads that would be in a folder structure like:
 
-`Downloads/ABC/DEF/GHI/image.jpg`
+`Downloads/folderA/folderB/folderC/image.jpg`
 
 will be changed to:
 
-`Downloads/ABC/image.jpg`
+`Downloads/folderA/image.jpg`
 
 ***
 
-* disable\_download\_attempts
+### disable\_download\_attempts
 
 By default the program will retry a download 10 times. You can customize this, or set this to `true` (or selected) to disable it and retry links until they complete.
 
@@ -62,7 +63,6 @@ Multipart archives filenames will be fixed so they have the proper pattern of th
 
 Supported formats: `.rar` `.7z` `.tar` `.gz` `.bz2` `.zip`
 
-
 ***
 
 * scrape\_single\_forum\_post
@@ -93,14 +93,14 @@ Setting this to `true` (or selecting it) will skip downloading files from any re
 
 Limit the number of items to scrape using a tuple of up to 4 positions. Each position defines the maximum number of sub-items (`children_limit`) an specific type of `scrape_item` will have:
 
-    1. Max number of children from a FORUM URL
-    2. Max number of children from a FORUM POST
-    3. Max number of children from a FILE HOST PROFILE
-    4. Max number of children from a FILE HOST ALBUM
+```
+1. Max number of children from a FORUM URL
+2. Max number of children from a FORUM POST
+3. Max number of children from a FILE HOST PROFILE
+4. Max number of children from a FILE HOST ALBUM
+```
 
 Using `0` on any position means no `children_limit` for that type of `scrape_item`. Any tailing value not supplied is assumed as `0`
-
-
 
 Examples:
 
@@ -206,14 +206,6 @@ If enabled, Cyberdrop-DL will add the current date and time as a suffix to each 
 This will prevent overriding old log files
 
 Files that will be rotated:
-
-| option                       | default_filename              |
-|------------------------------|-------------------------------|
-| download_error_urls_filename |  Download_Error_URLs.csv      |
-| last_forum_post_filename     |  Last_Scraped_Forum_Posts.csv |
-| main_log_filename            |  downloader.log               |
-| scrape_error_urls_filename   |  Scrape_Error_URLs.csv        |
-| unsupported_urls_filename    |  Unsupported_URLs.csv         |
 
 </details>
 
@@ -348,7 +340,7 @@ This option has no effect unless `send_unsupported_to_jdownloader` is `true`
 
 ***
 
-* jdownloader\_download_dir:
+* jdownloader\_download\_dir:
 
 The `download_dir` jdownloader will use. A `null` value (the default) will make jdownloader use the same `download_dir` as CDL. Use this option as path mapping when jdownloader is running on a diferent host / docker.
 
@@ -380,15 +372,15 @@ You can use the shared path flags below in any part of the sorting schemas. You 
 
 Shared path flags:
 
-> `sort_dir` - `sort_folder` path
+`sort_dir` - `sort_folder` path
 
-> `base_dir` - the highest level folder name inside the folder being scanned, ex: `scan_folder` (model name / thread name)
+`base_dir` - the highest level folder name inside the folder being scanned, ex: `scan_folder` (model name / thread name)
 
-> `parent_dir` - the folder name of where the file is (album name)
+`parent_dir` - the folder name of where the file is (album name)
 
-> `filename` - the files name (stem)
+`filename` - the files name (stem)
 
-> `ext` - the files extension
+`ext` - the files extension
 
 It is possible to treat a list of URLs as a group, allowing them to be downloaded to a single folder.
 
@@ -458,11 +450,11 @@ This is the format for the directory structure and naming scheme for audio files
 
 Unique Path Flags:
 
-> `length` - runtime
+`length` - runtime
 
-> `bitrate` - files bit rate
+`bitrate` - files bit rate
 
-> `sample_rate` - files sample rate
+`sample_rate` - files sample rate
 
 ***
 
@@ -472,7 +464,7 @@ This is the format for the directory structure and naming scheme for image files
 
 Unique Path Flags:
 
-> `resolution` - ex. 1080x1920
+`resolution` - ex. 1080x1920
 
 ***
 
@@ -482,11 +474,11 @@ This is the format for the directory structure and naming scheme for video files
 
 Unique Path Flags:
 
-> `resolution` - ex. 1080x1920
+`resolution` - ex. 1080x1920
 
-> `fps` - ex. 24
+`fps` - ex. 24
 
-> `codec` - ex. h264
+`codec` - ex. h264
 
 ***
 
@@ -551,13 +543,14 @@ allows files to be hash with the md5 algorithm,  this enables matching with site
 <summary>Browser Cookies</summary>
 
 Cyberdrop-DL can extract cookies from your browser. These can be used for websites that require login or to pass DDos-Guard challenges. Only cookies from supported websites are extracted
+
 ***
 
 * auto\_import
 
 toggles automatic import of cookies at the start of each run
 
- ***
+***
 
 * browsers
 
@@ -567,6 +560,7 @@ toggles automatic import of cookies at the start of each run
 
 **Note:** If cookies exists on multiple selected browsers, the cookies from the last browser in the list will have priority
 
+**Note:** If the value entered is `null` or an empty list, no cookies will be extracted from any browser
 
 ***
 

@@ -1,5 +1,6 @@
 ---
 description: These are all of the configuration options for Authentication.
+icon: user-lock
 ---
 
 # Authentication
@@ -66,15 +67,15 @@ In order to scrape images from Imgur, you'll need to create a client on Imgurs w
 
 Some examples of what to put in for what it asks for:
 
-> Application Name: Cyberdrop-DL
+Application Name: Cyberdrop-DL
 
-> OAuth2 without a callback URL
+OAuth2 without a callback URL
 
-> Website: <really doesn't matter>
+Website: \<really doesn't matter>
 
-> Email: Your email
+Email: Your email
 
-> Description: Cyberdrop-DL client
+Description: Cyberdrop-DL client
 
 ***
 
@@ -118,7 +119,7 @@ If you decide to pay for PixelDrain premium (faster downloads, etc) you can prov
 
 * pixeldrain\_api\_key
 
-You can get your API key here: [https://pixeldrain.com/user/api\_keys](https://pixeldrain.com/user/api\_keys)
+You can get your API key here: [https://pixeldrain.com/user/api\_keys](https://pixeldrain.com/user/api_keys)
 
 </details>
 

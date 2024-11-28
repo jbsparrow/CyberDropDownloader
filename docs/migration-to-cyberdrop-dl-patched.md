@@ -1,21 +1,20 @@
 ---
 description: How to migrate to the patched version of Cyberdrop-DL.
+icon: arrow-trend-up
 ---
 
 # Migration to Cyberdrop-DL-Patched
 
 To migrate to the patched version of Cyberdrop-DL, you can follow the steps below.
 
-#### If you installed on your own using pip, you can simply uninstall the old version and install the new one using the following commands:&#x20;
+#### If you installed on your own using pip, you can simply uninstall the old version and install the new one using the following commands:
 
-```
+```shell
 pip uninstall -y cyberdrop-dl
 pip install cyberdrop-dl-patched
 ```
 
 The command to use the new version will remain as `cyberdrop-dl`.
-
-
 
 #### If you installed using the start files, you can find the new ones here:
 
