@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from rich.console import Console
 
 from cyberdrop_dl.dependencies import browser_cookie3
-from cyberdrop_dl.utils.data_enums_classes.supported_domains import SupportedDomains
+from cyberdrop_dl.utils.data_enums_classes.supported_domains import SupportedHosts,SupportedForums
 
 if TYPE_CHECKING:
     from http.cookiejar import CookieJar
@@ -86,9 +86,11 @@ def get_cookies_from_browsers(
 
 def update_forum_config_cookies(manager: Manager, forum: str, cookie: CookieJar) -> None:
     auth_args: dict = manager.config_manager.authentication_data
-    if forum not in SupportedDomains.supported_forums_map:
+    forum_dict = {member.name.lower(): member.value for member in SupportedForums}
+
+    if forum not in forum_dict.keys():
         return
-    forum = f"{SupportedDomains.supported_forums_map[forum]}"
+    forum = f"{forum_dict[forum]}"
     with contextlib.suppress(KeyError):
         auth_args["Forums"][f"{forum}_xf_user_cookie"] = cookie._cookies[forum]["/"]["xf_user"].value
         auth_args["Forums"][f"{forum}_xf_user_cookie"] = cookie._cookies["www." + forum]["/"]["xf_user"].value
