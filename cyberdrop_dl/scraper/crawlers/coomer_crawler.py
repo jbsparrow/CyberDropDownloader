@@ -78,9 +78,9 @@ class CoomerCrawler(Crawler):
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile."""
-        service, user, user_str = await self.get_user_info(scrape_item)
-        soup = "Fix after merging master"
-        offset, maximum_offset = await self.get_offsets(scrape_item, soup)
+        user_info = await self.get_user_info(scrape_item)
+        service, user, user_str = user_info["service"], user_info["user"], user_info["user_str"]
+        offset, maximum_offset = user_info["offset"], user_info["maximum_offset"]
         initial_offset = offset
         api_call = self.api_url / service / "user" / user
         scrape_item.type = FILE_HOST_PROFILE
@@ -139,7 +139,8 @@ class CoomerCrawler(Crawler):
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a post."""
-        service, user, post_id, user_str = await self.get_user_info(scrape_item)
+        user_info = await self.get_user_info(scrape_item)
+        service, user, user_str, post_id = user_info["service"], user_info["user"], user_info["user_str"], user_info["post"]
         api_call = self.api_url / service / "user" / user / "post" / post_id
         async with self.request_limiter:
             post = await self.client.get_json(self.domain, api_call, origin=scrape_item)
@@ -237,25 +238,7 @@ class CoomerCrawler(Crawler):
         new_scrape_item.add_to_parent_title(post_title)
         self.manager.task_group.create_task(self.run(new_scrape_item))
 
-    async def get_maximum_offset(self, soup: BeautifulSoup) -> int:
-        """Gets the maximum offset for a scrape item"""
-        menu = soup.select_one("menu")
-        if menu is None:
-            self.maximum_offset = 0
-            return 0
-        pagination_links = menu.find_all("a", href=True)
-        offsets = [int(x["href"].split("?o=")[-1]) for x in pagination_links]
-        offset = max(offsets)
-        self.maximum_offset = offset
-        return offset
-
-    async def get_offsets(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> int:
-        """Gets the offset for a scrape item"""
-        current_offset = int(scrape_item.url.query.get("o", 0))
-        maximum_offset = await self.get_maximum_offset(soup)
-        return current_offset, maximum_offset
-
-    async def get_user_info(self, scrape_item: ScrapeItem) -> tuple[str, str, str, str]:
+    async def get_user_info(self, scrape_item: ScrapeItem) -> dict:
         """Gets the user info from a scrape item."""
         user = scrape_item.url.parts[3]
         service = scrape_item.url.parts[1]
@@ -263,12 +246,29 @@ class CoomerCrawler(Crawler):
             post = scrape_item.url.parts[5]
         except IndexError:
             post = None
-        profile_api_url = self.api_url / service / "user" / user / "profile"
+
+        profile_api_url = self.api_url / service / "user" / user / "posts-legacy"
         async with self.request_limiter:
             profile_json: dict = await self.client.get_json(self.domain, profile_api_url, origin=scrape_item)
+            properties = profile_json.get("properties", {})
+
+        user_str = properties.get("name", user)
         if post:
-            return service, user, post, profile_json["name"]
-        return service, user, profile_json["name"]
+            offset, maximum_offset = None, None
+        else:
+            offset = int(scrape_item.url.query.get("o", 0))
+            maximum_offset = int(properties.get("count", 0))
+
+        returnValues = {
+            "service": service,
+            "user": user,
+            "post": post,
+            "user_str": user_str,
+            "offset": offset,
+            "maximum_offset": maximum_offset,
+        }
+
+        return returnValues
 
     @staticmethod
     def parse_datetime(date: str) -> int:
