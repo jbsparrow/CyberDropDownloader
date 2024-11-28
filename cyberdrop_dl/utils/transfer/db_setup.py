@@ -8,7 +8,7 @@ import platformdirs
 
 from cyberdrop_dl.utils import constants, yaml
 from cyberdrop_dl.utils.transfer.transfer_v4_db import transfer_v4_db
-from cyberdrop_dl.utils.transfer.transfer_hash_db import transfer_old_hash_table
+from cyberdrop_dl.utils.transfer.transfer_hash_db import transfer_from_old_hash_table
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager

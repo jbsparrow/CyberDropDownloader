@@ -5,6 +5,7 @@ from pydantic import BaseModel, ByteSize, Field, NonNegativeInt, field_serialize
 
 from cyberdrop_dl.utils.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE
 from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
+from cyberdrop_dl.utils.data_enums_classes.supported_domains import SupportedDomains
 
 from .custom_types import AliasModel, HttpAppriseURLModel, NonEmptyStr
 
@@ -94,7 +95,7 @@ class Sorting(BaseModel):
 class BrowserCookies(BaseModel):
     browsers: list[BROWSERS] = [BROWSERS.chrome]
     auto_import: bool = False
-    sites: list[NonEmptyStr] = []
+    sites: list[SupportedDomains] = [SupportedDomains.supported_hosts]
 
 
 class DupeCleanupOptions(BaseModel):
