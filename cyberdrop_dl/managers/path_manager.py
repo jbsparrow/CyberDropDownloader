@@ -47,17 +47,16 @@ class PathManager:
         self.cache_folder = constants.APP_STORAGE / "Cache"
         self.config_folder = constants.APP_STORAGE / "Configs"
         self.cookies_dir = constants.APP_STORAGE / "Cookies"
+        self.cache_db = self.cache_folder / "request_cache.db"
 
         self.cache_folder.mkdir(parents=True, exist_ok=True)
         self.config_folder.mkdir(parents=True, exist_ok=True)
         self.cookies_dir.mkdir(parents=True, exist_ok=True)
+        self.cache_db.touch(exist_ok=True)
 
     def replace_config_in_path(self, path: Path) -> Path:
         current_config = self.manager.config_manager.loaded_config
         return Path(str(path).replace("{config}", current_config))
-
-        self.cache_db = self.cache_dir / "request_cache.db"
-        self.cache_db.touch(exist_ok=True)
 
     def startup(self) -> None:
         """Startup process for the Directory Manager."""

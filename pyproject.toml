@@ -36,6 +36,9 @@ pycryptodomex = "^3.21.0"
 jeepney =   [{platform = "linux", version = "^0.8.0"},{platform = "bsd", version = "^0.8.0"}]
 aiohttp-client-cache = "^0.12.4"
 xxhash = "^3.5.0"
+humanfriendly = "^10.0"
+pyreadline3 = "^3.5.4"
+pydantic = "^2.10.2"
 
 [tool.poetry.scripts]
 cyberdrop-dl = "cyberdrop_dl.main:main"

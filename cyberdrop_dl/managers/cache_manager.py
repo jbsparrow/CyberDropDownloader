@@ -41,18 +41,14 @@ class CacheManager:
 
     def load_request_cache(self) -> None:
         urls_expire_after = {
-            "*.simpcity.su": self.manager.config_manager.global_settings_data["Rate_Limiting_Options"][
-                "file_host_cache_length"
-            ]
+            "*.simpcity.su": self.manager.config_manager.global_settings_data.rate_limiting_options.file_host_cache_length,
         }
         for host in SupportedDomains.supported_hosts:
             urls_expire_after[f"*.{host}" if "." in host else f"*.{host}.*"] = (
-                self.manager.config_manager.global_settings_data["Rate_Limiting_Options"]["file_host_cache_length"]
+                self.manager.config_manager.global_settings_data.rate_limiting_options.file_host_cache_length
             )
         for forum in SupportedDomains.supported_forums:
-            urls_expire_after[f"{forum}"] = self.manager.config_manager.global_settings_data["Rate_Limiting_Options"][
-                "forum_cache_length"
-            ]
+            urls_expire_after[f"{forum}"] = self.manager.config_manager.global_settings_data.rate_limiting_options.forum_cache_length
         self.request_cache = SQLiteBackend(
             cache_name=self.manager.path_manager.cache_db,
             autoclose=False,

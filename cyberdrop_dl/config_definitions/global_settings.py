@@ -1,5 +1,7 @@
-from pydantic import BaseModel, ByteSize, Field, NonNegativeFloat, PositiveInt, field_serializer
+from pydantic import BaseModel, ByteSize, Field, NonNegativeFloat, PositiveInt, field_serializer, field_validator
 from yarl import URL
+from datetime import timedelta
+import humanfriendly
 
 from .custom_types import AliasModel, HttpURL, NonEmptyStr
 
@@ -35,12 +37,28 @@ class RateLimitingOptions(BaseModel):
     max_simultaneous_downloads: PositiveInt = 15
     max_simultaneous_downloads_per_domain: PositiveInt = 3
     download_speed_limit: ByteSize = ByteSize(0)
+    file_host_cache_length: timedelta = Field(default=timedelta(days=7))
+    forum_cache_length: timedelta = Field(default=timedelta(days=28, hours=12, minutes=30, seconds=15, milliseconds=500, microseconds=250))
 
     @field_serializer("download_speed_limit")
     def human_readable(self, value: ByteSize | int) -> str:
         if not isinstance(value, ByteSize):
             value = ByteSize(value)
         return value.human_readable(decimal=True)
+
+    @field_serializer("file_host_cache_length", "forum_cache_length")
+    def serialize_timedelta(self, value: timedelta) -> str:
+        return humanfriendly.format_timespan(value.total_seconds())
+
+    @field_validator("file_host_cache_length", "forum_cache_length", mode="before")
+    def parse_timedelta(cls, value):
+        if isinstance(value, str):
+            try:
+                seconds = humanfriendly.parse_timespan(value)
+                return timedelta(seconds=seconds)
+            except humanfriendly.InvalidTimespan:
+                raise ValueError(f"Invalid time span format: {value}")
+        return value
 
 
 class UIOptions(BaseModel):
