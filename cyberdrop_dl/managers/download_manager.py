@@ -60,18 +60,12 @@ class DownloadManager:
 
     def get_download_limit(self, key: str) -> int:
         """Returns the download limit for a domain."""
-        if key in self.download_limits:
-            instances = self.download_limits[key]
-        else:
-            instances = self.manager.config_manager.global_settings_data["Rate_Limiting_Options"][
-                "max_simultaneous_downloads_per_domain"
-            ]
+        rate_limiting_options = self.manager.config_manager.global_settings_data.rate_limiting_options
+        instances = self.download_limits.get(key, rate_limiting_options.max_simultaneous_downloads_per_domain)
 
         return min(
             instances,
-            self.manager.config_manager.global_settings_data["Rate_Limiting_Options"][
-                "max_simultaneous_downloads_per_domain"
-            ],
+            rate_limiting_options.max_simultaneous_downloads_per_domain,
         )
 
     @staticmethod
@@ -83,7 +77,7 @@ class DownloadManager:
     def check_free_space(self, folder: Path | None = None) -> bool:
         """Checks if there is enough free space on the drive to continue operating."""
         if not folder:
-            folder = self.manager.path_manager.download_dir
+            folder = self.manager.path_manager.download_folder
 
         folder = folder.resolve()
         while not folder.is_dir() and folder.parents:
@@ -94,19 +88,16 @@ class DownloadManager:
             return False
         free_space = disk_usage(folder).free
         free_space_gb = free_space / 1024**3
-        return free_space_gb >= self.manager.config_manager.global_settings_data["General"]["required_free_space"]
+        return free_space_gb >= self.manager.config_manager.global_settings_data.general.required_free_space
 
     def check_allowed_filetype(self, media_item: MediaItem) -> bool:
         """Checks if the file type is allowed to download."""
-        ignore_options = self.manager.config_manager.settings_data["Ignore_Options"]
+        ignore_options = self.manager.config_manager.settings_data.ignore_options
         valid_extensions = FILE_FORMATS["Images"] | FILE_FORMATS["Videos"] | FILE_FORMATS["Audio"]
-        if media_item.ext in FILE_FORMATS["Images"] and ignore_options["exclude_images"]:
+        if media_item.ext in FILE_FORMATS["Images"] and ignore_options.exclude_images:
             return False
-        if media_item.ext in FILE_FORMATS["Videos"] and ignore_options["exclude_videos"]:
+        if media_item.ext in FILE_FORMATS["Videos"] and ignore_options.exclude_videos:
             return False
-        if media_item.ext in FILE_FORMATS["Audio"] and ignore_options["exclude_audio"]:
+        if media_item.ext in FILE_FORMATS["Audio"] and ignore_options.exclude_audio:
             return False
-        return not (
-            self.manager.config_manager.settings_data["Ignore_Options"]["exclude_other"]
-            and media_item.ext not in valid_extensions
-        )
+        return not (ignore_options.exclude_other and media_item.ext not in valid_extensions)

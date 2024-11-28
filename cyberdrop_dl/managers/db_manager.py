@@ -33,7 +33,7 @@ class DBManager:
         """Startup process for the DBManager."""
         self._db_conn = await aiosqlite.connect(self._db_path)
 
-        self.ignore_history = self.manager.config_manager.settings_data["Runtime_Options"]["ignore_history"]
+        self.ignore_history = self.manager.config_manager.settings_data.runtime_options.ignore_history
 
         self.history_table = HistoryTable(self._db_conn)
         self.hash_table = HashTable(self._db_conn)

@@ -53,9 +53,9 @@ class FapelloCrawler(Crawler):
         scrape_item.type = FILE_HOST_PROFILE
 
         with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
-                "maximum_number_of_children"
-            ][scrape_item.type]
+            scrape_item.children_limit = (
+                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
+            )
 
         title = self.create_title(
             soup.select_one('h2[class="font-semibold lg:text-2xl text-lg mb-2 mt-4"]').get_text(),
@@ -109,9 +109,9 @@ class FapelloCrawler(Crawler):
         scrape_item.children = scrape_item.children_limit = 0
 
         with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
-                "maximum_number_of_children"
-            ][scrape_item.type]
+            scrape_item.children_limit = (
+                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
+            )
 
         async with self.request_limiter:
             soup = await self.client.get_soup(self.domain, scrape_item.url)

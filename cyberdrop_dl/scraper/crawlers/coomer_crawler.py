@@ -50,7 +50,7 @@ class CoomerCrawler(Crawler):
     @error_handling_wrapper
     async def favorites(self, scrape_item: ScrapeItem) -> None:
         """Scrapes the users' favourites and creates scrape items for each artist found."""
-        if not self.manager.config_manager.authentication_data["Coomer"]["session"]:
+        if not self.manager.config_manager.authentication_data.coomer.session:
             raise ScrapeError(
                 401,
                 message="No session cookie found in the config file, cannot scrape favorites",
@@ -59,7 +59,7 @@ class CoomerCrawler(Crawler):
         async with self.request_limiter:
             # Use the session cookie to get the user's favourites
             self.client.client_manager.cookies.update_cookies(
-                {"session": self.manager.config_manager.authentication_data["Coomer"]["session"]},
+                {"session": self.manager.config_manager.authentication_data.coomer.session},
                 response_url=self.primary_base_domain,
             )
             favourites_api_url = (self.api_url / "account/favorites").with_query({"type": "artist"})
@@ -82,9 +82,9 @@ class CoomerCrawler(Crawler):
         scrape_item.children = scrape_item.children_limit = 0
 
         with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
-                "maximum_number_of_children"
-            ][scrape_item.type]
+            scrape_item.children_limit = (
+                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
+            )
 
         while True:
             async with self.request_limiter:
@@ -116,19 +116,16 @@ class CoomerCrawler(Crawler):
     @error_handling_wrapper
     async def handle_post_content(self, scrape_item: ScrapeItem, post: dict, user: str, user_str: str) -> None:
         """Handles the content of a post."""
-        if (
-            "#ad" in post["content"]
-            and self.manager.config_manager.settings_data["Ignore_Options"]["ignore_coomer_ads"]
-        ):
+        if "#ad" in post["content"] and self.manager.config_manager.settings_data.ignore_options.ignore_coomer_ads:
             return
 
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
 
         with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
-                "maximum_number_of_children"
-            ][scrape_item.type]
+            scrape_item.children_limit = (
+                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
+            )
 
         date = post.get("published") or post.get("added")
         date = date.replace("T", " ")
@@ -189,9 +186,9 @@ class CoomerCrawler(Crawler):
     ) -> None:
         """Creates a new scrape item with the same parent as the old scrape item."""
         post_title = None
-        if self.manager.config_manager.settings_data["Download_Options"]["separate_posts"]:
+        if self.manager.config_manager.settings_data.download_options.separate_posts:
             post_title = f"{date} - {title}"
-            if self.manager.config_manager.settings_data["Download_Options"]["include_album_id_in_folder_name"]:
+            if self.manager.config_manager.settings_data.download_options.include_album_id_in_folder_name:
                 post_title = post_id + " - " + post_title
 
         new_title = self.create_title(user, None, None)

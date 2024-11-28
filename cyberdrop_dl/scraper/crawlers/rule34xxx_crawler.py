@@ -54,9 +54,9 @@ class Rule34XXXCrawler(Crawler):
         scrape_item.children = scrape_item.children_limit = 0
 
         with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
-                "maximum_number_of_children"
-            ][scrape_item.type]
+            scrape_item.children_limit = (
+                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
+            )
 
         title_portion = scrape_item.url.query["tags"].strip()
         title = self.create_title(title_portion, None, None)

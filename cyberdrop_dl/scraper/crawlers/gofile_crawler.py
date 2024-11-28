@@ -108,9 +108,11 @@ class GoFileCrawler(Crawler):
             scrape_item.children = scrape_item.children_limit = 0
 
             with contextlib.suppress(IndexError, TypeError):
-                scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
-                    "maximum_number_of_children"
-                ][scrape_item.type]
+                scrape_item.children_limit = (
+                    self.manager.config_manager.settings_data.download_options.maximum_number_of_children[
+                        scrape_item.type
+                    ]
+                )
 
         contents = JSON_Resp["children"]
         for content_id in contents:
@@ -156,7 +158,7 @@ class GoFileCrawler(Crawler):
             self.headers["Authorization"] = f"Bearer {self.token}"
             return
 
-        api_token = self.manager.config_manager.authentication_data["GoFile"]["gofile_api_key"]
+        api_token = self.manager.config_manager.authentication_data.gofile.api_key
         if api_token:
             self.token = api_token
             self.headers["Authorization"] = f"Bearer {self.token}"

@@ -48,9 +48,9 @@ class Rule34XYZCrawler(Crawler):
         scrape_item.children = scrape_item.children_limit = 0
 
         with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
-                "maximum_number_of_children"
-            ][scrape_item.type]
+            scrape_item.children_limit = (
+                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
+            )
 
         title = self.create_title(scrape_item.url.parts[1], None, None)
         scrape_item.part_of_album = True

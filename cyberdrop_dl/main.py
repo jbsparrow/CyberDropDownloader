@@ -11,6 +11,7 @@ from textwrap import indent
 from time import perf_counter
 from typing import TYPE_CHECKING
 
+from pydantic import ValidationError
 from rich.console import Console
 from rich.logging import RichHandler
 
@@ -32,6 +33,7 @@ from cyberdrop_dl.utils.utilities import (
     send_webhook_message,
     sent_apprise_notifications,
 )
+from cyberdrop_dl.utils.yaml import handle_validation_error
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -47,11 +49,20 @@ def startup() -> Manager:
         manager = Manager()
         manager.startup()
 
-        if not manager.args_manager.immediate_download:
+        if not manager.parsed_args.cli_only_args.download:
             ProgramUI(manager)
 
     except InvalidYamlError as e:
-        print_to_console(e.message_rich)
+        print_to_console(e.message, error=True)
+        sys.exit(1)
+
+    except ValidationError as e:
+        sources = {
+            "GlobalSettings": manager.config_manager.global_settings,
+            "ConfigSettings": manager.config_manager.settings,
+            "AuthSettings": manager.config_manager.authentication_settings,
+        }
+        handle_validation_error(e, sources=sources)
         sys.exit(1)
 
     except KeyboardInterrupt:
@@ -64,7 +75,7 @@ def startup() -> Manager:
 
 async def runtime(manager: Manager) -> None:
     """Main runtime loop for the program, this will run until all scraping and downloading is complete."""
-    if manager.args_manager.sort_all_configs:
+    if manager.parsed_args.deprecated_args.sort_all_configs:
         return
 
     with manager.live_manager.get_main_live(stop=True):
@@ -76,7 +87,7 @@ async def runtime(manager: Manager) -> None:
 
 def pre_runtime(manager: Manager) -> None:
     """Actions to complete before main runtime."""
-    if manager.config_manager.settings_data["Browser_Cookies"]["auto_import"]:
+    if manager.config_manager.settings_data.browser_cookies.auto_import:
         get_cookies_from_browsers(manager)
 
 
@@ -89,17 +100,15 @@ async def post_runtime(manager: Manager) -> None:
         20,
     )
     # checking and removing dupes
-    if not manager.args_manager.sort_all_configs:
+    if not manager.parsed_args.deprecated_args.sort_all_configs:
         await manager.hash_manager.hash_client.cleanup_dupes_after_download()
-    if (isinstance(manager.args_manager.sort_downloads, bool) and manager.args_manager.sort_downloads) or (
-        manager.config_manager.settings_data["Sorting"]["sort_downloads"] and not manager.args_manager.retry_any
-    ):
+    if manager.config_manager.settings_data.sorting.sort_downloads and not manager.parsed_args.cli_only_args.retry_any:
         sorter = Sorter(manager)
         await sorter.sort()
 
     await check_partials_and_empty_folders(manager)
 
-    if manager.config_manager.settings_data["Runtime_Options"]["update_last_forum_post"]:
+    if manager.config_manager.settings_data.runtime_options.update_last_forum_post:
         await manager.log_manager.update_last_forum_post()
 
 
@@ -109,15 +118,15 @@ def setup_debug_logger(manager: Manager) -> Path | None:
     running_in_IDE = os.getenv("PYCHARM_HOSTED") or os.getenv("TERM_PROGRAM") == "vscode"
     from cyberdrop_dl.utils import constants
 
-    if running_in_IDE or manager.config_manager.settings_data["Runtime_Options"]["log_level"] == -1:
-        manager.config_manager.settings_data["Runtime_Options"]["log_level"] = 10
+    if running_in_IDE or manager.config_manager.settings_data.runtime_options.log_level == -1:
+        manager.config_manager.settings_data.runtime_options.log_level = 10
         constants.DEBUG_VAR = True
 
-    if running_in_IDE or manager.config_manager.settings_data["Runtime_Options"]["console_log_level"] == -1:
+    if running_in_IDE or manager.config_manager.settings_data.runtime_options.console_log_level == -1:
         constants.CONSOLE_DEBUG_VAR = True
 
     if constants.DEBUG_VAR:
-        logger_debug.setLevel(manager.config_manager.settings_data["Runtime_Options"]["log_level"])
+        logger_debug.setLevel(manager.config_manager.settings_data.runtime_options.log_level)
         debug_log_file_path = Path(__file__).parent / "cyberdrop_dl_debug.log"
         if running_in_IDE:
             debug_log_file_path = Path(__file__).parents[1] / "cyberdrop_dl_debug.log"
@@ -125,12 +134,12 @@ def setup_debug_logger(manager: Manager) -> Path | None:
         rich_file_handler_debug = RichHandler(
             **constants.RICH_HANDLER_DEBUG_CONFIG,
             console=Console(file=debug_log_file_path.open("w", encoding="utf8"), width=constants.DEFAULT_CONSOLE_WIDTH),
-            level=manager.config_manager.settings_data["Runtime_Options"]["log_level"],
+            level=manager.config_manager.settings_data.runtime_options.log_level,
         )
 
         logger_debug.addHandler(rich_file_handler_debug)
         # aiosqlite_log = logging.getLogger("aiosqlite")
-        # aiosqlite_log.setLevel(manager.config_manager.settings_data['Runtime_Options']['log_level'])
+        # aiosqlite_log.setLevel(manager.config_manager.settings_data.runtime_options.log_level)
         # aiosqlite_log.addHandler(file_handler_debug)
 
     return debug_log_file_path.resolve() if debug_log_file_path else None
@@ -140,7 +149,7 @@ def setup_logger(manager: Manager, config_name: str) -> None:
     from cyberdrop_dl.utils import constants
 
     logger = logging.getLogger("cyberdrop_dl")
-    if manager.args_manager.all_configs:
+    if manager.multiconfig:
         if len(logger.handlers) > 0:
             log("Picking new config...", 20)
         manager.config_manager.change_config(config_name)
@@ -150,10 +159,10 @@ def setup_logger(manager: Manager, config_name: str) -> None:
             logger.removeHandler(logger.handlers[0])
             old_file_handler.close()
 
-    logger.setLevel(manager.config_manager.settings_data["Runtime_Options"]["log_level"])
+    logger.setLevel(manager.config_manager.settings_data.runtime_options.log_level)
 
     if constants.DEBUG_VAR:
-        manager.config_manager.settings_data["Runtime_Options"]["log_level"] = 10
+        manager.config_manager.settings_data.runtime_options.log_level = 10
 
     rich_file_handler = RichHandler(
         **constants.RICH_HANDLER_CONFIG,
@@ -161,11 +170,11 @@ def setup_logger(manager: Manager, config_name: str) -> None:
             file=manager.path_manager.main_log.open("w", encoding="utf8"),
             width=constants.DEFAULT_CONSOLE_WIDTH,
         ),
-        level=manager.config_manager.settings_data["Runtime_Options"]["log_level"],
+        level=manager.config_manager.settings_data.runtime_options.log_level,
     )
 
     logger.addHandler(rich_file_handler)
-    constants.CONSOLE_LEVEL = manager.config_manager.settings_data["Runtime_Options"]["console_log_level"]
+    constants.CONSOLE_LEVEL = manager.config_manager.settings_data.runtime_options.console_log_level
 
 
 def ui_error_handling_wrapper(func: Callable) -> None:
@@ -194,7 +203,7 @@ async def director(manager: Manager) -> None:
     debug_log_file_path = setup_debug_logger(manager)
 
     configs_to_run = [manager.config_manager.loaded_config]
-    if manager.args_manager.all_configs:
+    if manager.multiconfig:
         configs_to_run = manager.config_manager.get_configs()
         configs_to_run.sort()
 
