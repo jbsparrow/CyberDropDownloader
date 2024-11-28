@@ -507,10 +507,10 @@ These are options for enable/disable hashing and auto dupe delecton
 ## Enabling auto dupe cleanup
 1. Turn change hashing to 'POST_DOWNLOAD' or 'IN_PLACE'
 2. Change auto_dedupe to True
-   
+
 ***
 
-* hashing 
+* hashing
 There are three possible options for hashing
 1. OFF: disables hashing
 2. IN_PLACE: performs hashing after each download
@@ -522,11 +522,11 @@ when hashing is enabled all files are hashed with at least xxh128 hashing
 * auto\_dedupe:
   allows for deduping files when hashing is enabled
 
-  
+
   This finds all files in the database with the same hash and size, and keeps the oldest copy of the file
 
   Deletion only occurs if two or more matching files are found from the database search
-  
+
 ***
 
 * add\_sha256\_hash

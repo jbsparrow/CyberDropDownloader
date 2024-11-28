@@ -15,8 +15,6 @@ from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, F
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
-
     from cyberdrop_dl.managers.manager import Manager
 
 
@@ -54,8 +52,7 @@ class KemonoCrawler(Crawler):
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile."""
         offset = 0
-        service, user = self.get_service_and_user(scrape_item)
-        user_str = await self.get_user_str_from_profile(scrape_item)
+        service, user, user_str = await self.get_user_info(scrape_item)
         api_call = self.api_url / service / "user" / user
         scrape_item.type = FILE_HOST_PROFILE
         scrape_item.children = scrape_item.children_limit = 0
@@ -114,11 +111,11 @@ class KemonoCrawler(Crawler):
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a post."""
-        service, user, post_id = await self.get_service_user_and_post(scrape_item)
-        user_str = await self.get_user_str_from_post(scrape_item)
+        service, user, post_id, user_str = await self.get_user_info(scrape_item)
         api_call = self.api_url / service / "user" / user / "post" / post_id
         async with self.request_limiter:
             post = await self.client.get_json(self.domain, api_call, origin=scrape_item)
+            post = post.get("post")
         await self.handle_post_content(scrape_item, post, user, user_str)
 
     @error_handling_wrapper
@@ -262,34 +259,20 @@ class KemonoCrawler(Crawler):
         new_scrape_item.add_to_parent_title(post_title)
         self.manager.task_group.create_task(self.run(new_scrape_item))
 
-    @error_handling_wrapper
-    async def get_user_str_from_post(self, scrape_item: ScrapeItem) -> str:
-        """Gets the user string from a scrape item."""
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
-        return soup.select_one("a[class=post__user-name]").text
-
-    @error_handling_wrapper
-    async def get_user_str_from_profile(self, scrape_item: ScrapeItem) -> str:
-        """Gets the user string from a scrape item."""
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
-        return soup.select_one("span[itemprop=name]").text
-
-    @staticmethod
-    def get_service_and_user(scrape_item: ScrapeItem) -> tuple[str, str]:
-        """Gets the service and user from a scrape item."""
+    async def get_user_info(self, scrape_item: ScrapeItem) -> tuple[str, str, str, str]:
+        """Gets the user info from a scrape item."""
         user = scrape_item.url.parts[3]
         service = scrape_item.url.parts[1]
-        return service, user
-
-    @staticmethod
-    async def get_service_user_and_post(scrape_item: ScrapeItem) -> tuple[str, str, str]:
-        """Gets the service, user and post id from a scrape item."""
-        user = scrape_item.url.parts[3]
-        service = scrape_item.url.parts[1]
-        post = scrape_item.url.parts[5]
-        return service, user, post
+        try:
+            post = scrape_item.url.parts[5]
+        except IndexError:
+            post = None
+        profile_api_url = self.api_url / service / "user" / user / "profile"
+        async with self.request_limiter:
+            profile_json: dict = await self.client.get_json(self.domain, profile_api_url, origin=scrape_item)
+        if post:
+            return service, user, post, profile_json["name"]
+        return service, user, profile_json["name"]
 
     @staticmethod
     def parse_datetime(date: str) -> int:

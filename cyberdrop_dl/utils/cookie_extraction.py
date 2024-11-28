@@ -72,16 +72,16 @@ def get_cookies_from_browsers(
         msg = "None of the provided browsers is not supported for extraction"
         raise ValueError(msg)
 
-    for extractor in extractors:
-        for domain in domains:
-            cookie_jar = MozillaCookieJar()
+    for domain in domains:
+        cookie_jar = MozillaCookieJar()
+        for extractor in extractors:
             cookies = extractor(domain_name=domain)
             for cookie in cookies:
                 cookie_jar.set_cookie(cookie)
             manager.path_manager.cookies_dir.mkdir(parents=True, exist_ok=True)
             cookie_file_path = manager.path_manager.cookies_dir / f"{domain}.txt"
             update_forum_config_cookies(manager, domain, cookies)
-            cookie_jar.save(cookie_file_path, ignore_discard=True, ignore_expires=True)
+        cookie_jar.save(cookie_file_path, ignore_discard=True, ignore_expires=True)
 
 
 def update_forum_config_cookies(manager: Manager, forum: str, cookie: CookieJar) -> None:
