@@ -28,10 +28,8 @@ class RedditCrawler(Crawler):
 
     def __init__(self, manager: Manager, site: str) -> None:
         super().__init__(manager, site, "Reddit")
-        self.reddit_personal_use_script = self.manager.config_manager.authentication_data["Reddit"][
-            "reddit_personal_use_script"
-        ]
-        self.reddit_secret = self.manager.config_manager.authentication_data["Reddit"]["reddit_secret"]
+        self.reddit_personal_use_script = self.manager.config_manager.authentication_data.reddit.personal_use_script
+        self.reddit_secret = self.manager.config_manager.authentication_data.reddit.secret
         self.request_limiter = AsyncLimiter(5, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -109,9 +107,9 @@ class RedditCrawler(Crawler):
         scrape_item.children = scrape_item.children_limit = 0
 
         with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
-                "maximum_number_of_children"
-            ][scrape_item.type]
+            scrape_item.children_limit = (
+                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
+            )
 
         for submission in submissions_list:
             await self.post(scrape_item, submission, reddit)
@@ -170,9 +168,9 @@ class RedditCrawler(Crawler):
         scrape_item.children = scrape_item.children_limit = 0
 
         with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
-                "maximum_number_of_children"
-            ][scrape_item.type]
+            scrape_item.children_limit = (
+                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
+            )
         for link in links:
             new_scrape_item = await self.create_new_scrape_item(
                 link,
@@ -227,6 +225,6 @@ class RedditCrawler(Crawler):
             date,
             add_parent=add_parent,
         )
-        if self.manager.config_manager.settings_data["Download_Options"]["separate_posts"]:
+        if self.manager.config_manager.settings_data.download_options.separate_posts:
             new_scrape_item.add_to_parent_title(title)
         return new_scrape_item

@@ -45,16 +45,14 @@ class JDownloader:
     """Class that handles connecting and passing links to JDownloader."""
 
     def __init__(self, manager: Manager) -> None:
-        self.enabled = manager.config_manager.settings_data["Runtime_Options"]["send_unsupported_to_jdownloader"]
-        self.jdownloader_device = manager.config_manager.authentication_data["JDownloader"]["jdownloader_device"]
-        self.jdownloader_username = manager.config_manager.authentication_data["JDownloader"]["jdownloader_username"]
-        self.jdownloader_password = manager.config_manager.authentication_data["JDownloader"]["jdownloader_password"]
-        self.jdownloader_download_dir = manager.config_manager.settings_data["Runtime_Options"][
-            "jdownloader_download_dir"
-        ]
-        self.jdownloader_autostart = manager.config_manager.settings_data["Runtime_Options"]["jdownloader_autostart"]
+        self.enabled = manager.config_manager.settings_data.runtime_options.send_unsupported_to_jdownloader
+        self.jdownloader_device = manager.config_manager.authentication_data.jdownloader.device
+        self.jdownloader_username = manager.config_manager.authentication_data.jdownloader.username
+        self.jdownloader_password = manager.config_manager.authentication_data.jdownloader.password
+        self.jdownloader_download_dir = manager.config_manager.settings_data.runtime_options.jdownloader_download_dir
+        self.jdownloader_autostart = manager.config_manager.settings_data.runtime_options.jdownloader_autostart
         if not self.jdownloader_download_dir:
-            self.jdownloader_download_dir = manager.path_manager.download_dir
+            self.jdownloader_download_dir = manager.path_manager.download_folder
         self.jdownloader_download_dir = Path(self.jdownloader_download_dir)
         self.jdownloader_agent = field(init=False)
 

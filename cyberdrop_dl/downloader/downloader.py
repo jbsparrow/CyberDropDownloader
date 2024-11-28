@@ -38,10 +38,8 @@ def retry(func: Callable) -> None:
             except DownloadError as e:
                 self.attempt_task_removal(media_item)
 
-                max_attempts = self.manager.config_manager.global_settings_data["Rate_Limiting_Options"][
-                    "download_attempts"
-                ]
-                if self.manager.config_manager.settings_data["Download_Options"]["disable_download_attempt_limit"]:
+                max_attempts = self.manager.config_manager.global_settings_data.rate_limiting_options.download_attempts
+                if self.manager.config_manager.settings_data.download_options.disable_download_attempt_limit:
                     max_attempts = 1
 
                 if e.status != 999:
@@ -118,9 +116,9 @@ class Downloader:
         self.client = self.manager.client_manager.downloader_session
         self._semaphore = asyncio.Semaphore(self.manager.download_manager.get_download_limit(self.domain))
 
-        self.manager.path_manager.download_dir.mkdir(parents=True, exist_ok=True)
-        if self.manager.config_manager.settings_data["Sorting"]["sort_downloads"]:
-            self.manager.path_manager.sorted_dir.mkdir(parents=True, exist_ok=True)
+        self.manager.path_manager.download_folder.mkdir(parents=True, exist_ok=True)
+        if self.manager.config_manager.settings_data.sorting.sort_downloads:
+            self.manager.path_manager.sorted_folder.mkdir(parents=True, exist_ok=True)
 
     async def run(self, media_item: MediaItem) -> None:
         """Runs the download loop."""
@@ -159,9 +157,9 @@ class Downloader:
 
     def set_file_datetime(self, media_item: MediaItem, complete_file: Path) -> None:
         """Sets the file's datetime."""
-        if self.manager.config_manager.settings_data["Download_Options"]["disable_file_timestamps"]:
+        if self.manager.config_manager.settings_data.download_options.disable_file_timestamps:
             return
-        if not isinstance(media_item.datetime, Field):
+        if not media_item.datetime:
             file = File(str(complete_file))
             file.set(
                 created=media_item.datetime,
@@ -171,10 +169,10 @@ class Downloader:
 
     def attempt_task_removal(self, media_item: MediaItem) -> None:
         """Attempts to remove the task from the progress bar."""
-        if not isinstance(media_item.task_id, Field):
+        if media_item.task_id is not None:
             with contextlib.suppress(ValueError):
                 self.manager.progress_manager.file_progress.remove_file(media_item.task_id)
-        media_item.task_id = field(init=False)
+        media_item.task_id = None
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -219,7 +217,7 @@ class Downloader:
             aiohttp.ServerTimeoutError,
         ) as e:
             ui_message = getattr(e, "status", type(e).__name__)
-            if isinstance(media_item.partial_file, Path) and media_item.partial_file.is_file():
+            if media_item.partial_file and media_item.partial_file.is_file():
                 size = media_item.partial_file.stat().st_size
                 if (
                     media_item.filename in self._current_attempt_filesize

@@ -102,7 +102,7 @@ def _check_valid_new_config_name(answer: str, manager: Manager) -> str | None:
     if answer.casefold() in RESERVED_CONFIG_NAMES:
         msg = f"[bold red]ERROR:[/bold red] Config name '{answer}' is a reserved internal name"
 
-    elif manager.path_manager.config_dir.joinpath(answer).is_dir():
+    elif manager.path_manager.config_folder.joinpath(answer).is_dir():
         msg = f"[bold red]ERROR:[/bold red] Config with name '{answer}' already exists!"
     if msg:
         console.print(msg)
@@ -117,7 +117,7 @@ def _check_valid_new_config_name(answer: str, manager: Manager) -> str | None:
 
 def auto_cookie_extraction(manager: Manager):
     answer = basic_prompts.ask_toggle("Enable auto cookies import:")
-    manager.config_manager.settings_data["Browser_Cookies"]["auto_import"] = answer
+    manager.config_manager.settings_data.browser_cookies.auto_import = answer
     if answer:
         extract_cookies(manager, dry_run=True)
     manager.config_manager.write_updated_settings_config()
@@ -144,8 +144,8 @@ def extract_cookies(manager: Manager, *, dry_run: bool = False) -> None:
         browsers = list(map(str.capitalize, BROWSERS))
 
     if dry_run:
-        manager.config_manager.settings_data["Browser_Cookies"]["browsers"] = browsers
-        manager.config_manager.settings_data["Browser_Cookies"]["sites"] = domains
+        manager.config_manager.settings_data.browser_cookies.browsers = browsers
+        manager.config_manager.settings_data.browser_cookies.sites = domains
         return
 
     get_cookies_from_browsers(manager, browsers=browsers, domains=domains)

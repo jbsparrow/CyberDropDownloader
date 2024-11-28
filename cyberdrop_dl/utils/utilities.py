@@ -13,6 +13,7 @@ import aiofiles
 import apprise
 import rich
 from aiohttp import ClientSession, FormData
+from pydantic import ValidationError
 from rich.text import Text
 from yarl import URL
 
@@ -20,6 +21,7 @@ from cyberdrop_dl.clients.errors import CDLBaseError, NoExtensionError
 from cyberdrop_dl.managers.real_debrid.errors import RealDebridError
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.logger import log, log_with_color
+from cyberdrop_dl.utils.yaml import handle_validation_error
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -112,7 +114,7 @@ def get_filename_and_ext(filename: str, forum: bool = False) -> tuple[str, str]:
 
 def get_download_path(manager: Manager, scrape_item: ScrapeItem, domain: str) -> Path:
     """Returns the path to the download folder."""
-    download_dir = manager.path_manager.download_dir
+    download_dir = manager.path_manager.download_folder
 
     if scrape_item.retry:
         return scrape_item.retry_path
@@ -126,7 +128,7 @@ def get_download_path(manager: Manager, scrape_item: ScrapeItem, domain: str) ->
 def remove_file_id(manager: Manager, filename: str, ext: str) -> tuple[str, str]:
     """Removes the additional string some websites adds to the end of every filename."""
     original_filename = filename
-    if not manager.config_manager.settings_data["Download_Options"]["remove_generated_id_from_filenames"]:
+    if not manager.config_manager.settings_data.download_options.remove_generated_id_from_filenames:
         return original_filename, filename
 
     filename = filename.rsplit(ext, 1)[0]
@@ -187,15 +189,15 @@ def purge_dir_tree(dirname: Path) -> None:
 
 async def check_partials_and_empty_folders(manager: Manager) -> None:
     """Checks for partial downloads and empty folders."""
-    if manager.config_manager.settings_data["Runtime_Options"]["delete_partial_files"]:
+    if manager.config_manager.settings_data.runtime_options.delete_partial_files:
         log_with_color("Deleting partial downloads...", "bold_red", 20)
-        partial_downloads = manager.path_manager.download_dir.rglob("*.part")
+        partial_downloads = manager.path_manager.download_folder.rglob("*.part")
         for file in partial_downloads:
             file.unlink(missing_ok=True)
 
-    elif not manager.config_manager.settings_data["Runtime_Options"]["skip_check_for_partial_files"]:
+    elif not manager.config_manager.settings_data.runtime_options.skip_check_for_partial_files:
         log_with_color("Checking for partial downloads...", "yellow", 20)
-        partial_downloads = any(f.is_file() for f in manager.path_manager.download_dir.rglob("*.part"))
+        partial_downloads = any(f.is_file() for f in manager.path_manager.download_folder.rglob("*.part"))
         if partial_downloads:
             log_with_color("There are partial downloads in the downloads folder", "yellow", 20)
         temp_downloads = any(Path(f).is_file() for f in await manager.db_manager.temp_table.get_temp_names())
@@ -203,11 +205,11 @@ async def check_partials_and_empty_folders(manager: Manager) -> None:
             msg = "There are partial downloads from the previous run, please re-run the program."
             log_with_color(msg, "yellow", 20)
 
-    if not manager.config_manager.settings_data["Runtime_Options"]["skip_check_for_empty_folders"]:
+    if not manager.config_manager.settings_data.runtime_options.skip_check_for_empty_folders:
         log_with_color("Checking for empty folders...", "yellow", 20)
-        purge_dir_tree(manager.path_manager.download_dir)
-        if isinstance(manager.path_manager.sorted_dir, Path):
-            purge_dir_tree(manager.path_manager.sorted_dir)
+        purge_dir_tree(manager.path_manager.download_folder)
+        if isinstance(manager.path_manager.sorted_folder, Path):
+            purge_dir_tree(manager.path_manager.sorted_folder)
 
 
 def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -> tuple[str, str]:
@@ -280,29 +282,30 @@ def check_prelease_version(current_version: str, releases: list[str]) -> tuple[s
 
 
 def sent_apprise_notifications(manager: Manager) -> None:
-    apprise_file = manager.path_manager.config_dir / manager.config_manager.loaded_config / "apprise.txt"
+    apprise_file = manager.path_manager.config_folder / manager.config_manager.loaded_config / "apprise.txt"
     text: Text = constants.LOG_OUTPUT_TEXT
     constants.LOG_OUTPUT_TEXT = Text("")
 
     if not apprise_file.is_file():
         return
 
-    with apprise_file.open(encoding="utf8") as file:
-        lines = [line.strip() for line in file]
+    from cyberdrop_dl.config_definitions.custom_types import AppriseURL
 
-    if not lines:
+    try:
+        with apprise_file.open(encoding="utf8") as file:
+            apprise_urls = [AppriseURL(line.strip()) for line in file]
+    except ValidationError as e:
+        sources = {"AppriseURLModel": apprise_file}
+        handle_validation_error(e, sources=sources)
+        return
+
+    if not apprise_urls:
         return
 
     rich.print("\nSending notifications.. ")
     apprise_obj = apprise.Apprise()
-    for line in lines:
-        parts = line.split("://", 1)[0].split("=", 1)
-        url = line
-        tags = "no_logs"
-        if len(parts) == 2:
-            tags, url = line.split("=", 1)
-            tags = tags.split(",")
-        apprise_obj.add(url, tag=tags)
+    for apprise_url in apprise_urls:
+        apprise_obj.add(apprise_url.url, tag=apprise_url.tags)
 
     results = []
     result = apprise_obj.notify(
@@ -340,26 +343,19 @@ def sent_apprise_notifications(manager: Manager) -> None:
 
 async def send_webhook_message(manager: Manager) -> None:
     """Outputs the stats to a code block for webhook messages."""
-    webhook_url: str = manager.config_manager.settings_data["Logs"]["webhook_url"]
+    webhook = manager.config_manager.settings_data.logs.webhook
 
-    if not webhook_url:
+    if not webhook:
         return
 
-    url = webhook_url.strip()
-    parts = url.split("://", 1)[0].split("=", 1)
-    tags = ["no_logs"]
-    if len(parts) == 2:
-        tags, url = url.split("=", 1)
-        tags = tags.split(",")
-
-    url = URL(url)
+    url = webhook.url.get_secret_value()
     text: Text = constants.LOG_OUTPUT_TEXT
     plain_text = parse_rich_text_by_style(text, constants.STYLE_TO_DIFF_FORMAT_MAP)
     main_log = manager.path_manager.main_log
 
     form = FormData()
 
-    if "attach_logs" in tags and main_log.is_file():
+    if "attach_logs" in webhook.tags and main_log.is_file():
         if main_log.stat().st_size <= 25 * 1024 * 1024:
             async with aiofiles.open(main_log, "rb") as f:
                 form.add_field("file", await f.read(), filename=main_log.name)

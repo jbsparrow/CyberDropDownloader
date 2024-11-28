@@ -41,32 +41,28 @@ DDOS_GUARD_CHALLENGE_SELECTORS = [
     ".lds-ring",
 ]
 
+CLOUDFLARE_CHALLENGE_TITLES = ["Simpcity Cuck Detection"]
+CLOUDFLARE_CHALLENGE_SELECTORS = ["captchawrapper", "cf-turnstile"]
+
 
 class ClientManager:
     """Creates a 'client' that can be referenced by scraping or download sessions."""
 
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
-        self.connection_timeout = manager.config_manager.global_settings_data["Rate_Limiting_Options"][
-            "connection_timeout"
-        ]
-        self.read_timeout = manager.config_manager.global_settings_data["Rate_Limiting_Options"]["read_timeout"]
-        self.rate_limit = manager.config_manager.global_settings_data["Rate_Limiting_Options"]["rate_limit"]
+        global_settings_data = manager.config_manager.global_settings_data
+        self.connection_timeout = global_settings_data.rate_limiting_options.connection_timeout
+        self.read_timeout = global_settings_data.rate_limiting_options.read_timeout
+        self.rate_limit = global_settings_data.rate_limiting_options.rate_limit
 
-        self.download_delay = manager.config_manager.global_settings_data["Rate_Limiting_Options"]["download_delay"]
-        self.user_agent = manager.config_manager.global_settings_data["General"]["user_agent"]
-        self.verify_ssl = not manager.config_manager.global_settings_data["General"]["allow_insecure_connections"]
-        self.simultaneous_per_domain = manager.config_manager.global_settings_data["Rate_Limiting_Options"][
-            "max_simultaneous_downloads_per_domain"
-        ]
+        self.download_delay = global_settings_data.rate_limiting_options.download_delay
+        self.user_agent = global_settings_data.general.user_agent
+        self.verify_ssl = not global_settings_data.general.allow_insecure_connections
+        self.simultaneous_per_domain = global_settings_data.rate_limiting_options.max_simultaneous_downloads_per_domain
 
         self.ssl_context = ssl.create_default_context(cafile=certifi.where()) if self.verify_ssl else False
         self.cookies = aiohttp.CookieJar(quote_cookie=False)
-        self.proxy = (
-            manager.config_manager.global_settings_data["General"]["proxy"]
-            if not manager.args_manager.proxy
-            else manager.args_manager.proxy
-        )
+        self.proxy = global_settings_data.general.proxy
 
         self.domain_rate_limits = {
             "bunkrr": AsyncLimiter(5, 1),
@@ -90,7 +86,7 @@ class ClientManager:
         self.global_rate_limiter = AsyncLimiter(self.rate_limit, 1)
         self.session_limit = asyncio.Semaphore(50)
         self.download_session_limit = asyncio.Semaphore(
-            self.manager.config_manager.global_settings_data["Rate_Limiting_Options"]["max_simultaneous_downloads"],
+            self.manager.config_manager.global_settings_data.rate_limiting_options.max_simultaneous_downloads,
         )
 
         self.scraper_session = ScraperClient(self)
@@ -129,6 +125,15 @@ class ClientManager:
             message = DOWNLOAD_ERROR_ETAGS.get(headers.get("ETag"))
             raise DownloadError(HTTPStatus.NOT_FOUND, message=message, origin=origin)
 
+        response_text = None
+        with contextlib.suppress(UnicodeDecodeError):
+            response_text = await response.text()
+
+        if response_text:
+            soup = BeautifulSoup(response_text, "html.parser")
+            if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
+                raise DDOSGuardError(origin=origin)
+
         if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
             return
 
@@ -139,15 +144,6 @@ class ClientManager:
                     raise ScrapeError(HTTPStatus.NOT_FOUND, origin=origin)
                 if "data" in JSON_Resp and "error" in JSON_Resp["data"]:
                     raise ScrapeError(JSON_Resp["status"], JSON_Resp["data"]["error"], origin=origin)
-
-        response_text = None
-        with contextlib.suppress(UnicodeDecodeError):
-            response_text = await response.text()
-
-        if response_text:
-            soup = BeautifulSoup(response_text, "html.parser")
-            if cls.check_ddos_guard(soup):
-                raise DDOSGuardError(origin=origin)
 
         status = status if headers.get("Content-Type") else CustomHTTPStatus.IM_A_TEAPOT
         message = "No content-type in response header" if headers.get("Content-Type") else None
@@ -177,6 +173,21 @@ class ClientManager:
 
         return False
 
+    @staticmethod
+    def check_cloudflare(soup: BeautifulSoup) -> bool:
+        if soup.title:
+            for title in CLOUDFLARE_CHALLENGE_TITLES:
+                challenge_found = title.casefold() == soup.title.string.casefold()
+                if challenge_found:
+                    return True
+
+        for selector in CLOUDFLARE_CHALLENGE_SELECTORS:
+            challenge_found = soup.find(selector)
+            if challenge_found:
+                return True
+
+        return False
+
     async def close(self) -> None:
         await self.flaresolverr._destroy_session()
 
@@ -186,15 +197,9 @@ class Flaresolverr:
 
     def __init__(self, client_manager: ClientManager) -> None:
         self.client_manager = client_manager
-        self.flaresolverr_host = (
-            client_manager.manager.args_manager.flaresolverr
-            or client_manager.manager.config_manager.global_settings_data["General"]["flaresolverr"]
-        )
+        self.flaresolverr_host = client_manager.manager.config_manager.global_settings_data.general.flaresolverr
         self.enabled = bool(self.flaresolverr_host)
-        if "http" not in self.flaresolverr_host:
-            self.flaresolverr_host = f"http://{self.flaresolverr_host}"
         self.session_id = None
-        self.flaresolverr_host = URL(self.flaresolverr_host)
 
     async def _request(
         self,

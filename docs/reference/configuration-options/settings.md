@@ -497,55 +497,54 @@ This is the format for the directory structure and naming scheme for other files
 </details>
 
 
-
 <details>
 
-<summary>Dupe Options</summary>
-These are options for how to hash files from the disk
-and enable/disable dupe cleanup
+<summary>Dupe Cleanup Options</summary>
 
-Files can be hashed by changing the hashing setting from 'OFF'. To enable deduplication, both the hash and dedupe settings must not be set to 'OFF'
+These are options for enable/disable hashing and auto dupe delecton
+***
 
-<div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #f9f9f9;"> <strong>Hint:</strong> All deduplication in cyberdrop-dl requires a 100 percent size match, hash match, and algorithm match</div>
+## Enabling auto dupe cleanup
+1. Turn change hashing to 'POST_DOWNLOAD' or 'IN_PLACE'
+2. Change auto_dedupe to True
 
-<div style="border: 1px solid #ccc; padding: 10px; border-radius: 5px; background-color: #f9f9f9;"> <strong>Hint:</strong>Once a hash is in the database for a given file path file size,and hash type it  will not be recalculated</div>
+***
 
 * hashing
-enables hashing and allows for deduplication
+There are three possible options for hashing
+1. OFF: disables hashing
+2. IN_PLACE: performs hashing after each download
+3. POST_DOWNLOAD: performs hashing after all downloads have completed
 
-Value | Description
--- | -- |
-`OFF` | Do not hash any file
-`IN_PLACE` | Hash a file immediately after its download finishes
-`POST_DOWNLOAD`| Hashes all files at once, after all the downloads have finished
-***
-* dedupe
-*
-selection for how to dedupe files
-Value  |Description
--- | -- |
-`OFF` | Do nothing
-`KEEP_OLDEST` | Keep the oldest file for each hash, considering only the files that exist at the location saved in the database
-`KEEP_NEWEST`  | Keep the newest file for each hash, considering only the files that exist at the location saved in the database
-`KEEP_OLDEST_ALL`    | Keep the oldest file for each hash, considering all files regardless of whether they have been removed or moved
-`KEEP_NEWEST_ALL` |  Keep the newesst file for each hash, considering all files regardless of whether they have been removed or moved
+when hashing is enabled all files are hashed with at least xxh128 hashing
 ***
 
+* auto\_dedupe:
+  allows for deduping files when hashing is enabled
 
-* add\_md5_hash
-adds md5 hash when hashing files from the disk
+
+  This finds all files in the database with the same hash and size, and keeps the oldest copy of the file
+
+  Deletion only occurs if two or more matching files are found from the database search
 
 ***
-* add\_sha256_hash
-adds sha256 hash when hashing files from the disk
+
+* add\_sha256\_hash
+allows files to be hash with the sha256 algorithm, this enables matching with sites that provide this information
 ***
+
+* add\_md5\_hash
+allows files to be hash with the md5 algorithm,  this enables matching with sites that provide this information
+***
+
 * send\_deleted\_to\_trash
-  sends downloads to the trash folder rather than permenatly deleting off the disk
-***
+  files are sent to trash instead of permanently deleting, enabling easy restoration
+
+
+
 
 
 </details>
-
 
 <details>
 
@@ -562,24 +561,9 @@ toggles automatic import of cookies at the start of each run
 
 * browsers
 
-List of browsers to extract cookies from. Supported browsers:
+### Supported browsers
 
-
- | Browser  | Windows            | Linux              | MacOS              |
-| --------- | ------------------ | ------------------ | ------------------ |
-| Chrome    | Yes | Yes | Yes |
-| Firefox   | Yes | Yes | Yes |
-| LibreWolf | Yes | Yes | Yes |
-| Opera     | Yes | Yes | Yes |
-| Opera_GX  | Yes | Yes |
-| Edge      | Yes | Yes | Yes |
-| Chromium  | Yes | Yes | Yes |
-| Brave     | Yes | Yes | Yes |
-| Vivaldi   | Yes | Yes | Yes |
-| Safari    |     |     | Yes |
-
-
-**Note:** If the value  entered is `null` or an empty list, no cookies will be extracted from any browser
+![alt text](image.png)
 
 **Note:** If cookies exists on multiple selected browsers, the cookies from the last browser in the list will have priority
 

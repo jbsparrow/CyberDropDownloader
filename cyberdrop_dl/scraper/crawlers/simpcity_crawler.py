@@ -63,13 +63,11 @@ class SimpCityCrawler(Crawler):
             host_cookies = self.client.client_manager.cookies._cookies.get((self.primary_base_domain.host, ""), {})
             session_cookie = host_cookies.get("xf_user").value if "xf_user" in host_cookies else None
             if not session_cookie:
-                session_cookie = self.manager.config_manager.authentication_data["Forums"].get(
-                    "simpcity_xf_user_cookie"
-                )
+                session_cookie = self.manager.config_manager.authentication_data.forums.simpcity_xf_user_cookie
 
-            session_cookie = self.manager.config_manager.authentication_data["Forums"]["simpcity_xf_user_cookie"]
-            username = self.manager.config_manager.authentication_data["Forums"]["simpcity_username"]
-            password = self.manager.config_manager.authentication_data["Forums"]["simpcity_password"]
+            session_cookie = self.manager.config_manager.authentication_data.forums.simpcity_xf_user_cookie
+            username = self.manager.config_manager.authentication_data.forums.simpcity_username
+            password = self.manager.config_manager.authentication_data.forums.simpcity_password
             wait_time = 5
 
             if session_cookie or (username and password):
@@ -94,9 +92,9 @@ class SimpCityCrawler(Crawler):
         scrape_item.children = scrape_item.children_limit = 0
 
         with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
-                "maximum_number_of_children"
-            ][scrape_item.type]
+            scrape_item.children_limit = (
+                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
+            )
         post_sections = (scrape_item.url.parts[3], scrape_item.url.fragment)
         if len(scrape_item.url.parts) > 3 and any("post-" in sec for sec in post_sections):
             url_parts = str(scrape_item.url).rsplit("post-", 1)
@@ -172,7 +170,7 @@ class SimpCityCrawler(Crawler):
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem, post_content: Tag, post_number: int) -> None:
         """Scrapes a post."""
-        if self.manager.config_manager.settings_data["Download_Options"]["separate_posts"]:
+        if self.manager.config_manager.settings_data.download_options.separate_posts:
             scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, "")
             scrape_item.add_to_parent_title("post-" + str(post_number))
 
@@ -180,9 +178,9 @@ class SimpCityCrawler(Crawler):
         scrape_item.children = scrape_item.children_limit = 0
 
         with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
-                "maximum_number_of_children"
-            ][scrape_item.type]
+            scrape_item.children_limit = (
+                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
+            )
 
         posts_scrapers = [self.links, self.images, self.videos, self.embeds, self.attachments]
 

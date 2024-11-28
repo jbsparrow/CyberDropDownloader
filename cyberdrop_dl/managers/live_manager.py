@@ -19,12 +19,13 @@ if TYPE_CHECKING:
 class LiveManager:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
+        self.no_ui = self.manager.parsed_args.cli_only_args.no_ui
         self.live = Live(
             auto_refresh=True,
-            refresh_per_second=self.manager.config_manager.global_settings_data["UI_Options"]["refresh_rate"],
+            refresh_per_second=self.manager.config_manager.global_settings_data.ui_options.refresh_rate,
             console=console,
             transient=True,
-            screen=not self.manager.args_manager.no_ui,
+            screen=not self.no_ui,
         )
 
         self.placeholder = Progress(
@@ -35,7 +36,7 @@ class LiveManager:
 
     @contextmanager
     def get_live(self, layout: Layout, stop: bool = False) -> Generator[Live]:
-        show = self.placeholder if self.manager.args_manager.no_ui else layout
+        show = self.placeholder if self.no_ui else layout
         try:
             self.live.start()
             self.live.update(show, refresh=True)

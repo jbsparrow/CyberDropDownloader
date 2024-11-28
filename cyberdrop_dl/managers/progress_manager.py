@@ -25,13 +25,13 @@ class ProgressManager:
         # File Download Bars
         self.manager = manager
         self.file_progress: FileProgress = FileProgress(
-            manager.config_manager.global_settings_data["UI_Options"]["downloading_item_limit"],
+            manager.config_manager.global_settings_data.ui_options.downloading_item_limit,
             manager,
         )
 
         # Scraping Printout
         self.scraping_progress: ScrapingProgress = ScrapingProgress(
-            manager.config_manager.global_settings_data["UI_Options"]["scraping_item_limit"],
+            manager.config_manager.global_settings_data.ui_options.scraping_item_limit,
             manager,
         )
 
@@ -42,7 +42,7 @@ class ProgressManager:
         self.hash_progress: HashProgress = HashProgress(manager)
         self.sort_progress: SortProgress = SortProgress(1, manager)
 
-        self.ui_refresh_rate = manager.config_manager.global_settings_data["UI_Options"]["refresh_rate"]
+        self.ui_refresh_rate = manager.config_manager.global_settings_data.ui_options.refresh_rate
 
         self.layout: Layout = field(init=False)
         self.hash_remove_layout: Layout = field(init=False)

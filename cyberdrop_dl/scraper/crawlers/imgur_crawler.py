@@ -20,7 +20,7 @@ class ImgurCrawler(Crawler):
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "imgur", "Imgur")
         self.imgur_api = URL("https://api.imgur.com/3/")
-        self.imgur_client_id = self.manager.config_manager.authentication_data["Imgur"]["imgur_client_id"]
+        self.imgur_client_id = self.manager.config_manager.authentication_data.imgur.client_id
         self.imgur_client_remaining = 12500
         self.headers = {"Authorization": f"Client-ID {self.imgur_client_id}"}
         self.request_limiter = AsyncLimiter(10, 1)
@@ -51,9 +51,9 @@ class ImgurCrawler(Crawler):
         scrape_item.children = scrape_item.children_limit = 0
 
         with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
-                "maximum_number_of_children"
-            ][scrape_item.type]
+            scrape_item.children_limit = (
+                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
+            )
 
         album_id = scrape_item.url.parts[-1]
         scrape_item.album_id = album_id

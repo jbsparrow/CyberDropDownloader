@@ -40,9 +40,7 @@ class ScrapeMapper:
         self.existing_crawlers: dict[str, Crawler] = {}
         self.no_crawler_downloader = Downloader(self.manager, "no_crawler")
         self.jdownloader = JDownloader(self.manager)
-        self.jdownloader_whitelist = self.manager.config_manager.settings_data["Runtime_Options"][
-            "jdownloader_whitelist"
-        ]
+        self.jdownloader_whitelist = self.manager.config_manager.settings_data.runtime_options.jdownloader_whitelist
         self.lock = asyncio.Lock()
         self.count = 0
 
@@ -92,11 +90,11 @@ class ScrapeMapper:
 
         self.no_crawler_downloader.startup()
 
-        if self.manager.args_manager.retry_failed:
+        if self.manager.parsed_args.cli_only_args.retry_failed:
             await self.load_failed_links()
-        elif self.manager.args_manager.retry_all:
+        elif self.manager.parsed_args.cli_only_args.retry_all:
             await self.load_all_links()
-        elif self.manager.args_manager.retry_maintenance:
+        elif self.manager.parsed_args.cli_only_args.retry_maintenance:
             await self.load_all_bunkr_failed_links_via_hash()
         else:
             await self.load_links()
@@ -150,11 +148,11 @@ class ScrapeMapper:
             input_file.touch(exist_ok=True)
 
         links = {"": []}
-        if not self.manager.args_manager.other_links:
+        if not self.manager.parsed_args.cli_only_args.links:
             links = await self.parse_input_file_groups()
 
         else:
-            links[""].extend(self.manager.args_manager.other_links)
+            links[""].extend(self.manager.parsed_args.cli_only_args.links)
 
         links = {k: list(filter(None, v)) for k, v in links.items()}
         items = []
@@ -179,24 +177,24 @@ class ScrapeMapper:
             item = self.create_item_from_entry(entry)
             if self.filter_items(item):
                 items.append(item)
-        if self.manager.args_manager.max_items:
-            items = items[: self.manager.args_manager.max_items]
+        if self.manager.parsed_args.cli_only_args.max_items_retry:
+            items = items[: self.manager.parsed_args.cli_only_args.max_items_retry]
         for item in items:
             self.manager.task_group.create_task(self.send_to_crawler(item))
 
     async def load_all_links(self) -> None:
         """Loads all links from database."""
         entries = await self.manager.db_manager.history_table.get_all_items(
-            self.manager.args_manager.after,
-            self.manager.args_manager.before,
+            self.manager.parsed_args.cli_only_args.completed_after,
+            self.manager.parsed_args.cli_only_args.completed_before,
         )
         items = []
         for entry in entries:
             item = self.create_item_from_entry(entry)
             if self.filter_items(item):
                 items.append(item)
-        if self.manager.args_manager.max_items:
-            items = items[: self.manager.args_manager.max_items]
+        if self.manager.parsed_args.cli_only_args.max_items_retry:
+            items = items[: self.manager.parsed_args.cli_only_args.max_items_retry]
         for item in items:
             self.manager.task_group.create_task(self.send_to_crawler(item))
 
@@ -209,8 +207,8 @@ class ScrapeMapper:
             item = self.create_item_from_entry(entry)
             if self.filter_items(item):
                 items.append(item)
-        if self.manager.args_manager.max_items:
-            items = items[: self.manager.args_manager.max_items]
+        if self.manager.parsed_args.cli_only_args.max_items_retry:
+            items = items[: self.manager.parsed_args.cli_only_args.max_items_retry]
         for item in items:
             self.manager.task_group.create_task(self.send_to_crawler(item))
 
@@ -225,16 +223,14 @@ class ScrapeMapper:
 
     @staticmethod
     def create_item_from_link(link: URL) -> ScrapeItem:
-        item = ScrapeItem(url=link, parent_title="")
-        item.completed_at = None
-        item.created_at = None
+        item = ScrapeItem(url=link)
         return item
 
     @staticmethod
     def create_item_from_entry(entry: list) -> ScrapeItem:
-        link = URL(entry[0])
+        url = URL(entry[0])
         retry_path = Path(entry[1])
-        scrape_item = ScrapeItem(link, parent_title="", part_of_album=True, retry=True, retry_path=retry_path)
+        scrape_item = ScrapeItem(url=url, part_of_album=True, retry=True, retry_path=retry_path)
         completed_at = entry[2]
         created_at = entry[3]
         if not isinstance(scrape_item.url, URL):
@@ -284,7 +280,7 @@ class ScrapeMapper:
             success = False
             try:
                 download_folder = get_download_path(self.manager, scrape_item, "jdownloader")
-                relative_download_dir = download_folder.relative_to(self.manager.path_manager.download_dir)
+                relative_download_dir = download_folder.relative_to(self.manager.path_manager.download_folder)
                 self.jdownloader.direct_unsupported_to_jdownloader(
                     scrape_item.url,
                     scrape_item.parent_title,
@@ -316,18 +312,18 @@ class ScrapeMapper:
             log(f"Skipping {scrape_item.url} as it is a blocked domain", 10)
             return False
 
-        before = self.manager.args_manager.before
-        after = self.manager.args_manager.after
+        before = self.manager.parsed_args.cli_only_args.completed_before
+        after = self.manager.parsed_args.cli_only_args.completed_after
         if is_outside_date_range(scrape_item, before, after):
             log(f"Skipping {scrape_item.url} as it is outside of the desired date range", 10)
             return False
 
-        skip_hosts = self.manager.config_manager.settings_data["Ignore_Options"]["skip_hosts"]
+        skip_hosts = self.manager.config_manager.settings_data.ignore_options.skip_hosts
         if skip_hosts and is_in_domain_list(scrape_item, skip_hosts):
             log(f"Skipping URL by skip_hosts config: {scrape_item.url}", 10)
             return False
 
-        only_hosts = self.manager.config_manager.settings_data["Ignore_Options"]["only_hosts"]
+        only_hosts = self.manager.config_manager.settings_data.ignore_options.only_hosts
         if only_hosts and not is_in_domain_list(scrape_item, only_hosts):
             log(f"Skipping URL by only_hosts config: {scrape_item.url}", 10)
             return False
@@ -347,7 +343,7 @@ class ScrapeMapper:
 
         posible_referer = scrape_item.parents[-1] if scrape_item.parents else scrape_item.url
         check_referer = False
-        if self.manager.config_manager.settings_data["Download_Options"]["skip_referer_seen_before"]:
+        if self.manager.config_manager.settings_data.download_options.skip_referer_seen_before:
             check_referer = await self.manager.db_manager.temp_referer_table.check_referer(posible_referer)
 
         if check_referer:

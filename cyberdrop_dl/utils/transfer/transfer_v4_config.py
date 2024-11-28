@@ -1,29 +1,17 @@
-import copy
 from pathlib import Path
 
-import yaml
-
+from cyberdrop_dl.config_definitions import AuthSettings, ConfigSettings, GlobalSettings
 from cyberdrop_dl.managers.manager import Manager
-from cyberdrop_dl.utils.args.config_definitions import settings
-
-
-def _save_yaml(file: Path, data: dict) -> None:
-    """Saves a dict to a yaml file."""
-    file.parent.mkdir(parents=True, exist_ok=True)
-    with file.open("w") as yaml_file:
-        yaml.dump(data, yaml_file)
-
-
-def _load_yaml(file: Path) -> dict:
-    """Loads a yaml file and returns it as a dict."""
-    with file.open() as yaml_file:
-        return yaml.load(yaml_file.read(), Loader=yaml.FullLoader)
+from cyberdrop_dl.utils import yaml
 
 
 def transfer_v4_config(manager: Manager, new_config_name: str, old_config_path: Path) -> None:
     """Transfers a V4 config into V5 possession."""
-    new_auth_data = manager.config_manager.authentication_data
-    new_user_data = copy.deepcopy(settings)
+    new_auth_data = AuthSettings().model_dump()
+    new_user_data = ConfigSettings().model_dump()
+    new_global_data = GlobalSettings().model_dump()
+    old_data = yaml.load(old_config_path)
+    old_data = old_data["Configuration"]
 
     from cyberdrop_dl.managers.path_manager import constants
 
@@ -31,10 +19,6 @@ def transfer_v4_config(manager: Manager, new_config_name: str, old_config_path: 
     new_user_data["Files"]["download_folder"] = constants.DOWNLOAD_STORAGE / "Cyberdrop-DL Downloads"
     new_user_data["Logs"]["log_folder"] = constants.APP_STORAGE / "Configs" / new_config_name / "Logs"
     new_user_data["Sorting"]["sort_folder"] = constants.DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"
-
-    new_global_data = manager.config_manager.global_settings_data
-    old_data = _load_yaml(old_config_path)
-    old_data = old_data["Configuration"]
 
     # Auth data transfer
     new_auth_data["Forums"]["nudostar_username"] = old_data["Authentication"]["nudostar_username"]
@@ -111,15 +95,15 @@ def transfer_v4_config(manager: Manager, new_config_name: str, old_config_path: 
     ]
 
     # Save Data
-    new_settings = manager.path_manager.config_dir / new_config_name / "settings.yaml"
-    new_logs = manager.path_manager.config_dir / new_config_name / "Logs"
+    new_settings = manager.path_manager.config_folder / new_config_name / "settings.yaml"
+    new_logs = manager.path_manager.config_folder / new_config_name / "Logs"
     new_settings.parent.mkdir(parents=True, exist_ok=True)
     new_logs.mkdir(parents=True, exist_ok=True)
 
     old_config_path = Path(old_config_path).parent
     old_urls_path = Path(old_data["Files"]["input_file"])
 
-    new_urls = manager.path_manager.config_dir / new_config_name / "URLs.txt"
+    new_urls = manager.path_manager.config_folder / new_config_name / "URLs.txt"
     new_urls.touch(exist_ok=True)
 
     if old_urls_path.is_absolute():
@@ -137,7 +121,9 @@ def transfer_v4_config(manager: Manager, new_config_name: str, old_config_path: 
     else:
         new_urls.touch(exist_ok=True)
 
-    manager.config_manager.create_new_config(new_settings, new_user_data)
+    manager.config_manager.authentication_data = AuthSettings.model_validate(new_auth_data)
+    manager.config_manager.global_settings_data = GlobalSettings.model_validate(new_global_data)
+    manager.config_manager.save_as_new_config(new_settings, ConfigSettings.model_validate(new_user_data))
     manager.config_manager.write_updated_authentication_config()
     manager.config_manager.write_updated_global_settings_config()
     manager.config_manager.change_config(new_config_name)
