@@ -8,6 +8,7 @@ import platformdirs
 
 from cyberdrop_dl.utils import constants, yaml
 from cyberdrop_dl.utils.transfer.transfer_v4_db import transfer_v4_db
+from cyberdrop_dl.utils.transfer.transfer_hash_db import transer_old_hash_table
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -19,6 +20,23 @@ class TransitionManager:
 
     def startup(self) -> None:
         """Startup."""
+        self.transfer_v4_to_v5()
+        self.transfer_v5_new_hashtable()
+
+    def transfer_v5_new_hashtable(self):
+        """
+        transfers from old v5 hash table to new v5 hash table, that supports multiple hash types per file
+        """
+        db_path = constants.APP_STORAGE / "database" / "cyberdrop_dl.db"
+        if db_path.exists():
+            transer_old_hash_table(db_path)
+        
+
+    def transfer_v4_to_v5(self):
+        """
+        Makes some changes for transfer from v4 to v5
+        
+        """
         OLD_APP_STORAGE = Path(platformdirs.user_config_dir("Cyberdrop-DL"))
         OLD_DOWNLOAD_STORAGE = Path(platformdirs.user_downloads_path()) / "Cyberdrop-DL Downloads"
 
