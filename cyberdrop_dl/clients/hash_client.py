@@ -79,7 +79,11 @@ class HashClient:
         key = self._get_key_from_file(file)
         file = Path(file)
         if not file.is_file():
-            return None
+            return
+        elif file.stat().st_size == 0:
+            return
+        elif file.suffix == ".part":
+            return
         if self.hashes[(key, hash_type)]:
             return self.hashes[(key, hash_type)]
         self.manager.progress_manager.hash_progress.update_currently_hashing(file)
@@ -160,7 +164,7 @@ class HashClient:
             item = media_item.complete_file.absolute()
             try:
                 size = item.stat().st_size
-                if hash:
+                if hash and Path(item).exists():
                     hashes_dict[hash][size].append(item)
             except Exception as e:
                 log(f"After hash processing failed: {item} with error {e}", 40, exc_info=True)
