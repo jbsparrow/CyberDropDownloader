@@ -199,7 +199,7 @@ class ScrapeMapper:
                 items.append(item)
         if self.manager.parsed_args.cli_only_args.max_items_retry:
             items = items[: self.manager.parsed_args.cli_only_args.max_items_retry]
-        for item in items[:10]:
+        for item in items:
             self.manager.task_group.create_task(self.send_to_crawler(item))
 
     async def load_all_bunkr_failed_links_via_hash(self) -> None:
