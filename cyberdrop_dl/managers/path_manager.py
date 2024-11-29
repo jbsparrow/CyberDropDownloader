@@ -36,7 +36,7 @@ class PathManager:
 
         self._completed_downloads: list[MediaItem] = []
         self._completed_downloads_set = set()
-        self._prev_downloads :list[MediaItem]=[]
+        self._prev_downloads: list[MediaItem] = []
         self._prev_downloads_set = set()
 
     def pre_startup(self) -> None:
@@ -95,9 +95,10 @@ class PathManager:
         self.scrape_error_log = self.log_folder / log_settings_config.scrape_error_urls_filename
 
     def add_completed(self, media_item: MediaItem) -> None:
-         if media_item.complete_file.absolute() not in self._completed_downloads_set:
+        if media_item.complete_file.absolute() not in self._completed_downloads_set:
             self._completed_downloads.append(media_item)
             self._completed_downloads_set.add(media_item.complete_file.absolute())
+
     def add_prev(self, media_item: MediaItem) -> None:
         if media_item.complete_file.absolute() not in self._prev_downloads_set:
             self._prev_downloads.append(media_item)
