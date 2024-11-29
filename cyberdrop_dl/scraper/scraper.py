@@ -184,9 +184,11 @@ class ScrapeMapper:
 
     async def load_all_links(self) -> None:
         """Loads all links from database."""
+        after=self.manager.parsed_args.cli_only_args.completed_after or arrow.get(0)
+        before=self.manager.parsed_args.cli_only_args.completed_before or arrow.now().shift(days=1)
         entries = await self.manager.db_manager.history_table.get_all_items(
-            self.manager.parsed_args.cli_only_args.completed_after,
-            self.manager.parsed_args.cli_only_args.completed_before,
+            after,
+            before,
         )
         items = []
         for entry in entries:
