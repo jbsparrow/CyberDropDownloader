@@ -58,7 +58,7 @@ class AppriseURLModel(FrozenModel):
         if isinstance(value, URL):
             url_obj = str(value)
         url = AppriseURL(url_obj, validate=False)
-        return {"url": url._url, "tags": tags or url.tags}
+        return {"url": url._url, "tags": tags or url.tags or set("no_logs")}
 
 
 class AppriseURL:
