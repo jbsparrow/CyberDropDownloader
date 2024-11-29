@@ -21,7 +21,6 @@ class HashTable:
 
     async def startup(self) -> None:
         """Startup process for the HistoryTable."""
-        await self.transer_old_hash_table()
         await self.create_hash_tables()
         pass
 
