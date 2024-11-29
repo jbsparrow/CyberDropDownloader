@@ -5,6 +5,7 @@ import contextlib
 import logging
 import os
 import sys
+from copy import deepcopy
 from functools import wraps
 from pathlib import Path
 from textwrap import indent
@@ -48,6 +49,10 @@ def startup() -> Manager:
     try:
         manager = Manager()
         manager.startup()
+        if manager.parsed_args.cli_only_args.multiconfig:
+            original_manager = deepcopy(manager)
+            manager.validate_all_configs()
+            manager = original_manager
 
         if not manager.parsed_args.cli_only_args.download:
             ProgramUI(manager)

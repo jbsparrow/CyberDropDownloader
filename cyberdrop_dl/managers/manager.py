@@ -212,3 +212,10 @@ class Manager:
         self.db_manager: DBManager = field(init=False)
         self.cache_manager: CacheManager = field(init=False)
         self.hash_manager: HashManager = field(init=False)
+
+    def validate_all_configs(self) -> None:
+        log("validating all configs, please wait..")
+        all_configs = self.config_manager.get_configs()
+        all_configs.sort()
+        for config in all_configs:
+            self.config_manager.change_config(config)
