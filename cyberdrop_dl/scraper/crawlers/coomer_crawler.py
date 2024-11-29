@@ -15,8 +15,6 @@ from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
-
     from cyberdrop_dl.managers.manager import Manager
 
 
