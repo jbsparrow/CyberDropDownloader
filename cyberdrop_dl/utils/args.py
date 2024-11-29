@@ -1,11 +1,11 @@
 import sys
 from argparse import SUPPRESS, ArgumentDefaultsHelpFormatter, ArgumentParser, BooleanOptionalAction
 from argparse import _ArgumentGroup as ArgGroup
+from datetime import date
 from pathlib import Path
 from typing import Self
 
-import arrow
-from pydantic import BaseModel, Field, ValidationError, computed_field, field_validator, model_validator
+from pydantic import BaseModel, Field, ValidationError, computed_field, model_validator
 
 from cyberdrop_dl import __version__
 from cyberdrop_dl.config_definitions import ConfigSettings, GlobalSettings
@@ -21,8 +21,8 @@ def _check_mutually_exclusive(group: set, msg: str) -> None:
 class CommandLineOnlyArgs(BaseModel):
     links: list[HttpURL] = Field([], description="link(s) to content to download (passing multiple links is supported)")
     appdata_folder: Path | None = Field(None, description="AppData folder path")
-    completed_after: int | None = Field(None, description="only download completed downloads at or after this date")
-    completed_before: int | None = Field(None, description="only download completed downloads at or before this date")
+    completed_after: date | None = Field(None, description="only download completed downloads at or after this date")
+    completed_before: date | None = Field(None, description="only download completed downloads at or before this date")
     config: str | None = Field(None, description="name of config to load")
     config_file: Path | None = Field(None, description="path to the CDL settings.yaml file to load")
     download: bool = Field(False, description="skips UI, start download inmediatly")
@@ -43,11 +43,6 @@ class CommandLineOnlyArgs(BaseModel):
     @property
     def multiconfig(self) -> bool:
         return self.config and self.config.casefold() == "all"
-
-    @field_validator("completed_after", "completed_before", mode="after")
-    @staticmethod
-    def arrow_date(value: int) -> arrow.Arrow | None:
-        return None if not value else arrow.get(value)
 
     @model_validator(mode="after")
     def mutually_exclusive(self) -> Self:

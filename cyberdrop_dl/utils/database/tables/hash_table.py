@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 from sqlite3 import IntegrityError
 from typing import TYPE_CHECKING
@@ -12,7 +13,6 @@ from cyberdrop_dl.utils.logger import log
 if TYPE_CHECKING:
     import aiosqlite
     from yarl import URL
-import arrow
 
 console = Console()
 
@@ -55,9 +55,9 @@ class HashTable:
                 referer = old_result[5]
                 hash_type = "md5"
                 file_date = (
-                    Path(folder, dl_name).stat().st_mtime
+                    int(Path(folder, dl_name).stat().st_mtime)
                     if Path(folder, dl_name).exists()
-                    else int(arrow.now().float_timestamp)
+                    else int(int(datetime.now().timestamp()))
                 )
                 await cursor.execute(
                     "INSERT OR IGNORE INTO files (folder, download_filename, original_filename, file_size,  referer,date) VALUES (?,?,?,?,?,?);",
@@ -84,7 +84,7 @@ class HashTable:
             # Extract folder, filename, and size from the full path
             path = Path(full_path).absolute()
             folder = str(path.parent)
-            filename = path.name
+            filename = str(path.name)
 
             # Connect to the database
             cursor = await self.db_conn.cursor()
@@ -154,7 +154,7 @@ class HashTable:
     async def insert_or_update_hashes(self, hash_value, hash_type, file):
         try:
             full_path = Path(file).absolute()
-            download_filename = full_path.name
+            download_filename = str(full_path.name)
             folder = str(full_path.parent)
             cursor = await self.db_conn.cursor()
 
@@ -186,9 +186,9 @@ class HashTable:
         try:
             referer = str(referer)
             full_path = Path(file).absolute()
-            file_size = full_path.stat().st_size
-            file_date = full_path.stat().st_mtime
-            download_filename = full_path.name
+            file_size = int(full_path.stat().st_size)
+            file_date = int(full_path.stat().st_mtime)
+            download_filename = str(full_path.name)
             folder = str(full_path.parent)
 
             cursor = await self.db_conn.cursor()

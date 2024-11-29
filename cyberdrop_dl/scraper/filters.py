@@ -35,7 +35,7 @@ def is_outside_date_range(scrape_item: ScrapeItem, before: arrow, after: arrow) 
     item_date = scrape_item.completed_at or scrape_item.created_at
     if not item_date:
         return False
-    if (after and arrow.get(item_date) < after) or (before and arrow.get(item_date) > before):
+    if (after and arrow.get(item_date).date() < after) or (before and arrow.get(item_date).date() > before):
         skip = True
 
     return skip
