@@ -21,8 +21,8 @@ def _check_mutually_exclusive(group: set, msg: str) -> None:
 class CommandLineOnlyArgs(BaseModel):
     links: list[HttpURL] = Field([], description="link(s) to content to download (passing multiple links is supported)")
     appdata_folder: Path | None = Field(None, description="AppData folder path")
-    completed_after: int | None = Field(None, description="only download completed downloads at or after this date")
-    completed_before: int | None = Field(None, description="only download completed downloads at or before this date")
+    completed_after: str | None = Field(None, description="only download completed downloads at or after this date")
+    completed_before: str | None = Field(None, description="only download completed downloads at or before this date")
     config: str | None = Field(None, description="name of config to load")
     config_file: Path | None = Field(None, description="path to the CDL settings.yaml file to load")
     download: bool = Field(False, description="skips UI, start download inmediatly")
