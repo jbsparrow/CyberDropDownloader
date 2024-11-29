@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 from sqlite3 import IntegrityError
 from typing import TYPE_CHECKING
@@ -8,7 +9,6 @@ from rich.console import Console
 
 from cyberdrop_dl.utils.database.table_definitions import create_files, create_hash, create_temp_hash
 from cyberdrop_dl.utils.logger import log
-from datetime import datetime
 
 if TYPE_CHECKING:
     import aiosqlite
@@ -57,8 +57,7 @@ class HashTable:
                 file_date = (
                     int(Path(folder, dl_name).stat().st_mtime)
                     if Path(folder, dl_name).exists()
-                    else int( int(datetime.now().timestamp())
-)
+                    else int(int(datetime.now().timestamp()))
                 )
                 await cursor.execute(
                     "INSERT OR IGNORE INTO files (folder, download_filename, original_filename, file_size,  referer,date) VALUES (?,?,?,?,?,?);",
