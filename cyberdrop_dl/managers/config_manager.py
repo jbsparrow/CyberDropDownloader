@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 class ConfigManager:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
-        self.loaded_config: str = field(init=False)
+        self.loaded_config: str = None
 
         self.authentication_settings: Path = field(init=False)
         self.settings: Path = field(init=False)
@@ -32,12 +32,12 @@ class ConfigManager:
 
     def startup(self) -> None:
         """Startup process for the config manager."""
-        if not isinstance(self.loaded_config, str):
-            self.loaded_config = self.manager.cache_manager.get("default_config")
-            if not self.loaded_config:
-                self.loaded_config = "Default"
-            if self.manager.parsed_args.cli_only_args.config:
-                self.loaded_config = self.manager.parsed_args.cli_only_args.config
+        self.loaded_config = self.loaded_config or self.manager.cache_manager.get("default_config")
+        if not self.loaded_config or self.loaded_config.casefold() == "all":
+            self.loaded_config = "Default"
+        cli_config = self.manager.parsed_args.cli_only_args.config
+        if cli_config and cli_config.casefold() != "all":
+            self.loaded_config = self.manager.parsed_args.cli_only_args.config
 
         self.settings = self.manager.path_manager.config_folder / self.loaded_config / "settings.yaml"
         self.global_settings = self.manager.path_manager.config_folder / "global_settings.yaml"

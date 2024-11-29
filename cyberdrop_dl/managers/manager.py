@@ -20,7 +20,7 @@ from cyberdrop_dl.managers.progress_manager import ProgressManager
 from cyberdrop_dl.managers.realdebrid_manager import RealDebridManager
 from cyberdrop_dl.utils.args import ParsedArgs
 from cyberdrop_dl.utils.data_enums_classes.supported_domains import SupportedForums
-from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.logger import log, print_to_console
 from cyberdrop_dl.utils.transfer.db_setup import TransitionManager
 
 if TYPE_CHECKING:
@@ -214,8 +214,10 @@ class Manager:
         self.hash_manager: HashManager = field(init=False)
 
     def validate_all_configs(self) -> None:
-        log("validating all configs, please wait..")
+        print_to_console("validating all configs, please wait...")
         all_configs = self.config_manager.get_configs()
         all_configs.sort()
+        if not all_configs:
+            return
         for config in all_configs:
             self.config_manager.change_config(config)
