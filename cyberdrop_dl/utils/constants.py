@@ -55,7 +55,6 @@ BROWSERS = ["chrome", "firefox", "safari", "edge", "opera", "brave", "librewolf"
 PRERELEASE_TAGS = {
     "dev": "Development",
     "pre": "Pre-Release",
-    "post": "Post-Release",
     "rc": "Release Candidate",
     "a": "Alpha",
     "b": "Beta",
