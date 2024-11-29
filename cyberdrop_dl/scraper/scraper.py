@@ -5,9 +5,11 @@ import re
 from dataclasses import Field
 from pathlib import Path
 from typing import TYPE_CHECKING
+from datetime import date,datetime
 
 import aiofiles
 import arrow
+
 from yarl import URL
 
 from cyberdrop_dl import __version__ as current_version
@@ -184,8 +186,9 @@ class ScrapeMapper:
 
     async def load_all_links(self) -> None:
         """Loads all links from database."""
-        after=self.manager.parsed_args.cli_only_args.completed_after or arrow.get(0)
-        before=self.manager.parsed_args.cli_only_args.completed_before or arrow.now().shift(days=1)
+        after=self.manager.parsed_args.cli_only_args.completed_after or date(1970, 1, 1)
+
+        before=self.manager.parsed_args.cli_only_args.completed_before or datetime.now().date()
         entries = await self.manager.db_manager.history_table.get_all_items(
             after,
             before,
