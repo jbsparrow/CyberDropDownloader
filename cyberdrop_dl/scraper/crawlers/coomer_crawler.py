@@ -84,8 +84,6 @@ class CoomerCrawler(Crawler):
         service, user, user_str = user_info["service"], user_info["user"], user_info["user_str"]
         offset, maximum_offset = user_info["offset"], user_info["maximum_offset"]
         initial_offset = offset
-        service, user = self.get_service_and_user(scrape_item)
-        user_str = await self.get_user_str_from_profile(soup)
         api_call = self.api_url / service / "user" / user
         scrape_item.type = FILE_HOST_PROFILE
         scrape_item.children = scrape_item.children_limit = 0
