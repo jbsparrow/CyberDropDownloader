@@ -1,8 +1,4 @@
-from aenum import StrEnum,extend_enum
-
-
-
-
+from aenum import StrEnum, extend_enum
 
 FORUMS = [
     ("celebforum", "celebforum.to"),
@@ -65,23 +61,34 @@ WEBSITES = [
     ("xxxbunker", "xxxbunker"),
 ]
 
+
 class SupportedForums(StrEnum):
     pass
+
+
 class SupportedHosts(StrEnum):
     pass
+
+
 class SupportedHostsDebug(StrEnum):
     pass
+
+
 class SupportedSites(StrEnum):
     pass
+
+
 class SupportedSitesDebug(StrEnum):
     pass
+
+
 for site in FORUMS:
-    extend_enum(SupportedForums,site[0],site[1])
+    extend_enum(SupportedForums, site[0], site[1])
 for site in WEBSITES:
-    extend_enum(SupportedHosts,site[0],site[1])
-for site in WEBSITES+[("simpcity", "simpcity")]:
-    extend_enum(SupportedHostsDebug,site[0],site[1])
-for site in WEBSITES+FORUMS:
-    extend_enum(SupportedSites,site[0],site[1])
-for site in WEBSITES+FORUMS+[("simpcity", "simpcity")]:
-    extend_enum(SupportedSitesDebug,site[0],site[1])
+    extend_enum(SupportedHosts, site[0], site[1])
+for site in [*WEBSITES, ("simpcity", "simpcity")]:
+    extend_enum(SupportedHostsDebug, site[0], site[1])
+for site in [*WEBSITES, *FORUMS]:
+    extend_enum(SupportedSites, site[0], site[1])
+for site in [*WEBSITES, *FORUMS, ("simpcity", "simpcity")]:
+    extend_enum(SupportedSitesDebug, site[0], site[1])
