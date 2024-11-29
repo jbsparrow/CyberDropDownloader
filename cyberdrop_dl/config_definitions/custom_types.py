@@ -38,7 +38,7 @@ class FrozenModel(BaseModel):
 
 class AppriseURLModel(FrozenModel):
     url: SecretAnyURL
-    tags: set[NonEmptyStr]
+    tags: set[str]
 
     @model_serializer()
     def serialize(self, info: SerializationInfo):
