@@ -132,7 +132,7 @@ def extract_cookies(manager: Manager, *, dry_run: bool = False) -> None:
     if domain_type == DONE_CHOICE.value:
         return
 
-    all_domains = [domain.value for domain in SupportedHosts] if domain_type == 1 else [domain.value for domain in SupportedHosts],
+    all_domains = [domain.value for domain in SupportedForums] if domain_type == 1 else [domain.value for domain in SupportedHosts]
     domain_choices = [Choice(site) for site in all_domains] + [ALL_CHOICE]
 
 

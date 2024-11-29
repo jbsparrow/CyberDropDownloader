@@ -1,12 +1,12 @@
 from logging import INFO
 from pathlib import Path
+from typing import List,Union
 
 from pydantic import BaseModel, ByteSize, Field, NonNegativeInt, field_serializer
 
 from cyberdrop_dl.utils.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE
 from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
-
-
+from cyberdrop_dl.utils.data_enums_classes.supported_domains import SupportedHosts,SupportedForums
 from .custom_types import AliasModel, HttpAppriseURLModel, NonEmptyStr
 
 
@@ -95,8 +95,7 @@ class Sorting(BaseModel):
 class BrowserCookies(BaseModel):
     browsers: list[BROWSERS] = [BROWSERS.chrome]
     auto_import: bool = False
-    sites: list[NonEmptyStr] = []
-
+    sites: List[Union[SupportedHosts, str]]  =[domain.value for domain in SupportedHosts] + [domain.value for domain in SupportedForums]
 
 class DupeCleanupOptions(BaseModel):
     hashing: Hashing = Hashing.IN_PLACE
