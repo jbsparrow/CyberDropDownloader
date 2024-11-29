@@ -10,7 +10,7 @@ from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
 from .custom_types import AliasModel, HttpAppriseURLModel, NonEmptyStr
 
 if next((tag for tag in PRERELEASE_TAGS if tag in current_version), False):
-    from cyberdrop_dl.utils.data_enums_classes.supported_domains import SupportedDebugSites as SupportedSites
+    from cyberdrop_dl.utils.data_enums_classes.supported_domains import SupportedSitesDebug as SupportedSites
 else:
     from cyberdrop_dl.utils.data_enums_classes.supported_domains import SupportedSites
 
