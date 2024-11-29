@@ -63,8 +63,8 @@ def get_cookies_from_browsers(
 
     browsers = browsers or manager.config_manager.settings_data.browser_cookies.browsers
     domains = domains or manager.config_manager.settings_data.browser_cookies.sites
-    browsers = list(map(str.lower, browsers))
-    domains = list(map(lambda x: x.value, domains))
+    browsers = [str.lower(x) for x in browsers]
+    domains = [x.value for x in domains]
 
     extractors = [getattr(browser_cookie3, b) for b in browsers if hasattr(browser_cookie3, b)]
 
