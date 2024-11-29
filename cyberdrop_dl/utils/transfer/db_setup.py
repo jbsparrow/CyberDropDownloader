@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 import platformdirs
 
 from cyberdrop_dl.utils import constants, yaml
-from cyberdrop_dl.utils.transfer.transfer_v4_db import transfer_v4_db
 from cyberdrop_dl.utils.transfer.transfer_hash_db import transfer_from_old_hash_table
+from cyberdrop_dl.utils.transfer.transfer_v4_db import transfer_v4_db
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -30,12 +30,11 @@ class TransitionManager:
         db_path = constants.APP_STORAGE / "database" / "cyberdrop_dl.db"
         if db_path.exists():
             transfer_from_old_hash_table(db_path)
-        
 
     def transfer_v4_to_v5(self):
         """
         Makes some changes for transfer from v4 to v5
-        
+
         """
         OLD_APP_STORAGE = Path(platformdirs.user_config_dir("Cyberdrop-DL"))
         OLD_DOWNLOAD_STORAGE = Path(platformdirs.user_downloads_path()) / "Cyberdrop-DL Downloads"
