@@ -6,9 +6,16 @@ from pydantic import BaseModel, ByteSize, Field, NonNegativeInt, field_serialize
 
 from cyberdrop_dl.utils.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE
 from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
-from cyberdrop_dl.utils.data_enums_classes.supported_domains import SupportedHosts,SupportedForums
-
 from .custom_types import AliasModel, HttpAppriseURLModel, NonEmptyStr
+from cyberdrop_dl.utils.constants import PRERELEASE_TAGS
+from cyberdrop_dl import __version__ as current_version
+
+if next((tag for tag in PRERELEASE_TAGS if tag in current_version), False):
+    from cyberdrop_dl.utils.data_enums_classes.supported_domains import SupportedDebugSites as SupportedSites
+else:
+    from cyberdrop_dl.utils.data_enums_classes.supported_domains import SupportedSites
+
+
 
 
 class DownloadOptions(BaseModel):
@@ -96,7 +103,7 @@ class Sorting(BaseModel):
 class BrowserCookies(BaseModel):
     browsers: list[BROWSERS] = [BROWSERS.chrome]
     auto_import: bool = False
-    sites: List[Union[SupportedHosts, SupportedForums]]  =[domain.value for domain in SupportedHosts] + [domain.value for domain in SupportedForums]
+    sites: List[SupportedSites]  =[domain.value for domain in SupportedSites] 
 
 class DupeCleanupOptions(BaseModel):
     hashing: Hashing = Hashing.IN_PLACE
