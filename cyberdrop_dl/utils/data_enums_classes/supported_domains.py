@@ -1,9 +1,6 @@
 
-from aenum import Enum, extend_enum
-from cyberdrop_dl.utils.constants import PRERELEASE_TAGS
-from cyberdrop_dl import __version__ as current_version
-
-class SupportedForums(Enum):
+from enum import StrEnum
+class SupportedForums(StrEnum):
     celebforum = "celebforum.to"
     f95zone = "f95zone.to"
     leakedmodels = "leakedmodels.com"
@@ -11,7 +8,7 @@ class SupportedForums(Enum):
     xbunker = "xbunker.nu"
 
 
-class SupportedHosts(Enum):
+class SupportedHosts(StrEnum):
     bunkr = "bunkr"
     bunkrr = "bunkrr"
     celebforum = "celebforum"
@@ -68,6 +65,12 @@ class SupportedHosts(Enum):
     xbunkr = "xbunkr"
     xxxbunker = "xxxbunker"
 
+class SupportedHostsDebug(SupportedHosts):
+    simpcity="simpcity"
 
-if  next((tag for tag in PRERELEASE_TAGS if tag in current_version), False):  
-    extend_enum(SupportedHosts, "simpcity", "simpcity")
+class SupportedSites(SupportedHosts,SupportedForums):
+    pass
+class SupportedDebugSites(SupportedHostsDebug,SupportedForums):
+    pass
+
+
