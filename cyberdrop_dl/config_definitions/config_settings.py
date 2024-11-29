@@ -103,8 +103,7 @@ class Sorting(BaseModel):
 class BrowserCookies(BaseModel):
     browsers: list[BROWSERS] = [BROWSERS.chrome]
     auto_import: bool = False
-    sites: List[SupportedSites]  =[domain.value for domain in SupportedSites] 
-
+    sites: List[SupportedSites]  =[domain.value for domain in SupportedSites]
 class DupeCleanupOptions(BaseModel):
     hashing: Hashing = Hashing.IN_PLACE
     auto_dedupe: bool = True
