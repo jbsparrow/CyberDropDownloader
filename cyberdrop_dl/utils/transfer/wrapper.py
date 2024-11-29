@@ -1,7 +1,16 @@
 import contextlib
 import sqlite3
+from pathlib import Path
+from shutil import copy2
 @contextlib.contextmanager
 def db_transfer_context(db_file):
+    i=2
+    while True:
+        new_file=Path(f"{db_file}i")
+        if new_file.exists():
+            continue
+        copy2(db_file,new_file)
+        break
     conn = sqlite3.connect(db_file)
     cursor = conn.cursor()
     try:
