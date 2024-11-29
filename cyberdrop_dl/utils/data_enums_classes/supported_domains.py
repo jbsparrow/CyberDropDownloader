@@ -1,5 +1,6 @@
-
 from enum import StrEnum
+
+
 class SupportedForums(StrEnum):
     celebforum = "celebforum.to"
     f95zone = "f95zone.to"
@@ -65,12 +66,14 @@ class SupportedHosts(StrEnum):
     xbunkr = "xbunkr"
     xxxbunker = "xxxbunker"
 
+
 class SupportedHostsDebug(SupportedHosts):
-    simpcity="simpcity"
+    simpcity = "simpcity"
 
-class SupportedSites(SupportedHosts,SupportedForums):
+
+class SupportedSites(SupportedHosts, SupportedForums):
     pass
-class SupportedDebugSites(SupportedHostsDebug,SupportedForums):
+
+
+class SupportedDebugSites(SupportedHostsDebug, SupportedForums):
     pass
-
-

@@ -1,21 +1,18 @@
 from logging import INFO
 from pathlib import Path
-from typing import List,  Union
 
 from pydantic import BaseModel, ByteSize, Field, NonNegativeInt, field_serializer
 
-from cyberdrop_dl.utils.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE
-from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
-from .custom_types import AliasModel, HttpAppriseURLModel, NonEmptyStr
-from cyberdrop_dl.utils.constants import PRERELEASE_TAGS
 from cyberdrop_dl import __version__ as current_version
+from cyberdrop_dl.utils.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE, PRERELEASE_TAGS
+from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
+
+from .custom_types import AliasModel, HttpAppriseURLModel, NonEmptyStr
 
 if next((tag for tag in PRERELEASE_TAGS if tag in current_version), False):
     from cyberdrop_dl.utils.data_enums_classes.supported_domains import SupportedDebugSites as SupportedSites
 else:
     from cyberdrop_dl.utils.data_enums_classes.supported_domains import SupportedSites
-
-
 
 
 class DownloadOptions(BaseModel):
@@ -103,7 +100,9 @@ class Sorting(BaseModel):
 class BrowserCookies(BaseModel):
     browsers: list[BROWSERS] = [BROWSERS.chrome]
     auto_import: bool = False
-    sites: List[SupportedSites]  =[domain.value for domain in SupportedSites]
+    sites: list[SupportedSites] = [domain.value for domain in SupportedSites]
+
+
 class DupeCleanupOptions(BaseModel):
     hashing: Hashing = Hashing.IN_PLACE
     auto_dedupe: bool = True

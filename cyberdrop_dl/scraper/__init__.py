@@ -50,4 +50,3 @@ if TYPE_CHECKING:
 
 ALL_CRAWLERS: set[type[Crawler]] = {crawler for name, crawler in globals().items() if "Crawler" in name}
 DEBUG_CRAWLERS = {SimpCityCrawler}
-
