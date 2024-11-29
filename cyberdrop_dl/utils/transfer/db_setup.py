@@ -21,7 +21,7 @@ class TransitionManager:
         """
         transfers from old v5 hash table to new v5 hash table, that supports multiple hash types per file
         """
-        db_path = constants.APP_STORAGE / "database" / "cyberdrop_dl.db"
+        db_path = constants.APP_STORAGE / "database" / "cyberdrop.db"
         if db_path.exists():
             transfer_from_old_hash_table(db_path)
 

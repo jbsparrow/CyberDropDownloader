@@ -66,13 +66,13 @@ class Manager:
             self.parsed_args = ParsedArgs.parse_args()
 
         if not self.parsed_args.cli_only_args.appdata_folder:
-            self.first_time_setup.transfer_v4_to_v5()
-        self.first_time_setup.transfer_v5_to_new_hashtable()
-
-        
+            self.first_time_setup.transfer_v4_to_v5()   
 
         self.path_manager = PathManager(self)
         self.path_manager.pre_startup()
+        # need pathmanager to get proper appdata location
+        self.first_time_setup.transfer_v5_to_new_hashtable()
+
 
         self.cache_manager.startup(self.path_manager.cache_folder / "cache.yaml")
         self.config_manager = ConfigManager(self)
