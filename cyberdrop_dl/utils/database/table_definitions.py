@@ -29,38 +29,13 @@ create_temp = """CREATE TABLE IF NOT EXISTS temp (downloaded_filename TEXT);"""
 
 create_temp_referer = """CREATE TABLE IF NOT EXISTS temp_referer (referer TEXT);"""
 
-create_files = """
-CREATE TABLE IF NOT EXISTS files (
+create_hash = """CREATE TABLE IF NOT EXISTS hash (
   folder TEXT,
   download_filename TEXT,
   original_filename TEXT,
   file_size INT,
-  referer TEXT,
-  date INT,
-  PRIMARY KEY (folder, download_filename)
-);
-
-"""
-
-create_hash = """
-CREATE TABLE IF NOT EXISTS hash (
-  folder TEXT,
-  download_filename TEXT,
-  hash_type TEXT,
   hash TEXT,
-  PRIMARY KEY (folder, download_filename, hash_type),
-  FOREIGN KEY (folder, download_filename) REFERENCES files(folder, download_filename)
-);
-
-"""
-
-create_temp_hash = """
-CREATE TABLE IF NOT EXISTS temp_hash (
-  folder TEXT,
-  download_filename TEXT,
-  hash_type TEXT,
-  hash TEXT,
-  PRIMARY KEY (folder, download_filename, hash_type),
-  FOREIGN KEY (folder, download_filename) REFERENCES files(folder, download_filename)
+  UNIQUE (folder, original_filename)
+  PRIMARY KEY (folder, original_filename,hash)
 );
 """
