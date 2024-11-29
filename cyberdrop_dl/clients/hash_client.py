@@ -127,6 +127,8 @@ class HashClient:
                 return
             if not self.manager.config_manager.settings_data.dupe_cleanup_options.auto_dedupe:
                 return
+            if self.manager.config_manager.settings_data.runtime_options.ignore_history:
+                return
             file_hashes_dict = await self.get_file_hashes_dict()
         with self.manager.live_manager.get_remove_file_via_hash_live(stop=True):
             await self.final_dupe_cleanup(file_hashes_dict)
