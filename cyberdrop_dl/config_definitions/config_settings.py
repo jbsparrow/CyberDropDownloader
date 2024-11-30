@@ -92,6 +92,13 @@ class IgnoreOptions(BaseModel):
     skip_hosts: list[NonEmptyStr] = []
     only_hosts: list[NonEmptyStr] = []
 
+    @field_validator("skip_hosts", "only_hosts", mode="before")
+    @classmethod
+    def handle_falsy(cls, value: list) -> list:
+        if not value:
+            return []
+        return value
+
 
 class RuntimeOptions(BaseModel):
     ignore_history: bool = False
@@ -105,6 +112,20 @@ class RuntimeOptions(BaseModel):
     jdownloader_download_dir: Path | None = None
     jdownloader_autostart: bool = False
     jdownloader_whitelist: list[NonEmptyStr] = []
+
+    @field_validator("jdownloader_download_dir", mode="before")
+    @classmethod
+    def handle_falsy(cls, value: str) -> str | None:
+        if not value or value == "None":
+            return None
+        return value
+
+    @field_validator("jdownloader_whitelist", mode="before")
+    @classmethod
+    def handle_list(cls, value: list) -> list:
+        if not value:
+            return []
+        return value
 
 
 class Sorting(BaseModel):
