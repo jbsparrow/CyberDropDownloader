@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING
 
 from pydantic import ValidationError
 from rich.console import Console
-from rich.logging import RichHandler
 
 from cyberdrop_dl.clients.errors import InvalidYamlError
 from cyberdrop_dl.managers.manager import Manager
@@ -130,14 +129,14 @@ def setup_debug_logger(manager: Manager) -> Path | None:
         debug_log_file_path = Path(__file__).parent / "cyberdrop_dl_debug.log"
         if running_in_IDE:
             debug_log_file_path = Path(__file__).parents[1] / "cyberdrop_dl_debug.log"
-
-        rich_file_handler_debug = RichHandler(
-            **constants.RICH_HANDLER_DEBUG_CONFIG,
-            console=Console(file=debug_log_file_path.open("w", encoding="utf8"), width=constants.DEFAULT_CONSOLE_WIDTH),
-            level=manager.config_manager.settings_data.runtime_options.log_level,
+        file_handler_debug = logging.FileHandler(
+        debug_log_file_path,
+        mode="w"
         )
-
-        logger_debug.addHandler(rich_file_handler_debug)
+        file_handler_debug.setLevel(
+        manager.config_manager.settings_data.runtime_options.log_level
+        )
+        logger_debug.addHandler(file_handler_debug)
         # aiosqlite_log = logging.getLogger("aiosqlite")
         # aiosqlite_log.setLevel(manager.config_manager.settings_data.runtime_options.log_level)
         # aiosqlite_log.addHandler(file_handler_debug)
@@ -163,17 +162,15 @@ def setup_logger(manager: Manager, config_name: str) -> None:
 
     if constants.DEBUG_VAR:
         manager.config_manager.settings_data.runtime_options.log_level = 10
-
-    rich_file_handler = RichHandler(
-        **constants.RICH_HANDLER_CONFIG,
-        console=Console(
-            file=manager.path_manager.main_log.open("w", encoding="utf8"),
-            width=constants.DEFAULT_CONSOLE_WIDTH,
-        ),
-        level=manager.config_manager.settings_data.runtime_options.log_level,
+    file_handler = logging.FileHandler(
+        file=manager.path_manager.main_log,
+        mode="w"
     )
+    file_handler.setLevel(manager.config_manager.settings_data.runtime_options.log_level)
 
-    logger.addHandler(rich_file_handler)
+
+
+    logger.addHandler(file_handler)
     constants.CONSOLE_LEVEL = manager.config_manager.settings_data.runtime_options.console_log_level
 
 
