@@ -1,4 +1,4 @@
-from logging import INFO
+from logging import DEBUG
 from pathlib import Path
 
 from pydantic import BaseModel, ByteSize, Field, NonNegativeInt, PositiveInt, field_serializer, field_validator
@@ -102,7 +102,7 @@ class IgnoreOptions(BaseModel):
 
 class RuntimeOptions(BaseModel):
     ignore_history: bool = False
-    log_level: int = INFO
+    log_level: int = DEBUG
     console_log_level: int = 100
     skip_check_for_partial_files: bool = False
     skip_check_for_empty_folders: bool = False
