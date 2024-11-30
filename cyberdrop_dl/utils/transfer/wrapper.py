@@ -8,7 +8,7 @@ from shutil import copy2
 def db_transfer_context(db_file):
     i = 2
     while True:
-        new_file = Path(f"{db_file}i")
+        new_file = Path(f"{db_file}{i}")
         if new_file.exists():
             i = i + 1
             continue
