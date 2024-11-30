@@ -77,7 +77,7 @@ def startup() -> Manager:
 
 async def runtime(manager: Manager) -> None:
     """Main runtime loop for the program, this will run until all scraping and downloading is complete."""
-    if manager.parsed_args.deprecated_args.sort_all_configs:
+    if manager.multiconfig and manager.config_manager.settings_data.sorting.sort_downloads:
         return
 
     with manager.live_manager.get_main_live(stop=True):
@@ -102,7 +102,7 @@ async def post_runtime(manager: Manager) -> None:
         20,
     )
     # checking and removing dupes
-    if not manager.parsed_args.deprecated_args.sort_all_configs:
+    if not (manager.multiconfig and manager.config_manager.settings_data.sorting.sort_downloads):
         await manager.hash_manager.hash_client.cleanup_dupes_after_download()
     if manager.config_manager.settings_data.sorting.sort_downloads and not manager.parsed_args.cli_only_args.retry_any:
         sorter = Sorter(manager)
