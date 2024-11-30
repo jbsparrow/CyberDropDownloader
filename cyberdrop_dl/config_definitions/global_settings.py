@@ -20,7 +20,9 @@ class General(BaseModel):
         return value.human_readable(decimal=True)
 
     @field_serializer("flaresolverr", "proxy")
-    def convert_to_str(self, value: URL) -> str:
+    def convert_to_str(self, value: URL | str) -> str | None:
+        if not value:
+            return None
         if isinstance(value, URL):
             return str(value)
         return value

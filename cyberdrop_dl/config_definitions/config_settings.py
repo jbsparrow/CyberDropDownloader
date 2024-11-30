@@ -1,7 +1,7 @@
 from logging import INFO
 from pathlib import Path
 
-from pydantic import BaseModel, ByteSize, Field, NonNegativeInt, PositiveInt, field_serializer
+from pydantic import BaseModel, ByteSize, Field, NonNegativeInt, PositiveInt, field_serializer, field_validator
 
 from cyberdrop_dl import __version__ as current_version
 from cyberdrop_dl.utils.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE, PRERELEASE_TAGS
@@ -29,6 +29,13 @@ class DownloadOptions(BaseModel):
     skip_referer_seen_before: bool = False
     maximum_number_of_children: list[NonNegativeInt] = []
 
+    @field_validator("maximum_number_of_children", mode="before")
+    @classmethod
+    def handle_falsy(cls, value: list) -> list:
+        if not value:
+            return []
+        return value
+
 
 class Files(AliasModel):
     input_file: Path = Field(validation_alias="i", default=APP_STORAGE / "Configs" / "{config}" / "URLs.txt")
@@ -45,6 +52,20 @@ class Logs(AliasModel):
     scrape_error_urls_filename: Path = Path("Scrape_Error_URLs.csv")
     rotate_logs: bool = False
     log_line_width: PositiveInt = Field(default=240, ge=50)
+
+    @field_validator("webhook", mode="before")
+    @classmethod
+    def handle_falsy(cls, value: str) -> str | None:
+        if not value:
+            return None
+        return value
+
+    @field_validator("webhook", mode="before")
+    @classmethod
+    def handle_falsy(cls, value: str) -> str | None:
+        if not value:
+            return None
+        return value
 
 
 class FileSizeLimits(BaseModel):
@@ -97,11 +118,27 @@ class Sorting(BaseModel):
     sorted_other: NonEmptyStr = "{sort_dir}/{base_dir}/Other/{filename}{ext}"
     sorted_video: NonEmptyStr = "{sort_dir}/{base_dir}/Videos/{filename}{ext}"
 
+    @field_validator("scan_folder", mode="before")
+    @classmethod
+    def handle_falsy(cls, value: str) -> str | None:
+        if not value or value == "None":
+            return None
+        return value
+
 
 class BrowserCookies(BaseModel):
     browsers: list[BROWSERS] = [BROWSERS.chrome]
     auto_import: bool = False
     sites: list[SupportedSites] = [domain.value for domain in SupportedSites]
+
+    @field_validator("browsers", "sites", mode="before")
+    @classmethod
+    def handle_list(cls, values: list) -> list:
+        if not values:
+            return []
+        if isinstance(values, list):
+            return [str(value).lower() for value in values]
+        return values
 
 
 class DupeCleanupOptions(BaseModel):
