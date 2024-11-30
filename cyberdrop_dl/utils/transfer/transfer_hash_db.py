@@ -6,8 +6,8 @@ import arrow
 from rich.console import Console
 
 from cyberdrop_dl.utils.database.table_definitions import create_files, create_temp_hash
-from cyberdrop_dl.utils.transfer.wrapper import db_transfer_context
 from cyberdrop_dl.utils.transfer.backup import db_backup
+from cyberdrop_dl.utils.transfer.wrapper import db_transfer_context
 
 console = Console()
 
@@ -29,7 +29,7 @@ def transfer_from_old_hash_table(db_path):
 
         if has_hash_type_column:
             return
-        
+
         db_backup(db_path)
 
         # Fetch data from the old 'hash' table

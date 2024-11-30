@@ -1,9 +1,9 @@
 import contextlib
 import sqlite3
 
+
 @contextlib.contextmanager
 def db_transfer_context(db_file):
-    i = 2
     conn = sqlite3.connect(db_file)
     cursor = conn.cursor()
     try:
@@ -15,5 +15,3 @@ def db_transfer_context(db_file):
     finally:
         cursor.close()
         conn.close()
-
-
