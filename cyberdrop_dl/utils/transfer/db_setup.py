@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 class TransitionManager:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
+
     def transfer_v5_to_new_hashtable(self):
         """
         transfers from old v5 hash table to new v5 hash table, that supports multiple hash types per file

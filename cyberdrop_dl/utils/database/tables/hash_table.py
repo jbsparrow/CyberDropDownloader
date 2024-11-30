@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime
 from pathlib import Path
 from sqlite3 import IntegrityError
 from typing import TYPE_CHECKING
@@ -39,7 +38,7 @@ class HashTable:
             hash if  exists
         """
         try:
-            # Extract folder, filename, and size from the full path
+            # Extract folder, filename, and size from the full pathg
             path = Path(full_path).absolute()
             folder = str(path.parent)
             filename = str(path.name)
