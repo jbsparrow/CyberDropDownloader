@@ -27,6 +27,9 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
 
+CONTENT_TYPES_OVERRIDES = {"text/vnd.trolltech.linguist": "video/MP2T"}
+
+
 def is_4xx_client_error(status_code: int) -> bool:
     """Checks whether the HTTP status code is 4xx client error."""
     if isinstance(status_code, str):
@@ -135,7 +138,11 @@ class DownloadClient:
                 media_item.partial_file.unlink()
 
             await self.client_manager.check_http_status(resp, download=True, origin=media_item.url)
-            content_type = resp.headers.get("Content-Type")
+            content_type = resp.headers.get("Content-Type", "")
+            override = next(
+                (override for type, override in CONTENT_TYPES_OVERRIDES.items() if type in content_type), None
+            )
+            content_type = override or content_type
 
             media_item.filesize = int(resp.headers.get("Content-Length", "0"))
             if not media_item.complete_file:
@@ -159,7 +166,7 @@ class DownloadClient:
                 and any(s in content_type.lower() for s in ("html", "text"))
                 and ext not in FILE_FORMATS["Text"]
             ):
-                raise InvalidContentTypeError(message=f"Received {content_type}, was expecting other")
+                raise InvalidContentTypeError(message=f"Received '{content_type}', was expecting other")
 
             if resp.status != HTTPStatus.PARTIAL_CONTENT and media_item.partial_file.is_file():
                 media_item.partial_file.unlink()

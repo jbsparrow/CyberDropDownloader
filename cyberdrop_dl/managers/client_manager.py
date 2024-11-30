@@ -120,11 +120,16 @@ class ClientManager:
         """Checks the HTTP status code and raises an exception if it's not acceptable."""
         status = response.status
         headers = response.headers
-
-        if download and headers.get("ETag") in DOWNLOAD_ERROR_ETAGS:
+        # for downloads
+        if not download:
+            pass
+        elif headers.get("ETag") in DOWNLOAD_ERROR_ETAGS:
             message = DOWNLOAD_ERROR_ETAGS.get(headers.get("ETag"))
             raise DownloadError(HTTPStatus.NOT_FOUND, message=message, origin=origin)
+        elif HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
+            return
 
+        # for text,etc
         response_text = None
         with contextlib.suppress(UnicodeDecodeError):
             response_text = await response.text()
@@ -136,7 +141,6 @@ class ClientManager:
 
         if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
             return
-
         if any(domain in response.url.host for domain in ("gofile", "imgur")):
             with contextlib.suppress(ContentTypeError):
                 JSON_Resp: dict = await response.json()

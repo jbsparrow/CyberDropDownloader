@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import re
 from dataclasses import Field
+from datetime import date, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -184,9 +185,12 @@ class ScrapeMapper:
 
     async def load_all_links(self) -> None:
         """Loads all links from database."""
+        after = self.manager.parsed_args.cli_only_args.completed_after or date.fromtimestamp(0)
+
+        before = self.manager.parsed_args.cli_only_args.completed_before or datetime.now().date()
         entries = await self.manager.db_manager.history_table.get_all_items(
-            self.manager.parsed_args.cli_only_args.completed_after,
-            self.manager.parsed_args.cli_only_args.completed_before,
+            after,
+            before,
         )
         items = []
         for entry in entries:
