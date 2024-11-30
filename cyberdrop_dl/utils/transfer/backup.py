@@ -9,4 +9,6 @@ def db_backup(db_file):
         if new_file.exists():
             i = i + 1
             continue
-        copy2(db_file, new_file)
+        else:
+            copy2(db_file, new_file)
+            break
