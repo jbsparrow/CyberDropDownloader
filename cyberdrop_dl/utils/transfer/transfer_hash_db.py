@@ -26,6 +26,8 @@ def transfer_from_old_hash_table(db_path):
         # Check if the 'hash_type' column exists in the 'hash' table
         cursor.execute("SELECT COUNT(*) FROM pragma_table_info('hash') WHERE name='hash_type'")
         has_hash_type_column = (cursor.fetchone())[0] > 0
+        db_backup(db_path)
+
 
         if has_hash_type_column:
             return

@@ -1,14 +1,8 @@
 from pathlib import Path
 from shutil import copy2
+from datetime import datetime
 
 
 def db_backup(db_file):
-    i = 2
-    while True:
-        new_file = Path(f"{db_file}{i}")
-        if new_file.exists():
-            i = i + 1
-            continue
-        else:
-            copy2(db_file, new_file)
-            break
+    new_file = Path(db_file.parent,f"cyberdrop_v5_{datetime.now().strftime("%Y%m%d_%H%M%S")}.bak.db")
+    copy2(db_file, new_file)
