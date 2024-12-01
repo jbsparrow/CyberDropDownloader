@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from dataclasses import field
 from datetime import datetime
 from pathlib import Path
@@ -88,7 +87,7 @@ class PathManager:
             path = Path(log_file)
             # parent_folder =
             if log_settings_config.rotate_logs:
-                file_name = Path(file_name).parent/f"{path.stem}__{current_time_iso}{path.suffix}"
+                file_name = Path(file_name).parent / f"{path.stem}__{current_time_iso}{path.suffix}"
             log_files[name] = Path(file_name).with_suffix(file_ext)
         log_settings_config = log_settings_config.model_copy(update=log_files)
         self.main_log = self.log_folder / log_settings_config.main_log_filename
