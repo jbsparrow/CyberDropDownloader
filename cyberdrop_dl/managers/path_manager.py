@@ -66,8 +66,9 @@ class PathManager:
         self.history_db = self.cache_folder / "cyberdrop.db"
 
         self._set_output_filenames()
-
         self.log_folder.mkdir(parents=True, exist_ok=True)
+        self._create_output_folders()
+
         if not self.input_file.is_file():
             self.input_file.touch(exist_ok=True)
         self.history_db.touch(exist_ok=True)
@@ -84,15 +85,26 @@ class PathManager:
             file_ext = ".log" if is_main_log else ".csv"
             file_name = log_file
             path = Path(log_file)
+            # parent_folder =
             if log_settings_config.rotate_logs:
-                file_name = f"{path.stem}__{current_time_iso}{path.suffix}"
-            log_files[name] = Path(file_name).with_suffix(file_ext).name
+                file_name = Path(file_name).parent / f"{path.stem}__{current_time_iso}{path.suffix}"
+            log_files[name] = Path(file_name).with_suffix(file_ext)
         log_settings_config = log_settings_config.model_copy(update=log_files)
         self.main_log = self.log_folder / log_settings_config.main_log_filename
         self.last_forum_post_log = self.log_folder / log_settings_config.last_forum_post_filename
         self.unsupported_urls_log = self.log_folder / log_settings_config.unsupported_urls_filename
         self.download_error_log = self.log_folder / log_settings_config.download_error_urls_filename
         self.scrape_error_log = self.log_folder / log_settings_config.scrape_error_urls_filename
+
+    def _create_output_folders(self):
+        for path in [
+            self.main_log,
+            self.last_forum_post_log,
+            self.unsupported_urls_log,
+            self.download_error_log,
+            self.scrape_error_log,
+        ]:
+            Path(path).parent.mkdir(parents=True, exist_ok=True)
 
     def add_completed(self, media_item: MediaItem) -> None:
         if media_item.complete_file.absolute() not in self._completed_downloads_set:

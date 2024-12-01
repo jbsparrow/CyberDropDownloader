@@ -1,7 +1,7 @@
 from logging import INFO
 from pathlib import Path
 
-from pydantic import BaseModel, ByteSize, Field, NonNegativeInt, field_serializer
+from pydantic import BaseModel, ByteSize, Field, NonNegativeInt, PositiveInt, field_serializer
 
 from cyberdrop_dl import __version__ as current_version
 from cyberdrop_dl.utils.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE, PRERELEASE_TAGS
@@ -38,12 +38,13 @@ class Files(AliasModel):
 class Logs(AliasModel):
     log_folder: Path = APP_STORAGE / "Configs" / "{config}" / "Logs"
     webhook: HttpAppriseURLModel | None = Field(validation_alias="webhook_url", default=None)
-    main_log_filename: NonEmptyStr = "downloader.log"
-    last_forum_post_filename: NonEmptyStr = "Last_Scraped_Forum_Posts.csv"
-    unsupported_urls_filename: NonEmptyStr = "Unsupported_URLs.csv"
-    download_error_urls_filename: NonEmptyStr = "Download_Error_URLs.csv"
-    scrape_error_urls_filename: NonEmptyStr = "Scrape_Error_URLs.csv"
+    main_log_filename: Path = Path("downloader.log")
+    last_forum_post_filename: Path = Path("Last_Scraped_Forum_Posts.csv")
+    unsupported_urls_filename: Path = Path("Unsupported_URLs.csv")
+    download_error_urls_filename: Path = Path("Download_Error_URLs.csv")
+    scrape_error_urls_filename: Path = Path("Scrape_Error_URLs.csv")
     rotate_logs: bool = False
+    log_line_width: PositiveInt = Field(default=240, ge=50)
 
 
 class FileSizeLimits(BaseModel):
