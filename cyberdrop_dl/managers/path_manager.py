@@ -86,12 +86,10 @@ class PathManager:
             file_ext = ".log" if is_main_log else ".csv"
             file_name = log_file
             path = Path(log_file)
-            parent_folder = ""
-            if log_settings_config.seperate_folders:
-                parent_folder = f"{re.sub('(_log_filename|_file_name)','',path.stem)}_logs"
+            # parent_folder =
             if log_settings_config.rotate_logs:
-                file_name = f"{path.stem}__{current_time_iso}{path.suffix}"
-            log_files[name] = Path(parent_folder) / Path(file_name).with_suffix(file_ext).name
+                file_name = Path(file_name).parent/f"{path.stem}__{current_time_iso}{path.suffix}"
+            log_files[name] = Path(file_name).with_suffix(file_ext)
         log_settings_config = log_settings_config.model_copy(update=log_files)
         self.main_log = self.log_folder / log_settings_config.main_log_filename
         self.last_forum_post_log = self.log_folder / log_settings_config.last_forum_post_filename
