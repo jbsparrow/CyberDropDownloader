@@ -24,6 +24,7 @@ from cyberdrop_dl.utils.logger import (
     log_spacer,
     log_with_color,
     print_to_console,
+    get_log_formatter
 )
 from cyberdrop_dl.utils.sorting import Sorter
 from cyberdrop_dl.utils.utilities import (
@@ -133,6 +134,7 @@ def setup_debug_logger(manager: Manager) -> Path | None:
         debug_log_file_path,
         mode="w"
         )
+        file_handler_debug.setFormatter(get_log_formatter())
         logger_debug.addHandler(file_handler_debug)
         # aiosqlite_log = logging.getLogger("aiosqlite")
         # aiosqlite_log.setLevel(manager.config_manager.settings_data.runtime_options.log_level)
@@ -163,6 +165,7 @@ def setup_logger(manager: Manager, config_name: str) -> None:
         manager.path_manager.main_log,
         mode="w"
     )
+    file_handler.setFormatter(get_log_formatter())
 
     logger.addHandler(file_handler)
     constants.CONSOLE_LEVEL = manager.config_manager.settings_data.runtime_options.console_log_level

@@ -60,3 +60,6 @@ def _log_to_console(level: int, record: str, *_, **__) -> None:
     level = level or 10
     if level >= constants.CONSOLE_LEVEL:
         console.log(record)
+
+def get_log_formatter():
+    return logging.Formatter('[%(asctime)s]      %(levelname)-8s%(message)s     %(filename)s:%(lineno)d\n',datefmt="%m/%d/%y %H:%M:%S")
