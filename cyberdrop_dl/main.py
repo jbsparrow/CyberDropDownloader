@@ -163,12 +163,10 @@ def setup_logger(manager: Manager, config_name: str) -> None:
     if constants.DEBUG_VAR:
         manager.config_manager.settings_data.runtime_options.log_level = 10
     file_handler = logging.FileHandler(
-        file=manager.path_manager.main_log,
+        manager.path_manager.main_log,
         mode="w"
     )
     file_handler.setLevel(manager.config_manager.settings_data.runtime_options.log_level)
-
-
 
     logger.addHandler(file_handler)
     constants.CONSOLE_LEVEL = manager.config_manager.settings_data.runtime_options.console_log_level
