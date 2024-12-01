@@ -44,6 +44,7 @@ class Logs(AliasModel):
     download_error_urls_filename: NonEmptyStr = "Download_Error_URLs.csv"
     scrape_error_urls_filename: NonEmptyStr = "Scrape_Error_URLs.csv"
     rotate_logs: bool = False
+    seperate_folders: bool = False
 
 
 class FileSizeLimits(BaseModel):
