@@ -45,7 +45,7 @@ class Logs(AliasModel):
     scrape_error_urls_filename: NonEmptyStr = "Scrape_Error_URLs.csv"
     rotate_logs: bool = False
     seperate_folders: bool = False
-    file_log_line_width_limit: PositiveInt = Field(default=240, ge=50, required=True)
+    log_line_width_limit: PositiveInt = Field(default=240, ge=50, required=True)
 
 
 class FileSizeLimits(BaseModel):

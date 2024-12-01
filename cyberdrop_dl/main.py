@@ -135,7 +135,7 @@ def setup_debug_logger(manager: Manager) -> Path | None:
             **constants.RICH_HANDLER_DEBUG_CONFIG,
             console=Console(
                 file=debug_log_file_path.open("w", encoding="utf8"),
-                width=manager.config_manager.settings_data.logs.file_log_line_width_limit,
+                width=manager.config_manager.settings_data.logs.log_line_width_limit,
             ),
             level=manager.config_manager.settings_data.runtime_options.log_level,
         )
@@ -171,7 +171,7 @@ def setup_logger(manager: Manager, config_name: str) -> None:
         **constants.RICH_HANDLER_CONFIG,
         console=Console(
             file=manager.path_manager.main_log.open("w", encoding="utf8"),
-            width=manager.config_manager.settings_data.logs.file_log_line_width_limit,
+            width=manager.config_manager.settings_data.logs.log_line_width_limit,
         ),
         level=manager.config_manager.settings_data.runtime_options.log_level,
     )
