@@ -50,8 +50,6 @@ class UIOptions(BaseModel):
     downloading_item_limit: PositiveInt = 5
 
 
-
-
 class GlobalSettings(AliasModel):
     general: General = Field(validation_alias="General", default=General())
     rate_limiting_options: RateLimitingOptions = Field(

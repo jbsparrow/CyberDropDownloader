@@ -1,7 +1,7 @@
 from logging import INFO
 from pathlib import Path
 
-from pydantic import BaseModel, ByteSize, Field, NonNegativeInt, field_serializer,PositiveInt 
+from pydantic import BaseModel, ByteSize, Field, NonNegativeInt, PositiveInt, field_serializer
 
 from cyberdrop_dl import __version__ as current_version
 from cyberdrop_dl.utils.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE, PRERELEASE_TAGS
@@ -46,7 +46,6 @@ class Logs(AliasModel):
     rotate_logs: bool = False
     seperate_folders: bool = False
     file_log_line_width_limit: PositiveInt = Field(default=240, ge=50, required=True)
-
 
 
 class FileSizeLimits(BaseModel):
