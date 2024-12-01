@@ -1,7 +1,7 @@
 from logging import INFO
 from pathlib import Path
 
-from pydantic import BaseModel, ByteSize, Field, NonNegativeInt, field_serializer
+from pydantic import BaseModel, ByteSize, Field, NonNegativeInt, field_serializer,PositiveInt 
 
 from cyberdrop_dl import __version__ as current_version
 from cyberdrop_dl.utils.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE, PRERELEASE_TAGS
@@ -45,6 +45,8 @@ class Logs(AliasModel):
     scrape_error_urls_filename: NonEmptyStr = "Scrape_Error_URLs.csv"
     rotate_logs: bool = False
     seperate_folders: bool = False
+    file_log_line_width_limit: PositiveInt = Field(default=240, ge=50, required=True)
+
 
 
 class FileSizeLimits(BaseModel):
