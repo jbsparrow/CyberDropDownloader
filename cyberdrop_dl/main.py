@@ -133,7 +133,10 @@ def setup_debug_logger(manager: Manager) -> Path | None:
 
         rich_file_handler_debug = RichHandler(
             **constants.RICH_HANDLER_DEBUG_CONFIG,
-            console=Console(file=debug_log_file_path.open("w", encoding="utf8"), width=manager.config_manager.global_settings_data.file_options.line_width_limit),
+            console=Console(
+                file=debug_log_file_path.open("w", encoding="utf8"),
+                width=manager.config_manager.global_settings_data.file_options.line_width_limit,
+            ),
             level=manager.config_manager.settings_data.runtime_options.log_level,
         )
 

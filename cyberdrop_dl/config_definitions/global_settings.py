@@ -48,8 +48,11 @@ class UIOptions(BaseModel):
     refresh_rate: PositiveInt = 10
     scraping_item_limit: PositiveInt = 5
     downloading_item_limit: PositiveInt = 5
+
+
 class FileOptions(BaseModel):
-    line_width_limit :PositiveInt =Field(default=240,ge=50,required=True)
+    line_width_limit: PositiveInt = Field(default=240, ge=50, required=True)
+
 
 class GlobalSettings(AliasModel):
     general: General = Field(validation_alias="General", default=General())
@@ -57,4 +60,4 @@ class GlobalSettings(AliasModel):
         validation_alias="Rate_Limiting_Options", default=RateLimitingOptions()
     )
     ui_options: UIOptions = Field(validation_alias="UI_Options", default=UIOptions())
-    file_options:FileOptions = Field(validation_alias="File_Options", default=FileOptions())
+    file_options: FileOptions = Field(validation_alias="File_Options", default=FileOptions())
