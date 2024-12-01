@@ -21,7 +21,7 @@ from cyberdrop_dl.managers.realdebrid_manager import RealDebridManager
 from cyberdrop_dl.utils.args import ParsedArgs
 from cyberdrop_dl.utils.data_enums_classes.supported_domains import SupportedForums
 from cyberdrop_dl.utils.logger import log
-from cyberdrop_dl.utils.transfer.first_time_setup import TransitionManager
+from cyberdrop_dl.utils.transfer.db_setup import TransitionManager
 
 if TYPE_CHECKING:
     from asyncio import TaskGroup
@@ -66,10 +66,12 @@ class Manager:
             self.parsed_args = ParsedArgs.parse_args()
 
         if not self.parsed_args.cli_only_args.appdata_folder:
-            self.first_time_setup.startup()
+            self.first_time_setup.transfer_v4_to_v5()
 
         self.path_manager = PathManager(self)
         self.path_manager.pre_startup()
+        # need pathmanager to get proper appdata location
+        self.first_time_setup.transfer_v5_to_new_hashtable()
 
         self.cache_manager.startup(self.path_manager.cache_folder / "cache.yaml")
         self.config_manager = ConfigManager(self)
