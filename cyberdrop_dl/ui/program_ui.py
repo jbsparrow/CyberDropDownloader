@@ -76,7 +76,10 @@ class ProgramUI:
 
         answer = user_prompts.main_prompt(self.manager)
         result = self._process_answer(answer, options_map)
-        return result and result != DONE_CHOICE
+        return_to_main = result and result != DONE_CHOICE
+        if return_to_main:
+            clear_term()
+        return return_to_main
 
     def _download(self) -> True:
         """Starts download process."""
