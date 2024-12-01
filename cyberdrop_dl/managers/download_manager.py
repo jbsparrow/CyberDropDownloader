@@ -87,8 +87,7 @@ class DownloadManager:
         if not folder.is_dir():
             return False
         free_space = disk_usage(folder).free
-        free_space_gb = free_space / 1024**3
-        return free_space_gb >= self.manager.config_manager.global_settings_data.general.required_free_space
+        return free_space >= self.manager.config_manager.global_settings_data.general.required_free_space
 
     def check_allowed_filetype(self, media_item: MediaItem) -> bool:
         """Checks if the file type is allowed to download."""
