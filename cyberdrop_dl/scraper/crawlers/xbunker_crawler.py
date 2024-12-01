@@ -97,8 +97,11 @@ class XBunkerCrawler(Crawler):
             scrape_item.children_limit = self.manager.config_manager.settings_data["Download_Options"][
                 "maximum_number_of_children"
             ][scrape_item.type]
-        post_sections = (scrape_item.url.parts[3], scrape_item.url.fragment)
-        if len(scrape_item.url.parts) > 3 and any("post-" in sec for sec in post_sections):
+        post_sections = {scrape_item.url.fragment}
+        if len(scrape_item.url.parts) > 3:
+            post_sections.add(scrape_item.url.parts[3])
+
+        if any("post-" in sec for sec in post_sections):
             url_parts = str(scrape_item.url).rsplit("post-", 1)
             thread_url = URL(url_parts[0].rstrip("#"))
             post_number = int(url_parts[-1].strip("/")) if len(url_parts) == 2 else 0
