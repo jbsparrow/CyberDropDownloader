@@ -39,6 +39,12 @@ class PathManager:
         self._prev_downloads: list[MediaItem] = []
         self._prev_downloads_set = set()
 
+        self.main_log: Path = field(init=False)
+        self.last_forum_post_log: Path = field(init=False)
+        self.unsupported_urls_log: Path = field(init=False)
+        self.download_error_urls_logs: Path = field(init=False)
+        self.scrape_error_urls_logs: Path = field(init=False)
+
         self._logs_model_names = [
             "main_log",
             "last_forum_post",
@@ -96,12 +102,12 @@ class PathManager:
         log_settings_config = log_settings_config.model_copy(update=log_files)
 
         for model_name in self._logs_model_names:
-            internal_name = f"{model_name.replace("_log","")}_log"
+            internal_name = f"{model_name.replace('_log','')}_log"
             setattr(self, internal_name, self.log_folder / getattr(log_settings_config, model_name))
 
     def _create_output_folders(self):
         for model_name in self._logs_model_names:
-            internal_name = f"{model_name.replace("_log","")}_log"
+            internal_name = f"{model_name.replace('_log','')}_log"
             path: Path = getattr(self, internal_name)
             path.parent.mkdir(parents=True, exist_ok=True)
 
