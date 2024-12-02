@@ -42,6 +42,18 @@ Example:
 
 ## `rotate_logs`
 
+| Type           | Default  |
+|----------------|----------|
+| `bool` | `false`|
+
 If enabled, Cyberdrop-DL will add the current date and time as a suffix to each log file, in the format `YYMMDD_HHMMSS`
 
 This will prevent overriding old log files
+
+## `log_line_width`
+
+| Type           | Default  | Restrictions |
+|----------------|----------|--------------|
+| `PositiveInt` | `240`| `>=50`|
+
+Line width to use when writing to the main log file
