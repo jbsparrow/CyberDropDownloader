@@ -164,7 +164,7 @@ class ParsedArgs(AliasModel):
                 if cli_value:
                     add_warning_msg_from(deprecated_name)
                     model_name = deprecated_name.replace("_filename", "")
-                    setattr(self.config_settings.logs, model_name)
+                    setattr(self.config_settings.logs, model_name, cli_value)
 
         if (
             self.cli_only_args.no_ui
