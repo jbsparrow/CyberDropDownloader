@@ -14,7 +14,7 @@
 
 Brand new and improved! Cyberdrop-DL now has an updated paint job, fantastic new look. It's now easier to use than ever before!
 
-![Cyberdrop-DL TUI Preview](https://raw.githubusercontent.com/jbsparrow/CyberDropDownloader/refs/heads/master/docs/.gitbook/assets/cyberdrop-dl_tui_preview.png)
+![Cyberdrop-DL TUI Preview](https://raw.githubusercontent.com/jbsparrow/CyberDropDownloader/refs/heads/master/docs/assets/cyberdrop-dl_tui_preview.png)
 
 </div>
 
