@@ -27,7 +27,7 @@
     * [Logs](reference/configuration-options/settings/logs.md)
     * [Runtime Options](reference/configuration-options/settings/runtime_options.md)
     * [Sorting](reference/configuration-options/settings/sorting.md)
-  * [Global Settings](reference/configuration-options/global-settings.md)
+  * [Global Settings](reference/configuration-options/global-settings/README.md)
 * [CLI Arguments](reference/cli-arguments.md)
 * [Notifications](reference/notifications.md)
 * [Changelog](https://github.com/jbsparrow/CyberDropDownloader/blob/master/CHANGELOG.md)

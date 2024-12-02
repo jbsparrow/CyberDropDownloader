@@ -23,8 +23,8 @@ Global settings and authentication settings are "global". **They apply to all se
 [authentication.md](authentication.md)
 {% endcontent-ref %}
 
-{% content-ref url="global-settings.md" %}
-[global-settings.md](global-settings.md)
+{% content-ref url="global-settings/" %}
+[global-settings/](global-settings/)
 {% endcontent-ref %}
 
 {% content-ref url="settings/" %}
