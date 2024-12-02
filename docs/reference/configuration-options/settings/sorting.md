@@ -61,7 +61,7 @@ Each direct child of the `scan_folder` is recursively scanned, and files are mov
 
 If this is set to `null` (the default), `download_dir` is used instead
 
-## sort_downloads
+## `sort_downloads`
 
 | Type           | Default  |
 |----------------|----------|
