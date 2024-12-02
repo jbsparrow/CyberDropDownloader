@@ -1,18 +1,14 @@
 from logging import DEBUG
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, ByteSize, Field, NonNegativeInt, PositiveInt, field_serializer, field_validator
 
-from cyberdrop_dl import __version__ as current_version
-from cyberdrop_dl.utils.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE, PRERELEASE_TAGS
+from cyberdrop_dl.utils.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE
 from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
+from cyberdrop_dl.utils.data_enums_classes.supported_domains import SUPPORTED_SITES_DOMAINS
 
 from .custom_types import AliasModel, HttpAppriseURLModel, NonEmptyStr
-
-if next((tag for tag in PRERELEASE_TAGS if tag in current_version), False):
-    from cyberdrop_dl.utils.data_enums_classes.supported_domains import SupportedSitesDebug as SupportedSites
-else:
-    from cyberdrop_dl.utils.data_enums_classes.supported_domains import SupportedSites
 
 
 class DownloadOptions(BaseModel):
@@ -153,7 +149,7 @@ class Sorting(BaseModel):
 class BrowserCookies(BaseModel):
     browsers: list[BROWSERS] = [BROWSERS.chrome]
     auto_import: bool = False
-    sites: list[SupportedSites] = [domain.value for domain in SupportedSites]
+    sites: list[Literal[*SUPPORTED_SITES_DOMAINS]] = SUPPORTED_SITES_DOMAINS  # type: ignore
 
     @field_validator("browsers", "sites", mode="before")
     @classmethod
