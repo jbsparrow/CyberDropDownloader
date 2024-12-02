@@ -14,9 +14,9 @@ layout:
     visible: true
 ---
 
-# Transition from V4 to V5
+# Transition from V4 or V5 to V6
 
-Built into Cyberdrop-DL V5 is a tool that allows you to import both your configs and your history DB.
+Built into Cyberdrop-DL V6 is a tool that allows you to import both your configs and your history DB.
 
 #### Importing previous configs <a href="#importing-previous-configs" id="importing-previous-configs"></a>
 
