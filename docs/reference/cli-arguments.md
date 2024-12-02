@@ -20,9 +20,11 @@ layout:
 Anything input as a CLI argument will take priority over config values.
 {% endhint %}
 
-For items not explained below, you can find their counterparts in the Configuration options to see what they do, or use `cyberdrop-dl --help` in your command prompt to get a full print out.
+You can pass any of the **Config Settings** and **Global Settings** options as a cli argument for the program
 
-For items within Download Options, Ignore Options, Runtime Options, and Sorting Options, you can prefix the argument with `--no-` to negate the option. For example, `--no-exclude-videos` will include videos in the download.
+For items not explained below, you can find their counterparts in the configuration options to see what they do
+
+Bool arguments like options within `Download Options`, `Ignore Options`, `Runtime Options`, etc. can be prefixed with `--no-` to negate them. Ex: `--no-auto-dedupe` will disable auto dedupe, overriding whatever the config option was set to.
 
 ```shell
 usage: cyberdrop-dl [OPTIONS] URL [URL...]
@@ -31,32 +33,26 @@ Bulk asynchronous downloader for multiple file hosts
 
 options:
   -h, --help            show this help message and exit
-  -V, --version         show program's version number and exit
+  -V, --version         show version number and exit
 
-CLI-only Options:
-  LINK(S)               link(s) to content to download (passing multiple links
-                        is supported) (default: [])
+CLI-only-options:
+  LINK(S)               link(s) to content to download (passing multiple links is supported) (default: [])
   --appdata-folder APPDATA_FOLDER
                         AppData folder path (default: None)
   --completed-after COMPLETED_AFTER
-                        only download completed downloads at or after this
-                        date (default: None)
+                        only download completed downloads at or after this date (default: None)
   --completed-before COMPLETED_BEFORE
-                        only download completed downloads at or before this
-                        date (default: None)
+                        only download completed downloads at or before this date (default: None)
   --config CONFIG       name of config to load (default: None)
   --config-file CONFIG_FILE
-                        path to the CDL settings.yaml file to load (default:
-                        None)
+                        path to the CDL settings.yaml file to load (default: None)
   --download            skips UI, start download inmediatly (default: False)
   --max-items-retry MAX_ITEMS_RETRY
                         max number of links to retry (default: 0)
-  --no-ui               disables the UI/progress view entirely (default:
-                        False)
+  --no-ui               disables the UI/progress view entirely (default: False)
   --retry-all           retry all downloads (default: False)
   --retry-failed        retry failed downloads (default: False)
-  --retry-maintenance   retry download of maintenance files (bunkr). Requires
-                        files to be hashed (default: False)
+  --retry-maintenance   retry download of maintenance files (bunkr). Requires files to be hashed (default: False)
 
 browser_cookies:
   --browsers [BROWSERS ...]
@@ -164,13 +160,9 @@ ui_options:
   --scraping-item-limit SCRAPING_ITEM_LIMIT
   --downloading-item-limit DOWNLOADING_ITEM_LIMIT
 
-Deprecated:
+deprecated:
   --download-all-configs
-                        Skip the UI and go straight to downloading (runs all
-                        configs sequentially)
+                        Skip the UI and go straight to downloading (runs all configs sequentially)
   --sort-all-configs    Sort all configs sequentially
-  --sort-all-downloads  sort all downloads, not just those downloaded by
-                        Cyberdrop-DL
-
-Visit the wiki for aditional details: https://script-ware.gitbook.io/cyberdrop-dl
+  --sort-all-downloads  sort all downloads, not just those downloaded by Cyberdrop-DL
 ```
