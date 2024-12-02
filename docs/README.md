@@ -1,5 +1,5 @@
 ---
-description: This is Cyberdrop-DL
+description: This is Cyberdrop-DL wiki
 icon: hand-wave
 layout:
   title:
@@ -16,7 +16,7 @@ layout:
 
 # Welcome!
 
-Cyberdrop-DL is an open source project maintained by [jbsparrow](https://github.com/jbsparrow). It's goal is to act as a bulk downloader for various sites you will find around the web.
+Cyberdrop-DL is an open source asynchronous downloader maintained by [jbsparrow](https://github.com/jbsparrow). It's goal is to act as a bulk downloader for various sites you will find around the web.
 
 {% content-ref url="reference/supported-websites.md" %}
 [supported-websites.md](reference/supported-websites.md)
@@ -24,15 +24,15 @@ Cyberdrop-DL is an open source project maintained by [jbsparrow](https://github.
 
 ### Want to jump right in? <a href="#want-to-jump-right-in" id="want-to-jump-right-in"></a>
 
-Feeling like an eager beaver? Jump in to the quick start docs and get ready to download the internet.
+Explore the Getting Started guide to quickly familiarize yourself with the setup process and get started with the software.
 
-{% content-ref url="quick-start/" %}
-[quick-start](quick-start/)
+{% content-ref url="getting-started/" %}
+[getting-started](getting-started/)
 {% endcontent-ref %}
 
 ### Want to customize your experience? <a href="#want-to-customize-your-experience" id="want-to-customize-your-experience"></a>
 
-Dive a little deeper and start exploring the various config and CLI arguments:
+Take a closer look and begin exploring the available configuration options and CLI arguments:
 
 {% content-ref url="reference/configuration-options/" %}
 [configuration-options](reference/configuration-options/)

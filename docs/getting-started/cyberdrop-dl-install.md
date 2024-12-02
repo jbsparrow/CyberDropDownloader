@@ -23,7 +23,7 @@ If you're on Linux you should also just be able to open the start file.
 
 In some very rare cases, Mac users may need to run this additional command first:
 
-```sh
+```shell
 xcode-select --install
 ```
 
@@ -59,7 +59,7 @@ pip install --upgrade cyberdrop-dl-patched
 
 If you're on Mac/Linux, you may need to change it to be
 
-```sh
+```shell
 pip3 install --upgrade cyberdrop-dl-patched
 ```
 

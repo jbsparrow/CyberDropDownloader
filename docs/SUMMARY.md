@@ -1,7 +1,7 @@
 # Table of contents
 
 * [Welcome!](README.md)
-* [Quick Start](quick-start/README.md)
+* [Getting Started](getting-started/README.md)
   * [Python Install](quick-start/python-install/README.md)
     * [Windows](quick-start/python-install/windows.md)
     * [Linux](quick-start/python-install/linux.md)

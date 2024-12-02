@@ -39,7 +39,7 @@ Cyberdrop-DL will show you a message at the end of a run telling you if the appr
 {% tab title="Email" %}
 To get notifications via email, use this URL format in your `apprise.txt` file:
 
-```sh
+```shell
 mailto://user:password@domain.com
 ```
 {% endtab %}
@@ -47,7 +47,7 @@ mailto://user:password@domain.com
 {% tab title="Email + Logs" %}
 Add `attach_logs` to your email URL in your `apprise.txt` file:
 
-```sh
+```shell
 attach_logs=mailto://user:password@domain.com
 ```
 
@@ -57,7 +57,7 @@ attach_logs=mailto://user:password@domain.com
 {% tab title="Discord + Logs" %}
 Add `attach_logs` to the `webhook_url` config option:
 
-```sh
+```shell
 attach_logs=https://discord.com/api/webhooks/webhook_id/webhook_token
 ```
 {% endtab %}
