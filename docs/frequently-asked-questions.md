@@ -46,7 +46,7 @@ Any "Unknown" error, is usually coding related, or it'll be something like the p
 
 ### Why are all the files skipped? <a href="#why-are-all-the-files-skipped" id="why-are-all-the-files-skipped"></a>
 
-By default Cyberdrop-DL keeps track of your download history and will skip all files that you've downloaded in the past to avoid duplicates. You can turn off the behavior by using the --ignore-history cli arg, or ignore\_history in the config.
+By default Cyberdrop-DL keeps track of your download history and will skip all files that you've downloaded in the past to avoid duplicates. You can turn off the behavior by using the --ignore-history cli arg, or ignore_history in the config.
 
 ### The screen is flickering? <a href="#the-screen-is-flickering" id="the-screen-is-flickering"></a>
 
@@ -74,7 +74,7 @@ Then you can select whether you want to extract cookies from your browser automa
 
 Filenames are taken from the website you are trying to download from. Blame whoever uploaded it.
 
-### How do I fix \`\[SSL: CERTIFICATE\_VERIFY\_FAILED]\` <a href="#how-do-i-fix-ssl-certificate_verify_failed" id="how-do-i-fix-ssl-certificate_verify_failed"></a>
+### How do I fix \`\[SSL: CERTIFICATE_VERIFY_FAILED]\` <a href="#how-do-i-fix-ssl-certificate_verify_failed" id="how-do-i-fix-ssl-certificate_verify_failed"></a>
 
 This should only appear on mac, so these instructions are for mac users.
 

@@ -14,8 +14,8 @@ A little note on how configs work in V5:
 There are three type of config files in V5.
 
 * settings
-* global\_settings
-* authentication\_settings
+* global_settings
+* authentication_settings
 
 Global settings and authentication settings are "global". **They apply to all settings configs**. You can set them once and never touch them again.
 

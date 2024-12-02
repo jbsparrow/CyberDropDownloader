@@ -43,9 +43,9 @@ set "COMMANDLINE_ARGS="
 
 * **PYTHON**: You c[^1]an set a custom path for the python executable. This is useful if you have multiple python version installed an want to use an specific one
 
-- **VENV\_DIR**: Path of the folder were the python virtual environment will be created
+- **VENV_DIR**: Path of the folder were the python virtual environment will be created
 
-* **COMMANDLINE\_ARGS**: Arguments to pass to cyberdrop-dl. You can learn more about them in[cli-arguments.md](../reference/cli-arguments.md "mention")
+* **COMMANDLINE_ARGS**: Arguments to pass to cyberdrop-dl. You can learn more about them in[cli-arguments.md](../reference/cli-arguments.md "mention")
 
 </details>
 

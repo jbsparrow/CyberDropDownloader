@@ -5,6 +5,12 @@ icon: user-lock
 
 # Authentication
 
+All the options in these list are optional. The valid values are any kind of `str`, with the default being an empty `str`
+
+|Type |Default|
+|----|---|
+|`str`|`""`|
+
 <details>
 
 <summary>Coomer</summary>
@@ -27,17 +33,15 @@ It is best to leave the authentication parameter for SimpCity blank, as they hav
 
 In order to set specific authentication values for a config instead of the global values, make an `authentication.yaml` file in the config folder.
 
-***
-
-* \<forum>\_xf\_user\_cookie
+## `xf_user_cookie`
 
 This is the value for the `XF_User` cookie mentioned above. If you want to only use credentials, you can leave this blank.
 
-* \<forum>\_username
+## `username`
 
 This is your username for the forum. Again, if you use cookies, you don't need to provide this.
 
-* \<forum>\_password
+## `password`
 
 This is your password for the forum. Again, if you use cookies, you don't need to provide this.
 
@@ -49,9 +53,7 @@ This is your password for the forum. Again, if you use cookies, you don't need t
 
 If you decide to pay for GoFile Premium (faster downloads, etc) you can provide your API key to Cyberdrop-DL in order for the program to use it.
 
-***
-
-* gofile\_api\_key
+## `api_key`
 
 You can get your API key here: [https://gofile.io/myProfile](https://gofile.io/myProfile)
 
@@ -67,19 +69,18 @@ In order to scrape images from Imgur, you'll need to create a client on Imgurs w
 
 Some examples of what to put in for what it asks for:
 
-Application Name: Cyberdrop-DL
+- Application Name: `Cyberdrop-DL`
 
-OAuth2 without a callback URL
+- OAuth2 without a callback URL
 
-Website: \<really doesn't matter>
+- Website: `<really doesn't matter>`
 
-Email: Your email
+- Email: `your_email@domain.com`
 
-Description: Cyberdrop-DL client
+- Description: `Cyberdrop-DL client`
 
-***
 
-* imgur\_client\_id
+## `client_id`
 
 After generating the client above, you will need to give Cyberdrop-DL the client ID.
 
@@ -93,17 +94,15 @@ Under JDownloader 2 settings -> MyJDownloader
 
 You will set an email, password, and device name (then connect).
 
-***
-
-* jdownloader\_username
+## `username`
 
 Provide Cyberdrop-DL the email from above
 
-* jdownloader\_password
+## `password`
 
 Provide Cyberdrop-DL the password from above
 
-* jdownloader\_device
+## `device`
 
 Provide Cyberdrop-DL the device name from above
 
@@ -113,13 +112,11 @@ Provide Cyberdrop-DL the device name from above
 
 <summary>PixelDrain</summary>
 
-If you decide to pay for PixelDrain premium (faster downloads, etc) you can provide your API key to Cyberdrop-Dl in order for the program to use it.
+If you decide to pay for PixelDrain premium (faster downloads, etc.) you can provide your API key to Cyberdrop-DL in order for the program to use it.
 
-***
+## `api_key`
 
-* pixeldrain\_api\_key
-
-You can get your API key here: [https://pixeldrain.com/user/api\_keys](https://pixeldrain.com/user/api_keys)
+You can get your API key here: [https://pixeldrain.com/user/api_keys](https://pixeldrain.com/user/api_keys)
 
 </details>
 
@@ -131,10 +128,8 @@ In order to scrape files from Reddit, you'll need to create an app on reddits we
 
 [https://www.reddit.com/prefs/apps](https://www.reddit.com/prefs/apps)
 
-***
-
-* reddit\_personal\_use\_script
-* reddit\_secret
+## `personal_use_script`
+## `secret`
 
 after generating the app, you will need to give Cyberdrop-DL these values.
 
@@ -144,11 +139,9 @@ after generating the app, you will need to give Cyberdrop-DL these values.
 
 <summary>RealDebrid</summary>
 
-In order to download files from sites supported by real-debrid, you'll need to get the api token from your account.
+In order to download files from sites supported by real-debrid, you'll need to get the API token from your account.
 
-***
-
-* realdebrid\_api\_key
+## `api_key`
 
 You can get your API key here (you must be logged in): [https://real-debrid.com/apitoken](https://real-debrid.com/apitoken)
 
