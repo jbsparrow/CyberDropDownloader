@@ -24,7 +24,7 @@ toggles automatic import of cookies at the start of each run
 ### Supported browsers
 
 <div align=center>
-![alt text](image.png)
+<img src="../../.gitbook/assets/supported_browsers.png" alt="" data-size="original">
 </div>
 
 {% hint style="info" %}
@@ -424,7 +424,7 @@ https://example.com/file7.jpg
 
 Those downloads would be sorted as follows:
 <div align="center">
-<img src="../../.gitbook/assets/Screen Shot 2024-09-23 at 11.09.50.png" alt="" data-size="original">
+<img src="../../.gitbook/assets/group_urls_results.png" alt="group results" data-size="original">
 </div>
 
 ***
