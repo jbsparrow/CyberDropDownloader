@@ -68,38 +68,38 @@ class DeprecatedArgs(BaseModel):
     download_all_configs: bool = Field(
         False,
         description="Skip the UI and go straight to downloading (runs all configs sequentially)",
-        deprecated="'--download-all-configs' is deprecated and may be removed in the future. Use '--download --config all'",
+        deprecated="'--download-all-configs' is deprecated and will be removed in the future. Use '--download --config all'",
     )
     sort_all_configs: bool = Field(
         False,
         description="Sort all configs sequentially",
-        deprecated="'--sort-all-configs' is deprecated and may be removed in the future. Use '--sort-downloads --config all'",
+        deprecated="'--sort-all-configs' is deprecated and will be removed in the future. Use '--sort-downloads --config all'",
     )
     sort_all_downloads: bool = Field(
         False,
         description="sort all downloads, not just those downloaded by Cyberdrop-DL",
-        deprecated="'--sort-all-downloads' is deprecated and may be removed in the future. Use '--no-sort-cdl-only'",
+        deprecated="'--sort-all-downloads' is deprecated and will be removed in the future. Use '--no-sort-cdl-only'",
     )
 
     main_log_filename: Path | None = Field(
         None,
-        deprecated="'--main-log-filename' is deprecated and may be removed in the future. Use '--main-log'",
+        deprecated="'--main-log-filename' is deprecated and will be removed in the future. Use '--main-log'",
     )
     last_forum_post_filename: Path | None = Field(
         None,
-        deprecated="'--last-forum-post-filename' is deprecated and may be removed in the future. Use '--last-forum-post'",
+        deprecated="'--last-forum-post-filename' is deprecated and will be removed in the future. Use '--last-forum-post'",
     )
     unsupported_urls_filename: Path | None = Field(
         None,
-        deprecated="'--unsupported-urls-filename' is deprecated and may be removed in the future. Use '--unsupported-urls'",
+        deprecated="'--unsupported-urls-filename' is deprecated and will be removed in the future. Use '--unsupported-urls'",
     )
     download_error_urls_filename: Path | None = Field(
         None,
-        deprecated="'--download-error-urls-filename' is deprecated and may be removed in the future. Use '--download-error-urls'",
+        deprecated="'--download-error-urls-filename' is deprecated and will be removed in the future. Use '--download-error-urls'",
     )
     scrape_error_urls_filename: Path | None = Field(
         None,
-        deprecated="'--scrape-error-urls-filename' is deprecated and may be removed in the future. Use '--scrape-error-urls'",
+        deprecated="'--scrape-error-urls-filename' is deprecated and will be removed in the future. Use '--scrape-error-urls'",
     )
 
 
