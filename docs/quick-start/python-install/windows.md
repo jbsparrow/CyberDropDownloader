@@ -9,7 +9,7 @@ I'm thinking the majority of you new people will find yourself on this page, and
 
 First things first, lets see if you have python installed. You can do so by opening up command prompt and running the following command:
 
-```powershell
+```shell
 python --version
 ```
 

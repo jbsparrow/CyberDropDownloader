@@ -97,25 +97,25 @@ Using `0` on any position means no limit on the number of children for that type
 
 
 Limit FORUM scrape to 15 posts max, grab all links and media within those posts, but only scrape a maximun of 10 items from each link in a post:
-```powershell
+```shell
 --maximum-number-of-children 15 0 10
 
 ```
 
 Only grab the first link from each post in a forum, but that link will have no children_limit:
 
-```powershell
+```shell
 --maximum-number-of-children 0 1
 ```
 
 
 Only grab the first POST/ALBUM from a FILE_HOST_PROFILE
-```powershell
+```shell
 --maximum-number-of-children 0 0 1
 ```
 
 
 No FORUM limit, no FORUM_POST limit, no FILE_HOST_PROFILE limit, maximum of 20 items from any FILE_HOST_ALBUM:
-```powershell
+```shell
     --maximum-number-of-children 0 0 0 20
 ```

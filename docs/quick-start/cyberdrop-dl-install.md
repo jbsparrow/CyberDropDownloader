@@ -35,7 +35,7 @@ But you should also just be able to open the file and it'll handle the rest.
 
 You can open the start script from the zip. At the top of the file, you will find 3 variables:
 
-```powershell
+```shell
 set "PYTHON="
 set "VENV_DIR="
 set "COMMANDLINE_ARGS="
@@ -53,7 +53,7 @@ set "COMMANDLINE_ARGS="
 
 In a command prompt/terminal window:
 
-```powershell
+```shell
 pip install --upgrade cyberdrop-dl-patched
 ```
 

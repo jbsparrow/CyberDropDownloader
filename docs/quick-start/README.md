@@ -52,6 +52,10 @@ The second link is for advanced users, and it contains the CLI argument options 
 [cli-arguments.md](../reference/cli-arguments.md)
 {% endcontent-ref %}
 
+{% content-ref url="../reference/notifications.md" %}
+[notifications.md](../reference/notifications.md)
+{% endcontent-ref %}
+
 You may also want to peek at what websites the program actually supports:
 
 {% content-ref url="../reference/supported-websites.md" %}
