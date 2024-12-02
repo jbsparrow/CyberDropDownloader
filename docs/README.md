@@ -16,9 +16,11 @@ layout:
 
 # Welcome!
 
-### What is Cyberdrop-DL? <a href="#what-is-cyberdrop-dl" id="what-is-cyberdrop-dl"></a>
+Cyberdrop-DL is an open source project maintained by [jbsparrow](https://github.com/jbsparrow). It's goal is to act as a bulk downloader for various sites you will find around the web.
 
-Cyberdrop-DL is an open source project maintained by Jbsparrow. It's goal is to act as a bulk downloader for various sites you will find around the web.
+{% content-ref url="reference/supported-websites.md" %}
+[supported-websites.md](reference/supported-websites.md)
+{% endcontent-ref %}
 
 ### Want to jump right in? <a href="#want-to-jump-right-in" id="want-to-jump-right-in"></a>
 
@@ -38,4 +40,8 @@ Dive a little deeper and start exploring the various config and CLI arguments:
 
 {% content-ref url="reference/cli-arguments.md" %}
 [cli-arguments.md](reference/cli-arguments.md)
+{% endcontent-ref %}
+
+{% content-ref url="reference/notifications.md" %}
+[notifications.md](reference/notifications.md)
 {% endcontent-ref %}
