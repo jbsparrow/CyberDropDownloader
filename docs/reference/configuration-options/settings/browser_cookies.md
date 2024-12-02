@@ -8,9 +8,19 @@ toggles automatic import of cookies at the start of each run
 
 ##  browsers
 
-<div align=center>
-<img src="../../../assets/supported_browsers.png" style="max-width: 400px; height: auto;" alt="" data-size="original">
-</div>
+| Browser   | Windows            | Linux              | MacOS              |
+|-----------|--------------------|--------------------|--------------------|
+| Brave     | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Chrome    | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Chromium  | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Edge      | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Firefox   | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| LibreWolf | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Opera     | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Opera_GX  | :white_check_mark: | :x:                | :white_check_mark: |
+| Safari    | :x:                | :x:                | :white_check_mark: |
+| Vivaldi   | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+
 
 {% hint style="info" %}
 **NOTE:** If cookies exists on multiple selected browsers, the cookies from the last browser in the list will have priority
@@ -30,4 +40,4 @@ List of domains to extract cookies from. Only sites supported by Cyberdrop-DL wi
 
 
 
-If cookie extraction fails, you can manually extract the cookies from your browser and save them at `AppData/Cookies/<domain>.txt`, where domain is the domain of the site you exported the cookies from. The file must be a Netscape formated cookie file
+If cookie extraction fails, you can manually extract the cookies from your browser and save them at `AppData/Cookies/<domain>.txt`, where domain is the domain of the site you exported the cookies from. The file must be a Netscape formatted cookie file

@@ -30,12 +30,12 @@ Here is an example URL file with two groups:
 
 ```
 https://example.com/file1.jpg
-=== Test
+=== Group 1
 https://example.com/file2.jpg
 https://example.com/file3.jpg
 ===
 https://example.com/file4.jpg
---- Test 2
+--- Group 2
 https://example.com/file5.jpg
 https://example.com/file6.jpg
 ===
@@ -43,9 +43,13 @@ https://example.com/file7.jpg
 ```
 
 Those downloads would be sorted as follows:
-<div align="center">
-<img src="../../assets/group_urls_results.png" style="max-width: 400px; height: auto;" alt="group results" data-size="original">
-</div>
+
+| Loose Files | Group 1   | Group 2   |
+|-------------|-----------|-----------|
+| file1.jpg   | file2.jpg | file5.jpg |
+| file4.jpg   | file3.jpg | file6.jpg |
+| file7.jpg   |           |           |
+
 
 
 
