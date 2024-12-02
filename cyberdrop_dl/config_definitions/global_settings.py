@@ -1,7 +1,15 @@
-from pydantic import BaseModel, ByteSize, Field, NonNegativeFloat, PositiveInt, field_serializer
+from pydantic import BaseModel, ByteSize, Field, NonNegativeFloat, PositiveInt, field_serializer, field_validator
 from yarl import URL
 
 from .custom_types import AliasModel, HttpURL, NonEmptyStr
+
+
+def convert_to_str(value: URL | str) -> str | None:
+    if not value:
+        return None
+    if isinstance(value, URL):
+        return str(value)
+    return value
 
 
 class General(BaseModel):
@@ -20,12 +28,13 @@ class General(BaseModel):
         return value.human_readable(decimal=True)
 
     @field_serializer("flaresolverr", "proxy")
-    def convert_to_str(self, value: URL | str) -> str | None:
-        if not value:
-            return None
-        if isinstance(value, URL):
-            return str(value)
-        return value
+    def serialize(self, value: URL | str) -> str | None:
+        return convert_to_str(value)
+
+    @field_validator("flaresolverr", "proxy", mode="before")
+    @classmethod
+    def convert_to_str(cls, value: URL | str) -> str | None:
+        return convert_to_str(value)
 
 
 class RateLimitingOptions(BaseModel):
