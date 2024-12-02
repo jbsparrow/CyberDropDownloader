@@ -127,6 +127,7 @@ class RuntimeOptions(BaseModel):
         return value
 
 
+# TODO: allow None values in sorting format to skip that type of file
 class Sorting(BaseModel):
     sort_downloads: bool = False
     sort_folder: Path = DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"
