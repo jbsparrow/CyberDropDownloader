@@ -8,6 +8,11 @@ To enable auto dupe cleanup:
 2. Set `auto_dedupe` to `true`
 
 ## `hashing`
+
+| Type           | Default  | Restrictions |
+|----------------|----------| ----------- |
+| `HASHING` | `OFF` | Must be `OFF`, `IN_PLACE` or `POST_DOWNLOAD`|
+
 There are three possible options for hashing
 
 1. `OFF`: disables hashing
@@ -18,6 +23,10 @@ The default hashing algorithm is `xxh128`. You can enable additional hashing alg
 
 ## `auto_dedupe`
 
+| Type           | Default  |
+|----------------|----------|
+| `bool` | `false` |
+
 Enables deduping files functionality. Needs `hashing` to be enabled
 
 This finds all files in the database with the same hash and size, and keeps the oldest copy of the file
@@ -26,9 +35,17 @@ Deletion only occurs if two or more matching files are found from the database s
 
 ## `add_sha256_hash`
 
+| Type           | Default  |
+|----------------|----------|
+| `bool` | `false` |
+
 allows files to be hashed with the `sha256` algorithm, this enables matching with sites that provide this information
 
 ## `add_md5_hash`
+
+| Type           | Default  |
+|----------------|----------|
+| `bool` | `false` |
 
 allows files to be hash with the `md5` algorithm, this enables matching with sites that provide this information.
 
@@ -37,5 +54,9 @@ allows files to be hash with the `md5` algorithm, this enables matching with sit
 {% endhint %}
 
 ## `send_deleted_to_trash`
+
+| Type           | Default  |
+|----------------|----------|
+| `bool` | `false` |
 
 Files are sent to trash instead of permanently deleted

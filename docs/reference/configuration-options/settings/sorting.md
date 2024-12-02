@@ -51,29 +51,53 @@ Those downloads would be sorted as follows:
 
 ## scan_folder
 
+| Type           | Default  |
+|----------------|----------|
+| `Path` or `null` | `null`|
+
 Sets the starting point for the file scan
 
-Each direct child of the `scan_folder` is recursively scanned ,and files are moved based on your settings
+Each direct child of the `scan_folder` is recursively scanned, and files are moved based on your settings
 
-If this is set to `null` (the default), `downloads_dir` is used instead
+If this is set to `null` (the default), `download_dir` is used instead
 
 ## sort_downloads
+
+| Type           | Default  |
+|----------------|----------|
+| `bool` | `false`|
 
 Setting this to `true` will allow Cyberdrop-DL to sort downloads after a run is complete.
 
 ## `sort_cdl_only`
 
+| Type           | Default  |
+|----------------|----------|
+| `bool` | `false`|
+
 Setting this to `true` will sort only files that were downloaded by Cyberdrop-DL. Does nothing if `sort_downloads` is set to `false`
 
 ## `sort_folder`
+
+| Type           | Default  |
+|----------------|----------|
+| `Path` | `Downloads/Cyberdrop-DL Sorted Downloads`|
 
 This is the path to the folder you'd like sorted downloads to be stored in.
 
 ## `sort_incrementer_format`
 
+| Type           | Default  |
+|----------------|----------|
+| `NonEmptyStr` | ` ({i})`|
+
 When naming collisions happen, Cyberdrop-DL will rename files (`image.jpg` -> `image (1).jpg` by default). You can change the way this is formatted. The format simply needs to include `{i}` in it to specify where to put the auto-increment value.
 
 ## `sorted_audio`
+
+| Type           | Default  |
+|----------------|----------|
+| `NonEmptyStr` | `{sort_dir}/{base_dir}/Audio/{filename}{ext}`|
 
 This is the format for the directory structure and naming scheme for audio files.
 
@@ -88,6 +112,10 @@ Unique Path Flags:
 
 ## `sorted_image`
 
+| Type           | Default  |
+|----------------|----------|
+| `NonEmptyStr` | `{sort_dir}/{base_dir}/Images/{filename}{ext}`|
+
 This is the format for the directory structure and naming scheme for image files.
 
 Unique Path Flags:
@@ -96,6 +124,10 @@ Unique Path Flags:
 
 
 ## `sorted_video`
+
+| Type           | Default  |
+|----------------|----------|
+| `NonEmptyStr` | `{sort_dir}/{base_dir}/Video/{filename}{ext}`|
 
 This is the format for the directory structure and naming scheme for video files.
 
@@ -108,5 +140,9 @@ Unique Path Flags:
 > `codec` - ex. h264
 
 ## `sorted_other`
+
+| Type           | Default  |
+|----------------|----------|
+| `NonEmptyStr` | `{sort_dir}/{base_dir}/Other/{filename}{ext}`|
 
 This is the format for the directory structure and naming scheme for other files.

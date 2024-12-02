@@ -2,6 +2,10 @@
 
 ## `block_download_sub_folders`
 
+| Type           | Default  |
+|----------------|----------|
+| `bool` | `false` |
+
 When this is set to `true`, downloads that would be in a folder structure like:
 
 > `Downloads/folderA/folderB/folderC/image.jpg`
@@ -12,11 +16,19 @@ will be changed to:
 
 ## `disable_download_attempts`
 
+| Type           | Default  |
+|----------------|----------|
+| `bool` | `false` |
+
 By default the program will retry a download 10 times. You can customize this, or set this to `true` (or selected) to disable it and retry links until they complete.
 
 However, to make sure the program will not run endlessly, there are certain situations where a file will never be retried, like if the program receives a 404 HTTP status, meaning the link is dead.
 
 ## `disable_file_timestamps`
+
+| Type           | Default  |
+|----------------|----------|
+| `bool` | `false` |
 
 By default the program will do it's absolute best to try and find when a file was uploaded. It'll then set the last modified/last accessed/created times on the file to match.
 
@@ -24,17 +36,33 @@ Setting this to `true` (or selecting it) will disable this function, and those t
 
 ## `include_album_id_in_folder_name`
 
+| Type           | Default  |
+|----------------|----------|
+| `bool` | `false` |
+
 Setting this to `true` (or selecting it) will include the album ID (random alphanumeric string) of the album in the download folder name.
 
 ## `include_thread_id_in_folder_name`
+
+| Type           | Default  |
+|----------------|----------|
+| `bool` | `false` |
 
 Setting this to `true` (or selecting it) will include the thread ID (random alphanumeric string) of the album in the download folder name.
 
 ## `remove_domains_from_folder_names`
 
+| Type           | Default  |
+|----------------|----------|
+| `bool` | `false` |
+
 Setting this to `true` will remove the "(DOMAIN)" portion of folder names on new downloads.
 
 ## `remove_generated_id_from_filenames`
+
+| Type           | Default  |
+|----------------|----------|
+| `bool` | `false` |
 
 Setting this to `true` (or selecting it) will remove the alphanumeric ID added to the end of filenames on some websites (ex. `cyberdrop.me`).
 
@@ -44,21 +72,41 @@ Supported formats: `.rar` `.7z` `.tar` `.gz` `.bz2` `.zip`
 
 ## `scrape_single_forum_post`
 
+| Type           | Default  |
+|----------------|----------|
+| `bool` | `false` |
+
 Setting this to `true` will result in only a single forum post being scraped on the given link.
 
 ## `separate_posts`
+
+| Type           | Default  |
+|----------------|----------|
+| `bool` | `false` |
 
 Setting this to `true` (or selecting it) will separate content from forum posts into separate folders.
 
 ## `skip_download_mark_complete`
 
+| Type           | Default  |
+|----------------|----------|
+| `bool` | `false` |
+
 Setting this to `true` (or selecting it) will skip downloading files and mark them as downloaded in the database.
 
 ## `skip_referer_seen_before`
 
+| Type           | Default  |
+|----------------|----------|
+| `bool` | `false` |
+
 Setting this to `true` (or selecting it) will skip downloading files from any referer that have been scraped before. The file (s) will always be skipped regardless of whether the referer was successfully scraped or not
 
 ## `maximum_number_of_children`
+
+| Type           | Default  |
+|----------------|----------|
+| `list[NonNegativeInt]` | `[]` |
 
 Limit the number of items to scrape using a tuple of up to 4 positions. Each position defines the maximum number of sub-items (`children_limit`) an specific type of `scrape_item` will have:
 

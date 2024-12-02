@@ -8,7 +8,7 @@ Setting any of these options to `0` means `disabled`
 
 |Type|Default|
 |---|---|
-|`Bytes`|`0`|
+|`ByteSize`|`0`|
 
 - `maximum_image_filesize`
 - `minimum_image_filesize`
