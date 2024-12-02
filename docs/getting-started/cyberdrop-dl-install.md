@@ -1,39 +1,37 @@
 ---
-description: This is the easiest method for getting Cyberdrop-DL going!
+description:
 icon: download
 ---
 
 # Cyberdrop-DL Install
 
-I've created some start files that will automatically install, update and run Cyberdrop-DL
+### Using Start Scripts (From Release Page)
 
-### Using start-script (from release page)
+This is the simplest method to get the program up and running. Pre-configured start files are provided that will automatically install, update, and launch the program for you.
 
 You can download them here: [https://github.com/jbsparrow/CyberDropDownloader/releases/latest](https://github.com/jbsparrow/CyberDropDownloader/releases/latest)
 
-You'll want to download the `Cyberdrop-DL_<version>.zip` file, you don't need to worry about the rest of them.
+You only need to download the `Cyberdrop-DL_<version>.zip` file, you don't need to worry about the other files.
 
-Extract the contents of that folder to wherever you would like Cyberdrop-DL to run and download files to.
+Extract the contents of the zip file to any location where you'd like the program to run and store downloaded files. The extracted files will include a start file for Windows, macOS, and Linux
 
-The contents will include a start file for Windows, macOS, and Linux.
+If you're using Windows or Linux, simply open the start file, and it will handle the rest for you
 
-If you are on Windows you can just open the start file, and it'll do the rest. Don't run it as admin.
+{% hint style="info" %}
+If your are using Windows, **DO NOT** run the script as admin
+{% endhint %}
 
-If you're on Linux you should also just be able to open the start file.
-
-In some very rare cases, Mac users may need to run this additional command first:
+On macOS, you should be able to open the start file and have everything set up automatically. However, in some rare cases, macOS users may need to run the following command first::
 
 ```shell
 xcode-select --install
 ```
 
-But you should also just be able to open the file and it'll handle the rest.
-
 <details>
 
-<summary>Running Cyberdrop-DL Script with Custom Parameters</summary>
+<summary>Optional: Running Cyberdrop-DL Script with Custom Parameters</summary>
 
-You can open the start script from the zip. At the top of the file, you will find 3 variables:
+You can open the start script from the zip in a text editor like notepad. At the top of the file, you will find 3 variables:
 
 ```shell
 set "PYTHON="
@@ -41,15 +39,28 @@ set "VENV_DIR="
 set "COMMANDLINE_ARGS="
 ```
 
-* **PYTHON**: You c[^1]an set a custom path for the python executable. This is useful if you have multiple python version installed an want to use an specific one
+`PYTHON`: Specify a custom path to the Python executable. This is useful if you have multiple Python versions installed and want to select a specific one
 
-- **VENV_DIR**: Path of the folder were the python virtual environment will be created
+`VENV_DIR`: Define the path where the Python virtual environment will be created
 
-* **COMMANDLINE_ARGS**: Arguments to pass to cyberdrop-dl. You can learn more about them in[cli-arguments.md](../reference/cli-arguments.md "mention")
+`COMMANDLINE_ARGS`:  Provide any arguments to pass to Cyberdrop-Dl. For more information, refer to the [CLI Arguments section](../reference/cli-arguments.md)
+
+{% hint style="info" %}
+You **MUST** put the values _inside_ the double quotes. Ex: `set "PYTHON=C:\Program Files\Python311\python.exe"`
+{% endhint %}
 
 </details>
 
 ## Manual Install
+
+{% hint style="warning" %}
+If you are using a version of Cyberdrop-DL from the previous repository, you **MUST** uninstall it before installing the patched version.
+
+```shell
+pip uninstall cyberdrop-dl
+```
+
+{% endhint %}
 
 In a command prompt/terminal window:
 
@@ -62,5 +73,3 @@ If you're on Mac/Linux, you may need to change it to be
 ```shell
 pip3 install --upgrade cyberdrop-dl-patched
 ```
-
-[^1]:
