@@ -5,7 +5,6 @@
 The path to the location you want Cyberdrop-DL to store logs in.
 
 
-
 ## main_log
 
 What you want Cyberdrop-DL to call the main log file.

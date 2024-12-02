@@ -83,7 +83,7 @@ This is the path to the folder you'd like sorted downloads to be stored in.
 
 ## sort_incrementer_format
 
-When naming collisions happen, Cyberdrop-DL will rename files (`image.jpg` -> `image (1).jpg` by default). You can change the way this is formatted. The format simply needs to include `{i}` in it to spscify where to put the auto-increment value.
+When naming collisions happen, Cyberdrop-DL will rename files (`image.jpg` -> `image (1).jpg` by default). You can change the way this is formatted. The format simply needs to include `{i}` in it to specify where to put the auto-increment value.
 
 
 

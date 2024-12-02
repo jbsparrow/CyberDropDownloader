@@ -8,6 +8,15 @@ toggles automatic import of cookies at the start of each run
 
 ##  browsers
 
+| Type           | Default  |
+|----------------|----------|
+| list[BROWSERS] | [chrome] |
+
+
+List a browser to use for extraction. List must be the browser name, with one of more of the values from the table below, separated by commas
+
+### Supported browsers
+
 | Browser   | Windows            | Linux              | MacOS              |
 |-----------|--------------------|--------------------|--------------------|
 | Brave     | :white_check_mark: | :white_check_mark: | :white_check_mark: |
@@ -32,12 +41,16 @@ toggles automatic import of cookies at the start of each run
 
 ##  sites
 
+| Type           | Default  |
+|----------------|----------|
+| list[DOMAINS] | [<ALL_SITES>] |
+
 List of domains to extract cookies from. Only sites supported by Cyberdrop-DL will be taken into account
 
 {% hint style="info" %}
 **NOTE:**  If the value entered is `null` or an empty list, cookies will be extract from all supported sites
 {% endhint %}
 
-
+## Manual Cookie Extraction
 
 If cookie extraction fails, you can manually extract the cookies from your browser and save them at `AppData/Cookies/<domain>.txt`, where domain is the domain of the site you exported the cookies from. The file must be a Netscape formatted cookie file
