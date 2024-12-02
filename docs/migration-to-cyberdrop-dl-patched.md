@@ -1,6 +1,17 @@
 ---
 description: How to migrate to the patched version of Cyberdrop-DL.
 icon: arrow-trend-up
+layout:
+  title:
+    visible: true
+  description:
+    visible: true
+  tableOfContents:
+    visible: true
+  outline:
+    visible: false
+  pagination:
+    visible: true
 ---
 
 # Migration to Cyberdrop-DL-Patched

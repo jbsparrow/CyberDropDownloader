@@ -1,6 +1,17 @@
 ---
 description: This is the walk through for transitioning from V4 to V5
 icon: arrow-up-to-bracket
+layout:
+  title:
+    visible: true
+  description:
+    visible: true
+  tableOfContents:
+    visible: true
+  outline:
+    visible: false
+  pagination:
+    visible: true
 ---
 
 # Transition from V4 to V5

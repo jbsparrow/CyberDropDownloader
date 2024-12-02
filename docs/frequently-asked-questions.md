@@ -1,6 +1,17 @@
 ---
 description: Common questions or problems.
 icon: comments-question-check
+layout:
+  title:
+    visible: true
+  description:
+    visible: true
+  tableOfContents:
+    visible: true
+  outline:
+    visible: false
+  pagination:
+    visible: true
 ---
 
 # Frequently Asked Questions

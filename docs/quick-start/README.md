@@ -1,6 +1,17 @@
 ---
 description: Gef off to the races.
 icon: bullseye-arrow
+layout:
+  title:
+    visible: true
+  description:
+    visible: true
+  tableOfContents:
+    visible: true
+  outline:
+    visible: false
+  pagination:
+    visible: true
 ---
 
 # Quick Start
