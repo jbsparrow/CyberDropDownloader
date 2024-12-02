@@ -45,20 +45,13 @@ class Files(AliasModel):
 class Logs(AliasModel):
     log_folder: Path = APP_STORAGE / "Configs" / "{config}" / "Logs"
     webhook: HttpAppriseURLModel | None = Field(validation_alias="webhook_url", default=None)
-    main_log_filename: Path = Path("downloader.log")
-    last_forum_post_filename: Path = Path("Last_Scraped_Forum_Posts.csv")
-    unsupported_urls_filename: Path = Path("Unsupported_URLs.csv")
-    download_error_urls_filename: Path = Path("Download_Error_URLs.csv")
-    scrape_error_urls_filename: Path = Path("Scrape_Error_URLs.csv")
+    main_log: Path = Field(Path("downloader.log"), validation_alias="main_log_filename")
+    last_forum_post: Path = Field(Path("Last_Scraped_Forum_Posts.csv"), validation_alias="last_forum_post_filename")
+    unsupported_urls: Path = Field(Path("Unsupported_URLs.csv"), validation_alias="unsupported_urls_filename")
+    download_error_urls: Path = Field(Path("Download_Error_URLs.csv"), validation_alias="download_error_urls_filename")
+    scrape_error_urls: Path = Field(Path("Scrape_Error_URLs.csv"), validation_alias="scrape_error_urls_filename")
     rotate_logs: bool = False
     log_line_width: PositiveInt = Field(default=240, ge=50)
-
-    @field_validator("webhook", mode="before")
-    @classmethod
-    def handle_falsy(cls, value: str) -> str | None:
-        if not value:
-            return None
-        return value
 
     @field_validator("webhook", mode="before")
     @classmethod

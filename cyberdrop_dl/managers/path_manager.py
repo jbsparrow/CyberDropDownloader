@@ -81,7 +81,7 @@ class PathManager:
         for name, log_file in log_files.items():
             if "filename" not in name:
                 continue
-            is_main_log = log_file == log_settings_config.main_log_filename
+            is_main_log = log_file == log_settings_config.main_log
             file_ext = ".log" if is_main_log else ".csv"
             file_name = log_file
             path = Path(log_file)
@@ -90,11 +90,11 @@ class PathManager:
                 file_name = Path(file_name).parent / f"{path.stem}__{current_time_iso}{path.suffix}"
             log_files[name] = Path(file_name).with_suffix(file_ext)
         log_settings_config = log_settings_config.model_copy(update=log_files)
-        self.main_log = self.log_folder / log_settings_config.main_log_filename
-        self.last_forum_post_log = self.log_folder / log_settings_config.last_forum_post_filename
-        self.unsupported_urls_log = self.log_folder / log_settings_config.unsupported_urls_filename
-        self.download_error_log = self.log_folder / log_settings_config.download_error_urls_filename
-        self.scrape_error_log = self.log_folder / log_settings_config.scrape_error_urls_filename
+        self.main_log = self.log_folder / log_settings_config.main_log
+        self.last_forum_post_log = self.log_folder / log_settings_config.last_forum_post
+        self.unsupported_urls_log = self.log_folder / log_settings_config.unsupported_urls
+        self.download_error_log = self.log_folder / log_settings_config.download_error_urls
+        self.scrape_error_log = self.log_folder / log_settings_config.scrape_error_urls
 
     def _create_output_folders(self):
         for path in [
