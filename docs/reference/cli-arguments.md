@@ -13,84 +13,153 @@ For items not explained below, you can find their counterparts in the Configurat
 
 For items within Download Options, Ignore Options, Runtime Options, and Sorting Options, you can prefix the argument with `--no-` to negate the option. For example, `--no-exclude-videos` will include videos in the download.
 
-```
---config <name>                    : Name of the config file to load.
---proxy                            : Proxy connection string
---flaresolverr                     : IP:PORT for flaresolverr
---no-ui                            : Disables the UI and progress monitor
---download                         : Skips the UI and goes straight to downloading
---download-all-configs             : Runs all configs sequentially
---retry-failed                     : Retries failed links that are in the download history
---retry-all                        : Retries all downloads that are in the download history
---retry-maintenance                : Retries maintenance links that are in the download history, and were marked as completed
+```shell
+usage: cyberdrop-dl [OPTIONS] URL [URL...]
 
-// Files
---input-file                       : Manually specify the URLs.txt file to load (path)
---output-folder                    : Manually specify the download directory (path)
---config-file                      : Manually specify the config file to load (path)
---appdata-folder                   : Manually specify where you want to program to store it's AppData folder
---log-folder                       : Manually specify where you want the program to save log files
---main-log-filename
---last-forum-post-filename
---unsupported-urls-filename
---download-error-urls-filename
---scrape-error-urls-filename
+Bulk asynchronous downloader for multiple file hosts
 
-// Download Options
---block-download-sub-folders
---disable-download-attempt-limit
---disable-file-timestamps
---include-album-id-in-folder-name
---include-thread-id-in-folder-name
---remove-domains-from-folder-names
---remove-generated-id-from-filenames
---scrape-single-forum-post
---separate-posts
---skip-download-mark-completed
---skip-referer-seen-before
---maximum-number-of-children
+options:
+  -h, --help            show this help message and exit
+  -V, --version         show program's version number and exit
 
-// File Size Limits
---maximum-image-size <number>
---minimum-image-size <number>
---maximum-video-size <number>
---minimum-video-size <number>
---maximum-other-size <number>
---minimum-other-size <number>
+CLI-only Options:
+  LINK(S)               link(s) to content to download (passing multiple links
+                        is supported) (default: [])
+  --appdata-folder APPDATA_FOLDER
+                        AppData folder path (default: None)
+  --completed-after COMPLETED_AFTER
+                        only download completed downloads at or after this
+                        date (default: None)
+  --completed-before COMPLETED_BEFORE
+                        only download completed downloads at or before this
+                        date (default: None)
+  --config CONFIG       name of config to load (default: None)
+  --config-file CONFIG_FILE
+                        path to the CDL settings.yaml file to load (default:
+                        None)
+  --download            skips UI, start download inmediatly (default: False)
+  --max-items-retry MAX_ITEMS_RETRY
+                        max number of links to retry (default: 0)
+  --no-ui               disables the UI/progress view entirely (default:
+                        False)
+  --retry-all           retry all downloads (default: False)
+  --retry-failed        retry failed downloads (default: False)
+  --retry-maintenance   retry download of maintenance files (bunkr). Requires
+                        files to be hashed (default: False)
 
-// Filtering Options
---completed-after                      : Filters downloads return by ;'--retry' options to those add/completed after the given date
+browser_cookies:
+  --browsers [BROWSERS ...]
+  --auto-import, --no-auto-import
+  --sites [SITES ...]
 
---completed-before                     : Filters downloads return by '--retry' options to those add/completed before the given date
+download_options:
+  --block-download-sub-folders, --no-block-download-sub-folders
+  --disable-download-attempt-limit, --no-disable-download-attempt-limit
+  --disable-file-timestamps, --no-disable-file-timestamps
+  --include-album-id-in-folder-name, --no-include-album-id-in-folder-name
+  --include-thread-id-in-folder-name, --no-include-thread-id-in-folder-name
+  --remove-domains-from-folder-names, --no-remove-domains-from-folder-names
+  --remove-generated-id-from-filenames, --no-remove-generated-id-from-filenames
+  --scrape-single-forum-post, --no-scrape-single-forum-post
+  --separate-posts, --no-separate-posts
+  --skip-download-mark-completed, --no-skip-download-mark-completed
+  --skip-referer-seen-before, --no-skip-referer-seen-before
+  --maximum-number-of-children [MAXIMUM_NUMBER_OF_CHILDREN ...]
 
---max-items-retry                      : Limits the number of items returned by '--retry' options to the number given
-// Ignore Options
---exclude-videos
---exclude-images
---excluse-audio
---exclude-other
---ignore-coomer-ads
---skip-hosts <domains>
---only-hosts <domains>
+dupe_cleanup_options:
+  --hashing HASHING
+  --auto-dedupe, --no-auto-dedupe
+  --add-md5-hash, --no-add-md5-hash
+  --add-sha256-hash, --no-add-sha256-hash
+  --send-deleted-to-trash, --no-send-deleted-to-trash
 
-// Runtime Options
---ignore-history
---log-level
---skip-check-for-partial-files
---skip-check-for-empty-folders
---delete-partial-files
---send-unsupported-to-jdownloader
+file_size_limits:
+  --maximum-image-size MAXIMUM_IMAGE_SIZE
+  --maximum-other-size MAXIMUM_OTHER_SIZE
+  --maximum-video-size MAXIMUM_VIDEO_SIZE
+  --minimum-image-size MINIMUM_IMAGE_SIZE
+  --minimum-other-size MINIMUM_OTHER_SIZE
+  --minimum-video-size MINIMUM_VIDEO_SIZE
 
-// Sorting Options
---sort-downloads                          : enable sorting of downloads
---sort-all-downloads                      : sort all downloads within the scan_dir
---sort-folder                             : set directory to move scanned files to
---scan-folder                             : set a directory to scan recursively for files
+files:
+  -i INPUT_FILE, --input-file INPUT_FILE
+  -d DOWNLOAD_FOLDER, --download-folder DOWNLOAD_FOLDER
 
+ignore_options:
+  --exclude-videos, --no-exclude-videos
+  --exclude-images, --no-exclude-images
+  --exclude-audio, --no-exclude-audio
+  --exclude-other, --no-exclude-other
+  --ignore-coomer-ads, --no-ignore-coomer-ads
+  --skip-hosts [SKIP_HOSTS ...]
+  --only-hosts [ONLY_HOSTS ...]
 
-// UI Options
---vi-mode
---refresh-rate
---scraping-item-limit
---downloading-item-limit
+logs:
+  --log-folder LOG_FOLDER
+  --webhook WEBHOOK
+  --main-log-filename MAIN_LOG_FILENAME
+  --last-forum-post-filename LAST_FORUM_POST_FILENAME
+  --unsupported-urls-filename UNSUPPORTED_URLS_FILENAME
+  --download-error-urls-filename DOWNLOAD_ERROR_URLS_FILENAME
+  --scrape-error-urls-filename SCRAPE_ERROR_URLS_FILENAME
+  --rotate-logs, --no-rotate-logs
+
+runtime_options:
+  --ignore-history, --no-ignore-history
+  --log-level LOG_LEVEL
+  --console-log-level CONSOLE_LOG_LEVEL
+  --skip-check-for-partial-files, --no-skip-check-for-partial-files
+  --skip-check-for-empty-folders, --no-skip-check-for-empty-folders
+  --delete-partial-files, --no-delete-partial-files
+  --update-last-forum-post, --no-update-last-forum-post
+  --send-unsupported-to-jdownloader, --no-send-unsupported-to-jdownloader
+  --jdownloader-download-dir JDOWNLOADER_DOWNLOAD_DIR
+  --jdownloader-autostart, --no-jdownloader-autostart
+  --jdownloader-whitelist [JDOWNLOADER_WHITELIST ...]
+
+sorting:
+  --sort-downloads, --no-sort-downloads
+  --sort-folder SORT_FOLDER
+  --scan-folder SCAN_FOLDER
+  --sort-cdl-only, --no-sort-cdl-only
+  --sort-incremementer-format SORT_INCREMEMENTER_FORMAT
+  --sorted-audio SORTED_AUDIO
+  --sorted-image SORTED_IMAGE
+  --sorted-other SORTED_OTHER
+  --sorted-video SORTED_VIDEO
+
+general:
+  --allow-insecure-connections, --no-allow-insecure-connections
+  --user-agent USER_AGENT
+  --proxy PROXY
+  --flaresolverr FLARESOLVERR
+  --max-file-name-length MAX_FILE_NAME_LENGTH
+  --max-folder-name-length MAX_FOLDER_NAME_LENGTH
+  --required-free-space REQUIRED_FREE_SPACE
+
+rate_limiting_options:
+  --connection-timeout CONNECTION_TIMEOUT
+  --download-attempts DOWNLOAD_ATTEMPTS
+  --read-timeout READ_TIMEOUT
+  --rate-limit RATE_LIMIT
+  --download-delay DOWNLOAD_DELAY
+  --max-simultaneous-downloads MAX_SIMULTANEOUS_DOWNLOADS
+  --max-simultaneous-downloads-per-domain MAX_SIMULTANEOUS_DOWNLOADS_PER_DOMAIN
+  --download-speed-limit DOWNLOAD_SPEED_LIMIT
+
+ui_options:
+  --vi-mode, --no-vi-mode
+  --refresh-rate REFRESH_RATE
+  --scraping-item-limit SCRAPING_ITEM_LIMIT
+  --downloading-item-limit DOWNLOADING_ITEM_LIMIT
+
+Deprecated:
+  --download-all-configs
+                        Skip the UI and go straight to downloading (runs all
+                        configs sequentially)
+  --sort-all-configs    Sort all configs sequentially
+  --sort-all-downloads  sort all downloads, not just those downloaded by
+                        Cyberdrop-DL
+
+Visit the wiki for aditional details: https://script-ware.gitbook.io/cyberdrop-dl
 ```
