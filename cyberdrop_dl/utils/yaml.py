@@ -13,7 +13,7 @@ from cyberdrop_dl.utils.logger import print_to_console
 
 
 def _save_as_str(dumper: yaml.Dumper, value):
-    if isinstance(value, Enum | timedelta):
+    if isinstance(value, Enum):
         return dumper.represent_str(value.name)
     return dumper.represent_str(str(value))
 
