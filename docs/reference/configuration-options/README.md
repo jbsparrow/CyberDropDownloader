@@ -1,6 +1,6 @@
 ---
-description: Here's how configuration works.
 icon: sliders
+description: Here's how configuration works.
 ---
 
 # Configuration Options
@@ -27,10 +27,14 @@ Global settings and authentication settings are "global". **They apply to all se
 [global-settings.md](global-settings.md)
 {% endcontent-ref %}
 
-Each settings config will be setup by default to have separate URLs.txt files and separate logs.
-
-{% content-ref url="settings.md" %}
-[settings.md](settings.md)
+{% content-ref url="settings/" %}
+[settings](settings/)
 {% endcontent-ref %}
 
-You can run all of the configs by selecting such from the UI.
+{% hint style="info" %}
+**Global Settings** and **Authentication Settings** are "global". **They apply to all settings configs**. You can set them once and never touch them again.
+{% endhint %}
+
+Each settings config will be setup by default to have separate `URLs.txt` files and separate logs.
+
+You can run all of the configs sequentially by selecting `ALL` from the UI or using `--config ALL`.
