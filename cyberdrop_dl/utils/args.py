@@ -7,7 +7,7 @@ from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING, Self
 
-from pydantic import BaseModel, Field, ValidationError, computed_field, model_validator
+from pydantic import BaseModel, Field, ValidationError, computed_field, field_validator, model_validator
 
 from cyberdrop_dl import __version__
 from cyberdrop_dl.config_definitions import ConfigSettings, GlobalSettings
@@ -101,6 +101,22 @@ class DeprecatedArgs(BaseModel):
         None,
         deprecated="'--scrape-error-urls-filename' is deprecated and will be removed in the future. Use '--scrape-error-urls'",
     )
+
+    @field_validator("main_log_filename", mode="after")
+    @classmethod
+    def fix_main_log_extension(cls, value: Path) -> Path:
+        return value.with_suffix(".log")
+
+    @field_validator(
+        "last_forum_post_filename",
+        "unsupported_urls_filename",
+        "download_error_urls_filename",
+        "scrape_error_urls_filename",
+        mode="after",
+    )
+    @classmethod
+    def fix_other_logs_extensions(cls, value: Path) -> Path:
+        return value.with_suffix(".csv")
 
 
 class ParsedArgs(AliasModel):
