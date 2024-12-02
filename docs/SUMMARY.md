@@ -6,7 +6,7 @@
     * [Windows](quick-start/python-install/windows.md)
     * [Linux](quick-start/python-install/linux.md)
     * [macOS](quick-start/python-install/macos.md)
-  * [Cyberdrop-DL Install](quick-start/cyberdrop-dl-install-easy.md)
+  * [Cyberdrop-DL Install](quick-start/cyberdrop-dl-install.md)
 * [Transition from V4 to V5](transition-from-v4-to-v5.md)
 * [Frequently Asked Questions](frequently-asked-questions.md)
 * [Migration to Cyberdrop-DL-Patched](migration-to-cyberdrop-dl-patched.md)

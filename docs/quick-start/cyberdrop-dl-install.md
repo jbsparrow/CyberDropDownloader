@@ -63,4 +63,4 @@ If you're on Mac/Linux, you may need to change it to be
 pip3 install --upgrade cyberdrop-dl-patched
 ```
 
-[^1]: 
+[^1]:

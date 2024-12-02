@@ -28,8 +28,8 @@ You'll need to have python installed to use Cyberdrop-DL. If you are on Linux or
 
 There are two ways you can install Cyberdrop-DL. One is the easy method that I've created for you. It is just a simple file that you can open and it'll run. The other method is installation using pip, and should be considered for advanced users.
 
-{% content-ref url="cyberdrop-dl-install-easy.md" %}
-[cyberdrop-dl-install-easy.md](cyberdrop-dl-install-easy.md)
+{% content-ref url="cyberdrop-dl-install.md" %}
+[cyberdrop-dl-install.md](cyberdrop-dl-install.md)
 {% endcontent-ref %}
 
 ### What now? <a href="#what-now" id="what-now"></a>
