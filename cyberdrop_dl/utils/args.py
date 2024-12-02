@@ -81,6 +81,27 @@ class DeprecatedArgs(BaseModel):
         deprecated="'--sort-all-downloads' is deprecated and may be removed in the future. Use '--no-sort-cdl-only'",
     )
 
+    main_log_filename: Path | None = Field(
+        None,
+        deprecated="'--main-log-filename' is deprecated and may be removed in the future. Use '--main-log'",
+    )
+    last_forum_post_filename: Path | None = Field(
+        None,
+        deprecated="'--last-forum-post-filename' is deprecated and may be removed in the future. Use '--last-forum-post'",
+    )
+    unsupported_urls_filename: Path | None = Field(
+        None,
+        deprecated="'--unsupported-urls-filename' is deprecated and may be removed in the future. Use '--unsupported-urls'",
+    )
+    download_error_urls_filename: Path | None = Field(
+        None,
+        deprecated="'--download-error-urls-filename' is deprecated and may be removed in the future. Use '--download-error-urls'",
+    )
+    scrape_error_urls_filename: Path | None = Field(
+        None,
+        deprecated="'--scrape-error-urls-filename' is deprecated and may be removed in the future. Use '--scrape-error-urls'",
+    )
+
 
 class ParsedArgs(AliasModel):
     cli_only_args: CommandLineOnlyArgs = CommandLineOnlyArgs()
@@ -89,6 +110,14 @@ class ParsedArgs(AliasModel):
     global_settings: GlobalSettings = GlobalSettings()
 
     def model_post_init(self, _) -> None:
+        logs_deprecated_names = [
+            "main_log_filename",
+            "last_forum_post_filename",
+            "unsupported_urls_filename",
+            "download_error_urls_filename",
+            "scrape_error_urls_filename",
+        ]
+
         if self.cli_only_args.retry_all or self.cli_only_args.retry_maintenance:
             self.config_settings.runtime_options.ignore_history = True
 
@@ -113,6 +142,13 @@ class ParsedArgs(AliasModel):
             if self.deprecated_args.sort_all_downloads:
                 add_warning_msg_from("sort_all_downloads")
                 self.config_settings.sorting.sort_cdl_only = False
+
+            for deprecated_name in logs_deprecated_names:
+                cli_value = getattr(self.deprecated_args, deprecated_name, None)
+                if cli_value:
+                    add_warning_msg_from(deprecated_name)
+                    model_name = deprecated_name.replace("_filename", "")
+                    setattr(self.config_settings.logs, model_name)
 
         if (
             self.cli_only_args.no_ui
