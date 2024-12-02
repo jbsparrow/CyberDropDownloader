@@ -17,6 +17,8 @@ All the options in these list are optional. The valid values are any kind of `st
 
 In order to scrape your favorites from coomer, you need to provide Cyberdrop-DL with your coomer `session` cookie.
 
+## `session`
+
 Once you have put your `session` cookie into the authentication file, you can add `https://coomer.su/favorites` to the URLs file, and Cyberdrop-DL will scrape your favorites.
 
 </details>

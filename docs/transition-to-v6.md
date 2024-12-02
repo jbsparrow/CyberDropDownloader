@@ -1,5 +1,5 @@
 ---
-description: This is the walk through for transitioning from V4 to V5
+description: This is the walk through for transitioning from V4 or V5 to V6
 icon: arrow-up-to-bracket
 layout:
   title:
@@ -16,7 +16,19 @@ layout:
 
 # Transition from V4 or V5 to V6
 
-Built into Cyberdrop-DL V6 is a tool that allows you to import both your configs and your history DB.
+Built into Cyberdrop-DL V6 is a tool that allows you to import both your configs and your history DB from previous versions.
+
+{% hint style="danger" %}
+V6 introduces some breaking changes, using a more strict config validation logic, replacing  `md5` with `xxh128` as the default hashing algorithm and using a new database schema. It's recommended to do a manual backup of your current AppData folder. You won't be able to rollback to a previous version after the transfer is completed.
+
+You can learn more about the changes on the release announcement
+{% endhint %}
+
+{% hint style="info" %}
+Even after a successful config migration, you may find that Cyberdrop-DL does not start because some of the values on your config from the previous version are no longer valid. Please follow the instructions Cyberdrop-DL will show on the screen to fix it.
+
+You can use the Config Options page as reference for valid config values
+{% endhint %}
 
 #### Importing previous configs <a href="#importing-previous-configs" id="importing-previous-configs"></a>
 

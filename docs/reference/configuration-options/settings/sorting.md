@@ -61,21 +61,19 @@ If this is set to `null` (the default), `downloads_dir` is used instead
 
 Setting this to `true` will allow Cyberdrop-DL to sort downloads after a run is complete.
 
-## sort_cdl_only
+## `sort_cdl_only`
 
 Setting this to `true` will sort only files that were downloaded by Cyberdrop-DL. Does nothing if `sort_downloads` is set to `false`
 
-
-## sort_folder
+## `sort_folder`
 
 This is the path to the folder you'd like sorted downloads to be stored in.
 
-
-## sort_incrementer_format
+## `sort_incrementer_format`
 
 When naming collisions happen, Cyberdrop-DL will rename files (`image.jpg` -> `image (1).jpg` by default). You can change the way this is formatted. The format simply needs to include `{i}` in it to specify where to put the auto-increment value.
 
-## sorted_audio
+## `sorted_audio`
 
 This is the format for the directory structure and naming scheme for audio files.
 
@@ -88,7 +86,7 @@ Unique Path Flags:
 > `sample_rate` - files sample rate
 
 
-## sorted_image
+## `sorted_image`
 
 This is the format for the directory structure and naming scheme for image files.
 
@@ -97,7 +95,7 @@ Unique Path Flags:
 > `resolution` - ex. 1080x1920
 
 
-## sorted_video
+## `sorted_video`
 
 This is the format for the directory structure and naming scheme for video files.
 
@@ -109,6 +107,6 @@ Unique Path Flags:
 
 > `codec` - ex. h264
 
-## sorted_other
+## `sorted_other`
 
 This is the format for the directory structure and naming scheme for other files.

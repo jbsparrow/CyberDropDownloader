@@ -2,11 +2,11 @@
 
 Cyberdrop-DL can extract cookies from your browser. These can be used for websites that require login or to pass DDoS-Guard challenges. Only cookies from supported websites are extracted
 
-##  auto_import
+## `auto_import`
 
 toggles automatic import of cookies at the start of each run
 
-##  browsers
+## `browsers`
 
 | Type           | Default  |
 |----------------|----------|
@@ -39,7 +39,7 @@ List a browser to use for extraction. List must be the browser name, with one of
 **NOTE:**  If the value entered is `null` or an empty list, no cookies will be extracted from any browser
 {% endhint %}
 
-##  sites
+## `sites`
 
 | Type           | Default  |
 |----------------|----------|

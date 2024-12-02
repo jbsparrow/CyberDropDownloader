@@ -10,9 +10,9 @@ Setting any of these options to `0` means `disabled`
 |---|---|
 |`Bytes`|`0`|
 
-- maximum_image_filesize
-- minimum_image_filesize
-- maximum_video_filesize
-- minimum_video_filesize
-- maximum_other_filesize
-- minimum_other_filesize
+- `maximum_image_filesize`
+- `minimum_image_filesize`
+- `maximum_video_filesize`
+- `minimum_video_filesize`
+- `maximum_other_filesize`
+- `minimum_other_filesize`

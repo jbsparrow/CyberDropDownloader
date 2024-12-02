@@ -57,11 +57,11 @@ Example: `https://cyberfile.me/folder/xUGg?password=1234`
 | Cyberfile                                   |
 | Chevereto Sites (`jpg5`, `imagepond` or `img.kiwi`) |
 
-### Content Hosts - Real Debrid <a href="#content-hosts-real-debrid" id="content-hosts-real-debrid"></a>
+### Content Hosts - Real-Debrid <a href="#content-hosts-real-debrid" id="content-hosts-real-debrid"></a>
 
-Cyberdrop-DL has integration with Real Debrid as download service to support additional hosts. In order to enable Real Debrid, user must provide their API token inside the `authentication.yaml` file. You can get your API token from this URL (you must be logged in): [https://real-debrid.com/apitoken](https://real-debrid.com/apitoken)
+Cyberdrop-DL has integration with Real-Debrid as download service to support additional hosts. In order to enable Real-Debrid, user must provide their API token inside the `authentication.yaml` file. You can get your API token from this URL (you must be logged in): [https://real-debrid.com/apitoken](https://real-debrid.com/apitoken)
 
-Supported domains via Real Debrid include `mega.nz`, `rapidgator`, `google drive`, `1fichier`, `k2s`, `etc`. List of all supported domains can be found here (250+): [https://api.real-debrid.com/rest/1.0/hosts/domains](https://api.real-debrid.com/rest/1.0/hosts/domains)
+Supported domains via Real-Debrid include `mega.nz`, `rapidgator`, `google drive`, `1fichier`, `k2s`, `etc`. List of all supported domains can be found here (250+): [https://api.real-debrid.com/rest/1.0/hosts/domains](https://api.real-debrid.com/rest/1.0/hosts/domains)
 
 ### Forums <a href="#forums" id="forums"></a>
 
