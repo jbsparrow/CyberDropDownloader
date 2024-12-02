@@ -60,6 +60,16 @@ class Logs(AliasModel):
             return None
         return value
 
+    @field_validator("main_log", mode="after")
+    @classmethod
+    def fix_main_log_extension(cls, value: Path) -> Path:
+        return value.with_suffix(".log")
+
+    @field_validator("last_forum_post", "unsupported_urls", "download_error_urls", "scrape_error_urls", mode="after")
+    @classmethod
+    def fix_other_logs_extensions(cls, value: Path) -> Path:
+        return value.with_suffix(".csv")
+
 
 class FileSizeLimits(BaseModel):
     maximum_image_size: ByteSize = ByteSize(0)
