@@ -51,7 +51,7 @@ This is your password for the forum. Again, if you use cookies, you don't need t
 
 <summary>GoFile</summary>
 
-If you decide to pay for GoFile Premium (faster downloads, etc) you can provide your API key to Cyberdrop-DL in order for the program to use it.
+If you decide to pay for GoFile Premium (faster downloads, etc.) you can provide your API key to Cyberdrop-DL in order for the program to use it.
 
 ## `api_key`
 
@@ -63,7 +63,7 @@ You can get your API key here: [https://gofile.io/myProfile](https://gofile.io/m
 
 <summary>Imgur</summary>
 
-In order to scrape images from Imgur, you'll need to create a client on Imgurs website.
+In order to scrape images from Imgur, you'll need to create a client on Imgur's website.
 
 [https://api.imgur.com/oauth2/addclient](https://api.imgur.com/oauth2/addclient)
 
@@ -124,7 +124,7 @@ You can get your API key here: [https://pixeldrain.com/user/api_keys](https://pi
 
 <summary>Reddit</summary>
 
-In order to scrape files from Reddit, you'll need to create an app on reddits website (it's free).
+In order to scrape files from Reddit, you'll need to create an app on reddit's website (it's free).
 
 [https://www.reddit.com/prefs/apps](https://www.reddit.com/prefs/apps)
 
@@ -137,7 +137,7 @@ after generating the app, you will need to give Cyberdrop-DL these values.
 
 <details>
 
-<summary>RealDebrid</summary>
+<summary>Real-Debrid</summary>
 
 In order to download files from sites supported by real-debrid, you'll need to get the API token from your account.
 

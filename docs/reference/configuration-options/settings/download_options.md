@@ -48,7 +48,7 @@ Setting this to `true` will remove the "(DOMAIN)" portion of folder names on new
 
 ## remove_generated_id_from_filenames
 
-Setting this to `true` (or selecting it) will remove the alphanumeric ID added to the end of filenames on some websites (ex. Cyberdrop).
+Setting this to `true` (or selecting it) will remove the alphanumeric ID added to the end of filenames on some websites (ex. `cyberdrop.me`).
 
 Multipart archives filenames will be fixed so they have the proper pattern of their format.
 
@@ -96,7 +96,7 @@ Using `0` on any position means no limit on the number of children for that type
  Examples
 
 
-Limit FORUM scrape to 15 posts max, grab all links and media within those posts, but only scrape a maximun of 10 items from each link in a post:
+Limit FORUM scrape to 15 posts max, grab all links and media within those posts, but only scrape a maximum of 10 items from each link in a post:
 ```shell
 --maximum-number-of-children 15 0 10
 
