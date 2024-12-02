@@ -1,6 +1,17 @@
 ---
-description: Here's the available CLI Arguments
 icon: rectangle-terminal
+description: Here's the available CLI Arguments
+layout:
+  title:
+    visible: true
+  description:
+    visible: true
+  tableOfContents:
+    visible: true
+  outline:
+    visible: false
+  pagination:
+    visible: true
 ---
 
 # CLI Arguments
