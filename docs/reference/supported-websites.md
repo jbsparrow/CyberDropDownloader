@@ -6,43 +6,43 @@ icon: globe-pointer
 # Supported Websites
 
 ### Content Hosts <a href="#content-hosts" id="content-hosts"></a>
-| Domain          | Supported URL Paths                                                                                                                                                                                                                                                                                                                                                                                      |
+| Domain          | Supported URL Paths |
 |-----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Bunkrr          | Albums: `/a/...` <br> Videos: `/v/...` <br> Others: `/f/...` <br> Direct links                                                                                                                                                                                                                                                                                                                                          |
-| Coomer          | OnlyFans Model: `/onlyfans/user/<user>` <br> Fansly Model: `/fansly/user/<user>` <br> Individual Post: `/<service>/user/<user>/post/<post_id>` <br> Favorites: `/favorites` <br> Direct links                                                                                                                                                                                                                                               |
-| Cyberdrop       | Albums: `/a/...` <br> Files: `/f/...` <br> Direct Links                                                                                                                                                                                                                                                                                                                                                            |
-| Cyberfile       | Folders: `/folder/...` <br> Shared: `/shared/...` <br> Files: `/...`                                                                                                                                                                                                                                                                                                                                               |
-| E-Hentai        | Albums: `/g/...` <br> Files: `/s/...`                                                                                                                                                                                                                                                                                                                                                                         |
-| Erome           | Album: `/a/...` <br> Profile: `/...`                                                                                                                                                                                                                                                                                                                                                                          |
-| Fapello         | Model: `/...` <br> Individual Post: `/.../...`                                                                                                                                                                                                                                                                                                                                                                |
-| GoFile          | Album: `/d/...`                                                                                                                                                                                                                                                                                                                                                                                          |
-| HotPic          | Album: `/album/...` <br> Image: `/i/...`                                                                                                                                                                                                                                                                                                                                                                      |
-| ImageBan        | Album: `/a/...` <br> Compilation: `/c/...` <br> Image: `/show/...`                                                                                                                                                                                                                                                                                                                                                 |
-| ibb imgbb       | Album: `/album/...` <br> Image: `/...`                                                                                                                                                                                                                                                                                                                                                                        |
-| ImgBox          | Album: `/g/...` <br> Images: `/...` <br> Direct Links                                                                                                                                                                                                                                                                                                                                                              |
-| Img.kiwi        | Album: `/album/...` <br> Image: `/image/...` <br> Direct Links                                                                                                                                                                                                                                                                                                                                                     |
-| Imgur           | Album: `/a/...` <br> Image: `/...` <br> Direct Links                                                                                                                                                                                                                                                                                                                                                               |
-| JPG.Church <br> JPG.Homes <br> JPG.Pet <br> JPEG.Pet <br> JPG1.Su <br> JPG2.Su <br> JPG3.Su <br> JPG4.Su <br> JPG5.Su | Album: `/a/...` <br> Image: `/img/...` <br> Direct Links                                                                                                                                                                                                                                                                                                                                                           |
-| Imagepond.net   | Album: `/a/...` <br> Image: `/img/...` <br> Direct Links                                                                                                                                                                                                                                                                                                                                                           |
-| Kemono          | Patreon Model: `/patreon/user/<user>` <br> FanBox Model: `/fanbox/user/<user>` <br> Fantia Model: `/fantia/user/<user>` <br> Afdian Model: `/afdian/user/<user>` <br> Boosty Model: `/boosty/user/<user>` <br> DLSite Model: `/dlsite/user/<user>` <br> Gumroad Model: `/gumroad/user/<user>` <br> SubscribeStar Model: `/subscribestar/user/<user>` <br> Discord Server Channel: `/discord/server/...#...` <br> Individual Post: `/<service>/user/<user>/post/<post_id>` <br> Direct Links |
-| MediaFire       | Folder: `/folder/...` <br> File: `/file/...`                                                                                                                                                                                                                                                                                                                                                                  |
-| Nekohouse.su    | Fanbox Model: `/fanbox/user/<user>` <br> Fantia Model: `/fantia/user/<user>` <br> Fantia Products Model: `/fantia_products/user/<user>` <br> Subscribestar Model: `/subscribestar/user/<user>` <br> Twitter Model: `/twitter/user/<user>` <br> Individual Post: `/service/user/<user>/post/...` <br> Direct Links                                                                                                                                        |
-| Nudostar.TV     | Model: `/models/...`                                                                                                                                                                                                                                                                                                                                                                                     |
-| OmegaScans      | Series: `/series/...` <br> Chapter: `/series/.../...` <br> Direct Links                                                                                                                                                                                                                                                                                                                                            |
-| PimpAndHost     | Album: `/album/...` <br> Image: `/image/...`                                                                                                                                                                                                                                                                                                                                                                  |
-| PixelDrain      | Folder: `/l/...` <br> File: `/u/...`                                                                                                                                                                                                                                                                                                                                                                          |
-| PostImg         | Album: `/gallery/...` <br> Image: `/...` <br> Direct Links                                                                                                                                                                                                                                                                                                                                                         |
-| RealBooru       | Tags (tags query) <br> File page (id query)                                                                                                                                                                                                                                                                                                                                                                   |
-| RedGifs         | Video: `/watch/...` <br> User: `/users/...`                                                                                                                                                                                                                                                                                                                                                                   |
-| Rule34Vault     | Tag: `/...` <br> File page: `/post/...` <br> Playlist: `/playlists/view/...`                                                                                                                                                                                                                                                                                                                                       |
-| Rule34.XXX      | Tags (tags query) <br> File page (id query)                                                                                                                                                                                                                                                                                                                                                                   |
-| Rule34.XYZ      | Tag: `/...` <br> File page: `/post/...`                                                                                                                                                                                                                                                                                                                                                                       |
-| Saint           | Video: `/embed/...` <br> Albums: `/a/...` <br> Direct Links                                                                                                                                                                                                                                                                                                                                                        |
-| Scrolller       | Subreddit: `/r/...`                                                                                                                                                                                                                                                                                                                                                                                      |
-| Toonily         | Webtoon: `/webtoon/...` <br> Chapter: `/webtoon/.../...` <br> Direct Links                                                                                                                                                                                                                                                                                                                                         |
-| Tokyomotion.net | Video: `/video/...` <br> Photo: `/photo/...` , `/user/<user>/favorite/photos` <br> Albums: `/user/<user>/albums/` , `/album/<album_id>` <br> Playlist: `/user/<user>/favorite/videos` <br> Profiles: `/user/<user>` <br> Search Results: `/search?...`                                                                                                                                                                                      |
-| XBunkr          | Albums: `/a/...` <br> Direct Links                                                                                                                                                                                                                                                                                                                                                                            |
-| XXXBunker       | Video: `/<video_id>` <br> Search Results: `/search/...`                                                                                                                                                                                                                                                                                                                                                       |
+| Bunkrr          | Albums: `/a/...` <br> Videos: `/v/...` <br> Others: `/f/...` <br> Direct links |
+| Coomer          | Fansly Model: `/fansly/user/<user>` <br> Favorites: `/favorites` <br> Individual Post: `/<service>/user/<user>/post/<post_id>` <br> OnlyFans Model: `/onlyfans/user/<user>` <br> Direct links |
+| Cyberdrop       | Albums: `/a/...` <br> Files: `/f/...` <br> Direct links |
+| Cyberfile       | Files: `/...` <br> Folders: `/folder/...` <br> Shared: `/shared/...` |
+| E-Hentai        | Albums: `/g/...` <br> Files: `/s/...` |
+| Erome           | Album: `/a/...` <br> Profile: `/...`  |
+| Fapello         | Individual Post: `/.../...` <br> Model: `/...` |
+| GoFile          | Album: `/d/...`|
+| HotPic          | Album: `/album/...` <br> Image: `/i/...`|
+| ImageBan        | Album: `/a/...` <br> Compilation: `/c/...` <br> Image: `/show/...` |
+| ibb imgbb       | Album: `/album/...` <br> Image: `/...`|
+| ImgBox          | Album: `/g/...` <br> Images: `/...` <br> Direct links |
+| Img.kiwi        | Album: `/album/...` <br> Image: `/image/...` <br> Direct links  |
+| Imgur           | Album: `/a/...` <br> Image: `/...` <br> Direct links |
+| JPG.Church <br> JPG.Homes <br> JPG.Pet <br> JPEG.Pet <br> JPG1.Su <br> JPG2.Su <br> JPG3.Su <br> JPG4.Su <br> JPG5.Su | Album: `/a/...` <br> Image: `/img/...` <br> Direct links  |
+| Imagepond.net   | Album: `/a/...` <br> Image: `/img/...` <br> Direct links  |
+| Kemono          | Afdian Model: `/afdian/user/<user>` <br> Boosty Model: `/boosty/user/<user>` <br> DLSite Model: `/dlsite/user/<user>` <br> Discord Server Channel: `/discord/server/...#...` <br> FanBox Model: `/fanbox/user/<user>` <br> Fantia Model: `/fantia/user/<user>` <br> Gumroad Model: `/gumroad/user/<user>` <br> Individual Post: `/<service>/user/<user>/post/<post_id>` <br> Patreon Model: `/patreon/user/<user>` <br> SubscribeStar Model: `/subscribestar/user/<user>` <br> Direct Links |
+| MediaFire       | File: `/file/...` <br>Folder: `/folder/...`|
+| Nekohouse.su    | Fanbox Model: `/fanbox/user/<user>` <br> Fantia Model: `/fantia/user/<user>` <br> Fantia Products Model: `/fantia_products/user/<user>` <br> Individual Post: `/service/user/<user>/post/...` <br> Subscribestar Model: `/subscribestar/user/<user>` <br> Twitter Model: `/twitter/user/<user>` <br> Direct Links |
+| Nudostar.TV     | Model: `/models/...`|
+| OmegaScans      | Chapter: `/series/.../...` <br> Series: `/series/...` <br> Direct links |
+| PimpAndHost     | Album: `/album/...` <br> Image: `/image/...`|
+| PixelDrain      | File: `/u/...` <br> Folder: `/l/...` |
+| PostImg         | Album: `/gallery/...` <br> Image: `/...` <br> Direct links |
+| RealBooru       | File page (id query) <br>Tags (tags query) |
+| RedGifs         | User: `/users/<user>` <br> Video: `/watch/...` |
+| Rule34Vault     | File page: `/post/...` <br> Playlist: `/playlists/view/...` <br> Tag: `/...` |
+| Rule34.XXX      | File page (id query) <br> Tags (tags query) |
+| Rule34.XYZ      | File page: `/post/...` <br> Tag: `/...` |
+| Saint           | Albums: `/a/...` <br> Video: `/embed/...` <br> Direct links |
+| Scrolller       | Subreddit: `/r/...` |
+| Toonily         | Chapter: `/webtoon/.../...` <br> Webtoon: `/webtoon/...` <br> Direct links  |
+| Tokyomotion.net | Albums: `/user/<user>/albums/` , `/album/<album_id>` <br> Photo: `/photo/<photo_id>` , `/user/<user>/favorite/photos` <br> Playlist: `/user/<user>/favorite/videos` <br> Profiles: `/user/<user>` <br> Search Results: `/search?...` <br> Video: `/video/<video_id>` |
+| XBunkr          | Albums: `/a/...` <br> Direct Links|
+| XXXBunker       | Video: `/<video_id>` <br> Search Results: `/search/...`                            |
 
 
 ### Content Hosts - Password Protected <a href="#content-hosts-password-protected" id="content-hosts-password-protected"></a>
@@ -51,9 +51,9 @@ Cyberdrop-DL can download password protected files and folders from these hosts.
 
 Example: `https://cyberfile.me/folder/xUGg?password=1234`
 
-| Domain                                      |
+| Domain |
 | ------------------------------------------- |
-| GoFile                                      |
+| GoFile |
 | Cyberfile                                   |
 | Chevereto Sites (`jpg5`, `imagepond` or `img.kiwi`) |
 
@@ -65,12 +65,12 @@ Supported domains via Real Debrid include `mega.nz`, `rapidgator`, `google drive
 
 ### Forums <a href="#forums" id="forums"></a>
 
-| Domain                      | Supported URL Paths                                               |
-| --------------------------- | ----------------------------------------------------------------- |
-| CelebForum                  | Threads: `/threads/<thread_name>`                                           |
-| F95Zone                     | Threads: `/threads/<thread_name>`                                           |
-| LeakedModels                | Threads: `/forum/threads/<thread_name>`                                     |
-| Nudostar                    | Threads: `/forum/threads/<thread_name>`                                     |
-| Reddit                      | User: `/user/<user>` <br> User: `/u/<user>` <br> Subreddit: `/r/<subreddit>` <br> Direct Links |
-| Forums.SocialMediaGirls.com | Threads: `/threads/<thread_name>`                                           |
-| XBunker                     | Threads: `/threads/<thread_name>`                                           |
+| Domain                      | Supported URL Paths  |
+| --------------------------- | -------------------- |
+| CelebForum                  | Threads: `/threads/<thread_name>`|
+| F95Zone                     | Threads: `/threads/<thread_name>`|
+| LeakedModels                | Threads: `/forum/threads/<thread_name>`|
+| Nudostar                    | Threads: `/forum/threads/<thread_name>`|
+| Reddit                      | User: `/user/<user>` , `/u/<user>` <br> Subreddit: `/r/<subreddit>` <br> Direct Links |
+| Forums.SocialMediaGirls.com | Threads: `/threads/<thread_name>`|
+| XBunker                     | Threads: `/threads/<thread_name>`|
