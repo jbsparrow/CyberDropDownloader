@@ -8,7 +8,7 @@ These are higher level options that effect the overarching functions of the prog
 |----------------|----------|
 | `bool` | `false`|
 
-By default the program keeps track of your downloads to make sure you don't download the same things repeatedly (both for you and for the servers you're downloading from)!
+By default, the program tracks your downloads to prevent downloading the same files multiple times, helping to save time and reduce strain on the servers you're downloading from.
 
 Setting this to `true` will cause the program to ignore the history, and will allow you to re-download files.
 
@@ -52,7 +52,7 @@ Setting this to `true` will remove any partial downloads from the download folde
 |----------------|----------|
 | `bool` | `false`|
 
-By default the program will not send unsupported links to jdownloader.
+Cyberdrop-DL has integration with jdownloader. This will allow you to download URLs that Cyberdrop-DL finds but do not support. However, this setting is disabled by default.
 
 Setting this to `true`, will send unsupported links over.
 
@@ -63,7 +63,7 @@ Setting this to `true`, will send unsupported links over.
 |----------------|----------|
 | `bool` | `false`|
 
-Defaults to `false`. Setting this to `true` will make jdownloader start downloads as soon as they are sent.
+Setting this to `true` will make jdownloader start downloads as soon as they are sent.
 
 This option has no effect unless `send_unsupported_to_jdownloader` is `true`
 
@@ -73,7 +73,7 @@ This option has no effect unless `send_unsupported_to_jdownloader` is `true`
 |----------------|----------|
 | `Path` or `null` | `null`|
 
-The `download_dir` jdownloader will use. A `null` value (the default) will make jdownloader use the same `download_dir` as CDL. Use this option as path mapping when jdownloader is running on a different host / docker.
+The `download_dir` jdownloader will use. A `null` value (the default) will make jdownloader use the same `download_dir` as Cyberdrop-DL. Use this option as path mapping when jdownloader is running on a different host / docker.
 
 This option has no effect unless `send_unsupported_to_jdownloader` is `true`
 
@@ -83,7 +83,7 @@ This option has no effect unless `send_unsupported_to_jdownloader` is `true`
 |----------------|----------|
 | `list[NonEmptyStr]` | `[]`|
 
-List of domain names. An unsupported URL will only be sent to jdownloader if its host is found in on the list. An empty whitelist (the default) will disable this functionality, sending any unsupported URL to jdownloader
+List of domain names. An unsupported URL will only be sent to jdownloader if its host is found on the list. An empty whitelist (the default) will disable this functionality, sending any unsupported URL to jdownloader
 
 This option has no effect unless `send_unsupported_to_jdownloader` is `true`
 

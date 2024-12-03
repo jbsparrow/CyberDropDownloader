@@ -1,26 +1,22 @@
 # Sorting
 
-Cyberdrop-DL has a file sorted built in, but you have to enable it to use it.
+Cyberdrop-DL has a file sorter built in, but you have to enable it to use it.
 
 You can use the shared path flags below in any part of the sorting schemas. You can also use essentially none of them and have a hard coded path. However, `filename` and `ext` must always be used.
 
 Shared path flags:
 
 > `sort_dir`: `sort_folder` path
-
 > `base_dir`: the highest level folder name inside the folder being scanned, ex: (model name / thread name)
-
 > `parent_dir`: the folder name of where the file is (album name)
-
 > `filename`: the files name (stem)
-
 > `ext`: the file extension
 
 ## Group URLs
 
 It is possible to treat a list of URLs as a group, allowing them to be downloaded to a single folder.
 
-To define a group, put a title above the URLs you want to be in the group by doing the following: `--- <group_name>` or `=== <group_name>`.
+To define a group, put a title above the URLs you want to be in the group, using the format: `--- <group_name>` or `=== <group_name>`.
 
 To define the end of a group, insert an group with no name. (`---` or `===`)
 
@@ -49,7 +45,7 @@ Those downloads would be sorted as follows:
 | file7.jpg   |           |           |
 
 
-## scan_folder
+## `scan_folder`
 
 | Type           | Default  |
 |----------------|----------|
@@ -85,13 +81,21 @@ Setting this to `true` will sort only files that were downloaded by Cyberdrop-DL
 
 This is the path to the folder you'd like sorted downloads to be stored in.
 
+
+{% hint style="warning" %}
+Setting `sort_folder` to the same value as `scan_folder` is not officiality supported and will lead to undefined results
+{% endhint %}
+
 ## `sort_incrementer_format`
 
 | Type           | Default  |
 |----------------|----------|
 | `NonEmptyStr` | ` ({i})`|
 
-When naming collisions happen, Cyberdrop-DL will rename files (`image.jpg` -> `image (1).jpg` by default). You can change the way this is formatted. The format simply needs to include `{i}` in it to specify where to put the auto-increment value.
+When naming collisions happen, Cyberdrop-DL will rename files automatically
+> `image.jpg` -> `image (1).jpg`.
+
+You can modify the format as needed, but it must include `{i}` to specify where the auto-increment value should be placed
 
 ## `sorted_audio`
 
@@ -103,12 +107,9 @@ This is the format for the directory structure and naming scheme for audio files
 
 Unique Path Flags:
 
-> `length` - runtime
-
-> `bitrate` - files bit rate
-
-> `sample_rate` - files sample rate
-
+> `length`: audio runtime
+> `bitrate`: file bit rate
+> `sample_rate`: audio sample rate
 
 ## `sorted_image`
 
@@ -120,8 +121,7 @@ This is the format for the directory structure and naming scheme for image files
 
 Unique Path Flags:
 
-> `resolution` - ex. 1080x1920
-
+> `resolution`: ex. 1080x1920
 
 ## `sorted_video`
 
@@ -133,11 +133,9 @@ This is the format for the directory structure and naming scheme for video files
 
 Unique Path Flags:
 
-> `resolution` - ex. 1080x1920
-
-> `fps` - ex. 24
-
-> `codec` - ex. h264
+> `resolution`: ex. 1080x1920
+> `fps`: ex. 24
+> `codec`: ex. h264
 
 ## `sorted_other`
 

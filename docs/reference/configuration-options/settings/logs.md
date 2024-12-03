@@ -14,7 +14,7 @@ The path to the location you want Cyberdrop-DL to store logs in.
 |----------------|----------| ------------ |
 | `Path` | `downloader.log` | extension will always be overridden to `.log` |
 
-What you want Cyberdrop-DL to call the main log file. For relative paths, the final path will be `log_folder` / `main_log`
+Path of main log file. For relative paths, the final path will be `log_folder` / `main_log`
 
 ## `last_forum_post`
 
@@ -22,7 +22,7 @@ What you want Cyberdrop-DL to call the main log file. For relative paths, the fi
 |----------------|----------| ------------ |
 | `Path` | `Last_Scraped_Forum_Posts.csv` | extension will always be overridden to `.csv` |
 
-What you want Cyberdrop-DL to call the forum-post log file. For relative paths, the final path will be `log_folder` / `last_forum_post`
+Path of the forum-post log file. For relative paths, the final path will be `log_folder` / `last_forum_post`
 
 Cyberdrop-DL will store the link to the last forum posts it scraped from a given forum thread in this file.
 
@@ -32,7 +32,7 @@ Cyberdrop-DL will store the link to the last forum posts it scraped from a given
 |----------------|----------| ------------ |
 | `Path` | `Unsupported_URLs.csv` | extension will always be overridden to `.csv` |
 
-What you want Cyberdrop-DL to call the unsupported log file. For relative paths, the final path will be `log_folder` / `unsupported_urls`
+Path of the unsupported log file. For relative paths, the final path will be `log_folder` / `unsupported_urls`
 
 Cyberdrop-DL will output links it can't download to this file.
 
@@ -42,9 +42,9 @@ Cyberdrop-DL will output links it can't download to this file.
 |----------------|----------| ------------ |
 | `Path` | `Download_Error_URLs.csv` | extension will always be overridden to `.csv` |
 
-What you want Cyberdrop-DL to call the download error log. For relative paths, the final path will be `log_folder` / `download_error_urls`
+Path of the download error log. For relative paths, the final path will be `log_folder` / `download_error_urls`
 
-Cyberdrop-DL will output the links it fails to download, and the reason in CSV format.
+Cyberdrop-DL will output the links it fails to download, the reason and their origin in CSV format.
 
 ## `scrape_error_urls`
 
@@ -54,7 +54,7 @@ Cyberdrop-DL will output the links it fails to download, and the reason in CSV f
 
 What you want Cyberdrop-DL to call the scrape error log. For relative paths, the final path will be `log_folder` / `scrape_error_urls`
 
-Cyberdrop-DL will output the links it fails to scrape, and the reason in CSV format.
+Cyberdrop-DL will output the links it fails to scrape, the reason and their origin in CSV format.
 
 ## `webhook`
 

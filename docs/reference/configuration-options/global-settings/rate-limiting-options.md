@@ -26,7 +26,7 @@ The number of download attempts per file. Regardless of this value, some conditi
 |----------------|----------|
 | `PositiveInt` | `300`|
 
-The number of seconds to wait while reading data from a website before timing out. If it's a download, it will be retried and won't count against the download_attempts limit.
+The number of seconds to wait while reading data from a website before timing out. If it's a download, it will be retried and won't count against the `download_attempts` limit.
 
 ## `rate_limit`
 
@@ -44,7 +44,10 @@ This is the maximum number of requests that can be made by the program per secon
 
 This is the number of seconds to wait between downloads to the same domain.
 
-Some domains have internal limits set by the program, such as `bunkrr`, `cyberfile.me`, etc.
+Some domains have internal limits set by the program, which can not be modified:
+- `bunkrr`: 1
+- `cyberfile.me`: 1
+- `pixeldrain` : 2
 
 ## `max_simultaneous_downloads`
 

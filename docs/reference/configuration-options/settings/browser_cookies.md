@@ -2,6 +2,10 @@
 
 Cyberdrop-DL can extract cookies from your browser. These can be used for websites that require login or to pass DDoS-Guard challenges. Only cookies from supported websites are extracted
 
+{% hint style="warning" %}
+The `user-agent` config value **MUST** match the `user-agent` of the browser from which you imported the cookies. If they do not match, the cookies will not work
+{% endhint %}
+
 ## `auto_import`
 
 | Type           | Default  |
@@ -16,9 +20,9 @@ Toggles automatic import of cookies at the start of each run
 |----------------|----------|
 | `list[BROWSERS]` | `[chrome]` |
 
-List of browsers to use for extraction. List items must be the browser(s) name, with one of more of the values from the table below, separated by commas
+List of browsers to use for extraction. Each item must be a supported browser's name, separated by commas
 
-### Supported browsers
+### Supported Browsers
 
 | Browser   | Windows            | Linux              | MacOS              |
 |-----------|--------------------|--------------------|--------------------|
@@ -35,11 +39,11 @@ List of browsers to use for extraction. List items must be the browser(s) name, 
 
 
 {% hint style="info" %}
-**NOTE:** If cookies exists on multiple selected browsers, the cookies from the last browser in the list will have priority
+If cookies exists on multiple selected browsers, the cookies from the last browser in the list will have priority
 {% endhint %}
 
 {% hint style="info" %}
-**NOTE:**  If the value entered is `null` or an empty list, no cookies will be extracted from any browser
+If the value entered is `null` or an empty list, no cookies will be extracted from any browser
 {% endhint %}
 
 ## `sites`
@@ -52,4 +56,4 @@ List of domains to extract cookies from. You can put any domain on the list, but
 
 ## Manual Cookie Extraction
 
-If cookie extraction fails, you can manually extract the cookies from your browser and save them at `AppData/Cookies/<domain>.txt`, where domain is the domain of the site you exported the cookies from. The file must be a Netscape formatted cookie file
+If cookie extraction fails, you can manually extract the cookies from your browser using tools like [cookie-editor](https://cookie-editor.com) and save them at `AppData/Cookies/<domain>.txt`, where domain is the domain of the site you exported the cookies from. The file must be a Netscape formatted cookie file

@@ -5,19 +5,7 @@ description: Here's how configuration works.
 
 # Configuration Options
 
-{% hint style="info" %}
-There is a lot of possible customization that you can do with the program, don't worry though. I'll try and make it as easy as possible for you.
-{% endhint %}
-
-A little note on how configs work in V5:
-
-There are three type of config files in V5.
-
-* settings
-* global_settings
-* authentication_settings
-
-Global settings and authentication settings are "global". **They apply to all settings configs**. You can set them once and never touch them again.
+There are three type of config files: config settings, global settings and authentication settings.
 
 {% content-ref url="authentication.md" %}
 [authentication.md](authentication.md)
@@ -32,9 +20,9 @@ Global settings and authentication settings are "global". **They apply to all se
 {% endcontent-ref %}
 
 {% hint style="info" %}
-**Global Settings** and **Authentication Settings** are "global". **They apply to all settings configs**. You can set them once and never touch them again.
+**Global Settings** and **Authentication Settings** are "global". They apply to **ALL** Config Settings. You can set them once and never touch them again.
 {% endhint %}
 
-Each settings config will be setup by default to have separate `URLs.txt` files and separate logs.
+Each config setting will be setup by default to have a separate `URLs.txt` files and separate log files.
 
 You can run all of the configs sequentially by selecting `ALL` from the UI or using `--config ALL`.

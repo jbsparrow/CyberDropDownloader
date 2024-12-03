@@ -1,8 +1,9 @@
+---
+description: These are options for enable/disable hashing and auto dupe deletion
+---
 # Dupe Cleanup Options
 
-These are options for enable/disable hashing and auto dupe deletion
-
-To enable auto dupe cleanup:
+Cyberdrop-DL maintains an internal database of all downloaded files, indexed by their hashes. This can be used to automatically delete newly downloaded files if they were downloaded before. To enable auto dupe cleanup:
 
 1. Set `hashing` to `IN_PLACE` or `POST_DOWNLOAD`
 2. Set `auto_dedupe` to `true`
@@ -13,13 +14,13 @@ To enable auto dupe cleanup:
 |----------------|----------| ----------- |
 | `HASHING` | `OFF` | Must be `OFF`, `IN_PLACE` or `POST_DOWNLOAD`|
 
-There are three possible options for hashing
+There are three possible options for hashing:
 
 1. `OFF`: disables hashing
 2. `IN_PLACE`: performs hashing after each download
 3. `POST_DOWNLOAD`: performs hashing after all downloads have completed
 
-The default hashing algorithm is `xxh128`. You can enable additional hashing algorithms, but you can not replace the default
+The default hashing algorithm is `xxh128`. You can enable additional hashing algorithms, but you can not replace the default.
 
 ## `auto_dedupe`
 
@@ -29,9 +30,9 @@ The default hashing algorithm is `xxh128`. You can enable additional hashing alg
 
 Enables deduping files functionality. Needs `hashing` to be enabled
 
-This finds all files in the database with the same hash and size, and keeps the oldest copy of the file
+The auto_dedupe feature scans the database for files with matching hashes and sizes, automatically deleting any duplicates and retaining only the oldest copy.
 
-Deletion only occurs if two or more matching files are found from the database search
+Deletion will only occur if two or more matching files are found during the database search.
 
 ## `add_sha256_hash`
 
@@ -39,7 +40,7 @@ Deletion only occurs if two or more matching files are found from the database s
 |----------------|----------|
 | `bool` | `false` |
 
-allows files to be hashed with the `sha256` algorithm, this enables matching with sites that provide this information
+If enabled, calculates the `sha256` hash for every downloaded file and store it in the internal database. This allows the program to match files with sites that provide hash information before downloading them, skipping the download altogether if a match is found
 
 ## `add_md5_hash`
 
@@ -47,10 +48,10 @@ allows files to be hashed with the `sha256` algorithm, this enables matching wit
 |----------------|----------|
 | `bool` | `false` |
 
-allows files to be hash with the `md5` algorithm, this enables matching with sites that provide this information.
+If enabled, calculates the `md5` hash for every downloaded file and store it in the internal database. This allows the program to match files with sites that provide hash information before downloading them, skipping the download altogether if a match is found
 
 {% hint style="warning" %}
-`md5` was the default hashing algorithm of Cyberdrop-DL-dl V5. If you have a database from v5 that you would like to import into v6, it's recommend to enable `md5` to match with previously hashed files
+`md5` was the default hashing algorithm of Cyberdrop-DL V5. If you have a V5 database that you'd like to import into V6, it's recommended to enable `md5` hashing to ensure new downloads match previously hashed files.
 {% endhint %}
 
 ## `send_deleted_to_trash`
@@ -59,4 +60,4 @@ allows files to be hash with the `md5` algorithm, this enables matching with sit
 |----------------|----------|
 | `bool` | `false` |
 
-Files are sent to trash instead of permanently deleted
+Deduped files are sent to the trash bin instead of being deleted

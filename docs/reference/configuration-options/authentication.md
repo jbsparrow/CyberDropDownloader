@@ -5,7 +5,7 @@ icon: user-lock
 
 # Authentication
 
-All the options in these list are optional. The valid values are any kind of `str`, with the default being an empty `str`
+All the options in these list are optional. The default value for all of them is an empty `str`
 
 |Type |Default|
 |----|---|
@@ -130,10 +130,10 @@ In order to scrape files from Reddit, you'll need to create an app on reddit's w
 
 [https://www.reddit.com/prefs/apps](https://www.reddit.com/prefs/apps)
 
+After generating the app, you need to give Cyberdrop-DL these values:
+
 ## `personal_use_script`
 ## `secret`
-
-after generating the app, you will need to give Cyberdrop-DL these values.
 
 </details>
 

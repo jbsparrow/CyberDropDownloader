@@ -16,4 +16,4 @@ You can also use `html` code. Cyberdrop-DL will parse all the links on the HTML
 |----------------|----------|
 | `Path` | `Downloads` |
 
-The path to folder you want Cyberdrop-DL to download files to.
+The path to the folder you want Cyberdrop-DL to download files to.

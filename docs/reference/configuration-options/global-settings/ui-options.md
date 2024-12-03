@@ -10,7 +10,7 @@ description: These are the options for controlling the UI of the program
 |----------------|----------|
 | `PositiveInt` | `5`|
 
-This is the limit on the number of items shown in the UI (while downloading) before they are simply added to the overflow number ("and X other files")
+This is the limit on the number of items shown in the UI (while downloading) before they are simply added to the overflow number (`and <X> other files`)
 
 ## `refresh_rate`
 
@@ -28,7 +28,7 @@ This is the refresh rate per second for the UI.
 |----------------|----------|
 | `PositiveInt` | `5`|
 
-This is the limit on the number of items shown in the UI (while scraping) before they are simply added to the overflow number ("and X other links")
+This is the limit on the number of items shown in the UI (while scraping) before they are simply added to the overflow number (`and <X> other links`)
 
 ## `vi_mode`
 

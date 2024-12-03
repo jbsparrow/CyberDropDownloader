@@ -26,6 +26,10 @@ For items not explained below, you can find their counterparts in the configurat
 
 Bool arguments like options within `Download Options`, `Ignore Options`, `Runtime Options`, etc. can be prefixed with `--no-` to negate them. Ex: `--no-auto-dedupe` will disable auto dedupe, overriding whatever the config option was set to.
 
+{% hint style="info" %}
+Use `-` instead of `_` to separate words in an option name when using it as a CLI argument: Ex: `auto-dedupe` instead of `auto_dedupe`
+{% endhint %}
+
 ```shell
 usage: cyberdrop-dl [OPTIONS] URL [URL...]
 
