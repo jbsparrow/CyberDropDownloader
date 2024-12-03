@@ -52,7 +52,7 @@ If you are running using one of the new start scripts it'll be in `./AppData/con
 
 Quite simply, almost all of them you see will be HTTP Status codes. Such as: 404 - Not Found (dead link)
 
-You can google what the individual HTTP status' mean.
+You check [this page to learn about what each error code means].(https://developer.mozilla.org/en-US/docs/Web/HTTP/Status).
 
 {% hint style="info" %}
 Any "Unknown" error, is usually coding related, or it'll be something like the program not being able to find a file extension for a file.
