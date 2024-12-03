@@ -5,7 +5,7 @@ icon: download
 
 # Cyberdrop-DL Install
 
-### Using Start Scripts (From Release Page)
+## Using Start Scripts (From Release Page)
 
 This is the simplest method to get the program up and running. Pre-configured start files are provided that will automatically install, update, and launch the program for you.
 

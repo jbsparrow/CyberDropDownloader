@@ -5,7 +5,7 @@ icon: globe-pointer
 
 # Supported Websites
 
-### Content Hosts <a href="#content-hosts" id="content-hosts"></a>
+## Content Hosts
 | Domain          | Supported URL Paths |
 |-----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Bunkrr          | Albums: `/a/...` <br> Videos: `/v/...` <br> Others: `/f/...` <br> Direct links |
@@ -45,7 +45,7 @@ icon: globe-pointer
 | XXXBunker       | Video: `/<video_id>` <br> Search Results: `/search/...`                            |
 
 
-### Content Hosts - Password Protected <a href="#content-hosts-password-protected" id="content-hosts-password-protected"></a>
+### Password Protected Content Hosts
 
 Cyberdrop-DL can download password protected files and folders from these hosts. User must include the password as a query parameter in the input URL, adding `?password=<URL_PASSWORD>` to it.
 
@@ -57,20 +57,20 @@ Example: `https://cyberfile.me/folder/xUGg?password=1234`
 | Cyberfile                                   |
 | Chevereto Sites (`jpg5`, `imagepond` or `img.kiwi`) |
 
-### Content Hosts - Real-Debrid <a href="#content-hosts-real-debrid" id="content-hosts-real-debrid"></a>
+### Additional Content Hosts with Real-Debrid
 
 Cyberdrop-DL has integration with Real-Debrid as download service to support additional hosts. In order to enable Real-Debrid, user must provide their API token inside the `authentication.yaml` file. You can get your API token from this URL (you must be logged in): [https://real-debrid.com/apitoken](https://real-debrid.com/apitoken)
 
 Supported domains via Real-Debrid include `mega.nz`, `rapidgator`, `google drive`, `1fichier`, `k2s`, `etc`. List of all supported domains can be found here (250+): [https://api.real-debrid.com/rest/1.0/hosts/domains](https://api.real-debrid.com/rest/1.0/hosts/domains)
 
-### Forums <a href="#forums" id="forums"></a>
+## Forums
 
 | Domain                      | Supported URL Paths  |
 | --------------------------- | -------------------- |
 | CelebForum                  | Threads: `/threads/<thread_name>`|
 | F95Zone                     | Threads: `/threads/<thread_name>`|
+| Forums.SocialMediaGirls.com | Threads: `/threads/<thread_name>`|
 | LeakedModels                | Threads: `/forum/threads/<thread_name>`|
 | Nudostar                    | Threads: `/forum/threads/<thread_name>`|
 | Reddit                      | User: `/user/<user>` , `/u/<user>` <br> Subreddit: `/r/<subreddit>` <br> Direct Links |
-| Forums.SocialMediaGirls.com | Threads: `/threads/<thread_name>`|
 | XBunker                     | Threads: `/threads/<thread_name>`|

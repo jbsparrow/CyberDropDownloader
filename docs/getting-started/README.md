@@ -32,7 +32,7 @@ There are two ways to install Cyberdrop-DL. The first is the easy method, where 
 [cyberdrop-dl-install.md](cyberdrop-dl-install.md)
 {% endcontent-ref %}
 
-### What now?</a>
+## What now?</a>
 
 If you downloaded the start scripts, just open the start script with the name of the OS your are using. For a manual install, execute the program with this command:
 
