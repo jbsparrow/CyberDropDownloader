@@ -25,7 +25,6 @@ This will make the connection insecure, and sensitive data may be exposed. You s
 
 The user agent is the signature of your browser, it's how it is represented to websites you connect to. You can google "what is my user agent" to see what yours may be.
 
-
 {% hint style="info" %}
 If you use flaresolverr, this value must match with flaresolverr user agent for its cookies to work
 {% endhint %}
@@ -45,7 +44,11 @@ The proxy you want CDL to use. Only `http` proxies are supported. Ex: `https://u
 |----------------|----------|
 | `HttpURL` or `null` | `null`|
 
-Flaresolverr instance you want CDL to use. Must be a valid `http` URL Ex: `http://ip:port`
+[FlareSolverr](https://github.com/FlareSolverr/FlareSolverr) is a proxy server to bypass Cloudflare and DDoS-GUARD protection. The provided value must be a valid `http` URL of an existing flaresolverr instance. Ex: `http://ip:port`
+
+{% hint style="warning" %}
+This wiki does not covert flaresolverr setup process. If you need help, refer to their documentation. Please refrain from opening issues related to flaresolverr.
+{% endhint %}
 
 ## `max_file_name_length`
 
