@@ -20,7 +20,7 @@ There are three type of config files: config settings, global settings and authe
 {% endcontent-ref %}
 
 {% hint style="info" %}
-**Global Settings** and **Authentication Settings** are "global". They apply to **ALL** Config Settings. You can set them once and never touch them again.
+**Global Settings** and **Authentication Settings** are "global". They apply to *all* config settings. You can set them once and never touch them again.
 {% endhint %}
 
 Each config setting will be setup by default to have a separate `URLs.txt` files and separate log files.

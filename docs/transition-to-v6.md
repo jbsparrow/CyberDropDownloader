@@ -17,7 +17,7 @@ layout:
 # Transition from V4 or V5 to V6
 
 {% hint style="danger" %}
-V6 introduces some breaking changes like: Using a more strict config validation logic, replacing `md5` with `xxh128` as the default hashing algorithm, using a new database schema, among others.
+V6 introduces some breaking changes: Using a more strict config validation logic, replacing `md5` with `xxh128` as the default hashing algorithm, using a new database schema, among others.
 
 It's recommended to do a manual backup of your current `AppData` folder. You won't be able to rollback to a previous version after the transfer is completed.
 
@@ -42,7 +42,7 @@ If the migration fails, the database will be rolled back to its previous state. 
 
 Built into Cyberdrop-DL V6 is a tool that allows you to import both your configs and your history DB from a v4 version of Cyberdrop-DL.
 
-### Importing previous configs <a href="#importing-previous-configs" id="importing-previous-configs"></a>
+### Importing previous configs</a>
 
 This is pretty straight forward. The config will be located in the folder that you were previously running Cyberdrop-DL in.
 
@@ -54,7 +54,7 @@ However, if you were primarily using CLI Arguments with V4, some of the argument
 
 If you don't end up using the import feature, make sure you also change the default config in the program if that's something you want to do.
 
-### Importing the old History DB <a href="#importing-the-old-history-db" id="importing-the-old-history-db"></a>
+### Importing the old History DB</a>
 
 For a lot of people, the `download_history.sqlite` file will be in the same folder as your start file (or wherever you are running Cyberdrop-DL).
 

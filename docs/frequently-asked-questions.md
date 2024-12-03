@@ -34,25 +34,25 @@ pip install --upgrade cyberdrop-dl-patched
 
 if you are on macOS you may need to do the following:
 
-```
+```shell
 pip3 install --upgrade cyberdrop-dl-patched
 ```
 
 </details>
 
 <details>
-<summary> Where is the `downloader.log` file? </summary>
+<summary> Where is the downloader.log file? </summary>
 
 If you are running using one of the new start scripts it'll be in `./AppData/configs/<config>/logs/`
 
 </details>
 
 <details>
-<summary> What does `Scrape Failures` and `Download Failures` mean? </summary>
+<summary> What does SCRAPE_FAILURES and DOWNLOAD_FAILURES mean? </summary>
 
 Quite simply, almost all of them you see will be HTTP Status codes. Such as: 404 - Not Found (dead link)
 
-You check [this page to learn about what each error code means].(https://developer.mozilla.org/en-US/docs/Web/HTTP/Status).
+You check [this page to learn about what each error code means](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status).
 
 {% hint style="info" %}
 Any "Unknown" error, is usually coding related, or it'll be something like the program not being able to find a file extension for a file.
@@ -63,19 +63,19 @@ Any "Unknown" error, is usually coding related, or it'll be something like the p
 <details>
 <summary> Why are all the files skipped? </summary>
 
-By default, the program tracks your download history and will skip any files you've previously downloaded to avoid duplicates. You can disable this behavior by using the --ignore-history CLI argument or setting ignore_history to `true` in the config
+By default, the program tracks your download history and will skip any files you've previously downloaded to avoid duplicates. You can disable this behavior by using the `--ignore-history` CLI argument or setting `ignore_history` to `true` in the config
 
 </details>
 
 <details>
 <summary> The screen is flickering? </summary>
 
-This issue is likely related to the limitations of the traditional command prompt, which has remained largely unchanged over time. For Windows 10 users, it's recommended to install and use Windows Terminal to run Cyberdrop-DL. Windows Terminal is the default on Windows 11.
+This issue is likely related to the limitations of the traditional command prompt, which has remained largely unchanged over time. For Windows 10 users, it's recommended to install and use [Windows Terminal](https://aka.ms/terminal) to run Cyberdrop-DL. Windows Terminal is the default on Windows 11.
 
 </details>
 
 <details>
-<summary> `cyberdrop-dl` is not a recognized internal command </summary>
+<summary> cyberdrop-dl is not a recognized internal command </summary>
 
 This issue is caused by an improper installation of Python, specifically Python not being added to the system PATH.
 
@@ -88,7 +88,7 @@ It is recommended to revisit the [Getting Started](getting-started/README.md) gu
 
 You need to provide Cyberdrop-DL with your credentials or user cookies in order to scrape forums.
 
-You can do this in the UI by selecting 'Manage Configs' -> 'Edit Authentication Values'
+You can do this in the UI by selecting `Manage Configs` -> `Edit Authentication Config`
 
 Then you can select whether you want to extract cookies from your browser automatically, or provide the details yourself.
 
@@ -102,7 +102,7 @@ Filenames are taken directly from the source website. Blame whoever uploaded it.
 </details>
 
 <details>
-<summary> How do I fix `[SSL: CERTIFICATE_VERIFY_FAILED]`? </summary>
+<summary> How do I fix [SSL: CERTIFICATE_VERIFY_FAILED]? </summary>
 
 This should only appear on macOS, so these instructions are for mac users.
 
@@ -115,7 +115,7 @@ Go back to where you are running Cyberdrop-DL and delete the the `venv` folder i
 <details>
 <summary> How do I go back to V5? </summary>
 
-In the start file change the `pip install --upgrade cyberdrop-dl...` line to `pip install cyberdrop-dl<6.0`.
+In the start file change the `pip install --upgrade cyberdrop-dl...` line to `pip install cyberdrop-dl=<6.0`.
 
 You also need to run `pip uninstall cyberdrop-dl-patched` in order to remove any current version.
 

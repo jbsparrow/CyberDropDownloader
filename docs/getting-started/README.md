@@ -24,7 +24,7 @@ Cyberdrop-DL is written in Python. You'll need Python installed on your system t
 [python-install](python-install/)
 {% endcontent-ref %}
 
-## Installing Cyberdrop-DL <a href="#installing-cyberdrop-dl" id="installing-cyberdrop-dl"></a>
+## Installing Cyberdrop-DL</a>
 
 There are two ways to install Cyberdrop-DL. The first is the easy method, where you simply download the start scripts. The second method involves using pip for installation, which is recommended for advanced users who prefer managing dependencies manually.
 
@@ -32,7 +32,7 @@ There are two ways to install Cyberdrop-DL. The first is the easy method, where 
 [cyberdrop-dl-install.md](cyberdrop-dl-install.md)
 {% endcontent-ref %}
 
-### What now? <a href="#what-now" id="what-now"></a>
+### What now?</a>
 
 If you downloaded the start scripts, just open the start script with the name of the OS your are using. For a manual install, execute the program with this command:
 

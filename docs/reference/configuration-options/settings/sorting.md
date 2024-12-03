@@ -7,9 +7,13 @@ You can use the shared path flags below in any part of the sorting schemas. You 
 Shared path flags:
 
 > `sort_dir`: `sort_folder` path
+>
 > `base_dir`: the highest level folder name inside the folder being scanned, ex: (model name / thread name)
+>
 > `parent_dir`: the folder name of where the file is (album name)
+>
 > `filename`: the files name (stem)
+>
 > `ext`: the file extension
 
 ## Group URLs
@@ -93,6 +97,7 @@ Setting `sort_folder` to the same value as `scan_folder` is not officiality supp
 | `NonEmptyStr` | ` ({i})`|
 
 When naming collisions happen, Cyberdrop-DL will rename files automatically
+
 > `image.jpg` -> `image (1).jpg`.
 
 You can modify the format as needed, but it must include `{i}` to specify where the auto-increment value should be placed
@@ -108,7 +113,9 @@ This is the format for the directory structure and naming scheme for audio files
 Unique Path Flags:
 
 > `length`: audio runtime
+>
 > `bitrate`: file bit rate
+>
 > `sample_rate`: audio sample rate
 
 ## `sorted_image`
@@ -134,7 +141,9 @@ This is the format for the directory structure and naming scheme for video files
 Unique Path Flags:
 
 > `resolution`: ex. 1080x1920
+>
 > `fps`: ex. 24
+>
 > `codec`: ex. h264
 
 ## `sorted_other`
