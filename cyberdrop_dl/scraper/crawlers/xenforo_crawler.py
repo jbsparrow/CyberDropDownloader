@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING, ClassVar
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import MaxChildrenError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FORUM, FORUM_POST, ScrapeItem
 from cyberdrop_dl.utils.logger import log
@@ -30,13 +29,31 @@ HTTP_URL_REGEX_STRS = [
 HTTP_URL_PATTERNS = [re.compile(regex) for regex in HTTP_URL_REGEX_STRS]
 
 
+@dataclass(frozen=True)
+class Selector:
+    element: str
+    attribute: str = ""
+
+
+@dataclass(frozen=True)
+class PostSelectors(Selector):
+    element: str = "div[class*=message-main]"
+    date: Selector = field(default=Selector("time", "data-timestamp"))
+    number: Selector = field(default=Selector("li[class=u-concealed] a", "href"))
+    images: Selector = field(default=Selector("img[class*=bbImage]", "src"))
+    videos: Selector = field(default=Selector("video source", "src"))
+    iframe: Selector = field(default=Selector("iframe[class=saint-iframe]", "href"))
+    embeds: Selector = field(default=Selector("span[data-s9e-mediaembed-iframe]", "data-s9e-mediaembed-iframe"))
+    attachments: Selector = field(default=Selector("section[class=message-attachments] a ", "href"))
+    links: Selector = field(default=Selector("a", "href"))
+
+
 @dataclass
-class PostSelectors:
-    div: str = "div[class*=message-main]"
-    date: str = "time"
-    date_attribute: str = "data-timestamp"
-    number: str = "li[class=u-concealed] a"
-    number_attribute: str = "href"
+class XenforoSelectors:
+    next_page: Selector = field(default=Selector("a[class*=pageNav-jump--next]", "href"))
+    posts: PostSelectors = field(default=PostSelectors())
+    title: Selector = field(default=Selector("h1[class=p-title-value]", None))
+    title_trash: Selector = field(default=Selector(None, "span"))
 
 
 @dataclass
@@ -46,18 +63,14 @@ class ForumPost:
 
     @property
     def number(self) -> int:
-        return int(
-            self.content.select_one(self.selectors.number)
-            .get(self.selectors.number_attribute)
-            .split("/")[-1]
-            .split("post-")[-1]
-        )
+        element = self.content.select_one(self.selectors.number.element)
+        return int(element.get(self.selectors.number.attribute).split("/")[-1].split("post-")[-1])
 
     @property
     def date(self) -> int | None:
         date = None
         with contextlib.suppress(AttributeError):
-            date = int(self.content.select_one(self.selectors.date).get(self.selectors.date_attribute))
+            date = int(self.content.select_one(self.selectors.date.element).get(self.selectors.date.attribute))
         return date
 
 
@@ -84,30 +97,9 @@ class XenforoCrawler(Crawler):
     login_required = True
 
     ## Default selectors, create a subclass to override
-    title_selector = "h1[class=p-title-value]"
-    title_trash_selector = "span"
-    posts_selector = "div[class*=message-main]"
-    post_date_selector = "time"
-    post_date_attribute = "data-timestamp"
-    posts_number_selector = "li[class=u-concealed] a"
-    posts_number_attribute = "href"
-    quotes_selector = "blockquote"
-    posts_content_selector = "div[class*=message-userContent]"
-    next_page_selector = "a[class*=pageNav-jump--next]"
-    next_page_attribute = "href"
-    links_selector = "a"
-    links_attribute = "href"
+    SELECTORS = XenforoSelectors()
+
     attachment_url_part = "attachments"
-    images_selector = "img[class*=bbImage]"
-    images_attribute = "src"
-    videos_selector = "video source"
-    iframe_selector = "iframe[class=saint-iframe]"
-    videos_attribute = "src"
-    embeds_selector = "span[data-s9e-mediaembed-iframe]"
-    embeds_attribute = "data-s9e-mediaembed-iframe"
-    attachments_block_selector = "section[class=message-attachments]"
-    attachments_selector = "a"
-    attachments_attribute = "href"
 
     def __init__(self, manager: Manager, site: str) -> None:
         super().__init__(manager, site, self.FOLDER_DOMAINS.get(site, "Xenforo"))
@@ -156,14 +148,7 @@ class XenforoCrawler(Crawler):
 
         thread_url = scrape_item.url
         post_number = 0
-        scrape_item.type = FORUM
-        scrape_item.children = scrape_item.children_limit = 0
-
-        with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = (
-                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
-            )
-
+        scrape_item.set_type(FORUM, self.manager)
         post_sections = {scrape_item.url.fragment}
         threads_part_index = scrape_item.url.parts.index("threads")
         thread_id = thread_url.parts[threads_part_index].split(".")[-1].split("#")[0]
@@ -184,7 +169,7 @@ class XenforoCrawler(Crawler):
                 span.decompose()
 
             title = self.create_title(title_block.text.replace("\n", ""), thread_id=thread_id)
-            posts = soup.select(self.posts_selector)
+            posts = soup.select(self.posts_selectors.div)
             continue_scraping = False
             for post in posts:
                 current_post = ForumPost(post)
@@ -201,10 +186,7 @@ class XenforoCrawler(Crawler):
                     )
 
                     await self.post(new_scrape_item, current_post)
-
-                    scrape_item.children += 1
-                    if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
-                        raise MaxChildrenError(origin=scrape_item)
+                    scrape_item.add_children()
 
                 if not continue_scraping:
                     break
@@ -219,26 +201,17 @@ class XenforoCrawler(Crawler):
         if self.manager.config_manager.settings_data.download_options.separate_posts:
             scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, f"post-{post.number}")
 
-        scrape_item.type = FORUM_POST
-        scrape_item.children = scrape_item.children_limit = 0
-
-        with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = (
-                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
-            )
-
+        scrape_item.set_type(FORUM_POST, self.manager)
         posts_scrapers = [self.attachments, self.embeds, self.images, self.links, self.videos]
 
         for scraper in posts_scrapers:
-            scrape_item.children += await scraper(scrape_item, post)
-            if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
-                raise MaxChildrenError(origin=scrape_item)
+            await scraper(scrape_item, post)
 
     @error_handling_wrapper
     async def links(self, scrape_item: ScrapeItem, post: ForumPost) -> int:
         """Scrapes links from a post."""
         links = post.content.select(self.links_selector)
-        links = [link for link in links if self.valid_post_link(link)]
+        links = [link for link in links if self.is_valid_post_link(link)]
         return await self.process_children(scrape_item, links, self.links_attribute)
 
     @error_handling_wrapper
@@ -279,7 +252,6 @@ class XenforoCrawler(Crawler):
         return embed.group(0).replace("www.", "") if embed else data
 
     async def process_children(self, scrape_item: ScrapeItem, links: list[Tag], selector: str) -> None:
-        new_children = 0
         for link_obj in links:
             link: Tag = link_obj.get(selector)
             if not link:
@@ -291,17 +263,15 @@ class XenforoCrawler(Crawler):
                 link = self.process_embed(link)
             if not link:
                 continue
-            link = self.fix_link(link)
+            link = self.get_absolute_link(link)
             await self.handle_link(scrape_item, link)
-            new_children += 1
-            if scrape_item.children_limit and (new_children + scrape_item.children) >= scrape_item.children_limit:
-                break
-        return new_children
+            scrape_item.add_children()
 
     async def handle_link(self, scrape_item: ScrapeItem, link: URL) -> None:
         try:
             if self.domain not in link.host:
                 new_scrape_item = self.create_scrape_item(scrape_item, link)
+                scrape_item.reset_childen()
                 self.handle_external_links(new_scrape_item)
             elif self.attachment_url_part in link.parts:
                 await self.handle_internal_link(link, scrape_item)
@@ -352,13 +322,13 @@ class XenforoCrawler(Crawler):
                     continue
             break
 
-    def valid_post_link(self, link_obj: Tag) -> bool:
+    def is_valid_post_link(self, link_obj: Tag) -> bool:
         is_image = link_obj.select_one("img")
         if not is_image and self.attachment_url_part not in link_obj.get(self.links_attribute):
             return False
         return True
 
-    async def fix_link(self, link: URL | str) -> URL:
+    async def get_absolute_link(self, link: URL | str) -> URL:
         if isinstance(link, str):
             link = link.replace(".th.", ".").replace(".md.", ".")
             if link.endswith("/"):
