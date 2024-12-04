@@ -3,7 +3,7 @@ from __future__ import annotations
 import contextlib
 import re
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
@@ -53,57 +53,34 @@ class XenforoSelectors:
     next_page: Selector = field(default=Selector("a[class*=pageNav-jump--next]", "href"))
     posts: PostSelectors = field(default=PostSelectors())
     title: Selector = field(default=Selector("h1[class=p-title-value]", None))
-    title_trash: Selector = field(default=Selector(None, "span"))
+    title_trash: Selector = field(default=Selector("span", None))
 
 
-@dataclass
+@dataclass(frozen=True)
 class ForumPost:
     content: Tag
     selectors: PostSelectors = field(default_factory=PostSelectors)
 
-    @property
-    def number(self) -> int:
+    def __post_init__(self) -> None:
         element = self.content.select_one(self.selectors.number.element)
-        return int(element.get(self.selectors.number.attribute).split("/")[-1].split("post-")[-1])
-
-    @property
-    def date(self) -> int | None:
+        self.number = int(element.get(self.selectors.number.attribute).split("/")[-1].split("post-")[-1])
         date = None
         with contextlib.suppress(AttributeError):
             date = int(self.content.select_one(self.selectors.date.element).get(self.selectors.date.attribute))
-        return date
+        self.date = date
 
 
 class XenforoCrawler(Crawler):
-    PRIMARY_BASE_DOMAINS: ClassVar[dict[str, URL]] = {
-        "celebforum": URL("https://celebforum.to"),
-        "f95zone": URL("https://f95zone.to"),
-        "leakedmodels": URL("https://LeakedModels.com"),
-        "nudostar": URL("https://nudostar.com"),
-        "simpcity": URL("https://simpcity.su"),
-        "socialmediagirls": URL("https://forums.socialmediagirls.com"),
-        "xbunker": URL("https://xbunker.nu/"),
-    }
-
-    SUPPORTED_SITES: ClassVar[dict[str, list]] = {name: [link.host] for name, link in PRIMARY_BASE_DOMAINS.items()}
-
-    FOLDER_DOMAINS: ClassVar[dict[str, str]] = {name: name.capitalize() for name in PRIMARY_BASE_DOMAINS}
-    FOLDER_DOMAINS["celebforum"] = "CelebForum"
-    FOLDER_DOMAINS["f95zone"] = "F95Zone"
-    FOLDER_DOMAINS["leakedmodels"] = "LeakedModels"
-    FOLDER_DOMAINS["nudostar"] = "NudoStar"
-    FOLDER_DOMAINS["socialmediagirls"] = "SocialMediaGirls"
-
     login_required = True
 
     ## Default selectors, create a subclass to override
     SELECTORS = XenforoSelectors()
-
     attachment_url_part = "attachments"
+    primary_base_domain = None
 
-    def __init__(self, manager: Manager, site: str) -> None:
-        super().__init__(manager, site, self.FOLDER_DOMAINS.get(site, "Xenforo"))
-        self.primary_base_domain = self.PRIMARY_BASE_DOMAINS.get(site, URL(f"https://{site}"))
+    def __init__(self, manager: Manager, site: str, *, folder_domain: str | None = None) -> None:
+        super().__init__(manager, site, folder_domain)
+        self.primary_base_domain = self.primary_base_domain or URL(f"https://{site}")
         self.logged_in = False
         self.login_attempts = 0
         self.request_limiter = AsyncLimiter(10, 1)
@@ -146,9 +123,10 @@ class XenforoCrawler(Crawler):
         if not self.logged_in and self.login_required:
             return
 
+        scrape_item.set_type(FORUM, self.manager)
+
         thread_url = scrape_item.url
         post_number = 0
-        scrape_item.set_type(FORUM, self.manager)
         post_sections = {scrape_item.url.fragment}
         threads_part_index = scrape_item.url.parts.index("threads")
         thread_id = thread_url.parts[threads_part_index].split(".")[-1].split("#")[0]
@@ -163,13 +141,13 @@ class XenforoCrawler(Crawler):
 
         last_scraped_post_number = None
         async for soup in self.thread_pager(scrape_item):
-            title_block = soup.select_one(self.title_selector)
-            spans: list[Tag] = title_block.find_all(self.title_trash_selector)
+            title_block = soup.select_one(self.SELECTORS.title.element)
+            spans: list[Tag] = title_block.find_all(self.SELECTORS.title_trash.attribute)
             for span in spans:
                 span.decompose()
 
             title = self.create_title(title_block.text.replace("\n", ""), thread_id=thread_id)
-            posts = soup.select(self.posts_selectors.div)
+            posts = soup.select(self.SELECTORS.posts.element)
             continue_scraping = False
             for post in posts:
                 current_post = ForumPost(post)
@@ -210,37 +188,40 @@ class XenforoCrawler(Crawler):
     @error_handling_wrapper
     async def links(self, scrape_item: ScrapeItem, post: ForumPost) -> int:
         """Scrapes links from a post."""
-        links = post.content.select(self.links_selector)
+        selector = self.SELECTORS.posts.links
+        links = post.content.select(selector.element)
         links = [link for link in links if self.is_valid_post_link(link)]
-        return await self.process_children(scrape_item, links, self.links_attribute)
+        return await self.process_children(scrape_item, links, selector.attribute)
 
     @error_handling_wrapper
     async def images(self, scrape_item: ScrapeItem, post: ForumPost) -> int:
         """Scrapes images from a post."""
-        images = post.content.select(self.images_selector)
-        return await self.process_children(scrape_item, images, self.images_attribute)
+        selector = self.SELECTORS.posts.images
+        images = post.content.select(selector.element)
+        return await self.process_children(scrape_item, images, selector.attribute)
 
     @error_handling_wrapper
     async def videos(self, scrape_item: ScrapeItem, post: ForumPost) -> int:
         """Scrapes videos from a post."""
-        videos = post.content.select(self.videos_selector)
-        videos.extend(post.content.select(self.iframe_selector))
-        return await self.process_children(scrape_item, videos, self.videos_attribute)
+        selector = self.SELECTORS.posts.videos
+        iframe_selector = self.SELECTORS.posts.iframe
+        videos = post.content.select(selector.element)
+        videos.extend(post.content.select(iframe_selector.element))
+        return await self.process_children(scrape_item, videos, selector.attribute)
 
     @error_handling_wrapper
     async def embeds(self, scrape_item: ScrapeItem, post: ForumPost) -> int:
         """Scrapes embeds from a post."""
-        embeds = post.content.select(self.embeds_selector)
-        return await self.process_children(scrape_item, embeds, self.embeds_attribute)
+        selector = self.SELECTORS.posts.embeds
+        embeds = post.content.select(selector.element)
+        return await self.process_children(scrape_item, embeds, selector.attribute)
 
     @error_handling_wrapper
     async def attachments(self, scrape_item: ScrapeItem, post: ForumPost) -> int:
         """Scrapes attachments from a post."""
-        attachments = []
-        attachment_block = post.content.select_one(self.attachments_block_selector)
-        if attachment_block:
-            attachments.extend(attachment_block.select(self.attachments_selector))
-        return await self.process_children(scrape_item, attachments, self.attachments_attribute)
+        selector = self.SELECTORS.posts.attachments
+        attachments = post.content.select(selector.attribute)
+        return await self.process_children(scrape_item, attachments, selector.attribute)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -259,7 +240,7 @@ class XenforoCrawler(Crawler):
             parent_simp_check = link.parent.get("data-simp")
             if parent_simp_check and "init" in parent_simp_check:
                 continue
-            if selector == self.embeds_attribute:
+            if selector == self.SELECTORS.posts.embeds.attribute:
                 link = self.process_embed(link)
             if not link:
                 continue
@@ -311,10 +292,10 @@ class XenforoCrawler(Crawler):
         while True:
             async with self.request_limiter:
                 soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url, origin=scrape_item)
-            next_page = soup.select_one(self.next_page_selector)
+            next_page = soup.select_one(self.SELECTORS.next_page.element)
             yield soup
             if next_page:
-                page_url = next_page.get(self.next_page_attribute)
+                page_url = next_page.get(self.SELECTORS.next_page.attribute)
                 if page_url:
                     if page_url.startswith("/"):
                         page_url = self.primary_base_domain / page_url[1:]
@@ -324,7 +305,7 @@ class XenforoCrawler(Crawler):
 
     def is_valid_post_link(self, link_obj: Tag) -> bool:
         is_image = link_obj.select_one("img")
-        if not is_image and self.attachment_url_part not in link_obj.get(self.links_attribute):
+        if not is_image and self.attachment_url_part not in link_obj.get(self.SELECTORS.posts.links.element):
             return False
         return True
 
