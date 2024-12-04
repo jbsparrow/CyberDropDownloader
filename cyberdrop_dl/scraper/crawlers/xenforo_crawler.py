@@ -237,7 +237,7 @@ class XenforoCrawler(Crawler):
 
     async def process_children(self, scrape_item: ScrapeItem, links: list[Tag], selector: str) -> None:
         for link_obj in links:
-            link: Tag = link_obj.get(selector)
+            link: Tag = link_obj.get(selector) or link_obj.get("href")
             if not link:
                 continue
             parent_simp_check = link.parent.get("data-simp")
