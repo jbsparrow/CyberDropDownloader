@@ -101,12 +101,12 @@ class XenforoCrawler(Crawler):
         login_url = self.primary_base_domain / "login"
         host_cookies: dict = self.client.client_manager.cookies._cookies.get((self.primary_base_domain.host, ""), {})
         session_cookie = host_cookies["xf_user"].value if "xf_user" in host_cookies else None
+        forums_auth_data = self.manager.config_manager.authentication_data.forums
         if not session_cookie:
-            session_cookie = self.manager.config_manager.authentication_data.forums.simpcity_xf_user_cookie
+            session_cookie = getattr(forums_auth_data, f"{self.domain}_xf_user_cookie")
 
-        session_cookie = self.manager.config_manager.authentication_data.forums.simpcity_xf_user_cookie
-        username = self.manager.config_manager.authentication_data.forums.simpcity_username
-        password = self.manager.config_manager.authentication_data.forums.simpcity_password
+        username = getattr(forums_auth_data, f"{self.domain}_username")
+        password = getattr(forums_auth_data, f"{self.domain}_password")
 
         if session_cookie or (username and password):
             self.login_attempts += 1
@@ -117,7 +117,7 @@ class XenforoCrawler(Crawler):
 
     @error_handling_wrapper
     async def forum(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an forum thread."""
+        """Scrapes a forum thread."""
         if not self.logged_in and self.login_required:
             return
 
