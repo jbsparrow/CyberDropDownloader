@@ -39,6 +39,7 @@ class Selector:
 class PostSelectors(Selector):
     element: str = "div[class*=message-main]"
     attachments: Selector = field(default=Selector("section[class=message-attachments] a ", "href"))
+    content: Selector = field(default=Selector("div[class*=message-userContent]", None))
     date: Selector = field(default=Selector("time", "data-timestamp"))
     embeds: Selector = field(default=Selector("span[data-s9e-mediaembed-iframe]", "data-s9e-mediaembed-iframe"))
     iframe: Selector = field(default=Selector("iframe[class=saint-iframe]", "href"))
@@ -54,16 +55,18 @@ class XenforoSelectors:
     posts: PostSelectors = field(default=PostSelectors())
     title: Selector = field(default=Selector("h1[class=p-title-value]", None))
     title_trash: Selector = field(default=Selector("span", None))
+    quotes: Selector = field(default=Selector("blockquote", None))
 
 
 @dataclass(frozen=True)
 class ForumPost:
-    content: Tag
-    selectors: PostSelectors = field(default_factory=PostSelectors)
+    soup: BeautifulSoup
+    selectors: PostSelectors
 
     def __post_init__(self) -> None:
-        element = self.content.select_one(self.selectors.number.element)
-        self.number = int(element.get(self.selectors.number.attribute).split("/")[-1].split("post-")[-1])
+        number = self.soup.select_one(self.selectors.number.element)
+        self.number = int(number.get(self.selectors.number.attribute).split("/")[-1].split("post-")[-1])
+        self.content = self.soup.select_one(self.selectors.content.element)
         date = None
         with contextlib.suppress(AttributeError):
             date = int(self.content.select_one(self.selectors.date.element).get(self.selectors.date.attribute))
@@ -76,7 +79,7 @@ class XenforoCrawler(Crawler):
     attachment_url_part = "attachments"
     primary_base_domain = None
 
-    def __init__(self, manager: Manager, site: str, *, folder_domain: str | None = None) -> None:
+    def __init__(self, manager: Manager, site: str, folder_domain: str | None = None) -> None:
         super().__init__(manager, site, folder_domain)
         self.primary_base_domain = self.primary_base_domain or URL(f"https://{site}")
         self.logged_in = False
@@ -95,7 +98,7 @@ class XenforoCrawler(Crawler):
         if not self.logged_in and self.login_attempts == 0:
             await self.try_login()
 
-        await self.forum(scrape_item)
+        await self.thread(scrape_item)
 
     async def try_login(self) -> None:
         login_url = self.primary_base_domain / "login"
@@ -116,7 +119,7 @@ class XenforoCrawler(Crawler):
             log(f"{self.domain} login failed. Scraping without an account.", 40)
 
     @error_handling_wrapper
-    async def forum(self, scrape_item: ScrapeItem) -> None:
+    async def thread(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a forum thread."""
         if not self.logged_in and self.login_required:
             return
@@ -140,15 +143,15 @@ class XenforoCrawler(Crawler):
         last_scraped_post_number = None
         async for soup in self.thread_pager(scrape_item):
             title_block = soup.select_one(self.selectors.title.element)
-            spans: list[Tag] = title_block.find_all(self.selectors.title_trash.attribute)
-            for span in spans:
-                span.decompose()
+            trash: list[Tag] = title_block.find_all(self.selectors.title_trash.element)
+            for element in trash:
+                element.decompose()
 
             title = self.create_title(title_block.text.replace("\n", ""), thread_id=thread_id)
             posts = soup.select(self.selectors.posts.element)
             continue_scraping = False
             for post in posts:
-                current_post = ForumPost(post)
+                current_post = ForumPost(post, selectors=self.selectors.posts)
                 last_scraped_post_number = current_post.number
                 scrape_post, continue_scraping = self.check_post_number(post_number, current_post.number)
 
@@ -160,6 +163,9 @@ class XenforoCrawler(Crawler):
                         possible_datetime=current_post.date,
                         add_parent=scrape_item.url.joinpath(f"post-{current_post.number}"),
                     )
+                    trash: list[Tag] = title_block.find_all(self.selectors.quotes.element)
+                    for element in trash:
+                        element.decompose()
 
                     await self.post(new_scrape_item, current_post)
                     scrape_item.add_children()
@@ -175,51 +181,50 @@ class XenforoCrawler(Crawler):
     async def post(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         """Scrapes a post."""
         if self.manager.config_manager.settings_data.download_options.separate_posts:
-            scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, f"post-{post.number}")
+            scrape_item.add_to_parent_title(f"post-{post.number}")
 
         scrape_item.set_type(FORUM_POST, self.manager)
         posts_scrapers = [self.attachments, self.embeds, self.images, self.links, self.videos]
-
         for scraper in posts_scrapers:
             await scraper(scrape_item, post)
 
     @error_handling_wrapper
-    async def links(self, scrape_item: ScrapeItem, post: ForumPost) -> int:
+    async def links(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         """Scrapes links from a post."""
-        selector = self.selectors.posts.links
+        selector = post.selectors.links
         links = post.content.select(selector.element)
         links = [link for link in links if self.is_valid_post_link(link)]
-        return await self.process_children(scrape_item, links, selector.attribute)
+        await self.process_children(scrape_item, links, selector.attribute)
 
     @error_handling_wrapper
-    async def images(self, scrape_item: ScrapeItem, post: ForumPost) -> int:
+    async def images(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         """Scrapes images from a post."""
-        selector = self.selectors.posts.images
+        selector = post.selectors.images
         images = post.content.select(selector.element)
-        return await self.process_children(scrape_item, images, selector.attribute)
+        await self.process_children(scrape_item, images, selector.attribute)
 
     @error_handling_wrapper
-    async def videos(self, scrape_item: ScrapeItem, post: ForumPost) -> int:
+    async def videos(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         """Scrapes videos from a post."""
-        selector = self.selectors.posts.videos
-        iframe_selector = self.selectors.posts.iframe
+        selector = post.selectors.videos
+        iframe_selector = post.selectors.iframe
         videos = post.content.select(selector.element)
         videos.extend(post.content.select(iframe_selector.element))
-        return await self.process_children(scrape_item, videos, selector.attribute)
+        await self.process_children(scrape_item, videos, selector.attribute)
 
     @error_handling_wrapper
-    async def embeds(self, scrape_item: ScrapeItem, post: ForumPost) -> int:
+    async def embeds(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         """Scrapes embeds from a post."""
-        selector = self.selectors.posts.embeds
+        selector = post.selectors.embeds
         embeds = post.content.select(selector.element)
-        return await self.process_children(scrape_item, embeds, selector.attribute)
+        await self.process_children(scrape_item, embeds, selector.attribute)
 
     @error_handling_wrapper
-    async def attachments(self, scrape_item: ScrapeItem, post: ForumPost) -> int:
+    async def attachments(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         """Scrapes attachments from a post."""
-        selector = self.selectors.posts.attachments
+        selector = post.selectors.attachments
         attachments = post.content.select(selector.attribute)
-        return await self.process_children(scrape_item, attachments, selector.attribute)
+        await self.process_children(scrape_item, attachments, selector.attribute)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -252,7 +257,7 @@ class XenforoCrawler(Crawler):
                 new_scrape_item = self.create_scrape_item(scrape_item, link)
                 scrape_item.reset_childen()
                 self.handle_external_links(new_scrape_item)
-            elif self.attachment_url_part in link.parts:
+            elif self.attachment_url_part in link.parts or "smgmedia" in link.host:
                 await self.handle_internal_link(link, scrape_item)
             else:
                 log(f"Unknown link type: {link}", 30)
@@ -262,7 +267,7 @@ class XenforoCrawler(Crawler):
     async def handle_internal_link(self, link: URL, scrape_item: ScrapeItem) -> None:
         """Handles internal links."""
         filename, ext = get_filename_and_ext(link.name, True)
-        new_scrape_item = self.create_scrape_item(scrape_item, link, "Attachments", True)
+        new_scrape_item = self.create_scrape_item(scrape_item, link, "Attachments", part_of_album=True)
         await self.handle_file(link, new_scrape_item, filename, ext)
 
     async def handle_confirmation_link(self, link: URL, *, origin: ScrapeItem | None = None) -> URL | None:
