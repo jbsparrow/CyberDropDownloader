@@ -124,10 +124,7 @@ class Crawler(ABC):
             self.manager.progress_manager.download_progress.add_skipped()
             return
 
-        if self.manager.download_manager.get_download_limit(self.domain) == 1:
-            await self.downloader.run(media_item)
-        else:
-            self.manager.task_group.create_task(self.downloader.run(media_item))
+        self.manager.task_group.create_task(self.downloader.run(media_item))
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
