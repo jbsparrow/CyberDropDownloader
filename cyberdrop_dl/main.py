@@ -208,7 +208,6 @@ async def director(manager: Manager) -> None:
     configs_to_run = [manager.config_manager.loaded_config]
     if manager.multiconfig:
         configs_to_run = manager.config_manager.get_configs()
-        configs_to_run.sort()
 
     start_time = manager.start_time
     while configs_to_run:

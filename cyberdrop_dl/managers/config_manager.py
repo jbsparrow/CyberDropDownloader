@@ -127,7 +127,9 @@ class ConfigManager:
 
     def get_configs(self) -> list:
         """Returns a list of all the configs."""
-        return [config.name for config in self.manager.path_manager.config_folder.iterdir() if config.is_dir()]
+        configs = [config.name for config in self.manager.path_manager.config_folder.iterdir() if config.is_dir()]
+        configs.sort()
+        return configs
 
     def change_default_config(self, config_name: str) -> None:
         """Changes the default config."""
