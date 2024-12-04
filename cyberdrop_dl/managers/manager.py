@@ -86,7 +86,7 @@ class Manager:
             self.multiconfig = True
 
     def adjust_for_simpcity(self) -> None:
-        # Adjust settings for SimpCity update
+        """Adjusts settings for SimpCity update."""
         simp_settings_adjusted = self.cache_manager.get("simp_settings_adjusted")
         if not simp_settings_adjusted:
             for config in self.config_manager.get_configs():
@@ -172,7 +172,7 @@ class Manager:
         forum_credentials_provided = {}
 
         auth_data_forums = self.config_manager.authentication_data.forums.model_dump()
-        auth_data_others = self.config_manager.authentication_data.model_dump(exclude="forums")
+        auth_data_others: dict[str, dict] = self.config_manager.authentication_data.model_dump(exclude="forums")
 
         for forum in SupportedForums:
             forum_name = forum.name
@@ -192,14 +192,13 @@ class Manager:
         config_settings = self.config_manager.settings_data.model_dump_json(indent=4)
         global_settings = self.config_manager.global_settings_data.model_dump_json(indent=4)
 
-        log(f"Starting Cyberdrop-DL Process - Config: {self.config_manager.loaded_config}", 10)
-        log(f"Running version {__version__}", 10)
+        log("Starting Cyberdrop-DL Process", 10)
+        log(f"Running Version: {__version__}", 10)
         log(f"Using Config: {self.config_manager.loaded_config}", 10)
         log(f"Using Config File: {self.config_manager.settings.resolve()}", 10)
         log(f"Using Input File: {self.path_manager.input_file.resolve()}", 10)
         log(f"Using Download Folder: {self.path_manager.download_folder.resolve()}", 10)
-        log(f"Using History File: {self.path_manager.history_db.resolve()}", 10)
-
+        log(f"Using Database File: {self.path_manager.history_db.resolve()}", 10)
         log(f"Using Authentication: \n{json.dumps(auth_provided, indent=4, sort_keys=True)}", 10)
         log(f"Using Settings: \n{config_settings}", 10)
         log(f"Using Global Settings: \n{global_settings}", 10)
