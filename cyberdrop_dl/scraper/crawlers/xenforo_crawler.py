@@ -238,99 +238,65 @@ class XenforoCrawler(Crawler):
     async def links(self, scrape_item: ScrapeItem, post: ForumPost) -> int:
         """Scrapes links from a post."""
         links = post.content.select(self.links_selector)
-        new_children = 0
-        for link_obj in links:
-            link = await self.parse_post_link(link_obj)
-            if not link:
-                continue
-
-            self.handle_link(scrape_item, link)
-            new_children += 1
-            if scrape_item.children_limit and (new_children + scrape_item.children) >= scrape_item.children_limit:
-                break
-        return new_children
+        links = [link for link in links if self.valid_post_link(link)]
+        return await self.process_children(scrape_item, links, self.links_attribute)
 
     @error_handling_wrapper
     async def images(self, scrape_item: ScrapeItem, post_content: Tag) -> int:
         """Scrapes images from a post."""
         images = post_content.select(self.images_selector)
-        new_children = 0
-        for image in images:
-            link = image.get(self.images_attribute)
-            if not link:
-                continue
-
-            parent_simp_check = image.parent.get("data-simp")
-            if parent_simp_check and "init" in parent_simp_check:
-                continue
-
-            link = self.fix_link(link)
-            self.handle_link(scrape_item, link)
-            new_children += 1
-            if scrape_item.children_limit and (new_children + scrape_item.children) >= scrape_item.children_limit:
-                break
-        return new_children
+        return await self.process_children(scrape_item, images, self.images_attribute)
 
     @error_handling_wrapper
     async def videos(self, scrape_item: ScrapeItem, post_content: Tag) -> int:
         """Scrapes videos from a post."""
         videos = post_content.select(self.videos_selector)
         videos.extend(post_content.select(self.iframe_selector))
-        new_children = 0
-        for video in videos:
-            link = video.get(self.videos_attribute)
-            if not link:
-                continue
-            link = self.fix_link(link)
-            self.handle_link(scrape_item, link)
-            new_children += 1
-            if scrape_item.children_limit and (new_children + scrape_item.children) >= scrape_item.children_limit:
-                break
-        return new_children
+        return await self.process_children(scrape_item, videos, self.videos_attribute)
 
     @error_handling_wrapper
     async def embeds(self, scrape_item: ScrapeItem, post_content: Tag) -> int:
         """Scrapes embeds from a post."""
         embeds = post_content.select(self.embeds_selector)
-        new_children = 0
-        for embed in embeds:
-            data = embed.get(self.embeds_attribute)
-            if not data:
-                continue
-
-            data = data.replace(r"\/\/", "https://www.").replace("\\", "")
-            embed = re.search(HTTP_URL_PATTERNS[0], data) or re.search(HTTP_URL_PATTERNS[1], data)
-            if not embed:
-                continue
-
-            link = embed.group(0).replace("www.", "")
-            link = self.fix_link(link)
-            self.handle_link(scrape_item, link)
-            new_children += 1
-            if scrape_item.children_limit and (new_children + scrape_item.children) >= scrape_item.children_limit:
-                break
-        return new_children
+        return await self.process_children(scrape_item, embeds, self.embeds_attribute)
 
     @error_handling_wrapper
     async def attachments(self, scrape_item: ScrapeItem, post_content: Tag) -> int:
         """Scrapes attachments from a post."""
+        attachments = []
         attachment_block = post_content.select_one(self.attachments_block_selector)
+        if attachment_block:
+            attachments.extend(attachment_block.select(self.attachments_selector))
+        return await self.process_children(scrape_item, attachments, self.attachments_attribute)
+
+    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+    def process_embed(self, data: str) -> URL:
+        if not data:
+            return
+        data = data.replace(r"\/\/", "https://www.").replace("\\", "")
+        embed = re.search(HTTP_URL_PATTERNS[0], data) or re.search(HTTP_URL_PATTERNS[1], data)
+        return embed.group(0).replace("www.", "") if embed else data
+
+    async def process_children(self, scrape_item: ScrapeItem, links: list[Tag], selector: str) -> None:
         new_children = 0
-        if not attachment_block:
-            return new_children
-        attachments = attachment_block.select(self.attachments_selector)
-        for attachment in attachments:
-            link = attachment.get(self.attachments_attribute)
+        for link_obj in links:
+            link: Tag = link_obj.get(selector)
+            if not link:
+                continue
+            parent_simp_check = link.parent.get("data-simp")
+            if parent_simp_check and "init" in parent_simp_check:
+                continue
+            if selector == self.embeds_attribute:
+                link = self.process_embed(link)
             if not link:
                 continue
             link = self.fix_link(link)
-            self.handle_link(scrape_item, link)
+            await self.handle_link(scrape_item, link)
             new_children += 1
             if scrape_item.children_limit and (new_children + scrape_item.children) >= scrape_item.children_limit:
                 break
         return new_children
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def handle_link(self, scrape_item: ScrapeItem, link: URL) -> None:
         try:
@@ -386,28 +352,24 @@ class XenforoCrawler(Crawler):
                     continue
             break
 
-    async def parse_post_link(self, link_obj: Tag) -> URL | None:
+    def valid_post_link(self, link_obj: Tag) -> bool:
         is_image = link_obj.select_one("img")
         if not is_image and self.attachment_url_part not in link_obj.get(self.links_attribute):
-            return
+            return False
+        return True
 
-        link = link_obj.get(self.links_attribute)
-        if not link:
-            return
+    async def fix_link(self, link: URL | str) -> URL:
+        if isinstance(link, str):
+            link = link.replace(".th.", ".").replace(".md.", ".")
+            if link.endswith("/"):
+                link = link[:-1]
+            if link.startswith("//"):
+                link = "https:" + link
+            elif link.startswith("/"):
+                link = self.primary_base_domain / link[1:]
 
-        link = self.fix_link(link)
+        link = URL(link, encoded=True)
         if "link-confirmation" in link.path:
             link = await self.handle_confirmation_link(link)
 
         return link
-
-    def fix_link(self, link: str) -> URL:
-        link = link.replace(".th.", ".").replace(".md.", ".")
-        if link.endswith("/"):
-            link = link[:-1]
-        if link.startswith("//"):
-            link = "https:" + link
-        elif link.startswith("/"):
-            link = self.primary_base_domain / link[1:]
-
-        return URL(link, encoded=True)
