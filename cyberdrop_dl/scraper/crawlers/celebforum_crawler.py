@@ -94,8 +94,11 @@ class CelebForumCrawler(Crawler):
             ][scrape_item.type]
 
         post_sections = {scrape_item.url.fragment}
-        if len(scrape_item.url.parts) > 3:
-            post_sections.add(scrape_item.url.parts[3])
+        if "threads" in scrape_item.url.parts:
+            threads_part_index = scrape_item.url.parts.index("threads")
+            post_part_index = threads_part_index + 1
+            if len(scrape_item.url.parts) > post_part_index:
+                post_sections.add(scrape_item.url.parts[post_part_index])
 
         if any("post-" in sec for sec in post_sections):
             url_parts = str(scrape_item.url).rsplit("post-", 1)
