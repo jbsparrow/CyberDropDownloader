@@ -286,6 +286,19 @@ class XenforoCrawler(Crawler):
             return URL(confirm_button.get("href"))
         return None
 
+    async def handle_link_confirmation2(self, link: URL) -> URL | None:
+        """NEEDS TESTING
+
+        Handles link confirmation."""
+        async with self.request_limiter:
+            await self.client.get_soup(self.domain, link)
+        async with self.request_limiter:
+            JSON_Resp = await self.client.post_data(self.domain, link, data={"xhr": "1", "download": "1"})
+
+        if JSON_Resp["status"] == "ok":
+            return URL(JSON_Resp["msg"])
+        return None
+
     async def write_last_forum_post(self, scrape_item: ScrapeItem, post_number: int) -> None:
         if not post_number:
             return
