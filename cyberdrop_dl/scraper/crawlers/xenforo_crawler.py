@@ -75,13 +75,14 @@ class ForumPost:
 
 class XenforoCrawler(Crawler):
     login_required = True
-    selectors = XenforoSelectors()
-    attachment_url_part = "attachments"
     primary_base_domain = None
+    selectors = XenforoSelectors()
 
     def __init__(self, manager: Manager, site: str, folder_domain: str | None = None) -> None:
         super().__init__(manager, site, folder_domain)
         self.primary_base_domain = self.primary_base_domain or URL(f"https://{site}")
+        self.attachment_url_part = ["attachments"]
+        self.attachment_url_hosts = ["smgmedia"]
         self.logged_in = False
         self.login_attempts = 0
         self.request_limiter = AsyncLimiter(10, 1)
@@ -251,13 +252,19 @@ class XenforoCrawler(Crawler):
             await self.handle_link(scrape_item, link)
             scrape_item.add_children()
 
+    def is_attachment(self, link: URL | str) -> bool:
+        link = URL(link)
+        return any(part in link.parts for part in self.attachment_url_part) or any(
+            host in link.host for host in self.attachment_url_hosts
+        )
+
     async def handle_link(self, scrape_item: ScrapeItem, link: URL) -> None:
         try:
             if self.domain not in link.host:
                 new_scrape_item = self.create_scrape_item(scrape_item, link)
                 scrape_item.reset_childen()
                 self.handle_external_links(new_scrape_item)
-            elif self.attachment_url_part in link.parts or "smgmedia" in link.host:
+            elif self.is_attachment(link):
                 await self.handle_internal_link(link, scrape_item)
             else:
                 log(f"Unknown link type: {link}", 30)
@@ -308,9 +315,8 @@ class XenforoCrawler(Crawler):
 
     def is_valid_post_link(self, link_obj: Tag) -> bool:
         is_image = link_obj.select_one("img")
-        if not is_image and self.attachment_url_part not in link_obj.get(self.selectors.posts.links.element):
-            return False
-        return True
+        link = link_obj.get(self.selectors.posts.links.element)
+        return not (is_image and self.is_attachment(link))
 
     async def get_absolute_link(self, link: URL | str) -> URL:
         if isinstance(link, str):
