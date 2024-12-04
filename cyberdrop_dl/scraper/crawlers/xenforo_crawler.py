@@ -320,7 +320,7 @@ class XenforoCrawler(Crawler):
 
     async def get_absolute_link(self, link: URL | str) -> URL:
         if isinstance(link, str):
-            link = link.replace(".th.", ".").replace(".md.", ".")
+            link = link.replace(".th.", ".").replace(".md.", ".").replace("ifr", "watch")
             if link.endswith("/"):
                 link = link[:-1]
             if link.startswith("//"):
