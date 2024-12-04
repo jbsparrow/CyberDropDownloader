@@ -208,7 +208,6 @@ async def director(manager: Manager) -> None:
     configs_to_run = [manager.config_manager.loaded_config]
     if manager.multiconfig:
         configs_to_run = manager.config_manager.get_configs()
-        configs_to_run.sort()
 
     start_time = manager.start_time
     while configs_to_run:
@@ -216,13 +215,12 @@ async def director(manager: Manager) -> None:
         setup_logger(manager, current_config)
         configs_to_run.pop(0)
 
-        log(f"Using Debug Log: {debug_log_file_path if debug_log_file_path else None}", 10)
-        log("Starting Async Processes...", 20)
+        log(f"Using Debug Log: {debug_log_file_path}", 10)
+        log("Starting Async Processes...", 10)
         await manager.async_startup()
+        log_spacer(10)
 
-        log_spacer(20)
         log("Starting CDL...\n", 20)
-
         pre_runtime(manager)
         await runtime(manager)
         await post_runtime(manager)
