@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 from rich.console import Console
 from rich.text import Text
@@ -12,6 +13,7 @@ logger_debug = logging.getLogger("cyberdrop_dl_debug")
 console = Console()
 
 ERROR_PREFIX = "\n[bold red]ERROR: [/bold red]"
+USER_NAME = Path.home().resolve().parts[-1]
 
 
 def print_to_console(text: Text | str, *, error: bool = False, **kwargs) -> None:
@@ -21,7 +23,8 @@ def print_to_console(text: Text | str, *, error: bool = False, **kwargs) -> None
 
 def log(message: Exception | str, level: int = 10, *, sleep: int | None = None, **kwargs) -> None:
     """Simple logging function."""
-    logger.log(level, message, **kwargs)
+    redacted_message = _redact_message(message)
+    logger.log(level, redacted_message, **kwargs)
     log_debug(message, level, **kwargs)
     log_debug_console(message, level, sleep=sleep)
 
@@ -60,3 +63,13 @@ def _log_to_console(level: int, record: str, *_, **__) -> None:
     level = level or 10
     if level >= constants.CONSOLE_LEVEL:
         console.log(record)
+
+
+def _redact_message(message: Exception | Text | str) -> str:
+    redacted = str(message)
+    separators = ["\\", "\\\\", "/"]
+    for sep in separators:
+        as_tail = sep + USER_NAME
+        as_part = USER_NAME + sep
+        redacted = redacted.replace(as_tail, f"{sep}[REDACTED]").replace(as_part, f"[REDACTED]{sep}")
+    return redacted
