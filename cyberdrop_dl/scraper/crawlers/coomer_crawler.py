@@ -149,6 +149,10 @@ class CoomerCrawler(Crawler):
     @error_handling_wrapper
     async def handle_post_content(self, scrape_item: ScrapeItem, post: dict, user: str, user_str: str) -> None:
         """Handles the content of a post."""
+        try:
+            post = post["post"]
+        except KeyError:
+            post = post
         if (
             "#ad" in post["content"]
             and self.manager.config_manager.settings_data["Ignore_Options"]["ignore_coomer_ads"]
