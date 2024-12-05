@@ -19,8 +19,8 @@ from cyberdrop_dl.managers.path_manager import PathManager
 from cyberdrop_dl.managers.progress_manager import ProgressManager
 from cyberdrop_dl.managers.realdebrid_manager import RealDebridManager
 from cyberdrop_dl.utils.args import ParsedArgs
-from cyberdrop_dl.utils.data_enums_classes.supported_domains import SupportedForums
-from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.data_enums_classes.supported_domains import FORUMS
+from cyberdrop_dl.utils.logger import log, print_to_console
 from cyberdrop_dl.utils.transfer.db_setup import TransitionManager
 
 if TYPE_CHECKING:
@@ -174,8 +174,7 @@ class Manager:
         auth_data_forums = self.config_manager.authentication_data.forums.model_dump()
         auth_data_others: dict[str, dict] = self.config_manager.authentication_data.model_dump(exclude="forums")
 
-        for forum in SupportedForums:
-            forum_name = forum.name
+        for forum_name in FORUMS:
             forum_xf_cookies_provided[forum_name] = bool(auth_data_forums[f"{forum_name}_xf_user_cookie"])
             forum_credentials_provided[forum_name] = bool(
                 auth_data_forums[f"{forum_name}_username"] and auth_data_forums[f"{forum_name}_password"],
@@ -211,3 +210,12 @@ class Manager:
         self.db_manager: DBManager = field(init=False)
         self.cache_manager: CacheManager = field(init=False)
         self.hash_manager: HashManager = field(init=False)
+
+    def validate_all_configs(self) -> None:
+        print_to_console("validating all configs, please wait...")
+        all_configs = self.config_manager.get_configs()
+        all_configs.sort()
+        if not all_configs:
+            return
+        for config in all_configs:
+            self.config_manager.change_config(config)

@@ -1,16 +1,25 @@
 import sys
+import time
+import warnings
 from argparse import SUPPRESS, ArgumentDefaultsHelpFormatter, ArgumentParser, BooleanOptionalAction
 from argparse import _ArgumentGroup as ArgGroup
 from datetime import date
 from pathlib import Path
-from typing import Self
+from typing import TYPE_CHECKING, Self
 
-from pydantic import BaseModel, Field, ValidationError, computed_field, model_validator
+from pydantic import BaseModel, Field, ValidationError, computed_field, field_validator, model_validator
 
 from cyberdrop_dl import __version__
 from cyberdrop_dl.config_definitions import ConfigSettings, GlobalSettings
 from cyberdrop_dl.config_definitions.custom_types import AliasModel, HttpURL
 from cyberdrop_dl.utils.utilities import handle_validation_error
+
+if TYPE_CHECKING:
+    from pydantic.fields import FieldInfo
+
+
+warnings.simplefilter("always", DeprecationWarning)
+WARNING_TIMEOUT = 5  # seconds
 
 
 def _check_mutually_exclusive(group: set, msg: str) -> None:
@@ -59,18 +68,55 @@ class DeprecatedArgs(BaseModel):
     download_all_configs: bool = Field(
         False,
         description="Skip the UI and go straight to downloading (runs all configs sequentially)",
-        deprecated="'--download-all-configs' is deprecated and may be removed in the future. Use '--download --config all'",
+        deprecated="'--download-all-configs' is deprecated and will be removed in the future. Use '--download --config all'",
     )
     sort_all_configs: bool = Field(
         False,
         description="Sort all configs sequentially",
-        deprecated="'--sort-all-configs' is deprecated and may be removed in the future. Use '--sort-downloads --config all'",
+        deprecated="'--sort-all-configs' is deprecated and will be removed in the future. Use '--sort-downloads --config all'",
     )
     sort_all_downloads: bool = Field(
         False,
         description="sort all downloads, not just those downloaded by Cyberdrop-DL",
-        deprecated="'--sort-all-downloads' is deprecated and may be removed in the future. Use '--no-sort-cdl-only'",
+        deprecated="'--sort-all-downloads' is deprecated and will be removed in the future. Use '--no-sort-cdl-only'",
     )
+
+    main_log_filename: Path | None = Field(
+        None,
+        deprecated="'--main-log-filename' is deprecated and will be removed in the future. Use '--main-log'",
+    )
+    last_forum_post_filename: Path | None = Field(
+        None,
+        deprecated="'--last-forum-post-filename' is deprecated and will be removed in the future. Use '--last-forum-post'",
+    )
+    unsupported_urls_filename: Path | None = Field(
+        None,
+        deprecated="'--unsupported-urls-filename' is deprecated and will be removed in the future. Use '--unsupported-urls'",
+    )
+    download_error_urls_filename: Path | None = Field(
+        None,
+        deprecated="'--download-error-urls-filename' is deprecated and will be removed in the future. Use '--download-error-urls'",
+    )
+    scrape_error_urls_filename: Path | None = Field(
+        None,
+        deprecated="'--scrape-error-urls-filename' is deprecated and will be removed in the future. Use '--scrape-error-urls'",
+    )
+
+    @field_validator("main_log_filename", mode="after")
+    @classmethod
+    def fix_main_log_extension(cls, value: Path) -> Path:
+        return value.with_suffix(".log")
+
+    @field_validator(
+        "last_forum_post_filename",
+        "unsupported_urls_filename",
+        "download_error_urls_filename",
+        "scrape_error_urls_filename",
+        mode="after",
+    )
+    @classmethod
+    def fix_other_logs_extensions(cls, value: Path) -> Path:
+        return value.with_suffix(".csv")
 
 
 class ParsedArgs(AliasModel):
@@ -80,23 +126,58 @@ class ParsedArgs(AliasModel):
     global_settings: GlobalSettings = GlobalSettings()
 
     def model_post_init(self, _) -> None:
+        logs_deprecated_names = [
+            "main_log_filename",
+            "last_forum_post_filename",
+            "unsupported_urls_filename",
+            "download_error_urls_filename",
+            "scrape_error_urls_filename",
+        ]
+
         if self.cli_only_args.retry_all or self.cli_only_args.retry_maintenance:
             self.config_settings.runtime_options.ignore_history = True
-        if self.deprecated_args.sort_all_configs:
-            self.config_settings.sorting.sort_downloads = True
+
+        warnings_to_emit = set()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+
+            def add_warning_msg_from(field_name: str) -> None:
+                field_info: FieldInfo = self.deprecated_args.model_fields[field_name]
+                warnings_to_emit.add(field_info.deprecated)
+
+            if self.deprecated_args.sort_all_configs:
+                add_warning_msg_from("sort_all_configs")
+                self.config_settings.sorting.sort_downloads = True
+                self.cli_only_args.config = "ALL"
+
+            if self.deprecated_args.download_all_configs:
+                add_warning_msg_from("download_all_configs")
+                self.cli_only_args.download = True
+                self.cli_only_args.config = "ALL"
+
+            if self.deprecated_args.sort_all_downloads:
+                add_warning_msg_from("sort_all_downloads")
+                self.config_settings.sorting.sort_cdl_only = False
+
+            for deprecated_name in logs_deprecated_names:
+                cli_value = getattr(self.deprecated_args, deprecated_name, None)
+                if cli_value:
+                    add_warning_msg_from(deprecated_name)
+                    model_name = deprecated_name.replace("_filename", "")
+                    setattr(self.config_settings.logs, model_name, cli_value)
+
+        if (
+            self.cli_only_args.no_ui
+            or self.cli_only_args.retry_any
+            or self.cli_only_args.config_file
+            or self.config_settings.sorting.sort_downloads
+        ):
             self.cli_only_args.download = True
-            self.cli_only_args.config = "ALL"
-        if self.deprecated_args.sort_all_downloads:
-            self.config_settings.sorting.sort_cdl_only = False
-        if self.deprecated_args.download_all_configs:
-            self.cli_only_args.download = True
-            self.cli_only_args.config = "ALL"
-        if self.cli_only_args.no_ui:
-            self.cli_only_args.download = True
-        if self.cli_only_args.retry_any:
-            self.cli_only_args.download = True
-        if self.cli_only_args.config_file:
-            self.cli_only_args.download = True
+
+        if warnings_to_emit:
+            for msg in warnings_to_emit:
+                warnings.warn(msg, DeprecationWarning, stacklevel=10)
+            time.sleep(WARNING_TIMEOUT)
 
     @staticmethod
     def parse_args() -> Self:

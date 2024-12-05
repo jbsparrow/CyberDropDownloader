@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date, timedelta
 from enum import Enum
 from pathlib import Path, PurePath
 
@@ -17,8 +18,14 @@ def _save_as_str(dumper: yaml.Dumper, value):
     return dumper.represent_str(str(value))
 
 
+def _save_date(dumper: yaml.Dumper, value: date):
+    return dumper.represent_str(value.isoformat())
+
+
 yaml.add_multi_representer(PurePath, _save_as_str)
 yaml.add_multi_representer(Enum, _save_as_str)
+yaml.add_multi_representer(date, _save_date)
+yaml.add_representer(timedelta, _save_as_str)
 yaml.add_representer(URL, _save_as_str)
 
 VALIDATION_ERROR_FOOTER = """

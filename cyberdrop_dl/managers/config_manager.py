@@ -12,13 +12,15 @@ from cyberdrop_dl.utils import yaml
 if TYPE_CHECKING:
     from pathlib import Path
 
+    from pydantic import BaseModel
+
     from cyberdrop_dl.managers.manager import Manager
 
 
 class ConfigManager:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
-        self.loaded_config: str = field(init=False)
+        self.loaded_config: str = None
 
         self.authentication_settings: Path = field(init=False)
         self.settings: Path = field(init=False)
@@ -30,12 +32,12 @@ class ConfigManager:
 
     def startup(self) -> None:
         """Startup process for the config manager."""
-        if not isinstance(self.loaded_config, str):
-            self.loaded_config = self.manager.cache_manager.get("default_config")
-            if not self.loaded_config:
-                self.loaded_config = "Default"
-            if self.manager.parsed_args.cli_only_args.config:
-                self.loaded_config = self.manager.parsed_args.cli_only_args.config
+        self.loaded_config = self.loaded_config or self.manager.cache_manager.get("default_config")
+        if not self.loaded_config or self.loaded_config.casefold() == "all":
+            self.loaded_config = "Default"
+        cli_config = self.manager.parsed_args.cli_only_args.config
+        if cli_config and cli_config.casefold() != "all":
+            self.loaded_config = self.manager.parsed_args.cli_only_args.config
 
         self.settings = self.manager.path_manager.config_folder / self.loaded_config / "settings.yaml"
         self.global_settings = self.manager.path_manager.config_folder / "global_settings.yaml"
@@ -58,12 +60,22 @@ class ConfigManager:
         self._load_global_settings_config()
         self._load_settings_config()
 
+    @staticmethod
+    def get_model_fields(model: type[BaseModel], *, exclude_unset: bool = True) -> set[str]:
+        fields = set()
+        default_dict: dict = model.model_dump(exclude_unset=exclude_unset)
+        for submodel_name, submodel in default_dict.items():
+            for field_name in submodel:
+                fields.add(f"{submodel_name}.{field_name}")
+        return fields
+
     def _load_authentication_config(self) -> None:
         """Verifies the authentication config file and creates it if it doesn't exist."""
-        posible_fields = AuthSettings.model_fields.keys()
+        posible_fields = self.get_model_fields(AuthSettings(), exclude_unset=False)
         if self.authentication_settings.is_file():
             self.authentication_data = AuthSettings.model_validate(yaml.load(self.authentication_settings))
-            if posible_fields == self.authentication_data.model_fields_set and self.pydantic_config:
+            set_fields = self.get_model_fields(self.authentication_data)
+            if posible_fields == set_fields and self.pydantic_config:
                 return
 
         else:
@@ -73,14 +85,15 @@ class ConfigManager:
 
     def _load_settings_config(self) -> None:
         """Verifies the settings config file and creates it if it doesn't exist."""
-        posible_fields = ConfigSettings.model_fields.keys()
+        posible_fields = self.get_model_fields(ConfigSettings(), exclude_unset=False)
         if self.manager.parsed_args.cli_only_args.config_file:
             self.settings = self.manager.parsed_args.cli_only_args.config_file
             self.loaded_config = "CLI-Arg Specified"
 
         if self.settings.is_file():
             self.settings_data = ConfigSettings.model_validate(yaml.load(self.settings))
-            if posible_fields == self.settings_data.model_fields_set and self.pydantic_config:
+            set_fields = self.get_model_fields(self.settings_data)
+            if posible_fields == set_fields and self.pydantic_config:
                 return
         else:
             from cyberdrop_dl.utils import constants
@@ -95,10 +108,11 @@ class ConfigManager:
 
     def _load_global_settings_config(self) -> None:
         """Verifies the global settings config file and creates it if it doesn't exist."""
-        posible_fields = ConfigSettings.model_fields.keys()
+        posible_fields = self.get_model_fields(GlobalSettings(), exclude_unset=False)
         if self.global_settings.is_file():
             self.global_settings_data = GlobalSettings.model_validate(yaml.load(self.global_settings))
-            if posible_fields == self.global_settings_data.model_fields_set and self.pydantic_config:
+            set_fields = self.get_model_fields(self.global_settings_data)
+            if posible_fields == set_fields and self.pydantic_config:
                 return
         else:
             self.global_settings_data = GlobalSettings()

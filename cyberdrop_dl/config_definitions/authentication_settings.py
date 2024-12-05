@@ -35,8 +35,8 @@ class XXXBunkerAuth(BaseModel):
     PHPSESSID: str = ""
 
 
-class ImgurAuth(BaseModel):
-    client_id: str = ""
+class ImgurAuth(AliasModel):
+    client_id: str = Field("", validation_alias="imgur_client_id")
 
 
 class JDownloaderAuth(AliasModel):
@@ -45,9 +45,9 @@ class JDownloaderAuth(AliasModel):
     device: str = Field("", validation_alias="jdownloader_device")
 
 
-class RedditAuth(BaseModel):
-    personal_use_script: str = ""
-    secret: str = ""
+class RedditAuth(AliasModel):
+    personal_use_script: str = Field("", validation_alias="reddit_personal_use_script")
+    secret: str = Field("", validation_alias="reddit_secret")
 
 
 class GoFileAuth(AliasModel):
