@@ -145,7 +145,7 @@ class ClientManager:
             if cls.check_ddos_guard(soup) and cls.check_cloudflare(soup):
                 raise DDOSGuardError(origin=origin)
         status = status if headers.get("Content-Type") else CustomHTTPStatus.IM_A_TEAPOT
-        message = "No content-type in response header" if headers.get("Content-Type") else None
+        message = None if headers.get("Content-Type") else "No content-type in response header"
 
         raise DownloadError(status=status, message=message, origin=origin)
 
