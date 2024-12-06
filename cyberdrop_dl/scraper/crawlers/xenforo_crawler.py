@@ -262,7 +262,7 @@ class XenforoCrawler(Crawler):
         try:
             if self.domain not in link.host:
                 new_scrape_item = self.create_scrape_item(scrape_item, link)
-                scrape_item.reset_childen()
+                new_scrape_item.reset_childen()
                 self.handle_external_links(new_scrape_item)
             elif self.is_attachment(link):
                 await self.handle_internal_link(link, scrape_item)
