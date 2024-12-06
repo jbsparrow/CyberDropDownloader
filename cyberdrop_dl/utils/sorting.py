@@ -45,12 +45,7 @@ class Sorter:
         self.video_format: str = manager.config_manager.settings_data.sorting.sorted_video
         self.other_format: str = manager.config_manager.settings_data.sorting.sorted_other
 
-        self.audio_count = 0
-        self.image_count = 0
-        self.video_count = 0
-        self.other_count = 0
-
-    def get_files(self, directory: Path) -> list[Path]:
+    def _get_files(self, directory: Path) -> list[Path]:
         """Finds all files in a directory and returns them in a list."""
         return [file.resolve() for file in directory.rglob("*") if file.is_file()]
 
@@ -67,9 +62,8 @@ class Sorter:
                 old_path.unlink()
                 return True
             for auto_index in itertools.count(1):
-                new_path = (
-                    new_path.parent / f"{new_path.stem}{self.incrementer_format.format(i=auto_index)}{new_path.suffix}"
-                )
+                new_filename = f"{new_path.stem}{self.incrementer_format.format(i=auto_index)}{new_path.suffix}"
+                new_path = new_path.parent / new_filename
                 if not new_path.is_file():
                     old_path.rename(new_path)
                     break
@@ -78,23 +72,23 @@ class Sorter:
 
         return True
 
-    async def sort_files(self) -> None:
+    async def run(self) -> None:
         """Sorts the files in the download directory into their respective folders."""
         if not self.download_folder.is_dir():
-            log_with_color("Download Directory does not exist", "red", 40)
+            log_with_color(f"Download directory ({self.download_folder}) does not exists", "red", 40)
             return
 
-        log_with_color("\nSorting Downloads: Please Wait", "cyan", 20)
+        log_with_color("\nSorting downloads, please wait", "cyan", 20)
         self.sorted_folder.mkdir(parents=True, exist_ok=True)
 
-        download_folders: set[Path] = await self.get_download_folders()
+        download_folders: set[Path] = await self._get_download_folders()
         files_to_sort: dict[str, list[Path]] = {}
         with self.manager.live_manager.get_sort_live(stop=True):
             subfolders = [f.resolve() for f in self.download_folder.iterdir() if f.is_dir()]
             for folder in subfolders:
                 if self.sort_cdl_only and folder not in download_folders:
                     continue
-                files_to_sort[folder.name] = self.get_files(folder)
+                files_to_sort[folder.name] = self._get_files(folder)
             await self._sort_files(files_to_sort)
             log_with_color("DONE!", "green", 40)
         purge_dir_tree(self.download_folder)
@@ -124,13 +118,13 @@ class Sorter:
             self.manager.progress_manager.sort_progress.set_queue_length(queue_length)
             await asyncio.sleep(1)
 
-    async def get_download_folders(self) -> set[Path]:
-        """Gets the download folder."""
+    async def _get_download_folders(self) -> set[Path]:
+        """Returns a set of paths which are both subfolders of `download_dir` and has been parents of a file downloaded by CDL"""
         if not self.sort_cdl_only:
             return []
         download_paths = await self.db_manager.history_table.get_unique_download_paths()
-        download_paths = {Path(download_path[0]) for download_path in download_paths}
-        absolute_download_paths = {p for p in download_paths if p.is_absolute()}
+        download_paths = {Path(row[0]) for row in download_paths}
+        absolute_download_paths = {path for path in download_paths if path.is_absolute()}
         relative_paths = download_paths - absolute_download_paths
         for path in relative_paths:
             with contextlib.suppress(ValueError):
@@ -138,7 +132,7 @@ class Sorter:
                 absolute_download_paths.add(self.download_folder.joinpath(proper_relative_path).resolve())
 
         existing_download_paths = {
-            p for p in absolute_download_paths if self.download_folder.resolve() in p.parents and p.is_dir()
+            path for path in absolute_download_paths if self.download_folder.resolve() in path.parents and path.is_dir()
         }
         existing_folders = set()
         for folder in existing_download_paths:
@@ -152,7 +146,6 @@ class Sorter:
         """Sorts an audio file into the sorted audio folder."""
         if not self.audio_format:
             return
-        self.audio_count += 1
         bitrate = duration = sample_rate = length = None
         with contextlib.suppress(RuntimeError, CalledProcessError):
             props: dict = get_audio_properties(str(file))
@@ -175,7 +168,6 @@ class Sorter:
         """Sorts an image file into the sorted image folder."""
         if not self.image_format:
             return
-        self.image_count += 1
         height = resolution = width = None
         with (
             contextlib.suppress(PIL.UnidentifiedImageError, PIL.Image.DecompressionBombError),
@@ -193,7 +185,6 @@ class Sorter:
         """Sorts a video file into the sorted video folder."""
         if not self.video_format:
             return
-        self.video_count += 1
         codec = duration = fps = height = resolution = width = None
 
         with contextlib.suppress(RuntimeError, CalledProcessError):
@@ -226,7 +217,6 @@ class Sorter:
         """Sorts an other file into the sorted other folder."""
         if not self.other_format:
             return
-        self.other_count += 1
         if self._process_file_move(file, base_name, self.other_format):
             self.manager.progress_manager.sort_progress.increment_other()
 

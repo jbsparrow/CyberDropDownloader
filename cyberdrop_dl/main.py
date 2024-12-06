@@ -106,7 +106,7 @@ async def post_runtime(manager: Manager) -> None:
         await manager.hash_manager.hash_client.cleanup_dupes_after_download()
     if manager.config_manager.settings_data.sorting.sort_downloads and not manager.parsed_args.cli_only_args.retry_any:
         sorter = Sorter(manager)
-        await sorter.sort_files()
+        await sorter.run()
 
     await check_partials_and_empty_folders(manager)
 
