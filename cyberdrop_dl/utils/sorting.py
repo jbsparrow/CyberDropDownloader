@@ -132,8 +132,8 @@ class Sorter:
         download_paths = {Path(download_path[0]) for download_path in download_paths}
         absolute_download_paths = {p for p in download_paths if p.is_absolute()}
         relative_paths = download_paths - absolute_download_paths
-        with contextlib.suppress(ValueError):
-            for path in relative_paths:
+        for path in relative_paths:
+            with contextlib.suppress(ValueError):
                 proper_relative_path = path.relative_to(self.download_folder)
                 absolute_download_paths.add(self.download_folder.joinpath(proper_relative_path).resolve())
 
