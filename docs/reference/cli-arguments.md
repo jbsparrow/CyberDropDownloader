@@ -20,13 +20,110 @@ layout:
 Anything input as a CLI argument will take priority over config values.
 {% endhint %}
 
+{% hint style="info" %}
+Use `-` instead of `_` to separate words in an option name when using it as a CLI argument: Ex: `auto-dedupe` instead of `auto_dedupe`
+{% endhint %}
+
 You can pass any of the **Config Settings** and **Global Settings** options as a cli argument for the program
 
 For items not explained below, you can find their counterparts in the configuration options to see what they do
 
+## CLI only arguments
+
+### `appdata-folder`
+
+| Type           | Default  |
+|----------------|----------|
+| `Path` | `<Current Working Directory>`|
+
+Folder where Cyberdrop-Dl will store its data files.
+
+
+### `completed-after`
+
+| Type           | Default  |
+|----------------|----------|
+| `Date` | `None` |
+
+Only download files that were completed on or after this date. The date should be in ISO 8601 format, for example, `2021-12-23`
+
+### `completed-before`
+
+| Type           | Default  |
+|----------------|----------|
+| `Date` | `None` |
+
+Only download files that were completed on or before this date. The date should be in ISO 8601 format, for example, `2021-12-23`
+
+### `config`
+
+| Type           | Default  |
+|----------------|----------|
+| `str` | `None` |
+
+Name of config to load. Use `ALL` to run all configs sequentially
+
+### `config-file`
+
+| Type           | Default  |
+|----------------|----------|
+| `Path` | `None` |
+
+Path to the CDL `settings.yaml` file to load
+
 {% hint style="info" %}
-Use `-` instead of `_` to separate words in an option name when using it as a CLI argument: Ex: `auto-dedupe` instead of `auto_dedupe`
+If both `config` and `config-file` are supplied, `config-file` takes priority
 {% endhint %}
+
+### `download`  
+
+| Type           | Default  | Action |
+|----------------|----------|--------|
+| `BoolFlag` | `False` | `store_true`|
+
+Skips UI, start download immediately
+
+### `max-items-retry`
+
+| Type           | Default  |
+|----------------|----------|
+| `NonNegativeInt` | `0` |
+
+Max number of links to retry. Using `0` means no limit
+
+### `no-ui`  
+
+| Type           | Default  | Action |
+|----------------|----------|--------|
+| `BoolFlag` | `False` | `store_true`|
+
+Disables the UI/progress view entirely
+
+## `retry-all`
+
+| Type           | Default  | Action |
+|----------------|----------|--------|
+| `BoolFlag` | `False` | `store_true`|
+
+Retry all downloads
+
+### `retry-failed`  
+
+| Type           | Default  | Action |
+|----------------|----------|--------|
+| `BoolFlag` | `False` | `store_true`|
+
+Retry failed downloads
+
+### `retry-maintenance`  
+
+| Type           | Default  | Action |
+|----------------|----------|--------|
+| `BoolFlag` | `False` | `store_true`|
+
+retry download of maintenance files (bunkr). Requires files to be hashed
+
+***
 
 Bool arguments like options within `Download Options`, `Ignore Options`, `Runtime Options`, etc. can be prefixed with `--no-` to negate them. Ex: `--no-auto-dedupe` will disable auto dedupe, overriding whatever the config option was set to.
 
@@ -39,10 +136,10 @@ options:
   -h, --help            show this help message and exit
   -V, --version         show version number and exit
 
-CLI-only-options:
+CLI-only Options:
   LINK(S)               link(s) to content to download (passing multiple links is supported) (default: [])
   --appdata-folder APPDATA_FOLDER
-                        AppData folder path (default: None)
+                        AppData folder path (default: <CWD>)
   --completed-after COMPLETED_AFTER
                         only download completed downloads at or after this date (default: None)
   --completed-before COMPLETED_BEFORE
@@ -50,13 +147,13 @@ CLI-only-options:
   --config CONFIG       name of config to load (default: None)
   --config-file CONFIG_FILE
                         path to the CDL settings.yaml file to load (default: None)
-  --download            skips UI, start download inmediatly (default: False)
+  --download            skips UI, start download inmediatly
   --max-items-retry MAX_ITEMS_RETRY
                         max number of links to retry (default: 0)
-  --no-ui               disables the UI/progress view entirely (default: False)
-  --retry-all           retry all downloads (default: False)
-  --retry-failed        retry failed downloads (default: False)
-  --retry-maintenance   retry download of maintenance files (bunkr). Requires files to be hashed (default: False)
+  --no-ui               disables the UI/progress view entirely
+  --retry-all           retry all downloads
+  --retry-failed        retry failed downloads
+  --retry-maintenance   retry download of maintenance files (bunkr). Requires files to be hashed
 
 browser_cookies:
   --browsers [BROWSERS ...]
@@ -108,12 +205,13 @@ ignore_options:
 logs:
   --log-folder LOG_FOLDER
   --webhook WEBHOOK
-  --main-log-filename MAIN_LOG_FILENAME
-  --last-forum-post-filename LAST_FORUM_POST_FILENAME
-  --unsupported-urls-filename UNSUPPORTED_URLS_FILENAME
-  --download-error-urls-filename DOWNLOAD_ERROR_URLS_FILENAME
-  --scrape-error-urls-filename SCRAPE_ERROR_URLS_FILENAME
+  --main-log MAIN_LOG
+  --last-forum-post LAST_FORUM_POST
+  --unsupported-urls UNSUPPORTED_URLS
+  --download-error-urls DOWNLOAD_ERROR_URLS
+  --scrape-error-urls SCRAPE_ERROR_URLS
   --rotate-logs, --no-rotate-logs
+  --log-line-width LOG_LINE_WIDTH
 
 runtime_options:
   --ignore-history, --no-ignore-history
@@ -164,9 +262,16 @@ ui_options:
   --scraping-item-limit SCRAPING_ITEM_LIMIT
   --downloading-item-limit DOWNLOADING_ITEM_LIMIT
 
-deprecated:
+Deprecated:
   --download-all-configs
                         Skip the UI and go straight to downloading (runs all configs sequentially)
   --sort-all-configs    Sort all configs sequentially
   --sort-all-downloads  sort all downloads, not just those downloaded by Cyberdrop-DL
+  --main-log-filename MAIN_LOG_FILENAME
+  --last-forum-post-filename LAST_FORUM_POST_FILENAME
+  --unsupported-urls-filename UNSUPPORTED_URLS_FILENAME
+  --download-error-urls-filename DOWNLOAD_ERROR_URLS_FILENAME
+  --scrape-error-urls-filename SCRAPE_ERROR_URLS_FILENAME
+
+Visit the wiki for aditional details: https://script-ware.gitbook.io/cyberdrop-dl
 ```
