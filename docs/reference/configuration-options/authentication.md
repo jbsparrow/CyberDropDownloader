@@ -124,21 +124,6 @@ You can get your API key here: [https://pixeldrain.com/user/api_keys](https://pi
 
 <details>
 
-<summary>Reddit</summary>
-
-In order to scrape files from Reddit, you'll need to create an app on reddit's website (it's free).
-
-[https://www.reddit.com/prefs/apps](https://www.reddit.com/prefs/apps)
-
-After generating the app, you need to give Cyberdrop-DL these values:
-
-## `personal_use_script`
-## `secret`
-
-</details>
-
-<details>
-
 <summary>Real-Debrid</summary>
 
 In order to download files from sites supported by real-debrid, you'll need to get the API token from your account.
@@ -146,5 +131,28 @@ In order to download files from sites supported by real-debrid, you'll need to g
 ## `api_key`
 
 You can get your API key here (you must be logged in): [https://real-debrid.com/apitoken](https://real-debrid.com/apitoken)
+
+</details>
+
+<details>
+
+<summary>Reddit</summary>
+
+In order to scrape files from Reddit, you'll need to create an app on reddit's website (it's free): [https://www.reddit.com/prefs/apps](https://www.reddit.com/prefs/apps)
+
+Select `script` as the app type. Any name can be used. The redirect URI value isn't important, but it is required. You can use fake URL like `http://your_username.cyberdrop-dl`. Click `create app` to get your credentials.
+
+![reddit_personal_script_setup_1](../../assets/reddit_personal_script_setup_1.png)
+![reddit_personal_script_setup_2](../../assets/reddit_personal_script_setup_2.png)
+
+After generating the app, you need to give Cyberdrop-DL these values:
+
+## `personal_use_script`
+
+Copy the value of `presonal_use_script`
+
+## `secret`
+
+Copy the value of `secret`
 
 </details>
