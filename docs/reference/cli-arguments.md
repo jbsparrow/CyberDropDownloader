@@ -36,14 +36,14 @@ For items not explained below, you can find their counterparts in the configurat
 |----------------|----------|
 | `Path` | `<Current Working Directory>`|
 
-Folder where Cyberdrop-Dl will store its data files.
+Folder where Cyberdrop-DL will store its data files.
 
 
 ### `completed-after`
 
 | Type           | Default  |
 |----------------|----------|
-| `Date` | `None` |
+| `date` | `None` |
 
 Only download files that were completed on or after this date. The date should be in ISO 8601 format, for example, `2021-12-23`
 
@@ -51,7 +51,7 @@ Only download files that were completed on or after this date. The date should b
 
 | Type           | Default  |
 |----------------|----------|
-| `Date` | `None` |
+| `date` | `None` |
 
 Only download files that were completed on or before this date. The date should be in ISO 8601 format, for example, `2021-12-23`
 
@@ -99,7 +99,7 @@ Max number of links to retry. Using `0` means no limit
 
 Disables the UI/progress view entirely
 
-## `retry-all`
+### `retry-all`
 
 | Type           | Default  | Action |
 |----------------|----------|--------|
@@ -121,9 +121,11 @@ Retry failed downloads
 |----------------|----------|--------|
 | `BoolFlag` | `False` | `store_true`|
 
-retry download of maintenance files (bunkr). Requires files to be hashed
+Retry download of maintenance files (bunkr). Requires files to be hashed
 
 ***
+
+## Overview
 
 Bool arguments like options within `Download Options`, `Ignore Options`, `Runtime Options`, etc. can be prefixed with `--no-` to negate them. Ex: `--no-auto-dedupe` will disable auto dedupe, overriding whatever the config option was set to.
 
@@ -272,6 +274,4 @@ Deprecated:
   --unsupported-urls-filename UNSUPPORTED_URLS_FILENAME
   --download-error-urls-filename DOWNLOAD_ERROR_URLS_FILENAME
   --scrape-error-urls-filename SCRAPE_ERROR_URLS_FILENAME
-
-Visit the wiki for aditional details: https://script-ware.gitbook.io/cyberdrop-dl
 ```
