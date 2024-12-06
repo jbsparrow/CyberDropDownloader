@@ -17,14 +17,14 @@ from cyberdrop_dl.utils.logger import log_with_color
 from cyberdrop_dl.utils.utilities import purge_dir_tree
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from cyberdrop_dl.managers.manager import Manager
 
 
-def get_file_date_in_us_ca_formats(file: Path) -> tuple[str, str]:
-    file_date = File(str(file)).get()
-    file_date_us = file_date["modified"].strftime("%Y-%d-%m")
-    file_date_iso = file_date["modified"].strftime("%Y-%m-%d")
-    return file_date_us, file_date_iso
+def get_file_modified_date(file: Path) -> datetime:
+    file_obj = File(str(file))
+    return file_obj.modified
 
 
 class Sorter:
@@ -153,12 +153,14 @@ class Sorter:
         self.audio_count += 1
         length = bitrate = sample_rate = "Unknown"
         with contextlib.suppress(RuntimeError, subprocess.CalledProcessError):
-            props = get_audio_properties(str(file))
+            props: dict = get_audio_properties(str(file))
             length = props.get("duration", "Unknown")
             bitrate = props.get("bit_rate", "Unknown")
             sample_rate = props.get("sample_rate", "Unknown")
 
-        if self._process_file_move(file, base_name, length=length, bitrate=bitrate, sample_rate=sample_rate):
+        if self._process_file_move(
+            file, base_name, self.audio_format, length=length, bitrate=bitrate, sample_rate=sample_rate
+        ):
             self.manager.progress_manager.sort_progress.increment_audio()
 
     def sort_image(self, file: Path, base_name: str) -> None:
@@ -173,7 +175,7 @@ class Sorter:
             resolution = f"{width}x{height}"
             image.close()
 
-        if self._process_file_move(file, base_name, resolution=resolution):
+        if self._process_file_move(file, base_name, self.image_format, resolution=resolution):
             self.manager.progress_manager.sort_progress.increment_image()
 
     def sort_video(self, file: Path, base_name: str) -> None:
@@ -184,7 +186,7 @@ class Sorter:
         resolution = frames_per_sec = codec = "Unknown"
 
         with contextlib.suppress(RuntimeError, subprocess.CalledProcessError):
-            props = get_video_properties(str(file))
+            props: dict = get_video_properties(str(file))
             width = props.get("width")
             height = props.get("height")
             if width and height:
@@ -192,7 +194,9 @@ class Sorter:
             frames_per_sec = props.get("avg_frame_rate", "Unknown")
             codec = props.get("codec_name", "Unknown")
 
-        if self._process_file_move(file, base_name, resolution=resolution, fps=frames_per_sec, codec=codec):
+        if self._process_file_move(
+            file, base_name, self.video_format, resolution=resolution, fps=frames_per_sec, codec=codec
+        ):
             self.manager.progress_manager.sort_progress.increment_video()
 
     def sort_other(self, file: Path, base_name: str) -> None:
@@ -200,21 +204,22 @@ class Sorter:
         if not self.other_format:
             return
         self.other_count += 1
-        if self._process_file_move(file, base_name):
+        if self._process_file_move(file, base_name, self.other_format):
             self.manager.progress_manager.sort_progress.increment_other()
 
-    def _process_file_move(self, file: Path, base_name: str, **kwargs) -> None:
-        parent_name = file.parent.name
-        file_date_us, file_date_iso = get_file_date_in_us_ca_formats(file)
+    def _process_file_move(self, file: Path, base_name: str, format: str, **kwargs) -> None:
+        file_date = get_file_modified_date(file)
+        file_date_us = file_date.strftime("%Y-%d-%m")
+        file_date_iso = file_date.strftime("%Y-%m-%d")
 
         new_file = Path(
-            self.image_format.format(
+            format.format(
                 base_dir=base_name,
                 ext=file.suffix,
                 file_date_iso=file_date_iso,
                 file_date_us=file_date_us,
                 filename=file.stem,
-                parent_dir=parent_name,
+                parent_dir=file.parent.name,
                 sort_dir=self.sorted_downloads,
                 **kwargs,
             ),
