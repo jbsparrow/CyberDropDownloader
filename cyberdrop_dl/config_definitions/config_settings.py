@@ -134,12 +134,12 @@ class Sorting(BaseModel):
     scan_folder: Path | None = None
     sort_cdl_only: bool = True
     sort_incremementer_format: NonEmptyStr = " ({i})"
-    sorted_audio: NonEmptyStr = "{sort_dir}/{base_dir}/Audio/{filename}{ext}"
-    sorted_image: NonEmptyStr = "{sort_dir}/{base_dir}/Images/{filename}{ext}"
-    sorted_other: NonEmptyStr = "{sort_dir}/{base_dir}/Other/{filename}{ext}"
-    sorted_video: NonEmptyStr = "{sort_dir}/{base_dir}/Videos/{filename}{ext}"
+    sorted_audio: NonEmptyStr | None = "{sort_dir}/{base_dir}/Audio/{filename}{ext}"
+    sorted_image: NonEmptyStr | None = "{sort_dir}/{base_dir}/Images/{filename}{ext}"
+    sorted_other: NonEmptyStr | None = "{sort_dir}/{base_dir}/Other/{filename}{ext}"
+    sorted_video: NonEmptyStr | None = "{sort_dir}/{base_dir}/Videos/{filename}{ext}"
 
-    @field_validator("scan_folder", mode="before")
+    @field_validator("scan_folder", "sorted_audio", "sorted_image", "sorted_other", "sorted_video", mode="before")
     @classmethod
     def handle_falsy(cls, value: str) -> str | None:
         if not value or value == "None":

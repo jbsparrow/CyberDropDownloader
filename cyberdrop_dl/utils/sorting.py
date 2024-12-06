@@ -148,6 +148,8 @@ class Sorter:
 
     def sort_audio(self, file: Path, base_name: str) -> None:
         """Sorts an audio file into the sorted audio folder."""
+        if not self.audio_format:
+            return
         self.audio_count += 1
         length = bitrate = sample_rate = "Unknown"
         with contextlib.suppress(RuntimeError, subprocess.CalledProcessError):
@@ -161,6 +163,8 @@ class Sorter:
 
     def sort_image(self, file: Path, base_name: str) -> None:
         """Sorts an image file into the sorted image folder."""
+        if not self.image_format:
+            return
         self.image_count += 1
         resolution = "Unknown"
         with contextlib.suppress(PIL.UnidentifiedImageError, PIL.Image.DecompressionBombError):  # type: ignore
@@ -174,6 +178,8 @@ class Sorter:
 
     def sort_video(self, file: Path, base_name: str) -> None:
         """Sorts a video file into the sorted video folder."""
+        if not self.video_format:
+            return
         self.video_count += 1
         resolution = frames_per_sec = codec = "Unknown"
 
@@ -191,6 +197,8 @@ class Sorter:
 
     def sort_other(self, file: Path, base_name: str) -> None:
         """Sorts an other file into the sorted other folder."""
+        if not self.other_format:
+            return
         self.other_count += 1
         if self._process_file_move(file, base_name):
             self.manager.progress_manager.sort_progress.increment_other()
