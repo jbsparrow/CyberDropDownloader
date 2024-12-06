@@ -6,48 +6,15 @@ You can use the shared path flags below in any part of the sorting schemas. You 
 
 Shared path flags:
 
-> `sort_dir`: `sort_folder` path
+> `sort_dir`: The same path as `sort_folder`
 >
-> `base_dir`: the highest level folder name inside the folder being scanned, ex: (model name / thread name)
+> `base_dir`: the name of highest level folder inside `scan_folder` ex: (model name / thread name)
 >
-> `parent_dir`: the folder name of where the file is (album name)
+> `parent_dir`: the name of the folder where the file is. Ex: (album name)
 >
-> `filename`: the files name (stem)
+> `filename`: the file's name (stem)
 >
-> `ext`: the file extension
-
-## Group URLs
-
-It is possible to treat a list of URLs as a group, allowing them to be downloaded to a single folder.
-
-To define a group, put a title above the URLs you want to be in the group, using the format: `--- <group_name>` or `=== <group_name>`.
-
-To define the end of a group, insert an group with no name. (`---` or `===`)
-
-Here is an example URL file with two groups:
-
-```
-https://example.com/file1.jpg
-=== Group 1
-https://example.com/file2.jpg
-https://example.com/file3.jpg
-===
-https://example.com/file4.jpg
---- Group 2
-https://example.com/file5.jpg
-https://example.com/file6.jpg
-===
-https://example.com/file7.jpg
-```
-
-Those downloads would be sorted as follows:
-
-| Loose Files | Group 1   | Group 2   |
-|-------------|-----------|-----------|
-| file1.jpg   | file2.jpg | file5.jpg |
-| file4.jpg   | file3.jpg | file6.jpg |
-| file7.jpg   |           |           |
-
+> `ext`: the file extension (suffix)
 
 ## `scan_folder`
 
@@ -106,15 +73,17 @@ You can modify the format as needed, but it must include `{i}` to specify where 
 
 | Type           | Default  |
 |----------------|----------|
-| `NonEmptyStr` | `{sort_dir}/{base_dir}/Audio/{filename}{ext}`|
+| `NonEmptyStr` or `null` | `{sort_dir}/{base_dir}/Audio/{filename}{ext}`|
 
-This is the format for the directory structure and naming scheme for audio files.
+This is the format for the directory structure and naming scheme for audio files. Set to `null` skip sorting audio files
 
 Unique Path Flags:
 
-> `length`: audio runtime
->
 > `bitrate`: file bit rate
+>
+> `duration`: audio runtime
+>
+> `length`: same as `duration`
 >
 > `sample_rate`: audio sample rate
 
@@ -122,34 +91,77 @@ Unique Path Flags:
 
 | Type           | Default  |
 |----------------|----------|
-| `NonEmptyStr` | `{sort_dir}/{base_dir}/Images/{filename}{ext}`|
+| `NonEmptyStr` or `null` | `{sort_dir}/{base_dir}/Images/{filename}{ext}`|
 
-This is the format for the directory structure and naming scheme for image files.
+This is the format for the directory structure and naming scheme for image files. Set to `null` skip sorting image files
 
 Unique Path Flags:
 
-> `resolution`: ex. 1080x1920
+> `height`: vertical pixel count
+>
+> `width`: horizontal pixel count
+>
+> `resolution`: `width`x`height` ex. 1080x1920
 
 ## `sorted_video`
 
 | Type           | Default  |
 |----------------|----------|
-| `NonEmptyStr` | `{sort_dir}/{base_dir}/Video/{filename}{ext}`|
+| `NonEmptyStr` or `null`| `{sort_dir}/{base_dir}/Video/{filename}{ext}`|
 
-This is the format for the directory structure and naming scheme for video files.
+This is the format for the directory structure and naming scheme for video files. Set to `null` skip sorting video files
 
 Unique Path Flags:
 
-> `resolution`: ex. 1080x1920
+> `codec`: ex. h264
+>
+> `duration`: video runtime
 >
 > `fps`: ex. 24
 >
-> `codec`: ex. h264
+> `height`: vertical pixel count
+>
+> `width`: horizontal pixel count
+>
+> `resolution`: `width`x`height` ex. 1080x1920
+
 
 ## `sorted_other`
 
 | Type           | Default  |
 |----------------|----------|
-| `NonEmptyStr` | `{sort_dir}/{base_dir}/Other/{filename}{ext}`|
+| `NonEmptyStr` or `null` | `{sort_dir}/{base_dir}/Other/{filename}{ext}`|
 
-This is the format for the directory structure and naming scheme for other files.
+This is the format for the directory structure and naming scheme for other files. Set to `null` skip sorting other files
+
+## Group URLs
+
+It is possible to treat a list of URLs as a group, allowing them to be downloaded to a single folder.
+
+To define a group, put a title above the URLs you want to be in the group, using the format: `--- <group_name>` or `=== <group_name>`.
+
+To define the end of a group, insert an group with no name. (`---` or `===`)
+
+Here is an example URL file with two groups:
+
+```
+https://example.com/file1.jpg
+=== Group 1
+https://example.com/file2.jpg
+https://example.com/file3.jpg
+===
+https://example.com/file4.jpg
+--- Group 2
+https://example.com/file5.jpg
+https://example.com/file6.jpg
+===
+https://example.com/file7.jpg
+```
+
+Those downloads would be sorted as follows:
+
+| Loose Files | Group 1   | Group 2   |
+|-------------|-----------|-----------|
+| file1.jpg   | file2.jpg | file5.jpg |
+| file4.jpg   | file3.jpg | file6.jpg |
+| file7.jpg   |           |           |
