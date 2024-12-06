@@ -23,8 +23,8 @@ if TYPE_CHECKING:
 def get_file_date_in_us_ca_formats(file: Path) -> tuple[str, str]:
     file_date = File(str(file)).get()
     file_date_us = file_date["modified"].strftime("%Y-%d-%m")
-    file_date_ca = file_date["modified"].strftime("%Y-%m-%d")
-    return file_date_us, file_date_ca
+    file_date_iso = file_date["modified"].strftime("%Y-%m-%d")
+    return file_date_us, file_date_iso
 
 
 class Sorter:
@@ -50,12 +50,12 @@ class Sorter:
 
     def get_files(self, directory: Path) -> list[Path]:
         """Finds all files in a directory and returns them in a list."""
-        return [file for file in directory.rglob("*") if file.is_file()]
+        return [file.resolve() for file in directory.rglob("*") if file.is_file()]
 
-    def move_file(self, old_path: Path, new_path: Path) -> bool:
+    def _move_file(self, old_path: Path, new_path: Path) -> bool:
         """Moves a file to a destination folder."""
         if old_path.resolve() == new_path.resolve():
-            return
+            return True
         try:
             new_path.parent.mkdir(parents=True, exist_ok=True)
             old_path.rename(new_path)
@@ -63,6 +63,7 @@ class Sorter:
         except FileExistsError:
             if old_path.stat().st_size == new_path.stat().st_size:
                 old_path.unlink()
+                return True
             for auto_index in itertools.count(1):
                 new_path = (
                     new_path.parent / f"{new_path.stem}{self.incrementer_format.format(i=auto_index)}{new_path.suffix}"
@@ -75,41 +76,28 @@ class Sorter:
 
         return True
 
-    def check_sorted_dir_parents(self) -> bool:
-        """Checks if the sort dir a children of download dir"""
-        if self.download_dir in self.sorted_downloads.parents:
-            log_with_color("Sort Directory cannot be in the Download Directory", "red", 40)
-            return True
-        if self.download_dir == self.sorted_downloads:
-            log_with_color("Sort Directory cannot be the Directory being scanned", "red", 40)
-            return True
-        return False
-
-    async def sort(self) -> None:
+    async def sort_files(self) -> None:
         """Sorts the files in the download directory into their respective folders."""
-        log_with_color("\nSorting Downloads: Please Wait", "cyan", 20)
-        # make sort dir
-        self.sorted_downloads.mkdir(parents=True, exist_ok=True)
-
-        if self.check_sorted_dir_parents():
-            return
-
         if not self.download_dir.is_dir():
             log_with_color("Download Directory does not exist", "red", 40)
             return
 
-        download_folders: list[Path] = await self.get_download_folders()
+        log_with_color("\nSorting Downloads: Please Wait", "cyan", 20)
+        self.sorted_downloads.mkdir(parents=True, exist_ok=True)
+
+        download_folders: set[Path] = await self.get_download_folders()
         files_to_sort: dict[str, list[Path]] = {}
         with self.manager.live_manager.get_sort_live(stop=True):
-            subfolders = [f for f in self.download_dir.iterdir() if f.is_dir()]
+            subfolders = [f.resolve() for f in self.download_dir.iterdir() if f.is_dir()]
             for folder in subfolders:
                 if self.sort_cdl_only and folder not in download_folders:
                     continue
                 files_to_sort[folder.name] = self.get_files(folder)
-        await asyncio.sleep(1)
+            await self._sort_files(files_to_sort)
+            log_with_color("DONE!", "green", 40)
         purge_dir_tree(self.download_dir)
 
-    def _sort_files(self, files_to_sort: dict[str, list[Path]]) -> None:
+    async def _sort_files(self, files_to_sort: dict[str, list[Path]]) -> None:
         queue_length = len(files_to_sort)
         self.manager.progress_manager.sort_progress.set_queue_length(queue_length)
         for folder_name, files in files_to_sort.items():
@@ -132,24 +120,31 @@ class Sorter:
             self.manager.progress_manager.sort_progress.remove_folder(task_id)
             queue_length -= 1
             self.manager.progress_manager.sort_progress.set_queue_length(queue_length)
+            await asyncio.sleep(1)
 
-    async def get_download_folders(self) -> list[Path]:
+    async def get_download_folders(self) -> set[Path]:
         """Gets the download folder."""
         if not self.sort_cdl_only:
             return []
         download_paths = await self.db_manager.history_table.get_unique_download_paths()
-        download_paths = [Path(download_path[0]) for download_path in download_paths]
-        absolute_download_paths = [
-            self.download_dir.joinpath(p).resolve() for p in download_paths if p != self.download_dir
-        ]
-        existing_download_paths = [p for p in absolute_download_paths if self.download_dir in p.parents and p.is_dir()]
+        download_paths = {Path(download_path[0]) for download_path in download_paths}
+        absolute_download_paths = {p for p in download_paths if p.is_absolute()}
+        relative_paths = download_paths - absolute_download_paths
+        with contextlib.suppress(ValueError):
+            for path in relative_paths:
+                proper_relative_path = path.relative_to(self.download_dir)
+                absolute_download_paths.add(self.download_dir.joinpath(proper_relative_path).resolve())
+
+        existing_download_paths = {
+            p for p in absolute_download_paths if self.download_dir.resolve() in p.parents and p.is_dir()
+        }
         existing_folders = set()
         for folder in existing_download_paths:
-            relative_folder = folder.relative_to(self.download_dir)
-            base_folder = self.download_dir / relative_folder.parts[0]
+            relative_folder = folder.relative_to(self.download_dir.resolve())
+            base_folder = self.download_dir.resolve() / relative_folder.parts[0]
             existing_folders.add(base_folder)
 
-        return list(existing_folders)
+        return existing_folders
 
     def sort_audio(self, file: Path, base_name: str) -> None:
         """Sorts an audio file into the sorted audio folder."""
@@ -202,20 +197,19 @@ class Sorter:
 
     def _process_file_move(self, file: Path, base_name: str, **kwargs) -> None:
         parent_name = file.parent.name
-        filename, ext = file.stem, file.suffix
-        file_date_us, file_date_ca = get_file_date_in_us_ca_formats(file)
+        file_date_us, file_date_iso = get_file_date_in_us_ca_formats(file)
 
         new_file = Path(
             self.image_format.format(
-                sort_dir=self.sorted_downloads,
                 base_dir=base_name,
-                parent_dir=parent_name,
-                filename=filename,
-                ext=ext,
+                ext=file.suffix,
+                file_date_iso=file_date_iso,
                 file_date_us=file_date_us,
-                file_date_ca=file_date_ca,
+                filename=file.stem,
+                parent_dir=parent_name,
+                sort_dir=self.sorted_downloads,
                 **kwargs,
             ),
         )
 
-        return self.move_file(file, new_file)
+        return self._move_file(file, new_file)
