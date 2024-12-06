@@ -3,8 +3,9 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import itertools
-import subprocess
+from fractions import Fraction
 from pathlib import Path
+from subprocess import CalledProcessError
 from typing import TYPE_CHECKING
 
 import PIL
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
-def get_file_modified_date(file: Path) -> datetime:
+def get_modified_date(file: Path) -> datetime:
     file_obj = File(str(file))
     return file_obj.modified
 
@@ -30,12 +31,13 @@ def get_file_modified_date(file: Path) -> datetime:
 class Sorter:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
-        self.download_dir = manager.path_manager.scan_folder or manager.path_manager.download_folder
-        self.sorted_downloads = manager.path_manager.sorted_folder
+        self.download_folder = manager.path_manager.scan_folder or manager.path_manager.download_folder
+        self.sorted_folder = manager.path_manager.sorted_folder
         self.incrementer_format: str = manager.config_manager.settings_data.sorting.sort_incremementer_format
-        self.sort_cdl_only = manager.config_manager.settings_data.sorting.sort_cdl_only
-        if manager.config_manager.settings_data.download_options.skip_download_mark_completed:
-            self.sort_cdl_only = False
+        self.sort_cdl_only = (
+            manager.config_manager.settings_data.sorting.sort_cdl_only
+            and not manager.config_manager.settings_data.download_options.skip_download_mark_completed
+        )
         self.db_manager = manager.db_manager
 
         self.audio_format: str = manager.config_manager.settings_data.sorting.sorted_audio
@@ -78,24 +80,24 @@ class Sorter:
 
     async def sort_files(self) -> None:
         """Sorts the files in the download directory into their respective folders."""
-        if not self.download_dir.is_dir():
+        if not self.download_folder.is_dir():
             log_with_color("Download Directory does not exist", "red", 40)
             return
 
         log_with_color("\nSorting Downloads: Please Wait", "cyan", 20)
-        self.sorted_downloads.mkdir(parents=True, exist_ok=True)
+        self.sorted_folder.mkdir(parents=True, exist_ok=True)
 
         download_folders: set[Path] = await self.get_download_folders()
         files_to_sort: dict[str, list[Path]] = {}
         with self.manager.live_manager.get_sort_live(stop=True):
-            subfolders = [f.resolve() for f in self.download_dir.iterdir() if f.is_dir()]
+            subfolders = [f.resolve() for f in self.download_folder.iterdir() if f.is_dir()]
             for folder in subfolders:
                 if self.sort_cdl_only and folder not in download_folders:
                     continue
                 files_to_sort[folder.name] = self.get_files(folder)
             await self._sort_files(files_to_sort)
             log_with_color("DONE!", "green", 40)
-        purge_dir_tree(self.download_dir)
+        purge_dir_tree(self.download_folder)
 
     async def _sort_files(self, files_to_sort: dict[str, list[Path]]) -> None:
         queue_length = len(files_to_sort)
@@ -132,16 +134,16 @@ class Sorter:
         relative_paths = download_paths - absolute_download_paths
         with contextlib.suppress(ValueError):
             for path in relative_paths:
-                proper_relative_path = path.relative_to(self.download_dir)
-                absolute_download_paths.add(self.download_dir.joinpath(proper_relative_path).resolve())
+                proper_relative_path = path.relative_to(self.download_folder)
+                absolute_download_paths.add(self.download_folder.joinpath(proper_relative_path).resolve())
 
         existing_download_paths = {
-            p for p in absolute_download_paths if self.download_dir.resolve() in p.parents and p.is_dir()
+            p for p in absolute_download_paths if self.download_folder.resolve() in p.parents and p.is_dir()
         }
         existing_folders = set()
         for folder in existing_download_paths:
-            relative_folder = folder.relative_to(self.download_dir.resolve())
-            base_folder = self.download_dir.resolve() / relative_folder.parts[0]
+            relative_folder = folder.relative_to(self.download_folder.resolve())
+            base_folder = self.download_folder.resolve() / relative_folder.parts[0]
             existing_folders.add(base_folder)
 
         return existing_folders
@@ -152,7 +154,7 @@ class Sorter:
             return
         self.audio_count += 1
         length = bitrate = sample_rate = "Unknown"
-        with contextlib.suppress(RuntimeError, subprocess.CalledProcessError):
+        with contextlib.suppress(RuntimeError, CalledProcessError):
             props: dict = get_audio_properties(str(file))
             length = props.get("duration", "Unknown")
             bitrate = props.get("bit_rate", "Unknown")
@@ -183,19 +185,28 @@ class Sorter:
         if not self.video_format:
             return
         self.video_count += 1
-        resolution = frames_per_sec = codec = "Unknown"
+        codec = duration = fps = resolution = "Unknown"
 
-        with contextlib.suppress(RuntimeError, subprocess.CalledProcessError):
+        with contextlib.suppress(RuntimeError, CalledProcessError):
             props: dict = get_video_properties(str(file))
             width = props.get("width")
             height = props.get("height")
             if width and height:
                 resolution = f"{width}x{height}"
-            frames_per_sec = props.get("avg_frame_rate", "Unknown")
             codec = props.get("codec_name", "Unknown")
+            duration = int(props.get("duration", 0)) or "Unknown"
+            frames_per_sec = float(Fraction(props.get("avg_frame_rate", 0)))
+            if frames_per_sec:
+                fps = int(frames_per_sec) if frames_per_sec.is_integer() else f"{frames_per_sec:.2f}"
 
         if self._process_file_move(
-            file, base_name, self.video_format, resolution=resolution, fps=frames_per_sec, codec=codec
+            file,
+            base_name,
+            self.video_format,
+            codec=codec,
+            duration=duration,
+            fps=fps,
+            resolution=resolution,
         ):
             self.manager.progress_manager.sort_progress.increment_video()
 
@@ -207,20 +218,20 @@ class Sorter:
         if self._process_file_move(file, base_name, self.other_format):
             self.manager.progress_manager.sort_progress.increment_other()
 
-    def _process_file_move(self, file: Path, base_name: str, format: str, **kwargs) -> None:
-        file_date = get_file_modified_date(file)
+    def _process_file_move(self, file: Path, base_name: str, format_str: str, **kwargs) -> None:
+        file_date = get_modified_date(file)
         file_date_us = file_date.strftime("%Y-%d-%m")
         file_date_iso = file_date.strftime("%Y-%m-%d")
 
         new_file = Path(
-            format.format(
+            format_str.format(
                 base_dir=base_name,
                 ext=file.suffix,
                 file_date_iso=file_date_iso,
                 file_date_us=file_date_us,
                 filename=file.stem,
                 parent_dir=file.parent.name,
-                sort_dir=self.sorted_downloads,
+                sort_dir=self.sorted_folder,
                 **kwargs,
             ),
         )
