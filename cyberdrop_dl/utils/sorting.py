@@ -153,15 +153,21 @@ class Sorter:
         if not self.audio_format:
             return
         self.audio_count += 1
-        length = bitrate = sample_rate = "Unknown"
+        bitrate = duration = sample_rate = length = None
         with contextlib.suppress(RuntimeError, CalledProcessError):
             props: dict = get_audio_properties(str(file))
-            length = props.get("duration", "Unknown")
-            bitrate = props.get("bit_rate", "Unknown")
-            sample_rate = props.get("sample_rate", "Unknown")
+            duration = length = int(props.get("duration", 0)) or None
+            bitrate = int(props.get("bit_rate", 0)) or None
+            sample_rate = int(props.get("sample_rate", 0)) or None
 
         if self._process_file_move(
-            file, base_name, self.audio_format, length=length, bitrate=bitrate, sample_rate=sample_rate
+            file,
+            base_name,
+            self.audio_format,
+            bitrate=bitrate,
+            duration=duration,
+            length=length,
+            sample_rate=sample_rate,
         ):
             self.manager.progress_manager.sort_progress.increment_audio()
 
@@ -170,14 +176,17 @@ class Sorter:
         if not self.image_format:
             return
         self.image_count += 1
-        resolution = "Unknown"
-        with contextlib.suppress(PIL.UnidentifiedImageError, PIL.Image.DecompressionBombError):  # type: ignore
-            image = Image.open(file)
+        height = resolution = width = None
+        with (
+            contextlib.suppress(PIL.UnidentifiedImageError, PIL.Image.DecompressionBombError),
+            Image.open(file) as image,
+        ):  # type: ignore
             width, height = image.size
             resolution = f"{width}x{height}"
-            image.close()
 
-        if self._process_file_move(file, base_name, self.image_format, resolution=resolution):
+        if self._process_file_move(
+            file, base_name, self.image_format, resolution=resolution, width=width, height=height
+        ):
             self.manager.progress_manager.sort_progress.increment_image()
 
     def sort_video(self, file: Path, base_name: str) -> None:
@@ -185,19 +194,20 @@ class Sorter:
         if not self.video_format:
             return
         self.video_count += 1
-        codec = duration = fps = resolution = "Unknown"
+        codec = duration = fps = height = resolution = width = None
 
         with contextlib.suppress(RuntimeError, CalledProcessError):
             props: dict = get_video_properties(str(file))
-            width = props.get("width")
-            height = props.get("height")
+            width = int(props.get("width", 0)) or None
+            height = int(props.get("height", 0)) or None
             if width and height:
                 resolution = f"{width}x{height}"
-            codec = props.get("codec_name", "Unknown")
-            duration = int(props.get("duration", 0)) or "Unknown"
-            frames_per_sec = float(Fraction(props.get("avg_frame_rate", 0)))
-            if frames_per_sec:
-                fps = int(frames_per_sec) if frames_per_sec.is_integer() else f"{frames_per_sec:.2f}"
+
+            codec = props.get("codec_name")
+            duration = int(props.get("duration", 0)) or None
+            fps = float(Fraction(props.get("avg_frame_rate", 0))) or None
+            if fps:
+                fps = int(fps) if fps.is_integer() else f"{fps:.2f}"
 
         if self._process_file_move(
             file,
@@ -207,6 +217,8 @@ class Sorter:
             duration=duration,
             fps=fps,
             resolution=resolution,
+            width=width,
+            height=height,
         ):
             self.manager.progress_manager.sort_progress.increment_video()
 
@@ -222,6 +234,10 @@ class Sorter:
         file_date = get_modified_date(file)
         file_date_us = file_date.strftime("%Y-%d-%m")
         file_date_iso = file_date.strftime("%Y-%m-%d")
+
+        for name, value in kwargs.items():
+            if value is None:
+                kwargs[name] = "Unknown"
 
         new_file = Path(
             format_str.format(
