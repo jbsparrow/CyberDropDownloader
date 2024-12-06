@@ -42,8 +42,8 @@ class PathManager:
         self.main_log: Path = field(init=False)
         self.last_forum_post_log: Path = field(init=False)
         self.unsupported_urls_log: Path = field(init=False)
-        self.download_error_urls_logs: Path = field(init=False)
-        self.scrape_error_urls_logs: Path = field(init=False)
+        self.download_error_urls_log: Path = field(init=False)
+        self.scrape_error_urls_log: Path = field(init=False)
 
         self._logs_model_names = [
             "main_log",
