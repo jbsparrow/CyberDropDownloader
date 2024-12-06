@@ -45,7 +45,7 @@ class AppriseURLModel(FrozenModel):
         dump_secret = info.mode != "json"
         url = self.url.get_secret_value() if dump_secret else self.url
         tags = self.tags - set("no_logs")
-        return f"{','.join(tags)}{'=' if self.tags else ''}{url}"
+        return f"{','.join(tags)}{'=' if tags else ''}{url}"
 
     @model_validator(mode="before")
     @staticmethod

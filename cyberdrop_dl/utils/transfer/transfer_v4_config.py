@@ -1,8 +1,13 @@
+from __future__ import annotations
+
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from cyberdrop_dl.config_definitions import AuthSettings, ConfigSettings, GlobalSettings
-from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.utils import yaml
+
+if TYPE_CHECKING:
+    from cyberdrop_dl.managers.manager import Manager
 
 
 def transfer_v4_config(manager: Manager, new_config_name: str, old_config_path: Path) -> None:
