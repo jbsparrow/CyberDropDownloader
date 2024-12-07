@@ -102,6 +102,7 @@ class Downloader:
         self.client: DownloadClient = field(init=False)
 
         self._file_lock = manager.download_manager.file_lock
+        self._ignore_history = manager.config_manager.settings_data.runtime_options.ignore_history
         self._semaphore: asyncio.Semaphore = field(init=False)
 
         self._additional_headers = {}
@@ -127,10 +128,7 @@ class Downloader:
 
         async with self._semaphore:
             self.waiting_items -= 1
-            if (
-                media_item.url.path not in self.processed_items
-                or self.manager.config_manager.settings_data.runtime_options.ignore_history
-            ):
+            if media_item.url.path not in self.processed_items or self._ignore_history:
                 self.processed_items.add(media_item.url.path)
                 self.manager.progress_manager.download_progress.update_total()
                 log(f"{self.log_prefix} starting: {media_item.url}", 20)
