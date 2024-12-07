@@ -12,10 +12,10 @@ import aiohttp
 from filedate import File
 
 from cyberdrop_dl.clients.download_client import is_4xx_client_error
-from cyberdrop_dl.clients.errors import CDLBaseError, DownloadError, InsufficientFreeSpaceError, RestrictedFiletypeError
-from cyberdrop_dl.managers.real_debrid.errors import RealDebridError
+from cyberdrop_dl.clients.errors import DownloadError, InsufficientFreeSpaceError, RestrictedFiletypeError
 from cyberdrop_dl.utils.constants import CustomHTTPStatus
 from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -32,12 +32,10 @@ def retry(func: Callable) -> None:
     async def wrapper(self: Downloader, *args, **kwargs) -> None:
         media_item: MediaItem = args[0]
         while True:
-            origin = exc_info = None
             try:
                 return await func(self, *args, **kwargs)
             except DownloadError as e:
                 self.attempt_task_removal(media_item)
-
                 max_attempts = self.manager.config_manager.global_settings_data.rate_limiting_options.download_attempts
                 if self.manager.config_manager.settings_data.download_options.disable_download_attempt_limit:
                     max_attempts = 1
@@ -46,50 +44,16 @@ def retry(func: Callable) -> None:
                     media_item.current_attempt += 1
 
                 log_message = f"with status {e.status} and message: {e.message}"
-
                 log(f"{self.log_prefix} failed: {media_item.url} {log_message}", 40)
+                if media_item.current_attempt < max_attempts:
+                    retry_msg = f"Retrying {self.log_prefix.lower()}: {media_item.url} , retry attempt: {media_item.current_attempt + 1}"
+                    log(retry_msg, 20)
+                    continue
 
-                if media_item.current_attempt >= max_attempts:
-                    self.manager.progress_manager.download_stats_progress.add_failure(e.ui_message)
-                    await self.manager.log_manager.write_download_error_log(
-                        media_item.url,
-                        e.message,
-                        media_item.referer,
-                    )
-                    self.manager.progress_manager.download_progress.add_failed()
-                    break
-
-                retrying_message = f"Retrying {self.log_prefix.lower()}: {media_item.url} ,retry attempt: {media_item.current_attempt + 1}"
-                log(retrying_message, 20)
-                continue
-
-            except CDLBaseError as e:
-                log_message = log_message_short = e.message
-                ui_message = e.ui_message
-                origin = e.origin
-
-            except RealDebridError as e:
-                log_message = log_message_short = f"RealDebridError - {e.error}"
-                ui_message = f"RD - {e.error}"
-
-            except Exception as e:
-                exc_info = e
-                log_message = str(e)
-                log_message_short = "See Log for Details"
-                ui_message = "Unknown"
-
-                status = getattr(e, "status", None)
-                message = getattr(e, "message", None)
-                if status and message:
-                    log_message = log_message_short = ui_message = f"{status} - {message}"
-
-            failed_message = f"{self.log_prefix} failed: {media_item.url} with error: {log_message}"
-            log(failed_message, 40, exc_info=exc_info)
-            self.attempt_task_removal(media_item)
-            await self.manager.log_manager.write_download_error_log(media_item.url, log_message_short, origin)
-            self.manager.progress_manager.download_stats_progress.add_failure(ui_message)
-            self.manager.progress_manager.download_progress.add_failed()
-            break
+                self.manager.progress_manager.download_stats_progress.add_failure(e.ui_message)
+                await self.manager.log_manager.write_download_error_log(media_item.url, e.message, media_item.referer)
+                self.manager.progress_manager.download_progress.add_failed()
+                break
 
     return wrapper
 
@@ -170,6 +134,7 @@ class Downloader:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    @error_handling_wrapper
     @retry
     async def download(self, media_item: MediaItem) -> None:
         """Downloads the media item."""
