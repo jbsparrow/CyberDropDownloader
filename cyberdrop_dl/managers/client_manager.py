@@ -70,6 +70,7 @@ class ClientManager:
             "coomer": AsyncLimiter(1, 1),
             "kemono": AsyncLimiter(1, 1),
             "pixeldrain": AsyncLimiter(10, 1),
+            "gofile": AsyncLimiter(100, 60),
             "other": AsyncLimiter(25, 1),
         }
 

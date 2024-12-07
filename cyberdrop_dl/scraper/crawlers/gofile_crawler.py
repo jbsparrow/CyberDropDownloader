@@ -146,11 +146,10 @@ class GoFileCrawler(Crawler):
             create_account_address = self.api / "accounts"
             async with self.request_limiter:
                 json_resp = await self.client.post_data(self.domain, create_account_address, data={})
-
                 if json_resp["status"] != "ok":
                     raise ScrapeError(403, "Couldn't generate GoFile token")
 
-                self.api_key = json_resp["data"]["token"]
+            self.api_key = json_resp["data"]["token"]
         self.headers["Authorization"] = f"Bearer {self.api_key}"
         self.client.client_manager.cookies.update_cookies(
             {"accountToken": self.api_key}, response_url=self.primary_base_domain
