@@ -27,16 +27,12 @@ class FileLock:
     async def acquire(self, filename: str) -> AsyncGenerator:
         log_debug(f"Checking lock for {filename}", 20)
         if filename not in self._locked_files:
-            log_debug(f"Lock for {filename} does not exist", 20)
+            log_debug(f"Lock for {filename} does not exists", 20)
 
         lock: asyncio.Lock = self._locked_files.get(filename, asyncio.Lock())
-        await lock.acquire()
-        log_debug(f"Lock for {filename} acquired", 20)
-        try:
-            yield self
-        finally:
-            log_debug(f"Releasing lock for {filename}", 20)
-            lock.release()
+        async with lock:
+            log_debug(f"Lock for {filename} acquired", 20)
+            yield
             log_debug(f"Lock for {filename} released", 20)
 
 
