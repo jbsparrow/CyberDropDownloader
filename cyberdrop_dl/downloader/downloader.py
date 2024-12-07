@@ -138,13 +138,7 @@ class Downloader:
                     self.manager.client_manager.download_session_limit,
                     self._file_lock.acquire(media_item.file_lock_reference_name),
                 ):
-                    try:
-                        await self.download(media_item)
-                    except Exception as e:
-                        msg = f"{self.log_prefix} failed: {media_item.url} with error {e}"
-                        log(msg, 40, exc_info=True)
-                        self.manager.progress_manager.download_stats_progress.add_failure("Unknown")
-                        self.manager.progress_manager.download_progress.add_failed()
+                    await self.download(media_item)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
