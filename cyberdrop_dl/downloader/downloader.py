@@ -125,29 +125,28 @@ class Downloader:
         self.waiting_items += 1
         media_item.current_attempt = 0
 
-        await self._semaphore.acquire()
-        self.waiting_items -= 1
-        if (
-            media_item.url.path not in self.processed_items
-            or self.manager.config_manager.settings_data.runtime_options.ignore_history
-        ):
-            self.processed_items.append(media_item.url.path)
-            self.manager.progress_manager.download_progress.update_total()
+        async with self._semaphore:
+            self.waiting_items -= 1
+            if (
+                media_item.url.path not in self.processed_items
+                or self.manager.config_manager.settings_data.runtime_options.ignore_history
+            ):
+                self.processed_items.append(media_item.url.path)
+                self.manager.progress_manager.download_progress.update_total()
 
-            log(f"{self.log_prefix} starting: {media_item.url}", 20)
-            async with self.manager.client_manager.download_session_limit:
-                try:
-                    if isinstance(media_item.file_lock_reference_name, Field):
-                        media_item.file_lock_reference_name = media_item.filename
-                    await self._file_lock.check_lock(media_item.file_lock_reference_name)
-                    await self.download(media_item)
-                except Exception as e:
-                    log(f"{self.log_prefix} failed: {media_item.url} with error {e}", 40, exc_info=True)
-                    self.manager.progress_manager.download_stats_progress.add_failure("Unknown")
-                    self.manager.progress_manager.download_progress.add_failed()
-                finally:
-                    await self._file_lock.release_lock(media_item.file_lock_reference_name)
-        self._semaphore.release()
+                log(f"{self.log_prefix} starting: {media_item.url}", 20)
+                if isinstance(media_item.file_lock_reference_name, Field):
+                    media_item.file_lock_reference_name = media_item.filename
+                async with (
+                    self.manager.client_manager.download_session_limit,
+                    self._file_lock.acquire(media_item.file_lock_reference_name),
+                ):
+                    try:
+                        await self.download(media_item)
+                    except Exception as e:
+                        log(f"{self.log_prefix} failed: {media_item.url} with error {e}", 40, exc_info=True)
+                        self.manager.progress_manager.download_stats_progress.add_failure("Unknown")
+                        self.manager.progress_manager.download_progress.add_failed()
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
 from base64 import b64encode
+from contextlib import asynccontextmanager
 from shutil import disk_usage
 from typing import TYPE_CHECKING
 
@@ -10,6 +10,7 @@ from cyberdrop_dl.utils.constants import FILE_FORMATS
 from cyberdrop_dl.utils.logger import log_debug
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
     from pathlib import Path
 
     from cyberdrop_dl.managers.manager import Manager
@@ -22,23 +23,20 @@ class FileLock:
     def __init__(self) -> None:
         self._locked_files = {}
 
-    async def check_lock(self, filename: str) -> None:
-        """Checks if the file is locked."""
-        try:
-            log_debug(f"Checking lock for {filename}", 20)
-            await self._locked_files[filename].acquire()
-            log_debug(f"Lock for {filename} acquired", 20)
-        except KeyError:
+    @asynccontextmanager
+    async def acquire(self, filename: str) -> AsyncGenerator:
+        log_debug(f"Checking lock for {filename}", 20)
+        if filename not in self._locked_files:
             log_debug(f"Lock for {filename} does not exist", 20)
-            self._locked_files[filename] = asyncio.Lock()
-            await self._locked_files[filename].acquire()
-            log_debug(f"Lock for {filename} acquired", 20)
 
-    async def release_lock(self, filename: str) -> None:
-        """Releases the file lock."""
-        with contextlib.suppress(KeyError, RuntimeError):
+        lock: asyncio.Lock = self._locked_files.get(filename, asyncio.Lock())
+        await lock.acquire()
+        log_debug(f"Lock for {filename} acquired", 20)
+        try:
+            yield self
+        finally:
             log_debug(f"Releasing lock for {filename}", 20)
-            self._locked_files[filename].release()
+            lock.release()
             log_debug(f"Lock for {filename} released", 20)
 
 
