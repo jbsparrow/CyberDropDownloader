@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING
 import aiohttp
 from filedate import File
 
-from cyberdrop_dl.clients.download_client import is_4xx_client_error
 from cyberdrop_dl.clients.errors import DownloadError, InsufficientFreeSpaceError, RestrictedFiletypeError
 from cyberdrop_dl.utils.constants import CustomHTTPStatus
 from cyberdrop_dl.utils.logger import log
@@ -187,9 +186,13 @@ class Downloader:
 
     @staticmethod
     def is_failed(status: int):
+        """NO USED"""
+        SERVER_ERRORS = (HTTPStatus.SERVICE_UNAVAILABLE, HTTPStatus.BAD_GATEWAY, CustomHTTPStatus.WEB_SERVER_IS_DOWN)
         return any(
-            (
-                is_4xx_client_error(status) and status != HTTPStatus.TOO_MANY_REQUESTS,
-                status in (HTTPStatus.SERVICE_UNAVAILABLE, HTTPStatus.BAD_GATEWAY, CustomHTTPStatus.WEB_SERVER_IS_DOWN),
-            ),
+            (is_4xx_client_error(status) and status != HTTPStatus.TOO_MANY_REQUESTS, status in SERVER_ERRORS),
         )
+
+
+def is_4xx_client_error(status_code: int) -> bool:
+    """Checks whether the HTTP status code is 4xx client error."""
+    return isinstance(status_code, str) or (HTTPStatus.BAD_REQUEST <= status_code < HTTPStatus.INTERNAL_SERVER_ERROR)
