@@ -115,25 +115,29 @@ class GoFileCrawler(Crawler):
 
     async def handle_children(self, children: dict, scrape_item: ScrapeItem) -> None:
         """Sends files to downloader and adds subfolder to scrape queue."""
+        subfolders = []
         for child in children.values():
             if child["type"] == "folder":
                 child_url = self.primary_base_domain / "d" / child["code"]
                 new_scrape_item = self.create_scrape_item(scrape_item, url=child_url, add_parent=scrape_item.url)
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+                subfolders.append(new_scrape_item)
+                continue
 
-            else:
-                link = URL(child["link"])
-                if child["link"] == "overloaded":
-                    link = URL(child["directLink"])
-                filename, ext = get_filename_and_ext(link.name)
-                new_scrape_item = self.create_scrape_item(
-                    scrape_item, scrape_item.url, possible_datetime=child["createTime"]
-                )
-                await self.handle_file(link, new_scrape_item, filename, ext)
+            link = URL(child["link"])
+            if child["link"] == "overloaded":
+                link = URL(child["directLink"])
+            filename, ext = get_filename_and_ext(link.name)
+            new_scrape_item = self.create_scrape_item(
+                scrape_item, scrape_item.url, possible_datetime=child["createTime"]
+            )
+            await self.handle_file(link, new_scrape_item, filename, ext)
 
             scrape_item.children += 1
             if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
                 raise MaxChildrenError(origin=scrape_item)
+
+        for subfolder in subfolders:
+            self.manager.task_group.create_task(self.run(subfolder))
 
     @error_handling_wrapper
     async def get_account_token(self) -> None:
