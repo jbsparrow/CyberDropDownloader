@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import aiofiles
 import apprise
 import rich
-from aiohttp import ClientSession, FormData
+from aiohttp import ClientConnectorError, ClientSession, FormData
 from pydantic import ValidationError
 from rich.text import Text
 from yarl import URL
@@ -49,6 +49,9 @@ def error_handling_wrapper(func: Callable) -> None:
             e_ui_failure = f"RD - {e.error}"
         except TimeoutError:
             log_message_short = log_message = e_ui_failure = "Timeout"
+        except ClientConnectorError as e:
+            log_message_short = e_ui_failure = "ClientConnectorError"
+            log_message = f"Can't connect to {link}. If you're using a VPN, try turning it off \n  {e!s}"
         except Exception as e:
             exc_info = e
             if hasattr(e, "status") and hasattr(e, "message"):

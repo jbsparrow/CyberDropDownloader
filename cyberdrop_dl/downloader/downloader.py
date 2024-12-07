@@ -175,9 +175,7 @@ class Downloader:
         """Downloads the media item."""
         origin = media_item.referer
         try:
-            if not isinstance(media_item.current_attempt, int):
-                media_item.current_attempt = 1
-
+            media_item.current_attempt = media_item.current_attempt or 1
             self.check_file_can_download(media_item)
             downloaded = await self.client.download_file(self.manager, self.domain, media_item)
             if downloaded:
@@ -201,14 +199,11 @@ class Downloader:
             self.attempt_task_removal(media_item)
 
         except (
-            aiohttp.ClientPayloadError,
-            aiohttp.ClientOSError,
             ConnectionResetError,
             FileNotFoundError,
             PermissionError,
-            aiohttp.ServerDisconnectedError,
             TimeoutError,
-            aiohttp.ServerTimeoutError,
+            aiohttp.ClientError,
         ) as e:
             ui_message = getattr(e, "status", type(e).__name__)
             if media_item.partial_file and media_item.partial_file.is_file():
