@@ -8,7 +8,7 @@ from http import HTTPStatus
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import aiohttp
+from aiohttp import ClientError, ClientResponseError
 from filedate import File
 
 from cyberdrop_dl.clients.errors import DownloadError, InsufficientFreeSpaceError, RestrictedFiletypeError
@@ -63,17 +63,15 @@ class Downloader:
         self.domain: str = domain
 
         self.client: DownloadClient = field(init=False)
+        self.log_prefix = "Download attempt (unsupported domain)" if domain == "no_crawler" else "Download"
+        self.processed_items: set = set()
+        self.waiting_items = 0
 
+        self._additional_headers = {}
+        self._current_attempt_filesize = {}
         self._file_lock = manager.download_manager.file_lock
         self._ignore_history = manager.config_manager.settings_data.runtime_options.ignore_history
         self._semaphore: asyncio.Semaphore = field(init=False)
-
-        self._additional_headers = {}
-
-        self.processed_items: set = set()
-        self.waiting_items = 0
-        self._current_attempt_filesize = {}
-        self.log_prefix = "Download attempt (unsupported domain)" if domain == "no_crawler" else "Download"
 
     def startup(self) -> None:
         """Starts the downloader."""
@@ -153,7 +151,7 @@ class Downloader:
             self.manager.progress_manager.download_progress.add_skipped()
             self.attempt_task_removal(media_item)
 
-        except (DownloadError, aiohttp.ClientResponseError) as e:
+        except (DownloadError, ClientResponseError) as e:
             ui_message = getattr(e, "ui_message", e.status)
             log_message_short = log_message = f"{e.status} - {e.message}"
             log(f"{self.log_prefix} failed: {media_item.url} with error: {log_message}", 40)
@@ -167,7 +165,7 @@ class Downloader:
             FileNotFoundError,
             PermissionError,
             TimeoutError,
-            aiohttp.ClientError,
+            ClientError,
         ) as e:
             ui_message = getattr(e, "status", type(e).__name__)
             if media_item.partial_file and media_item.partial_file.is_file():
