@@ -72,7 +72,7 @@ class GoFileCrawler(Crawler):
 
         except DownloadError as e:
             if e.status != http.HTTPStatus.UNAUTHORIZED:
-                raise
+                raise ScrapeError(e.status, e.message, origin=scrape_item) from e
             await self.get_website_token(update=True)
             content_url = content_url.update_query({"wt": self.website_token})
             api_query["url"] = content_url
