@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
-from dataclasses import Field, field
+from dataclasses import field
 from functools import wraps
 from http import HTTPStatus
 from pathlib import Path
@@ -106,7 +106,7 @@ class Downloader:
 
         self._additional_headers = {}
 
-        self.processed_items: list = []
+        self.processed_items: set = set()
         self.waiting_items = 0
         self._current_attempt_filesize = {}
         self.log_prefix = "Download attempt (unsupported domain)" if domain == "no_crawler" else "Download"
@@ -131,11 +131,10 @@ class Downloader:
                 media_item.url.path not in self.processed_items
                 or self.manager.config_manager.settings_data.runtime_options.ignore_history
             ):
-                self.processed_items.append(media_item.url.path)
+                self.processed_items.add(media_item.url.path)
                 self.manager.progress_manager.download_progress.update_total()
-
                 log(f"{self.log_prefix} starting: {media_item.url}", 20)
-                if isinstance(media_item.file_lock_reference_name, Field):
+                if not media_item.file_lock_reference_name:
                     media_item.file_lock_reference_name = media_item.filename
                 async with (
                     self.manager.client_manager.download_session_limit,
@@ -144,7 +143,8 @@ class Downloader:
                     try:
                         await self.download(media_item)
                     except Exception as e:
-                        log(f"{self.log_prefix} failed: {media_item.url} with error {e}", 40, exc_info=True)
+                        msg = f"{self.log_prefix} failed: {media_item.url} with error {e}"
+                        log(msg, 40, exc_info=True)
                         self.manager.progress_manager.download_stats_progress.add_failure("Unknown")
                         self.manager.progress_manager.download_progress.add_failed()
 
