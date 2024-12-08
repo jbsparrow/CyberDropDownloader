@@ -121,13 +121,13 @@ speedups = ["Brotli", "aiodns (>=3.2.0)", "brotlicffi"]
 
 [[package]]
 name = "aiolimiter"
-version = "1.1.0"
+version = "1.2.1"
 description = "asyncio rate limiter, a leaky bucket implementation"
 optional = false
-python-versions = ">=3.7,<4.0"
+python-versions = "<4.0,>=3.8"
 files = [
-    {file = "aiolimiter-1.1.0-py3-none-any.whl", hash = "sha256:0b4997961fc58b8df40279e739f9cf0d3e255e63e9a44f64df567a8c17241e24"},
-    {file = "aiolimiter-1.1.0.tar.gz", hash = "sha256:461cf02f82a29347340d031626c92853645c099cb5ff85577b831a7bd21132b5"},
+    {file = "aiolimiter-1.2.1-py3-none-any.whl", hash = "sha256:d3f249e9059a20badcb56b61601a83556133655c11d1eb3dd3e04ff069e5f3c7"},
+    {file = "aiolimiter-1.2.1.tar.gz", hash = "sha256:e02a37ea1a855d9e832252a105420ad4d15011505512a1a1d814647451b5cca9"},
 ]
 
 [[package]]
@@ -884,17 +884,6 @@ files = [
 ]
 
 [[package]]
-name = "mutagen"
-version = "1.47.0"
-description = "read and write audio tags for many formats"
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "mutagen-1.47.0-py3-none-any.whl", hash = "sha256:edd96f50c5907a9539d8e5bba7245f62c9f520aef333d13392a79a4f70aca719"},
-    {file = "mutagen-1.47.0.tar.gz", hash = "sha256:719fadef0a978c31b4cf3c956261b3c58b6948b32023078a2117b1de09f0fc99"},
-]
-
-[[package]]
 name = "myjdapi"
 version = "1.1.7"
 description = "Library to use My.Jdownloader API in an easy way."
@@ -1431,20 +1420,6 @@ files = [
 windows-terminal = ["colorama (>=0.4.6)"]
 
 [[package]]
-name = "pyreadline3"
-version = "3.5.4"
-description = "A python implementation of GNU readline."
-optional = false
-python-versions = ">=3.8"
-files = [
-    {file = "pyreadline3-3.5.4-py3-none-any.whl", hash = "sha256:eaf8e6cc3c49bcccf145fc6067ba8643d1df34d604a1ec0eccbf7a18e6d3fae6"},
-    {file = "pyreadline3-3.5.4.tar.gz", hash = "sha256:8d57d53039a1c75adba8e50dd3d992b28143480816187ea5efbd5c78e6c885b7"},
-]
-
-[package.extras]
-dev = ["build", "flake8", "mypy", "pytest", "twine"]
-
-[[package]]
 name = "python-dateutil"
 version = "2.9.0.post0"
 description = "Extensions to the standard Python datetime module"
@@ -1976,4 +1951,4 @@ propcache = ">=0.2.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.13"
-content-hash = "8fc49c86d8f98030acf67510b3ccd8f6ba01961cad3471c762d605a03e6eb75c"
+content-hash = "40c00ebfc5418208af4698e3f2f910e86840c224e87724e140a28cce0f3b65e5"

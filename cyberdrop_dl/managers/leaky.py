@@ -5,7 +5,6 @@ import contextlib
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
-from aiolimiter.compat import wait_for
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -35,7 +34,7 @@ class LeakyBucket(AsyncLimiter):
             fut = loop.create_future()
             self._waiters[task] = fut
             with contextlib.suppress(TimeoutError):
-                await wait_for(asyncio.shield(fut), 1 / self._rate_per_sec * amount, loop=loop)
+                await asyncio.wait_for(asyncio.shield(fut), 1 / self._rate_per_sec * amount)
             fut.cancel()
         self._waiters.pop(task, None)
         self._level += amount
