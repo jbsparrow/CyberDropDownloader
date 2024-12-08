@@ -22,8 +22,8 @@ class LogManager:
         self.main_log: Path = manager.path_manager.main_log
         self.last_post_log: Path = manager.path_manager.last_forum_post_log
         self.unsupported_urls_log: Path = manager.path_manager.unsupported_urls_log
-        self.download_error_log: Path = manager.path_manager.download_error_urls_logs
-        self.scrape_error_log: Path = manager.path_manager.scrape_error_urls_logs
+        self.download_error_log: Path = manager.path_manager.download_error_urls_log
+        self.scrape_error_log: Path = manager.path_manager.scrape_error_urls_log
         self._csv_locks = {}
 
     def startup(self) -> None:

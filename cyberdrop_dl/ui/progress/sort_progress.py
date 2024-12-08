@@ -147,7 +147,7 @@ class SortProgress:
             raise ValueError(msg)
         self.redraw()
 
-    def advance_folder(self, task_id: TaskID, amount: int) -> None:
+    def advance_folder(self, task_id: TaskID, amount: int = 1) -> None:
         """Advances the progress of the given task by the given amount."""
         if task_id in self.uninitiated_tasks:
             self.uninitiated_tasks.remove(task_id)

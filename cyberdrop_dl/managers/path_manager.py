@@ -42,8 +42,8 @@ class PathManager:
         self.main_log: Path = field(init=False)
         self.last_forum_post_log: Path = field(init=False)
         self.unsupported_urls_log: Path = field(init=False)
-        self.download_error_urls_logs: Path = field(init=False)
-        self.scrape_error_urls_logs: Path = field(init=False)
+        self.download_error_urls_log: Path = field(init=False)
+        self.scrape_error_urls_log: Path = field(init=False)
 
         self._logs_model_names = [
             "main_log",
@@ -65,8 +65,10 @@ class PathManager:
         self.config_folder.mkdir(parents=True, exist_ok=True)
         self.cookies_dir.mkdir(parents=True, exist_ok=True)
 
-    def replace_config_in_path(self, path: Path) -> Path:
+    def replace_config_in_path(self, path: Path) -> Path | None:
         current_config = self.manager.config_manager.loaded_config
+        if path is None:
+            return
         return Path(str(path).replace("{config}", current_config))
 
     def startup(self) -> None:
