@@ -1,24 +1,38 @@
 ---
-description: This is Cyberdrop-DL
+description: This is Cyberdrop-DL wiki
+icon: hand-wave
+layout:
+  title:
+    visible: true
+  description:
+    visible: true
+  tableOfContents:
+    visible: true
+  outline:
+    visible: false
+  pagination:
+    visible: true
 ---
 
 # Welcome!
 
-### What is Cyberdrop-DL? <a href="#what-is-cyberdrop-dl" id="what-is-cyberdrop-dl"></a>
+Cyberdrop-DL is an open source asynchronous downloader maintained by [jbsparrow](https://github.com/jbsparrow). It's goal is to act as a bulk downloader for various sites you will find around the web.
 
-Cyberdrop-DL is an open source project maintained by Jbsparrow. It's goal is to act as a bulk downloader for various sites you will find around the web.
-
-### Want to jump right in? <a href="#want-to-jump-right-in" id="want-to-jump-right-in"></a>
-
-Feeling like an eager beaver? Jump in to the quick start docs and get ready to download the internet.
-
-{% content-ref url="quick-start/" %}
-[quick-start](quick-start/)
+{% content-ref url="reference/supported-websites.md" %}
+[supported-websites.md](reference/supported-websites.md)
 {% endcontent-ref %}
 
-### Want to customize your experience? <a href="#want-to-customize-your-experience" id="want-to-customize-your-experience"></a>
+## Want to jump right in?
 
-Dive a little deeper and start exploring the various config and CLI arguments:
+Explore the Getting Started guide to quickly familiarize yourself with the setup process and get started with the software.
+
+{% content-ref url="getting-started/" %}
+[getting-started](getting-started/)
+{% endcontent-ref %}
+
+## Want to customize your experience?
+
+Take a closer look and begin exploring the available configuration options and CLI arguments:
 
 {% content-ref url="reference/configuration-options/" %}
 [configuration-options](reference/configuration-options/)
@@ -26,4 +40,8 @@ Dive a little deeper and start exploring the various config and CLI arguments:
 
 {% content-ref url="reference/cli-arguments.md" %}
 [cli-arguments.md](reference/cli-arguments.md)
+{% endcontent-ref %}
+
+{% content-ref url="reference/notifications.md" %}
+[notifications.md](reference/notifications.md)
 {% endcontent-ref %}

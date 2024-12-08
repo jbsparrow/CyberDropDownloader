@@ -1,14 +1,23 @@
 ---
 description: These are all of the configuration options for Authentication.
+icon: user-lock
 ---
 
 # Authentication
+
+All the options in these list are optional. The default value for all of them is an empty `str`
+
+|Type |Default|
+|----|---|
+|`str`|`""`|
 
 <details>
 
 <summary>Coomer</summary>
 
 In order to scrape your favorites from coomer, you need to provide Cyberdrop-DL with your coomer `session` cookie.
+
+## `session`
 
 Once you have put your `session` cookie into the authentication file, you can add `https://coomer.su/favorites` to the URLs file, and Cyberdrop-DL will scrape your favorites.
 
@@ -26,17 +35,15 @@ It is best to leave the authentication parameter for SimpCity blank, as they hav
 
 In order to set specific authentication values for a config instead of the global values, make an `authentication.yaml` file in the config folder.
 
-***
-
-* \<forum>\_xf\_user\_cookie
+## `xf_user_cookie`
 
 This is the value for the `XF_User` cookie mentioned above. If you want to only use credentials, you can leave this blank.
 
-* \<forum>\_username
+## `username`
 
 This is your username for the forum. Again, if you use cookies, you don't need to provide this.
 
-* \<forum>\_password
+## `password`
 
 This is your password for the forum. Again, if you use cookies, you don't need to provide this.
 
@@ -46,11 +53,9 @@ This is your password for the forum. Again, if you use cookies, you don't need t
 
 <summary>GoFile</summary>
 
-If you decide to pay for GoFile Premium (faster downloads, etc) you can provide your API key to Cyberdrop-DL in order for the program to use it.
+If you decide to pay for GoFile Premium (faster downloads, etc.) you can provide your API key to Cyberdrop-DL in order for the program to use it.
 
-***
-
-* gofile\_api\_key
+## `api_key`
 
 You can get your API key here: [https://gofile.io/myProfile](https://gofile.io/myProfile)
 
@@ -60,25 +65,24 @@ You can get your API key here: [https://gofile.io/myProfile](https://gofile.io/m
 
 <summary>Imgur</summary>
 
-In order to scrape images from Imgur, you'll need to create a client on Imgurs website.
+In order to scrape images from Imgur, you'll need to create a client on Imgur's website.
 
 [https://api.imgur.com/oauth2/addclient](https://api.imgur.com/oauth2/addclient)
 
 Some examples of what to put in for what it asks for:
 
-> Application Name: Cyberdrop-DL
+- Application Name: `Cyberdrop-DL`
 
-> OAuth2 without a callback URL
+- OAuth2 without a callback URL
 
-> Website: <really doesn't matter>
+- Website: `<really doesn't matter>`
 
-> Email: Your email
+- Email: `your_email@domain.com`
 
-> Description: Cyberdrop-DL client
+- Description: `Cyberdrop-DL client`
 
-***
 
-* imgur\_client\_id
+## `client_id`
 
 After generating the client above, you will need to give Cyberdrop-DL the client ID.
 
@@ -92,17 +96,15 @@ Under JDownloader 2 settings -> MyJDownloader
 
 You will set an email, password, and device name (then connect).
 
-***
-
-* jdownloader\_username
+## `username`
 
 Provide Cyberdrop-DL the email from above
 
-* jdownloader\_password
+## `password`
 
 Provide Cyberdrop-DL the password from above
 
-* jdownloader\_device
+## `device`
 
 Provide Cyberdrop-DL the device name from above
 
@@ -112,13 +114,23 @@ Provide Cyberdrop-DL the device name from above
 
 <summary>PixelDrain</summary>
 
-If you decide to pay for PixelDrain premium (faster downloads, etc) you can provide your API key to Cyberdrop-Dl in order for the program to use it.
+If you decide to pay for PixelDrain premium (faster downloads, etc.) you can provide your API key to Cyberdrop-DL in order for the program to use it.
 
-***
+## `api_key`
 
-* pixeldrain\_api\_key
+You can get your API key here: [https://pixeldrain.com/user/api_keys](https://pixeldrain.com/user/api_keys)
 
-You can get your API key here: [https://pixeldrain.com/user/api\_keys](https://pixeldrain.com/user/api\_keys)
+</details>
+
+<details>
+
+<summary>Real-Debrid</summary>
+
+In order to download files from sites supported by real-debrid, you'll need to get the API token from your account.
+
+## `api_key`
+
+You can get your API key here (you must be logged in): [https://real-debrid.com/apitoken](https://real-debrid.com/apitoken)
 
 </details>
 
@@ -126,29 +138,21 @@ You can get your API key here: [https://pixeldrain.com/user/api\_keys](https://p
 
 <summary>Reddit</summary>
 
-In order to scrape files from Reddit, you'll need to create an app on reddits website (it's free).
+In order to scrape files from Reddit, you'll need to create an app on reddit's website (it's free): [https://www.reddit.com/prefs/apps](https://www.reddit.com/prefs/apps)
 
-[https://www.reddit.com/prefs/apps](https://www.reddit.com/prefs/apps)
+Select `script` as the app type. Any name can be used. The redirect URI value isn't important, but it is required. You can use fake URL like `http://your_username.cyberdrop-dl`. Click `create app` to get your credentials.
 
-***
+![reddit_personal_script_setup_1](../../assets/reddit_personal_script_setup_1.png)
+![reddit_personal_script_setup_2](../../assets/reddit_personal_script_setup_2.png)
 
-* reddit\_personal\_use\_script
-* reddit\_secret
+After generating the app, you need to give Cyberdrop-DL these values:
 
-after generating the app, you will need to give Cyberdrop-DL these values.
+## `personal_use_script`
 
-</details>
+Copy the value of `presonal_use_script`
 
-<details>
+## `secret`
 
-<summary>RealDebrid</summary>
-
-In order to download files from sites supported by real-debrid, you'll need to get the api token from your account.
-
-***
-
-* realdebrid\_api\_key
-
-You can get your API key here (you must be logged in): [https://real-debrid.com/apitoken](https://real-debrid.com/apitoken)
+Copy the value of `secret`
 
 </details>
