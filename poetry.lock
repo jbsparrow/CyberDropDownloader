@@ -884,17 +884,6 @@ files = [
 ]
 
 [[package]]
-name = "mutagen"
-version = "1.47.0"
-description = "read and write audio tags for many formats"
-optional = false
-python-versions = ">=3.7"
-files = [
-    {file = "mutagen-1.47.0-py3-none-any.whl", hash = "sha256:edd96f50c5907a9539d8e5bba7245f62c9f520aef333d13392a79a4f70aca719"},
-    {file = "mutagen-1.47.0.tar.gz", hash = "sha256:719fadef0a978c31b4cf3c956261b3c58b6948b32023078a2117b1de09f0fc99"},
-]
-
-[[package]]
 name = "myjdapi"
 version = "1.1.7"
 description = "Library to use My.Jdownloader API in an easy way."
@@ -1976,4 +1965,4 @@ propcache = ">=0.2.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.13"
-content-hash = "df1189a2332c222a82cd6675892a3847b272faf62298e47b86975691f0f6e8c6"
+content-hash = "26c06dcca435ac06b9dbc0a3057a84984f1b548335f7699a652d01ae015e295b"
