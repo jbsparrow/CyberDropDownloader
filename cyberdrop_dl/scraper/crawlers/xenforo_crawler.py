@@ -63,14 +63,21 @@ class ForumPost:
     soup: BeautifulSoup
     selectors: PostSelectors
 
-    def __post_init__(self) -> None:
-        number = self.soup.select_one(self.selectors.number.element)
-        self.number = int(number.get(self.selectors.number.attribute).split("/")[-1].split("post-")[-1])
-        self.content = self.soup.select_one(self.selectors.content.element)
+    @property
+    def content(self) -> Tag:
+        return self.soup.select_one(self.selectors.content.element)
+
+    @property
+    def date(self):
         date = None
         with contextlib.suppress(AttributeError):
             date = int(self.content.select_one(self.selectors.date.element).get(self.selectors.date.attribute))
-        self.date = date
+        return date
+
+    @property
+    def number(self):
+        number = self.soup.select_one(self.selectors.number.element)
+        return int(number.get(self.selectors.number.attribute).split("/")[-1].split("post-")[-1])
 
 
 class XenforoCrawler(Crawler):
@@ -241,14 +248,15 @@ class XenforoCrawler(Crawler):
             link: Tag = link_obj.get(selector) or link_obj.get("href")
             if not link:
                 continue
-            parent_simp_check = link.parent.get("data-simp")
-            if parent_simp_check and "init" in parent_simp_check:
-                continue
+            if not isinstance(link, str):
+                parent_simp_check = link.parent.get("data-simp")
+                if parent_simp_check and "init" in parent_simp_check:
+                    continue
             if selector == self.selectors.posts.embeds.attribute:
                 link = self.process_embed(link)
             if not link:
                 continue
-            link = self.get_absolute_link(link)
+            link = await self.get_absolute_link(link)
             await self.handle_link(scrape_item, link)
             scrape_item.add_children()
 
