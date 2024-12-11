@@ -118,9 +118,9 @@ class Sorter:
         bitrate = duration = sample_rate = None
         with contextlib.suppress(RuntimeError, CalledProcessError):
             props: dict = get_audio_properties(str(file))
-            duration = int(props.get("duration", 0)) or None
-            bitrate = int(props.get("bit_rate", 0)) or None
-            sample_rate = int(props.get("sample_rate", 0)) or None
+            duration = int(float(props.get("duration", 0))) or None
+            bitrate = int(float(props.get("bit_rate", 0))) or None
+            sample_rate = int(float(props.get("sample_rate", 0))) or None
 
         if self._process_file_move(
             file,
@@ -158,13 +158,13 @@ class Sorter:
 
         with contextlib.suppress(RuntimeError, CalledProcessError):
             props: dict = get_video_properties(str(file))
-            width = int(props.get("width", 0)) or None
-            height = int(props.get("height", 0)) or None
+            width = int(float(props.get("width", 0))) or None
+            height = int(float(props.get("height", 0))) or None
             if width and height:
                 resolution = f"{width}x{height}"
 
             codec = props.get("codec_name")
-            duration = int(props.get("duration", 0)) or None
+            duration = int(float(props.get("duration", 0))) or None
             fps = float(Fraction(props.get("avg_frame_rate", 0))) or None
             if fps:
                 fps = int(fps) if fps.is_integer() else f"{fps:.2f}"
