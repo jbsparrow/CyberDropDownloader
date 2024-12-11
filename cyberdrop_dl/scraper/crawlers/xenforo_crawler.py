@@ -346,7 +346,7 @@ class XenforoCrawler(Crawler):
 
         if isinstance(link, str):
             link = URL(link, encoded=encoded)
-        if "link-confirmation" in link.path:
+        if any(keyword in link.path for keyword in ("masked", "link-confirmation")):
             link = await self.handle_confirmation_link(link)
 
         return link
