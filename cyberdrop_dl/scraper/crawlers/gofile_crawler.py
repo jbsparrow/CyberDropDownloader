@@ -52,6 +52,8 @@ class GoFileCrawler(Crawler):
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
+        if not self.api_key or not self.website_token:
+            return
         content_id = scrape_item.url.name
         scrape_item.album_id = content_id
         scrape_item.part_of_album = True
