@@ -191,7 +191,6 @@ class XenforoCrawler(Crawler):
 
         await self.write_last_forum_post(scrape_item, last_scraped_post_number)
 
-    @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         """Scrapes a post."""
         if self.manager.config_manager.settings_data.download_options.separate_posts:
@@ -202,7 +201,6 @@ class XenforoCrawler(Crawler):
         for scraper in posts_scrapers:
             await scraper(scrape_item, post)
 
-    @error_handling_wrapper
     async def links(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         """Scrapes links from a post."""
         selector = post.selectors.links
@@ -210,14 +208,12 @@ class XenforoCrawler(Crawler):
         links = [link for link in links if self.is_valid_post_link(link)]
         await self.process_children(scrape_item, links, selector.attribute)
 
-    @error_handling_wrapper
     async def images(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         """Scrapes images from a post."""
         selector = post.selectors.images
         images = post.content.select(selector.element)
         await self.process_children(scrape_item, images, selector.attribute)
 
-    @error_handling_wrapper
     async def videos(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         """Scrapes videos from a post."""
         selector = post.selectors.videos
@@ -226,14 +222,12 @@ class XenforoCrawler(Crawler):
         videos.extend(post.content.select(iframe_selector.element))
         await self.process_children(scrape_item, videos, selector.attribute)
 
-    @error_handling_wrapper
     async def embeds(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         """Scrapes embeds from a post."""
         selector = post.selectors.embeds
         embeds = post.content.select(selector.element)
         await self.process_children(scrape_item, embeds, selector.attribute)
 
-    @error_handling_wrapper
     async def attachments(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         """Scrapes attachments from a post."""
         selector = post.selectors.attachments
@@ -276,6 +270,8 @@ class XenforoCrawler(Crawler):
         )
 
     async def handle_link(self, scrape_item: ScrapeItem, link: URL) -> None:
+        if not link:
+            return
         try:
             if self.domain not in link.host:
                 new_scrape_item = self.create_scrape_item(scrape_item, link)
@@ -294,6 +290,7 @@ class XenforoCrawler(Crawler):
         new_scrape_item = self.create_scrape_item(scrape_item, link, "Attachments", part_of_album=True)
         await self.handle_file(link, new_scrape_item, filename, ext)
 
+    @error_handling_wrapper
     async def handle_confirmation_link(self, link: URL, *, origin: ScrapeItem | None = None) -> URL | None:
         """Handles link confirmation."""
         async with self.request_limiter:
@@ -340,6 +337,7 @@ class XenforoCrawler(Crawler):
                     if page_url.startswith("/"):
                         page_url = self.primary_base_domain / page_url[1:]
                     page_url = URL(page_url)
+                    log(f"scraping page: {page_url}")
                     continue
             break
 
@@ -350,15 +348,17 @@ class XenforoCrawler(Crawler):
 
     async def get_absolute_link(self, link: URL | str) -> URL:
         if isinstance(link, str):
+            encoded = "%" in link
             link = link.replace(".th.", ".").replace(".md.", ".").replace("ifr", "watch")
             if link.endswith("/"):
                 link = link[:-1]
             if link.startswith("//"):
                 link = "https:" + link
             elif link.startswith("/"):
-                link = self.primary_base_domain / link[1:]
+                link = self.primary_base_domain.joinpath(link[1:], encoded=encoded)
 
-        link = URL(link, encoded=True)
+        if isinstance(link, str):
+            link = URL(link, encoded=encoded)
         if "link-confirmation" in link.path:
             link = await self.handle_confirmation_link(link)
 
