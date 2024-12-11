@@ -7,6 +7,7 @@ FORUMS = {
     "leakedmodels": "leakedmodels.com",
     "nudostar": "nudostar.com",
     "xbunker": "xbunker.nu",
+    "socialmediagirls": "forum.socialmediagirls.com",
 }
 
 WEBSITES = {
@@ -38,7 +39,7 @@ WEBSITES = {
     "jpg3.su": "jpg3.su",
     "jpg4.su": "jpg4.su",
     "jpg5.su": "jpg5.su",
-    "kemono": "kemono",
+    "kemono": "kemono.su",
     "mediafire": "mediafire",
     "nudostar.tv": "nudostar.tv",
     "omegascans": "omegascans",
@@ -55,7 +56,7 @@ WEBSITES = {
     "rule34vault": "rule34vault",
     "saint": "saint",
     "scrolller": "scrolller",
-    "socialmediagirls": "socialmediagirls",
+    "socialmediagirls": "socialmediagirls.com",
     "toonily": "toonily",
     "tokyomotion.net": "tokyomotion.net",
     "xbunkr": "xbunkr",
@@ -63,7 +64,7 @@ WEBSITES = {
 }
 
 if next((tag for tag in PRERELEASE_TAGS if tag in current_version), False):
-    FORUMS["simpcity"] = "simpcity"
+    FORUMS["simpcity"] = "simpcity.su"
 
 SUPPORTED_SITES = FORUMS | WEBSITES
 
