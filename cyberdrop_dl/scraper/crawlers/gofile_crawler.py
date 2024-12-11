@@ -167,7 +167,7 @@ class GoFileCrawler(Crawler):
             return
         async with self.request_limiter:
             text = await self.client.get_text(self.domain, self.js_address, origin=scrape_item)
-        match = WT_REGEX.match(str(text))
+        match = re.search(WT_REGEX, str(text))
         if not match:
             raise ScrapeError(403, "Couldn't generate GoFile websiteToken", origin=scrape_item)
         self.website_token = match.group(1)
