@@ -82,7 +82,7 @@ class GoFileCrawler(Crawler):
                 json_resp = await self.client.get_json(self.domain, **api_query)
 
         self.check_json_response(json_resp, scrape_item)
-        title = self.create_title(json_resp["name"], content_id, None)
+        title = self.create_title(json_resp["data"]["name"], content_id, None)
         scrape_item.add_to_parent_title(title)
 
         # Do not reset children inside nested folders
@@ -97,7 +97,7 @@ class GoFileCrawler(Crawler):
                     ]
                 )
 
-        children = json_resp["children"]
+        children = json_resp["data"]["children"]
         await self.handle_children(children, scrape_item)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
