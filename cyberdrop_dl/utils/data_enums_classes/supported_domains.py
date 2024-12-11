@@ -7,6 +7,7 @@ FORUMS = {
     "leakedmodels": "leakedmodels.com",
     "nudostar": "nudostar.com",
     "xbunker": "xbunker.nu",
+    "socialmediagirls": "socialmediagirls.com",
 }
 
 WEBSITES = {
@@ -55,7 +56,6 @@ WEBSITES = {
     "rule34vault": "rule34vault",
     "saint": "saint",
     "scrolller": "scrolller",
-    "socialmediagirls": "socialmediagirls",
     "toonily": "toonily",
     "tokyomotion.net": "tokyomotion.net",
     "xbunkr": "xbunkr",
