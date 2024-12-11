@@ -14,6 +14,7 @@ class F95ZoneCrawler(XenforoCrawler):
     primary_base_domain = URL("https://f95zone.to")
     post_selectors = PostSelectors(
         date=Selector("time", "data-time"),
+        number=Selector("a[class=u-concealed]", "href"),
     )
     selectors = XenforoSelectors(posts=post_selectors)
 
