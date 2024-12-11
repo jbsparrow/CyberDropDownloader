@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 import aiofiles
 import aiohttp
 from aiohttp import ClientSession
+from yarl import URL
 
 from cyberdrop_dl.clients.errors import DownloadError, InsufficientFreeSpaceError, InvalidContentTypeError
 from cyberdrop_dl.utils.constants import DEBUG_VAR, FILE_FORMATS
@@ -19,8 +20,6 @@ from cyberdrop_dl.utils.logger import log
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
     from typing import Any
-
-    from yarl import URL
 
     from cyberdrop_dl.managers.client_manager import ClientManager
     from cyberdrop_dl.managers.manager import Manager
@@ -95,7 +94,7 @@ class DownloadClient:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    def add_api_key_headers(self, domain: str, referer: URL):
+    def add_api_key_headers(self, domain: str, referer: URL) -> dict:
         download_headers = copy.deepcopy(self._headers)
         download_headers["Referer"] = str(referer)
         auth_data = self.manager.config_manager.authentication_data
@@ -103,6 +102,11 @@ class DownloadClient:
             download_headers["Authorization"] = self.manager.download_manager.basic_auth(
                 "Cyberdrop-DL", auth_data.pixeldrain.api_key
             )
+        elif domain == "gofile":
+            gofile_cookies = self.client_manager.cookies.filter_cookies(URL("https://gofile.io"))
+            api_key = gofile_cookies.get("accountToken", "")
+            download_headers["Authorization"] = f"Bearer {api_key}"
+        return download_headers
 
     @limiter
     async def _download(

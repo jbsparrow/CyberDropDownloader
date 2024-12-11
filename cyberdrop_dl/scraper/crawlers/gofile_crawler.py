@@ -153,7 +153,6 @@ class GoFileCrawler(Crawler):
 
             self.api_key = json_resp["data"]["token"]
         self.headers["Authorization"] = f"Bearer {self.api_key}"
-        self.downloader.client._headers["Authorization"] = f"Bearer {self.api_key}"
         self.client.client_manager.cookies.update_cookies(
             {"accountToken": self.api_key}, response_url=self.primary_base_domain
         )
