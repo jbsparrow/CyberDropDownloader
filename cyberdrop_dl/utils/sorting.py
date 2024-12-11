@@ -34,10 +34,6 @@ class Sorter:
         self.download_folder = manager.path_manager.scan_folder or manager.path_manager.download_folder
         self.sorted_folder = manager.path_manager.sorted_folder
         self.incrementer_format: str = manager.config_manager.settings_data.sorting.sort_incremementer_format
-        self.sort_cdl_only = (
-            manager.config_manager.settings_data.sorting.sort_cdl_only
-            and not manager.config_manager.settings_data.download_options.skip_download_mark_completed
-        )
         self.db_manager = manager.db_manager
 
         self.audio_format: str = manager.config_manager.settings_data.sorting.sorted_audio
