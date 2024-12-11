@@ -110,12 +110,15 @@ class XenforoCrawler(Crawler):
 
     async def try_login(self) -> None:
         login_url = self.primary_base_domain / "login"
-        host_cookies: dict = self.client.client_manager.cookies._cookies.get((self.primary_base_domain.host, ""), {})
-        session_cookie = host_cookies["xf_user"].value if "xf_user" in host_cookies else None
+        host_cookies: dict = self.client.client_manager.cookies.filter_cookies(self.primary_base_domain.host)
+        session_cookie = host_cookies.get("xf_user")
+        session_cookie = session_cookie.value if session_cookie else None
         forums_auth_data = self.manager.config_manager.authentication_data.forums
-        if not session_cookie:
-            session_cookie = getattr(forums_auth_data, f"{self.domain}_xf_user_cookie")
+        if session_cookie:
+            self.logged_in = True
+            return
 
+        session_cookie = getattr(forums_auth_data, f"{self.domain}_xf_user_cookie")
         username = getattr(forums_auth_data, f"{self.domain}_username")
         password = getattr(forums_auth_data, f"{self.domain}_password")
 
@@ -261,7 +264,10 @@ class XenforoCrawler(Crawler):
             scrape_item.add_children()
 
     def is_attachment(self, link: URL | str) -> bool:
-        link = URL(link)
+        if not link:
+            return False
+        if isinstance(link, str):
+            link = URL(link)
         return any(part in link.parts for part in self.attachment_url_part) or any(
             host in link.host for host in self.attachment_url_hosts
         )
