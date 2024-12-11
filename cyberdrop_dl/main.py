@@ -7,7 +7,6 @@ import os
 import sys
 from functools import wraps
 from pathlib import Path
-from textwrap import indent
 from time import perf_counter
 from typing import TYPE_CHECKING
 
@@ -190,12 +189,13 @@ def ui_error_handling_wrapper(func: Callable) -> None:
         try:
             return await func(*args, **kwargs)
         except* Exception as e:
-            exc_list = str(e)
+            exceptions = [e]
             if isinstance(e, ExceptionGroup):
-                exc_list = "\n".join(map(str, e.exceptions))
-            exc_list = indent(exc_list, "  ")
-            msg = f"An error occurred, please report this to the developer with your logs file:\n{exc_list}"
-            log_with_color(msg, "bold red", 50, show_in_stats=False, exc_info=e)
+                exceptions = e.exceptions
+            msg = "An error occurred, please report this to the developer with your logs file:"
+            log_with_color(msg, "bold red", 50, show_in_stats=False)
+            for exc in exceptions:
+                log_with_color(f"  {exc}", "bold red", 50, show_in_stats=False, exc_info=exc)
 
     return wrapper
 
