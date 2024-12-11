@@ -110,7 +110,7 @@ class XenforoCrawler(Crawler):
 
     async def try_login(self) -> None:
         login_url = self.primary_base_domain / "login"
-        host_cookies: dict = self.client.client_manager.cookies.filter_cookies(self.primary_base_domain.host)
+        host_cookies: dict = self.client.client_manager.cookies.filter_cookies(self.primary_base_domain)
         session_cookie = host_cookies.get("xf_user")
         session_cookie = session_cookie.value if session_cookie else None
         forums_auth_data = self.manager.config_manager.authentication_data.forums
@@ -126,8 +126,11 @@ class XenforoCrawler(Crawler):
             self.login_attempts += 1
             await self.forum_login(login_url, session_cookie, username, password)
 
-        if not self.logged_in and not self.login_required:
-            log(f"{self.domain} login failed. Scraping without an account.", 40)
+        if not self.logged_in:
+            msg = f"{self.folder_domain} login failed. "
+            if not self.login_required:
+                msg += "Scraping without an account."
+            log(msg, 40)
 
     @error_handling_wrapper
     async def thread(self, scrape_item: ScrapeItem) -> None:
