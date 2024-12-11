@@ -275,7 +275,7 @@ class Crawler(ABC):
         scrape_item.album_id = album_id or scrape_item.album_id
         return scrape_item
 
-    def create_title(self, title: str, album_id: str | None, thread_id: str | None) -> str:
+    def create_title(self, title: str, album_id: str | None = None, thread_id: str | None = None) -> str:
         """Creates the title for the scrape item."""
         download_options = self.manager.config_manager.settings_data.download_options
         if not title:
