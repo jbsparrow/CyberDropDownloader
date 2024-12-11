@@ -24,7 +24,6 @@ aiofiles = "0.8.0"
 asyncpraw = "^7.7.1"
 myjdapi = "^1.1.7"
 mediafire = "^0.6.1"
-mutagen = "^1.47.0"
 pillow = "^10.2.0"
 get-video-properties = "^0.1.1"
 send2trash = "^1.8.3"
@@ -34,9 +33,8 @@ lz4 = "^4.3.3"
 pycryptodomex = "^3.21.0"
 jeepney =   [{platform = "linux", version = "^0.8.0"},{platform = "bsd", version = "^0.8.0"}]
 xxhash = "^3.5.0"
-pyreadline3 = "^3.5.4"
 pydantic = "^2.10.2"
-aiolimiter = "1.1.0"
+aiolimiter = ">=1.2.0"
 
 [tool.poetry.scripts]
 cyberdrop-dl = "cyberdrop_dl.main:main"
