@@ -1,15 +1,19 @@
 from __future__ import annotations
 
+import contextlib
 from dataclasses import dataclass, field
 from enum import IntEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from cyberdrop_dl.clients.errors import MaxChildrenError
 from cyberdrop_dl.utils.utilities import sanitize_folder
 
 if TYPE_CHECKING:
     from rich.progress import TaskID
     from yarl import URL
+
+    from cyberdrop_dl.managers.manager import Manager
 
 
 class ScrapeItemType(IntEnum):
@@ -67,6 +71,7 @@ class ScrapeItem:
     type: int | None = field(default=None, init=False)
     completed_at: int | None = field(default=None, init=False)
     created_at: int | None = field(default=None, init=False)
+    children_limits: list[int] = field(default=list, init=False)
 
     def add_to_parent_title(self, title: str) -> None:
         """Adds a title to the parent title."""
@@ -74,3 +79,18 @@ class ScrapeItem:
             return
         title = sanitize_folder(title)
         self.parent_title = (self.parent_title + "/" + title) if self.parent_title else title
+
+    def set_type(self, scrape_item_type: ScrapeItemType, manager: Manager) -> None:
+        self.type = scrape_item_type
+        self.children_limit = manager.config_manager.settings_data.download_options.maximum_number_of_children
+        self.reset_childen()
+
+    def reset_childen(self) -> None:
+        self.children = self.children_limit = 0
+        with contextlib.suppress(IndexError, TypeError):
+            self.children_limit = self.children_limit[self.type]
+
+    def add_children(self, number: int = 1) -> None:
+        self.children += number
+        if self.children_limit and self.children >= self.children_limit:
+            raise MaxChildrenError(origin=self)
