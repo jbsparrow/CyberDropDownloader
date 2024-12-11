@@ -105,7 +105,8 @@ class DownloadClient:
         elif domain == "gofile":
             gofile_cookies = self.client_manager.cookies.filter_cookies(URL("https://gofile.io"))
             api_key = gofile_cookies.get("accountToken", "")
-            download_headers["Authorization"] = f"Bearer {api_key}"
+            if api_key:
+                download_headers["Authorization"] = f"Bearer {api_key.value}"
         return download_headers
 
     @limiter
