@@ -78,7 +78,13 @@ class DeprecatedArgs(BaseModel):
     sort_all_downloads: bool = Field(
         False,
         description="sort all downloads, not just those downloaded by Cyberdrop-DL",
-        deprecated="'--sort-all-downloads' is deprecated and will be removed in the future. Use '--no-sort-cdl-only'",
+        deprecated="'--sort-all-downloads' is deprecated.",
+    )
+
+    sort_cdl_only: bool = Field(
+        False,
+        description="only sort files downloaded by Cyberdrop-DL",
+        deprecated="'--sort-cdl-only' is deprecated.",
     )
 
     main_log_filename: Path | None = Field(
@@ -126,6 +132,7 @@ class ParsedArgs(AliasModel):
     global_settings: GlobalSettings = GlobalSettings()
 
     def model_post_init(self, _) -> None:
+        exit_on_warning = False
         logs_deprecated_names = [
             "main_log_filename",
             "last_forum_post_filename",
@@ -157,7 +164,11 @@ class ParsedArgs(AliasModel):
 
             if self.deprecated_args.sort_all_downloads:
                 add_warning_msg_from("sort_all_downloads")
-                self.config_settings.sorting.sort_cdl_only = False
+                exit_on_warning = True
+
+            if self.deprecated_args.sort_cdl_only:
+                add_warning_msg_from("sort_cdl_only")
+                exit_on_warning = True
 
             for deprecated_name in logs_deprecated_names:
                 cli_value = getattr(self.deprecated_args, deprecated_name, None)
@@ -177,6 +188,8 @@ class ParsedArgs(AliasModel):
         if warnings_to_emit:
             for msg in warnings_to_emit:
                 warnings.warn(msg, DeprecationWarning, stacklevel=10)
+            if exit_on_warning:
+                sys.exit(1)
             time.sleep(WARNING_TIMEOUT)
 
     @staticmethod
