@@ -127,12 +127,12 @@ def extract_cookies(manager: Manager, *, dry_run: bool = False) -> None:
     """Asks the user to select browser(s) and domains(s) to import cookies from."""
     OPTIONS = [["forum", "file-host"]]
     choices = basic_prompts.create_choices(OPTIONS)
-    domain_type = basic_prompts.ask_choice(choices, message="Select categorie:")
+    domain_type = basic_prompts.ask_choice(choices, message="Select category:")
 
     if domain_type == DONE_CHOICE.value:
         return
 
-    all_domains = list(FORUMS.values()) if domain_type == 1 else list(WEBSITES.values())
+    all_domains = list(FORUMS.keys()) if domain_type == 1 else list(WEBSITES.values())
     domain_choices = [Choice(site) for site in all_domains] + [ALL_CHOICE]
 
     domains = basic_prompts.ask_checkbox(domain_choices, message="Select site(s) to import cookies from:")
