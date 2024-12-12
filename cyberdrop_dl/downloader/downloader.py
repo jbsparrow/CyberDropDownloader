@@ -84,22 +84,24 @@ class Downloader:
 
     async def run(self, media_item: MediaItem) -> None:
         """Runs the download loop."""
+
+        if media_item.url.path in self.processed_items and not self._ignore_history:
+            return
+
         self.waiting_items += 1
         media_item.current_attempt = 0
-
         async with self._semaphore:
             self.waiting_items -= 1
-            if media_item.url.path not in self.processed_items or self._ignore_history:
-                self.processed_items.add(media_item.url.path)
-                self.manager.progress_manager.download_progress.update_total()
-                log(f"{self.log_prefix} starting: {media_item.url}", 20)
-                if not media_item.file_lock_reference_name:
-                    media_item.file_lock_reference_name = media_item.filename
-                async with (
-                    self.manager.client_manager.download_session_limit,
-                    self._file_lock_vault.get_lock(media_item.file_lock_reference_name),
-                ):
-                    await self.download(media_item)
+            self.processed_items.add(media_item.url.path)
+            self.manager.progress_manager.download_progress.update_total()
+            log(f"{self.log_prefix} starting: {media_item.url}", 20)
+            if not media_item.file_lock_reference_name:
+                media_item.file_lock_reference_name = media_item.filename
+            async with (
+                self.manager.client_manager.download_session_limit,
+                self._file_lock_vault.get_lock(media_item.file_lock_reference_name),
+            ):
+                await self.download(media_item)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
