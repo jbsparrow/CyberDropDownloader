@@ -17,14 +17,15 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
 
-class FileLock:
+class FileLocksVault:
     """Is this necessary? No. But I want it."""
 
     def __init__(self) -> None:
-        self._locked_files = {}
+        self._locked_files: dict[str, asyncio.Lock] = {}
 
     @asynccontextmanager
-    async def acquire(self, filename: str) -> AsyncGenerator:
+    async def get_lock(self, filename: str) -> AsyncGenerator:
+        """Get filelock for the provided filename. Creates one if none exists"""
         log_debug(f"Checking lock for {filename}", 20)
         if filename not in self._locked_files:
             log_debug(f"Lock for {filename} does not exists", 20)
@@ -41,7 +42,7 @@ class DownloadManager:
         self.manager = manager
         self._download_instances: dict = {}
 
-        self.file_lock = FileLock()
+        self.file_locks = FileLocksVault()
 
         self.download_limits = {
             "bunkr": 1,

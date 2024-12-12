@@ -69,7 +69,7 @@ class Downloader:
 
         self._additional_headers = {}
         self._current_attempt_filesize = {}
-        self._file_lock = manager.download_manager.file_lock
+        self._file_lock_vault = manager.download_manager.file_locks
         self._ignore_history = manager.config_manager.settings_data.runtime_options.ignore_history
         self._semaphore: asyncio.Semaphore = field(init=False)
 
@@ -97,7 +97,7 @@ class Downloader:
                     media_item.file_lock_reference_name = media_item.filename
                 async with (
                     self.manager.client_manager.download_session_limit,
-                    self._file_lock.acquire(media_item.file_lock_reference_name),
+                    self._file_lock_vault.get_lock(media_item.file_lock_reference_name),
                 ):
                     await self.download(media_item)
 
