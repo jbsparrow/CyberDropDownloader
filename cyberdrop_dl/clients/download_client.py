@@ -170,8 +170,9 @@ class DownloadClient:
                 media_item.partial_file.unlink()
 
             media_item.task_id = self.manager.progress_manager.file_progress.add_task(
-                f"({domain.upper()}) {media_item.filename}",
-                media_item.filesize + resume_point,
+                domain=domain,
+                filename=media_item.filename,
+                expected_size=media_item.filesize + resume_point,
             )
             if media_item.partial_file.is_file():
                 resume_point = media_item.partial_file.stat().st_size
