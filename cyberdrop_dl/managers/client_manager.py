@@ -16,7 +16,7 @@ from yarl import URL
 from cyberdrop_dl.clients.download_client import DownloadClient
 from cyberdrop_dl.clients.errors import DDOSGuardError, DownloadError, ScrapeError
 from cyberdrop_dl.clients.scraper_client import ScraperClient
-from cyberdrop_dl.managers.leaky import LeakyBucket
+from cyberdrop_dl.managers.download_speed_manager import DownloadSpeedLimiter
 from cyberdrop_dl.utils.constants import CustomHTTPStatus
 from cyberdrop_dl.utils.logger import log
 
@@ -92,7 +92,7 @@ class ClientManager:
 
         self.scraper_session = ScraperClient(self)
         self.downloader_session = DownloadClient(manager, self)
-        self._leaky_bucket = LeakyBucket(manager)
+        self.speed_limiter = DownloadSpeedLimiter(manager)
         self.flaresolverr = Flaresolverr(self)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -154,9 +154,6 @@ class ClientManager:
     def check_bunkr_maint(headers: dict):
         if headers.get("Content-Length") == "322509" and headers.get("Content-Type") == "video/mp4":
             raise DownloadError(status="Bunkr Maintenance", message="Bunkr under maintenance")
-
-    async def check_bucket(self, size: float) -> None:
-        await self._leaky_bucket.acquire(size)
 
     @staticmethod
     def check_ddos_guard(soup: BeautifulSoup) -> bool:

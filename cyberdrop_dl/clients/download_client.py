@@ -201,11 +201,12 @@ class DownloadClient:
         if not media_item.partial_file.is_file():
             media_item.partial_file.touch()
         async with aiofiles.open(media_item.partial_file, mode="ab") as f:  # type: ignore
-            async for chunk, _ in content.iter_chunks():
-                await self.client_manager.check_bucket(chunk)
+            async for chunk in content.iter_chunked(self.client_manager.speed_limiter.chunk_size):
+                chunk_size = len(chunk)
+                await self.client_manager.speed_limiter.acquire(chunk_size)
                 await asyncio.sleep(0)
                 await f.write(chunk)
-                update_progress(len(chunk))
+                update_progress(chunk_size)
         if not content.total_bytes and not media_item.partial_file.stat().st_size:
             media_item.partial_file.unlink()
             raise DownloadError(status=HTTPStatus.INTERNAL_SERVER_ERROR, message="File is empty")
