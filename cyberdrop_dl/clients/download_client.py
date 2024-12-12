@@ -196,7 +196,7 @@ class DownloadClient:
         if not media_item.partial_file.is_file():
             media_item.partial_file.touch()
         async with aiofiles.open(media_item.partial_file, mode="ab") as f:  # type: ignore
-            async for chunk, _ in content.iter_chunks():
+            async for chunk, _ in content.iter_chunked(self.client_manager.speed_limiter.chunk_size):
                 chunk_size = len(chunk)
                 async with self.client_manager.speed_limiter(chunk_size):
                     await asyncio.sleep(0)
