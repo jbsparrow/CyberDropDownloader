@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING
 
 from yarl import URL
 
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
+
 from .xenforo_crawler import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
 
 if TYPE_CHECKING:
@@ -22,6 +24,7 @@ class F95ZoneCrawler(XenforoCrawler):
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "f95zone", "F95Zone")
 
+    @error_handling_wrapper
     async def handle_link_confirmation(self, link: URL, *, origin: ScrapeItem | None = None) -> URL | None:
         """Override to handle protected link confirmation."""
         async with self.request_limiter:
