@@ -66,17 +66,15 @@ class Crawler(ABC):
         """Runs the crawler loop."""
         if not item.url.host:
             return
-
         self.waiting_items += 1
-        await self._lock.acquire()
-        self.waiting_items -= 1
-        if item.url.path_qs not in self.scraped_items:
-            log(f"Scraping: {item.url}", 20)
-            self.scraped_items.append(item.url.path_qs)
-            await self.fetch(item)
-        else:
-            log(f"Skipping {item.url} as it has already been scraped", 10)
-        self._lock.release()
+        async with self._lock:
+            self.waiting_items -= 1
+            if item.url.path_qs not in self.scraped_items:
+                log(f"Scraping: {item.url}", 20)
+                self.scraped_items.append(item.url.path_qs)
+                await self.fetch(item)
+            else:
+                log(f"Skipping {item.url} as it has already been scraped", 10)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
