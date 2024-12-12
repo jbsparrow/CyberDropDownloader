@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import contextlib
 from typing import TYPE_CHECKING
 
 from rich.console import Group
@@ -74,10 +73,8 @@ class FileProgress:
     def get_queue_length(self) -> int:
         """Returns the number of tasks in the downloader queue."""
         total = 0
-
         for scraper in self.manager.scrape_mapper.existing_crawlers.values():
-            with contextlib.suppress(AttributeError):
-                total += scraper.downloader.waiting_items
+            total += getattr(scraper.downloader, "waiting_items", 0)
 
         return total
 
