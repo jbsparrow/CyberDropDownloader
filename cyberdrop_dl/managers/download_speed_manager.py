@@ -14,6 +14,8 @@ class DownloadSpeedLimiter(AsyncLimiter):
             manager.config_manager.global_settings_data.rate_limiting_options.download_speed_limit
         )
         self.chunk_size = 1024 * 1024 * 10  # 10MB
+        if self.download_speed_limit:
+            self.chunk_size = min(self.chunk_size, self.download_speed_limit)
         super().__init__(self.download_speed_limit, 1)
 
     async def acquire(self, amount: float = 1) -> None:
