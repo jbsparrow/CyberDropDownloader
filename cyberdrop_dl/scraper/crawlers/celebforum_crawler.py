@@ -93,8 +93,7 @@ class CelebForumCrawler(Crawler):
                 "maximum_number_of_children"
             ][scrape_item.type]
 
-        post_sections = (scrape_item.url.parts[3], scrape_item.url.fragment)
-        if len(scrape_item.url.parts) > 3 and any("post-" in sec for sec in post_sections):
+        if len(scrape_item.url.parts) > 3 and any("post-" in sec for sec in (scrape_item.url.parts[3], scrape_item.url.fragment)):
             url_parts = str(scrape_item.url).rsplit("post-", 1)
             thread_url = URL(url_parts[0].rstrip("#"))
             post_number = int(url_parts[-1].strip("/")) if len(url_parts) == 2 else 0
