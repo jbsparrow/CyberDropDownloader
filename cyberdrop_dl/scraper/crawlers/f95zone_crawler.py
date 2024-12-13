@@ -25,7 +25,7 @@ class F95ZoneCrawler(XenforoCrawler):
         super().__init__(manager, "f95zone", "F95Zone")
 
     @error_handling_wrapper
-    async def handle_link_confirmation(self, link: URL, *, origin: ScrapeItem | None = None) -> URL | None:
+    async def handle_confirmation_link(self, link: URL, *, origin: ScrapeItem | None = None) -> URL | None:
         """Override to handle protected link confirmation."""
         async with self.request_limiter:
             await self.client.get_soup(self.domain, link)
