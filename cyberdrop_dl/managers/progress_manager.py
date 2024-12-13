@@ -5,6 +5,7 @@ from dataclasses import field
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
+from pydantic import ByteSize
 from rich.layout import Layout
 
 from cyberdrop_dl.ui.progress.downloads_progress import DownloadsProgress
@@ -78,9 +79,8 @@ class ProgressManager:
         log("Printing Stats...\n", 20)
         log_with_color(f"Run Stats (config: {self.manager.config_manager.loaded_config}):", "cyan", 20)
         log_with_color(f"  Total Runtime: {runtime}", "yellow", 20)
-        log_with_color(
-            f"  Total Downloaded Data: {self.file_progress.downloaded_data.human_readable(decimal=True)}", "yellow", 20
-        )
+        data_size = ByteSize(self.file_progress.downloaded_data).human_readable(decimal=True)
+        log_with_color(f"  Total Downloaded Data: {data_size }", "yellow", 20)
 
         log_spacer(20, "")
         log_with_color("Download Stats:", "cyan", 20)
