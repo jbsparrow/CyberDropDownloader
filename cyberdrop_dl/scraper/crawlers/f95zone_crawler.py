@@ -1,364 +1,43 @@
 from __future__ import annotations
 
-import contextlib
 from typing import TYPE_CHECKING
 
-from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import MaxChildrenError
-from cyberdrop_dl.scraper.crawler import Crawler
-from cyberdrop_dl.utils.data_enums_classes.url_objects import FORUM, FORUM_POST, ScrapeItem
-from cyberdrop_dl.utils.logger import log
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
+
+from .xenforo_crawler import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup, Tag
-
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
-class F95ZoneCrawler(Crawler):
+class F95ZoneCrawler(XenforoCrawler):
+    primary_base_domain = URL("https://f95zone.to")
+    post_selectors = PostSelectors(
+        date=Selector("time", "data-time"),
+        number=Selector("a[class=u-concealed]", "href"),
+    )
+    selectors = XenforoSelectors(posts=post_selectors)
+
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "f95zone", "F95Zone")
-        self.primary_base_domain = URL("https://f95zone.to")
-        self.logged_in = False
-        self.login_attempts = 0
-        self.request_limiter = AsyncLimiter(10, 1)
 
-        self.title_selector = "h1[class=p-title-value]"
-        self.title_trash_selector = "a"
-        self.posts_selector = "div[class*=message-main]"
-        self.post_date_selector = "time"
-        self.post_date_attribute = "data-time"
-        self.posts_number_selector = "a[class=u-concealed]"
-        self.posts_number_attribute = "href"
-        self.quotes_selector = "blockquote"
-        self.posts_content_selector = "div[class*=message-content]"
-        self.next_page_selector = "a[class*=pageNav-jump--next]"
-        self.next_page_attribute = "href"
-        self.links_selector = "a"
-        self.links_attribute = "href"
-        self.attachment_url_part = "attachments"
-        self.images_selector = "img[class*=bbImage]"
-        self.images_attribute = "data-src"
-        self.videos_selector = "video source"
-        self.iframe_selector = "iframe[class=saint-iframe]"
-        self.videos_attribute = "src"
-        self.embeds_selector = "iframe"
-        self.embeds_attribute = "src"
-        self.attachments_block_selector = "section[class=message-attachments]"
-        self.attachments_selector = "a"
-        self.attachments_attribute = "href"
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
-        task_id = self.scraping_progress.add_task(scrape_item.url)
-
-        if not self.logged_in and self.login_attempts == 0:
-            login_url = self.primary_base_domain / "login"
-            host_cookies = self.client.client_manager.cookies._cookies.get((self.primary_base_domain.host, ""), {})
-            session_cookie = host_cookies.get("xf_user").value if "xf_user" in host_cookies else None
-            if not session_cookie:
-                session_cookie = self.manager.config_manager.authentication_data.forums.f95zone_xf_user_cookie
-
-            username = self.manager.config_manager.authentication_data.forums.f95zone_username
-            password = self.manager.config_manager.authentication_data.forums.f95zone_password
-            wait_time = 5
-
-            self.login_attempts += 1
-            await self.forum_login(login_url, session_cookie, username, password, wait_time)
-
-        if self.logged_in:
-            await self.forum(scrape_item)
-        else:
-            log("F95Zone login failed. Skipping.", 40)
-
-        self.scraping_progress.remove_task(task_id)
+    async def is_confirmation_link(self, link: URL) -> bool:
+        parts = link.parts
+        if (len(parts) >= 1 and parts[1] == "masked") or "f95zone.to/masked/" in str(link):
+            return True
+        return False
 
     @error_handling_wrapper
-    async def forum(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album."""
-        continue_scraping = True
-
-        thread_url = scrape_item.url
-        post_number = 0
-        scrape_item.type = FORUM
-        scrape_item.children = scrape_item.children_limit = 0
-
-        with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = (
-                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
-            )
-
-        post_sections = (scrape_item.url.parts[3], scrape_item.url.fragment)
-        if len(scrape_item.url.parts) > 3 and any("post-" in sec for sec in post_sections):
-            url_parts = str(scrape_item.url).rsplit("post-", 1)
-            thread_url = URL(url_parts[0].rstrip("#"))
-            post_number = int(url_parts[-1].strip("/")) if len(url_parts) == 2 else 0
-
-        current_post_number = 0
-        while True:
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, thread_url, origin=scrape_item)
-
-            title_block = soup.select_one(self.title_selector)
-            for elem in title_block.find_all(self.title_trash_selector):
-                elem.decompose()
-
-            thread_id = thread_url.parts[2].split(".")[-1]
-            title = self.create_title(title_block.text.replace("\n", ""), None, thread_id)
-
-            posts = soup.select(self.posts_selector)
-            for post in posts:
-                current_post_number = int(
-                    post.select_one(self.posts_number_selector)
-                    .get(self.posts_number_attribute)
-                    .split("/")[-1]
-                    .split("post-")[-1],
-                )
-                scrape_post, continue_scraping = self.check_post_number(post_number, current_post_number)
-
-                if scrape_post:
-                    date = int(post.select_one(self.post_date_selector).get(self.post_date_attribute))
-                    new_scrape_item = self.create_scrape_item(
-                        scrape_item,
-                        thread_url,
-                        title,
-                        False,
-                        None,
-                        date,
-                        add_parent=scrape_item.url.joinpath(f"post-{current_post_number}"),
-                    )
-
-                    for elem in post.find_all(self.quotes_selector):
-                        elem.decompose()
-                    post_content = post.select_one(self.posts_content_selector)
-                    await self.post(new_scrape_item, post_content, current_post_number)
-
-                    scrape_item.children += 1
-                    if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
-                        raise MaxChildrenError(origin=scrape_item)
-
-                if not continue_scraping:
-                    break
-
-            next_page = soup.select_one(self.next_page_selector)
-            if next_page and continue_scraping:
-                thread_url = next_page.get(self.next_page_attribute)
-                if thread_url:
-                    if thread_url.startswith("/"):
-                        thread_url = self.primary_base_domain / thread_url[1:]
-                    thread_url = URL(thread_url)
-                    continue
-            else:
-                break
-        post_string = f"post-{current_post_number}"
-        if "page-" in scrape_item.url.raw_name or "post-" in scrape_item.url.raw_name:
-            last_post_url = scrape_item.url.parent / post_string
-        else:
-            last_post_url = scrape_item.url / post_string
-        await self.manager.log_manager.write_last_post_log(last_post_url)
-
-    @error_handling_wrapper
-    async def post(self, scrape_item: ScrapeItem, post_content: Tag, post_number: int) -> None:
-        """Scrapes a post."""
-        if self.manager.config_manager.settings_data.download_options.separate_posts:
-            scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, "")
-            scrape_item.add_to_parent_title("post-" + str(post_number))
-
-        scrape_item.type = FORUM_POST
-        scrape_item.children = scrape_item.children_limit = 0
-
-        with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = (
-                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
-            )
-
-        posts_scrapers = [self.links, self.images, self.videos, self.embeds, self.attachments]
-
-        for scraper in posts_scrapers:
-            scrape_item.children += await scraper(scrape_item, post_content)
-            if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
-                raise MaxChildrenError(origin=scrape_item)
-
-    @error_handling_wrapper
-    async def links(self, scrape_item: ScrapeItem, post_content: Tag) -> int:
-        """Scrapes links from a post."""
-        links = post_content.select(self.links_selector)
-        new_children = 0
-        for link_obj in links:
-            link = link_obj.get(self.links_attribute)
-            if not link:
-                continue
-
-            link = link.replace(".th.", ".").replace(".md.", ".")
-
-            if link.endswith("/"):
-                link = link[:-1]
-
-            if link.startswith("//"):
-                link = "https:" + link
-            elif link.startswith("/"):
-                link = self.primary_base_domain / link[1:]
-            link = URL(link)
-
-            if "masked" in link.path:
-                link = await self.handle_link_confirmation(link)
-                if not link:
-                    continue
-
-            try:
-                if self.domain not in link.host:
-                    new_scrape_item = self.create_scrape_item(scrape_item, link, "")
-                    self.handle_external_links(new_scrape_item)
-                elif self.attachment_url_part in link.host:
-                    await self.handle_internal_links(link, scrape_item)
-                else:
-                    log(f"Unknown link type: {link}", 30)
-            except TypeError:
-                log(f"Scrape Failed: encountered while handling {link}", 40)
-            new_children += 1
-            if scrape_item.children_limit and (new_children + scrape_item.children) >= scrape_item.children_limit:
-                break
-        return new_children
-
-    @error_handling_wrapper
-    async def images(self, scrape_item: ScrapeItem, post_content: Tag) -> int:
-        """Scrapes images from a post."""
-        images = post_content.select(self.images_selector)
-        new_children = 0
-        for image in images:
-            link = image.get(self.images_attribute)
-            if not link:
-                continue
-
-            parent_check = image.parent.get("href")
-            if parent_check:
-                continue
-
-            link = link.replace(".th.", ".").replace(".md.", ".")
-            if link.endswith("/"):
-                link = link[:-1]
-
-            if link.startswith("//"):
-                link = "https:" + link
-            elif link.startswith("/"):
-                link = self.primary_base_domain / link[1:]
-            link = URL(link)
-
-            if self.domain not in link.host:
-                new_scrape_item = self.create_scrape_item(scrape_item, link, "")
-                self.handle_external_links(new_scrape_item)
-            elif self.attachment_url_part in link.host:
-                await self.handle_internal_links(link, scrape_item)
-            else:
-                log(f"Unknown image type: {link}", 30)
-            new_children += 1
-            if scrape_item.children_limit and (new_children + scrape_item.children) >= scrape_item.children_limit:
-                break
-        return new_children
-
-    @error_handling_wrapper
-    async def videos(self, scrape_item: ScrapeItem, post_content: Tag) -> int:
-        """Scrapes videos from a post."""
-        videos = post_content.select(self.videos_selector)
-        videos.extend(post_content.select(self.iframe_selector))
-        new_children = 0
-        for video in videos:
-            link = video.get(self.videos_attribute)
-            if not link:
-                continue
-
-            if link.endswith("/"):
-                link = link[:-1]
-
-            if link.startswith("//"):
-                link = "https:" + link
-
-            link = URL(link)
-            new_scrape_item = self.create_scrape_item(scrape_item, link, "")
-            self.handle_external_links(new_scrape_item)
-            new_children += 1
-            if scrape_item.children_limit and (new_children + scrape_item.children) >= scrape_item.children_limit:
-                break
-
-        return new_children
-
-    @error_handling_wrapper
-    async def embeds(self, scrape_item: ScrapeItem, post_content: Tag) -> int:
-        """Scrapes embeds from a post."""
-        embeds = post_content.select(self.embeds_selector)
-        new_children = 0
-        for embed in embeds:
-            link = embed.get(self.embeds_attribute)
-            if not link:
-                continue
-
-            link = link.replace("ifr", "watch")
-
-            link = URL(link)
-            new_scrape_item = self.create_scrape_item(scrape_item, link, "")
-            self.handle_external_links(new_scrape_item)
-            new_children += 1
-            if scrape_item.children_limit and (new_children + scrape_item.children) >= scrape_item.children_limit:
-                break
-        return new_children
-
-    @error_handling_wrapper
-    async def attachments(self, scrape_item: ScrapeItem, post_content: Tag) -> int:
-        """Scrapes attachments from a post."""
-        attachment_block = post_content.select_one(self.attachments_block_selector)
-        new_children = 0
-        if not attachment_block:
-            return new_children
-
-        attachments = attachment_block.select(self.attachments_selector)
-        for attachment in attachments:
-            link = attachment.get(self.attachments_attribute)
-            if not link:
-                continue
-
-            if link.endswith("/"):
-                link = link[:-1]
-
-            if link.startswith("//"):
-                link = "https:" + link
-            elif link.startswith("/"):
-                link = self.primary_base_domain / link[1:]
-            link = URL(link)
-
-            if self.domain not in link.host:
-                new_scrape_item = self.create_scrape_item(scrape_item, link, "")
-                self.handle_external_links(new_scrape_item)
-            elif self.attachment_url_part in link.host:
-                await self.handle_internal_links(link, scrape_item)
-            else:
-                log(f"Unknown image type: {link}", 30)
-            new_children += 1
-            if scrape_item.children_limit and (new_children + scrape_item.children) >= scrape_item.children_limit:
-                break
-        return new_children
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    @error_handling_wrapper
-    async def handle_internal_links(self, link: URL, scrape_item: ScrapeItem) -> None:
-        """Handles internal links."""
-        filename, ext = get_filename_and_ext(link.name, True)
-        new_scrape_item = self.create_scrape_item(scrape_item, link, "Attachments", True)
-        await self.handle_file(link, new_scrape_item, filename, ext)
-
-    @error_handling_wrapper
-    async def handle_link_confirmation(self, link: URL) -> URL | None:
-        """Handles link confirmation."""
+    async def handle_confirmation_link(self, link: URL, *, origin: ScrapeItem | None = None) -> URL | None:
+        """Override to handle protected link confirmation."""
         async with self.request_limiter:
-            await self.client.get_soup(self.domain, link)
-        async with self.request_limiter:
-            JSON_Resp = await self.client.post_data(self.domain, link, data={"xhr": "1", "download": "1"})
+            JSON_Resp = await self.client.post_data(
+                self.domain, link, data={"xhr": "1", "download": "1"}, origin=origin
+            )
 
         if JSON_Resp["status"] == "ok":
             return URL(JSON_Resp["msg"])
-        return None
+        return

@@ -117,7 +117,7 @@ class CheveretoCrawler(Crawler):
                     True,
                     add_parent=scrape_item.url,
                 )
-                await self.handle_direct_link(new_scrape_item)
+                await self.fetch(new_scrape_item)
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
