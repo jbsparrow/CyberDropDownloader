@@ -99,7 +99,7 @@ async def filter_fn(response: ClientResponse) -> bool:
     if response.url in return_values:
         return get_return_value(response.url)
 
-    async def check_simpcity_page(response: ClientResponse):
+    async def check_xenforo_last_page(response: ClientResponse):
         """Checks if the last page has been reached"""
 
         final_page_selector = "li.pageNav-page a"
@@ -149,7 +149,17 @@ async def filter_fn(response: ClientResponse) -> bool:
             "Last page not reached" if current_offset != maximum_offset else "Last page reached",
         )
 
-    filter_dict = {"simpcity.su": check_simpcity_page, "coomer.su": check_coomer_page, "kemono.su": check_kemono_page}
+    filter_dict = {
+        "celebforum.to": check_xenforo_last_page,
+        "f95zone.to": check_xenforo_last_page,
+        "leakedmodels.com": check_xenforo_last_page,
+        "nudostar.com": check_xenforo_last_page,
+        "xbunker.nu": check_xenforo_last_page,
+        "socialmediagirls.com": check_xenforo_last_page,
+        "simpcity.su": check_xenforo_last_page,
+        "coomer.su": check_coomer_page,
+        "kemono.su": check_kemono_page
+    }
 
     filter_fn = filter_dict.get(response.url.host)
     cache_response, reason = await filter_fn(response) if filter_fn else False, "No caching manager for host"

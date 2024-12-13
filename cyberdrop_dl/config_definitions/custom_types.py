@@ -140,4 +140,8 @@ class CacheDuration(BaseModel):
         """
         Serializes the duration into a human-readable string.
         """
-        return humanfriendly.format_timespan(self.total_seconds(), detailed=False)
+
+        if isinstance(self, timedelta):
+            return humanfriendly.format_timespan(self.total_seconds(), detailed=False)
+        elif isinstance(self.duration, timedelta):
+            return humanfriendly.format_timespan(self.duration.total_seconds(), detailed=False)

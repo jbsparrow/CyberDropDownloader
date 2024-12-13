@@ -301,6 +301,8 @@ class ScraperClient:
             await self.client_manager.check_http_status(response, origin=origin)
             if req_resp:
                 content = await response.content.read()
+                if content == b"":
+                    content = await CachedStreamReader(await response.read()).read()
                 return content if raw else json.loads(content)
             return {}
 
