@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
 from base64 import b64encode
+from contextlib import asynccontextmanager
 from shutil import disk_usage
 from typing import TYPE_CHECKING
 
@@ -10,35 +10,30 @@ from cyberdrop_dl.utils.constants import FILE_FORMATS
 from cyberdrop_dl.utils.logger import log_debug
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
     from pathlib import Path
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
 
-class FileLock:
+class FileLocksVault:
     """Is this necessary? No. But I want it."""
 
     def __init__(self) -> None:
-        self._locked_files = {}
+        self._locked_files: dict[str, asyncio.Lock] = {}
 
-    async def check_lock(self, filename: str) -> None:
-        """Checks if the file is locked."""
-        try:
-            log_debug(f"Checking lock for {filename}", 20)
-            await self._locked_files[filename].acquire()
-            log_debug(f"Lock for {filename} acquired", 20)
-        except KeyError:
-            log_debug(f"Lock for {filename} does not exist", 20)
-            self._locked_files[filename] = asyncio.Lock()
-            await self._locked_files[filename].acquire()
-            log_debug(f"Lock for {filename} acquired", 20)
+    @asynccontextmanager
+    async def get_lock(self, filename: str) -> AsyncGenerator:
+        """Get filelock for the provided filename. Creates one if none exists"""
+        log_debug(f"Checking lock for {filename}", 20)
+        if filename not in self._locked_files:
+            log_debug(f"Lock for {filename} does not exists", 20)
 
-    async def release_lock(self, filename: str) -> None:
-        """Releases the file lock."""
-        with contextlib.suppress(KeyError, RuntimeError):
-            log_debug(f"Releasing lock for {filename}", 20)
-            self._locked_files[filename].release()
+        self._locked_files[filename] = self._locked_files.get(filename, asyncio.Lock())
+        async with self._locked_files[filename]:
+            log_debug(f"Lock for {filename} acquired", 20)
+            yield
             log_debug(f"Lock for {filename} released", 20)
 
 
@@ -47,7 +42,7 @@ class DownloadManager:
         self.manager = manager
         self._download_instances: dict = {}
 
-        self.file_lock = FileLock()
+        self.file_locks = FileLocksVault()
 
         self.download_limits = {
             "bunkr": 1,

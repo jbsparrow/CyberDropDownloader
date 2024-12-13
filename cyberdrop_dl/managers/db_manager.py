@@ -8,7 +8,6 @@ import aiosqlite
 from cyberdrop_dl.utils.database.tables.hash_table import HashTable
 from cyberdrop_dl.utils.database.tables.history_table import HistoryTable
 from cyberdrop_dl.utils.database.tables.temp_referer_table import TempRefererTable
-from cyberdrop_dl.utils.database.tables.temp_table import TempTable
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -26,7 +25,6 @@ class DBManager:
 
         self.history_table: HistoryTable = field(init=False)
         self.hash_table: HashTable = field(init=False)
-        self.temp_table: TempTable = field(init=False)
         self.temp_referer_table: TempRefererTable = field(init=False)
 
     async def startup(self) -> None:
@@ -37,7 +35,6 @@ class DBManager:
 
         self.history_table = HistoryTable(self._db_conn)
         self.hash_table = HashTable(self._db_conn)
-        self.temp_table = TempTable(self._db_conn)
         self.temp_referer_table = TempRefererTable(self._db_conn)
 
         self.history_table.ignore_history = self.ignore_history
@@ -47,7 +44,6 @@ class DBManager:
 
         await self.history_table.startup()
         await self.hash_table.startup()
-        await self.temp_table.startup()
         await self.temp_referer_table.startup()
 
     async def close(self) -> None:

@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import aiofiles
 import apprise
 import rich
-from aiohttp import ClientSession, FormData
+from aiohttp import ClientConnectorError, ClientSession, FormData
 from pydantic import ValidationError
 from rich.text import Text
 from yarl import URL
@@ -26,6 +26,7 @@ from cyberdrop_dl.utils.yaml import handle_validation_error
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from cyberdrop_dl.downloader.downloader import Downloader
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.scraper.crawler import Crawler
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
@@ -35,8 +36,9 @@ def error_handling_wrapper(func: Callable) -> None:
     """Wrapper handles errors for url scraping."""
 
     @wraps(func)
-    async def wrapper(self: Crawler, *args, **kwargs):
-        link = args[0] if isinstance(args[0], URL) else args[0].url
+    async def wrapper(self: Crawler | Downloader, *args, **kwargs):
+        item: Crawler | Downloader | URL = args[0]
+        link = item if isinstance(item, URL) else item.url
         origin = exc_info = None
         try:
             return await func(self, *args, **kwargs)
@@ -49,6 +51,9 @@ def error_handling_wrapper(func: Callable) -> None:
             e_ui_failure = f"RD - {e.error}"
         except TimeoutError:
             log_message_short = log_message = e_ui_failure = "Timeout"
+        except ClientConnectorError as e:
+            log_message_short = e_ui_failure = "ClientConnectorError"
+            log_message = f"Can't connect to {link}. If you're using a VPN, try turning it off \n  {e!s}"
         except Exception as e:
             exc_info = e
             if hasattr(e, "status") and hasattr(e, "message"):
@@ -58,7 +63,15 @@ def error_handling_wrapper(func: Callable) -> None:
                 log_message_short = "See Log for Details"
                 e_ui_failure = "Unknown"
 
-        log(f"Scrape Failed: {link} ({log_message})", 40, exc_info=exc_info)
+        log_prefix = getattr(self, "log_prefix", None)
+        log(f"{log_prefix or 'Scrape'} Failed: {link} ({log_message})", 40, exc_info=exc_info)
+        if log_prefix:
+            self.attempt_task_removal(item)
+            await self.manager.log_manager.write_download_error_log(link, log_message_short, origin or item.referer)
+            self.manager.progress_manager.download_stats_progress.add_failure(e_ui_failure)
+            self.manager.progress_manager.download_progress.add_failed()
+            return None
+
         await self.manager.log_manager.write_scrape_error_log(link, log_message_short, origin)
         self.manager.progress_manager.scrape_stats_progress.add_failure(e_ui_failure)
         return None
@@ -154,15 +167,6 @@ def clear_term():
     os.system("cls" if os.name == "nt" else "clear")
 
 
-def parse_bytes(size: int) -> tuple[int, str]:
-    """Get human repr of bytes as a tuple of (VALUE , UNIT)."""
-    for unit in ["B", "KB", "MB", "GB", "TB", "PB", "EB"]:
-        if size < 1024:
-            return size, unit
-        size /= 1024
-    return size, "YB"
-
-
 def parse_rich_text_by_style(text: Text, style_map: dict, default_style_map_key: str = "default") -> str:
     """Returns `text` as a plain str, parsing each tag in text acording to `style_map`."""
     plain_text = ""
@@ -197,13 +201,9 @@ async def check_partials_and_empty_folders(manager: Manager) -> None:
 
     elif not manager.config_manager.settings_data.runtime_options.skip_check_for_partial_files:
         log_with_color("Checking for partial downloads...", "yellow", 20)
-        partial_downloads = any(f.is_file() for f in manager.path_manager.download_folder.rglob("*.part"))
+        partial_downloads = any(manager.path_manager.download_folder.rglob("*.part"))
         if partial_downloads:
             log_with_color("There are partial downloads in the downloads folder", "yellow", 20)
-        temp_downloads = any(Path(f).is_file() for f in await manager.db_manager.temp_table.get_temp_names())
-        if temp_downloads:
-            msg = "There are partial downloads from the previous run, please re-run the program."
-            log_with_color(msg, "yellow", 20)
 
     if not manager.config_manager.settings_data.runtime_options.skip_check_for_empty_folders:
         log_with_color("Checking for empty folders...", "yellow", 20)
