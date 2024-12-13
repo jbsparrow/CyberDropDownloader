@@ -190,7 +190,7 @@ class Manager:
 
         config_settings = self.config_manager.settings_data.model_dump_json(indent=4)
         global_settings = self.config_manager.global_settings_data.model_dump_json(indent=4)
-        cookie_files = list(self.path_manager.cookies_dir.rglob("*.txt")) or None
+        cookie_files = [str(p) for p in self.path_manager.cookies_dir.rglob("*.txt")] or None
         if cookie_files:
             cookie_files = f"\n{json.dumps(cookie_files, indent=4, sort_keys=True)}"
 
