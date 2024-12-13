@@ -20,9 +20,10 @@ class F95ZoneCrawler(XenforoCrawler):
         number=Selector("a[class=u-concealed]", "href"),
     )
     selectors = XenforoSelectors(posts=post_selectors)
+    domain = "f95zone"
 
     def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "f95zone", "F95Zone")
+        super().__init__(manager, self.domain, "F95Zone")
 
     async def is_confirmation_link(self, link: URL) -> bool:
         parts = link.parts

@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
 class XBunkerCrawler(XenforoCrawler):
     primary_base_domain = URL("https://xbunker.nu/")
+    domain = "xbunker"
     post_selectors = PostSelectors(
         content=Selector("div[class=bbWrapper]", None),
         images=Selector("img[class*=bbImage], a[class*=js-lbImage]", "data-src"),
@@ -20,5 +21,5 @@ class XBunkerCrawler(XenforoCrawler):
     selectors = XenforoSelectors(posts=post_selectors)
 
     def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "xbunker", "XBunker")
+        super().__init__(manager, self.domain, "XBunker")
         self.attachment_url_part += "data"
