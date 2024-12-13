@@ -1,7 +1,7 @@
 from cyberdrop_dl import __version__ as current_version
 from cyberdrop_dl.utils.constants import PRERELEASE_TAGS
 
-FORUMS = {
+SUPPORTED_FORUMS = {
     "celebforum": "celebforum.to",
     "f95zone": "f95zone.to",
     "leakedmodels": "leakedmodels.com",
@@ -10,7 +10,7 @@ FORUMS = {
     "socialmediagirls": "socialmediagirls.com",
 }
 
-WEBSITES = {
+SUPPORTED_WEBSITES = {
     "bunkr": "bunkr",
     "bunkrr": "bunkrr",
     "coomer": "coomer",
@@ -63,8 +63,8 @@ WEBSITES = {
 }
 
 if next((tag for tag in PRERELEASE_TAGS if tag in current_version), False):
-    FORUMS["simpcity"] = "simpcity"
+    SUPPORTED_FORUMS["simpcity"] = "simpcity"
 
-SUPPORTED_SITES = FORUMS | WEBSITES
+SUPPORTED_SITES = SUPPORTED_FORUMS | SUPPORTED_WEBSITES
 
 SUPPORTED_SITES_DOMAINS = list(SUPPORTED_SITES.values())
