@@ -19,11 +19,11 @@ if TYPE_CHECKING:
 
 
 class Rule34XXXCrawler(Crawler):
+    primary_base_domain = URL("https://rule34.xxx")
+
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "rule34.xxx", "Rule34XXX")
-        self.primary_base_url = URL("https://rule34.xxx")
         self.request_limiter = AsyncLimiter(10, 1)
-
         self.cookies_set = False
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -66,7 +66,7 @@ class Rule34XXXCrawler(Crawler):
         for file_page in content:
             link = file_page.get("href")
             if link.startswith("/"):
-                link = f"{self.primary_base_url}{link}"
+                link = f"{self.primary_base_domain}{link}"
             link = URL(link, encoded=True)
             new_scrape_item = self.create_scrape_item(scrape_item, link, title, True, add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
@@ -104,6 +104,8 @@ class Rule34XXXCrawler(Crawler):
         if self.cookies_set:
             return
 
-        self.client.client_manager.cookies.update_cookies({"resize-original": "1"}, response_url=self.primary_base_url)
+        self.client.client_manager.cookies.update_cookies(
+            {"resize-original": "1"}, response_url=self.primary_base_domain
+        )
 
         self.cookies_set = True

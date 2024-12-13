@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 
 class RedditCrawler(Crawler):
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {"reddit": ["reddit", "redd.it"]}
+    primary_base_domain = URL("https://www.reddit.com/")
 
     def __init__(self, manager: Manager, site: str) -> None:
         super().__init__(manager, site, "Reddit")

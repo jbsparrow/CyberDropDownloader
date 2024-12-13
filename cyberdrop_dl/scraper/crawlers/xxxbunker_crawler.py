@@ -28,9 +28,10 @@ MAX_RETRIES = 3
 
 
 class XXXBunkerCrawler(Crawler):
+    primary_base_domain = URL("https://xxxbunker.com")
+
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "xxxbunker", "XXXBunker")
-        self.primary_base_domain = URL("https://xxxbunker.com")
         self.api_download = URL("https://xxxbunker.com/ajax/downloadpopup")
         self.rate_limit = self.wait_time = 10
         self.request_limiter = AsyncLimiter(self.rate_limit, 60)

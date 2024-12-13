@@ -20,9 +20,10 @@ if TYPE_CHECKING:
 
 
 class ToonilyCrawler(Crawler):
+    primary_base_domain = URL("https://toonily.com")
+
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "toonily", "Toonily")
-        self.primary_base_domain = URL("https://toonily.com")
         self.request_limiter = AsyncLimiter(10, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

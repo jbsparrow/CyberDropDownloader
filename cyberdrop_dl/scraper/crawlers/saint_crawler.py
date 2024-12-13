@@ -20,9 +20,10 @@ if TYPE_CHECKING:
 
 
 class SaintCrawler(Crawler):
+    primary_base_domain = URL("https://saint2.su")
+
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "saint", "Saint")
-        self.primary_base_domain = URL("https://saint2.su")
         self.request_limiter = AsyncLimiter(10, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

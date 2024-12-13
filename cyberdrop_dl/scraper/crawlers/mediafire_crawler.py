@@ -21,6 +21,8 @@ if TYPE_CHECKING:
 
 
 class MediaFireCrawler(Crawler):
+    primary_base_domain = URL("https://www.mediafire.com/")
+
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "mediafire", "mediafire")
         self.api = MediaFireApi()

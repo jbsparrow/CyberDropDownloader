@@ -1,70 +1,41 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from cyberdrop_dl import __version__ as current_version
+from cyberdrop_dl.scraper import ALL_CRAWLERS, DEBUG_CRAWLERS
+from cyberdrop_dl.scraper.crawlers.xenforo_crawler import XenforoCrawler
 from cyberdrop_dl.utils.constants import PRERELEASE_TAGS
 
-FORUMS = {
-    "celebforum": "celebforum.to",
-    "f95zone": "f95zone.to",
-    "leakedmodels": "leakedmodels.com",
-    "nudostar": "nudostar.com",
-    "xbunker": "xbunker.nu",
-    "socialmediagirls": "socialmediagirls.com",
-}
+if TYPE_CHECKING:
+    from cyberdrop_dl.scraper.crawler import Crawler
 
-WEBSITES = {
-    "bunkr": "bunkr",
-    "bunkrr": "bunkrr",
-    "coomer": "coomer",
-    "cyberdrop": "cyberdrop",
-    "cyberfile": "cyberfile",
-    "e-hentai": "e-hentai",
-    "erome": "erome",
-    "fapello": "fapello",
-    "gofile": "gofile",
-    "host.church": "host.church",
-    "hotpic": "hotpic",
-    "ibb.co": "ibb.co",
-    "imageban": "imageban",
-    "imagepond.net": "imagepond.net",
-    "img.kiwi": "img.kiwi",
-    "imgbox": "imgbox",
-    "imgur": "imgur",
-    "jpeg.pet": "jpeg.pet",
-    "jpg.church": "jpg.church",
-    "jpg.fish": "jpg.fish",
-    "jpg.fishing": "jpg.fishing",
-    "jpg.homes": "jpg.homes",
-    "jpg.pet": "jpg.pet",
-    "jpg1.su": "jpg1.su",
-    "jpg2.su": "jpg2.su",
-    "jpg3.su": "jpg3.su",
-    "jpg4.su": "jpg4.su",
-    "jpg5.su": "jpg5.su",
-    "kemono": "kemono",
-    "mediafire": "mediafire",
-    "nudostar.tv": "nudostar.tv",
-    "omegascans": "omegascans",
-    "pimpandhost": "pimpandhost",
-    "pixeldrain": "pixeldrain",
-    "postimg": "postimg",
-    "realbooru": "realbooru",
-    "real-debrid": "real-debrid",
-    "redd.it": "redd.it",
-    "reddit": "reddit",
-    "redgifs": "redgifs",
-    "rule34.xxx": "rule34.xxx",
-    "rule34.xyz": "rule34.xyz",
-    "rule34vault": "rule34vault",
-    "saint": "saint",
-    "scrolller": "scrolller",
-    "toonily": "toonily",
-    "tokyomotion.net": "tokyomotion.net",
-    "xbunkr": "xbunkr",
-    "xxxbunker": "xxxbunker",
-}
+crawlers = ALL_CRAWLERS
+is_testing = next((tag for tag in PRERELEASE_TAGS if tag in current_version), False)
+if not is_testing:
+    crawlers -= DEBUG_CRAWLERS
 
-if next((tag for tag in PRERELEASE_TAGS if tag in current_version), False):
-    FORUMS["simpcity"] = "simpcity"
+forum_crawlers = {crawler for crawler in crawlers if issubclass(crawler, XenforoCrawler)}
+website_crawlers = crawlers - forum_crawlers
 
-SUPPORTED_SITES = FORUMS | WEBSITES
 
-SUPPORTED_SITES_DOMAINS = list(SUPPORTED_SITES.values())
+def get_supported_sites_from(crawlers: set[type[Crawler]]) -> dict[str, str]:
+    support_sites_dict = {}
+    for crawler in crawlers:
+        if not crawler.SUPPORTED_SITES or crawler.primary_base_domain:
+            site = crawler.domain or crawler.primary_base_domain.host
+            support_sites_dict[site] = crawler.primary_base_domain.host
+            continue
+
+        for site, domains in crawler.SUPPORTED_SITES.items():
+            support_sites_dict[site] = domains[0]
+
+    support_sites_dict = {key: support_sites_dict[key] for key in sorted(support_sites_dict)}
+
+    return support_sites_dict
+
+
+SUPPORTED_FORUMS = get_supported_sites_from(forum_crawlers)
+SUPPORTED_WEBSITES = get_supported_sites_from(website_crawlers)
+SUPPORTED_SITES = SUPPORTED_FORUMS | SUPPORTED_WEBSITES
+SUPPORTED_SITES_DOMAINS = sorted(SUPPORTED_SITES.values())
