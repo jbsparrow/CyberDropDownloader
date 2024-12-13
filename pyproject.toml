@@ -11,37 +11,40 @@ include = ["CHANGELOG.md"]
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.13"
-aiohttp = "^3.9.1"
-inquirerpy = "^0.3.4"
-platformdirs = "^4.2.2"
-rich = "^13.7.0"
-pyyaml = "^6.0.1"
-certifi = "^2024.2.2"
-beautifulsoup4 = "^4.12.2"
-filedate = "^3.0"
+aiofiles = "^24.1.0"
+aiohttp = "^3.11.10"
+aiolimiter = "^1.2.0"
 aiosqlite = "0.17.0"
-aiofiles = "0.8.0"
-asyncpraw = "^7.7.1"
-myjdapi = "^1.1.7"
-mediafire = "^0.6.1"
-pillow = "^10.2.0"
-get-video-properties = "^0.1.1"
-send2trash = "^1.8.3"
-arrow = "^1.3.0"
 apprise = "^1.9.0"
-lz4 = "^4.3.3"
-pycryptodomex = "^3.21.0"
+arrow = "^1.3.0"
+asyncpraw = "^7.7.1"
+beautifulsoup4 = "^4.12.2"
+certifi = "^2024.8.30"
+filedate = "^3.0"
+get-video-properties = "^0.1.1"
+inquirerpy = "^0.3.4"
 jeepney =   [{platform = "linux", version = "^0.8.0"},{platform = "bsd", version = "^0.8.0"}]
-xxhash = "^3.5.0"
+lz4 = "^4.3.3"
+mediafire = "^0.6.1"
+myjdapi = "^1.1.7"
+pillow = "^11.0.0"
+platformdirs = "^4.3.6"
+pycryptodomex = "^3.21.0"
 pydantic = "^2.10.2"
-aiolimiter = ">=1.2.0"
-
-[tool.poetry.scripts]
-cyberdrop-dl = "cyberdrop_dl.main:main"
+pyyaml = "^6.0.2"
+rich = "^13.9.4"
+send2trash = "^1.8.3"
+xxhash = "^3.5.0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^4.0.1"
 ruff = "^0.8.0"
+
+[tool.poetry.scripts]
+cyberdrop-dl = "cyberdrop_dl.main:main"
+
+[tool.poetry.urls]
+Changelog = "https://github.com/jbsparrow/CyberDropDownloader/blob/master/CHANGELOG.md"
 
 [tool.ruff]
 line-length = 120
@@ -70,14 +73,9 @@ ignore = [
     "COM812", # missing-trailing-comma
 ]
 
-
 [tool.ruff.lint.pydocstyle]
 convention = "google"
-
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
-
-[tool.poetry.urls]
-Changelog = "https://github.com/jbsparrow/CyberDropDownloader/blob/master/CHANGELOG.md"
