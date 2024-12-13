@@ -64,7 +64,7 @@ def error_handling_wrapper(func: Callable) -> None:
                 e_ui_failure = "Unknown"
 
         log_prefix = getattr(self, "log_prefix", None)
-        log(f"{log_prefix or "Scrape"} Failed: {link} ({log_message})", 40, exc_info=exc_info)
+        log(f"{log_prefix or 'Scrape'} Failed: {link} ({log_message})", 40, exc_info=exc_info)
         if log_prefix:
             self.attempt_task_removal(item)
             await self.manager.log_manager.write_download_error_log(link, log_message_short, origin or item.referer)
@@ -201,13 +201,9 @@ async def check_partials_and_empty_folders(manager: Manager) -> None:
 
     elif not manager.config_manager.settings_data.runtime_options.skip_check_for_partial_files:
         log_with_color("Checking for partial downloads...", "yellow", 20)
-        partial_downloads = any(f.is_file() for f in manager.path_manager.download_folder.rglob("*.part"))
+        partial_downloads = any(manager.path_manager.download_folder.rglob("*.part"))
         if partial_downloads:
             log_with_color("There are partial downloads in the downloads folder", "yellow", 20)
-        temp_downloads = any(Path(f).is_file() for f in await manager.db_manager.temp_table.get_temp_names())
-        if temp_downloads:
-            msg = "There are partial downloads from the previous run, please re-run the program."
-            log_with_color(msg, "yellow", 20)
 
     if not manager.config_manager.settings_data.runtime_options.skip_check_for_empty_folders:
         log_with_color("Checking for empty folders...", "yellow", 20)
