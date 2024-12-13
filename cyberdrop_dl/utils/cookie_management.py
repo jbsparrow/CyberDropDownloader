@@ -88,8 +88,8 @@ def update_forum_config_cookies(manager: Manager, forum: str, cookie: CookieJar)
     forum_domain = SUPPORTED_FORUMS[forum]
     forum_dict = auth_args.forums.model_dump()
     with contextlib.suppress(KeyError):
-        forum_dict[f"{forum_domain}_xf_user_cookie"] = cookie._cookies[forum_domain]["/"]["xf_user"].value
-        forum_dict[f"{forum_domain}_xf_user_cookie"] = cookie._cookies["www." + forum_domain]["/"]["xf_user"].value
+        forum_dict[f"{forum}_xf_user_cookie"] = cookie._cookies[forum_domain]["/"]["xf_user"].value
+        forum_dict[f"{forum}_xf_user_cookie"] = cookie._cookies["www." + forum_domain]["/"]["xf_user"].value
     auth_args.forums = auth_args.forums.model_copy(update=forum_dict)
 
 
