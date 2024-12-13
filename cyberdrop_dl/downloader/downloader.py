@@ -94,14 +94,8 @@ class Downloader:
             self.waiting_items -= 1
             self.processed_items.add(media_item.url.path)
             self.manager.progress_manager.download_progress.update_total()
-            log(f"{self.log_prefix} starting: {media_item.url}", 20)
-            if not media_item.file_lock_reference_name:
-                media_item.file_lock_reference_name = media_item.filename
-            async with (
-                self.manager.client_manager.download_session_limit,
-                self._file_lock_vault.get_lock(media_item.file_lock_reference_name),
-            ):
-                await self.download(media_item)
+            async with self.manager.client_manager.download_session_limit:
+                await self.start_download(media_item)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -132,6 +126,13 @@ class Downloader:
         media_item.task_id = None
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+    async def start_download(self, media_item: MediaItem) -> None:
+        log(f"{self.log_prefix} starting: {media_item.url}", 20)
+        if not media_item.file_lock_reference_name:
+            media_item.file_lock_reference_name = media_item.filename
+        async with self._file_lock_vault.get_lock(media_item.file_lock_reference_name):
+            self.download(media_item)
 
     @error_handling_wrapper
     @retry
