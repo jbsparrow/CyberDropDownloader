@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import Annotated
 from datetime import timedelta
-import humanfriendly
+from typing import Annotated
 
+import humanfriendly
 from pydantic import (
     AfterValidator,
     AnyUrl,

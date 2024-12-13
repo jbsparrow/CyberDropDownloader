@@ -86,7 +86,8 @@ class KemonoCrawler(Crawler):
                         await self.manager.cache_manager.request_cache.save_response(
                             resp,
                             None,
-                            datetime.datetime.now() + self.manager.config_manager.global_settings_data.rate_limiting_options.file_host_cache_length,
+                            datetime.datetime.now()
+                            + self.manager.config_manager.global_settings_data.rate_limiting_options.file_host_cache_length,
                         )
                 else:
                     JSON_Resp = await self.client.get_json(
@@ -138,7 +139,12 @@ class KemonoCrawler(Crawler):
     async def post(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a post."""
         user_info = await self.get_user_info(scrape_item)
-        service, user, user_str, post_id = user_info["service"], user_info["user"], user_info["user_str"], user_info["post"]
+        service, user, user_str, post_id = (
+            user_info["service"],
+            user_info["user"],
+            user_info["user_str"],
+            user_info["post"],
+        )
         api_call = self.api_url / service / "user" / user / "post" / post_id
         async with self.request_limiter:
             post = await self.client.get_json(self.domain, api_call, origin=scrape_item)

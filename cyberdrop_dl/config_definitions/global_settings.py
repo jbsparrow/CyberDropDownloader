@@ -1,9 +1,9 @@
+from datetime import timedelta
+
 from pydantic import BaseModel, ByteSize, Field, NonNegativeFloat, PositiveInt, field_serializer, field_validator
 from yarl import URL
-from datetime import timedelta
-import humanfriendly
 
-from .custom_types import AliasModel, HttpURL, NonEmptyStr, CacheDuration
+from .custom_types import AliasModel, CacheDuration, HttpURL, NonEmptyStr
 
 
 def convert_to_str(value: URL | str) -> str | None:

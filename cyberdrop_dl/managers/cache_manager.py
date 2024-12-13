@@ -5,10 +5,10 @@ from datetime import timedelta
 from http import HTTPStatus
 from typing import TYPE_CHECKING, Any
 
-from cyberdrop_dl.utils import yaml
 from aiohttp_client_cache import SQLiteBackend
 
 from cyberdrop_dl.scraper.filters import filter_fn
+from cyberdrop_dl.utils import yaml
 from cyberdrop_dl.utils.data_enums_classes.supported_domains import SupportedDomains
 
 if TYPE_CHECKING:
@@ -48,7 +48,9 @@ class CacheManager:
                 self.manager.config_manager.global_settings_data.rate_limiting_options.file_host_cache_length
             )
         for forum in SupportedDomains.supported_forums:
-            urls_expire_after[f"{forum}"] = self.manager.config_manager.global_settings_data.rate_limiting_options.forum_cache_length
+            urls_expire_after[f"{forum}"] = (
+                self.manager.config_manager.global_settings_data.rate_limiting_options.forum_cache_length
+            )
         self.request_cache = SQLiteBackend(
             cache_name=self.manager.path_manager.cache_db,
             autoclose=False,

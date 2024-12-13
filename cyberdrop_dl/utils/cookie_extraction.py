@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import contextlib
-import re
 from functools import wraps
 from http.cookiejar import MozillaCookieJar
 from textwrap import dedent
