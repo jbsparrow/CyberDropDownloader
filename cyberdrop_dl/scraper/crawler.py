@@ -27,6 +27,8 @@ if TYPE_CHECKING:
 
 class Crawler(ABC):
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {}
+    domain = None
+    primary_base_domain: URL = None
 
     def __init__(self, manager: Manager, domain: str, folder_domain: str | None = None) -> None:
         self.manager = manager
