@@ -4,7 +4,6 @@ from http import HTTPStatus
 from typing import TYPE_CHECKING
 
 import arrow
-from aiohttp import ClientResponse
 from bs4 import BeautifulSoup
 from yarl import URL
 
@@ -13,6 +12,8 @@ from cyberdrop_dl.utils.constants import FILE_FORMATS
 from cyberdrop_dl.utils.utilities import get_filename_and_ext
 
 if TYPE_CHECKING:
+    from aiohttp import ClientResponse
+
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
@@ -158,9 +159,10 @@ async def filter_fn(response: ClientResponse) -> bool:
         "socialmediagirls.com": check_xenforo_last_page,
         "simpcity.su": check_xenforo_last_page,
         "coomer.su": check_coomer_page,
-        "kemono.su": check_kemono_page
+        "kemono.su": check_kemono_page,
     }
 
     filter_fn = filter_dict.get(response.url.host)
     cache_response, reason = await filter_fn(response) if filter_fn else False, "No caching manager for host"
+    del reason
     return cache_response

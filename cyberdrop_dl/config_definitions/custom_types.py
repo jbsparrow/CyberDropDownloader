@@ -123,8 +123,8 @@ class CacheDuration(BaseModel):
         try:
             seconds = humanfriendly.parse_timespan(value)
             return timedelta(seconds=seconds)
-        except humanfriendly.InvalidTimespan:
-            raise ValueError(f"Invalid cache duration format: {value}")
+        except humanfriendly.InvalidTimespan as e:
+            raise ValueError(f"Invalid cache duration format: {value}") from e
 
     @model_validator(mode="before")
     @classmethod
