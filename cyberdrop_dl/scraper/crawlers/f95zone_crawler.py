@@ -28,8 +28,6 @@ class F95ZoneCrawler(XenforoCrawler):
     async def handle_confirmation_link(self, link: URL, *, origin: ScrapeItem | None = None) -> URL | None:
         """Override to handle protected link confirmation."""
         async with self.request_limiter:
-            await self.client.get_soup(self.domain, link)
-        async with self.request_limiter:
             JSON_Resp = await self.client.post_data(
                 self.domain, link, data={"xhr": "1", "download": "1"}, origin=origin
             )
