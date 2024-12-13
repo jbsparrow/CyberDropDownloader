@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import contextlib
 from typing import TYPE_CHECKING
 
+from pydantic import ByteSize
 from rich.console import Group
+from rich.markup import escape
 from rich.panel import Panel
 from rich.progress import (
     BarColumn,
@@ -65,19 +66,17 @@ class FileProgress:
         self.completed_tasks: list[TaskID] = []
         self.uninitiated_tasks: list[TaskID] = []
         self.tasks_visibility_limit = visible_tasks_limit
-        self.downloaded_data = 0
+        self.downloaded_data = ByteSize(0)
 
     def get_progress(self) -> Panel:
         """Returns the progress bar."""
         return Panel(self.progress_group, title="Downloads", border_style="green", padding=(1, 1))
 
-    def get_queue_length(self) -> int:
+    def get_download_queue_length(self) -> int:
         """Returns the number of tasks in the downloader queue."""
         total = 0
-
         for scraper in self.manager.scrape_mapper.existing_crawlers.values():
-            with contextlib.suppress(AttributeError):
-                total += scraper.downloader.waiting_items
+            total += getattr(scraper.downloader, "waiting_items", 0)
 
         return total
 
@@ -105,7 +104,7 @@ class FileProgress:
         else:
             self.overflow.update(self.overflow_task_id, visible=False)
 
-        queue_length = self.get_queue_length()
+        queue_length = self.get_download_queue_length()
         if queue_length > 0:
             self.queue.update(
                 self.queue_task_id,
@@ -118,26 +117,22 @@ class FileProgress:
         if not passed:
             self.manager.progress_manager.scraping_progress.redraw(True)
 
-    def add_task(self, file: str, expected_size: int | None) -> TaskID:
+    def add_task(self, *, domain: str, filename: str, expected_size: int | None = None) -> TaskID:
         """Adds a new task to the progress bar."""
-        description = file.split("/")[-1]
-        description = description.encode("ascii", "ignore").decode().strip()
-        description = adjust_title(description)
+        filename = filename.split("/")[-1].encode("ascii", "ignore").decode().strip()
+        filename = escape(adjust_title(filename))
+        description = f"({domain.upper()}) {filename}"
+        show_task = len(self.visible_tasks) < self.tasks_visibility_limit
+        task_id = self.progress.add_task(
+            self.progress_str.format(color=self.color, description=description),
+            total=expected_size,
+            visible=show_task,
+        )
 
-        if len(self.visible_tasks) >= self.tasks_visibility_limit:
-            task_id = self.progress.add_task(
-                self.progress_str.format(color=self.color, description=description),
-                total=expected_size,
-                visible=False,
-            )
-            self.invisible_tasks.append(task_id)
-        else:
-            task_id = self.progress.add_task(
-                self.progress_str.format(color=self.color, description=description),
-                total=expected_size,
-            )
+        if show_task:
             self.visible_tasks.append(task_id)
-        self.redraw()
+        else:
+            self.invisible_tasks.append(task_id)
         return task_id
 
     def remove_file(self, task_id: TaskID) -> None:

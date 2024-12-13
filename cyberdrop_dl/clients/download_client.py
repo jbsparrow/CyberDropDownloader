@@ -29,13 +29,6 @@ if TYPE_CHECKING:
 CONTENT_TYPES_OVERRIDES = {"text/vnd.trolltech.linguist": "video/MP2T"}
 
 
-def is_4xx_client_error(status_code: int) -> bool:
-    """Checks whether the HTTP status code is 4xx client error."""
-    if isinstance(status_code, str):
-        return True
-    return HTTPStatus.BAD_REQUEST <= status_code < HTTPStatus.INTERNAL_SERVER_ERROR
-
-
 def limiter(func: Callable) -> Any:
     """Wrapper handles limits for download session."""
 
@@ -177,8 +170,9 @@ class DownloadClient:
                 media_item.partial_file.unlink()
 
             media_item.task_id = self.manager.progress_manager.file_progress.add_task(
-                f"({domain.upper()}) {media_item.filename}",
-                media_item.filesize + resume_point,
+                domain=domain,
+                filename=media_item.filename,
+                expected_size=media_item.filesize + resume_point,
             )
             if media_item.partial_file.is_file():
                 resume_point = media_item.partial_file.stat().st_size
