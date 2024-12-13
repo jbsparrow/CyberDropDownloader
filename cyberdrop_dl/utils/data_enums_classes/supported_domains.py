@@ -23,11 +23,14 @@ def get_supported_sites_from(crawlers: set[type[Crawler]]) -> dict[str, str]:
     support_sites_dict = {}
     for crawler in crawlers:
         if not crawler.SUPPORTED_SITES:
-            support_sites_dict[crawler.domain] = crawler.primary_base_domain.host
+            site = crawler.domain or crawler.primary_base_domain.host
+            support_sites_dict[site] = crawler.primary_base_domain.host
             continue
 
         for site, domains in crawler.SUPPORTED_SITES.items():
             support_sites_dict[site] = domains[0]
+
+    return support_sites_dict
 
 
 SUPPORTED_FORUMS = get_supported_sites_from(forum_crawlers)
