@@ -36,12 +36,15 @@ rich = "^13.9.4"
 send2trash = "^1.8.3"
 xxhash = "^3.5.0"
 
-[tool.poetry.scripts]
-cyberdrop-dl = "cyberdrop_dl.main:main"
-
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^4.0.1"
 ruff = "^0.8.0"
+
+[tool.poetry.scripts]
+cyberdrop-dl = "cyberdrop_dl.main:main"
+
+[tool.poetry.urls]
+Changelog = "https://github.com/jbsparrow/CyberDropDownloader/blob/master/CHANGELOG.md"
 
 [tool.ruff]
 line-length = 120
@@ -70,14 +73,9 @@ ignore = [
     "COM812", # missing-trailing-comma
 ]
 
-
 [tool.ruff.lint.pydocstyle]
 convention = "google"
-
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
-
-[tool.poetry.urls]
-Changelog = "https://github.com/jbsparrow/CyberDropDownloader/blob/master/CHANGELOG.md"
