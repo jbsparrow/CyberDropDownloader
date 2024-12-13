@@ -20,9 +20,10 @@ if TYPE_CHECKING:
 
 
 class Rule34VaultCrawler(Crawler):
+    primary_base_url = URL("https://rule34vault.com")
+
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "rule34vault", "Rule34Vault")
-        self.primary_base_url = URL("https://rule34vault.com")
         self.request_limiter = AsyncLimiter(10, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

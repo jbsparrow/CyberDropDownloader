@@ -16,6 +16,8 @@ if TYPE_CHECKING:
 
 
 class NudoStarTVCrawler(Crawler):
+    primary_base_domain = URL("https://nudostar.tv/")
+
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "nudostartv", "NudoStarTV")
         self.request_limiter = AsyncLimiter(10, 1)

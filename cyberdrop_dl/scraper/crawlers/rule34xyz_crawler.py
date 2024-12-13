@@ -20,9 +20,10 @@ if TYPE_CHECKING:
 
 
 class Rule34XYZCrawler(Crawler):
+    primary_base_url = URL("https://rule34.xyz")
+
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "rule34.xyz", "Rule34XYZ")
-        self.primary_base_url = URL("https://rule34.xyz")
         self.request_limiter = AsyncLimiter(10, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

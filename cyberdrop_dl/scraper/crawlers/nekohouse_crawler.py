@@ -19,9 +19,10 @@ if TYPE_CHECKING:
 
 
 class NekohouseCrawler(Crawler):
+    primary_base_domain = URL("https://nekohouse.su")
+
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "nekohouse", "Nekohouse")
-        self.primary_base_domain = URL("https://nekohouse.su")
         self.services = ["fanbox", "fantia", "fantia_products", "subscribestar", "twitter"]
         self.request_limiter = AsyncLimiter(10, 1)
 

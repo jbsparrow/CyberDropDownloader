@@ -19,6 +19,8 @@ if TYPE_CHECKING:
 
 
 class PostImgCrawler(Crawler):
+    primary_base_domain = URL("https://postimages.org/")
+
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "postimg", "PostImg")
         self.api_address = URL("https://postimg.cc/json")
