@@ -90,8 +90,8 @@ class BunkrrCrawler(Crawler):
 
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
-        title = soup.select_one("title").text.rsplit(" | Bunkr")[0].strip()
 
+        title = soup.select_one("title").text.rsplit(" | Bunkr")[0].strip()
         title = self.create_title(title, scrape_item.url.parts[2], None)
         scrape_item.add_to_parent_title(title)
 
@@ -105,40 +105,32 @@ class BunkrrCrawler(Crawler):
             link = card_listing.find("a").get("href")
             if link.startswith("/"):
                 link = URL("https://" + scrape_item.url.host + link)
+
             link = URL(link)
-            link = self.get_stream_link(link)
             new_scrape_item = self.create_scrape_item(
                 scrape_item,
                 link,
-                "",
-                True,
-                album_id,
-                date,
+                part_of_album=True,
+                album_id=album_id,
+                possible_datetime=date,
                 add_parent=scrape_item.url,
             )
 
-            # Try to get final file URL
             valid_extensions = FILE_FORMATS["Images"] | FILE_FORMATS["Videos"]
-            try:
-                if file_ext.lower() not in valid_extensions:
-                    raise FileNotFoundError
-                src = thumbnail.replace("/thumbs/", "/")
-                src = URL(src, encoded=True)
-                src = src.with_suffix(file_ext)
-                src = src.with_query("download=true")
-                if file_ext.lower() not in FILE_FORMATS["Images"]:
-                    src = src.with_host(src.host.replace("i-", ""))
+            src = thumbnail.replace("/thumbs/", "/")
+            src = URL(src, encoded=True)
+            src = src.with_suffix(file_ext).with_query(None)
+            if file_ext.lower() not in FILE_FORMATS["Images"]:
+                src = src.with_host(src.host.replace("i-", ""))
 
-                if "no-image" in src.name:
-                    msg = "No image found, reverting to parent"
-                    raise FileNotFoundError(msg)
+            # Scrape new URL if unable to get final URL from thumbnail
+            if file_ext.lower() not in valid_extensions or "no-image" in src.name:
+                self.manager.task_group.create_task(self.run(new_scrape_item))
 
+            else:
                 src_filename, ext = get_filename_and_ext(src.name)
                 if not self.check_album_results(src, results):
                     await self.handle_file(src, new_scrape_item, src_filename, ext, custom_filename=filename)
-
-            except FileNotFoundError:
-                self.manager.task_group.create_task(self.run(new_scrape_item))
 
             scrape_item.children += 1
             if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
@@ -221,27 +213,7 @@ class BunkrrCrawler(Crawler):
     @staticmethod
     def is_cdn(url: URL) -> bool:
         """Checks if a given URL is from a CDN."""
-        return bool(re.match(CDN_POSSIBILITIES, url.host))
-
-    def get_stream_link(self, url: URL) -> URL:
-        """DEPRECATED: NO LONGER WORKS.
-
-        Gets the stream link for a given url."""
-        if not self.is_cdn(url):
-            return url
-
-        ext = url.suffix.lower()
-        if ext == "":
-            return url
-
-        if ext in FILE_FORMATS["Images"]:
-            url = self.primary_base_domain / "d" / url.parts[-1]
-        elif ext in FILE_FORMATS["Videos"]:
-            url = self.primary_base_domain / "v" / url.parts[-1]
-        else:
-            url = self.primary_base_domain / "d" / url.parts[-1]
-
-        return url
+        return bool(CDN_POSSIBILITIES.match(url.host))
 
     @staticmethod
     def parse_datetime(date: str) -> int:

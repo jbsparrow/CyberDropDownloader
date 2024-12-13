@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from rich.console import Console
 
 from cyberdrop_dl.dependencies import browser_cookie3
-from cyberdrop_dl.utils.data_enums_classes.supported_domains import SupportedDomains
+from cyberdrop_dl.utils.data_enums_classes.supported_domains import FORUMS
 
 if TYPE_CHECKING:
     from http.cookiejar import CookieJar
@@ -63,14 +63,11 @@ def get_cookies_from_browsers(
         raise ValueError(msg)
 
     browsers = browsers or manager.config_manager.settings_data.browser_cookies.browsers
-    domains = domains or manager.config_manager.settings_data.browser_cookies.sites
-    browsers = list(map(str.lower, browsers))
-    domains = list(map(str.lower, domains))
-
+    domains: list[str] = domains or manager.config_manager.settings_data.browser_cookies.sites
     extractors = [getattr(browser_cookie3, b) for b in browsers if hasattr(browser_cookie3, b)]
 
     if not extractors:
-        msg = "None of the provided browsers is not supported for extraction"
+        msg = "None of the provided browsers is supported for extraction"
         raise ValueError(msg)
 
     for domain in domains:
@@ -86,10 +83,12 @@ def get_cookies_from_browsers(
 
 
 def update_forum_config_cookies(manager: Manager, forum: str, cookie: CookieJar) -> None:
-    auth_args: dict = manager.config_manager.authentication_data
-    if forum not in SupportedDomains.supported_forums_map:
+    if forum not in FORUMS:
         return
-    forum = f"{SupportedDomains.supported_forums_map[forum]}"
+    auth_args = manager.config_manager.authentication_data
+    forum_domain = FORUMS[forum]
+    forum_dict = auth_args.forums.model_dump()
     with contextlib.suppress(KeyError):
-        auth_args["Forums"][f"{forum}_xf_user_cookie"] = cookie._cookies[forum]["/"]["xf_user"].value
-        auth_args["Forums"][f"{forum}_xf_user_cookie"] = cookie._cookies["www." + forum]["/"]["xf_user"].value
+        forum_dict[f"{forum_domain}_xf_user_cookie"] = cookie._cookies[forum_domain]["/"]["xf_user"].value
+        forum_dict[f"{forum_domain}_xf_user_cookie"] = cookie._cookies["www." + forum_domain]["/"]["xf_user"].value
+    auth_args.forums = auth_args.forums.model_copy(update=forum_dict)

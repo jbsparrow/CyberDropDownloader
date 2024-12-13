@@ -4,6 +4,7 @@ import asyncio
 import copy
 from abc import ABC, abstractmethod
 from dataclasses import field
+from functools import wraps
 from http.cookiejar import MozillaCookieJar
 from typing import TYPE_CHECKING, Any, ClassVar
 
@@ -19,6 +20,8 @@ from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_download_path, remove_file_id
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from cyberdrop_dl.clients.scraper_client import ScraperClient
     from cyberdrop_dl.managers.manager import Manager
 
@@ -125,10 +128,7 @@ class Crawler(ABC):
             self.manager.progress_manager.download_progress.add_skipped()
             return
 
-        if self.manager.download_manager.get_download_limit(self.domain) == 1:
-            await self.downloader.run(media_item)
-        else:
-            self.manager.task_group.create_task(self.downloader.run(media_item))
+        self.manager.task_group.create_task(self.downloader.run(media_item))
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -160,17 +160,18 @@ class Crawler(ABC):
         """Returns (scrape_post, continue_scraping)"""
         scrape_single_forum_post = self.manager.config_manager.settings_data.download_options.scrape_single_forum_post
 
+        scrape_post = continue_scraping = True
+
         if scrape_single_forum_post:
-            if not post_number:
-                return True, False
-            if post_number == current_post_number:
-                return True, False
-            return False, True
+            if not post_number or post_number == current_post_number:
+                continue_scraping = False
+            else:
+                scrape_post = False
 
-        if post_number and post_number > current_post_number:
-            return False, True
+        elif post_number and post_number > current_post_number:
+            scrape_post = False
 
-        return True, True
+        return scrape_post, continue_scraping
 
     def handle_external_links(self, scrape_item: ScrapeItem) -> None:
         """Maps external links to the scraper class."""
@@ -183,7 +184,7 @@ class Crawler(ABC):
         session_cookie: str,
         username: str,
         password: str,
-        wait_time: int = 0,
+        wait_time: int = 5,
     ) -> None:
         """Logs into a forum."""
         if session_cookie:
@@ -278,7 +279,7 @@ class Crawler(ABC):
         scrape_item.album_id = album_id or scrape_item.album_id
         return scrape_item
 
-    def create_title(self, title: str, album_id: str | None, thread_id: str | None) -> str:
+    def create_title(self, title: str, album_id: str | None = None, thread_id: str | None = None) -> str:
         """Creates the title for the scrape item."""
         download_options = self.manager.config_manager.settings_data.download_options
         if not title:
@@ -295,3 +296,18 @@ class Crawler(ABC):
             title = f"{title} ({self.folder_domain})"
 
         return title
+
+
+def create_task_id(func: Callable) -> None:
+    """Wrapper handles task_id creation and removal for ScrapeItems"""
+
+    @wraps(func)
+    async def wrapper(self: Crawler, *args, **kwargs):
+        scrape_item: ScrapeItem = args[0]
+        task_id = self.scraping_progress.add_task(scrape_item.url)
+        try:
+            return await func(self, *args, **kwargs)
+        finally:
+            self.scraping_progress.remove_task(task_id)
+
+    return wrapper

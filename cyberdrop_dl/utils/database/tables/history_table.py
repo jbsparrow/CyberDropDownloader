@@ -215,7 +215,7 @@ class HistoryTable:
         FROM media
         WHERE COALESCE(completed_at, '1970-01-01') BETWEEN ? AND ?
         ORDER BY completed_at DESC;""",
-            (after.format("YYYY-MM-DD"), before.format("YYYY-MM-DD")),
+            (after.strftime("%Y-%m-%d"), before.strftime("%Y-%m-%d")),
         )
         return await result.fetchall()
 

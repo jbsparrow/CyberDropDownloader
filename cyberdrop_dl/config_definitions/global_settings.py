@@ -6,6 +6,14 @@ import humanfriendly
 from .custom_types import AliasModel, HttpURL, NonEmptyStr, CacheDuration
 
 
+def convert_to_str(value: URL | str) -> str | None:
+    if not value:
+        return None
+    if isinstance(value, URL):
+        return str(value)
+    return value
+
+
 class General(BaseModel):
     allow_insecure_connections: bool = False
     user_agent: NonEmptyStr = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0"
@@ -22,10 +30,13 @@ class General(BaseModel):
         return value.human_readable(decimal=True)
 
     @field_serializer("flaresolverr", "proxy")
-    def convert_to_str(self, value: URL) -> str:
-        if isinstance(value, URL):
-            return str(value)
-        return value
+    def serialize(self, value: URL | str) -> str | None:
+        return convert_to_str(value)
+
+    @field_validator("flaresolverr", "proxy", mode="before")
+    @classmethod
+    def convert_to_str(cls, value: URL | str) -> str | None:
+        return convert_to_str(value)
 
 
 class RateLimitingOptions(BaseModel):

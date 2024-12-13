@@ -19,9 +19,9 @@ from cyberdrop_dl.managers.path_manager import PathManager
 from cyberdrop_dl.managers.progress_manager import ProgressManager
 from cyberdrop_dl.managers.realdebrid_manager import RealDebridManager
 from cyberdrop_dl.utils.args import ParsedArgs
-from cyberdrop_dl.utils.data_enums_classes.supported_domains import SupportedDomains
-from cyberdrop_dl.utils.logger import log
-from cyberdrop_dl.utils.transfer.first_time_setup import TransitionManager
+from cyberdrop_dl.utils.data_enums_classes.supported_domains import FORUMS
+from cyberdrop_dl.utils.logger import log, print_to_console
+from cyberdrop_dl.utils.transfer.db_setup import TransitionManager
 
 if TYPE_CHECKING:
     from asyncio import TaskGroup
@@ -66,10 +66,12 @@ class Manager:
             self.parsed_args = ParsedArgs.parse_args()
 
         if not self.parsed_args.cli_only_args.appdata_folder:
-            self.first_time_setup.startup()
+            self.first_time_setup.transfer_v4_to_v5()
 
         self.path_manager = PathManager(self)
         self.path_manager.pre_startup()
+        # need pathmanager to get proper appdata location
+        self.first_time_setup.transfer_v5_to_new_hashtable()
 
         self.cache_manager.startup(self.path_manager.cache_folder / "cache.yaml")
         self.config_manager = ConfigManager(self)
@@ -84,7 +86,7 @@ class Manager:
             self.multiconfig = True
 
     def adjust_for_simpcity(self) -> None:
-        # Adjust settings for SimpCity update
+        """Adjusts settings for SimpCity update."""
         simp_settings_adjusted = self.cache_manager.get("simp_settings_adjusted")
         if not simp_settings_adjusted:
             for config in self.config_manager.get_configs():
@@ -170,12 +172,12 @@ class Manager:
         forum_credentials_provided = {}
 
         auth_data_forums = self.config_manager.authentication_data.forums.model_dump()
-        auth_data_others = self.config_manager.authentication_data.model_dump(exclude="forums")
+        auth_data_others: dict[str, dict] = self.config_manager.authentication_data.model_dump(exclude="forums")
 
-        for forum in SupportedDomains.supported_forums_map.values():
-            forum_xf_cookies_provided[forum] = bool(auth_data_forums[f"{forum}_xf_user_cookie"])
-            forum_credentials_provided[forum] = bool(
-                auth_data_forums[f"{forum}_username"] and auth_data_forums[f"{forum}_password"],
+        for forum_name in FORUMS:
+            forum_xf_cookies_provided[forum_name] = bool(auth_data_forums[f"{forum_name}_xf_user_cookie"])
+            forum_credentials_provided[forum_name] = bool(
+                auth_data_forums[f"{forum_name}_username"] and auth_data_forums[f"{forum_name}_password"],
             )
 
         auth_provided = {
@@ -189,14 +191,13 @@ class Manager:
         config_settings = self.config_manager.settings_data.model_dump_json(indent=4)
         global_settings = self.config_manager.global_settings_data.model_dump_json(indent=4)
 
-        log(f"Starting Cyberdrop-DL Process - Config: {self.config_manager.loaded_config}", 10)
-        log(f"Running version {__version__}", 10)
+        log("Starting Cyberdrop-DL Process", 10)
+        log(f"Running Version: {__version__}", 10)
         log(f"Using Config: {self.config_manager.loaded_config}", 10)
         log(f"Using Config File: {self.config_manager.settings.resolve()}", 10)
         log(f"Using Input File: {self.path_manager.input_file.resolve()}", 10)
         log(f"Using Download Folder: {self.path_manager.download_folder.resolve()}", 10)
-        log(f"Using History File: {self.path_manager.history_db.resolve()}", 10)
-
+        log(f"Using Database File: {self.path_manager.history_db.resolve()}", 10)
         log(f"Using Authentication: \n{json.dumps(auth_provided, indent=4, sort_keys=True)}", 10)
         log(f"Using Settings: \n{config_settings}", 10)
         log(f"Using Global Settings: \n{global_settings}", 10)
@@ -210,3 +211,12 @@ class Manager:
         self.db_manager: DBManager = field(init=False)
         self.cache_manager: CacheManager = field(init=False)
         self.hash_manager: HashManager = field(init=False)
+
+    def validate_all_configs(self) -> None:
+        print_to_console("validating all configs, please wait...")
+        all_configs = self.config_manager.get_configs()
+        all_configs.sort()
+        if not all_configs:
+            return
+        for config in all_configs:
+            self.config_manager.change_config(config)

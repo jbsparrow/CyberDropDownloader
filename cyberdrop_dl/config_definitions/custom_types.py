@@ -40,14 +40,14 @@ class FrozenModel(BaseModel):
 
 class AppriseURLModel(FrozenModel):
     url: SecretAnyURL
-    tags: set[NonEmptyStr]
+    tags: set[str]
 
     @model_serializer()
     def serialize(self, info: SerializationInfo):
         dump_secret = info.mode != "json"
         url = self.url.get_secret_value() if dump_secret else self.url
         tags = self.tags - set("no_logs")
-        return f"{','.join(tags)}{'=' if self.tags else ''}{url}"
+        return f"{','.join(tags)}{'=' if tags else ''}{url}"
 
     @model_validator(mode="before")
     @staticmethod
@@ -60,7 +60,7 @@ class AppriseURLModel(FrozenModel):
         if isinstance(value, URL):
             url_obj = str(value)
         url = AppriseURL(url_obj, validate=False)
-        return {"url": url._url, "tags": tags or url.tags}
+        return {"url": url._url, "tags": tags or url.tags or set("no_logs")}
 
 
 class AppriseURL:

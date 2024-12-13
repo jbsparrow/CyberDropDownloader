@@ -35,10 +35,24 @@ class PathManager:
         self.history_db: Path = field(init=False)
         self.cache_db: Path = field(init=False)
 
-        self._completed_downloads: set[MediaItem] = set()
+        self._completed_downloads: list[MediaItem] = []
         self._completed_downloads_set = set()
-        self._prev_downloads = set()
+        self._prev_downloads: list[MediaItem] = []
         self._prev_downloads_set = set()
+
+        self.main_log: Path = field(init=False)
+        self.last_forum_post_log: Path = field(init=False)
+        self.unsupported_urls_log: Path = field(init=False)
+        self.download_error_urls_log: Path = field(init=False)
+        self.scrape_error_urls_log: Path = field(init=False)
+
+        self._logs_model_names = [
+            "main_log",
+            "last_forum_post",
+            "unsupported_urls",
+            "download_error_urls",
+            "scrape_error_urls",
+        ]
 
     def pre_startup(self) -> None:
         if self.manager.parsed_args.cli_only_args.appdata_folder:
@@ -54,8 +68,10 @@ class PathManager:
         self.cookies_dir.mkdir(parents=True, exist_ok=True)
         self.cache_db.touch(exist_ok=True)
 
-    def replace_config_in_path(self, path: Path) -> Path:
+    def replace_config_in_path(self, path: Path) -> Path | None:
         current_config = self.manager.config_manager.loaded_config
+        if path is None:
+            return
         return Path(str(path).replace("{config}", current_config))
 
     def startup(self) -> None:
@@ -69,8 +85,9 @@ class PathManager:
         self.history_db = self.cache_folder / "cyberdrop.db"
 
         self._set_output_filenames()
-
         self.log_folder.mkdir(parents=True, exist_ok=True)
+        self._create_output_folders()
+
         if not self.input_file.is_file():
             self.input_file.touch(exist_ok=True)
         self.history_db.touch(exist_ok=True)
@@ -78,45 +95,41 @@ class PathManager:
     def _set_output_filenames(self) -> None:
         current_time_iso = datetime.now().strftime("%Y%m%d_%H%M%S")
         log_settings_config = self.manager.config_manager.settings_data.logs
-        log_files = log_settings_config.model_dump()
+        log_files: dict[str, Path] = log_settings_config.model_dump()
 
-        for name, log_file in log_files.items():
-            if "filename" not in name:
+        for model_name, log_file in log_files.items():
+            if model_name not in self._logs_model_names:
                 continue
-            is_main_log = log_file == log_settings_config.main_log_filename
-            file_ext = ".log" if is_main_log else ".csv"
-            file_name = log_file
-            path = Path(log_file)
             if log_settings_config.rotate_logs:
-                file_name = f"{path.stem}__{current_time_iso}{path.suffix}"
-            log_files[name] = Path(file_name).with_suffix(file_ext).name
+                log_file = log_file.parent / f"{log_file.stem}__{current_time_iso}{log_file.suffix}"
+            log_files[model_name] = log_file
+
         log_settings_config = log_settings_config.model_copy(update=log_files)
-        self.main_log = self.log_folder / log_settings_config.main_log_filename
-        self.last_forum_post_log = self.log_folder / log_settings_config.last_forum_post_filename
-        self.unsupported_urls_log = self.log_folder / log_settings_config.unsupported_urls_filename
-        self.download_error_log = self.log_folder / log_settings_config.download_error_urls_filename
-        self.scrape_error_log = self.log_folder / log_settings_config.scrape_error_urls_filename
+
+        for model_name in self._logs_model_names:
+            internal_name = f"{model_name.replace('_log','')}_log"
+            setattr(self, internal_name, self.log_folder / getattr(log_settings_config, model_name))
+
+    def _create_output_folders(self):
+        for model_name in self._logs_model_names:
+            internal_name = f"{model_name.replace('_log','')}_log"
+            path: Path = getattr(self, internal_name)
+            path.parent.mkdir(parents=True, exist_ok=True)
 
     def add_completed(self, media_item: MediaItem) -> None:
-        self._completed_downloads.add(media_item)
-        self._completed_downloads_set.add(media_item.complete_file.absolute())
+        if media_item.complete_file.absolute() not in self._completed_downloads_set:
+            self._completed_downloads.append(media_item)
+            self._completed_downloads_set.add(media_item.complete_file.absolute())
 
     def add_prev(self, media_item: MediaItem) -> None:
-        self._prev_downloads.add(media_item)
-        self._prev_downloads_set.add(media_item.complete_file.absolute())
+        if media_item.complete_file.absolute() not in self._prev_downloads_set:
+            self._prev_downloads.append(media_item)
+            self._prev_downloads_set.add(media_item.complete_file.absolute())
 
     @property
     def completed_downloads(self) -> set[MediaItem]:
         return self._completed_downloads
 
     @property
-    def prev_downloads(self) -> set:
+    def prev_downloads(self) -> set[MediaItem]:
         return self._prev_downloads
-
-    @property
-    def completed_downloads_paths(self) -> set:
-        return self._completed_downloads_set
-
-    @property
-    def prev_downloads_paths(self) -> set:
-        return self._prev_downloads_set

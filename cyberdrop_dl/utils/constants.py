@@ -67,7 +67,6 @@ class BROWSERS(StrEnum):
 PRERELEASE_TAGS = {
     "dev": "Development",
     "pre": "Pre-Release",
-    "post": "Post-Release",
     "rc": "Release Candidate",
     "a": "Alpha",
     "b": "Beta",
@@ -81,11 +80,13 @@ FILE_FORMATS = {
     "Images": {
         ".gif",
         ".gifv",
+        ".heic",
         ".jfif",
         ".jif",
         ".jpe",
         ".jpeg",
         ".jpg",
+        ".jxl",
         ".png",
         ".svg",
         ".tif",
@@ -93,10 +94,12 @@ FILE_FORMATS = {
         ".webp",
     },
     "Videos": {
+        ".3gp",
         ".avchd",
         ".avi",
         ".f4v",
         ".flv",
+        ".m2ts",
         ".m4p",
         ".m4v",
         ".mkv",
@@ -109,6 +112,7 @@ FILE_FORMATS = {
         ".mpv",
         ".mts",
         ".ogg",
+        ".ogv",
         ".qt",
         ".swf",
         ".ts",
@@ -118,6 +122,7 @@ FILE_FORMATS = {
     "Audio": {
         ".flac",
         ".m4a",
+        ".mka",
         ".mp3",
         ".wav",
     },
@@ -130,9 +135,9 @@ FILE_FORMATS = {
     },
     "7z": {
         ".7z",
-        ".tar",
-        ".gz",
         ".bz2",
+        ".gz",
+        ".tar",
         ".zip",
     },
 }

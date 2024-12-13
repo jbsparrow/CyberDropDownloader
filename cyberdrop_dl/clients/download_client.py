@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 import aiofiles
 import aiohttp
 from aiohttp import ClientSession
+from yarl import URL
 
 from cyberdrop_dl.clients.errors import DownloadError, InsufficientFreeSpaceError, InvalidContentTypeError
 from cyberdrop_dl.utils.constants import DEBUG_VAR, FILE_FORMATS
@@ -20,11 +21,12 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
     from typing import Any
 
-    from yarl import URL
-
     from cyberdrop_dl.managers.client_manager import ClientManager
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
+
+
+CONTENT_TYPES_OVERRIDES = {"text/vnd.trolltech.linguist": "video/MP2T"}
 
 
 def is_4xx_client_error(status_code: int) -> bool:
@@ -92,7 +94,7 @@ class DownloadClient:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    def add_api_key_headers(self, domain: str, referer: URL):
+    def add_api_key_headers(self, domain: str, referer: URL) -> dict:
         download_headers = copy.deepcopy(self._headers)
         download_headers["Referer"] = str(referer)
         auth_data = self.manager.config_manager.authentication_data
@@ -100,6 +102,12 @@ class DownloadClient:
             download_headers["Authorization"] = self.manager.download_manager.basic_auth(
                 "Cyberdrop-DL", auth_data.pixeldrain.api_key
             )
+        elif domain == "gofile":
+            gofile_cookies = self.client_manager.cookies.filter_cookies(URL("https://gofile.io"))
+            api_key = gofile_cookies.get("accountToken", "")
+            if api_key:
+                download_headers["Authorization"] = f"Bearer {api_key.value}"
+        return download_headers
 
     @limiter
     async def _download(
@@ -135,7 +143,11 @@ class DownloadClient:
                 media_item.partial_file.unlink()
 
             await self.client_manager.check_http_status(resp, download=True, origin=media_item.url)
-            content_type = resp.headers.get("Content-Type")
+            content_type = resp.headers.get("Content-Type", "")
+            override = next(
+                (override for type, override in CONTENT_TYPES_OVERRIDES.items() if type in content_type), None
+            )
+            content_type = override or content_type
 
             media_item.filesize = int(resp.headers.get("Content-Length", "0"))
             if not media_item.complete_file:
@@ -159,7 +171,7 @@ class DownloadClient:
                 and any(s in content_type.lower() for s in ("html", "text"))
                 and ext not in FILE_FORMATS["Text"]
             ):
-                raise InvalidContentTypeError(message=f"Received {content_type}, was expecting other")
+                raise InvalidContentTypeError(message=f"Received '{content_type}', was expecting other")
 
             if resp.status != HTTPStatus.PARTIAL_CONTENT and media_item.partial_file.is_file():
                 media_item.partial_file.unlink()
@@ -189,11 +201,12 @@ class DownloadClient:
         if not media_item.partial_file.is_file():
             media_item.partial_file.touch()
         async with aiofiles.open(media_item.partial_file, mode="ab") as f:  # type: ignore
-            async for chunk, _ in content.iter_chunks():
-                await self.client_manager.check_bucket(chunk)
+            async for chunk in content.iter_chunked(self.client_manager.speed_limiter.chunk_size):
+                chunk_size = len(chunk)
+                await self.client_manager.speed_limiter.acquire(chunk_size)
                 await asyncio.sleep(0)
                 await f.write(chunk)
-                update_progress(len(chunk))
+                update_progress(chunk_size)
         if not content.total_bytes and not media_item.partial_file.stat().st_size:
             media_item.partial_file.unlink()
             raise DownloadError(status=HTTPStatus.INTERNAL_SERVER_ERROR, message="File is empty")

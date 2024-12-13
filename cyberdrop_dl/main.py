@@ -7,7 +7,6 @@ import os
 import sys
 from functools import wraps
 from pathlib import Path
-from textwrap import indent
 from time import perf_counter
 from typing import TYPE_CHECKING
 
@@ -48,6 +47,8 @@ def startup() -> Manager:
     try:
         manager = Manager()
         manager.startup()
+        if manager.parsed_args.cli_only_args.multiconfig:
+            manager.validate_all_configs()
 
         if not manager.parsed_args.cli_only_args.download:
             ProgramUI(manager)
@@ -75,7 +76,7 @@ def startup() -> Manager:
 
 async def runtime(manager: Manager) -> None:
     """Main runtime loop for the program, this will run until all scraping and downloading is complete."""
-    if manager.parsed_args.deprecated_args.sort_all_configs:
+    if manager.multiconfig and manager.config_manager.settings_data.sorting.sort_downloads:
         return
 
     with manager.live_manager.get_main_live(stop=True):
@@ -100,11 +101,11 @@ async def post_runtime(manager: Manager) -> None:
         20,
     )
     # checking and removing dupes
-    if not manager.parsed_args.deprecated_args.sort_all_configs:
+    if not (manager.multiconfig and manager.config_manager.settings_data.sorting.sort_downloads):
         await manager.hash_manager.hash_client.cleanup_dupes_after_download()
     if manager.config_manager.settings_data.sorting.sort_downloads and not manager.parsed_args.cli_only_args.retry_any:
         sorter = Sorter(manager)
-        await sorter.sort()
+        await sorter.run()
 
     await check_partials_and_empty_folders(manager)
 
@@ -133,7 +134,10 @@ def setup_debug_logger(manager: Manager) -> Path | None:
 
         rich_file_handler_debug = RichHandler(
             **constants.RICH_HANDLER_DEBUG_CONFIG,
-            console=Console(file=debug_log_file_path.open("w", encoding="utf8"), width=constants.DEFAULT_CONSOLE_WIDTH),
+            console=Console(
+                file=debug_log_file_path.open("w", encoding="utf8"),
+                width=manager.config_manager.settings_data.logs.log_line_width,
+            ),
             level=manager.config_manager.settings_data.runtime_options.log_level,
         )
 
@@ -168,7 +172,7 @@ def setup_logger(manager: Manager, config_name: str) -> None:
         **constants.RICH_HANDLER_CONFIG,
         console=Console(
             file=manager.path_manager.main_log.open("w", encoding="utf8"),
-            width=constants.DEFAULT_CONSOLE_WIDTH,
+            width=manager.config_manager.settings_data.logs.log_line_width,
         ),
         level=manager.config_manager.settings_data.runtime_options.log_level,
     )
@@ -185,12 +189,13 @@ def ui_error_handling_wrapper(func: Callable) -> None:
         try:
             return await func(*args, **kwargs)
         except* Exception as e:
-            exc_list = str(e)
+            exceptions = [e]
             if isinstance(e, ExceptionGroup):
-                exc_list = "\n".join(map(str, e.exceptions))
-            exc_list = indent(exc_list, "  ")
-            msg = f"An error occurred, please report this to the developer with your logs file:\n{exc_list}"
-            log_with_color(msg, "bold red", 50, show_in_stats=False, exc_info=e)
+                exceptions = e.exceptions
+            msg = "An error occurred, please report this to the developer with your logs file:"
+            log_with_color(msg, "bold red", 50, show_in_stats=False)
+            for exc in exceptions:
+                log_with_color(f"  {exc}", "bold red", 50, show_in_stats=False, exc_info=exc)
 
     return wrapper
 
@@ -205,7 +210,6 @@ async def director(manager: Manager) -> None:
     configs_to_run = [manager.config_manager.loaded_config]
     if manager.multiconfig:
         configs_to_run = manager.config_manager.get_configs()
-        configs_to_run.sort()
 
     start_time = manager.start_time
     while configs_to_run:
@@ -213,13 +217,12 @@ async def director(manager: Manager) -> None:
         setup_logger(manager, current_config)
         configs_to_run.pop(0)
 
-        log(f"Using Debug Log: {debug_log_file_path if debug_log_file_path else None}", 10)
-        log("Starting Async Processes...", 20)
+        log(f"Using Debug Log: {debug_log_file_path}", 10)
+        log("Starting Async Processes...", 10)
         await manager.async_startup()
+        log_spacer(10)
 
-        log_spacer(20)
         log("Starting CDL...\n", 20)
-
         pre_runtime(manager)
         await runtime(manager)
         await post_runtime(manager)

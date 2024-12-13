@@ -16,7 +16,7 @@ from yarl import URL
 from cyberdrop_dl.clients.download_client import DownloadClient
 from cyberdrop_dl.clients.errors import DDOSGuardError, DownloadError, ScrapeError
 from cyberdrop_dl.clients.scraper_client import ScraperClient
-from cyberdrop_dl.managers.leaky import LeakyBucket
+from cyberdrop_dl.managers.download_speed_manager import DownloadSpeedLimiter
 from cyberdrop_dl.utils.constants import CustomHTTPStatus
 from cyberdrop_dl.utils.logger import log
 
@@ -70,6 +70,7 @@ class ClientManager:
             "coomer": AsyncLimiter(1, 1),
             "kemono": AsyncLimiter(1, 1),
             "pixeldrain": AsyncLimiter(10, 1),
+            "gofile": AsyncLimiter(100, 60),
             "other": AsyncLimiter(25, 1),
         }
 
@@ -91,7 +92,7 @@ class ClientManager:
 
         self.scraper_session = ScraperClient(self)
         self.downloader_session = DownloadClient(manager, self)
-        self._leaky_bucket = LeakyBucket(manager)
+        self.speed_limiter = DownloadSpeedLimiter(manager)
         self.flaresolverr = Flaresolverr(self)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -125,15 +126,6 @@ class ClientManager:
             message = DOWNLOAD_ERROR_ETAGS.get(headers.get("ETag"))
             raise DownloadError(HTTPStatus.NOT_FOUND, message=message, origin=origin)
 
-        response_text = None
-        with contextlib.suppress(UnicodeDecodeError):
-            response_text = await response.text()
-
-        if response_text:
-            soup = BeautifulSoup(response_text, "html.parser")
-            if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
-                raise DDOSGuardError(origin=origin)
-
         if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
             return
 
@@ -145,8 +137,16 @@ class ClientManager:
                 if "data" in JSON_Resp and "error" in JSON_Resp["data"]:
                     raise ScrapeError(JSON_Resp["status"], JSON_Resp["data"]["error"], origin=origin)
 
+        response_text = None
+        with contextlib.suppress(UnicodeDecodeError):
+            response_text = await response.text()
+
+        if response_text:
+            soup = BeautifulSoup(response_text, "html.parser")
+            if cls.check_ddos_guard(soup) and cls.check_cloudflare(soup):
+                raise DDOSGuardError(origin=origin)
         status = status if headers.get("Content-Type") else CustomHTTPStatus.IM_A_TEAPOT
-        message = "No content-type in response header" if headers.get("Content-Type") else None
+        message = None if headers.get("Content-Type") else "No content-type in response header"
 
         raise DownloadError(status=status, message=message, origin=origin)
 
@@ -154,9 +154,6 @@ class ClientManager:
     def check_bunkr_maint(headers: dict):
         if headers.get("Content-Length") == "322509" and headers.get("Content-Type") == "video/mp4":
             raise DownloadError(status="Bunkr Maintenance", message="Bunkr under maintenance")
-
-    async def check_bucket(self, size: float) -> None:
-        await self._leaky_bucket.acquire(size)
 
     @staticmethod
     def check_ddos_guard(soup: BeautifulSoup) -> bool:

@@ -14,7 +14,7 @@
 
 Brand new and improved! Cyberdrop-DL now has an updated paint job, fantastic new look. It's now easier to use than ever before!
 
-![Cyberdrop-DL TUI Preview](docs/.gitbook/assets/cyberdrop-dl_tui_preview.png)
+![Cyberdrop-DL TUI Preview](https://raw.githubusercontent.com/jbsparrow/CyberDropDownloader/refs/heads/master/docs/assets/cyberdrop-dl_tui_preview.png)
 
 </div>
 
@@ -31,4 +31,4 @@ Follow the [quickstart guide](https://script-ware.gitbook.io/cyberdrop-dl/quick-
 ## Contributing
 If there is a feature you want, you've discovered a bug, or if you have other general feedback, please create an issue for it!
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for instructions on [opening an Issue](CONTRIBUTING.md#submitting-an-issue). If you want to submit code to the project, follow the [guidelines on how to contribute](CONTRIBUTING.md#submitting-a-pull-request-pr).
+See [CONTRIBUTING.md](https://github.com/jbsparrow/CyberDropDownloader/blob/master/CONTRIBUTING.md) for instructions on [opening an Issue](https://github.com/jbsparrow/CyberDropDownloader/blob/master/CONTRIBUTING.md#submitting-an-issue). If you want to submit code to the project, follow the [guidelines on how to contribute](https://github.com/jbsparrow/CyberDropDownloader/blob/master/CONTRIBUTING.md#submitting-a-pull-request-pr).

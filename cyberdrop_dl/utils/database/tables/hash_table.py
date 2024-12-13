@@ -6,13 +6,11 @@ from typing import TYPE_CHECKING
 
 from rich.console import Console
 
-from cyberdrop_dl.utils.database.table_definitions import create_files, create_hash, create_temp_hash
-from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.database.table_definitions import create_files, create_hash
 
 if TYPE_CHECKING:
     import aiosqlite
     from yarl import URL
-import arrow
 
 console = Console()
 
@@ -23,53 +21,12 @@ class HashTable:
 
     async def startup(self) -> None:
         """Startup process for the HistoryTable."""
-        await self.transer_old_hash_table()
         await self.create_hash_tables()
-        pass
 
     async def create_hash_tables(self):
         await self.db_conn.execute(create_files)
         await self.db_conn.execute(create_hash)
         await self.db_conn.commit()
-
-    async def transer_old_hash_table(self):
-        cursor = await self.db_conn.cursor()
-        results = await cursor.execute("""pragma table_info(hash)""")
-        results = await results.fetchall()
-        if len(results) == 0:
-            return
-        if len(list(filter(lambda x: x[1] == "hash_type", results))) == 0:
-            log("Migrating history database to new schema..")
-            await cursor.execute(create_files)
-            await cursor.execute(create_temp_hash)
-            old_table_results = await cursor.execute(
-                "SELECT * FROM hash",
-                (),
-            )
-            for old_result in await old_table_results.fetchall():
-                folder = old_result[0]
-                dl_name = old_result[1]
-                original_filename = old_result[2]
-                size = old_result[3]
-                hash = old_result[4]
-                referer = old_result[5]
-                hash_type = "md5"
-                file_date = (
-                    Path(folder, dl_name).stat().st_mtime
-                    if Path(folder, dl_name).exists()
-                    else int(arrow.now().float_timestamp)
-                )
-                await cursor.execute(
-                    "INSERT OR IGNORE INTO files (folder, download_filename, original_filename, file_size,  referer,date) VALUES (?,?,?,?,?,?);",
-                    (folder, dl_name, original_filename, size, referer, file_date),
-                )
-                await cursor.execute(
-                    "INSERT OR IGNORE INTO temp_hash (folder, download_filename, hash_type, hash) VALUES (?,?,?,?);",
-                    (folder, dl_name, hash_type, hash),
-                )
-            await cursor.execute("""DROP TABLE IF EXISTS hash""")
-            await cursor.execute("ALTER TABLE temp_hash RENAME TO hash")
-            await self.db_conn.commit()
 
     async def get_file_hash_exists(self, full_path: Path | str, hash_type: str) -> str | None:
         """gets the hash from a complete file path
@@ -81,10 +38,10 @@ class HashTable:
             hash if  exists
         """
         try:
-            # Extract folder, filename, and size from the full path
+            # Extract folder, filename, and size from the full pathg
             path = Path(full_path).absolute()
             folder = str(path.parent)
-            filename = path.name
+            filename = str(path.name)
 
             # Connect to the database
             cursor = await self.db_conn.cursor()
@@ -154,7 +111,7 @@ class HashTable:
     async def insert_or_update_hashes(self, hash_value, hash_type, file):
         try:
             full_path = Path(file).absolute()
-            download_filename = full_path.name
+            download_filename = str(full_path.name)
             folder = str(full_path.parent)
             cursor = await self.db_conn.cursor()
 
@@ -186,9 +143,9 @@ class HashTable:
         try:
             referer = str(referer)
             full_path = Path(file).absolute()
-            file_size = full_path.stat().st_size
-            file_date = full_path.stat().st_mtime
-            download_filename = full_path.name
+            file_size = int(full_path.stat().st_size)
+            file_date = int(full_path.stat().st_mtime)
+            download_filename = str(full_path.name)
             folder = str(full_path.parent)
 
             cursor = await self.db_conn.cursor()
