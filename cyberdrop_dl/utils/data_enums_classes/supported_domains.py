@@ -15,7 +15,7 @@ is_testing = next((tag for tag in PRERELEASE_TAGS if tag in current_version), Fa
 if not is_testing:
     crawlers -= DEBUG_CRAWLERS
 
-forum_crawlers = [crawler for crawler in crawlers if issubclass(crawler, XenforoCrawler)]
+forum_crawlers = {crawler for crawler in crawlers if issubclass(crawler, XenforoCrawler)}
 website_crawlers = crawlers - forum_crawlers
 
 
