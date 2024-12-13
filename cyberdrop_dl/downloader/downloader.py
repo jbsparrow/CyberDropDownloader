@@ -131,8 +131,9 @@ class Downloader:
         log(f"{self.log_prefix} starting: {media_item.url}", 20)
         if not media_item.file_lock_reference_name:
             media_item.file_lock_reference_name = media_item.filename
-        async with self._file_lock_vault.get_lock(media_item.file_lock_reference_name):
-            self.download(media_item)
+        lock = self._file_lock_vault.get_lock(media_item.file_lock_reference_name)
+        async with lock:
+            await self.download(media_item)
 
     @error_handling_wrapper
     @retry
