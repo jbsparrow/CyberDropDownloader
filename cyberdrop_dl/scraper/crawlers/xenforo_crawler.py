@@ -256,6 +256,8 @@ class XenforoCrawler(Crawler):
                 link = self.process_embed(link)
             if not link:
                 continue
+            if str(link).startswith("data:image/svg"):
+                continue
             link = await self.get_absolute_link(link)
             await self.handle_link(scrape_item, link)
             scrape_item.add_children()
@@ -289,6 +291,9 @@ class XenforoCrawler(Crawler):
         filename, ext = get_filename_and_ext(link.name, True)
         new_scrape_item = self.create_scrape_item(scrape_item, link, "Attachments", part_of_album=True)
         await self.handle_file(link, new_scrape_item, filename, ext)
+
+    async def is_confirmation_link(self, link: URL) -> bool:
+        return False
 
     @error_handling_wrapper
     async def handle_confirmation_link(self, link: URL, *, origin: ScrapeItem | None = None) -> URL | None:
@@ -346,7 +351,7 @@ class XenforoCrawler(Crawler):
 
         if isinstance(link, str):
             link = URL(link, encoded=encoded)
-        if any(keyword in link.path for keyword in ("masked", "link-confirmation")):
+        if await self.is_confirmation_link(link) or any(keyword in link.path for keyword in ("link-confirmation",)):
             link = await self.handle_confirmation_link(link)
 
         return link

@@ -24,6 +24,12 @@ class F95ZoneCrawler(XenforoCrawler):
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "f95zone", "F95Zone")
 
+    async def is_confirmation_link(self, link: URL) -> bool:
+        parts = link.parts
+        if (len(parts) >= 1 and parts[1] == "masked") or "f95zone.to/masked/" in str(link):
+            return True
+        return False
+
     @error_handling_wrapper
     async def handle_confirmation_link(self, link: URL, *, origin: ScrapeItem | None = None) -> URL | None:
         """Override to handle protected link confirmation."""
