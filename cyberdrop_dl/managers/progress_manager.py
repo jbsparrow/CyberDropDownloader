@@ -14,7 +14,6 @@ from cyberdrop_dl.ui.progress.scraping_progress import ScrapingProgress
 from cyberdrop_dl.ui.progress.sort_progress import SortProgress
 from cyberdrop_dl.ui.progress.statistic_progress import DownloadStatsProgress, ScrapeStatsProgress
 from cyberdrop_dl.utils.logger import log, log_spacer, log_with_color
-from cyberdrop_dl.utils.utilities import parse_bytes
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -75,12 +74,13 @@ class ProgressManager:
         """Prints the stats of the program."""
         end_time = time.perf_counter()
         runtime = timedelta(seconds=int(end_time - start_time))
-        downloaded_data, unit = parse_bytes(self.file_progress.downloaded_data)
 
         log("Printing Stats...\n", 20)
         log_with_color(f"Run Stats (config: {self.manager.config_manager.loaded_config}):", "cyan", 20)
         log_with_color(f"  Total Runtime: {runtime}", "yellow", 20)
-        log_with_color(f"  Total Downloaded Data: {downloaded_data:.2f} {unit}", "yellow", 20)
+        log_with_color(
+            f"  Total Downloaded Data: {self.file_progress.downloaded_data.human_readable(decimal=True)}", "yellow", 20
+        )
 
         log_spacer(20, "")
         log_with_color("Download Stats:", "cyan", 20)

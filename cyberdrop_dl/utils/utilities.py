@@ -167,15 +167,6 @@ def clear_term():
     os.system("cls" if os.name == "nt" else "clear")
 
 
-def parse_bytes(size: int) -> tuple[int, str]:
-    """Get human repr of bytes as a tuple of (VALUE , UNIT)."""
-    for unit in ["B", "KB", "MB", "GB", "TB", "PB", "EB"]:
-        if size < 1024:
-            return size, unit
-        size /= 1024
-    return size, "YB"
-
-
 def parse_rich_text_by_style(text: Text, style_map: dict, default_style_map_key: str = "default") -> str:
     """Returns `text` as a plain str, parsing each tag in text acording to `style_map`."""
     plain_text = ""
