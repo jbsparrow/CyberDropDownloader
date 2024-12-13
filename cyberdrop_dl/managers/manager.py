@@ -192,7 +192,7 @@ class Manager:
         global_settings = self.config_manager.global_settings_data.model_dump_json(indent=4)
         cookie_files = [str(p) for p in self.path_manager.cookies_dir.rglob("*.txt")] or None
         if cookie_files:
-            cookie_files = f"\n{json.dumps(cookie_files, indent=4, sort_keys=True)}"
+            cookie_files = f"\n{json.dumps(sorted(cookie_files), indent=4, sort_keys=True)}"
 
         log("Starting Cyberdrop-DL Process", 10)
         log(f"Running Version: {__version__}", 10)
