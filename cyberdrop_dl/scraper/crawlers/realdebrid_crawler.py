@@ -17,10 +17,11 @@ if TYPE_CHECKING:
 
 
 class RealDebridCrawler(Crawler):
+    primary_base_domain = URL("https://real-debrid.com")
+
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "real-debrid", "RealDebrid")
         self.headers = {}
-        self.primary_base_domain = URL("https://real-debrid.com")
         self.request_limiter = AsyncLimiter(RATE_LIMIT, 60)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:

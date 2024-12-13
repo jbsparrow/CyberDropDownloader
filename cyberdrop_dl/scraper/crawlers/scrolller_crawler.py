@@ -18,6 +18,8 @@ if TYPE_CHECKING:
 
 
 class ScrolllerCrawler(Crawler):
+    primary_base_domain = URL("https://scrolller.com")
+
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "scrolller", "Scrolller")
         self.scrolller_api = URL("https://api.scrolller.com/api/v2/graphql")

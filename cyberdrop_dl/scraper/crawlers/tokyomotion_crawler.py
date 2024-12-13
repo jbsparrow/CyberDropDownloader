@@ -25,11 +25,11 @@ DATE_PATTERN = re.compile(r"(\d+)\s*(weeks?|days?|hours?|minutes?|seconds?)", re
 
 
 class TokioMotionCrawler(Crawler):
+    primary_base_domain = URL("https://www.tokyomotion.net")
+
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "tokyomotion", "Tokyomotion")
-        self.primary_base_domain = URL("https://www.tokyomotion.net")
         self.request_limiter = AsyncLimiter(10, 1)
-
         self.album_selector = 'a[href^="/album/"]'
         self.image_div_selector = "div[id*='_photo_']"
         self.image_selector = 'a[href^="/photo/"]'

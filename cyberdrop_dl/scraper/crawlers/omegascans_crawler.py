@@ -21,9 +21,10 @@ if TYPE_CHECKING:
 
 
 class OmegaScansCrawler(Crawler):
+    primary_base_domain = URL("https://omegascans.org")
+
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "omegascans", "OmegaScans")
-        self.primary_base_domain = URL("https://omegascans.org")
         self.api_url = "https://api.omegascans.org/chapter/query?page={}&perPage={}&series_id={}"
         self.request_limiter = AsyncLimiter(10, 1)
 

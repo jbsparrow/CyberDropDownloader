@@ -19,6 +19,8 @@ if TYPE_CHECKING:
 
 
 class XBunkrCrawler(Crawler):
+    primary_base_domain = URL("https://xbunkr.com")
+
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "xbunkr", "XBunkr")
         self.request_limiter = AsyncLimiter(10, 1)

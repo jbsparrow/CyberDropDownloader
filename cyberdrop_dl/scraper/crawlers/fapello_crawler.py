@@ -18,6 +18,8 @@ if TYPE_CHECKING:
 
 
 class FapelloCrawler(Crawler):
+    primary_base_domain = URL("https://fapello.su/")
+
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "fapello", "Fapello")
         self.request_limiter = AsyncLimiter(5, 1)

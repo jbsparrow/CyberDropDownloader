@@ -27,9 +27,10 @@ WT_REGEX = re.compile(r'appdata\.wt\s=\s"([^"]+)"')
 
 
 class GoFileCrawler(Crawler):
+    primary_base_domain = URL("https://gofile.io")
+
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "gofile", "GoFile")
-        self.primary_base_domain = URL("https://gofile.io")
         self.api = URL("https://api.gofile.io")
         self.js_address = URL("https://gofile.io/dist/js/global.js")
         self.api_key = manager.config_manager.authentication_data.gofile.api_key

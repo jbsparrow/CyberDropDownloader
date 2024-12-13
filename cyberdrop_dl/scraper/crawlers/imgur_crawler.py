@@ -17,6 +17,8 @@ if TYPE_CHECKING:
 
 
 class ImgurCrawler(Crawler):
+    primary_base_domain = URL("https://imgur.com/")
+
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "imgur", "Imgur")
         self.imgur_api = URL("https://api.imgur.com/3/")

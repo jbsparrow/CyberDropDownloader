@@ -18,9 +18,10 @@ if TYPE_CHECKING:
 
 
 class CoomerCrawler(Crawler):
+    primary_base_domain = URL("https://coomer.su")
+
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "coomer", "Coomer")
-        self.primary_base_domain = URL("https://coomer.su")
         self.ddos_guard_domain = URL("https://*.coomer.su")
         self.api_url = URL("https://coomer.su/api/v1")
         self.request_limiter = AsyncLimiter(4, 1)
