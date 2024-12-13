@@ -243,6 +243,9 @@ class XenforoCrawler(Crawler):
         embed = re.search(HTTP_URL_PATTERNS[0], data) or re.search(HTTP_URL_PATTERNS[1], data)
         return embed.group(0).replace("www.", "") if embed else data
 
+    async def filter_link(self, link: URL) -> URL:
+        return link
+
     async def process_children(self, scrape_item: ScrapeItem, links: list[Tag], selector: str) -> None:
         for link_obj in links:
             link: Tag = link_obj.get(selector) or link_obj.get("href")
@@ -259,6 +262,9 @@ class XenforoCrawler(Crawler):
             if str(link).startswith("data:image/svg"):
                 continue
             link = await self.get_absolute_link(link)
+            link = await self.filter_link(link)
+            if not link:
+                continue
             await self.handle_link(scrape_item, link)
             scrape_item.add_children()
 
