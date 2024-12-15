@@ -94,7 +94,7 @@ def create_choices(
     choices.append(append_last)
 
     separator_indexes = []
-    for group in options_groups[:-1]:
+    for group in options_groups:
         separator_indexes.append(len(group) + (separator_indexes[-1] if separator_indexes else 0))
 
     for count, index in enumerate(separator_indexes):
