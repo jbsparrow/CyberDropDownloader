@@ -10,7 +10,7 @@ from cyberdrop_dl import __version__
 from cyberdrop_dl.ui.prompts import basic_prompts
 from cyberdrop_dl.ui.prompts.defaults import ALL_CHOICE, DONE_CHOICE, EXIT_CHOICE
 from cyberdrop_dl.utils.constants import BROWSERS, RESERVED_CONFIG_NAMES
-from cyberdrop_dl.utils.cookie_extraction import get_cookies_from_browsers
+from cyberdrop_dl.utils.cookie_management import get_cookies_from_browsers
 from cyberdrop_dl.utils.data_enums_classes.supported_domains import FORUMS, WEBSITES
 from cyberdrop_dl.utils.utilities import clear_term
 
@@ -63,16 +63,17 @@ def manage_configs(manager: Manager) -> int:
             "Change default config",
             "Create a new config",
             "Delete a config",
-            "Clear cached responses",
         ],
         "group_2": [
             "Edit current config",
             "Edit authentication config",
-            "Edit global config ",
+            "Edit global config",
         ],
-        "group 3": ["Edit auto cookie extraction settings", "Import cookies now"],
+        "group_3": ["Edit auto cookie extraction settings", "Import cookies now", "Clear cookies"],
+        "group_4": [
+            "Clear cache",
+        ],
     }
-
     choices = basic_prompts.create_choices(OPTIONS)
     return basic_prompts.ask_choice(choices)
 
@@ -123,23 +124,29 @@ def auto_cookie_extraction(manager: Manager):
     manager.config_manager.write_updated_settings_config()
 
 
-def extract_cookies(manager: Manager, *, dry_run: bool = False) -> None:
-    """Asks the user to select browser(s) and domains(s) to import cookies from."""
+def domains_prompt(*, domain_message: str = "Select site(s):") -> list[str]:
+    """Asks the user to select website(s) for cookie actions and cache actions."""
     OPTIONS = [["forum", "file-host"]]
     choices = basic_prompts.create_choices(OPTIONS)
-    domain_type = basic_prompts.ask_choice(choices, message="Select categorie:")
+    domain_type = basic_prompts.ask_choice(choices, message="Select category:")
 
     if domain_type == DONE_CHOICE.value:
-        return
+        return []
 
     all_domains = list(FORUMS.values()) if domain_type == 1 else list(WEBSITES.values())
     domain_choices = [Choice(site) for site in all_domains] + [ALL_CHOICE]
 
-    domains = basic_prompts.ask_checkbox(domain_choices, message="Select site(s) to import cookies from:")
-    browsers = browser_prompt()
-
+    domains = basic_prompts.ask_checkbox(domain_choices, message=domain_message)
     if ALL_CHOICE.value in domains:
         domains = all_domains
+    return domains
+
+
+def extract_cookies(manager: Manager, *, dry_run: bool = False) -> None:
+    """Asks the user to select browser(s) and domains(s) to import cookies from."""
+
+    domains = domains_prompt(domain_message="Select site(s) to import cookies from:")
+    browsers = browser_prompt()
 
     if ALL_CHOICE.value in browsers:
         browsers = list(BROWSERS)
