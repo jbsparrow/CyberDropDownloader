@@ -21,7 +21,7 @@ V6 introduces some breaking changes: Using a more strict config validation logic
 
 It's recommended to do a manual backup of your current `AppData` folder. You won't be able to rollback to a previous version after the transfer is completed.
 
-You can learn more about these changes on the [release announcement](link_here)
+You can learn more about these changes on the [release announcement](https://github.com/jbsparrow/CyberDropDownloader/blob/master/CHANGELOG.md)
 {% endhint %}
 
 {% hint style="warning" %}
@@ -30,7 +30,7 @@ Even after a successful configuration migration, the program may not start if so
 You can use the [Config Options page](reference/configuration-options/README.md) as reference for valid config values
 {% endhint %}
 
-## Import v5 config to V6
+## Import V5 config to V6
 
 Good news! If you have a v5 config, no action is required. The program will automatically detect the config in the current folder and handle the migration process for you.
 
@@ -38,7 +38,7 @@ Please note that after the migration is complete, you may still need to manually
 
 If the migration fails, the database will be rolled back to its previous state. An automatic backup is also made before the migration begins. However, keep in mind that the backup only includes the database, not the config files.
 
-## Import v4 config to V6
+## Import V4 config to V6
 
 Built into Cyberdrop-DL V6 is a tool that allows you to import both your configs and your history DB from a v4 version of Cyberdrop-DL.
 
