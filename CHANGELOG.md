@@ -1,9 +1,49 @@
 # CHANGELOG
 
-All notable changes to this project will be documented here. For more details, visit the wiki: https://script-ware.gitbook.io
+All notable changes to this project will be documented here. For more details, visit the wiki: https://script-ware.gitbook.io/cyberdrop-dl
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [6.0.0] - 2024-12-20
+
+⚠️**BREAKING CHANGES**
+
+> 1. Stricter config validation logic. CDL will verify that every config value and CLI argument is valid before running
+
+> 2. All dedupe and hashing functions has been replaced.
+>   - `xxh128` is now the default hashing algorithm, replacing `md5`
+> - By default, all v5 hashes will be ignored for deduplication matches. You can re-enable md5 with `--add-md5-hash`
+> - It's no longer possible to keep the newest file while deduplicating.
+> - Every file previously downloaded is taken into account for deduplication. Files no longer need to currently exists on disk
+
+> 3. Removed `--sort-cdl-only` option
+
+> 4. The following arguments are deprecated and will be removed in a future version:
+>  - `--download-all-configs`
+>  - `--sort-all-configs`
+>  - `--sort-all-downloads`
+>  - `--main-log-filename`
+>  - `--last-forum-post-filename`
+>  - `--unsupported-urls-filename`
+>  - `--download-error-urls-filename`
+>  - `--scrape-error-urls-filename`
+
+
+This update introduces the following changes:
+- Handle cloudflare challenges responses
+- Update Kemono & Coomer crawlers to use API calls
+- Update Gofile crawler to the new site design
+- Update Bunkr crawler to handle new UUID filename format
+- Rework entire deduplication and hashing logic. Now multiple hashing algorithms are supported
+- Use Pydantic for config and CLI values validation
+- Allow downloading duplicate files on the same run with `--ignore-history`
+- Fix sorting functionality
+- Allow running all configs sequentially using `--config ALL`
+- Better cookies management system
+- Added option to clear cookies for selected websites
+- General improvements and bug fixes
+
 
 ## [5.7.2] - 2024-11-20
 
@@ -18,11 +58,11 @@ This update introduces the following changes:
 
 #### Details
 
-1. User can import cookies from their browser. CDL will use these cookies to login to websites and pass clouflare DDoS challenges. For more information on cookies extraction and configuration, visit: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings#browser-cookies
-2. When using flaresolverr, CDL will try to apply the cookies from the response and make a new request if neccesary.
-3. User can set CDL to automatically import cookies at startup. User must specify browser and domains to export cookies from
-4. Add logic validation for config path values
-5. Remove integrated config edit options. Modifications to the config must be done directly on the config file.
+- User can import cookies from their browser. CDL will use these cookies to login to websites and pass clouflare DDoS challenges. For more information on cookies extraction and configuration, visit: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings#browser-cookies
+- When using flaresolverr, CDL will try to apply the cookies from the response and make a new request if neccesary.
+- User can set CDL to automatically import cookies at startup. User must specify browser and domains to export cookies from
+- Add logic validation for config path values
+- Remove integrated config edit options. Modifications to the config must be done directly on the config file.
 
 
 ## [5.7.1] - 2024-11-05
