@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import calendar
+import json
 import contextlib
+from aiohttp import StreamReader
 import datetime
 from typing import TYPE_CHECKING
 
@@ -250,17 +252,22 @@ class CoomerCrawler(Crawler):
 
         profile_api_url = self.api_url / service / "user" / user / "posts-legacy"
         async with self.request_limiter:
-            profile_json: dict = await self.client.get_json(self.domain, profile_api_url, origin=scrape_item)
-            properties = profile_json.get("properties", {})
+            profile_json, resp = await self.client.get_json(self.domain, profile_api_url, origin=scrape_item, cache_disabled=True)
+            properties = profile_json.get("props", {})
+            cached_response = await self.manager.cache_manager.request_cache.get_response(str(profile_api_url))
+            cached_properties = {} if not cached_response else (await cached_response.json()).get("props", {})
+
+            # Shift cache offsets if necessary
+            new_maximum_offset = await self.shift_offsets(profile_api_url, properties, cached_properties, resp)
 
         user_str = properties.get("name", user)
         if post:
             offset, maximum_offset = None, None
         else:
             offset = int(scrape_item.url.query.get("o", 0))
-            maximum_offset = int(properties.get("count", 0))
+            maximum_offset = new_maximum_offset
 
-        returnValues = {
+        return {
             "service": service,
             "user": user,
             "post": post,
@@ -269,7 +276,91 @@ class CoomerCrawler(Crawler):
             "maximum_offset": maximum_offset,
         }
 
-        return returnValues
+    async def shift_offsets(self, api_url: URL, new_properties: dict, cached_properties: dict, response) -> int:
+        """
+        Adjust cached responses for shifted offsets based on the difference in the number of posts.
+
+        Args:
+            api_url (URL): The legacy API URL.
+            new_properties (dict): Properties from the current response.
+            cached_properties (dict): Properties from the cached response.
+
+        Returns:
+            int: The updated maximum offset.
+        """
+        new_count = int(new_properties.get("count", 0))
+        cached_count = int(cached_properties.get("count", 0))
+        shift = new_count - cached_count
+
+        if shift > 0:
+            log(f"{shift} new posts detected. Adjusting cache...", 20)
+
+            # Gather all cached posts data
+            cached_posts = []
+            offset = 0
+            while True:
+                paginated_api_url = api_url.with_query({"o": offset})
+                cache_key = self.manager.cache_manager.request_cache.create_key("GET", paginated_api_url)
+                cached_response = await self.manager.cache_manager.request_cache.get_response(cache_key)
+
+                if not cached_response:
+                    break  # Stop if no cached response exists for the current offset
+
+                # Parse the cached JSON content
+                cached_json = cached_response.json()
+                cached_posts.extend(cached_json.get("items", []))
+                offset += 50
+
+            # Add placeholders for new posts
+            all_posts = ["placeholder"] * shift + cached_posts
+
+            # Generate new pages with 50 posts each
+            new_pages = [
+                all_posts[i : i + 50] for i in range(0, len(all_posts), 50)
+            ]
+
+            # Adjust or invalidate pages based on placeholders
+            for page_index, page_posts in enumerate(new_pages):
+                offset = page_index * 50
+                paginated_api_url = api_url.with_query({"o": offset})
+                cache_key = self.manager.cache_manager.request_cache.create_key("GET", paginated_api_url)
+
+                if "placeholder" in page_posts:
+                    # Invalidate cache for this page
+                    await self.manager.cache_manager.request_cache.delete_url(cache_key)
+                else:
+                    # Update cache with shifted posts
+                    cached_response = await self.manager.cache_manager.request_cache.get_response(cache_key)
+                    if cached_response:
+                        # Parse, adjust, and re-serialize the JSON
+                        cached_json = await cached_response.json()
+                        cached_json = page_posts
+                        adjusted_content = json.dumps(cached_json).encode("utf-8")
+
+                        # Replace the content and text in the response object
+                        cached_response._body = adjusted_content
+                        cached_response.reset()
+
+                        # Save the updated response back to the cache
+                        await self.manager.cache_manager.request_cache.save_response(
+                            cached_response,
+                            cache_key,
+                            datetime.datetime.now()
+                            + self.manager.config_manager.global_settings_data.rate_limiting_options.file_host_cache_length,
+                        )
+
+            # Save the updated legacy-posts cache
+            legacy_cache_key = self.manager.cache_manager.request_cache.create_key("GET", api_url)
+            await self.manager.cache_manager.request_cache.save_response(
+                response,  # Raw response remains unmodified for legacy-posts
+                legacy_cache_key,
+                datetime.datetime.now()
+                + self.manager.config_manager.global_settings_data.rate_limiting_options.file_host_cache_length,
+            )
+        else:
+            log("No new posts detected. Cache remains unchanged.", 20)
+
+        return new_count
 
     @staticmethod
     def parse_datetime(date: str) -> int:
