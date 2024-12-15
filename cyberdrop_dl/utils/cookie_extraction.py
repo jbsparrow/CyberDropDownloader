@@ -91,3 +91,14 @@ def update_forum_config_cookies(manager: Manager, forum: str, cookie: CookieJar)
         forum_dict[f"{forum_domain}_xf_user_cookie"] = cookie._cookies[forum_domain]["/"]["xf_user"].value
         forum_dict[f"{forum_domain}_xf_user_cookie"] = cookie._cookies["www." + forum_domain]["/"]["xf_user"].value
     auth_args.forums = auth_args.forums.model_copy(update=forum_dict)
+
+
+def clear_cookies(manager: Manager, domains: list[str] | None = None) -> None:
+    if not domains and domains is not None:
+        raise ValueError("No domains selected")
+
+    for domain in domains:
+        cookie_jar = MozillaCookieJar()
+        manager.path_manager.cookies_dir.mkdir(parents=True, exist_ok=True)
+        cookie_file_path = manager.path_manager.cookies_dir / f"{domain}.txt"
+        cookie_jar.save(cookie_file_path, ignore_discard=True, ignore_expires=True)

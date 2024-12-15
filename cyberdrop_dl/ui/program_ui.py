@@ -15,6 +15,7 @@ from cyberdrop_dl.dependencies import browser_cookie3
 from cyberdrop_dl.ui.prompts import user_prompts
 from cyberdrop_dl.ui.prompts.basic_prompts import ask_dir_path, enter_to_continue
 from cyberdrop_dl.ui.prompts.defaults import DONE_CHOICE, EXIT_CHOICE
+from cyberdrop_dl.utils.cookie_extraction import clear_cookies
 from cyberdrop_dl.utils.transfer.transfer_v4_config import transfer_v4_config
 from cyberdrop_dl.utils.transfer.transfer_v4_db import transfer_v4_db
 from cyberdrop_dl.utils.utilities import check_latest_pypi, clear_term, open_in_text_editor
@@ -151,17 +152,24 @@ class ProgramUI:
             1: self._change_default_config,
             2: self._create_new_config,
             3: self._delete_config,
-            4: self._delete_cached_responses,
-            5: self._edit_config,
-            6: self._edit_auth_config,
-            7: self._edit_global_config,
-            8: self._edit_auto_cookies_extration,
-            9: self._import_cookies_now,
+            4: self._edit_config,
+            5: self._edit_auth_config,
+            6: self._edit_global_config,
+            7: self._edit_auto_cookies_extration,
+            8: self._import_cookies_now,
+            9: self._clear_cookies,
+            10: self._clear_cache,
         }
         answer = user_prompts.manage_configs(self.manager)
         return self._process_answer(answer, options_map)
 
-    def _delete_cached_responses(self) -> None:
+    def _clear_cookies(self) -> None:
+        domains = user_prompts.domains_prompt(domain_message="Select site(s) to clear cookies for:")
+        clear_cookies(self.manager, domains)
+        console.print("Finished clearing cookies", style="green")
+        enter_to_continue()
+
+    def _clear_cache(self) -> None:
         self.print_error("function reserved for future version")
 
     def _edit_auth_config(self) -> None:
