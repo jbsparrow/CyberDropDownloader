@@ -15,7 +15,7 @@ from cyberdrop_dl.dependencies import browser_cookie3
 from cyberdrop_dl.ui.prompts import user_prompts
 from cyberdrop_dl.ui.prompts.basic_prompts import ask_dir_path, enter_to_continue
 from cyberdrop_dl.ui.prompts.defaults import DONE_CHOICE, EXIT_CHOICE
-from cyberdrop_dl.utils.cookie_extraction import clear_cookies
+from cyberdrop_dl.utils.cookie_management import clear_cookies
 from cyberdrop_dl.utils.transfer.transfer_v4_config import transfer_v4_config
 from cyberdrop_dl.utils.transfer.transfer_v4_db import transfer_v4_db
 from cyberdrop_dl.utils.utilities import check_latest_pypi, clear_term, open_in_text_editor
