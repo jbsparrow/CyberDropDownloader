@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Wiki
+    about: Cyberdrop's documentation.
+    url: https://script-ware.gitbook.io/cyberdrop-dl
+  - name: Discord Server
+    about: If you still have questions and need help using Cyberdrop-DL, please ask here. Someone from the community may be able to help you.
+    url: https://discord.com/invite/P5nsbKErwy
