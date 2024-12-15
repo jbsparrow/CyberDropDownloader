@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Annotated
 
 import humanfriendly
@@ -145,3 +145,8 @@ class CacheDuration(BaseModel):
             return humanfriendly.format_timespan(self.total_seconds(), detailed=False)
         elif isinstance(self.duration, timedelta):
             return humanfriendly.format_timespan(self.duration.total_seconds(), detailed=False)
+
+    def __radd__(self, other):
+        if isinstance(other, datetime) or isinstance(other, timedelta):
+            return other + self.duration
+        return NotImplemented
