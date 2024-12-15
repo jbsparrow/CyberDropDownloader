@@ -58,7 +58,7 @@ This update introduces the following changes:
 
 #### Details
 
-- User can import cookies from their browser. CDL will use these cookies to login to websites and pass clouflare DDoS challenges. For more information on cookies extraction and configuration, visit: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings#browser-cookies
+- User can import cookies from their browser. CDL will use these cookies to login to websites and pass clouflare DDoS challenges. For more information on cookies extraction and configuration, visit: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/browser_cookies
 - When using flaresolverr, CDL will try to apply the cookies from the response and make a new request if neccesary.
 - User can set CDL to automatically import cookies at startup. User must specify browser and domains to export cookies from
 - Add logic validation for config path values
@@ -87,7 +87,7 @@ This update introduces the following changes:
 
 #### Details:
 
-- Users can limit the number of items to scrape by type, using the `--maximum-number-of-children` parameter. For more details on how to use this feature, visit the wiki: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings#download-options
+- Users can limit the number of items to scrape by type, using the `--maximum-number-of-children` parameter. For more details on how to use this feature, visit the wiki: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/download_options
 - Add support for scraping a users' coomer favorites by allowing the user to pass the coomer favorites page URL as an input URL (https://coomer.su/favorites). This requires them to have their coomer session token in the `authentication.yaml` file.
 - Add real-debrid integration to download from any site that they support (`mega.nz`,`rapidgator`, `google drive`, `k2s`, etc). User needs to provide their API key in the `authentication.yaml` file in order to allow downloads
 - Nekohouse URLs can now be scraped and downloaded by CDL
@@ -124,7 +124,7 @@ This update introduces the following changes:
 - Add support for both password protected files and folders on Cyberfile. Users can include the password as a query parameter in the input URL, adding `?password=<URL_PASSWORD>` to it. Example: `https://cyberfile.me/folder/xUGg?password=1234`
 - Replace built-in log file handler with rich handler for better error reports
 - UI changes: remove redundant 'X of Y files' from every progress bar, sort scrape and download error by reverse frequency, use equal height for top row UI, fix padding issues, show unsupported URLs stats at the end
-- Add `whitelist` filter, `autostart` and custom `download_dir` options for jdownloader. For more details, visit the wiki: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings#runtime-options
+- Add `whitelist` filter, `autostart` and custom `download_dir` options for jdownloader. For more details, visit the wiki: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/runtime_options
 - Added a "Check for Updates" UI option and improved the update check logic to check for new testing versions.
 - Fix error during program exit when referers table no longer exists
 - Prevents crashes when there are insufficient permissions to move a file
@@ -313,7 +313,7 @@ This update introduces the following changes:
 - You can have multiple categories in the URLs.txt file, and the links will be grouped accordingly.
 
 
-For more details, visit the wiki: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings#sorting
+For more details, visit the wiki: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/sorting
 
 
 ## [5.6.30] - 2024-09-21
