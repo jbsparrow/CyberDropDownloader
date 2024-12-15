@@ -36,14 +36,6 @@ If this is set to `null` (the default), `download_dir` is used instead
 
 Setting this to `true` will allow Cyberdrop-DL to sort downloads after a run is complete.
 
-## `sort_cdl_only`
-
-| Type           | Default  |
-|----------------|----------|
-| `bool` | `false`|
-
-Setting this to `true` will sort only files that were downloaded by Cyberdrop-DL. Does nothing if `sort_downloads` is set to `false`
-
 ## `sort_folder`
 
 | Type           | Default  |
@@ -118,6 +110,8 @@ Unique Path Flags:
 > `duration`: video runtime
 >
 > `fps`: ex. 24
+>
+> `length`: same as `duration`
 >
 > `height`: vertical pixel count
 >

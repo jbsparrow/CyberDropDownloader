@@ -136,22 +136,21 @@ Bulk asynchronous downloader for multiple file hosts
 
 options:
   -h, --help            show this help message and exit
-  -V, --version         show version number and exit
+  -V, --version         show program version number and exit
 
 CLI-only Options:
-  LINK(S)               link(s) to content to download (passing multiple links is supported) (default: [])
-  --appdata-folder APPDATA_FOLDER
-                        AppData folder path (default: <CWD>)
+  LINK(S)               link(s) to content to download (passing multiple links is supported)
+  --appdata-folder APPDATA_FOLDER AppData folder path
   --completed-after COMPLETED_AFTER
-                        only download completed downloads at or after this date (default: None)
+                        only download completed downloads at or after this date
   --completed-before COMPLETED_BEFORE
-                        only download completed downloads at or before this date (default: None)
-  --config CONFIG       name of config to load (default: None)
+                        only download completed downloads at or before this date
+  --config CONFIG       name of config to load
   --config-file CONFIG_FILE
-                        path to the CDL settings.yaml file to load (default: None)
+                        path to the CDL settings.yaml file to load
   --download            skips UI, start download inmediatly
   --max-items-retry MAX_ITEMS_RETRY
-                        max number of links to retry (default: 0)
+                        max number of links to retry
   --no-ui               disables the UI/progress view entirely
   --retry-all           retry all downloads
   --retry-failed        retry failed downloads
@@ -232,7 +231,6 @@ sorting:
   --sort-downloads, --no-sort-downloads
   --sort-folder SORT_FOLDER
   --scan-folder SCAN_FOLDER
-  --sort-cdl-only, --no-sort-cdl-only
   --sort-incremementer-format SORT_INCREMEMENTER_FORMAT
   --sorted-audio SORTED_AUDIO
   --sorted-image SORTED_IMAGE
@@ -269,6 +267,7 @@ Deprecated:
                         Skip the UI and go straight to downloading (runs all configs sequentially)
   --sort-all-configs    Sort all configs sequentially
   --sort-all-downloads  sort all downloads, not just those downloaded by Cyberdrop-DL
+  --sort-cdl-only       only sort files downloaded by Cyberdrop-DL
   --main-log-filename MAIN_LOG_FILENAME
   --last-forum-post-filename LAST_FORUM_POST_FILENAME
   --unsupported-urls-filename UNSUPPORTED_URLS_FILENAME
