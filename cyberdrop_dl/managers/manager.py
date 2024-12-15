@@ -77,6 +77,7 @@ class Manager:
         self.config_manager = ConfigManager(self)
         self.config_manager.startup()
         self.args_consolidation()
+        self.cache_manager.load_request_cache()
         self.vi_mode = self.config_manager.global_settings_data.ui_options.vi_mode
 
         self.path_manager.startup()

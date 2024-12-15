@@ -54,8 +54,6 @@ class ConfigManager:
             self.pydantic_config = True
             self.manager.cache_manager.save("pydantic_config", True)
 
-        self.manager.cache_manager.load_request_cache()
-
     def load_configs(self) -> None:
         """Loads all the configs."""
         self._load_authentication_config()
