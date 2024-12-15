@@ -1,0 +1,100 @@
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > [!IMPORTANT]
+        > 1. Make sure to read the wiki before opening a bug report
+        > 2. Update to the latest release of Cyberdrop-DL before opening an issue.
+
+        Frecuently ask questions can be found here: https://script-ware.gitbook.io/cyberdrop-dl/frequently-asked-questions
+
+        Latest release:
+        [![PyPI - Version](https://img.shields.io/pypi/v/cyberdrop-dl-patched)](https://pypi.org/project/cyberdrop-dl-patched/)
+  - id: prechecks
+    attributes:
+      description: |
+        Before opening an issue, please confirm that you have read the relevant sections of the project's wiki to ensure your question or issue hasn’t already been addressed.
+      label: I have taken steps to troubleshoot my issue first
+      options:
+        - label: "I'm using the latest version of `cyberdrop-dl-patched`"
+          required: true
+        - label: "I’ve read the wiki and my issue isn’t already covered."
+          required: true
+        - label: "I’ve checked existing issues to ensure this hasn’t been reported already."
+          required: true
+    type: checkboxes
+  - id: bug-description
+    attributes:
+      label: Describe the bug
+      placeholder: |
+        A clear and concise description of what the bug is.
+        1. Describe the bug accurately.
+        2. Provide an example URL that showcases it (if applicable)
+        3. Add screenshots to help explain your problem (if applicable)
+    type: textarea
+    validations:
+      required: true
+  - id: desired-result
+    attributes:
+      label: Desired result
+      placeholder: Describe the desired result.
+    type: textarea
+    validations:
+      required: true
+  - id: reproduce-steps
+    attributes:
+      label: Steps to help reproduce the behavior
+      placeholder: |
+          1. In this environment...
+          2. With this config...
+          3. Run '...'
+          4. See error...
+    type: textarea
+    validations:
+      required: true
+  - id: logs
+    attributes:
+      description: |
+        You need to include the `downloader.log` file after the issue occurs. Majority of the time it's the only way to diagnose issues.
+        Please do NOT copy the content into the textbox, add the file as an attachment.
+
+        Bug reports without a log file will be closed
+      label: Relevant logs
+    type: textarea
+    validations:
+      required: true
+  - id: environment
+    attributes:
+      description: What operating system, version, and/or environment are you working with?
+      label: Operating system/environment
+      placeholder: "Example: Windows 11 24H2"
+    type: input
+    validations:
+      required: true
+  - id: python-version
+    attributes:
+      description: |
+        What implementation and version of Python are you working with?
+        CPython is assumed unless indicated otherwise.
+      label: Python Version
+      placeholder: "Example: 3.12.0"
+    type: input
+    validations:
+      required: true
+  - id: cyberdrop-dl-version
+    attributes:
+      description: What version of `cyberdrop-dl-patched` are you encountering this issue with?
+      label: Cyberdrop-DL version
+    type: input
+    validations:
+      required: true
+  - id: anything-else
+    attributes:
+      description: Anything that will give us more context about the issue you are encountering!
+      label: Links, references, and/or additional comments?
+    type: textarea
+description: File a bug report
+labels: [ "bug" ]
+assignees: [ jbsparrow ]
+title: "[BUG] <enter a bug description here>"
+name: Bug Report
