@@ -82,7 +82,7 @@ class CoomerCrawler(Crawler):
         """Scrapes a profile."""
         user_info = await self.get_user_info(scrape_item)
         service, user, user_str = user_info["service"], user_info["user"], user_info["user_str"]
-        offset, maximum_offset = user_info["offset"], user_info["maximum_offset"]
+        offset, maximum_offset, post_limit = user_info["offset"], user_info["maximum_offset"], user_info["limit"]
         initial_offset = offset
         api_call = self.api_url / service / "user" / user
         scrape_item.type = FILE_HOST_PROFILE
@@ -124,7 +124,7 @@ class CoomerCrawler(Crawler):
                         query_api_call,
                         origin=scrape_item,
                     )
-                offset += 50
+                offset += post_limit
                 if not JSON_Resp:
                     break
 
@@ -266,6 +266,7 @@ class CoomerCrawler(Crawler):
         else:
             offset = int(scrape_item.url.query.get("o", 0))
             maximum_offset = new_maximum_offset
+        limit = properties.get("limit", 50)
 
         return {
             "service": service,
@@ -274,9 +275,10 @@ class CoomerCrawler(Crawler):
             "user_str": user_str,
             "offset": offset,
             "maximum_offset": maximum_offset,
+            "limit": limit,
         }
 
-    async def shift_offsets(self, api_url: URL, new_properties: dict, cached_properties: dict, response) -> int:
+    async def shift_offsets(self, api_url: URL, new_properties: dict, cached_properties: dict, response) -> None:
         """
         Adjust cached responses for shifted offsets based on the difference in the number of posts.
 
@@ -289,9 +291,12 @@ class CoomerCrawler(Crawler):
         Returns:
             int: The updated maximum offset.
         """
-        user_str = new_properties.get("artist", {}).get('name', "Unknown")
+        user_str = new_properties.get('name', "Unknown")
         new_count = int(new_properties.get("count", 0))
         cached_count = int(cached_properties.get("count", 0))
+        if cached_count == 0:
+            return
+        post_limit = int(new_properties.get("limit", 50))
         shift = new_count - cached_count
 
         if shift > 0:
@@ -312,10 +317,10 @@ class CoomerCrawler(Crawler):
                 offset += 50
 
             all_posts = ["placeholder"] * shift + cached_posts
-            new_pages = [all_posts[i:i + 50] for i in range(0, len(all_posts), 50)]
+            new_pages = [all_posts[i:i + post_limit] for i in range(0, len(all_posts), post_limit)]
 
             for page_index, page_posts in enumerate(new_pages):
-                offset = page_index * 50
+                offset = page_index * post_limit
                 paginated_api_url = api_url.with_query({"o": offset})
                 cache_key = self.manager.cache_manager.request_cache.create_key("GET", paginated_api_url)
 
@@ -346,7 +351,7 @@ class CoomerCrawler(Crawler):
                 + self.manager.config_manager.global_settings_data.rate_limiting_options.file_host_cache_length,
             )
 
-        return new_count
+        return
 
     @staticmethod
     def parse_datetime(date: str) -> int:
