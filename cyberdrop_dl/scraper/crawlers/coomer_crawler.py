@@ -95,34 +95,11 @@ class CoomerCrawler(Crawler):
         while offset <= maximum_offset:
             async with self.request_limiter:
                 query_api_call = api_call.with_query({"o": offset})
-                if offset == initial_offset:
-                    JSON_Resp, resp = await self.client.get_json(
-                        self.domain,
-                        query_api_call,
-                        origin=scrape_item,
-                        cache_disabled=True,
-                    )
-                    # Check cache to see if responses match
-                    cached_response = await self.manager.cache_manager.request_cache.get_response(str(query_api_call))
-                    if cached_response is None:
-                        cached_json = None
-                    else:
-                        cached_json = await cached_response.json()
-                    if JSON_Resp != cached_json:
-                        log(f"New posts found for {user_str}, invalidating cache", 20)
-                        await self.manager.cache_manager.request_cache.delete_url(api_call)
-                        await self.manager.cache_manager.request_cache.save_response(
-                            resp,
-                            None,
-                            datetime.datetime.now()
-                            + self.manager.config_manager.global_settings_data.rate_limiting_options.file_host_cache_length,
-                        )
-                else:
-                    JSON_Resp = await self.client.get_json(
-                        self.domain,
-                        query_api_call,
-                        origin=scrape_item,
-                    )
+                JSON_Resp = await self.client.get_json(
+                    self.domain,
+                    query_api_call,
+                    origin=scrape_item,
+                )
                 offset += post_limit
                 if not JSON_Resp:
                     break
