@@ -119,12 +119,6 @@ async def filter_fn(response: ClientResponse) -> bool:
         url_part_responses = {"data": "Data page", "onlyfans": "Onlyfans page", "fansly": "Fansly page"}
         if response.url.parts[1] in url_part_responses:
             return False, url_part_responses[response.url.parts[1]]
-        current_offset = int(response.url.query.get("o", 0))
-        maximum_offset = int(response.url.query.get("omax", 0))
-        return (
-            current_offset != maximum_offset,
-            "Last page not reached" if current_offset != maximum_offset else "Last page reached",
-        )
 
     async def check_kemono_page(response: ClientResponse):
         url_part_responses = {
@@ -143,12 +137,6 @@ async def filter_fn(response: ClientResponse) -> bool:
             return False, url_part_responses[response.url.parts[1]]
         elif "discord/channel" in response.url.parts:
             return False, "Discord channel page"
-        current_offset = int(response.url.query.get("o", 0))
-        maximum_offset = int(response.url.query.get("omax", 0))
-        return (
-            current_offset != maximum_offset,
-            "Last page not reached" if current_offset != maximum_offset else "Last page reached",
-        )
 
     filter_dict = {
         "celebforum.to": check_xenforo_last_page,

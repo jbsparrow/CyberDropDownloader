@@ -94,7 +94,7 @@ class CoomerCrawler(Crawler):
 
         while offset <= maximum_offset:
             async with self.request_limiter:
-                query_api_call = api_call.with_query({"o": offset, "omax": maximum_offset})
+                query_api_call = api_call.with_query({"o": offset})
                 if offset == initial_offset:
                     JSON_Resp, resp = await self.client.get_json(
                         self.domain,
@@ -259,15 +259,15 @@ class CoomerCrawler(Crawler):
             cached_properties = {} if not cached_response else (await cached_response.json()).get("props", {})
 
             # Shift cache offsets if necessary
-            new_maximum_offset = await self.shift_offsets(profile_api_url, properties, cached_properties, resp)
+            await self.shift_offsets(profile_api_url, properties, cached_properties, resp)
 
+        limit = properties.get("limit", 50)
         user_str = properties.get("name", user)
         if post:
             offset, maximum_offset = None, None
         else:
             offset = int(scrape_item.url.query.get("o", 0))
-            maximum_offset = new_maximum_offset
-        limit = properties.get("limit", 50)
+            maximum_offset = maximum_offset = (int(properties.get("count", 0)) // limit) * limit
 
         return {
             "service": service,
