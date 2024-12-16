@@ -314,7 +314,7 @@ class CoomerCrawler(Crawler):
 
                 cached_json = await cached_response.json()
                 cached_posts.extend(cached_json)
-                offset += 50
+                offset += post_limit
 
             all_posts = ["placeholder"] * shift + cached_posts
             new_pages = [all_posts[i:i + post_limit] for i in range(0, len(all_posts), post_limit)]
