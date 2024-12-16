@@ -1,10 +1,9 @@
 from __future__ import annotations
 
 import calendar
-import json
 import contextlib
-from aiohttp import StreamReader
 import datetime
+import json
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
@@ -252,7 +251,9 @@ class CoomerCrawler(Crawler):
 
         profile_api_url = self.api_url / service / "user" / user / "posts-legacy"
         async with self.request_limiter:
-            profile_json, resp = await self.client.get_json(self.domain, profile_api_url, origin=scrape_item, cache_disabled=True)
+            profile_json, resp = await self.client.get_json(
+                self.domain, profile_api_url, origin=scrape_item, cache_disabled=True
+            )
             properties = profile_json.get("props", {})
             cached_response = await self.manager.cache_manager.request_cache.get_response(str(profile_api_url))
             cached_properties = {} if not cached_response else (await cached_response.json()).get("props", {})
@@ -291,7 +292,7 @@ class CoomerCrawler(Crawler):
         Returns:
             int: The updated maximum offset.
         """
-        user_str = new_properties.get('name', "Unknown")
+        user_str = new_properties.get("name", "Unknown")
         new_count = int(new_properties.get("count", 0))
         cached_count = int(cached_properties.get("count", 0))
         if cached_count == 0:
@@ -317,7 +318,7 @@ class CoomerCrawler(Crawler):
                 offset += post_limit
 
             all_posts = ["placeholder"] * shift + cached_posts
-            new_pages = [all_posts[i:i + post_limit] for i in range(0, len(all_posts), post_limit)]
+            new_pages = [all_posts[i : i + post_limit] for i in range(0, len(all_posts), post_limit)]
 
             for page_index, page_posts in enumerate(new_pages):
                 offset = page_index * post_limit
