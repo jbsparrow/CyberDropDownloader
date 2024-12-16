@@ -58,7 +58,6 @@ class KemonoCrawler(Crawler):
         user_info = await self.get_user_info(scrape_item)
         service, user, user_str = user_info["service"], user_info["user"], user_info["user_str"]
         offset, maximum_offset, post_limit = user_info["offset"], user_info["maximum_offset"], user_info["limit"]
-        initial_offset = offset
         api_call = self.api_url / service / "user" / user
         scrape_item.type = FILE_HOST_PROFILE
         scrape_item.children = scrape_item.children_limit = 0
