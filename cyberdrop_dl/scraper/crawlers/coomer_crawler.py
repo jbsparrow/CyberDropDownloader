@@ -284,18 +284,19 @@ class CoomerCrawler(Crawler):
             api_url (URL): The legacy API URL.
             new_properties (dict): Properties from the current response.
             cached_properties (dict): Properties from the cached response.
+            response: The latest HTTP response to save to the cache.
 
         Returns:
             int: The updated maximum offset.
         """
+        user_str = new_properties.get("artist", {}).get('name', "Unknown")
         new_count = int(new_properties.get("count", 0))
         cached_count = int(cached_properties.get("count", 0))
         shift = new_count - cached_count
 
         if shift > 0:
-            log(f"{shift} new posts detected. Adjusting cache...", 20)
+            log(f"{shift} new posts detected for {user_str} (Coomer). Adjusting cache...", 20)
 
-            # Gather all cached posts data
             cached_posts = []
             offset = 0
             while True:
@@ -306,20 +307,13 @@ class CoomerCrawler(Crawler):
                 if not cached_response:
                     break  # Stop if no cached response exists for the current offset
 
-                # Parse the cached JSON content
-                cached_json = cached_response.json()
-                cached_posts.extend(cached_json.get("items", []))
+                cached_json = await cached_response.json()
+                cached_posts.extend(cached_json)
                 offset += 50
 
-            # Add placeholders for new posts
             all_posts = ["placeholder"] * shift + cached_posts
+            new_pages = [all_posts[i:i + 50] for i in range(0, len(all_posts), 50)]
 
-            # Generate new pages with 50 posts each
-            new_pages = [
-                all_posts[i : i + 50] for i in range(0, len(all_posts), 50)
-            ]
-
-            # Adjust or invalidate pages based on placeholders
             for page_index, page_posts in enumerate(new_pages):
                 offset = page_index * 50
                 paginated_api_url = api_url.with_query({"o": offset})
@@ -328,20 +322,15 @@ class CoomerCrawler(Crawler):
                 if "placeholder" in page_posts:
                     # Invalidate cache for this page
                     await self.manager.cache_manager.request_cache.delete_url(cache_key)
+                    log(f"Invalidated cached page: {paginated_api_url}", 20)
                 else:
-                    # Update cache with shifted posts
                     cached_response = await self.manager.cache_manager.request_cache.get_response(cache_key)
                     if cached_response:
-                        # Parse, adjust, and re-serialize the JSON
-                        cached_json = await cached_response.json()
-                        cached_json = page_posts
-                        adjusted_content = json.dumps(cached_json).encode("utf-8")
-
-                        # Replace the content and text in the response object
+                        # Update the cached response
+                        adjusted_content = json.dumps(page_posts).encode("utf-8")
                         cached_response._body = adjusted_content
                         cached_response.reset()
 
-                        # Save the updated response back to the cache
                         await self.manager.cache_manager.request_cache.save_response(
                             cached_response,
                             cache_key,
@@ -349,16 +338,13 @@ class CoomerCrawler(Crawler):
                             + self.manager.config_manager.global_settings_data.rate_limiting_options.file_host_cache_length,
                         )
 
-            # Save the updated legacy-posts cache
             legacy_cache_key = self.manager.cache_manager.request_cache.create_key("GET", api_url)
             await self.manager.cache_manager.request_cache.save_response(
-                response,  # Raw response remains unmodified for legacy-posts
+                response,
                 legacy_cache_key,
                 datetime.datetime.now()
                 + self.manager.config_manager.global_settings_data.rate_limiting_options.file_host_cache_length,
             )
-        else:
-            log("No new posts detected. Cache remains unchanged.", 20)
 
         return new_count
 
