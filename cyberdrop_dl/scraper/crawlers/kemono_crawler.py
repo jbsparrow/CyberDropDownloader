@@ -115,7 +115,7 @@ class KemonoCrawler(Crawler):
         api_call = self.api_url / service / "user" / user / "post" / post_id
         async with self.request_limiter:
             post = await self.client.get_json(self.domain, api_call, origin=scrape_item)
-        await self.handle_post_content(scrape_item, post, user, user_str)
+        await self.handle_post_content(scrape_item, post["post"], user, user_str)
 
     @error_handling_wrapper
     async def handle_post_content(self, scrape_item: ScrapeItem, post: dict, user: str, user_str: str) -> None:
