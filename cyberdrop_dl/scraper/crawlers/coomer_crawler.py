@@ -281,17 +281,24 @@ class CoomerCrawler(Crawler):
 
             cached_posts = []
             offset = 0
-            while True:
+            invalidate = False
+            max_offset = (new_count // post_limit ) * post_limit
+            for offset in range(0, max_offset + 1, post_limit):
                 paginated_api_url = api_url.with_query({"o": offset})
                 cache_key = self.manager.cache_manager.request_cache.create_key("GET", paginated_api_url)
                 cached_response = await self.manager.cache_manager.request_cache.get_response(cache_key)
 
                 if not cached_response:
-                    break  # Stop if no cached response exists for the current offset
+                    invalidate = True
+                    continue
+                    
+                if invalidate:
+                    await self.manager.cache_manager.request_cache.delete_url(cache_key)
+                    log(f"Invalidated cached page: {paginated_api_url}", 20)
+                    continue
 
                 cached_json = await cached_response.json()
                 cached_posts.extend(cached_json)
-                offset += post_limit
 
             all_posts = ["placeholder"] * shift + cached_posts
             new_pages = [all_posts[i : i + post_limit] for i in range(0, len(all_posts), post_limit)]
