@@ -3,6 +3,7 @@ from __future__ import annotations
 import calendar
 import contextlib
 import datetime
+import json
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
@@ -80,8 +81,7 @@ class CoomerCrawler(Crawler):
         """Scrapes a profile."""
         user_info = await self.get_user_info(scrape_item)
         service, user, user_str = user_info["service"], user_info["user"], user_info["user_str"]
-        offset, maximum_offset = user_info["offset"], user_info["maximum_offset"]
-        initial_offset = offset
+        offset, maximum_offset, post_limit = user_info["offset"], user_info["maximum_offset"], user_info["limit"]
         api_call = self.api_url / service / "user" / user
         scrape_item.type = FILE_HOST_PROFILE
         scrape_item.children = scrape_item.children_limit = 0
@@ -93,36 +93,13 @@ class CoomerCrawler(Crawler):
 
         while offset <= maximum_offset:
             async with self.request_limiter:
-                query_api_call = api_call.with_query({"o": offset, "omax": maximum_offset})
-                if offset == initial_offset:
-                    JSON_Resp, resp = await self.client.get_json(
-                        self.domain,
-                        query_api_call,
-                        origin=scrape_item,
-                        cache_disabled=True,
-                    )
-                    # Check cache to see if responses match
-                    cached_response = await self.manager.cache_manager.request_cache.get_response(str(query_api_call))
-                    if cached_response is None:
-                        cached_json = None
-                    else:
-                        cached_json = await cached_response.json()
-                    if JSON_Resp != cached_json:
-                        log(f"New posts found for {user_str}, invalidating cache", 20)
-                        await self.manager.cache_manager.request_cache.delete_url(api_call)
-                        await self.manager.cache_manager.request_cache.save_response(
-                            resp,
-                            None,
-                            datetime.datetime.now()
-                            + self.manager.config_manager.global_settings_data.rate_limiting_options.file_host_cache_length,
-                        )
-                else:
-                    JSON_Resp = await self.client.get_json(
-                        self.domain,
-                        query_api_call,
-                        origin=scrape_item,
-                    )
-                offset += 50
+                query_api_call = api_call.with_query({"o": offset})
+                JSON_Resp = await self.client.get_json(
+                    self.domain,
+                    query_api_call,
+                    origin=scrape_item,
+                )
+                offset += post_limit
                 if not JSON_Resp:
                     break
 
@@ -250,26 +227,119 @@ class CoomerCrawler(Crawler):
 
         profile_api_url = self.api_url / service / "user" / user / "posts-legacy"
         async with self.request_limiter:
-            profile_json: dict = await self.client.get_json(self.domain, profile_api_url, origin=scrape_item)
-            properties = profile_json.get("properties", {})
+            profile_json, resp = await self.client.get_json(
+                self.domain, profile_api_url, origin=scrape_item, cache_disabled=True
+            )
+            properties = profile_json.get("props", {})
+            cached_response = await self.manager.cache_manager.request_cache.get_response(str(profile_api_url))
+            cached_properties = {} if not cached_response else (await cached_response.json()).get("props", {})
 
+            # Shift cache offsets if necessary
+            await self.shift_offsets(profile_api_url, properties, cached_properties, resp)
+
+        limit = properties.get("limit", 50)
         user_str = properties.get("name", user)
         if post:
             offset, maximum_offset = None, None
         else:
             offset = int(scrape_item.url.query.get("o", 0))
-            maximum_offset = int(properties.get("count", 0))
+            maximum_offset = maximum_offset = (int(properties.get("count", 0)) // limit) * limit
 
-        returnValues = {
+        return {
             "service": service,
             "user": user,
             "post": post,
             "user_str": user_str,
             "offset": offset,
             "maximum_offset": maximum_offset,
+            "limit": limit,
         }
 
-        return returnValues
+    async def shift_offsets(self, api_url: URL, new_properties: dict, cached_properties: dict, response) -> None:
+        """
+        Adjust cached responses for shifted offsets based on the difference in the number of posts.
+
+        Args:
+            api_url (URL): The legacy API URL.
+            new_properties (dict): Properties from the current response.
+            cached_properties (dict): Properties from the cached response.
+            response: The latest HTTP response to save to the cache.
+
+        Returns:
+            int: The updated maximum offset.
+        """
+        user_str = new_properties.get("name", "Unknown")
+        new_count = int(new_properties.get("count", 0))
+        cached_count = int(cached_properties.get("count", 0))
+        if cached_count == 0:
+            return
+        post_limit = int(new_properties.get("limit", 50))
+        shift = new_count - cached_count
+
+        if shift > 0:
+            log(f"{shift} new posts detected for {user_str} (Coomer). Adjusting cache...", 20)
+
+            cached_posts = []
+            offset = 0
+            invalidate = False
+            max_offset = (new_count // post_limit) * post_limit
+            for offset in range(0, max_offset + 1, post_limit):
+                paginated_api_url = api_url.with_query({"o": offset})
+                cache_key = self.manager.cache_manager.request_cache.create_key("GET", paginated_api_url)
+                cached_response = await self.manager.cache_manager.request_cache.get_response(cache_key)
+
+                if not cached_response:
+                    invalidate = True
+                    continue
+                else:
+                    cached_json = await cached_response.json()
+                    if len(cached_json) < post_limit and offset != max_offset:
+                        invalidate = True
+
+                if invalidate:
+                    await self.manager.cache_manager.request_cache.delete_url(cache_key)
+                    log(f"Invalidated cached page: {paginated_api_url}", 20)
+                    continue
+
+                cached_json = await cached_response.json()
+                cached_posts.extend(cached_json)
+
+            all_posts = ["placeholder"] * shift + cached_posts
+            new_pages = [all_posts[i : i + post_limit] for i in range(0, len(all_posts), post_limit)]
+
+            for page_index, page_posts in enumerate(new_pages):
+                offset = page_index * post_limit
+                paginated_api_url = api_url.with_query({"o": offset})
+                cache_key = self.manager.cache_manager.request_cache.create_key("GET", paginated_api_url)
+
+                if "placeholder" in page_posts:
+                    # Invalidate cache for this page
+                    await self.manager.cache_manager.request_cache.delete_url(cache_key)
+                    log(f"Invalidated cached page: {paginated_api_url}", 20)
+                else:
+                    cached_response = await self.manager.cache_manager.request_cache.get_response(cache_key)
+                    if cached_response:
+                        # Update the cached response
+                        adjusted_content = json.dumps(page_posts).encode("utf-8")
+                        cached_response._body = adjusted_content
+                        cached_response.reset()
+
+                        await self.manager.cache_manager.request_cache.save_response(
+                            cached_response,
+                            cache_key,
+                            datetime.datetime.now()
+                            + self.manager.config_manager.global_settings_data.rate_limiting_options.file_host_cache_length,
+                        )
+
+            legacy_cache_key = self.manager.cache_manager.request_cache.create_key("GET", api_url)
+            await self.manager.cache_manager.request_cache.save_response(
+                response,
+                legacy_cache_key,
+                datetime.datetime.now()
+                + self.manager.config_manager.global_settings_data.rate_limiting_options.file_host_cache_length,
+            )
+
+        return
 
     @staticmethod
     def parse_datetime(date: str) -> int:
