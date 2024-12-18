@@ -1,7 +1,9 @@
+from datetime import timedelta
+
 from pydantic import BaseModel, ByteSize, Field, NonNegativeFloat, PositiveInt, field_serializer, field_validator
 from yarl import URL
 
-from .custom_types import AliasModel, HttpURL, NonEmptyStr
+from .custom_types import AliasModel, CacheDuration, HttpURL, NonEmptyStr
 
 
 def convert_to_str(value: URL | str) -> str | None:
@@ -46,6 +48,8 @@ class RateLimitingOptions(BaseModel):
     max_simultaneous_downloads: PositiveInt = 15
     max_simultaneous_downloads_per_domain: PositiveInt = 3
     download_speed_limit: ByteSize = ByteSize(0)
+    file_host_cache_length: CacheDuration = timedelta(days=7)
+    forum_cache_length: CacheDuration = timedelta(weeks=4)
 
     @field_serializer("download_speed_limit")
     def human_readable(self, value: ByteSize | int) -> str:

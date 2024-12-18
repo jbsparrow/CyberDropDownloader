@@ -77,6 +77,7 @@ class Manager:
         self.config_manager = ConfigManager(self)
         self.config_manager.startup()
         self.args_consolidation()
+        self.cache_manager.load_request_cache()
         self.vi_mode = self.config_manager.global_settings_data.ui_options.vi_mode
 
         self.path_manager.startup()
@@ -207,6 +208,7 @@ class Manager:
         await self.db_manager.close()
         if not isinstance(self.client_manager, Field):
             await self.client_manager.close()
+        await self.cache_manager.close()
         self.db_manager: DBManager = field(init=False)
         self.cache_manager: CacheManager = field(init=False)
         self.hash_manager: HashManager = field(init=False)

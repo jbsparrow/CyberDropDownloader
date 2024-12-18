@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import sys
 from functools import wraps
 from textwrap import dedent
@@ -170,7 +171,16 @@ class ProgramUI:
         enter_to_continue()
 
     def _clear_cache(self) -> None:
-        self.print_error("function reserved for future version")
+        domains = user_prompts.domains_prompt(domain_message="Select site(s) to clear cache for:")
+        if not domains:
+            console.print("No domains selected", style="red")
+            enter_to_continue()
+            return
+        urls = user_prompts.filter_cache_urls(self.manager, domains)
+        for url in urls:
+            asyncio.run(self.manager.cache_manager.request_cache.delete_url(url))
+        console.print("Finished clearing the cache", style="green")
+        enter_to_continue()
 
     def _edit_auth_config(self) -> None:
         config_file = self.manager.path_manager.config_folder / "authentication.yaml"
@@ -251,6 +261,7 @@ class ProgramUI:
     def _process_answer(self, answer: Any, options_map=dict) -> Choice | None:
         """Checks prompt answer and executes corresponding function."""
         if answer == EXIT_CHOICE.value:
+            asyncio.run(self.manager.cache_manager.close())
             sys.exit(0)
         if answer == DONE_CHOICE.value:
             return DONE_CHOICE
