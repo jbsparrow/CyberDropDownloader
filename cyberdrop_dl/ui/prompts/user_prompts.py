@@ -11,7 +11,7 @@ from cyberdrop_dl.ui.prompts import basic_prompts
 from cyberdrop_dl.ui.prompts.defaults import ALL_CHOICE, DONE_CHOICE, EXIT_CHOICE
 from cyberdrop_dl.utils.constants import BROWSERS, RESERVED_CONFIG_NAMES
 from cyberdrop_dl.utils.cookie_management import get_cookies_from_browsers
-from cyberdrop_dl.utils.data_enums_classes.supported_domains import FORUMS, WEBSITES
+from cyberdrop_dl.utils.data_enums_classes.supported_domains import SUPPORTED_FORUMS, SUPPORTED_WEBSITES
 from cyberdrop_dl.utils.utilities import clear_term
 
 if TYPE_CHECKING:
@@ -133,7 +133,7 @@ def domains_prompt(*, domain_message: str = "Select site(s):") -> list[str]:
     if domain_type == DONE_CHOICE.value:
         return []
 
-    all_domains = list(FORUMS.values()) if domain_type == 1 else list(WEBSITES.values())
+    all_domains = list(SUPPORTED_FORUMS.values()) if domain_type == 1 else list(SUPPORTED_WEBSITES.values())
     domain_choices = [Choice(site) for site in all_domains] + [ALL_CHOICE]
 
     domains = basic_prompts.ask_checkbox(domain_choices, message=domain_message)

@@ -47,10 +47,10 @@ CDN_POSSIBILITIES = re.compile(CDN_REGEX_STR)
 
 class BunkrrCrawler(Crawler):
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {"bunkrr": ["bunkrr", "bunkr"]}
+    primary_base_domain = URL("https://bunkr.site")
 
     def __init__(self, manager: Manager, site: str) -> None:
         super().__init__(manager, site, "Bunkrr")
-        self.primary_base_domain = URL("https://bunkr.site")
         self.request_limiter = AsyncLimiter(10, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

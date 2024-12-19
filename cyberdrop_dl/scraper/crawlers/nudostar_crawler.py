@@ -17,6 +17,7 @@ class NudoStarCrawler(XenforoCrawler):
         number=Selector("a[class=u-concealed]", "href"),
     )
     selectors = XenforoSelectors(posts=post_selectors)
+    domain = "nudostar"
 
     def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "nudostar", "NudoStar")
+        super().__init__(manager, self.domain, "NudoStar")

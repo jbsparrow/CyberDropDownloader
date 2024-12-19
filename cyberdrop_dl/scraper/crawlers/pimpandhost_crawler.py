@@ -20,6 +20,8 @@ if TYPE_CHECKING:
 
 
 class PimpAndHostCrawler(Crawler):
+    primary_base_domain = URL("https://pimpandhost.com/")
+
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "pimpandhost", "PimpAndHost")
         self.request_limiter = AsyncLimiter(10, 1)

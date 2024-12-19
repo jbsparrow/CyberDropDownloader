@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
 class SocialMediaGirlsCrawler(XenforoCrawler):
     primary_base_domain = URL("https://forums.socialmediagirls.com")
+    domain = "socialmediagirls"
     post_selectors = PostSelectors(
         content=Selector("div[class=bbWrapper]", None),
         images=Selector("img[class*=bbImage]", "data-src"),
@@ -20,4 +21,4 @@ class SocialMediaGirlsCrawler(XenforoCrawler):
     selectors = XenforoSelectors(posts=post_selectors)
 
     def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "socialmediagirls", "SocialMediaGirls")
+        super().__init__(manager, self.domain, "SocialMediaGirls")

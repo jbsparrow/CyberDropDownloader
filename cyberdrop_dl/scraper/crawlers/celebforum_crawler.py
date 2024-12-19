@@ -16,6 +16,7 @@ class CelebForumCrawler(XenforoCrawler):
         date=Selector("time", "data-time"),
     )
     selectors = XenforoSelectors(posts=post_selectors)
+    domain = "celebforum"
 
     def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "celebforum", "CelebForum")
+        super().__init__(manager, self.domain, "CelebForum")

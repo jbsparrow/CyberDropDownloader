@@ -19,6 +19,8 @@ if TYPE_CHECKING:
 
 
 class CyberfileCrawler(Crawler):
+    primary_base_domain = URL("https://cyberfile.me/")
+
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "cyberfile", "Cyberfile")
         self.api_load_files = URL("https://cyberfile.me/account/ajax/load_files")
