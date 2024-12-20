@@ -34,10 +34,9 @@ def cookie_wrapper(func) -> None:
             If you are still having issues, make sure all browsers processes are closed in Task Manager.
             """
             msg = dedent(msg) + footer
-            raise browser_cookie3.BrowserCookieError(msg) from None
+
         except ValueError as e:
             msg = str(e) + footer
-            raise browser_cookie3.BrowserCookieError(msg) from None
 
         except browser_cookie3.BrowserCookieError as e:
             msg = """
@@ -46,7 +45,7 @@ def cookie_wrapper(func) -> None:
             """
             msg = dedent(msg) + f"\nERROR: {e!s}" + footer
 
-            raise browser_cookie3.BrowserCookieError(msg) from None
+        raise browser_cookie3.BrowserCookieError(msg)
 
     return wrapper
 
