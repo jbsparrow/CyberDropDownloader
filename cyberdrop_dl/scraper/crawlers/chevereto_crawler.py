@@ -29,7 +29,8 @@ CDN_POSSIBILITIES = re.compile("|".join(CDN_PATTERNS.values()))
 
 
 class CheveretoCrawler(Crawler):
-    JPG_CHURCH_DOMAINS: ClassVar[tuple[str, ...]] = [
+    JPG5_DOMAINS: ClassVar[tuple[str, ...]] = [
+        "jpg5.su",
         "jpg.homes",
         "jpg.church",
         "jpg.fish",
@@ -40,25 +41,24 @@ class CheveretoCrawler(Crawler):
         "jpg2.su",
         "jpg3.su",
         "jpg4.su",
-        "jpg5.su",
         "host.church",
     ]
 
     PRIMARY_BASE_DOMAINS: ClassVar[dict[str, URL]] = {
+        "jpg5.su": URL("https://jpg5.su"),
         "imagepond.net": URL("https://imagepond.net"),
-        "jpg.church": URL("https://jpg5.su"),
         "img.kiwi": URL("https://img.kiwi"),
     }
 
     FOLDER_DOMAINS: ClassVar[dict[str, str]] = {
+        "jpg5.su": "JPG5",
         "imagepond.net": "ImagePond",
-        "jpg.church": "JPGChurch",
         "img.kiwi": "ImgKiwi",
     }
 
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {
+        "jpg5.su": JPG5_DOMAINS,
         "imagepond.net": ["imagepond.net"],
-        "jpg.church": JPG_CHURCH_DOMAINS,
         "img.kiwi": ["img.kiwi"],
     }
 
