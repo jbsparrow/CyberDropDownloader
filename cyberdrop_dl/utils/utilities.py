@@ -208,7 +208,10 @@ async def check_partials_and_empty_folders(manager: Manager) -> None:
     if not manager.config_manager.settings_data.runtime_options.skip_check_for_empty_folders:
         log_with_color("Checking for empty folders...", "yellow", 20)
         purge_dir_tree(manager.path_manager.download_folder)
-        if isinstance(manager.path_manager.sorted_folder, Path) and manager.config_manager.settings_data.sorting.sort_downloads:
+        if (
+            isinstance(manager.path_manager.sorted_folder, Path)
+            and manager.config_manager.settings_data.sorting.sort_downloads
+        ):
             purge_dir_tree(manager.path_manager.sorted_folder)
 
 
