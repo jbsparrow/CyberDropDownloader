@@ -31,8 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 This update introduces the following changes:
+- Add requests caching to speed up future download sessions.
 - Update Kemono & Coomer crawlers to use API calls
-- Update Gofile crawler to the new site design
+- Update GoFile crawler to the new site design
 - Update Bunkr crawler to handle new UUID filename format
 - Rework entire deduplication and hashing logic. Now multiple hashing algorithms are supported
 - Use Pydantic for config and CLI values validation
