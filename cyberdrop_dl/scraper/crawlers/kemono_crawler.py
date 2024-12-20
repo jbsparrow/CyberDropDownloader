@@ -56,7 +56,7 @@ class KemonoCrawler(Crawler):
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile."""
-        user_info = await self.get_user_info(scrape_item)
+        user_info: dict[str, str] = await self.get_user_info(scrape_item)
         service, user, user_str = user_info["service"], user_info["user"], user_info["user_str"]
         offset, maximum_offset, post_limit = user_info["offset"], user_info["maximum_offset"], user_info["limit"]
         api_call = self.api_url / service / "user" / user
@@ -128,7 +128,7 @@ class KemonoCrawler(Crawler):
         )
         api_call = self.api_url / service / "user" / user / "post" / post_id
         async with self.request_limiter:
-            post = await self.client.get_json(self.domain, api_call, origin=scrape_item)
+            post: dict = await self.client.get_json(self.domain, api_call, origin=scrape_item)
             post = post.get("post")
         await self.handle_post_content(scrape_item, post, user, user_str)
 
@@ -143,7 +143,7 @@ class KemonoCrawler(Crawler):
                 self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
             )
 
-        date = post.get("published") or post.get("added")
+        date: str = post.get("published") or post.get("added")
         date = date.replace("T", " ")
         post_id = post["id"]
         post_title = post.get("title", "")
@@ -287,7 +287,7 @@ class KemonoCrawler(Crawler):
             profile_json, resp = await self.client.get_json(
                 self.domain, profile_api_url, origin=scrape_item, cache_disabled=True
             )
-            properties = profile_json.get("props", {})
+            properties: dict = profile_json.get("props", {})
             cached_response = await self.manager.cache_manager.request_cache.get_response(str(profile_api_url))
             cached_properties = {} if not cached_response else (await cached_response.json()).get("props", {})
 
@@ -402,7 +402,7 @@ class KemonoCrawler(Crawler):
     def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
         try:
-            date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+            parsed_date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
         except ValueError:
-            date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S.%f")
-        return calendar.timegm(date.timetuple())
+            parsed_date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S.%f")
+        return calendar.timegm(parsed_date.timetuple())
