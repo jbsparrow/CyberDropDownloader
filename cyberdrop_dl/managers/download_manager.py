@@ -88,10 +88,10 @@ class DownloadManager:
         """Checks if the file type is allowed to download."""
         ignore_options = self.manager.config_manager.settings_data.ignore_options
         valid_extensions = FILE_FORMATS["Images"] | FILE_FORMATS["Videos"] | FILE_FORMATS["Audio"]
-        if media_item.ext in FILE_FORMATS["Images"] and ignore_options.exclude_images:
+        if media_item.ext.lower() in FILE_FORMATS["Images"] and ignore_options.exclude_images:
             return False
-        if media_item.ext in FILE_FORMATS["Videos"] and ignore_options.exclude_videos:
+        if media_item.ext.lower() in FILE_FORMATS["Videos"] and ignore_options.exclude_videos:
             return False
-        if media_item.ext in FILE_FORMATS["Audio"] and ignore_options.exclude_audio:
+        if media_item.ext.lower() in FILE_FORMATS["Audio"] and ignore_options.exclude_audio:
             return False
-        return not (ignore_options.exclude_other and media_item.ext not in valid_extensions)
+        return not (ignore_options.exclude_other and media_item.ext.lower() not in valid_extensions)

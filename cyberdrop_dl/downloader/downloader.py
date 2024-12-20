@@ -152,6 +152,7 @@ class Downloader:
                 log(f"Download finished: {media_item.url}", 20)
 
         except RestrictedFiletypeError:
+            log(f"Download skip {media_item.url} due to ignore_extension config ({media_item.ext})", 10)
             self.manager.progress_manager.download_progress.add_skipped()
             self.attempt_task_removal(media_item)
 
