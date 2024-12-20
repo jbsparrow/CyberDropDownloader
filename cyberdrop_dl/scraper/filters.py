@@ -84,7 +84,7 @@ async def set_return_value(url: str, value: bool, pop: bool | None = True) -> No
 async def get_return_value(url: str) -> bool | None:
     """Gets a return value for a url"""
     global return_values
-    value, pop = return_values.get(url, None)
+    value, pop = return_values.get(url, (None, None))
     if pop:
         return_values.pop(url, None)
     return value
