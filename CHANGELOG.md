@@ -31,7 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 This update introduces the following changes:
-- Add requests caching to speed up future download sessions.
+- Add requests caching to speed up future download sessions for forums, Coomer, and Kemono.
 - Update Kemono & Coomer crawlers to use API calls
 - Update GoFile crawler to the new site design
 - Update Bunkr crawler to handle new UUID filename format
