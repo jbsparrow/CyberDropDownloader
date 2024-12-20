@@ -31,16 +31,22 @@ def ask_checkbox(choices: list[Choice], *, message: str = "Select multiple optio
     return inquirer.checkbox(message=message, choices=choices, **options).execute()
 
 
-def ask_choice_fuzzy(message: str, choices: list[Choice], validate_empty: bool = True, **kwargs):
+def ask_choice_fuzzy(choices: list[Choice], message: str, validate_empty: bool = True, **kwargs):
     options = (
         DEFAULT_OPTIONS
         | {"long_instruction": "ARROW KEYS: Navigate | TYPE: Filter | TAB: select, ENTER: Finish Selection"}
         | kwargs
     )
+    custom_validate = options.pop("validate", None)
+    validate = (
+        EmptyInputValidator("Input should not be empty")
+        if validate_empty and custom_validate is None
+        else custom_validate
+    )
     return inquirer.fuzzy(
         message=message,
         choices=choices,
-        validate=EmptyInputValidator("Input should not be empty") if validate_empty else None,
+        validate=validate,
         **options,
     ).execute()
 

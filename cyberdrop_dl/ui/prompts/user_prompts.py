@@ -6,6 +6,10 @@ from typing import TYPE_CHECKING
 
 from InquirerPy import get_style
 from InquirerPy.base.control import Choice
+from InquirerPy.enum import (
+    INQUIRERPY_EMPTY_CIRCLE_SEQUENCE,
+    INQUIRERPY_FILL_CIRCLE_SEQUENCE,
+)
 from rich.console import Console
 
 from cyberdrop_dl import __version__
@@ -93,8 +97,8 @@ def create_new_config(manager: Manager, *, title: str = "Create a new config fil
 def select_config(configs: list) -> str:
     """Asks the user to select an existing config name."""
     return basic_prompts.ask_choice_fuzzy(
-        message="Select a config file:",
         choices=configs,
+        message="Select a config file:",
         validate_empty=True,
         long_instruction="ARROW KEYS: Navigate | TYPE: Filter | TAB: select, ENTER: Finish Selection",
         invalid_message="Need to select a config.",
@@ -145,7 +149,26 @@ def domains_prompt(*, domain_message: str = "Select site(s):") -> list[str]:
     all_domains = list(SUPPORTED_FORUMS.values() if domain_type == DomainType.FORUM else SUPPORTED_WEBSITES.values())
     domain_choices = [Choice(site) for site in all_domains] + [ALL_CHOICE]
 
-    domains = basic_prompts.ask_checkbox(domain_choices, message=domain_message)
+    domains = basic_prompts.ask_choice_fuzzy(
+        choices=domain_choices,
+        message=domain_message,
+        validate_empty=True,
+        multiselect=True,
+        marker_pl=f" {INQUIRERPY_EMPTY_CIRCLE_SEQUENCE} ",
+        marker=f" {INQUIRERPY_FILL_CIRCLE_SEQUENCE} ",
+        style=get_style(
+            {
+                "marker": "#98c379",
+                "questionmark": "#e5c07b",
+                "pointer": "#61afef",
+                "long_instruction": "#abb2bf",
+                "fuzzy_prompt": "#c678dd",
+                "fuzzy_info": "#abb2bf",
+                "fuzzy_border": "#4b5263",
+                "fuzzy_match": "#c678dd",
+            }
+        ),
+    )
     if ALL_CHOICE.value in domains:
         domains = all_domains
     return domains, all_domains
