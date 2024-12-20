@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import MaxChildrenError, NoExtensionError
+from cyberdrop_dl.clients.errors import MaxChildrenError
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
 from cyberdrop_dl.utils.logger import log
@@ -233,10 +233,7 @@ class KemonoCrawler(Crawler):
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:
         """Handles a direct link."""
-        try:
-            filename, ext = get_filename_and_ext(scrape_item.url.query["f"])
-        except NoExtensionError:
-            filename, ext = get_filename_and_ext(scrape_item.url.name)
+        filename, ext = get_filename_and_ext(scrape_item.url.query.get("f") or scrape_item.url.name)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -269,7 +266,7 @@ class KemonoCrawler(Crawler):
             add_parent=add_parent,
         )
         new_scrape_item.add_to_parent_title(post_title)
-        self.manager.task_group.create_task(self.run(new_scrape_item))
+        await self.handle_direct_link(new_scrape_item)
 
     async def get_user_info(self, scrape_item: ScrapeItem) -> dict:
         """Gets the user info from a scrape item."""

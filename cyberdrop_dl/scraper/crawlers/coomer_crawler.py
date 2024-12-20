@@ -177,10 +177,7 @@ class CoomerCrawler(Crawler):
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:
         """Handles a direct link."""
-        try:
-            filename, ext = get_filename_and_ext(scrape_item.url.query["f"])
-        except KeyError:
-            filename, ext = get_filename_and_ext(scrape_item.url.name)
+        filename, ext = get_filename_and_ext(scrape_item.url.query.get("f") or scrape_item.url.name)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -213,7 +210,7 @@ class CoomerCrawler(Crawler):
             add_parent=add_parent,
         )
         new_scrape_item.add_to_parent_title(post_title)
-        self.manager.task_group.create_task(self.run(new_scrape_item))
+        await self.handle_direct_link(new_scrape_item)
 
     async def get_user_info(self, scrape_item: ScrapeItem) -> dict:
         """Gets the user info from a scrape item."""
