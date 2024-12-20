@@ -100,6 +100,9 @@ Cyberdrop-DL caches the requests made to any website. This setting controls how 
 - `millisecond(s)`
 - `microsecond(s)`
 
+{% hint style="info" %}
+You can set the value to `0` to disable caching
+{% endhint %}
 
 ## `forum_cache_expire_after`
 
