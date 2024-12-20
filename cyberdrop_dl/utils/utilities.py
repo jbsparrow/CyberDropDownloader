@@ -185,10 +185,10 @@ def purge_dir_tree(dirname: Path) -> None:
         if file.is_file() and file.stat().st_size == 0:
             file.unlink()
 
-    with contextlib.suppress(OSError):
-        for parent, dirs, _ in os.walk(dirname, topdown=False):
-            for child_dir in dirs:
-                Path(parent).joinpath(child_dir).rmdir()
+    for dirpath, _, _ in os.walk(dirname, topdown=False):
+        dir_to_remove = Path(dirpath)
+        with contextlib.suppress(OSError):
+            dir_to_remove.rmdir()
 
 
 async def check_partials_and_empty_folders(manager: Manager) -> None:
