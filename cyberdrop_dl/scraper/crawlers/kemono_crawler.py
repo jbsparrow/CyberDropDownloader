@@ -29,8 +29,6 @@ class KemonoCrawler(Crawler):
         self.services = ["afdian", "boosty", "dlsite", "fanbox", "fantia", "gumroad", "patreon", "subscribestar"]
         self.request_limiter = AsyncLimiter(10, 1)
 
-        self.maximum_offset = None
-
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:

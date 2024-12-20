@@ -28,8 +28,6 @@ class CoomerCrawler(Crawler):
         self.api_url = URL("https://coomer.su/api/v1")
         self.request_limiter = AsyncLimiter(4, 1)
 
-        self.maximum_offset = None
-
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
