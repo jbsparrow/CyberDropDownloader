@@ -74,3 +74,35 @@ Some domains have internal limits set by the program, such as `bunkrr`, `cyberfi
 | `ByteSize` | `0`|
 
 This is the max rate of downloading in bytes (per second) for all downloads combined. Set to `0` to disable
+
+## `file_host_cache_expire_after`
+
+| Type           | Default  |
+|----------------|----------|
+| `timedelta`, `str` or `int` | `30 days`|
+
+Cyberdrop-DL caches the requests made to any website. This setting controls how long responses to file host websites are stored before expiring.
+
+A `timedelta` input is expected to be a valid ISO 8601 timespan, ex: `P10DT2H30M10S`
+
+A  `str` input is expected to be in the format; `<value> <unit>`, ex: `10 days`.
+
+### Valid `str` units:
+- `year(s)`
+- `week(s)`
+- `day(s)`
+- `hour(s)`
+- `minute(s)`
+- `second(s)`
+- `millisecond(s)`
+- `microsecond(s)`
+
+A `int` input is assumed to be the number of days
+
+## `forum_cache_expire_after`
+
+| Type           | Default  |
+|----------------|----------|
+| `timedelta`, `str` or `int` | `4 weeks`|
+
+Same as `file_host_cache_expire_after` but applied to forums requests.
