@@ -56,7 +56,6 @@ echo Updating PIP
 echo
 
 echo Installing / Updating Cyberdrop-DL
-pip uninstall -y -q -q cyberdrop-dl
-pip install aiolimiter==1.1.0
-pip install --upgrade "cyberdrop-dl-patched>=5.7,<6.0" && clear && cyberdrop-dl $COMMANDLINE_ARGS
+pip uninstall -y -qq cyberdrop-dl
+pip install --upgrade "cyberdrop-dl-patched>=6.0,<7.0" && clear && cyberdrop-dl $COMMANDLINE_ARGS
 echo
