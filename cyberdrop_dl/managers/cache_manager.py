@@ -9,7 +9,7 @@ from aiohttp_client_cache import SQLiteBackend
 
 from cyberdrop_dl.scraper.filters import filter_fn
 from cyberdrop_dl.utils import yaml
-from cyberdrop_dl.utils.data_enums_classes.supported_domains import FORUMS, WEBSITES
+from cyberdrop_dl.utils.data_enums_classes.supported_domains import SUPPORTED_FORUMS, SUPPORTED_WEBSITES
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -40,17 +40,16 @@ class CacheManager:
         self._cache = yaml.load(self.cache_file)
 
     def load_request_cache(self) -> None:
+        rate_limiting_options = self.manager.config_manager.global_settings_data.rate_limiting_options
         urls_expire_after = {
-            "*.simpcity.su": self.manager.config_manager.global_settings_data.rate_limiting_options.file_host_cache_expire_after.duration,
+            "*.simpcity.su": rate_limiting_options.file_host_cache_expire_after,
         }
-        for host in WEBSITES.values():
-            urls_expire_after[f"*.{host}" if "." in host else f"*.{host}.*"] = (
-                self.manager.config_manager.global_settings_data.rate_limiting_options.file_host_cache_expire_after.duration
-            )
-        for forum in FORUMS.values():
-            urls_expire_after[f"{forum}"] = (
-                self.manager.config_manager.global_settings_data.rate_limiting_options.forum_cache_expire_after.duration
-            )
+        for host in SUPPORTED_WEBSITES.values():
+            match_host = f"*.{host}" if "." in host else f"*.{host}.*"
+            urls_expire_after[match_host] = rate_limiting_options.file_host_cache_expire_after
+        for forum in SUPPORTED_FORUMS.values():
+            urls_expire_after[forum] = rate_limiting_options.forum_cache_expire_after
+
         self.request_cache = SQLiteBackend(
             cache_name=self.manager.path_manager.cache_db,
             autoclose=False,

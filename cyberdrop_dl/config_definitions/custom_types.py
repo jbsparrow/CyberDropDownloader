@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
 from typing import Annotated
 
-import humanfriendly
 from pydantic import (
     AfterValidator,
     AnyUrl,
@@ -110,43 +108,3 @@ class HttpAppriseURLModel(AppriseURLModel):
 
 class HttpAppriseURL(AppriseURL):
     _validator = HttpAppriseURLModel
-
-
-class CacheDuration(BaseModel):
-    duration: timedelta = timedelta(days=7)
-
-    @staticmethod
-    def parse_cache_duration(value: str) -> timedelta:
-        """
-        Parses a human-readable duration string (e.g., '7 days', '2 hours').
-        """
-        try:
-            seconds = humanfriendly.parse_timespan(value)
-            return timedelta(seconds=seconds)
-        except humanfriendly.InvalidTimespan as e:
-            raise ValueError(f"Invalid cache duration format: {value}") from e
-
-    @model_validator(mode="before")
-    @classmethod
-    def validate_cache_duration(cls, values):
-        if isinstance(values, dict) and isinstance(values.get("duration"), str):
-            values["duration"] = cls.parse_cache_duration(values["duration"])
-        elif isinstance(values, str):  # For direct string initialization
-            return {"duration": cls.parse_cache_duration(values)}
-        return values
-
-    @model_serializer()
-    def serialize_cache_duration(self):
-        """
-        Serializes the duration into a human-readable string.
-        """
-
-        if isinstance(self, timedelta):
-            return humanfriendly.format_timespan(self.total_seconds(), detailed=False)
-        elif isinstance(self.duration, timedelta):
-            return humanfriendly.format_timespan(self.duration.total_seconds(), detailed=False)
-
-    def __radd__(self, other):
-        if isinstance(other, datetime) or isinstance(other, timedelta):
-            return other + self.duration
-        return NotImplemented
