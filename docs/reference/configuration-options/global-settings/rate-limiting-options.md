@@ -83,12 +83,15 @@ This is the max rate of downloading in bytes (per second) for all downloads comb
 
 Cyberdrop-DL caches the requests made to any website. This setting controls how long responses to file host websites are stored before expiring.
 
-A `timedelta` input is expected to be a valid ISO 8601 timespan, ex: `P10DT2H30M10S`
+- A `timedelta` input is expected to be a valid ISO 8601 timespan, ex: `P10DT2H30M10S`
 
-A  `str` input is expected to be in the format; `<value> <unit>`, ex: `10 days`.
+- An `int` input is assumed to be the number of days
+
+- A  `str` input is expected to be in the format; `<value> <unit>`, ex: `10 days`.
 
 ### Valid `str` units:
 - `year(s)`
+- `month(s)`
 - `week(s)`
 - `day(s)`
 - `hour(s)`
@@ -97,7 +100,6 @@ A  `str` input is expected to be in the format; `<value> <unit>`, ex: `10 days`.
 - `millisecond(s)`
 - `microsecond(s)`
 
-A `int` input is assumed to be the number of days
 
 ## `forum_cache_expire_after`
 
