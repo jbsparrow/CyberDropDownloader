@@ -164,7 +164,7 @@ class ProgramUI:
         return self._process_answer(answer, options_map)
 
     def _clear_cookies(self) -> None:
-        domains = user_prompts.domains_prompt(domain_message="Select site(s) to clear cookies for:")
+        domains, _ = user_prompts.domains_prompt(domain_message="Select site(s) to clear cookies for:")
         clear_cookies(self.manager, domains)
         console.print("Finished clearing cookies", style="green")
         enter_to_continue()

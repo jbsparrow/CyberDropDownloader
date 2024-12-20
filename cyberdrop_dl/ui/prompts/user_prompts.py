@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from enum import IntEnum
 from typing import TYPE_CHECKING
 
 from InquirerPy import get_style
@@ -124,6 +125,11 @@ def auto_cookie_extraction(manager: Manager):
     manager.config_manager.write_updated_settings_config()
 
 
+class DomainType(IntEnum):
+    WEBSITE = 0
+    FORUM = 1
+
+
 def domains_prompt(*, domain_message: str = "Select site(s):") -> list[str]:
     """Asks the user to select website(s) for cookie actions and cache actions."""
     OPTIONS = [["forum", "file-host"]]
@@ -133,19 +139,19 @@ def domains_prompt(*, domain_message: str = "Select site(s):") -> list[str]:
     if domain_type == DONE_CHOICE.value:
         return []
 
-    all_domains = list(SUPPORTED_FORUMS.values()) if domain_type == 1 else list(SUPPORTED_WEBSITES.values())
+    all_domains = list(SUPPORTED_FORUMS.values() if domain_type == DomainType.FORUM else SUPPORTED_WEBSITES.values())
     domain_choices = [Choice(site) for site in all_domains] + [ALL_CHOICE]
 
     domains = basic_prompts.ask_checkbox(domain_choices, message=domain_message)
     if ALL_CHOICE.value in domains:
         domains = all_domains
-    return domains
+    return domains, all_domains
 
 
 def extract_cookies(manager: Manager, *, dry_run: bool = False) -> None:
     """Asks the user to select browser(s) and domains(s) to import cookies from."""
 
-    domains = domains_prompt(domain_message="Select site(s) to import cookies from:")
+    domains, all_domains = domains_prompt(domain_message="Select site(s) to import cookies from:")
     browsers = browser_prompt()
 
     if ALL_CHOICE.value in browsers:
@@ -153,7 +159,9 @@ def extract_cookies(manager: Manager, *, dry_run: bool = False) -> None:
 
     if dry_run:
         manager.config_manager.settings_data.browser_cookies.browsers = browsers
-        manager.config_manager.settings_data.browser_cookies.sites = domains
+        current_sites = set(manager.config_manager.settings_data.browser_cookies.sites)
+        new_sites = current_sites - set(all_domains) + set(domains)
+        manager.config_manager.settings_data.browser_cookies.sites = sorted(new_sites)
         return
 
     get_cookies_from_browsers(manager, browsers=browsers, domains=domains)
