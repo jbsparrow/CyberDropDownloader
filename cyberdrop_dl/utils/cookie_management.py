@@ -25,6 +25,7 @@ def cookie_wrapper(func) -> None:
     @wraps(func)
     def wrapper(self, *args, **kwargs) -> None:
         msg = ""
+        footer = "\n\nNothing has been saved."
         try:
             return func(self, *args, **kwargs)
         except PermissionError:
@@ -32,10 +33,10 @@ def cookie_wrapper(func) -> None:
             We've encountered a Permissions Error. Please close all browsers and try again
             If you are still having issues, make sure all browsers processes are closed in Task Manager.
             """
-            msg = dedent(msg) + "\n\nNothing has been saved."
+            msg = dedent(msg) + footer
             raise browser_cookie3.BrowserCookieError(msg) from None
         except ValueError as e:
-            msg = f"{e}\n\nNothing has been saved."
+            msg = str(e) + footer
             raise browser_cookie3.BrowserCookieError(msg) from None
 
         except browser_cookie3.BrowserCookieError as e:
@@ -43,7 +44,7 @@ def cookie_wrapper(func) -> None:
             Browser extraction ran into an error, the selected browser(s) may not be available on your system
             If you are still having issues, make sure all browsers processes are closed in Task Manager.
             """
-            msg = dedent(msg) + f"\nERROR: {e!s}\n\nNothing has been saved."
+            msg = dedent(msg) + f"\nERROR: {e!s}" + footer
 
             raise browser_cookie3.BrowserCookieError(msg) from None
 
