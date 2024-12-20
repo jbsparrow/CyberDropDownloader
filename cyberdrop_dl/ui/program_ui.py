@@ -164,7 +164,7 @@ class ProgramUI:
         return self._process_answer(answer, options_map)
 
     def _clear_cookies(self) -> None:
-        domains = user_prompts.domains_prompt(domain_message="Select site(s) to clear cookies for:")
+        domains, _ = user_prompts.domains_prompt(domain_message="Select site(s) to clear cookies for:")
         clear_cookies(self.manager, domains)
         console.print("Finished clearing cookies", style="green")
         enter_to_continue()
@@ -182,7 +182,7 @@ class ProgramUI:
 
     def _edit_config(self) -> None:
         if self.manager.multiconfig:
-            self.print_error("Cannot eddit 'ALL' config")
+            self.print_error("Cannot edit 'ALL' config")
             return
         config_file = (
             self.manager.path_manager.config_folder / self.manager.config_manager.loaded_config / "settings.yaml"
