@@ -17,6 +17,7 @@ from io import BytesIO
 from pathlib import Path
 from typing import Dict, List, Union
 
+
 if sys.platform.startswith('linux') or 'bsd' in sys.platform.lower():
     try:
         import jeepney
@@ -25,6 +26,15 @@ if sys.platform.startswith('linux') or 'bsd' in sys.platform.lower():
     except ImportError:
         import dbus
         USE_DBUS_LINUX = True
+
+
+shadowcopy = None
+if sys.platform == 'win32':
+    try:
+        import shadowcopy
+    except ImportError:
+        pass
+
 
 # external dependencies
 import lz4.block
@@ -340,10 +350,15 @@ class _DatabaseConnetion():
         self.__connection = None
         self.__methods = [
             self.__sqlite3_connect_readonly,
-            self.__get_connection_legacy,
         ]
+
         if try_legacy_first:
-            self.__methods.reverse()
+            self.__methods.insert(0, self.__get_connection_legacy)
+        else:
+            self.__methods.append(self.__get_connection_legacy)
+
+        if shadowcopy:
+            self.__methods.append(self.__get_connection_shadowcopy)
 
     def __enter__(self):
         return self.get_connection()
@@ -369,9 +384,23 @@ class _DatabaseConnetion():
                 return con
 
     def __get_connection_legacy(self):
+        with tempfile.NamedTemporaryFile(suffix='.sqlite') as tf:
+            self.__temp_cookie_file = tf.name
+        try:
+            shutil.copyfile(self.__database_file, self.__temp_cookie_file)
+        except PermissionError:
+            return
+        con = sqlite3.connect(self.__temp_cookie_file)
+        if self.__check_connection_ok(con):
+            return con
+
+    def __get_connection_shadowcopy(self):
+        if not shadowcopy:
+            raise RuntimeError("shadowcopy is not available")
+
         self.__temp_cookie_file = tempfile.NamedTemporaryFile(
             suffix='.sqlite').name
-        shutil.copyfile(self.__database_file, self.__temp_cookie_file)
+        shadowcopy.shadow_copy(self.__database_file, self.__temp_cookie_file)
         con = sqlite3.connect(self.__temp_cookie_file)
         if self.__check_connection_ok(con):
             return con
@@ -475,7 +504,7 @@ class ChromiumBased:
 
         if not cookie_file:
             raise BrowserCookieError(
-                'Failed to find {} cookie'.format(self.browser))
+                'Failed to find cookies for {} browser'.format(self.browser))
 
         self.cookie_file = cookie_file
 
@@ -495,9 +524,14 @@ class ChromiumBased:
                 cur.execute('SELECT host_key, path, secure, expires_utc, name, value, encrypted_value, is_httponly '
                             'FROM cookies WHERE host_key like ?;', ('%{}%'.format(self.domain_name),))
             except sqlite3.OperationalError:
-                # chrome >=56
-                cur.execute('SELECT host_key, path, is_secure, expires_utc, name, value, encrypted_value, is_httponly '
-                            'FROM cookies WHERE host_key like ?;', ('%{}%'.format(self.domain_name),))
+                try:
+                    # chrome >=56
+                    cur.execute('SELECT host_key, path, is_secure, expires_utc, name, value, encrypted_value, is_httponly '
+                                'FROM cookies WHERE host_key like ?;', ('%{}%'.format(self.domain_name),))
+                except sqlite3.OperationalError as e:
+                    if e.args[0].startswith(('no such table: ', 'file is not a database')):
+                        raise BrowserCookieError('File {} is not a Chromium-based browser cookie file'.format(self.tmp_cookie_file))
+
 
             for item in cur.fetchall():
                 # Per https://github.com/chromium/chromium/blob/main/base/time/time.h#L5-L7,
@@ -651,6 +685,26 @@ class Chrome(ChromiumBased):
             'osx_key_user': 'Chrome'
         }
         super().__init__(browser='Chrome', cookie_file=cookie_file,
+                         domain_name=domain_name, key_file=key_file, **args)
+
+
+class Arc(ChromiumBased):
+    """Class for Arc"""
+
+    def __init__(self, cookie_file=None, domain_name="", key_file=None):
+        args = {
+            'osx_cookies': _genarate_nix_paths_chromium(
+                [
+                    '~/Library/Application Support/Arc/User Data/Default/Cookies',
+                    '~/Library/Application Support/Arc/User Data/Profile */Cookies'
+                ],
+                channel=['']
+            ),
+            'os_crypt_name': 'chrome',
+            'osx_key_service': 'Arc Safe Storage',
+            'osx_key_user': 'Arc'
+        }
+        super().__init__(browser='Arc', cookie_file=cookie_file,
                          domain_name=domain_name, key_file=key_file, **args)
 
 
@@ -872,7 +926,7 @@ class Vivaldi(ChromiumBased):
 class FirefoxBased:
     """Superclass for Firefox based browsers"""
 
-    def __init__(self, browser_name, cookie_file=None, domain_name="", **kwargs):
+    def __init__(self, browser_name, cookie_file=None, domain_name="", key_file=None, **kwargs):
         self.browser_name = browser_name
         self.cookie_file = cookie_file or self.__find_cookie_file(**kwargs)
         # current sessions are saved in sessionstore.js
@@ -995,8 +1049,13 @@ class FirefoxBased:
         # firefoxbased seems faster with legacy mode
         with _DatabaseConnetion(self.cookie_file, True) as con:
             cur = con.cursor()
-            cur.execute('select host, path, isSecure, expiry, name, value, isHttpOnly from moz_cookies '
-                        'where host like ?', ('%{}%'.format(self.domain_name),))
+            try:
+                cur.execute('select host, path, isSecure, expiry, name, value, isHttpOnly from moz_cookies '
+                            'where host like ?', ('%{}%'.format(self.domain_name),))
+            except sqlite3.DatabaseError as e:
+                if e.args[0].startswith(('no such table: ', 'file is not a database')):
+                    raise BrowserCookieError('File {} is not a Firefox cookie file'.format(self.tmp_cookie_file))
+                raise
 
             for item in cur.fetchall():
                 host, path, secure, expires, name, value, http_only = item
@@ -1013,7 +1072,7 @@ class FirefoxBased:
 class Firefox(FirefoxBased):
     """Class for Firefox"""
 
-    def __init__(self, cookie_file=None, domain_name=""):
+    def __init__(self, cookie_file=None, domain_name="", key_file=None):
         args = {
             'linux_data_dirs': [
                 '~/snap/firefox/common/.mozilla/firefox',
@@ -1027,13 +1086,13 @@ class Firefox(FirefoxBased):
                 '~/Library/Application Support/Firefox'
             ]
         }
-        super().__init__('Firefox', cookie_file, domain_name, **args)
+        super().__init__('Firefox', cookie_file, domain_name, key_file, **args)
 
 
 class LibreWolf(FirefoxBased):
     """Class for LibreWolf"""
 
-    def __init__(self, cookie_file=None, domain_name=""):
+    def __init__(self, cookie_file=None, domain_name="", key_file=None):
         args = {
             'linux_data_dirs': [
                 '~/snap/librewolf/common/.librewolf',
@@ -1047,7 +1106,7 @@ class LibreWolf(FirefoxBased):
                 '~/Library/Application Support/librewolf'
             ]
         }
-        super().__init__('LibreWolf', cookie_file, domain_name, **args)
+        super().__init__('LibreWolf', cookie_file, domain_name, key_file, **args)
 
 
 class Safari:
@@ -1061,7 +1120,7 @@ class Safari:
         '~/Library/Cookies/Cookies.binarycookies'
     ]
 
-    def __init__(self, cookie_file=None, domain_name="") -> None:
+    def __init__(self, cookie_file=None, domain_name="", key_file=None) -> None:
         self.__offset = 0
         self.__domain_name = domain_name
         self.__buffer = None
@@ -1173,6 +1232,79 @@ class Safari:
         return cj
 
 
+class Lynx:
+    """Class for Lynx"""
+
+    lynx_cookies = [
+        '~/.lynx_cookies', # most systems, see lynx man page
+        '~/cookies'        # MS-DOS
+    ]
+
+    def __init__(self, cookie_file=None, domain_name=""):
+        self.cookie_file = _expand_paths(cookie_file or self.lynx_cookies, 'linux')
+        self.domain_name = domain_name
+
+    def load(self):
+        cj = http.cookiejar.CookieJar()
+        if not self.cookie_file:
+            raise BrowserCookieError('Cannot find Lynx cookie file')
+        with open(self.cookie_file) as f:
+            for line in f.read().splitlines():
+                # documentation in source code of lynx, file src/LYCookie.c
+                domain, domain_specified, path, secure, expires, name, value = \
+                        [None if word == '' else word for word in line.split('\t')]
+                domain_specified = domain_specified == 'TRUE'
+                secure = secure == 'TRUE'
+                if domain.find(self.domain_name) >= 0:
+                    cookie = create_cookie(domain, path, secure, expires, name,
+                            value, False)
+                    cj.set_cookie(cookie)
+        return cj
+
+
+class W3m:
+    """Class for W3m"""
+
+    # see documentation in source code of w3m, file fm.h
+    COO_USE = 1
+    COO_SECURE = 2
+    COO_DOMAIN = 4
+    COO_PATH = 8
+    COO_DISCARD = 16
+    COO_OVERRIDE = 32
+    w3m_cookies = [
+        '~/.w3m/cookie'
+    ]
+
+    def __init__(self, cookie_file=None, domain_name=""):
+        self.cookie_file = _expand_paths(cookie_file or self.w3m_cookies, 'linux')
+        self.domain_name = domain_name
+
+    def load(self):
+        cj = http.cookiejar.CookieJar()
+        if not self.cookie_file:
+            raise BrowserCookieError('Cannot find W3m cookie file')
+        with open(self.cookie_file) as f:
+            for line in f.read().splitlines():
+                # see documentation in source code of w3m, file cookie.c
+                url, name, value, expires, domain, path, flag, version, comment, \
+                        port, comment_url = \
+                        [None if word == '' else word for word in line.split('\t')]
+                flag = int(flag)
+                expires = int(expires)
+                secure = bool(flag & self.COO_SECURE)
+                domain_specified = bool(flag & self.COO_DOMAIN)
+                path_specified = bool(flag & self.COO_PATH)
+                discard = bool(flag & self.COO_DISCARD)
+                if domain.find(self.domain_name) >= 0:
+                    cookie = http.cookiejar.Cookie(version, name, value, port,
+                            bool(port), domain, domain_specified,
+                            domain.startswith('.'), path, path_specified, secure,
+                            expires, discard, comment, comment_url, {})
+                    cj.set_cookie(cookie)
+        return cj
+
+
 def create_cookie(host, path, secure, expires, name, value, http_only):
     """Shortcut function to create a cookie"""
     # HTTPOnly flag goes in _rest, if present (see https://github.com/python/cpython/pull/17471/files#r511187060)
@@ -1186,6 +1318,13 @@ def chrome(cookie_file=None, domain_name="", key_file=None):
     domain name to only load cookies from the specified domain
     """
     return Chrome(cookie_file, domain_name, key_file).load()
+
+
+def arc(cookie_file=None, domain_name="", key_file=None):
+    """Returns a cookiejar of the cookies used by Arc. Optionally pass in a
+    domain name to only load cookies from the specified domain
+    """
+    return Arc(cookie_file, domain_name, key_file).load()
 
 
 def chromium(cookie_file=None, domain_name="", key_file=None):
@@ -1230,39 +1369,56 @@ def vivaldi(cookie_file=None, domain_name="", key_file=None):
     return Vivaldi(cookie_file, domain_name, key_file).load()
 
 
-def firefox(cookie_file=None, domain_name=""):
+def firefox(cookie_file=None, domain_name="", key_file=None):
     """Returns a cookiejar of the cookies and sessions used by Firefox. Optionally
     pass in a domain name to only load cookies from the specified domain
     """
-    return Firefox(cookie_file, domain_name).load()
+    return Firefox(cookie_file, domain_name, key_file).load()
 
 
-def librewolf(cookie_file=None, domain_name=""):
+def librewolf(cookie_file=None, domain_name="", key_file=None):
     """Returns a cookiejar of the cookies and sessions used by LibreWolf. Optionally
     pass in a domain name to only load cookies from the specified domain
     """
-    return LibreWolf(cookie_file, domain_name).load()
+    return LibreWolf(cookie_file, domain_name, key_file).load()
 
 
-def safari(cookie_file=None, domain_name=""):
+def safari(cookie_file=None, domain_name="", key_file=None):
     """Returns a cookiejar of the cookies and sessions used by Safari. Optionally
     pass in a domain name to only load cookies from the specified domain
     """
-    return Safari(cookie_file, domain_name).load()
+    return Safari(cookie_file, domain_name, key_file).load()
 
+def lynx(cookie_file=None, domain_name=""):
+    """Returns a cookiejar of the cookies and sessions used by Lynx. Optionally
+    pass in a domain name to only load cookies from the specified domain
+    """
+    return Lynx(cookie_file, domain_name).load()
+
+
+def w3m(cookie_file=None, domain_name=""):
+    """Returns a cookiejar of the cookies and sessions used by W3m. Optionally
+    pass in a domain name to only load cookies from the specified domain
+    """
+    return W3m(cookie_file, domain_name).load()
+
+all_browsers = [chrome, chromium, opera, opera_gx, brave, edge, vivaldi, firefox, librewolf, safari, lynx, w3m, arc]
 
 def load(domain_name=""):
     """Try to load cookies from all supported browsers and return combined cookiejar
     Optionally pass in a domain name to only load cookies from the specified domain
     """
     cj = http.cookiejar.CookieJar()
-    for cookie_fn in [chrome, chromium, opera, opera_gx, brave, edge, vivaldi, firefox, librewolf, safari]:
+    for cookie_fn in all_browsers:
         try:
             for cookie in cookie_fn(domain_name=domain_name):
                 cj.set_cookie(cookie)
         except BrowserCookieError:
             pass
     return cj
+
+
+__all__ = ['BrowserCookieError', 'load', 'all_browsers'] + all_browsers
 
 
 if __name__ == '__main__':
