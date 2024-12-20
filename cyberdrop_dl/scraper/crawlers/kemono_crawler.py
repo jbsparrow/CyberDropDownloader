@@ -385,7 +385,7 @@ class KemonoCrawler(Crawler):
                             cached_response,
                             cache_key,
                             datetime.datetime.now()
-                            + self.manager.config_manager.global_settings_data.rate_limiting_options.file_host_cache_length,
+                            + self.manager.config_manager.global_settings_data.rate_limiting_options.file_host_cache_expire_after,
                         )
 
             legacy_cache_key = self.manager.cache_manager.request_cache.create_key("GET", api_url)
@@ -393,7 +393,7 @@ class KemonoCrawler(Crawler):
                 response,
                 legacy_cache_key,
                 datetime.datetime.now()
-                + self.manager.config_manager.global_settings_data.rate_limiting_options.file_host_cache_length,
+                + self.manager.config_manager.global_settings_data.rate_limiting_options.file_host_cache_expire_after,
             )
 
         return
