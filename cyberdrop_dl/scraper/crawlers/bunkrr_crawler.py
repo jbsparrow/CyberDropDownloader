@@ -36,6 +36,7 @@ BASE_CDNS = [
     "soup",
     "taquito",
     "wiener",
+    r"mlk-bk\.cdn\.gigachad-cdn",
 ]
 
 EXTENDED_CDNS = [f"cdn-{cdn}" for cdn in BASE_CDNS]
@@ -123,6 +124,7 @@ class BunkrrCrawler(Crawler):
             if file_ext.lower() not in FILE_FORMATS["Images"]:
                 src = src.with_host(src.host.replace("i-", ""))
 
+            src = self.override_cdn(src)
             # Scrape new URL if unable to get final URL from thumbnail
             if file_ext.lower() not in valid_extensions or "no-image" in src.name:
                 self.manager.task_group.create_task(self.run(new_scrape_item))
@@ -220,3 +222,10 @@ class BunkrrCrawler(Crawler):
         """Parses a datetime string into a unix timestamp."""
         date = datetime.datetime.strptime(date, "%H:%M:%S %d/%m/%Y")
         return calendar.timegm(date.timetuple())
+
+    @staticmethod
+    def override_cdn(link: URL) -> URL:
+        new_link = link
+        if "milkshake" in link.host:
+            new_link = link.with_host("mlk-bk.cdn.gigachad-cdn.ru")
+        return new_link
