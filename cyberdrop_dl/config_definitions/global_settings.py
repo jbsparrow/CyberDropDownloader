@@ -21,7 +21,7 @@ def convert_to_str(value: URL | str) -> str | None:
 
 class General(BaseModel):
     allow_insecure_connections: bool = False
-    user_agent: NonEmptyStr = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:120.0) Gecko/20100101 Firefox/120.0"
+    user_agent: NonEmptyStr = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0"
     proxy: HttpURL | None = None
     flaresolverr: HttpURL | None = None
     max_file_name_length: PositiveInt = 95

@@ -205,7 +205,7 @@ class Manager:
         log(f"Using Authentication: \n{json.dumps(auth_provided, indent=4, sort_keys=True)}", 10)
         log(f"Using Settings: \n{config_settings}", 10)
         log(f"Using Global Settings: \n{global_settings}", 10)
-        log(f"Using Cookies Files: {cookie_files}", 10)
+        log(f"Using Cookie Files: {cookie_files}", 10)
 
     async def close(self) -> None:
         """Closes the manager."""
