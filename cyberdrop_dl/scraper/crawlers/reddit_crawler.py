@@ -3,9 +3,9 @@ from __future__ import annotations
 import contextlib
 from typing import TYPE_CHECKING, ClassVar
 
-import aiohttp
 import asyncpraw
 import asyncprawcore
+from aiohttp_client_cache import CachedSession
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
@@ -45,7 +45,7 @@ class RedditCrawler(Crawler):
             self.scraping_progress.remove_task(task_id)
             return
 
-        async with aiohttp.ClientSession() as reddit_session:
+        async with CachedSession(cache=self.manager.cache_manager.request_cache) as reddit_session:
             reddit = asyncpraw.Reddit(
                 client_id=self.reddit_personal_use_script,
                 client_secret=self.reddit_secret,

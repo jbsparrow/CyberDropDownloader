@@ -33,6 +33,7 @@ class PathManager:
 
         self.input_file: Path = field(init=False)
         self.history_db: Path = field(init=False)
+        self.cache_db: Path = field(init=False)
 
         self._completed_downloads: list[MediaItem] = []
         self._completed_downloads_set = set()
@@ -60,10 +61,12 @@ class PathManager:
         self.cache_folder = constants.APP_STORAGE / "Cache"
         self.config_folder = constants.APP_STORAGE / "Configs"
         self.cookies_dir = constants.APP_STORAGE / "Cookies"
+        self.cache_db = self.cache_folder / "request_cache.db"
 
         self.cache_folder.mkdir(parents=True, exist_ok=True)
         self.config_folder.mkdir(parents=True, exist_ok=True)
         self.cookies_dir.mkdir(parents=True, exist_ok=True)
+        self.cache_db.touch(exist_ok=True)
 
     def replace_config_in_path(self, path: Path) -> Path | None:
         current_config = self.manager.config_manager.loaded_config

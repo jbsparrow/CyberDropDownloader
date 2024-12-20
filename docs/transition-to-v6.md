@@ -21,7 +21,7 @@ V6 introduces some breaking changes: Using a more strict config validation logic
 
 It's recommended to do a manual backup of your current `AppData` folder. You won't be able to rollback to a previous version after the transfer is completed.
 
-You can learn more about these changes on the [release announcement](https://github.com/jbsparrow/CyberDropDownloader/blob/master/CHANGELOG.md)
+You can learn more about these changes on the [release announcement](https://github.com/jbsparrow/CyberDropDownloader/blob/master/CHANGELOG.md#600---2024-12-20)
 {% endhint %}
 
 {% hint style="warning" %}

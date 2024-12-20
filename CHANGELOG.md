@@ -31,8 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 This update introduces the following changes:
+- Add requests caching to speed up future download sessions for forums, Coomer, and Kemono.
 - Update Kemono & Coomer crawlers to use API calls
-- Update Gofile crawler to the new site design
+- Update GoFile crawler to the new site design
 - Update Bunkr crawler to handle new UUID filename format
 - Rework entire deduplication and hashing logic. Now multiple hashing algorithms are supported
 - Use Pydantic for config and CLI values validation
@@ -57,8 +58,8 @@ This update introduces the following changes:
 
 #### Details
 
-- User can import cookies from their browser. CDL will use these cookies to login to websites and pass clouflare DDoS challenges. For more information on cookies extraction and configuration, visit: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/browser_cookies
-- When using flaresolverr, CDL will try to apply the cookies from the response and make a new request if neccesary.
+- User can import cookies from their browser. CDL will use these cookies to login to websites and pass Cloudflare DDoS challenges. For more information on cookies extraction and configuration, visit: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/browser_cookies
+- When using flaresolverr, CDL will try to apply the cookies from the response and make a new request if necessary.
 - User can set CDL to automatically import cookies at startup. User must specify browser and domains to export cookies from
 - Add logic validation for config path values
 - Remove integrated config edit options. Modifications to the config must be done directly on the config file.
@@ -77,7 +78,7 @@ This update introduces the following changes:
 3. Add integration to handle downloads supported by https://real-debrid.com
 4. Add support for https://nekohouse.su profiles and posts
 5. Add support for https://imagepond.net URLs
-6. Add support for password protected albums from chevereto sites (`jpg5`, `Img.kiwi` and `Imagepond`)
+6. Add support for password protected albums from Chevereto sites (`jpg5`, `Img.kiwi` and `Imagepond`)
 7. Show `total runtime` and `total downloaded data` on final report
 8. Add support to send the main log file as an attachment to the `webhook_url` report
 9. Add support to sent CDL report via email, telegram and many other services via Apprise
@@ -107,8 +108,8 @@ This update introduces the following changes:
 5. Add support for https://saint2.su albums
 6. Add support for password protected Cyberfile URLs
 7. Simplify some UI elements
-8. Improve jdownloader intergration
-9.  Implement rich logger
+8. Improve jdownloader integration
+9. Implement rich logger
 10. Add a "Check for Updates" UI option
 11. General bug fixes
 
@@ -116,7 +117,7 @@ This update introduces the following changes:
 #### Details:
 
 - Add option to rotate log file names. If enabled, current `date-time` will be used as a suffix for each log file, in the format `YYMMDD_HHMMSS`. This will prevent overriding old log files
-- Refactor hashing funtioncs and logic
+- Refactor hashing functions and logic
 - Add support for videos, photos, albums, playlist, profiles and search results of tokyomotion.net
 - Add support for playlists, search results and video downloads on xxxbunker.com
 - Add support for saint2.su album URLs
@@ -129,8 +130,8 @@ This update introduces the following changes:
 - Prevents crashes when there are insufficient permissions to move a file
 - Fix an issue where CDL would delete URLs input file
 - Move functions for after download to `post_runtime`
-- Fix handling of deleted imgbox albums if they return `HTTP 200`
-- Fix cyberfile deleted folders not being correctly scraped
+- Fix handling of deleted Imgbox albums if they return `HTTP 200`
+- Fix Cyberfile deleted folders not being correctly scraped
 - Update logging to include when a file is being downloaded with no crawler
 
 
@@ -142,7 +143,7 @@ This update introduces the following changes:
 #### Details:
 
 - Fix error when downloading videos with no thumbnail (bunkr)
-- Update posible CDNs (bunkr)
+- Update possible CDNs (bunkr)
 - Better error handling (bunkr)
 
 
@@ -191,7 +192,7 @@ This update introduces the following changes:
 ## [5.6.43] - 2024-10-03
 
 This update introduces the following changes:
-1. Update True/False CLI args to integrate better with the config file.
+1. Update True/False CLI arguments to integrate better with the config file.
 
 #### Details:
 
@@ -217,8 +218,8 @@ This update introduces the following changes:
 #### Details:
 
 - Fixes crash if an unsupported url have no parents
-- Always display an updated changelog if a new version has been released on Pypi
-- Remove Simpcity from supported websites on Wiki
+- Always display an updated changelog if a new version has been released on pypi
+- Remove SimpCity from supported websites on Wiki
 
 ## [5.6.40] - 2024-10-01
 
@@ -226,12 +227,12 @@ This update introduces the following changes:
 1. Fixes empty folder cleanup
 
 #### Details:
-- Fixes incorrent path objects on post-runtime folder cleanup
+- Fix incorrect path objects on post-runtime folder cleanup
 
 ## [5.6.39] - 2024-09-30
 
 This update introduces the following changes:
-1. Adds external CHANGELOG file
+1. Add external CHANGELOG file
 
 #### Details:
 - Project changes will documented on https://github.com/jbsparrow/CyberDropDownloader/blob/master/CHANGELOG.md for better tracking
@@ -240,10 +241,10 @@ This update introduces the following changes:
 ## [5.6.38] - 2024-09-30
 
 This update introduces the following changes:
-1. Fix `scrape_items` creation for kemono and coomer links
+1. Fix `scrape_items` creation for Kemono and coomer links
 
 #### Details:
-- Fixes parents tracking for kemono and coomer links
+- Fixes parents tracking for Kemono and coomer links
 
 
 ## [5.6.37] - 2024-09-30
@@ -252,7 +253,7 @@ This update introduces the following changes:
 1. Fixes empty folder cleanup on python 3.11
 
 #### Details:
-- Fixes logic by walking the directory tree using os.walk to remain compatibility with python 3.11
+- Fixes logic by walking the directory tree using `os.walk` to remain compatibility with python 3.11
 
 
 ## [5.6.36] - 2024-09-30
@@ -354,11 +355,11 @@ This update introduces the following changes:
 ## [5.6.11] - 2024-09-16
 
 This update introduces the following changes:
-1. Detect and raise an error for private gofile folders
+1. Detect and raise an error for private GoFile folders
 
 #### Details:
 
-- Private gofile folders will now raise an error when attempting to download them instead of crashing CDL
+- Private GoFile folders will now raise an error when attempting to download them instead of crashing CDL
 
 
 ## [5.6.1] - 2024-09-13
@@ -406,6 +407,6 @@ This update introduces the following changes:
 
 #### Details:
 
-- skips need to scan db if `sort_cdl_only` is false
+- skips need to scan database if `sort_cdl_only` is false
 - progress bar for current progress of sorting files, incremented for each folder
 - allow for setting a different folder to scan that is independent of the download folder

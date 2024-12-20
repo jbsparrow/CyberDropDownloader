@@ -1,9 +1,15 @@
 from __future__ import annotations
 
 from dataclasses import field
+from datetime import timedelta
+from http import HTTPStatus
 from typing import TYPE_CHECKING, Any
 
+from aiohttp_client_cache import SQLiteBackend
+
+from cyberdrop_dl.scraper.filters import filter_fn
 from cyberdrop_dl.utils import yaml
+from cyberdrop_dl.utils.data_enums_classes.supported_domains import SUPPORTED_FORUMS, SUPPORTED_WEBSITES
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -15,6 +21,7 @@ class CacheManager:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
 
+        self.request_cache: SQLiteBackend = field(init=False)
         self.cache_file: Path = field(init=False)
         self._cache = {}
 
@@ -32,6 +39,32 @@ class CacheManager:
         """Loads the cache file into memory."""
         self._cache = yaml.load(self.cache_file)
 
+    def load_request_cache(self) -> None:
+        rate_limiting_options = self.manager.config_manager.global_settings_data.rate_limiting_options
+        urls_expire_after = {
+            "*.simpcity.su": rate_limiting_options.file_host_cache_expire_after,
+        }
+        for host in SUPPORTED_WEBSITES.values():
+            match_host = f"*.{host}" if "." in host else f"*.{host}.*"
+            urls_expire_after[match_host] = rate_limiting_options.file_host_cache_expire_after
+        for forum in SUPPORTED_FORUMS.values():
+            urls_expire_after[forum] = rate_limiting_options.forum_cache_expire_after
+
+        self.request_cache = SQLiteBackend(
+            cache_name=self.manager.path_manager.cache_db,
+            autoclose=False,
+            allowed_codes=(
+                HTTPStatus.OK,
+                HTTPStatus.NOT_FOUND,
+                HTTPStatus.GONE,
+                HTTPStatus.UNAVAILABLE_FOR_LEGAL_REASONS,
+            ),
+            allowed_methods=["GET"],
+            expire_after=timedelta(days=7),
+            urls_expire_after=urls_expire_after,
+            filter_fn=filter_fn,
+        )
+
     def get(self, key: str) -> Any:
         """Returns the value of a key in the cache."""
         return self._cache.get(key, None)
@@ -46,3 +79,6 @@ class CacheManager:
         if key in self._cache:
             del self._cache[key]
             yaml.save(self.cache_file, self._cache)
+
+    async def close(self):
+        await self.request_cache.close()

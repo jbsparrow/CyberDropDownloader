@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from enum import IntEnum
 from typing import TYPE_CHECKING
 
@@ -17,6 +18,8 @@ from cyberdrop_dl.utils.utilities import clear_term
 
 if TYPE_CHECKING:
     from pathlib import Path
+
+    from yarl import URL
 
     from cyberdrop_dl.managers.manager import Manager
 
@@ -172,6 +175,30 @@ def extract_cookies(manager: Manager, *, dry_run: bool = False) -> None:
 def browser_prompt() -> str:
     choices = [Choice(browser, browser.capitalize()) for browser in BROWSERS]
     return basic_prompts.ask_checkbox(choices, message="Select the browser(s) for extraction:")
+
+
+""" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ CACHE PROMPTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+
+async def _get_urls(manager: Manager) -> set[URL]:
+    urls = set()
+    async for url in manager.cache_manager.request_cache.get_urls():
+        urls.add(url)
+    return urls
+
+
+def filter_cache_urls(manager: Manager, domains: list) -> set[URL]:
+    urls_to_remove = set()
+    cached_urls = asyncio.run(_get_urls(manager))
+    cached_urls_copy = cached_urls.copy()
+    for domain in domains:
+        cached_urls = cached_urls_copy.copy()
+        cached_urls_copy = cached_urls.copy()
+        for url in cached_urls:
+            if url.host == domain:
+                urls_to_remove.add(url)
+                cached_urls_copy.remove(url)
+    return urls_to_remove
 
 
 """ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ V4 IMPORT PROMPTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

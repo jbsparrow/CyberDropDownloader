@@ -1,10 +1,10 @@
-from enum import IntEnum
+from enum import StrEnum, auto
 
 
-class Hashing(IntEnum):
-    OFF = 0
-    IN_PLACE = 1
-    POST_DOWNLOAD = 2
+class Hashing(StrEnum):
+    OFF = auto()
+    IN_PLACE = auto()
+    POST_DOWNLOAD = auto()
 
     @classmethod
     def _missing_(cls, value):

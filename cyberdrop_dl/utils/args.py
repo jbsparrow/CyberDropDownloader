@@ -247,7 +247,7 @@ def parse_args() -> ParsedArgs:
     parser = ArgumentParser(
         description="Bulk asynchronous downloader for multiple file hosts",
         usage="cyberdrop-dl [OPTIONS] URL [URL...]",
-        epilog="Visit the wiki for aditional details: https://script-ware.gitbook.io/cyberdrop-dl",
+        epilog="Visit the wiki for additional details: https://script-ware.gitbook.io/cyberdrop-dl",
         formatter_class=ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("-V", "--version", action="version", version=f"%(prog)s {__version__}")

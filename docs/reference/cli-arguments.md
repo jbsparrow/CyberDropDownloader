@@ -231,7 +231,7 @@ sorting:
   --sort-downloads, --no-sort-downloads
   --sort-folder SORT_FOLDER
   --scan-folder SCAN_FOLDER
-  --sort-incremementer-format SORT_INCREMEMENTER_FORMAT
+  --sort-incrementer-format SORT_INCREMENTER_FORMAT
   --sorted-audio SORTED_AUDIO
   --sorted-image SORTED_IMAGE
   --sorted-other SORTED_OTHER
@@ -255,6 +255,8 @@ rate_limiting_options:
   --max-simultaneous-downloads MAX_SIMULTANEOUS_DOWNLOADS
   --max-simultaneous-downloads-per-domain MAX_SIMULTANEOUS_DOWNLOADS_PER_DOMAIN
   --download-speed-limit DOWNLOAD_SPEED_LIMIT
+  --file-host-cache-expire-after FILE_HOST_CACHE_EXPIRE_AFTER
+  --forum-cache-expire-after FORUM_CACHE_EXPIRE_AFTER
 
 ui_options:
   --vi-mode, --no-vi-mode
