@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import NoExtensionError, ScrapeError
+from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
@@ -245,10 +245,7 @@ class NekohouseCrawler(Crawler):
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:
         """Handles a direct link."""
-        try:
-            filename, ext = get_filename_and_ext(scrape_item.url.query["f"])
-        except NoExtensionError:
-            filename, ext = get_filename_and_ext(scrape_item.url.name)
+        filename, ext = get_filename_and_ext(scrape_item.url.query.get("f") or scrape_item.url.name)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -281,7 +278,7 @@ class NekohouseCrawler(Crawler):
             add_parent=add_parent,
         )
         new_scrape_item.add_to_parent_title(post_title)
-        self.manager.task_group.create_task(self.run(new_scrape_item))
+        await self.handle_direct_link(new_scrape_item)
 
     async def get_maximum_offset(self, soup: BeautifulSoup) -> int:
         """Gets the maximum offset for a scrape item."""
