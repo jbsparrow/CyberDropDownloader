@@ -20,9 +20,10 @@ if TYPE_CHECKING:
 
 
 class ImgBoxCrawler(Crawler):
+    primary_base_domain = URL("https://imgbox.com")
+
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "imgbox", "ImgBox")
-        self.primary_base_domain = URL("https://imgbox.com")
         self.request_limiter = AsyncLimiter(10, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

@@ -18,6 +18,8 @@ if TYPE_CHECKING:
 
 
 class EromeCrawler(Crawler):
+    primary_base_domain = URL("https://www.erome.com")
+
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "erome", "Erome")
         self.request_limiter = AsyncLimiter(10, 1)

@@ -20,9 +20,10 @@ if TYPE_CHECKING:
 
 
 class Rule34VaultCrawler(Crawler):
+    primary_base_domain = URL("https://rule34vault.com")
+
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "rule34vault", "Rule34Vault")
-        self.primary_base_url = URL("https://rule34vault.com")
         self.request_limiter = AsyncLimiter(10, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -61,7 +62,7 @@ class Rule34VaultCrawler(Crawler):
         for file_page in content:
             link = file_page.get("href")
             if link.startswith("/"):
-                link = f"{self.primary_base_url}{link}"
+                link = f"{self.primary_base_domain}{link}"
             link = URL(link)
             new_scrape_item = self.create_scrape_item(scrape_item, link, title, True, add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
@@ -105,7 +106,7 @@ class Rule34VaultCrawler(Crawler):
         for file_page in content:
             link = file_page.get("href")
             if link.startswith("/"):
-                link = f"{self.primary_base_url}{link}"
+                link = f"{self.primary_base_domain}{link}"
             link = URL(link)
             new_scrape_item = self.create_scrape_item(scrape_item, link, title, True, add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
@@ -137,7 +138,7 @@ class Rule34VaultCrawler(Crawler):
         if image:
             link = image.get("src").replace(".small", "").replace(".thumbnail", "")
             if link.startswith("/"):
-                link = f"{self.primary_base_url}{link}"
+                link = f"{self.primary_base_domain}{link}"
             link = URL(link)
             filename, ext = get_filename_and_ext(link.name)
             await self.handle_file(link, scrape_item, filename, ext)
@@ -151,7 +152,7 @@ class Rule34VaultCrawler(Crawler):
                 .replace(".hevc", "")
             )
             if link.startswith("/"):
-                link = f"{self.primary_base_url}{link}"
+                link = f"{self.primary_base_domain}{link}"
             link = URL(link)
             filename, ext = get_filename_and_ext(link.name)
             await self.handle_file(link, scrape_item, filename, ext)

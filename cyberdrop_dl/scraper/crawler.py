@@ -28,6 +28,8 @@ if TYPE_CHECKING:
 
 class Crawler(ABC):
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {}
+    domain = None
+    primary_base_domain: URL = None
 
     def __init__(self, manager: Manager, domain: str, folder_domain: str | None = None) -> None:
         self.manager = manager
@@ -48,7 +50,7 @@ class Crawler(ABC):
         """Starts the crawler."""
         self.client = self.manager.client_manager.scraper_session
         self.downloader = Downloader(self.manager, self.domain)
-        self.cookiejar_file = self.manager.path_manager.cookies_dir / f"{self.domain}.txt"
+        self.cookiejar_file = self.manager.path_manager.cookies_dir / f"{self.primary_base_domain.host}.txt"
         if self.cookiejar_file.is_file():
             log(f"Found cookie file for: {self.domain}", 10)
             try:

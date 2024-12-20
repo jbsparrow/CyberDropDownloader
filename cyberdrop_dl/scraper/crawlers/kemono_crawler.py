@@ -21,9 +21,10 @@ if TYPE_CHECKING:
 
 
 class KemonoCrawler(Crawler):
+    primary_base_domain = URL("https://kemono.su")
+
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "kemono", "Kemono")
-        self.primary_base_domain = URL("https://kemono.su")
         self.api_url = URL("https://kemono.su/api/v1")
         self.services = ["afdian", "boosty", "dlsite", "fanbox", "fantia", "gumroad", "patreon", "subscribestar"]
         self.request_limiter = AsyncLimiter(10, 1)

@@ -6,13 +6,13 @@ from functools import wraps
 from textwrap import dedent
 from typing import TYPE_CHECKING, Any
 
+import browser_cookie3
 from requests import request
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.text import Text
 
 from cyberdrop_dl.clients.hash_client import hash_directory_scanner
-from cyberdrop_dl.dependencies import browser_cookie3
 from cyberdrop_dl.ui.prompts import user_prompts
 from cyberdrop_dl.ui.prompts.basic_prompts import ask_dir_path, enter_to_continue
 from cyberdrop_dl.ui.prompts.defaults import DONE_CHOICE, EXIT_CHOICE
@@ -165,7 +165,7 @@ class ProgramUI:
         return self._process_answer(answer, options_map)
 
     def _clear_cookies(self) -> None:
-        domains = user_prompts.domains_prompt(domain_message="Select site(s) to clear cookies for:")
+        domains, _ = user_prompts.domains_prompt(domain_message="Select site(s) to clear cookies for:")
         clear_cookies(self.manager, domains)
         console.print("Finished clearing cookies", style="green")
         enter_to_continue()
@@ -192,7 +192,7 @@ class ProgramUI:
 
     def _edit_config(self) -> None:
         if self.manager.multiconfig:
-            self.print_error("Cannot eddit 'ALL' config")
+            self.print_error("Cannot edit 'ALL' config")
             return
         config_file = (
             self.manager.path_manager.config_folder / self.manager.config_manager.loaded_config / "settings.yaml"

@@ -31,7 +31,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 This update introduces the following changes:
-- Handle cloudflare challenges responses
 - Update Kemono & Coomer crawlers to use API calls
 - Update Gofile crawler to the new site design
 - Update Bunkr crawler to handle new UUID filename format

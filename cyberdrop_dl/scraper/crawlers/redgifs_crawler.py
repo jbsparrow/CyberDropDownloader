@@ -16,6 +16,8 @@ if TYPE_CHECKING:
 
 
 class RedGifsCrawler(Crawler):
+    primary_base_domain = URL("https://redgifs.com/")
+
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "redgifs", "RedGifs")
         self.redgifs_api = URL("https://api.redgifs.com/")

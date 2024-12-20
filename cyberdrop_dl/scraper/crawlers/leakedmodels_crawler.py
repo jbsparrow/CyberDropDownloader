@@ -16,6 +16,7 @@ class LeakedModelsCrawler(XenforoCrawler):
         date=Selector("time", "data-time"),
     )
     selectors = XenforoSelectors(posts=post_selectors)
+    domain = "leakedmodels"
 
     def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "leakedmodels", "LeakedModels")
+        super().__init__(manager, self.domain, "LeakedModels")
