@@ -182,7 +182,7 @@ class ProgramUI:
 
     def _edit_config(self) -> None:
         if self.manager.multiconfig:
-            self.print_error("Cannot eddit 'ALL' config")
+            self.print_error("Cannot edit 'ALL' config")
             return
         config_file = (
             self.manager.path_manager.config_folder / self.manager.config_manager.loaded_config / "settings.yaml"

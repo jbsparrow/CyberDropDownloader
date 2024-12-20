@@ -160,7 +160,7 @@ def extract_cookies(manager: Manager, *, dry_run: bool = False) -> None:
     if dry_run:
         manager.config_manager.settings_data.browser_cookies.browsers = browsers
         current_sites = set(manager.config_manager.settings_data.browser_cookies.sites)
-        new_sites = current_sites - set(all_domains) + set(domains)
+        new_sites = (current_sites - set(all_domains)) | set(domains)
         manager.config_manager.settings_data.browser_cookies.sites = sorted(new_sites)
         return
 
