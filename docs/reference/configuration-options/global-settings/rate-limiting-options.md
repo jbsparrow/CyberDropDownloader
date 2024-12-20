@@ -79,7 +79,7 @@ This is the max rate of downloading in bytes (per second) for all downloads comb
 
 | Type           | Default  |
 |----------------|----------|
-| `timedelta`, `str` or `int` | `30 days`|
+| `timedelta`, `str` or `int` | `7 days`|
 
 Cyberdrop-DL caches the requests made to any website. This setting controls how long responses to file host websites are stored before expiring.
 
