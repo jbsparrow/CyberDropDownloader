@@ -187,7 +187,7 @@ def purge_dir_tree(dirname: Path) -> None:
 
     for dirpath, _, _ in os.walk(dirname, topdown=False):
         dir_to_remove = Path(dirpath)
-        with contextlib.suppress(OSError):  # Suppress exceptions if directory isn't empty
+        with contextlib.suppress(OSError):
             dir_to_remove.rmdir()
 
 
