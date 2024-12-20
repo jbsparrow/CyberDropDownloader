@@ -1,18 +1,18 @@
 from __future__ import annotations
 
 import calendar
+import contextlib
 import datetime
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
+    from bs4 import BeautifulSoup, Tag
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
@@ -50,14 +50,8 @@ class NekohouseCrawler(Crawler):
             scrape_item.url = link
             await self.handle_direct_link(scrape_item)
         elif "post" in scrape_item.url.parts:
-            if "user" not in scrape_item.url.parts:
-                user = "Unknown"
-                post_id = scrape_item.url.parts[-1]
-                service = "Unknown"
-                user_str = "Unknown"
-                await self.post(scrape_item, post_id, user, service, user_str, unlinked_post=True)
-            else:
-                await self.post(scrape_item)
+            post_id = scrape_item.url.parts[-1] if "user" not in scrape_item.url.parts else None
+            await self.post(scrape_item, post_id=post_id)
         elif any(x in scrape_item.url.parts for x in self.services):
             await self.profile(scrape_item)
         else:
@@ -91,7 +85,7 @@ class NekohouseCrawler(Crawler):
                     if post_url[0] == "/":
                         post_url = post_url[1:]
                     post_id = post_url.split("/")[-1]
-                    if post_url == "":
+                    if not post_url:
                         continue
                     post_link = self.primary_base_domain / post_url
                     # Call on self.post to scrape the post by creating a new scrape item
@@ -111,13 +105,12 @@ class NekohouseCrawler(Crawler):
         user: str | None = None,
         service: str | None = None,
         user_str: str | None = None,
-        unlinked_post: bool = False,
     ) -> None:
         """Scrapes a post."""
         if any(x is None for x in (post_id, user, service, user_str)):
             service, user, post_id = await self.get_service_user_and_post(scrape_item)
             user_str = await self.get_user_str_from_post(scrape_item)
-        await self.get_post_content(scrape_item, post_id, user, service, user_str, unlinked_post)
+        await self.get_post_content(scrape_item, post_id, user, service, user_str)
 
     @error_handling_wrapper
     async def get_post_content(
@@ -127,114 +120,74 @@ class NekohouseCrawler(Crawler):
         user: str,
         service: str,
         user_str: str,
-        unlinked_post: bool = False,
     ) -> None:
         """Gets the content of a post and handles collected links."""
         if post == 0:
             return
 
         post_url = scrape_item.url
-        if unlinked_post is True:
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, post_url, origin=scrape_item)
-                data = {
-                    "id": post,
-                    "user": user,
-                    "service": service,
-                    "title": "",
-                    "content": "",
-                    "user_str": user_str,
-                    "published": "",
-                    "file": [],
-                    "attachments": [],
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, post_url, origin=scrape_item)
+            data = {
+                "id": post,
+                "user": user or "Unknown",
+                "service": service or "Unknown",
+                "user_str": user_str or "Unknown",
+                "file": [],
+                "attachments": [],
+            }
+
+            data["title"] = soup.select_one(self.post_title_selector) or "Unknown Title"
+            data["content"] = soup.select_one(self.post_content_selector) or None
+            data["published"] = soup.select_one(self.post_timestamp_selector) or None
+
+            for key in ("title", "content", "published"):
+                with contextlib.suppress(AttributeError):
+                    value: Tag = data.get(key)
+                    data[key] = value.text.strip()
+
+            for file in soup.select(self.post_images_selector):
+                attachment = {
+                    "path": file["href"].replace("/data/", "data/"),
+                    "name": file["href"].split("?f=")[-1]
+                    if "?f=" in file["href"]
+                    else file["href"].split("/")[-1].split("?")[0],
                 }
+                data["attachments"].append(attachment)
 
-                try:
-                    data["title"] = soup.select_one(self.post_title_selector).text.strip()
-                except AttributeError:
-                    msg = "Failed to scrape post title."
-                    raise ScrapeError(msg) from None
-                try:
-                    data["content"] = soup.select_one(self.post_content_selector).text.strip()
-                except AttributeError:
-                    msg = "Failed to scrape post content."
-                    raise ScrapeError(msg) from None
-                try:
-                    data["published"] = soup.select_one(self.post_timestamp_selector).text.strip()
-                except AttributeError:
-                    msg = "Failed to scrape post timestamp."
-                    raise ScrapeError(msg) from None
-
-                for file in soup.select(self.post_images_selector):
-                    attachment = {
-                        "path": file["href"].replace("/data/", "data/"),
-                        "name": file["href"].split("?f=")[-1]
-                        if "?f=" in file["href"]
-                        else file["href"].split("/")[-1].split("?")[0],
-                    }
-                    data["attachments"].append(attachment)
-
-                for file in soup.select(self.post_videos_selector):
-                    attachment = {
-                        "path": file["src"].replace("/data/", "data/"),
-                        "name": file["src"].split("?f=")[-1]
-                        if "?f=" in file["src"]
-                        else file["src"].split("/")[-1].split("?")[0],
-                    }
-                    data["attachments"].append(attachment)
-
-                for file in soup.select(self.file_downloads_selector):
-                    attachment = {
-                        "path": file["href"].replace("/data/", "data/"),
-                        "name": file["href"].split("?f=")[-1]
-                        if "?f=" in file["href"]
-                        else file["href"].split("/")[-1].split("?")[0],
-                    }
-                    data["file"].append(attachment)
-        else:
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, post_url, origin=scrape_item)
-                # Published as current time to avoid errors.
-                data = {
-                    "id": post,
-                    "user": user,
-                    "service": service,
-                    "title": "",
-                    "content": "Unknown",
-                    "user_str": user_str,
-                    "published": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "file": [],
-                    "attachments": [],
+            for file in soup.select(self.post_videos_selector):
+                attachment = {
+                    "path": file["src"].replace("/data/", "data/"),
+                    "name": file["src"].split("?f=")[-1]
+                    if "?f=" in file["src"]
+                    else file["src"].split("/")[-1].split("?")[0],
                 }
+                data["attachments"].append(attachment)
 
-                try:
-                    data["title"] = soup.select_one("title").text.strip()
-                except AttributeError:
-                    msg = "Failed to scrape post title."
-                    raise ScrapeError(msg) from None
+            for file in soup.select(self.file_downloads_selector):
+                attachment = {
+                    "path": file["href"].replace("/data/", "data/"),
+                    "name": file["href"].split("?f=")[-1]
+                    if "?f=" in file["href"]
+                    else file["href"].split("/")[-1].split("?")[0],
+                }
+                data["file"].append(attachment)
 
-                for file in soup.select("a[class=post__attachment-link]"):
-                    attachment = {
-                        "path": file["href"].replace("/data/", "data/"),
-                        "name": file["href"].split("?f=")[-1]
-                        if "?f=" in file["href"]
-                        else file["href"].split("/")[-1].split("?")[0],
-                    }
-                    data["attachments"].append(attachment)
-
-        await self.handle_post_content(scrape_item, data, user, user_str)
+        await self.handle_post_content(scrape_item, data, user_str)
 
     @error_handling_wrapper
-    async def handle_post_content(self, scrape_item: ScrapeItem, post: dict, user: str, user_str: str) -> None:
+    async def handle_post_content(self, scrape_item: ScrapeItem, post: dict[str, str], user_str: str) -> None:
         """Handles the content of a post."""
-        date = post["published"].replace("T", " ")
+        date = post.get("published")
+        if date:
+            date = date.replace("T", " ").strip()
         post_id = post["id"]
         post_title = post.get("title", "")
 
         scrape_item.album_id = post_id
         scrape_item.part_of_album = True
 
-        async def handle_file(file_obj: dict):
+        async def handle_file(file_obj: dict[str, str]):
             link = self.primary_base_domain / file_obj["path"]
             link = link.with_query({"f": file_obj["name"]})
             await self.create_new_scrape_item(link, scrape_item, user_str, post_title, post_id, date)
@@ -270,11 +223,10 @@ class NekohouseCrawler(Crawler):
         new_title = self.create_title(user, None, None)
         new_scrape_item = self.create_scrape_item(
             old_scrape_item,
-            link,
-            new_title,
-            True,
-            None,
-            self.parse_datetime(date),
+            url=link,
+            new_title_part=new_title,
+            part_of_album=True,
+            possible_datetime=self.parse_datetime(date),
             add_parent=add_parent,
         )
         new_scrape_item.add_to_parent_title(post_title)
@@ -335,6 +287,8 @@ class NekohouseCrawler(Crawler):
     @staticmethod
     def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
+        if not date:
+            return None
         try:
             date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
         except ValueError:
