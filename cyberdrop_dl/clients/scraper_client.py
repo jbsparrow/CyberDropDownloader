@@ -86,41 +86,6 @@ class ScraperClient:
         self.trace_configs.append(trace_config)
 
     @limiter
-    async def flaresolverr(
-        self,
-        domain: str,
-        url: URL,
-        client_session: CachedSession,
-        origin: ScrapeItem | URL | None = None,
-        with_response_url: bool = False,
-    ) -> tuple[str, URL | None]:
-        """Returns the resolved URL from the given URL."""
-        if not self.client_manager.flaresolverr:
-            raise DDOSGuardError(message="FlareSolverr is not configured", origin=origin)
-
-        headers = self._headers | {"Content-Type": "application/json"}
-        data = {"cmd": "request.get", "url": str(url), "maxTimeout": 60000}
-
-        async with client_session.post(
-            f"http://{self.client_manager.flaresolverr}/v1",
-            headers=headers,
-            ssl=self.client_manager.ssl_context,
-            proxy=self.client_manager.proxy,
-            json=data,
-        ) as response:
-            json_obj: dict = await response.json()  # type: ignore
-            status = json_obj.get("status")
-            if status != "ok":
-                raise DDOSGuardError(message="Failed to resolve URL with flaresolverr", origin=origin)
-
-            solution: dict = json_obj.get("solution")
-            response: str = solution.get("response")
-            response_url = solution.get("url") if with_response_url else None
-            if response_url:
-                response_url = URL(response_url)
-            return response, response_url
-
-    @limiter
     async def get_soup(
         self,
         domain: str,
@@ -129,6 +94,7 @@ class ScraperClient:
         origin: ScrapeItem | URL | None = None,
         with_response_url: bool = False,
         cache_disabled: bool = False,
+        retry: bool = True,
     ) -> BeautifulSoup:
         """Returns a BeautifulSoup object from the given URL."""
         async with (
@@ -141,15 +107,21 @@ class ScraperClient:
                 await self.client_manager.check_http_status(response, origin=origin)
             except DDOSGuardError:
                 await self.client_manager.manager.cache_manager.request_cache.delete_url(url)
-                response, response_URL = await self.flaresolverr(
-                    domain,
+                soup, response_URL = await self.client_manager.flaresolverr.get(
                     url,
-                    origin=origin,
-                    with_response_url=with_response_url,
+                    client_session,
+                    origin,
                 )
+                # retry request with flaresolverr cookies
+                if self.client_manager.check_ddos_guard(soup) or self.client_manager.check_cloudflare(soup):
+                    if not retry:
+                        raise DDOSGuardError(message="Unable to access website with flaresolverr cookies") from None
+                    return await self.get_soup(
+                        domain, url, client_session, origin, with_response_url, retry=False, cache_disabled=True
+                    )
                 if with_response_url:
-                    return BeautifulSoup(response, "html.parser"), response_URL
-                return BeautifulSoup(response, "html.parser")
+                    return soup, response_URL
+                return soup
 
             content_type = response.headers.get("Content-Type")
             assert content_type is not None
@@ -207,6 +179,7 @@ class ScraperClient:
         client_session: CachedSession,
         origin: ScrapeItem | URL | None = None,
         cache_disabled: bool = False,
+        retry: bool = True,
     ) -> str:
         """Returns a text object from the given URL."""
         async with (
@@ -219,8 +192,12 @@ class ScraperClient:
                 await self.client_manager.check_http_status(response, origin=origin)
             except DDOSGuardError:
                 await self.client_manager.manager.cache_manager.request_cache.delete_url(url)
-                response_text, _ = await self.flaresolverr(domain, url)
-                return response_text
+                soup, _ = await self.client_manager.flaresolverr.get(url, client_session, origin)
+                if self.client_manager.check_ddos_guard(soup) or self.client_manager.check_cloudflare(soup):
+                    if not retry:
+                        raise DDOSGuardError(message="Unable to access website with flaresolverr cookies") from None
+                    return await self.get_text(domain, url, client_session, origin, retry=False, cache_disabled=True)
+                return str(soup)
             return await response.text()
 
     @limiter
