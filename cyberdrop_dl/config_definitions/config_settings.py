@@ -132,7 +132,7 @@ class Sorting(BaseModel):
     sort_downloads: bool = False
     sort_folder: Path = DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"
     scan_folder: Path | None = None
-    sort_incremementer_format: NonEmptyStr = " ({i})"
+    sort_incrementer_format: NonEmptyStr = " ({i})"
     sorted_audio: NonEmptyStr | None = "{sort_dir}/{base_dir}/Audio/{filename}{ext}"
     sorted_image: NonEmptyStr | None = "{sort_dir}/{base_dir}/Images/{filename}{ext}"
     sorted_other: NonEmptyStr | None = "{sort_dir}/{base_dir}/Other/{filename}{ext}"
