@@ -8,7 +8,7 @@ COMMANDLINE_ARGS=""
 
 # Check the installed Python version
 MIN_PYTHON_VER="3.11"
-MAX_PYTHON_VER="3.13"
+MAX_PYTHON_VER="3.14"
 
 if [ -z "$PYTHON" ]
 then
