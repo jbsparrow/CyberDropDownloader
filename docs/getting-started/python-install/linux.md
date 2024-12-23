@@ -17,7 +17,7 @@ If you get an error instead of a version number, try doing it simply as:
 python --version
 ```
 
-If the version number is 3.11 or 3.12, you're all set!
+If the version number is 3.11, 3.12 or 3.13, you're all set!
 
 If the version is below 3.11, you'll need to update Python.
 

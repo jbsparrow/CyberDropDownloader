@@ -18,9 +18,7 @@ layout:
 You'll need to have python installed to use Cyberdrop-DL. If you are on Linux or mac, you probably already do
 
 {% hint style="warning" %}
-Cyberdrop-DL currently requires python 3.11 or python 3.12
-
-Python 3.13 is **NOT** supported
+Cyberdrop-DL requires python 3.11, 3.12 or python 3.13
 {% endhint %}
 
 Follow the instructions according to your operating system:
