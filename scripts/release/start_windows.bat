@@ -10,7 +10,7 @@ set "COMMANDLINE_ARGS="
 rem Check the installed Python version
 chcp 65001
 set MIN_PYTHON_VER=3.11
-set MAX_PYTHON_VER=3.13
+set MAX_PYTHON_VER=3.14
 if not defined PYTHON (set PYTHON=python)
 "%PYTHON%" -c "import sys; MIN_PYTHON_VER = tuple(map(int, '%MIN_PYTHON_VER%'.split('.'))); MAX_PYTHON_VER = tuple(map(int, '%MAX_PYTHON_VER%'.split('.'))); current_version = sys.version_info; exit(0 if (current_version >= MIN_PYTHON_VER and current_version < MAX_PYTHON_VER) else 1)"
 
