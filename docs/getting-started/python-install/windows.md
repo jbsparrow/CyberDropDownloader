@@ -13,7 +13,7 @@ First, let's check if Python is installed on your system. You can do this by ope
 python --version
 ```
 
-If the version number displayed is 3.11 or 3.12, you're all set and can proceed with the rest of the setup guide!
+If the version number displayed is 3.11, 3.12 or 3.13, you're all set and can proceed with the rest of the setup guide!
 
 If the version is lower than 3.11, the quickest and easiest solution is to uninstall the current version and install a compatible one. You can do this by searching for 'Uninstall Programs' on your machine, locating Python, and following the uninstallation process.
 
