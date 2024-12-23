@@ -37,7 +37,7 @@ if sys.platform == 'win32':
 
 
 # external dependencies
-import lz4.block
+#import lz4.block
 from Cryptodome.Cipher import AES
 from Cryptodome.Protocol.KDF import PBKDF2
 from Cryptodome.Util.Padding import unpad
@@ -1030,6 +1030,7 @@ class FirefoxBased:
                             FirefoxBased.__create_session_cookie(cookie))
 
     def __add_session_cookies_lz4(self, cj):
+        return
         if not os.path.exists(self.session_file_lz4):
             return
         try:
