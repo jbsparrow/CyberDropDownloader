@@ -16,15 +16,17 @@ jobs:
       - name: Check for tag
         id: check_tag
         run: |
-          if [ -z "${GITHUB_REF##*/}" ]; then
+          TAG_NAME=${GITHUB_REF##*/}
+          if [ -z "$TAG_NAME" ]; then
             echo "Error: No tag provided. Please provide a tag to run this workflow."
             exit 1
           fi
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
 
       - name: Extract version number
         id: extract_version
         run: |
-          TAG_NAME=${GITHUB_REF##*/}
+          TAG_NAME=${{ env.TAG_NAME }}
           VERSION_NUMBER=$(echo "$TAG_NAME" | grep -oE '^[0-9]+' | head -n 1)
           if [ -z "$VERSION_NUMBER" ]; then
             echo "Error: No numeric version found in tag name."
@@ -39,13 +41,25 @@ jobs:
           cd zip
           zip -r ../Cyberdrop-DL.v${{ env.VERSION_NUMBER }}.zip *
 
+      - name: Extract changelog content
+        id: extract_changelog
+        run: |
+          TAG_NAME=${{ env.TAG_NAME }}
+          CHANGELOG_CONTENT=$(awk -v version="$TAG_NAME" '
+          /^#+ \[/ { if (p) { exit }; if ($2 == "["version"]") { p=1; next} } p && NF
+          ' "CHANGELOG.md")
+          if [ -z "$CHANGELOG_CONTENT" ]; then
+            echo "Error: No changelog content found for tag $TAG_NAME."
+            exit 1
+          fi
+          echo "CHANGELOG_CONTENT<<EOF" >> $GITHUB_ENV
+          echo "$CHANGELOG_CONTENT" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
       - name: Create release
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
           name: Cyberdrop-DL V${{ env.VERSION_NUMBER }} Start Files
-          body: |
-            If you install and run the program with PIP yourself, you do not need anything here.
-            Download the Cyberdrop-DL zip file below, you do not need to download the source code zip files.
-            The zip file contains start files that will download and install Cyberdrop-DL and keep it up to date.
+          body: ${{ env.CHANGELOG_CONTENT }}
           files: Cyberdrop-DL.v${{ env.VERSION_NUMBER }}.zip
