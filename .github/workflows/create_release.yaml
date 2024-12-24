@@ -13,7 +13,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Check for tag
+      - name: Check for version tag
         id: check_tag
         run: |
           TAG_NAME=${GITHUB_REF##*/}
@@ -34,13 +34,6 @@ jobs:
           fi
           echo "VERSION_NUMBER=$VERSION_NUMBER" >> $GITHUB_ENV
 
-      - name: Create zip from subfolder
-        run: |
-          mkdir -p zip/Cyberdrop-DL.v${{ env.VERSION_NUMBER }}
-          cp -r scripts/release/* zip/Cyberdrop-DL.v${{ env.VERSION_NUMBER }}
-          cd zip
-          zip -r ../Cyberdrop-DL.v${{ env.VERSION_NUMBER }}.zip *
-
       - name: Extract changelog content
         id: extract_changelog
         run: |
@@ -56,7 +49,14 @@ jobs:
           echo "$CHANGELOG_CONTENT" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
-      - name: Create release
+      - name: Create start scripts zip
+        run: |
+          mkdir -p zip/Cyberdrop-DL.v${{ env.VERSION_NUMBER }}
+          cp -r scripts/release/* zip/Cyberdrop-DL.v${{ env.VERSION_NUMBER }}
+          cd zip
+          zip -r ../Cyberdrop-DL.v${{ env.VERSION_NUMBER }}.zip *
+
+      - name: Create GH release
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
