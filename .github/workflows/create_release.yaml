@@ -42,9 +42,9 @@ jobs:
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          name: Cyberdrop-DL V${VERSION_NUMBER} Start Files
+          name: Cyberdrop-DL V${{ env.VERSION_NUMBER }} Start Files
           body: |
             If you install and run the program with PIP yourself, you do not need anything here.
             Download the Cyberdrop-DL zip file below, you do not need to download the source code zip files.
             The zip file contains start files that will download and install Cyberdrop-DL and keep it up to date.
-          files: Cyberdrop-DL.v${VERSION_NUMBER}.zip
+          files: Cyberdrop-DL.v${{ env.VERSION_NUMBER }}.zip
