@@ -25,7 +25,7 @@ jobs:
         id: extract_version
         run: |
           TAG_NAME=${GITHUB_REF##*/}
-          VERSION_NUMBER=$(echo "$TAG_NAME" | grep -o '[0-9]' | head -n 1)
+          VERSION_NUMBER=$(echo "$TAG_NAME" | grep -oE '^[0-9]+' | head -n 1)
           if [ -z "$VERSION_NUMBER" ]; then
             echo "Error: No numeric version found in tag name."
             exit 1
