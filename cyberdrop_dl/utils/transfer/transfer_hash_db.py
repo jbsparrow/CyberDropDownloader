@@ -61,12 +61,12 @@ def transfer_from_old_hash_table(db_path):
 
         # Insert data into 'files' and 'temp_hash' tables
         cursor.executemany(
-            "INSERT INTO files (folder, download_filename, original_filename, file_size, referer, date) VALUES (?, ?, ?, ?, ?, ?);",
+            "INSERT OR IGNORE INTO files (folder, download_filename, original_filename, file_size, referer, date) VALUES (?, ?, ?, ?, ?, ?);",
             data_to_insert_files,
         )
 
         cursor.executemany(
-            "INSERT INTO temp_hash (folder, download_filename, hash_type, hash) VALUES (?, ?, ?, ?);",
+            "INSERT OR IGNORE INTO temp_hash (folder, download_filename, hash_type, hash) VALUES (?, ?, ?, ?);",
             data_to_insert_hash,
         )
 
