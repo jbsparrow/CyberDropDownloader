@@ -34,9 +34,10 @@ jobs:
 
       - name: Create zip from subfolder
         run: |
-          mkdir -p zip/Cyberdrop-DL.v${VERSION_NUMBER}
-          cp -r scripts/release/* zip/Cyberdrop-DL.v${VERSION_NUMBER}
-          zip -r Cyberdrop-DL.v${VERSION_NUMBER}.zip zip/*
+          mkdir -p zip/Cyberdrop-DL.v${{ env.VERSION_NUMBER }}
+          cp -r scripts/release/* zip/Cyberdrop-DL.v${{ env.VERSION_NUMBER }}
+          cd zip
+          zip -r ../Cyberdrop-DL.v${{ env.VERSION_NUMBER }}.zip *
 
       - name: Create release
         id: create_release
