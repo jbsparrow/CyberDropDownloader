@@ -65,7 +65,7 @@ class OmegaScansCrawler(Crawler):
                 break
 
         if not series_id:
-            raise ScrapeError(404, "series_id not found", origin=ScrapeItem)
+            raise ScrapeError(404, "series_id not found", origin=scrape_item)
 
         page_number = 1
         number_per_page = 30
