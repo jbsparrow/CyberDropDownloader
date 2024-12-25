@@ -2,6 +2,39 @@
 
 These are higher level options that effect the overarching functions of the program.
 
+## `log_level`
+
+| Type           | Default  |
+|----------------|----------|
+| `NonNegativeInt` | `10`|
+
+Defines the logging level for messages, according to [Python logging levels](https://docs.python.org/3/library/logging.html#levels). Messages with a level below this threshold will not be logged. Setting a value above 50 will disable logging entirely.
+
+| Level          | Value | Description |
+|----------------|----------|----------|
+| `NOTSET`   | 0  | All events are logged |
+| `DEBUG`    | 10 | Offers detailed information, typically useful to troubleshoot problems |
+| `INFO`     | 20 | Provides general information about scrape and download progress|
+| `WARNING`  | 30 | Highlights a potential issue or something that might need attention (e.g. `Login wasn't provided for <FORUM>`)|
+| `ERROR`    | 40 | Denotes a serious problem preventing Cyberdrop-DL to execute some function |
+| `CRITICAL` | 50 | Fatal error that causes Cyberdrop-DL to exit immediately |
+
+{% hint style="info" %}
+Only change `log_level` if you know CDL will be running for a long time (high number of input URLs). Using anything other that `DEBUG` makes troubleshooting issues harder.
+{% endhint %}
+
+## `console_log_level`
+
+| Type           | Default  |
+|----------------|----------|
+| `NonNegativeInt` | `100`|
+
+Same as `log_level` but it controls which messages are shown on the console.
+
+{% hint style="warning" %}
+Configure this option only when running CDL with the `--no-ui` flag. Otherwise, the log messages may lead to flickering of the UI screen
+{% endhint %}
+
 ## `ignore_history`
 
 | Type           | Default  |
