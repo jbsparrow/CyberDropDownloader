@@ -3,6 +3,7 @@ from __future__ import annotations
 import calendar
 import contextlib
 import datetime
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
@@ -16,8 +17,6 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
-
-from dataclasses import dataclass
 
 
 @dataclass

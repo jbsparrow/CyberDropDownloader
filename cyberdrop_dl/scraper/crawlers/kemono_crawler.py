@@ -5,6 +5,7 @@ import contextlib
 import datetime
 import json
 import re
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
@@ -18,8 +19,6 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_an
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
-
-from dataclasses import dataclass
 
 
 @dataclass
