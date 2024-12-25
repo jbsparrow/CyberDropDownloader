@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > 3. Removed `--sort-cdl-only` option
 
 > 4. The following arguments are deprecated and will be removed in a future version:
+>  - `--output-folder`
 >  - `--download-all-configs`
 >  - `--sort-all-configs`
 >  - `--sort-all-downloads`
