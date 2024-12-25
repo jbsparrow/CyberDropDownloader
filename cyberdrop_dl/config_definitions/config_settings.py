@@ -101,8 +101,8 @@ class IgnoreOptions(BaseModel):
 
 class RuntimeOptions(BaseModel):
     ignore_history: bool = False
-    log_level: int = DEBUG
-    console_log_level: int = 100
+    log_level: NonNegativeInt = DEBUG
+    console_log_level: NonNegativeInt = 100
     skip_check_for_partial_files: bool = False
     skip_check_for_empty_folders: bool = False
     delete_partial_files: bool = False
