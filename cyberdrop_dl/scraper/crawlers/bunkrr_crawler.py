@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import calendar
-import contextlib
 import datetime
 import re
 from typing import TYPE_CHECKING, ClassVar
@@ -9,7 +8,7 @@ from typing import TYPE_CHECKING, ClassVar
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import MaxChildrenError, NoExtensionError, ScrapeError
+from cyberdrop_dl.clients.errors import NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.constants import FILE_FORMATS
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
@@ -81,13 +80,7 @@ class BunkrrCrawler(Crawler):
         album_id = scrape_item.url.parts[2]
         scrape_item.album_id = album_id
         results = await self.get_album_results(album_id)
-        scrape_item.type = FILE_HOST_ALBUM
-        scrape_item.children = scrape_item.children_limit = 0
-
-        with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = (
-                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
-            )
+        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
 
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
@@ -134,9 +127,7 @@ class BunkrrCrawler(Crawler):
                 if not self.check_album_results(src, results):
                     await self.handle_file(src, new_scrape_item, src_filename, ext, custom_filename=filename)
 
-            scrape_item.children += 1
-            if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
-                raise MaxChildrenError(origin=scrape_item)
+            scrape_item.add_children()
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
