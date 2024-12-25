@@ -171,6 +171,7 @@ download_options:
   --remove-generated-id-from-filenames, --no-remove-generated-id-from-filenames
   --scrape-single-forum-post, --no-scrape-single-forum-post
   --separate-posts, --no-separate-posts
+  --separate-posts-format SEPARATE_POSTS_FORMAT
   --skip-download-mark-completed, --no-skip-download-mark-completed
   --skip-referer-seen-before, --no-skip-referer-seen-before
   --maximum-number-of-children [MAXIMUM_NUMBER_OF_CHILDREN ...]
