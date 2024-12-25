@@ -38,7 +38,7 @@ class Crawler(ABC):
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {}
     domain = None
     primary_base_domain: URL = None
-    DEFAULT_POST_TITLE_FORMAT = "{date} - {number} - {id} - {title}"
+    DEFAULT_POST_TITLE_FORMAT = "{date} - {number} - {title}"
 
     def __init__(self, manager: Manager, domain: str, folder_domain: str | None = None) -> None:
         self.manager = manager

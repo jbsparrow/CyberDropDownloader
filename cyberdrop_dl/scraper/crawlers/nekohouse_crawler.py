@@ -30,6 +30,7 @@ class Post:
 
 class NekohouseCrawler(Crawler):
     primary_base_domain = URL("https://nekohouse.su")
+    DEFAULT_POST_TITLE_FORMAT = "{date} - {title}"
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "nekohouse", "Nekohouse")

@@ -35,6 +35,7 @@ class Post:
 
 class RedditCrawler(Crawler):
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {"reddit": ["reddit", "redd.it"]}
+    DEFAULT_POST_TITLE_FORMAT = "{title}"
     primary_base_domain = URL("https://www.reddit.com/")
 
     def __init__(self, manager: Manager, site: str) -> None:

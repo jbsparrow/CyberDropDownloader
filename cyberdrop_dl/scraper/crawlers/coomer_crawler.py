@@ -31,6 +31,7 @@ class Post:
 
 class CoomerCrawler(Crawler):
     primary_base_domain = URL("https://coomer.su")
+    DEFAULT_POST_TITLE_FORMAT = "{date} - {title}"
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "coomer", "Coomer")

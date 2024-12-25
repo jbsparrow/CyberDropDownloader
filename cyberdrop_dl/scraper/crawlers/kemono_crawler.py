@@ -32,6 +32,7 @@ class Post:
 
 class KemonoCrawler(Crawler):
     primary_base_domain = URL("https://kemono.su")
+    DEFAULT_POST_TITLE_FORMAT = "{date} - {title}"
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "kemono", "Kemono")
