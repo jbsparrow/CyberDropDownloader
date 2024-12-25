@@ -23,6 +23,16 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
+class Post:
+    id: int = None
+    title: str
+    date: int
+
+    @property
+    def number(self):
+        return self.id
+
+
 class RedditCrawler(Crawler):
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {"reddit": ["reddit", "redd.it"]}
     primary_base_domain = URL("https://www.reddit.com/")
@@ -217,6 +227,7 @@ class RedditCrawler(Crawler):
         add_parent: URL | None = None,
     ) -> ScrapeItem:
         """Creates a new scrape item with the same parent as the old scrape item."""
+        post = Post(title=title, date=date)
         new_scrape_item = self.create_scrape_item(
             old_scrape_item,
             link,
@@ -226,6 +237,5 @@ class RedditCrawler(Crawler):
             date,
             add_parent=add_parent,
         )
-        if self.manager.config_manager.settings_data.download_options.separate_posts:
-            new_scrape_item.add_to_parent_title(title)
+        self.add_separate_post_title(new_scrape_item, post)
         return new_scrape_item

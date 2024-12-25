@@ -19,6 +19,16 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
+class Post:
+    id: int
+    title: str
+    date: int
+
+    @property
+    def number(self):
+        return self.id
+
+
 class CoomerCrawler(Crawler):
     primary_base_domain = URL("https://coomer.su")
 
@@ -193,12 +203,7 @@ class CoomerCrawler(Crawler):
         add_parent: URL | None = None,
     ) -> None:
         """Creates a new scrape item with the same parent as the old scrape item."""
-        post_title = None
-        if self.manager.config_manager.settings_data.download_options.separate_posts:
-            post_title = f"{date} - {title}"
-            if self.manager.config_manager.settings_data.download_options.include_album_id_in_folder_name:
-                post_title = post_id + " - " + post_title
-
+        post = Post(id=post_id, title=title, date=date)
         new_title = self.create_title(user, None, None)
         new_scrape_item = self.create_scrape_item(
             old_scrape_item,
@@ -206,10 +211,10 @@ class CoomerCrawler(Crawler):
             new_title,
             True,
             None,
-            self.parse_datetime(date),
+            post.date,
             add_parent=add_parent,
         )
-        new_scrape_item.add_to_parent_title(post_title)
+        self.add_separate_post_title(new_scrape_item, post)
         await self.handle_direct_link(new_scrape_item)
 
     async def get_user_info(self, scrape_item: ScrapeItem) -> dict:

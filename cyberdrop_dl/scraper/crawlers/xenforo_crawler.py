@@ -62,6 +62,7 @@ class XenforoSelectors:
 class ForumPost:
     soup: BeautifulSoup
     selectors: PostSelectors
+    title: str | None = None
 
     @property
     def content(self) -> Tag:
@@ -79,11 +80,16 @@ class ForumPost:
         number = self.soup.select_one(self.selectors.number.element)
         return int(number.get(self.selectors.number.attribute).split("/")[-1].split("post-")[-1])
 
+    @property
+    def id(self):
+        return self.number
+
 
 class XenforoCrawler(Crawler):
     login_required = True
     primary_base_domain = None
     selectors = XenforoSelectors()
+    DEFAULT_POST_TITLE_FORMAT = "post-{number}"
 
     def __init__(self, manager: Manager, site: str, folder_domain: str | None = None) -> None:
         super().__init__(manager, site, folder_domain)
@@ -193,9 +199,7 @@ class XenforoCrawler(Crawler):
 
     async def post(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         """Scrapes a post."""
-        if self.manager.config_manager.settings_data.download_options.separate_posts:
-            scrape_item.add_to_parent_title(f"post-{post.number}")
-
+        self.add_separate_post_title(scrape_item, post)
         scrape_item.set_type(FORUM_POST, self.manager)
         posts_scrapers = [self.attachments, self.embeds, self.images, self.links, self.videos]
         for scraper in posts_scrapers:
