@@ -96,7 +96,7 @@ class ConfigManager:
             set_fields = self.get_model_fields(self.settings_data)
             self.deep_scrape = self.settings_data.runtime_options.deep_scrape
             self.settings_data.runtime_options.deep_scrape = False
-            if posible_fields == set_fields and self.pydantic_config:
+            if posible_fields == set_fields and self.pydantic_config and not self.deep_scrape:
                 return
         else:
             from cyberdrop_dl.utils import constants
