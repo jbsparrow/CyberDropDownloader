@@ -11,10 +11,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import aiofiles
-import apprise
 import rich
 from aiohttp import ClientConnectorError, ClientSession, FormData
-from pydantic import ValidationError
 from rich.text import Text
 from yarl import URL
 
@@ -22,7 +20,6 @@ from cyberdrop_dl.clients.errors import CDLBaseError, NoExtensionError
 from cyberdrop_dl.managers.real_debrid.errors import RealDebridError
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.logger import log, log_with_color
-from cyberdrop_dl.utils.yaml import handle_validation_error
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -218,7 +215,6 @@ async def check_partials_and_empty_folders(manager: Manager) -> None:
 
 def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -> tuple[str, str]:
     """Checks if the current version is the latest version."""
-    import json
 
     from requests import request
 
@@ -283,73 +279,6 @@ def check_prelease_version(current_version: str, releases: list[str]) -> tuple[s
             message = Text.from_markup(message)
 
     return is_prerelease, latest_testing_version, message
-
-
-def send_apprise_notifications(manager: Manager) -> None:
-    apprise_file = manager.path_manager.config_folder / manager.config_manager.loaded_config / "apprise.txt"
-    text: Text = constants.LOG_OUTPUT_TEXT
-    constants.LOG_OUTPUT_TEXT = Text("")
-
-    if not apprise_file.is_file():
-        return
-
-    from cyberdrop_dl.config_definitions.custom_types import AppriseURL
-
-    try:
-        with apprise_file.open(encoding="utf8") as file:
-            apprise_urls = [AppriseURL(url=line.strip()) for line in file]
-    except ValidationError as e:
-        sources = {"AppriseURLModel": apprise_file}
-        handle_validation_error(e, sources=sources)
-        return
-
-    if not apprise_urls:
-        return
-
-    rich.print("\nSending notifications.. ")
-
-    DEFAULT_APPRISE_MESSAGE = {
-        "body": "Finished downloading. Enjoy :)",
-        "title": "Cyberdrop-DL",
-        "body_format": apprise.NotifyFormat.TEXT,
-    }
-
-    def is_simplied(url: str) -> bool:
-        return (key in url for key in ("windows://",))
-
-    apprise_obj = apprise.Apprise()
-    for apprise_url in apprise_urls:
-        url = str(apprise_url.url.get_secret_value())
-        if is_simplied(url):
-            apprise_obj.add(url, tag="simplified")
-            continue
-        apprise_obj.add(url, tag=apprise_url.tags)
-
-    results_dict = {}
-    message = DEFAULT_APPRISE_MESSAGE | {"body": text.plain}
-    results_dict["no_log"] = apprise_obj.notify(**message, tag="no_logs")
-
-    message = message | {"attach": str(manager.path_manager.main_log.resolve())}
-    results_dict["attach_log"] = apprise_obj.notify(**message, tag="attach_logs")
-
-    results_dict["simplified"] = apprise_obj.notify(**DEFAULT_APPRISE_MESSAGE, tag="simplified")
-
-    results = [r for r in results_dict.values() if r is not None]
-    success_text = Text("Success", "green")
-    if not results:
-        final_result = Text("No notifications sent", "yellow")
-    if all(results):
-        final_result = success_text
-    elif any(results):
-        final_result = Text("Partial Success", "yellow")
-    else:
-        final_result = Text("Failed", "bold red")
-
-    rich.print("Apprise notifications results:", final_result)
-    if all(results):
-        return
-    results_dict = {f"Apprise notifications results: {final_result}": results_dict}
-    log(json.dumps(results_dict, indent=4))
 
 
 async def send_webhook_message(manager: Manager) -> None:
