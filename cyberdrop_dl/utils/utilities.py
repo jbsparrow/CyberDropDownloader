@@ -19,7 +19,7 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import CDLBaseError, NoExtensionError
 from cyberdrop_dl.managers.real_debrid.errors import RealDebridError
 from cyberdrop_dl.utils import constants
-from cyberdrop_dl.utils.logger import log, log_with_color
+from cyberdrop_dl.utils.logger import log, log_debug, log_spacer, log_with_color
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -288,6 +288,7 @@ async def send_webhook_message(manager: Manager) -> None:
     if not webhook:
         return
 
+    rich.print("\nSending Webhook Notifications.. ")
     url = webhook.url.get_secret_value()
     text: Text = constants.LOG_OUTPUT_TEXT
     plain_text = parse_rich_text_by_style(text, constants.STYLE_TO_DIFF_FORMAT_MAP)
@@ -309,7 +310,21 @@ async def send_webhook_message(manager: Manager) -> None:
     )
 
     async with ClientSession() as session, session.post(url, data=form) as response:
-        await response.text()
+        successful = 200 <= response.status <= 300
+        result = [constants.NotificationResultText.SUCCESS.value]
+        result_to_log = result
+        if not successful:
+            json_resp: dict = await response.json()
+            if "content" in json_resp:
+                json_resp.pop("content")
+            json_resp = json.dumps(json_resp, indent=4)
+            result_to_log = constants.NotificationResultText.FAILED.value, json_resp
+
+        log_spacer(10, log_to_console=False)
+        rich.print("Webhook Notifications Results:", *result)
+        logger = log_debug if successful else log
+        result_to_log = "\n".join(map(str, result_to_log))
+        logger(f"Webhook Notifications Results: {result_to_log}")
 
 
 def open_in_text_editor(file_path: Path) -> bool:

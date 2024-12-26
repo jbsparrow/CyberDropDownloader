@@ -1,5 +1,5 @@
 import re
-from enum import IntEnum, StrEnum, auto
+from enum import Enum, IntEnum, StrEnum, auto
 from pathlib import Path
 
 from rich.text import Text
@@ -61,6 +61,13 @@ class BROWSERS(StrEnum):
     opera_gx = auto()
     vivaldi = auto()
     chromium = auto()
+
+
+class NotificationResultText(Enum):
+    SUCCESS = Text("Success", "green")
+    FAILED = Text("Failed", "bold red")
+    PARTIAL = Text("Partial Success", "yellow")
+    NONE = Text("No Notifications Sent", "yellow")
 
 
 # Pypi

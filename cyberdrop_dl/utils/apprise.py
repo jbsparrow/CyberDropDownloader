@@ -4,7 +4,7 @@ import json
 import shutil
 import tempfile
 from dataclasses import dataclass
-from enum import Enum, IntEnum
+from enum import IntEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -38,13 +38,6 @@ class AppriseURL:
 OS_URLS = ["windows://", "macosx://", "dbus://", "qt://", "glib://", "kde://"]
 
 
-class ResultText(Enum):
-    SUCCESS = Text("Success", "green")
-    FAILED = Text("Failed", "bold red")
-    PARTIAL = Text("Partial Success", "yellow")
-    NONE = Text("No Notifications Sent", "yellow")
-
-
 class LogLevel(IntEnum):
     NOTSET: 0
     DEBUG = 10
@@ -54,13 +47,13 @@ class LogLevel(IntEnum):
     CRITICAL = 50
 
 
+LOG_LEVEL_NAMES = [x.name for x in LogLevel]
+
+
 @dataclass
 class LogLine:
     level: LogLevel = LogLevel.INFO
     msg: str = ""
-
-
-LOG_LEVEL_NAMES = [x.name for x in LogLevel]
 
 
 def get_apprise_urls(manager: Manager) -> list[AppriseURL] | None:
@@ -84,7 +77,7 @@ def simplify_urls(apprise_urls: list[AppriseURLModel]) -> list[AppriseURL]:
 
     def use_simplified(url: str) -> bool:
         special_urls = OS_URLS
-        return any(key in url for key in special_urls)
+        return any(key in url.casefold() for key in special_urls)
 
     for apprise_url in apprise_urls:
         url = str(apprise_url.url.get_secret_value())
@@ -102,20 +95,20 @@ def process_results(all_urls: list[str], results_dict: dict[str, bool | None], a
     results = [r for r in results_dict.values() if r is not None]
     for key, value in results_dict.items():
         if value:
-            results_dict[key] = str(ResultText.SUCCESS.value)
+            results_dict[key] = str(constants.NotificationResultText.SUCCESS.value)
         elif value is None:
-            results_dict[key] = str(ResultText.NONE.value)
+            results_dict[key] = str(constants.NotificationResultText.NONE.value)
         else:
-            results_dict[key] = str(ResultText.FAILED.value)
+            results_dict[key] = str(constants.NotificationResultText.FAILED.value)
 
     if not results:
-        final_result = ResultText.NONE.value
+        final_result = constants.NotificationResultText.NONE.value
     if all(results):
-        final_result = ResultText.SUCCESS.value
+        final_result = constants.NotificationResultText.SUCCESS.value
     elif any(results):
-        final_result = ResultText.PARTIAL.value
+        final_result = constants.NotificationResultText.PARTIAL.value
     else:
-        final_result = ResultText.FAILED.value
+        final_result = constants.NotificationResultText.FAILED.value
 
     log_spacer(10, log_to_console=False)
     rich.print("Apprise notifications results:", final_result)
@@ -163,7 +156,7 @@ async def send_apprise_notifications(manager: Manager) -> None:
     if not apprise_urls:
         return
 
-    rich.print("\nSending notifications.. ")
+    rich.print("\nSending Apprise Notifications.. ")
     text: Text = constants.LOG_OUTPUT_TEXT
     constants.LOG_OUTPUT_TEXT = Text("")
 
