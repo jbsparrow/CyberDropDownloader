@@ -209,9 +209,8 @@ class BunkrrCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @staticmethod
-    def deep_scrape(url: URL) -> bool:
-        return any(part in url.host.split(".") for part in ("burger",))
+    def deep_scrape(self, url: URL) -> bool:
+        return any(part in url.host.split(".") for part in ("burger",)) or self.manager.config_manager.deep_scrape
 
     @staticmethod
     def is_reinforced_link(url: URL) -> bool:

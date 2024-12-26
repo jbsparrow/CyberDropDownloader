@@ -111,6 +111,7 @@ class RuntimeOptions(BaseModel):
     jdownloader_download_dir: Path | None = None
     jdownloader_autostart: bool = False
     jdownloader_whitelist: list[NonEmptyStr] = []
+    deep_scrape: bool = False
 
     @field_validator("jdownloader_download_dir", mode="before")
     @classmethod

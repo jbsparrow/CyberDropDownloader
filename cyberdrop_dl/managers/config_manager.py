@@ -25,6 +25,7 @@ class ConfigManager:
         self.authentication_settings: Path = field(init=False)
         self.settings: Path = field(init=False)
         self.global_settings: Path = field(init=False)
+        self.deep_scrape: bool = False
 
         self.authentication_data: AuthSettings = field(init=False)
         self.settings_data: ConfigSettings = field(init=False)
@@ -104,6 +105,8 @@ class ConfigManager:
             self.settings_data.logs.log_folder = constants.APP_STORAGE / "Configs" / self.loaded_config / "Logs"
             self.settings_data.sorting.sort_folder = constants.DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"
 
+        self.deep_scrape = self.settings_data.runtime_options.deep_scrape
+        self.settings_data.runtime_options.deep_scrape = False
         yaml.save(self.settings, self.settings_data)
 
     def _load_global_settings_config(self) -> None:
