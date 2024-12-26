@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-def startup() -> Manager:
+async def startup() -> Manager:
     """Starts the program and returns the manager.
 
     This will also run the UI for the program
@@ -46,7 +46,7 @@ def startup() -> Manager:
     """
     try:
         manager = Manager()
-        manager.startup()
+        await manager.startup()
         if manager.parsed_args.cli_only_args.multiconfig:
             manager.validate_all_configs()
 
@@ -218,8 +218,9 @@ async def director(manager: Manager) -> None:
         configs_to_run.pop(0)
 
         log(f"Using Debug Log: {debug_log_file_path}", 10)
-        log("Starting Async Processes...", 10)
-        await manager.async_startup()
+        log("Resetting per config values...", 10)
+        manager.reset()
+
         log_spacer(10)
 
         log("Starting CDL...\n", 20)
@@ -247,7 +248,7 @@ def main() -> None:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     exit_code = 1
-    manager = startup()
+    manager = asyncio.run(startup())
     with contextlib.suppress(Exception):
         try:
             asyncio.run(director(manager))

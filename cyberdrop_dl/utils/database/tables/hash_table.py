@@ -23,6 +23,7 @@ class HashTable:
         """Startup process for the HistoryTable."""
         await self.create_hash_tables()
 
+
     async def create_hash_tables(self):
         await self.db_conn.execute(create_files)
         await self.db_conn.execute(create_hash)

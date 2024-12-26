@@ -60,19 +60,12 @@ class Manager:
         self.downloaded_data: int = 0
         self.multiconfig: bool = False
 
-    def startup(self) -> None:
+    async def startup(self) -> None:
         """Startup process for the manager."""
         if isinstance(self.parsed_args, Field):
-            self.parsed_args = ParsedArgs.parse_args()
-
-        if not self.parsed_args.cli_only_args.appdata_folder:
-            self.first_time_setup.transfer_v4_to_v5()
-
+            self.parsed_args = ParsedArgs.parse_args()   
         self.path_manager = PathManager(self)
         self.path_manager.pre_startup()
-        # need pathmanager to get proper appdata location
-        self.first_time_setup.transfer_v5_to_new_hashtable()
-
         self.cache_manager.startup(self.path_manager.cache_folder / "cache.yaml")
         self.config_manager = ConfigManager(self)
         self.config_manager.startup()
@@ -85,6 +78,11 @@ class Manager:
         self.adjust_for_simpcity()
         if self.config_manager.loaded_config.casefold() == "all" or self.parsed_args.cli_only_args.multiconfig:
             self.multiconfig = True
+        await self.async_db_hash_startup()
+        self.first_time_setup.startup()
+
+
+
 
     def adjust_for_simpcity(self) -> None:
         """Adjusts settings for SimpCity update."""
@@ -106,18 +104,15 @@ class Manager:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def async_startup(self) -> None:
-        """Async startup process for the manager."""
+    def reset(self) -> None:
+        """reset settings values per configuration"""
         self.args_logging()
-
         if not isinstance(self.client_manager, ClientManager):
             self.client_manager = ClientManager(self)
         if not isinstance(self.download_manager, DownloadManager):
             self.download_manager = DownloadManager(self)
         if not isinstance(self.real_debrid_manager, RealDebridManager):
             self.real_debrid_manager = RealDebridManager(self)
-        await self.async_db_hash_startup()
-
         from cyberdrop_dl.utils import constants
 
         constants.MAX_NAME_LENGTHS["FILE"] = self.config_manager.global_settings_data.general.max_file_name_length

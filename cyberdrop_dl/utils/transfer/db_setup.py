@@ -19,6 +19,14 @@ class TransitionManager:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
 
+    def startup(self):
+        """
+        Transfers files and configurations from old versions to new versions
+
+        """
+        self.transfer_v4_to_v5()
+        self.transfer_v5_to_new_hashtable()
+
     def transfer_v5_to_new_hashtable(self):
         """
         transfers from old v5 hash table to new v5 hash table, that supports multiple hash types per file
