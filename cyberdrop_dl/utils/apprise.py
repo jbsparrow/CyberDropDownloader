@@ -98,16 +98,18 @@ async def send_apprise_notifications(manager: Manager) -> None:
     for apprise_url in apprise_urls:
         apprise_obj.add(apprise_url.url, tag=apprise_url.tags)
 
-    results = {}
     main_log = str(manager.path_manager.main_log.resolve())
-    message = DEFAULT_APPRISE_MESSAGE | {"body": text.plain}
-    apprise_logs = None
+    notifications_to_send = {
+        "no_log": {"body": text.plain},
+        "attach_logs": {"body": text.plain, "attach": main_log},
+        "simplified": {},
+    }
+
+    results = {}
     with apprise.LogCapture(level=10, fmt="%(levelname)s - %(message)s") as capture:
-        results["no_logs"] = await apprise_obj.async_notify(**message, tag="no_logs")
-        results["attach_logs"] = await apprise_obj.async_notify(
-            **DEFAULT_APPRISE_MESSAGE, tag="attach_logs", attach=main_log
-        )
-        results["simplified"] = await apprise_obj.async_notify(**DEFAULT_APPRISE_MESSAGE, tag="simplified")
+        for tag, extras in notifications_to_send.items():
+            msg = DEFAULT_APPRISE_MESSAGE | extras
+            results[tag] = await apprise_obj.async_notify(**msg, tag=tag)
         apprise_logs = capture.getvalue()
 
     process_results(results, apprise_logs)
