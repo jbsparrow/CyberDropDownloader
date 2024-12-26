@@ -94,6 +94,8 @@ class ConfigManager:
         if self.settings.is_file():
             self.settings_data = ConfigSettings.model_validate(yaml.load(self.settings))
             set_fields = self.get_model_fields(self.settings_data)
+            self.deep_scrape = self.settings_data.runtime_options.deep_scrape
+            self.settings_data.runtime_options.deep_scrape = False
             if posible_fields == set_fields and self.pydantic_config:
                 return
         else:
@@ -105,8 +107,6 @@ class ConfigManager:
             self.settings_data.logs.log_folder = constants.APP_STORAGE / "Configs" / self.loaded_config / "Logs"
             self.settings_data.sorting.sort_folder = constants.DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"
 
-        self.deep_scrape = self.settings_data.runtime_options.deep_scrape
-        self.settings_data.runtime_options.deep_scrape = False
         yaml.save(self.settings, self.settings_data)
 
     def _load_global_settings_config(self) -> None:
