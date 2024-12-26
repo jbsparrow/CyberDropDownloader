@@ -36,8 +36,8 @@ class FrozenModel(BaseModel):
     model_config = ConfigDict(frozen=True)
 
 
-class AppriseURLModel(FrozenModel):
-    url: SecretAnyURL
+class AppriseURL(FrozenModel):
+    url: Secret[AnyUrl]
     tags: set[str]
 
     @model_serializer()
@@ -50,61 +50,21 @@ class AppriseURLModel(FrozenModel):
     @model_validator(mode="before")
     @staticmethod
     def parse_input(value: dict | URL | str):
-        url_obj = value
-        tags = None
-        if isinstance(url_obj, dict):
-            tags = url_obj.get("tags")
-            url_obj = url_obj.get("url")
-        if isinstance(value, URL):
-            url_obj = str(value)
-        url = AppriseURL(url_obj, validate=False)
-        return {"url": url._url, "tags": tags or url.tags or set("no_logs")}
+        url = value
+        tags = set()
+        if isinstance(value, dict):
+            tags = value.get("tags") or tags
+            url = value.get("url", "")
 
+        if isinstance(url, URL):
+            url = str(url)
+        parts = url.split("://", 1)[0].split("=", 1)
+        if len(parts) == 2:
+            tags = set(parts[0].split(","))
+            url: str = url.split("=", 1)[-1]
 
-class AppriseURL:
-    _validator = AppriseURLModel
-
-    def __init__(self, url: URL | str, tags: set | None = None, *, validate: bool = True):
-        self._actual_url = None
-        self._url = str(url)
-        if validate:
-            self._validate()
-        else:
-            self.parse_str(url, tags)
-
-    @property
-    def tags(self) -> set[str]:
-        return self._tags
-
-    @property
-    def url(self) -> URL:
-        self._validate()
-        return self._actual_url
-
-    def parse_str(self, url: URL | str, tags: set | None = None):
-        self._tags = tags or set("no_logs")
-        self._url = str(url)
-        self._actual_url = url if isinstance(url, URL) else None
-        parts = self._url.split("://", 1)[0].split("=", 1)
-        if len(parts) == 2 and not self._actual_url:
-            self._tags = set(parts[0].split(","))
-            self._url: str = url.split("=", 1)[-1]
-
-    def _validate(self):
-        if not self._actual_url:
-            apprise_model = self._validator(url=self._url)
-            self._actual_url = apprise_model.url
-
-    def __repr__(self):
-        return f"AppriseURL({self._url}, tags={self.tags})"
-
-    def __str__(self):
-        return f"{','.join(self.tags)}{'=' if self.tags else ''}{self.url}"
-
-
-class HttpAppriseURLModel(AppriseURLModel):
-    url: SecretHttpURL
+        return {"url": url.casefold(), "tags": tags or {"no_logs"}}
 
 
 class HttpAppriseURL(AppriseURL):
-    _validator = HttpAppriseURLModel
+    url: Secret[HttpURL]

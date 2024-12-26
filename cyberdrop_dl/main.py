@@ -24,8 +24,8 @@ from cyberdrop_dl.utils.sorting import Sorter
 from cyberdrop_dl.utils.utilities import (
     check_latest_pypi,
     check_partials_and_empty_folders,
+    send_apprise_notifications,
     send_webhook_message,
-    sent_apprise_notifications,
 )
 from cyberdrop_dl.utils.yaml import handle_validation_error
 
@@ -234,7 +234,7 @@ async def director(manager: Manager) -> None:
             log_with_color("Finished downloading. Enjoy :)", "green", 20, show_in_stats=False)
 
         await send_webhook_message(manager)
-        sent_apprise_notifications(manager)
+        send_apprise_notifications(manager)
         start_time = perf_counter()
 
 

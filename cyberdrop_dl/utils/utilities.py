@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import json
 import os
 import platform
 import re
@@ -284,7 +285,7 @@ def check_prelease_version(current_version: str, releases: list[str]) -> tuple[s
     return is_prerelease, latest_testing_version, message
 
 
-def sent_apprise_notifications(manager: Manager) -> None:
+def send_apprise_notifications(manager: Manager) -> None:
     apprise_file = manager.path_manager.config_folder / manager.config_manager.loaded_config / "apprise.txt"
     text: Text = constants.LOG_OUTPUT_TEXT
     constants.LOG_OUTPUT_TEXT = Text("")
@@ -296,7 +297,7 @@ def sent_apprise_notifications(manager: Manager) -> None:
 
     try:
         with apprise_file.open(encoding="utf8") as file:
-            apprise_urls = [AppriseURL(line.strip()) for line in file]
+            apprise_urls = [AppriseURL(url=line.strip()) for line in file]
     except ValidationError as e:
         sources = {"AppriseURLModel": apprise_file}
         handle_validation_error(e, sources=sources)
@@ -306,42 +307,49 @@ def sent_apprise_notifications(manager: Manager) -> None:
         return
 
     rich.print("\nSending notifications.. ")
+
+    DEFAULT_APPRISE_MESSAGE = {
+        "body": "Finished downloading. Enjoy :)",
+        "title": "Cyberdrop-DL",
+        "body_format": apprise.NotifyFormat.TEXT,
+    }
+
+    def is_simplied(url: str) -> bool:
+        return (key in url for key in ("windows://",))
+
     apprise_obj = apprise.Apprise()
     for apprise_url in apprise_urls:
-        apprise_obj.add(apprise_url.url, tag=apprise_url.tags)
+        url = str(apprise_url.url.get_secret_value())
+        if is_simplied(url):
+            apprise_obj.add(url, tag="simplified")
+            continue
+        apprise_obj.add(url, tag=apprise_url.tags)
 
-    results = []
-    result = apprise_obj.notify(
-        body=text.plain,
-        title="Cyberdrop-DL",
-        body_format=apprise.NotifyFormat.TEXT,
-        tag="no_logs",
-    )
+    results_dict = {}
+    message = DEFAULT_APPRISE_MESSAGE | {"body": text.plain}
+    results_dict["no_log"] = apprise_obj.notify(**message, tag="no_logs")
 
-    if result is not None:
-        results.append(result)
+    message = message | {"attach": str(manager.path_manager.main_log.resolve())}
+    results_dict["attach_log"] = apprise_obj.notify(**message, tag="attach_logs")
 
-    result = apprise_obj.notify(
-        body=text.plain,
-        title="Cyberdrop-DL",
-        body_format=apprise.NotifyFormat.TEXT,
-        attach=str(manager.path_manager.main_log.resolve()),
-        tag="attach_logs",
-    )
+    results_dict["simplified"] = apprise_obj.notify(**DEFAULT_APPRISE_MESSAGE, tag="simplified")
 
-    if result is not None:
-        results.append(result)
-
+    results = [r for r in results_dict.values() if r is not None]
+    success_text = Text("Success", "green")
     if not results:
-        result = Text("No notifications sent", "yellow")
+        final_result = Text("No notifications sent", "yellow")
     if all(results):
-        result = Text("Success", "green")
+        final_result = success_text
     elif any(results):
-        result = Text("Partial Success", "yellow")
+        final_result = Text("Partial Success", "yellow")
     else:
-        result = Text("Failed", "bold red")
+        final_result = Text("Failed", "bold red")
 
-    rich.print("Apprise notifications results:", result)
+    rich.print("Apprise notifications results:", final_result)
+    if all(results):
+        return
+    results_dict = {f"Apprise notifications results: {final_result}": results_dict}
+    log(json.dumps(results_dict, indent=4))
 
 
 async def send_webhook_message(manager: Manager) -> None:
