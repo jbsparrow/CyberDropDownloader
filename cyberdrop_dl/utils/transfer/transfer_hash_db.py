@@ -11,7 +11,6 @@ from cyberdrop_dl.utils.transfer.wrapper import db_transfer_context
 
 console = Console()
 
-
 def transfer_from_old_hash_table(db_path):
     """Transfers data from the old 'hash' table to new 'files' and 'temp_hash' tables, handling potential schema differences and errors.
 
@@ -23,6 +22,14 @@ def transfer_from_old_hash_table(db_path):
     """
 
     with db_transfer_context(db_path) as cursor:
+        # Check if the 'hash' table exists
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='hash'")
+        hash_table_exists = cursor.fetchone() is not None
+
+        if not hash_table_exists:
+            console.print("[bold yellow]Old 'hash' table not found. Skipping transfer.[/]")
+            return
+
         # Check if the 'hash_type' column exists in the 'hash' table
         cursor.execute("SELECT COUNT(*) FROM pragma_table_info('hash') WHERE name='hash_type'")
         has_hash_type_column = (cursor.fetchone())[0] > 0
