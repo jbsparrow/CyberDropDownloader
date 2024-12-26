@@ -175,13 +175,17 @@ async def send_apprise_notifications(manager: Manager) -> None:
     ):
         temp_dir = Path(temp_dir)
         temp_main_log = temp_dir / main_log.name
-        shutil.copy(main_log, temp_main_log)
-
         notifications_to_send = {
             "no_logs": {"body": text.plain},
-            "attach_logs": {"body": text.plain, "attach": str(temp_main_log.resolve())},
+            "attach_logs": {"body": text.plain},
             "simplified": {},
         }
+        try:
+            shutil.copy(main_log, temp_main_log)
+            notifications_to_send["attach_logs"]["attach"] = str(temp_main_log.resolve())
+        except OSError:
+            log("Unable to get copy of main log file. 'attach_logs' URLs will be proccessed without it", 40)
+
         for tag, extras in notifications_to_send.items():
             msg = DEFAULT_APPRISE_MESSAGE | extras
             results[tag] = await apprise_obj.async_notify(**msg, tag=tag)
