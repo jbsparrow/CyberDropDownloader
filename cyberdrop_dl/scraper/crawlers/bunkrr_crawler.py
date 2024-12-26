@@ -119,7 +119,7 @@ class BunkrrCrawler(Crawler):
 
             src = self.override_cdn(src)
             # Scrape new URL if unable to get final URL from thumbnail
-            if file_ext.lower() not in valid_extensions or "no-image" in src.name:
+            if file_ext.lower() not in valid_extensions or "no-image" in src.name or self.deep_scrape(src):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
             else:
@@ -208,6 +208,10 @@ class BunkrrCrawler(Crawler):
         return URL(link_container.get("href"))
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+    @staticmethod
+    def deep_scrape(url: URL) -> bool:
+        return any(part in url.host.split(".") for part in ("burger",))
 
     @staticmethod
     def is_reinforced_link(url: URL) -> bool:
