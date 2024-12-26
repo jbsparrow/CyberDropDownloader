@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -11,7 +12,7 @@ from rich.text import Text
 
 from cyberdrop_dl.config_definitions.custom_types import AppriseURLModel
 from cyberdrop_dl.utils import constants
-from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.logger import log, log_debug
 from cyberdrop_dl.utils.yaml import handle_validation_error
 
 if TYPE_CHECKING:
@@ -57,16 +58,15 @@ def simplify_urls(apprise_urls: list[AppriseURLModel]) -> list[AppriseURL]:
 
     for apprise_url in apprise_urls:
         url = str(apprise_url.url.get_secret_value())
-        tags = apprise_url.tags or {"no_logs"}
+        tags = apprise_url.tags or ["no_logs"]
         if is_special_url(url):
-            tags = {"simplified"}
+            tags = ["simplified"]
         entry = AppriseURL(url=url, tags=tags)
-        log(f"{entry.url = } - {entry.tags = }")
         final_urls.append(entry)
-    return final_urls
+    return sorted(final_urls, key=lambda x: x.url)
 
 
-def process_results(results_dict: dict[str, bool | None]) -> None:
+def process_results(results_dict: dict[str, bool | None], apprise_logs: str) -> None:
     results = [r for r in results_dict.values() if r is not None]
     if not results:
         final_result = Text("No notifications sent", "yellow")
@@ -77,13 +77,16 @@ def process_results(results_dict: dict[str, bool | None]) -> None:
     else:
         final_result = Text("Failed", "bold red")
     rich.print("Apprise notifications results:", final_result)
-    results_dict = {f"Apprise notifications results: {final_result}": results_dict}
-    if all(results):
-        return
-    log(json.dumps(results_dict, indent=4))
+    logger = log_debug if all(results) else log
+    logger(f"Apprise notifications results: {final_result}")
+    logger(json.dumps(results_dict, indent=4))
+    reduced_logs = "\n".join(
+        [line for line in apprise_logs.splitlines() if "Running Post-Download Processes For Config" not in line]
+    )
+    logger(reduced_logs)
 
 
-def send_apprise_notifications(manager: Manager) -> None:
+async def send_apprise_notifications(manager: Manager) -> None:
     apprise_urls = get_apprise_urls(manager)
     if not apprise_urls:
         return
@@ -99,8 +102,16 @@ def send_apprise_notifications(manager: Manager) -> None:
     results = {}
     main_log = str(manager.path_manager.main_log.resolve())
     message = DEFAULT_APPRISE_MESSAGE | {"body": text.plain}
-    results["no_logs"] = apprise_obj.notify(**message, tag="no_logs")
-    results["attach_logs"] = apprise_obj.notify(**DEFAULT_APPRISE_MESSAGE, tag="attach_logs", attach=main_log)
-    results["simplified"] = apprise_obj.notify(**DEFAULT_APPRISE_MESSAGE, tag="simplified")
+    apprise_logs = None
+    with apprise.LogCapture(level=10, fmt="%(levelname)s - %(message)s") as capture:
+        responses = await asyncio.gather(
+            apprise_obj.async_notify(**message, tag="no_logs"),
+            apprise_obj.async_notify(**DEFAULT_APPRISE_MESSAGE, tag="attach_logs", attach=main_log),
+            apprise_obj.async_notify(**DEFAULT_APPRISE_MESSAGE, tag="simplified"),
+        )
+        apprise_logs = capture.getvalue()
+        results["no_logs"] = responses[0]
+        results["attach_logs"] = responses[1]
+        results["simplified"] = responses[2]
 
-    process_results(results)
+    process_results(results, apprise_logs)

@@ -230,7 +230,7 @@ async def director(manager: Manager) -> None:
             log_with_color("Finished downloading. Enjoy :)", "green", 20, show_in_stats=False)
 
         await send_webhook_message(manager)
-        send_apprise_notifications(manager)
+        await send_apprise_notifications(manager)
         start_time = perf_counter()
 
 
