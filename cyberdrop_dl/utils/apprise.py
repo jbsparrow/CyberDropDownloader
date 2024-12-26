@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import tempfile
 from dataclasses import dataclass
@@ -58,12 +59,19 @@ class LogLine:
 
 def get_apprise_urls(manager: Manager) -> list[AppriseURL] | None:
     apprise_file = manager.path_manager.config_folder / manager.config_manager.loaded_config / "apprise.txt"
+    apprise_fixed = manager.cache_manager.get("apprise_fixed")
+    if not apprise_fixed:
+        if os.name == "nt":
+            with apprise_file.open("a") as f:
+                f.write("windows://\n")
+        manager.cache_manager.save("apprise_fixed", True)
+
     if not apprise_file.is_file():
         return
 
     try:
         with apprise_file.open(encoding="utf8") as file:
-            urls = [line.strip() for line in file]
+            urls = {line.strip() for line in file}
             return simplify_urls([AppriseURLModel(url=url) for url in urls])
 
     except ValidationError as e:
