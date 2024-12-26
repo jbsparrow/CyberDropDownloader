@@ -36,7 +36,7 @@ class FrozenModel(BaseModel):
     model_config = ConfigDict(frozen=True)
 
 
-class AppriseURL(FrozenModel):
+class AppriseURLModel(FrozenModel):
     url: Secret[AnyUrl]
     tags: set[str]
 
@@ -66,5 +66,5 @@ class AppriseURL(FrozenModel):
         return {"url": url.casefold(), "tags": tags or {"no_logs"}}
 
 
-class HttpAppriseURL(AppriseURL):
+class HttpAppriseURL(AppriseURLModel):
     url: Secret[HttpURL]

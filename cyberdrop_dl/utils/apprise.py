@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import apprise
@@ -8,7 +9,7 @@ import rich
 from pydantic import ValidationError
 from rich.text import Text
 
-from cyberdrop_dl.config_definitions.custom_types import AppriseURL
+from cyberdrop_dl.config_definitions.custom_types import AppriseURLModel
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.yaml import handle_validation_error
@@ -23,23 +24,46 @@ DEFAULT_APPRISE_MESSAGE = {
 }
 
 
-def is_special_url(url: str) -> bool:
-    return (key in url for key in ("windows://",))
+@dataclass
+class AppriseURL:
+    url: str
+    tags: set[str]
 
 
-def get_apprise_urls(manager: Manager) -> list[AppriseURL] | None:
+OS_URLS = ["windows://"]
+
+
+def get_apprise_urls(manager: Manager) -> list[AppriseURLModel] | None:
     apprise_file = manager.path_manager.config_folder / manager.config_manager.loaded_config / "apprise.txt"
     if not apprise_file.is_file():
         return
 
     try:
         with apprise_file.open(encoding="utf8") as file:
-            return [AppriseURL(url=line.strip()) for line in file]
+            return simplify_urls([AppriseURLModel(url=line.strip()) for line in file])
 
     except ValidationError as e:
         sources = {"AppriseURL": apprise_file}
         handle_validation_error(e, sources=sources)
         return
+
+
+def simplify_urls(apprise_urls: list[AppriseURLModel]) -> list[AppriseURL]:
+    final_urls = []
+
+    def is_special_url(url: str) -> bool:
+        special_urls = OS_URLS
+        return any(key in url for key in special_urls)
+
+    for apprise_url in apprise_urls:
+        url = str(apprise_url.url.get_secret_value())
+        tags = apprise_url.tags or {"no_logs"}
+        if is_special_url(url):
+            tags = {"simplified"}
+        entry = AppriseURL(url=url, tags=tags)
+        log(f"{entry.url = } - {entry.tags = }")
+        final_urls.append(entry)
+    return final_urls
 
 
 def process_results(results_dict: dict[str, bool | None]) -> None:
@@ -70,18 +94,13 @@ def send_apprise_notifications(manager: Manager) -> None:
 
     apprise_obj = apprise.Apprise()
     for apprise_url in apprise_urls:
-        url = str(apprise_url.url.get_secret_value())
-        if is_special_url(url):
-            apprise_obj.add(url, tag="simplified")
-            continue
-        apprise_obj.add(url, tag=apprise_url.tags)
+        apprise_obj.add(apprise_url.url, tag=apprise_url.tags)
 
     results = {}
+    main_log = str(manager.path_manager.main_log.resolve())
     message = DEFAULT_APPRISE_MESSAGE | {"body": text.plain}
-    results["no_log"] = apprise_obj.notify(**message, tag="no_logs")
-
-    message = message | {"attach": str(manager.path_manager.main_log.resolve())}
-    results["attach_log"] = apprise_obj.notify(**message, tag="attach_logs")
+    results["no_logs"] = apprise_obj.notify(**message, tag="no_logs")
+    results["attach_logs"] = apprise_obj.notify(**DEFAULT_APPRISE_MESSAGE, tag="attach_logs", attach=main_log)
     results["simplified"] = apprise_obj.notify(**DEFAULT_APPRISE_MESSAGE, tag="simplified")
 
     process_results(results)
