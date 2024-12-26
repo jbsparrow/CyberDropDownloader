@@ -24,7 +24,8 @@ class TransitionManager:
         Transfers files and configurations from old versions to new versions
 
         """
-        self.transfer_v4_to_v5()
+        if not self.manager.parsed_args.cli_only_args.appdata_folder:
+            self.transfer_v4_to_v5()
         self.transfer_v5_to_new_hashtable()
 
     def transfer_v5_to_new_hashtable(self):
