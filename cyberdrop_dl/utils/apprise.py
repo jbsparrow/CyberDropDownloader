@@ -35,7 +35,7 @@ class AppriseURL:
     raw_url: str
 
 
-OS_URLS = ["windows://"]
+OS_URLS = ["windows://", "macosx://", "dbus://", "qt://", "glib://", "kde://"]
 
 
 class ResultText(Enum):
@@ -88,10 +88,11 @@ def simplify_urls(apprise_urls: list[AppriseURLModel]) -> list[AppriseURL]:
 
     for apprise_url in apprise_urls:
         url = str(apprise_url.url.get_secret_value())
-        raw_url = apprise_url.model_dump()
-        tags = apprise_url.tags or ["no_logs"]
+        tags = apprise_url.tags or {"no_logs"}
         if use_simplified(url):
-            tags = ["simplified"]
+            tags = {"simplified"}
+        new_model = apprise_url.model_copy(update={"tags": tags})
+        raw_url = new_model.model_dump()
         entry = AppriseURL(url=url, tags=tags, raw_url=raw_url)
         final_urls.append(entry)
     return sorted(final_urls, key=lambda x: x.url)
