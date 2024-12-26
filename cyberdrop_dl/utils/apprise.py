@@ -152,13 +152,6 @@ def parse_apprise_logs(apprise_logs: str) -> list[LogLine]:
     return parsed_lines
 
 
-def process_file(original_file_path: Path):
-    with tempfile.TemporaryDirectory() as temp_dir:
-        temp_dir_path = Path(temp_dir)
-        temp_file = temp_dir_path / original_file_path.resolve().name
-        shutil.copy(original_file_path, temp_file)
-
-
 async def send_apprise_notifications(manager: Manager) -> None:
     apprise_urls = get_apprise_urls(manager)
     if not apprise_urls:
@@ -173,12 +166,6 @@ async def send_apprise_notifications(manager: Manager) -> None:
         apprise_obj.add(apprise_url.url, tag=apprise_url.tags)
 
     main_log = manager.path_manager.main_log.resolve()
-    notifications_to_send = {
-        "no_logs": {"body": text.plain},
-        "attach_logs": {"body": text.plain, "attach": main_log},
-        "simplified": {},
-    }
-
     results = {}
     all_urls = [x.raw_url for x in apprise_urls]
 
