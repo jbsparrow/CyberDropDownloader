@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import json
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -104,14 +103,11 @@ async def send_apprise_notifications(manager: Manager) -> None:
     message = DEFAULT_APPRISE_MESSAGE | {"body": text.plain}
     apprise_logs = None
     with apprise.LogCapture(level=10, fmt="%(levelname)s - %(message)s") as capture:
-        responses = await asyncio.gather(
-            apprise_obj.async_notify(**message, tag="no_logs"),
-            apprise_obj.async_notify(**DEFAULT_APPRISE_MESSAGE, tag="attach_logs", attach=main_log),
-            apprise_obj.async_notify(**DEFAULT_APPRISE_MESSAGE, tag="simplified"),
+        results["no_logs"] = await apprise_obj.async_notify(**message, tag="no_logs")
+        results["attach_logs"] = await apprise_obj.async_notify(
+            **DEFAULT_APPRISE_MESSAGE, tag="attach_logs", attach=main_log
         )
+        results["simplified"] = await apprise_obj.async_notify(**DEFAULT_APPRISE_MESSAGE, tag="simplified")
         apprise_logs = capture.getvalue()
-        results["no_logs"] = responses[0]
-        results["attach_logs"] = responses[1]
-        results["simplified"] = responses[2]
 
     process_results(results, apprise_logs)
