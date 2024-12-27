@@ -62,7 +62,7 @@ def get_apprise_urls(manager: Manager) -> list[AppriseURL] | None:
     apprise_fixed = manager.cache_manager.get("apprise_fixed")
     if not apprise_fixed:
         if os.name == "nt":
-            with apprise_file.open("a") as f:
+            with apprise_file.open("a", encoding="utf8") as f:
                 f.write("windows://\n")
         manager.cache_manager.save("apprise_fixed", True)
 
@@ -149,6 +149,8 @@ def parse_apprise_logs(apprise_logs: str) -> list[LogLine]:
         if current_line.msg != "":
             parsed_lines.append(current_line)
         current_line = LogLine(LogLevel[log_level], line[10::])
+    if lines:
+        parsed_lines.append(current_line)
     return parsed_lines
 
 
