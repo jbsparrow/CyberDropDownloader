@@ -100,6 +100,7 @@ class ClientManager:
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     def load_cookie_files(self) -> None:
+        domains_seen = set()
         for file in self.manager.path_manager.cookies_dir.glob("*.txt"):
             cookie_jar = MozillaCookieJar(file)
             try:
@@ -109,9 +110,10 @@ class ClientManager:
                 continue
             for cookie in cookie_jar:
                 log(f"Found cookies for {cookie.domain} in file {file.name}")
-                self.manager.client_manager.cookies.update_cookies(
-                    {cookie.name: cookie.value}, response_url=URL(f"https://{cookie.domain}")
-                )
+                if cookie.domain in domains_seen:
+                    log(f"Previous cookies for domain {cookie.domain} detected. They will be overwritten", level=30)
+                domains_seen.add(cookie.domain)
+                self.cookies.update_cookies({cookie.name: cookie.value}, response_url=URL(f"https://{cookie.domain}"))
 
     async def get_downloader_spacer(self, key: str) -> float:
         """Returns the download spacer for a domain."""
