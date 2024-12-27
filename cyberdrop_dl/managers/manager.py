@@ -151,6 +151,9 @@ class Manager:
 
         self.config_manager.settings_data = updated_config_settings
         self.config_manager.global_settings_data = updated_global_settings
+        self.config_manager.deep_scrape = (
+            self.parsed_args.config_settings.runtime_options.deep_scrape or self.config_manager.deep_scrape
+        )
 
     def merge_dicts(self, dict1: dict, dict2: dict):
         for key, val in dict1.items():
@@ -189,7 +192,9 @@ class Manager:
         for site, auth_entries in auth_data_others.items():
             auth_provided[site] = all(auth_entries.values())
 
-        config_settings = self.config_manager.settings_data.model_dump_json(indent=4)
+        config_settings = self.config_manager.settings_data.model_copy()
+        config_settings.runtime_options.deep_scrape = self.config_manager.deep_scrape
+        config_settings = config_settings.model_dump_json(indent=4)
         global_settings = self.config_manager.global_settings_data.model_dump_json(indent=4)
         cookie_files = [str(p) for p in self.path_manager.cookies_dir.rglob("*.txt")] or None
         if cookie_files:

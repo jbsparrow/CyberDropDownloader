@@ -95,3 +95,19 @@ This option has no effect unless `send_unsupported_to_jdownloader` is `true`
 | `bool` | `false`|
 
 Updates `input_file` content, adding the last scraped post id to every forum thread URL
+
+## `deep_scrape`
+
+| Type           | Default  |
+|----------------|----------|
+| `bool` | `false`|
+
+Cyberdrop-DL uses a some tricks to try to reduce the number of requests it needs to make while scraping a site. However, this may cause a few links to be skipped. Use `--deep-scrape` to disable this functionality and always make a new request.
+
+This setting is temporary and will always reset to `false` after each run
+
+{% hint style="warning" %}
+Use this option only when absolutely necessary, as it will significantly increase the number of requests being made.
+
+For example, scraping an album normally takes one single request. However, with `--deep-scrape`, CDL will make `n` requests per album, where `n` is the total number of items in the album
+{% endhint %}
