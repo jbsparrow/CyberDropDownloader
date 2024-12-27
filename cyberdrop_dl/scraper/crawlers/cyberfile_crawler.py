@@ -181,9 +181,33 @@ class CyberfileCrawler(Crawler):
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a file."""
+
+        def get_password_info(soup: BeautifulSoup, *, raise_with_message: str | None = None) -> tuple[bool, str]:
+            password = scrape_item.url.query.get("password", "")
+            password_protected = False
+            if "Enter File Password" in soup.text:
+                password_protected = True
+                if not password or raise_with_message:
+                    raise PasswordProtectedError(message=raise_with_message, origin=scrape_item)
+            return password_protected, password
+
         contentId = None
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+
+        password_protected, password = get_password_info(soup)
+        if password_protected:
+            form = soup.select_one('form[method="POST"]')
+            post_url = form.get("action") if form else None
+            if not post_url:
+                msg = "Unable to parse Password Protected File details"
+                raise PasswordProtectedError(message=msg, origin=scrape_item)
+
+            data = {"filePassword": password, "submitme": 1}
+            async with self.request_limiter:
+                resp = await self.client.post_data(self.domain, post_url, data=data, origin=scrape_item, raw=True)
+            soup = BeautifulSoup(resp)
+            get_password_info(soup, raise_with_message="File password is invalid")
 
         script_funcs = soup.select("script")
         for script in script_funcs:
