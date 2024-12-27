@@ -34,7 +34,9 @@ Apprise services also support the `attach_logs=` tag to send the main log as an 
 Cyberdrop-DL will show you a message at the end of a run telling you if the apprise notifications were successfully sent or not. If you are having trouble getting notifications via Apprise, follow their [troubleshooting guide](https://github.com/caronc/apprise/wiki/Troubleshooting).
 
 {% hint style="info" %}
-When running on Windows, Cyberdrop-DL will setup OS notifications by default. You can disable them by deleting the `windows://` line from the default `apprise.txt` file. You can also completely delete the file if you don't have any other notification setup.
+When running on Windows, Cyberdrop-DL will setup OS notifications by default.
+
+You can disable them by deleting the `windows://` line from the default `apprise.txt` file. You can also completely delete the file if you don't have any other notification setup.
 {% endhint %}
 
 ## Examples
@@ -59,15 +61,13 @@ attach_logs=mailto://user:password@domain.com
 {% endtab %}
 
 {% tab title="Native OS notifications" %}
-Windows:
-
-NOTE: Some operating systems require additional dependencies for notifications to work. Cyberdrop-DL includes the required dependencies for Windows. Follow the url on the OS name to get additional information on how to set them up.
+Some operating systems require additional dependencies for notifications to work. Cyberdrop-DL includes the required dependencies for Windows. Follow the url on the OS name to get additional information on how to set them up.
 
 | OS | Syntax|
 | ---- | --- |
 |[Linux (DBus Notifications)](https://github.com/caronc/apprise/wiki/Notify_dbus) |	`dbus://` <br> `qt://` <br> `glib://` <br> `kde:// `|
 |[Linux (Gnome Notifications)](https://github.com/caronc/apprise/wiki/Notify_gnome) | `gnome://` |
-|[MacOS X](https://github.com/caronc/apprise/wiki/Notify_macosx)  |	`macosx://` 	 |
+|[macOS](https://github.com/caronc/apprise/wiki/Notify_macosx)  |	`macosx://` 	 |
 |[Windows](https://github.com/caronc/apprise/wiki/Notify_windows)|	`windows://` |
 
 
