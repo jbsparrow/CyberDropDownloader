@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import ssl
 from http import HTTPStatus
+from http.cookiejar import MozillaCookieJar
 from typing import TYPE_CHECKING
 
 import aiohttp
@@ -94,8 +95,23 @@ class ClientManager:
         self.downloader_session = DownloadClient(manager, self)
         self.speed_limiter = DownloadSpeedLimiter(manager)
         self.flaresolverr = Flaresolverr(self)
+        self.load_cookie_files()
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+    def load_cookie_files(self) -> None:
+        for file in self.manager.path_manager.cookies_dir.glob("*.txt"):
+            cookie_jar = MozillaCookieJar(file)
+            try:
+                cookie_jar.load(ignore_discard=True)
+            except OSError:
+                log(f"Unable to load cookies from {file.name}", 10, exc_info=True)
+                continue
+            for cookie in cookie_jar:
+                log(f"Found cookies for {cookie.domain} in file {file.name}")
+                self.manager.client_manager.cookies.update_cookies(
+                    {cookie.name: cookie.value}, response_url=URL(f"https://{cookie.domain}")
+                )
 
     async def get_downloader_spacer(self, key: str) -> float:
         """Returns the download spacer for a domain."""

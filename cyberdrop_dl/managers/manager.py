@@ -19,7 +19,7 @@ from cyberdrop_dl.managers.path_manager import PathManager
 from cyberdrop_dl.managers.progress_manager import ProgressManager
 from cyberdrop_dl.managers.realdebrid_manager import RealDebridManager
 from cyberdrop_dl.utils.args import ParsedArgs
-from cyberdrop_dl.utils.data_enums_classes.supported_domains import SUPPORTED_FORUMS, SUPPORTED_SITES_DOMAINS
+from cyberdrop_dl.utils.data_enums_classes.supported_domains import SUPPORTED_FORUMS
 from cyberdrop_dl.utils.logger import log, print_to_console
 from cyberdrop_dl.utils.transfer.db_setup import TransitionManager
 
@@ -196,13 +196,6 @@ class Manager:
         config_settings.runtime_options.deep_scrape = self.config_manager.deep_scrape
         config_settings = config_settings.model_dump_json(indent=4)
         global_settings = self.config_manager.global_settings_data.model_dump_json(indent=4)
-        cookie_files = set(self.path_manager.cookies_dir.rglob("*.txt")) or None
-        valid_cookie_filenames = {f"{domain}.txt" for domain in SUPPORTED_SITES_DOMAINS}
-        unknown_cookie_files = []
-        if cookie_files:
-            unknown_cookie_files = sorted([f.name for f in cookie_files if f.name not in valid_cookie_filenames])
-            cookie_files_strs = sorted(map(str, cookie_files))
-            cookie_files = f"\n{json.dumps(cookie_files_strs, indent=4, sort_keys=True)}"
 
         log("Starting Cyberdrop-DL Process", 10)
         log(f"Running Version: {__version__}", 10)
@@ -214,11 +207,6 @@ class Manager:
         log(f"Using Authentication: \n{json.dumps(auth_provided, indent=4, sort_keys=True)}", 10)
         log(f"Using Settings: \n{config_settings}", 10)
         log(f"Using Global Settings: \n{global_settings}", 10)
-        log(f"Using Cookie Files: {cookie_files}", 10)
-        for invalid_cookie_file in unknown_cookie_files:
-            log(f"Cookie file '{invalid_cookie_file}' does not match any of the supported sites", 30)
-        if unknown_cookie_files:
-            log("Cookie filename should be the full primary base domain, ex: cyberdrop.me.txt", 30)
 
     async def close(self) -> None:
         """Closes the manager."""
