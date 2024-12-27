@@ -16,6 +16,12 @@ ERROR_PREFIX = "\n[bold red]ERROR: [/bold red]"
 USER_NAME = Path.home().resolve().parts[-1]
 
 
+class RedactedConsole(Console):
+    def _render_buffer(self, buffer) -> str:
+        output: str = super()._render_buffer(buffer)
+        return _redact_message(output)
+
+
 def print_to_console(text: Text | str, *, error: bool = False, **kwargs) -> None:
     msg = (ERROR_PREFIX + text) if error else text
     console.print(msg, **kwargs)
@@ -23,8 +29,7 @@ def print_to_console(text: Text | str, *, error: bool = False, **kwargs) -> None
 
 def log(message: Exception | str, level: int = 10, *, sleep: int | None = None, **kwargs) -> None:
     """Simple logging function."""
-    redacted_message = _redact_message(message)
-    logger.log(level, redacted_message, **kwargs)
+    logger.log(level, message, **kwargs)
     log_debug(message, level, **kwargs)
     log_debug_console(message, level, sleep=sleep)
 
