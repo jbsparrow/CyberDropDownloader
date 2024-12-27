@@ -20,7 +20,7 @@ from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.managers.download_speed_manager import DownloadSpeedLimiter
 from cyberdrop_dl.ui.prompts.user_prompts import get_cookies_from_browsers
 from cyberdrop_dl.utils.constants import CustomHTTPStatus
-from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.logger import log, log_spacer
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -102,20 +102,30 @@ class ClientManager:
     def load_cookie_files(self) -> None:
         if self.manager.config_manager.settings_data.browser_cookies.auto_import:
             get_cookies_from_browsers(self.manager)
+        cookie_files = sorted(self.manager.path_manager.cookies_dir.glob("*.txt"))
+        if not cookie_files:
+            return
+
         domains_seen = set()
-        for file in self.manager.path_manager.cookies_dir.glob("*.txt"):
+        for file in cookie_files:
             cookie_jar = MozillaCookieJar(file)
             try:
                 cookie_jar.load(ignore_discard=True)
             except OSError as e:
                 log(f"Unable to load cookies from '{file.name}':\n  {e!s}", 40)
                 continue
+            current_cookie_file_domains = set()
             for cookie in cookie_jar:
-                log(f"Found cookies for {cookie.domain} in file '{file.name}'")
-                if cookie.domain in domains_seen:
-                    log(f"Previous cookies for domain {cookie.domain} detected. They will be overwritten", level=30)
-                domains_seen.add(cookie.domain)
+                simplified_domain = cookie.domain[1:] if cookie.domain.startswith(".") else cookie.domain
+                if simplified_domain not in current_cookie_file_domains:
+                    log(f"Found cookies for {simplified_domain} in file '{file.name}'", 20)
+                    current_cookie_file_domains.add(simplified_domain)
+                    if simplified_domain in domains_seen:
+                        log(f"Previous cookies for domain {simplified_domain} detected. They will be overwritten", 30)
+                domains_seen.add(simplified_domain)
                 self.cookies.update_cookies({cookie.name: cookie.value}, response_url=URL(f"https://{cookie.domain}"))
+
+        log_spacer(20, log_to_console=False)
 
     async def get_downloader_spacer(self, key: str) -> float:
         """Returns the download spacer for a domain."""
