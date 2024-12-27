@@ -81,13 +81,6 @@ async def runtime(manager: Manager) -> None:
             await scrape_mapper.start()
 
 
-def pre_runtime(manager: Manager) -> None:
-    """Actions to complete before main runtime."""
-    if manager.config_manager.settings_data.browser_cookies.auto_import:
-        get_cookies_from_browsers(manager)
-    manager.client_manager.load_cookie_files()
-
-
 async def post_runtime(manager: Manager) -> None:
     """Actions to complete after main runtime, and before ui shutdown."""
     log_spacer(20, log_to_console=False)
@@ -219,7 +212,6 @@ async def director(manager: Manager) -> None:
         log_spacer(10)
 
         log("Starting CDL...\n", 20)
-        pre_runtime(manager)
         await runtime(manager)
         await post_runtime(manager)
 

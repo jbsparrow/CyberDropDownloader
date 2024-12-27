@@ -18,6 +18,7 @@ from cyberdrop_dl.clients.download_client import DownloadClient
 from cyberdrop_dl.clients.errors import DDOSGuardError, DownloadError, ScrapeError
 from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.managers.download_speed_manager import DownloadSpeedLimiter
+from cyberdrop_dl.ui.prompts.user_prompts import get_cookies_from_browsers
 from cyberdrop_dl.utils.constants import CustomHTTPStatus
 from cyberdrop_dl.utils.logger import log
 
@@ -99,6 +100,8 @@ class ClientManager:
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     def load_cookie_files(self) -> None:
+        if self.manager.config_manager.settings_data.browser_cookies.auto_import:
+            get_cookies_from_browsers(self.manager)
         domains_seen = set()
         for file in self.manager.path_manager.cookies_dir.glob("*.txt"):
             cookie_jar = MozillaCookieJar(file)

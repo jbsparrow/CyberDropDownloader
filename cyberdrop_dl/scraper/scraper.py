@@ -82,7 +82,7 @@ class ScrapeMapper:
     async def start(self) -> None:
         """Starts the orchestra."""
         self.manager.scrape_mapper = self
-
+        self.manager.client_manager.load_cookie_files()
         self.start_scrapers()
         self.start_jdownloader()
         self.start_real_debrid()
