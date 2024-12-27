@@ -87,7 +87,6 @@ class ScrapeMapper:
         self.start_jdownloader()
         self.start_real_debrid()
         self.no_crawler_downloader.startup()
-        self.manager.client_manager.load_cookie_files()
 
         if self.manager.parsed_args.cli_only_args.retry_failed:
             await self.load_failed_links()

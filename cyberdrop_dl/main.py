@@ -85,6 +85,7 @@ def pre_runtime(manager: Manager) -> None:
     """Actions to complete before main runtime."""
     if manager.config_manager.settings_data.browser_cookies.auto_import:
         get_cookies_from_browsers(manager)
+    manager.client_manager.load_cookie_files()
 
 
 async def post_runtime(manager: Manager) -> None:

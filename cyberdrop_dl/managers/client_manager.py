@@ -95,7 +95,6 @@ class ClientManager:
         self.downloader_session = DownloadClient(manager, self)
         self.speed_limiter = DownloadSpeedLimiter(manager)
         self.flaresolverr = Flaresolverr(self)
-        self.load_cookie_files()
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -105,11 +104,11 @@ class ClientManager:
             cookie_jar = MozillaCookieJar(file)
             try:
                 cookie_jar.load(ignore_discard=True)
-            except OSError:
-                log(f"Unable to load cookies from {file.name}", 10, exc_info=True)
+            except OSError as e:
+                log(f"Unable to load cookies from '{file.name}':\n  {e!s}", 40)
                 continue
             for cookie in cookie_jar:
-                log(f"Found cookies for {cookie.domain} in file {file.name}")
+                log(f"Found cookies for {cookie.domain} in file '{file.name}'")
                 if cookie.domain in domains_seen:
                     log(f"Previous cookies for domain {cookie.domain} detected. They will be overwritten", level=30)
                 domains_seen.add(cookie.domain)
