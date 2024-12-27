@@ -118,13 +118,13 @@ def process_results(all_urls: list[str], results_dict: dict[str, bool | None], a
     else:
         final_result = constants.NotificationResultText.FAILED.value
 
-    log_spacer(10, log_to_console=False)
+    log_spacer(10, log_to_console=False, log_to_file=not all(results))
     rich.print("Apprise notifications results:", final_result)
     logger = log_debug if all(results) else log
     logger(f"Apprise notifications results: {final_result}")
     logger(f"PARSED_APPRISE_URLs: \n{json.dumps(all_urls, indent=4)}\n")
     logger(f"RESULTS_BY_TAGS: \n{json.dumps(results_dict, indent=4)}")
-    log_spacer(10, log_to_console=False)
+    log_spacer(10, log_to_console=False, log_to_file=not all(results))
     parsed_log_lines = parse_apprise_logs(apprise_logs)
     for line in parsed_log_lines:
         logger(level=line.level.value, message=line.msg)
