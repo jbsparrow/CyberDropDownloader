@@ -46,7 +46,8 @@ def log_with_color(message: str, style: str, level: int, show_in_stats: bool = T
     """Simple logging function with color."""
     log(message, level, **kwargs)
     text = Text(message, style=style)
-    console.print(text)
+    if constants.CONSOLE_LEVEL >= 50:
+        console.print(text)
     if show_in_stats:
         constants.LOG_OUTPUT_TEXT.append_text(text.append("\n"))
 
@@ -54,7 +55,7 @@ def log_with_color(message: str, style: str, level: int, show_in_stats: bool = T
 def log_spacer(level: int, char: str = "-", *, log_to_console: bool = True) -> None:
     spacer = char * min(int(constants.DEFAULT_CONSOLE_WIDTH / 2), 50)
     log(spacer, level)
-    if log_to_console:
+    if log_to_console and constants.CONSOLE_LEVEL >= 50:
         console.print("")
     constants.LOG_OUTPUT_TEXT.append("\n", style="black")
 
