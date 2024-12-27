@@ -58,6 +58,6 @@ List of domains to extract cookies from. You can put any domain on the list, but
 
 If cookie extraction fails, you can manually extract the cookies from your browser using tools like [cookie-editor](https://cookie-editor.com) and save them at `AppData/Cookies/<site_name>.txt`. The file must be a Netscape formatted cookie file. You can use any name for the file as long as it has a `.txt` extension.
 
-{% hint style="warning" %}
+{% hint style="info" %}
 Multiple cookie files are supported. You could have a `SocialMediaGirls.txt` file and a `cyberdrop.txt` file, for example
 {% endhint %}
