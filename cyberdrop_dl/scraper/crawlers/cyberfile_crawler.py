@@ -220,7 +220,7 @@ class CyberfileCrawler(Crawler):
                 break
 
         if not contentId:
-            raise ScrapeError(422, message="contentId not found", origin=ScrapeItem)
+            raise ScrapeError(422, message="contentId not found", origin=scrape_item)
         await self.handle_content_id(scrape_item, contentId)
 
     @error_handling_wrapper
