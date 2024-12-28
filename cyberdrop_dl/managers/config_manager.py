@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from cyberdrop_dl.config_definitions import AuthSettings, ConfigSettings, GlobalSettings
 from cyberdrop_dl.managers.log_manager import LogManager
 from cyberdrop_dl.utils import yaml
+from cyberdrop_dl.utils.apprise import get_apprise_urls
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -15,6 +16,7 @@ if TYPE_CHECKING:
     from pydantic import BaseModel
 
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.utils.apprise import AppriseURL
 
 
 class ConfigManager:
@@ -26,6 +28,7 @@ class ConfigManager:
         self.settings: Path = field(init=False)
         self.global_settings: Path = field(init=False)
         self.deep_scrape: bool = False
+        self.apprise_urls: list[AppriseURL] = []
 
         self.authentication_data: AuthSettings = field(init=False)
         self.settings_data: ConfigSettings = field(init=False)
@@ -60,6 +63,7 @@ class ConfigManager:
         self._load_authentication_config()
         self._load_global_settings_config()
         self._load_settings_config()
+        self.apprise_urls = get_apprise_urls(self.manager)
 
     @staticmethod
     def get_model_fields(model: type[BaseModel], *, exclude_unset: bool = True) -> set[str]:

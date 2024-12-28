@@ -162,7 +162,7 @@ def parse_apprise_logs(apprise_logs: str) -> list[LogLine]:
 
 
 async def send_apprise_notifications(manager: Manager) -> tuple[constants.NotificationResult, str]:
-    apprise_urls = get_apprise_urls(manager)
+    apprise_urls = manager.config_manager.apprise_urls
     if not apprise_urls:
         return
 
