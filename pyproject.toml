@@ -41,6 +41,11 @@ xxhash = "^3.5.0"
 pre-commit = "^4.0.1"
 ruff = "^0.8.0"
 
+[tool.poetry.group.test.dependencies]
+pytest = "^8.3.4"
+pytest-cov = "^6.0.0"
+pytest-mock = "*"
+
 [tool.poetry.scripts]
 cyberdrop-dl = "cyberdrop_dl.main:main"
 

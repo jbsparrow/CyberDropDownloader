@@ -33,7 +33,11 @@ DEFAULT_APPRISE_MESSAGE = {
 class AppriseURL:
     url: str
     tags: set[str]
-    raw_url: str
+
+    @property
+    def raw_url(self):
+        tags = sorted(self.tags)
+        return f"{','.join(tags)}{'=' if tags else ''}{self.url}"
 
 
 OS_URLS = ["windows://", "macosx://", "dbus://", "qt://", "glib://", "kde://"]
@@ -57,9 +61,11 @@ class LogLine:
     msg: str = ""
 
 
-def get_apprise_urls(manager: Manager) -> list[AppriseURL] | None:
-    apprise_file = manager.path_manager.config_folder / manager.config_manager.loaded_config / "apprise.txt"
-    apprise_fixed = manager.cache_manager.get("apprise_fixed")
+def get_apprise_urls(manager: Manager, apprise_file: Path | None = None) -> list[AppriseURL] | None:
+    apprise_file = (
+        apprise_file or manager.path_manager.config_folder / manager.config_manager.loaded_config / "apprise.txt"
+    )
+    apprise_fixed = False  # manager.cache_manager.get("apprise_fixed")
     if not apprise_fixed:
         if os.name == "nt":
             with apprise_file.open("a", encoding="utf8") as f:
@@ -75,7 +81,7 @@ def get_apprise_urls(manager: Manager) -> list[AppriseURL] | None:
             return simplify_urls([AppriseURLModel(url=url) for url in urls])
 
     except ValidationError as e:
-        sources = {"AppriseURL": apprise_file}
+        sources = {"AppriseURLModel": apprise_file}
         handle_validation_error(e, sources=sources)
         return
 
@@ -92,9 +98,7 @@ def simplify_urls(apprise_urls: list[AppriseURLModel]) -> list[AppriseURL]:
         tags = apprise_url.tags or {"no_logs"}
         if use_simplified(url):
             tags = {"simplified"}
-        new_model = apprise_url.model_copy(update={"tags": tags})
-        raw_url = new_model.model_dump()
-        entry = AppriseURL(url=url, tags=tags, raw_url=raw_url)
+        entry = AppriseURL(url=url, tags=tags)
         final_urls.append(entry)
     return sorted(final_urls, key=lambda x: x.url)
 
