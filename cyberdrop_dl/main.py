@@ -19,6 +19,7 @@ from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.scraper.scraper import ScrapeMapper
 from cyberdrop_dl.ui.program_ui import ProgramUI
 from cyberdrop_dl.ui.prompts.user_prompts import get_cookies_from_browsers
+from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.logger import RedactedConsole, log, log_spacer, log_with_color, print_to_console
 from cyberdrop_dl.utils.sorting import Sorter
 from cyberdrop_dl.utils.utilities import (
@@ -39,6 +40,8 @@ def startup() -> Manager:
     This will also run the UI for the program
     After this function returns, the manager will be ready to use and scraping / downloading can begin.
     """
+    setup_startup_logger()
+    logger_startup = logging.getLogger("cyberdrop_dl_startup")
     try:
         manager = Manager()
         manager.startup()
@@ -49,7 +52,7 @@ def startup() -> Manager:
             ProgramUI(manager)
 
     except InvalidYamlError as e:
-        print_to_console(e.message, error=True)
+        logger_startup.error(e.message)
         sys.exit(1)
 
     except ValidationError as e:
@@ -64,6 +67,11 @@ def startup() -> Manager:
     except KeyboardInterrupt:
         print_to_console("Exiting...")
         sys.exit(0)
+
+    except Exception:
+        msg = "An error occurred, please report this to the developer with your logs file:"
+        logger_startup.exception(msg)
+        sys.exit(1)
 
     else:
         return manager
@@ -108,11 +116,27 @@ async def post_runtime(manager: Manager) -> None:
         await manager.log_manager.update_last_forum_post()
 
 
+def setup_startup_logger() -> None:
+    logger_startup = logging.getLogger("cyberdrop_dl_startup")
+    logger_startup.setLevel(10)
+
+    rich_file_handler = RichHandler(
+        **constants.RICH_HANDLER_CONFIG,
+        console=RedactedConsole(
+            file=Path().cwd().joinpath("downloader.log").open("w", encoding="utf8"),
+            width=constants.DEFAULT_CONSOLE_WIDTH,
+        ),
+        level=10,
+    )
+    rich_handler = RichHandler(**(constants.RICH_HANDLER_CONFIG | {"show_time": False}), level=10)
+    logger_startup.addHandler(rich_file_handler)
+    logger_startup.addHandler(rich_handler)
+
+
 def setup_debug_logger(manager: Manager) -> Path | None:
     logger_debug = logging.getLogger("cyberdrop_dl_debug")
     debug_log_file_path = None
     running_in_IDE = os.getenv("PYCHARM_HOSTED") or os.getenv("TERM_PROGRAM") == "vscode"
-    from cyberdrop_dl.utils import constants
 
     if running_in_IDE or manager.config_manager.settings_data.runtime_options.log_level == -1:
         manager.config_manager.settings_data.runtime_options.log_level = 10
@@ -145,8 +169,6 @@ def setup_debug_logger(manager: Manager) -> Path | None:
 
 
 def setup_logger(manager: Manager, config_name: str) -> None:
-    from cyberdrop_dl.utils import constants
-
     logger = logging.getLogger("cyberdrop_dl")
     if manager.multiconfig:
         if len(logger.handlers) > 0:
