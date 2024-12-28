@@ -61,27 +61,30 @@ class LogLine:
     msg: str = ""
 
 
-def get_apprise_urls(manager: Manager, apprise_file: Path | None = None) -> list[AppriseURL] | None:
-    apprise_file = (
-        apprise_file or manager.path_manager.config_folder / manager.config_manager.loaded_config / "apprise.txt"
+def get_apprise_urls(manager: Manager, file_or_url: Path | str | None = None) -> list[AppriseURL] | None:
+    file_or_url = (
+        file_or_url or manager.path_manager.config_folder / manager.config_manager.loaded_config / "apprise.txt"
     )
     apprise_fixed = False  # manager.cache_manager.get("apprise_fixed")
     if not apprise_fixed:
         if os.name == "nt":
-            with apprise_file.open("a", encoding="utf8") as f:
+            with file_or_url.open("a", encoding="utf8") as f:
                 f.write("windows://\n")
         manager.cache_manager.save("apprise_fixed", True)
 
-    if not apprise_file.is_file():
+    if isinstance(file_or_url, str):
+        return simplify_urls([AppriseURLModel(url=file_or_url)])
+
+    if not file_or_url.is_file():
         return
 
     try:
-        with apprise_file.open(encoding="utf8") as file:
+        with file_or_url.open(encoding="utf8") as file:
             urls = {line.strip() for line in file}
             return simplify_urls([AppriseURLModel(url=url) for url in urls])
 
     except ValidationError as e:
-        sources = {"AppriseURLModel": apprise_file}
+        sources = {"AppriseURLModel": file_or_url}
         handle_validation_error(e, sources=sources)
         return
 
@@ -108,7 +111,7 @@ def simplify_urls(apprise_urls: list[AppriseURLModel]) -> list[AppriseURL]:
 
 def process_results(
     all_urls: list[str], results_dict: dict[str, bool | None], apprise_logs: str
-) -> constants.NotificationResult:
+) -> tuple[constants.NotificationResult, list[LogLine]]:
     results = [r for r in results_dict.values() if r is not None]
     for key, value in results_dict.items():
         if value:
@@ -137,7 +140,7 @@ def process_results(
     parsed_log_lines = parse_apprise_logs(apprise_logs)
     for line in parsed_log_lines:
         logger(level=line.level.value, message=line.msg)
-    return final_result
+    return final_result, parsed_log_lines
 
 
 def reduce_logs(apprise_logs: str) -> list[str]:
@@ -164,7 +167,7 @@ def parse_apprise_logs(apprise_logs: str) -> list[LogLine]:
     return parsed_lines
 
 
-async def send_apprise_notifications(manager: Manager) -> tuple[constants.NotificationResult, str]:
+async def send_apprise_notifications(manager: Manager) -> tuple[constants.NotificationResult, list[LogLine]]:
     apprise_urls = manager.config_manager.apprise_urls
     if not apprise_urls:
         return
@@ -203,4 +206,4 @@ async def send_apprise_notifications(manager: Manager) -> tuple[constants.Notifi
             results[tag] = await apprise_obj.async_notify(**msg, tag=tag)
         apprise_logs = capture.getvalue()
 
-    return process_results(all_urls, results, apprise_logs), apprise_logs
+    return process_results(all_urls, results, apprise_logs)

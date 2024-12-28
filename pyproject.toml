@@ -43,6 +43,7 @@ ruff = "^0.8.0"
 
 [tool.poetry.group.test.dependencies]
 pytest = "^8.3.4"
+pytest-asyncio = "^0.25.0"
 pytest-cov = "^6.0.0"
 pytest-mock = "*"
 
@@ -78,6 +79,12 @@ ignore = [
     "E501",   # Suppress line-too-long, let formatter decide
     "COM812", # missing-trailing-comma
 ]
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "module"
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
