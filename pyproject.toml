@@ -81,7 +81,7 @@ ignore = [
 ]
 
 [tool.pytest.ini_options]
-minversion = "6.0"
+minversion = "8.3"
 testpaths = ["tests"]
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "module"
