@@ -103,24 +103,26 @@ def simplify_urls(apprise_urls: list[AppriseURLModel]) -> list[AppriseURL]:
     return sorted(final_urls, key=lambda x: x.url)
 
 
-def process_results(all_urls: list[str], results_dict: dict[str, bool | None], apprise_logs: str) -> None:
+def process_results(
+    all_urls: list[str], results_dict: dict[str, bool | None], apprise_logs: str
+) -> constants.NotificationResult:
     results = [r for r in results_dict.values() if r is not None]
     for key, value in results_dict.items():
         if value:
-            results_dict[key] = str(constants.NotificationResultText.SUCCESS.value)
+            results_dict[key] = str(constants.NotificationResult.SUCCESS.value)
         elif value is None:
-            results_dict[key] = str(constants.NotificationResultText.NONE.value)
+            results_dict[key] = str(constants.NotificationResult.NONE.value)
         else:
-            results_dict[key] = str(constants.NotificationResultText.FAILED.value)
+            results_dict[key] = str(constants.NotificationResult.FAILED.value)
 
     if not results:
-        final_result = constants.NotificationResultText.NONE.value
+        final_result = constants.NotificationResult.NONE.value
     if all(results):
-        final_result = constants.NotificationResultText.SUCCESS.value
+        final_result = constants.NotificationResult.SUCCESS.value
     elif any(results):
-        final_result = constants.NotificationResultText.PARTIAL.value
+        final_result = constants.NotificationResult.PARTIAL.value
     else:
-        final_result = constants.NotificationResultText.FAILED.value
+        final_result = constants.NotificationResult.FAILED.value
 
     log_spacer(10, log_to_console=False, log_to_file=not all(results))
     rich.print("Apprise notifications results:", final_result)
@@ -132,6 +134,7 @@ def process_results(all_urls: list[str], results_dict: dict[str, bool | None], a
     parsed_log_lines = parse_apprise_logs(apprise_logs)
     for line in parsed_log_lines:
         logger(level=line.level.value, message=line.msg)
+    return final_result
 
 
 def reduce_logs(apprise_logs: str) -> list[str]:
@@ -158,7 +161,7 @@ def parse_apprise_logs(apprise_logs: str) -> list[LogLine]:
     return parsed_lines
 
 
-async def send_apprise_notifications(manager: Manager) -> None:
+async def send_apprise_notifications(manager: Manager) -> tuple[constants.NotificationResult, str]:
     apprise_urls = get_apprise_urls(manager)
     if not apprise_urls:
         return
@@ -197,4 +200,4 @@ async def send_apprise_notifications(manager: Manager) -> None:
             results[tag] = await apprise_obj.async_notify(**msg, tag=tag)
         apprise_logs = capture.getvalue()
 
-    process_results(all_urls, results, apprise_logs)
+    return process_results(all_urls, results, apprise_logs), apprise_logs

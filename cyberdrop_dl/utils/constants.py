@@ -63,7 +63,7 @@ class BROWSERS(StrEnum):
     chromium = auto()
 
 
-class NotificationResultText(Enum):
+class NotificationResult(Enum):
     SUCCESS = Text("Success", "green")
     FAILED = Text("Failed", "bold red")
     PARTIAL = Text("Partial Success", "yellow")

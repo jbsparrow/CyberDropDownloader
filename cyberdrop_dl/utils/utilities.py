@@ -311,14 +311,14 @@ async def send_webhook_message(manager: Manager) -> None:
 
     async with ClientSession() as session, session.post(url, data=form) as response:
         successful = 200 <= response.status <= 300
-        result = [constants.NotificationResultText.SUCCESS.value]
+        result = [constants.NotificationResult.SUCCESS.value]
         result_to_log = result
         if not successful:
             json_resp: dict = await response.json()
             if "content" in json_resp:
                 json_resp.pop("content")
             json_resp = json.dumps(json_resp, indent=4)
-            result_to_log = constants.NotificationResultText.FAILED.value, json_resp
+            result_to_log = constants.NotificationResult.FAILED.value, json_resp
 
         log_spacer(10, log_to_console=False)
         rich.print("Webhook Notifications Results:", *result)
