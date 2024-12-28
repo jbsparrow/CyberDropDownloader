@@ -88,6 +88,7 @@ def get_apprise_urls(manager: Manager, apprise_file: Path | None = None) -> list
 
 def simplify_urls(apprise_urls: list[AppriseURLModel]) -> list[AppriseURL]:
     final_urls = []
+    valid_tags = {"no_logs", "attach_logs", "simplified"}
 
     def use_simplified(url: str) -> bool:
         special_urls = OS_URLS
@@ -96,8 +97,10 @@ def simplify_urls(apprise_urls: list[AppriseURLModel]) -> list[AppriseURL]:
     for apprise_url in apprise_urls:
         url = str(apprise_url.url.get_secret_value())
         tags = apprise_url.tags or {"no_logs"}
+        if not any(tag in tags for tag in valid_tags):
+            tags = tags | {"no_logs"}
         if use_simplified(url):
-            tags = {"simplified"}
+            tags = tags - valid_tags | {"simplified"}
         entry = AppriseURL(url=url, tags=tags)
         final_urls.append(entry)
     return sorted(final_urls, key=lambda x: x.url)
