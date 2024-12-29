@@ -134,7 +134,8 @@ class BunkrrCrawler(Crawler):
         """Scrapes a file."""
         if not scrape_item.url:
             return
-        soup = None
+        soup = link_container = None
+        src_selector = "src"
         if self.is_stream_redirect(scrape_item.url):
             soup, scrape_item.url = await self.client.get_soup_and_return_url(self.domain, scrape_item.url)
 
@@ -146,24 +147,19 @@ class BunkrrCrawler(Crawler):
             async with self.request_limiter:
                 soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        """
-        Some old page details may have the uuid as the title instead of the filename.
-        Commenting out this code ensures we always get the actual filename from `get.bunkr.su`, at the expense of one additional request
-
-
         # try video
-        link_container = soup.select_one("video > source")
-        src_selector = "src"
+        if not self.manager.config_manager.deep_scrape:
+            link_container = soup.select_one("video > source")
 
         # try image
-        if not link_container:
+        if not (link_container or self.manager.config_manager.deep_scrape):
             link_container = soup.select_one("img.max-h-full.w-auto.object-cover.relative")
 
         # fallback for everything else
         if not link_container:
-        """
-        link_container = soup.select_one("a.btn.ic-download-01")
-        src_selector = "href"
+            link_container = soup.select_one("a.btn.ic-download-01")
+            src_selector = "href"
+
         link = link_container.get(src_selector) if link_container else None
         if not link:
             raise ScrapeError(422, f"Could not find source for: {scrape_item.url}", origin=scrape_item)
@@ -175,7 +171,6 @@ class BunkrrCrawler(Crawler):
             date = self.parse_datetime(date_str.text.strip())
 
         new_scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, possible_datetime=date)
-
         await self.handle_direct_link(new_scrape_item, link, fallback_filename=soup.select_one("h1").text)
 
     async def handle_direct_link(
