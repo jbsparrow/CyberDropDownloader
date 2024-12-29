@@ -55,9 +55,6 @@ class ConfigManager:
         self.settings.parent.mkdir(parents=True, exist_ok=True)
         self.pydantic_config = self.manager.cache_manager.get("pydantic_config")
         self.load_configs()
-        if not self.pydantic_config:
-            self.pydantic_config = True
-            self.manager.cache_manager.save("pydantic_config", True)
 
     def load_configs(self) -> None:
         """Loads all the configs."""
@@ -67,6 +64,7 @@ class ConfigManager:
         self.apprise_file = self.manager.path_manager.config_folder / self.loaded_config / "apprise.txt"
         self.apprise_urls = get_apprise_urls(self.manager, file=self.apprise_file)
         self._set_apprise_fixed()
+        self._set_pydantic_config()
 
     @staticmethod
     def get_model_fields(model: type[BaseModel], *, exclude_unset: bool = True) -> set[str]:
@@ -188,3 +186,9 @@ class ConfigManager:
             with self.apprise_file.open("a", encoding="utf8") as f:
                 f.write("windows://\n")
         self.manager.cache_manager.save("apprise_fixed", True)
+
+    def _set_pydantic_config(self):
+        if self.pydantic_config:
+            return
+        self.manager.cache_manager.save("pydantic_config", True)
+        self.pydantic_config = True
