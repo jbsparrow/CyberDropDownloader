@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import shutil
 from dataclasses import field
 from time import sleep
@@ -63,7 +64,9 @@ class ConfigManager:
         self._load_authentication_config()
         self._load_global_settings_config()
         self._load_settings_config()
-        self.apprise_urls = get_apprise_urls(self.manager)
+        self.apprise_file = self.manager.path_manager.config_folder / self.loaded_config / "apprise.txt"
+        self.apprise_urls = get_apprise_urls(self.manager, file=self.apprise_file)
+        self._set_apprise_fixed()
 
     @staticmethod
     def get_model_fields(model: type[BaseModel], *, exclude_unset: bool = True) -> set[str]:
@@ -176,3 +179,12 @@ class ConfigManager:
         sleep(1)
         self.manager.log_manager = LogManager(self.manager)
         sleep(1)
+
+    def _set_apprise_fixed(self):
+        apprise_fixed = self.manager.cache_manager.get("apprise_fixed")
+        if apprise_fixed:
+            return
+        if os.name == "nt":
+            with self.apprise_file.open("a", encoding="utf8") as f:
+                f.write("windows://\n")
+        self.manager.cache_manager.save("apprise_fixed", True)

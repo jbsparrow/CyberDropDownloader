@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 import shutil
 import tempfile
 from dataclasses import dataclass
@@ -66,33 +65,29 @@ def get_apprise_urls(manager: Manager, *, file: Path | None = None, url: str | N
     Get Apprise URLs from the specified file or directly from a provided URL.
 
     Args:
-        manager (Manager): The manager instance containing configuration and path managers.
+        manager (Manager): The manager instance.
         file (Path, optional): The path to the file containing Apprise URLs.
         url (str, optional): A single Apprise URL to be processed.
 
     Returns:
         list[AppriseURL] | None: A list of processed Apprise URLs, or None if no valid URLs are found.
-
-    Note:
-        If neither `file` nor `url` are supplied, the manager's default `apprise.txt` file is used.
     """
     if url:
         return _simplify_urls([AppriseURLModel(url=url)])
 
-    apprise_file = file or manager.path_manager.config_folder / manager.config_manager.loaded_config / "apprise.txt"
-    apprise_fixed = manager.cache_manager.get("apprise_fixed")
-    if not apprise_fixed:
-        if os.name == "nt":
-            with apprise_file.open("a", encoding="utf8") as f:
-                f.write("windows://\n")
-        manager.cache_manager.save("apprise_fixed", True)
+    if file:
+        return _get_apprise_urls_from_file(file)
 
+    raise ValueError("Neither url of file were supplied")
+
+
+def _get_apprise_urls_from_file(apprise_file: Path) -> list[AppriseURL]:
     if not apprise_file.is_file():
         return []
 
     try:
-        with apprise_file.open(encoding="utf8") as file:
-            urls = {line.strip() for line in file}
+        with apprise_file.open(encoding="utf8") as apprise_file:
+            urls = {line.strip() for line in apprise_file}
             return _simplify_urls([AppriseURLModel(url=url) for url in urls])
 
     except ValidationError as e:
