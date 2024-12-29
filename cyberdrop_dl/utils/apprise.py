@@ -61,7 +61,7 @@ class LogLine:
     msg: str = ""
 
 
-def get_apprise_urls(manager: Manager, *, file: Path | None = None, url: str | None = None) -> list[AppriseURL] | None:
+def get_apprise_urls(manager: Manager, *, file: Path | None = None, url: str | None = None) -> list[AppriseURL]:
     """
     Get Apprise URLs from the specified file or directly from a provided URL.
 
@@ -88,7 +88,7 @@ def get_apprise_urls(manager: Manager, *, file: Path | None = None, url: str | N
         manager.cache_manager.save("apprise_fixed", True)
 
     if not apprise_file.is_file():
-        return
+        return []
 
     try:
         with apprise_file.open(encoding="utf8") as file:
@@ -98,7 +98,7 @@ def get_apprise_urls(manager: Manager, *, file: Path | None = None, url: str | N
     except ValidationError as e:
         sources = {"AppriseURLModel": apprise_file}
         handle_validation_error(e, sources=sources)
-        return
+        return []
 
 
 def _simplify_urls(apprise_urls: list[AppriseURLModel]) -> list[AppriseURL]:
