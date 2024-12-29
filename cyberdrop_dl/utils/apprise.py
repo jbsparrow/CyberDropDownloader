@@ -60,7 +60,7 @@ class LogLine:
     msg: str = ""
 
 
-def get_apprise_urls(manager: Manager, *, file: Path | None = None, url: str | None = None) -> list[AppriseURL]:
+def get_apprise_urls(manager: Manager, *, file: Path | None = None, urls: list[str] | None = None) -> list[AppriseURL]:
     """
     Get Apprise URLs from the specified file or directly from a provided URL.
 
@@ -72,8 +72,8 @@ def get_apprise_urls(manager: Manager, *, file: Path | None = None, url: str | N
     Returns:
         list[AppriseURL] | None: A list of processed Apprise URLs, or None if no valid URLs are found.
     """
-    if url:
-        return _simplify_urls([AppriseURLModel(url=url)])
+    if urls:
+        return _simplify_urls([AppriseURLModel(url=url) for url in urls])
 
     if file:
         return _get_apprise_urls_from_file(file)

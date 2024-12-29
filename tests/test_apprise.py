@@ -57,7 +57,7 @@ async def test_send_apprise_notifications():
     @dataclass
     class AppriseTestCase:
         include: list[str]
-        url: str
+        urls: list[str]
         result: NotificationResult
         exclude: list[str] = field(default_factory=list)
         file: Path | None = None
@@ -66,8 +66,8 @@ async def test_send_apprise_notifications():
 
     async def send_notification(test_case: AppriseTestCase):
         FAKE_MANAGER.config_manager.apprise_urls = []
-        if test_case.url:
-            FAKE_MANAGER.config_manager.apprise_urls = apprise.get_apprise_urls(FAKE_MANAGER, url=test_case.url)
+        if test_case.urls:
+            FAKE_MANAGER.config_manager.apprise_urls = apprise.get_apprise_urls(FAKE_MANAGER, urls=test_case.urls)
         FAKE_MANAGER.path_manager = PathManager(FAKE_MANAGER)
         FAKE_MANAGER.path_manager.main_log = test_case.file or TEST_FILES_PATH / "valid_single_url.txt"
         result, logs = await apprise.send_apprise_notifications(FAKE_MANAGER)
@@ -90,17 +90,17 @@ async def test_send_apprise_notifications():
     assert url_success, "Email URL should be set on enviroment"
 
     test_cases = [
-        [["There are no service(s) to notify"], url_fail, NotificationResult.FAILED],
-        [["Sent Email to"], url_success, NotificationResult.SUCCESS, ["Preparing Email attachment"]],
-        [["Sent Email to", "Preparing Email attachment"], url_success_attach_logs, NotificationResult.SUCCESS],
+        [["There are no service(s) to notify"], [url_fail], NotificationResult.FAILED],
+        [["Sent Email to"], [url_success], NotificationResult.SUCCESS, ["Preparing Email attachment"]],
+        [["Sent Email to", "Preparing Email attachment"], [url_success_attach_logs], NotificationResult.SUCCESS],
         [
             ["Sent Email to"],
-            url_success_attach_logs,
+            [url_success_attach_logs],
             NotificationResult.SUCCESS,
             ["Preparing Email attachment"],
             TEST_FILES_PATH / "file_that_does_exists.txt",
         ],
-        [[NotificationResult.NONE.value.plain], "", NotificationResult.NONE],
+        [[NotificationResult.NONE.value.plain], [""], NotificationResult.NONE],
     ]
     for test_case in test_cases:
         case = AppriseTestCase(*test_case)
