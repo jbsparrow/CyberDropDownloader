@@ -86,8 +86,8 @@ def _get_apprise_urls_from_file(apprise_file: Path) -> list[AppriseURL]:
         return []
 
     try:
-        with apprise_file.open(encoding="utf8") as apprise_file:
-            urls = {line.strip() for line in apprise_file}
+        with apprise_file.open(encoding="utf8") as file:
+            urls = {line.strip() for line in file}
             return _simplify_urls([AppriseURLModel(url=url) for url in urls])
 
     except ValidationError as e:
