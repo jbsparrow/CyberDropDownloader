@@ -15,18 +15,18 @@ FAKE_MANAGER.cache_manager = FakeCacheManager(FAKE_MANAGER)
 
 
 def test_get_apprise_urls():
-    result = apprise.get_apprise_urls(FAKE_MANAGER, TEST_FILES_PATH / "invalid_single_url.txt")
+    result = apprise.get_apprise_urls(FAKE_MANAGER, file=TEST_FILES_PATH / "invalid_single_url.txt")
     assert result is None
 
-    result = apprise.get_apprise_urls(FAKE_MANAGER, TEST_FILES_PATH / "invalid_multiple_urls.txt")
+    result = apprise.get_apprise_urls(FAKE_MANAGER, file=TEST_FILES_PATH / "invalid_multiple_urls.txt")
     assert result is None
 
-    result = apprise.get_apprise_urls(FAKE_MANAGER, TEST_FILES_PATH / "valid_single_url.txt")
+    result = apprise.get_apprise_urls(FAKE_MANAGER, file=TEST_FILES_PATH / "valid_single_url.txt")
     assert isinstance(result, list), "Result is not a list"
     assert len(result) == 1, "This should be a single URL"
     assert isinstance(result[0], apprise.AppriseURL), "Parsed URL is not an AppriseURL"
 
-    result = apprise.get_apprise_urls(FAKE_MANAGER, TEST_FILES_PATH / "valid_multiple_urls.txt")
+    result = apprise.get_apprise_urls(FAKE_MANAGER, file=TEST_FILES_PATH / "valid_multiple_urls.txt")
     assert isinstance(result, list), "Result is not a list"
     assert len(result) == 5, "These should be 5 URLs"
 
@@ -56,7 +56,7 @@ async def test_send_apprise_notifications():
     FAKE_MANAGER.config_manager = ConfigManager(FAKE_MANAGER)
 
     async def send_notification(test_case: AppriseTestCase):
-        FAKE_MANAGER.config_manager.apprise_urls = apprise.get_apprise_urls(FAKE_MANAGER, test_case.url)
+        FAKE_MANAGER.config_manager.apprise_urls = apprise.get_apprise_urls(FAKE_MANAGER, url=test_case.url)
         FAKE_MANAGER.path_manager = PathManager(FAKE_MANAGER)
         FAKE_MANAGER.path_manager.main_log = TEST_FILES_PATH / "valid_single_url.txt"
         result, logs = await apprise.send_apprise_notifications(FAKE_MANAGER)

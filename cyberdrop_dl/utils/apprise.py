@@ -61,30 +61,28 @@ class LogLine:
     msg: str = ""
 
 
-def get_apprise_urls(manager: Manager, file_or_url: Path | str | None = None) -> list[AppriseURL] | None:
-    file_or_url = (
-        file_or_url or manager.path_manager.config_folder / manager.config_manager.loaded_config / "apprise.txt"
-    )
-    apprise_fixed = False  # manager.cache_manager.get("apprise_fixed")
+def get_apprise_urls(manager: Manager, *, file: Path | None = None, url: str | None = None) -> list[AppriseURL] | None:
+    if url:
+        return simplify_urls([AppriseURLModel(url=url)])
+
+    apprise_file = file or manager.path_manager.config_folder / manager.config_manager.loaded_config / "apprise.txt"
+    apprise_fixed = manager.cache_manager.get("apprise_fixed")
     if not apprise_fixed:
         if os.name == "nt":
-            with file_or_url.open("a", encoding="utf8") as f:
+            with apprise_file.open("a", encoding="utf8") as f:
                 f.write("windows://\n")
         manager.cache_manager.save("apprise_fixed", True)
 
-    if isinstance(file_or_url, str):
-        return simplify_urls([AppriseURLModel(url=file_or_url)])
-
-    if not file_or_url.is_file():
+    if not apprise_file.is_file():
         return
 
     try:
-        with file_or_url.open(encoding="utf8") as file:
+        with apprise_file.open(encoding="utf8") as file:
             urls = {line.strip() for line in file}
             return simplify_urls([AppriseURLModel(url=url) for url in urls])
 
     except ValidationError as e:
-        sources = {"AppriseURLModel": file_or_url}
+        sources = {"AppriseURLModel": apprise_file}
         handle_validation_error(e, sources=sources)
         return
 
