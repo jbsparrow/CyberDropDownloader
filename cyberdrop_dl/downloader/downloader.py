@@ -111,12 +111,15 @@ class Downloader:
         if self.manager.config_manager.settings_data.download_options.disable_file_timestamps:
             return
         if not media_item.datetime:
-            file = File(str(complete_file))
-            file.set(
-                created=media_item.datetime,
-                modified=media_item.datetime,
-                accessed=media_item.datetime,
-            )
+            log(f"Unable to parse upload date for {media_item.url}, using current datetime as file datetime", 30)
+            return
+
+        file = File(str(complete_file))
+        file.set(
+            created=media_item.datetime,
+            modified=media_item.datetime,
+            accessed=media_item.datetime,
+        )
 
     def attempt_task_removal(self, media_item: MediaItem) -> None:
         """Attempts to remove the task from the progress bar."""
