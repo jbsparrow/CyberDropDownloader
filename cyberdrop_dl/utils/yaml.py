@@ -66,9 +66,9 @@ def load(file: Path, *, create: bool = False) -> dict:
         raise InvalidYamlError(file, e) from None
 
 
-def handle_validation_error(e: ValidationError, *, title: str | None = None, sources: dict | None = None):
+def handle_validation_error(e: ValidationError, *, title: str | None = None, sources: dict[str, Path] | None = None):
     error_count = e.error_count()
-    source: Path = sources.get(e.title, None) if sources else None
+    source = sources.get(e.title) if sources else None
     title = title or e.title
     source = f"from {source.resolve()}" if source else ""
     msg = f"found {error_count} error{'s' if error_count>1 else ''} parsing {title} {source}"

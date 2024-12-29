@@ -72,26 +72,22 @@ def get_apprise_urls(manager: Manager, *, file: Path | None = None, urls: list[s
     Returns:
         list[AppriseURL] | None: A list of processed Apprise URLs, or None if no valid URLs are found.
     """
-    if urls:
-        return _simplify_urls([AppriseURLModel(url=url) for url in urls])
+    if not (urls or file):
+        raise ValueError("Neither url of file were supplied")
+    if urls and file:
+        raise ValueError("url of file are mutually exclusive")
 
     if file:
-        return _get_apprise_urls_from_file(file)
+        with file.open(encoding="utf8") as apprise_file:
+            urls = [line.strip() for line in apprise_file if line.strip()]
 
-    raise ValueError("Neither url of file were supplied")
-
-
-def _get_apprise_urls_from_file(apprise_file: Path) -> list[AppriseURL]:
-    if not apprise_file.is_file():
+    if not urls:
         return []
-
     try:
-        with apprise_file.open(encoding="utf8") as file:
-            urls = {line.strip() for line in file}
-            return _simplify_urls([AppriseURLModel(url=url) for url in urls])
+        return _simplify_urls([AppriseURLModel(url=url) for url in set(urls)])
 
     except ValidationError as e:
-        sources = {"AppriseURLModel": apprise_file}
+        sources = {"AppriseURLModel": file} if file else None
         handle_validation_error(e, sources=sources)
 
 

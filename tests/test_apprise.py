@@ -66,7 +66,7 @@ async def test_send_apprise_notifications():
 
     async def send_notification(test_case: AppriseTestCase):
         FAKE_MANAGER.config_manager.apprise_urls = []
-        if test_case.urls:
+        if test_case.urls and any(test_case.urls):
             FAKE_MANAGER.config_manager.apprise_urls = apprise.get_apprise_urls(FAKE_MANAGER, urls=test_case.urls)
         FAKE_MANAGER.path_manager = PathManager(FAKE_MANAGER)
         FAKE_MANAGER.path_manager.main_log = test_case.file or TEST_FILES_PATH / "valid_single_url.txt"
