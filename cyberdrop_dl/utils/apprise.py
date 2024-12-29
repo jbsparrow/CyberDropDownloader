@@ -62,6 +62,20 @@ class LogLine:
 
 
 def get_apprise_urls(manager: Manager, *, file: Path | None = None, url: str | None = None) -> list[AppriseURL] | None:
+    """
+    Get Apprise URLs from the specified file or directly from a provided URL.
+
+    Args:
+        manager (Manager): The manager instance containing configuration and path managers.
+        file (Path, optional): The path to the file containing Apprise URLs.
+        url (str, optional): A single Apprise URL to be processed.
+
+    Returns:
+        list[AppriseURL] | None: A list of processed Apprise URLs, or None if no valid URLs are found.
+
+    Note:
+        If neither `file` nor `url` are supplied, the manager's default `apprise.txt` file is used.
+    """
     if url:
         return simplify_urls([AppriseURLModel(url=url)])
 
@@ -166,9 +180,19 @@ def parse_apprise_logs(apprise_logs: str) -> list[LogLine]:
 
 
 async def send_apprise_notifications(manager: Manager) -> tuple[constants.NotificationResult, list[LogLine]]:
+    """
+    Send notifications using Apprise based on the URLs set in the manager.
+
+    Args:
+        manager (Manager): The manager instance containing.
+
+    Returns:
+        tuple[NotificationResult, list[LogLine]]: A tuple containing the overall notification result and a list of log lines.
+
+    """
     apprise_urls = manager.config_manager.apprise_urls
     if not apprise_urls:
-        return
+        return constants.NotificationResult.NONE, []
 
     rich.print("\nSending Apprise Notifications.. ")
     text: Text = constants.LOG_OUTPUT_TEXT
