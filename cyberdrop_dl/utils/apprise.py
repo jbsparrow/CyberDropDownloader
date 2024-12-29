@@ -18,7 +18,7 @@ from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.logger import log, log_debug, log_spacer
 from cyberdrop_dl.utils.yaml import handle_validation_error
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from cyberdrop_dl.managers.manager import Manager
 
 DEFAULT_APPRISE_MESSAGE = {
@@ -158,7 +158,7 @@ def _parse_apprise_logs(apprise_logs: str) -> list[LogLine]:
     parsed_lines: list[LogLine] = []
     for line in lines:
         log_level = line[0:8].strip()
-        if log_level and log_level not in LOG_LEVEL_NAMES:
+        if log_level and log_level not in LOG_LEVEL_NAMES:  # pragma: no cover
             current_line.msg += f"\n{line}"
             continue
 
