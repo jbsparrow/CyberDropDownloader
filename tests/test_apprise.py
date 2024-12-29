@@ -60,7 +60,7 @@ async def test_send_apprise_notifications():
         FAKE_MANAGER.path_manager = PathManager(FAKE_MANAGER)
         FAKE_MANAGER.path_manager.main_log = TEST_FILES_PATH / "valid_single_url.txt"
         result, logs = await apprise.send_apprise_notifications(FAKE_MANAGER)
-        assert result == test_case.result.value, f"Result for this case should be {test_case.result.value}"
+        assert result.value == test_case.result.value, f"Result for this case should be {test_case.result.value}"
         assert isinstance(logs, list), "Invalid return type for logs"
         assert logs, "Logs can't be empty"
         logs_as_str = "\n".join([line.msg for line in logs])

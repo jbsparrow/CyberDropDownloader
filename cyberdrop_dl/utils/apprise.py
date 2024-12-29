@@ -44,7 +44,7 @@ OS_URLS = ["windows://", "macosx://", "dbus://", "qt://", "glib://", "kde://"]
 
 
 class LogLevel(IntEnum):
-    NOTSET: 0
+    NOTSET = 0
     DEBUG = 10
     INFO = 20
     WARNING = 30
@@ -122,33 +122,34 @@ def simplify_urls(apprise_urls: list[AppriseURLModel]) -> list[AppriseURL]:
 
 
 def process_results(
-    all_urls: list[str], results_dict: dict[str, bool | None], apprise_logs: str
+    all_urls: list[str], results: dict[str, bool | None], apprise_logs: str
 ) -> tuple[constants.NotificationResult, list[LogLine]]:
-    results = [r for r in results_dict.values() if r is not None]
-    for key, value in results_dict.items():
+    result = [r for r in results.values() if r is not None]
+    result_dict = {}
+    for key, value in result_dict.items():
         if value:
-            results_dict[key] = str(constants.NotificationResult.SUCCESS.value)
+            result_dict[key] = str(constants.NotificationResult.SUCCESS.value)
         elif value is None:
-            results_dict[key] = str(constants.NotificationResult.NONE.value)
+            result_dict[key] = str(constants.NotificationResult.NONE.value)
         else:
-            results_dict[key] = str(constants.NotificationResult.FAILED.value)
+            result_dict[key] = str(constants.NotificationResult.FAILED.value)
 
-    if not results:
-        final_result = constants.NotificationResult.NONE.value
-    if all(results):
-        final_result = constants.NotificationResult.SUCCESS.value
-    elif any(results):
-        final_result = constants.NotificationResult.PARTIAL.value
+    if not result:
+        final_result = constants.NotificationResult.NONE
+    if all(result):
+        final_result = constants.NotificationResult.SUCCESS
+    elif any(result):
+        final_result = constants.NotificationResult.PARTIAL
     else:
-        final_result = constants.NotificationResult.FAILED.value
+        final_result = constants.NotificationResult.FAILED
 
-    log_spacer(10, log_to_console=False, log_to_file=not all(results))
-    rich.print("Apprise notifications results:", final_result)
-    logger = log_debug if all(results) else log
-    logger(f"Apprise notifications results: {final_result}")
+    log_spacer(10, log_to_console=False, log_to_file=not all(result))
+    rich.print("Apprise notifications results:", final_result.value)
+    logger = log_debug if all(result) else log
+    logger(f"Apprise notifications results: {final_result.value}")
     logger(f"PARSED_APPRISE_URLs: \n{json.dumps(all_urls, indent=4)}\n")
-    logger(f"RESULTS_BY_TAGS: \n{json.dumps(results_dict, indent=4)}")
-    log_spacer(10, log_to_console=False, log_to_file=not all(results))
+    logger(f"RESULTS_BY_TAGS: \n{json.dumps(result_dict, indent=4)}")
+    log_spacer(10, log_to_console=False, log_to_file=not all(result))
     parsed_log_lines = parse_apprise_logs(apprise_logs)
     for line in parsed_log_lines:
         logger(level=line.level.value, message=line.msg)
