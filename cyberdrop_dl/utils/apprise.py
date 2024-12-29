@@ -60,12 +60,11 @@ class LogLine:
     msg: str = ""
 
 
-def get_apprise_urls(manager: Manager, *, file: Path | None = None, urls: list[str] | None = None) -> list[AppriseURL]:
+def get_apprise_urls(*, file: Path | None = None, urls: list[str] | None = None) -> list[AppriseURL]:
     """
     Get Apprise URLs from the specified file or directly from a provided URL.
 
     Args:
-        manager (Manager): The manager instance.
         file (Path, optional): The path to the file containing Apprise URLs.
         url (str, optional): A single Apprise URL to be processed.
 

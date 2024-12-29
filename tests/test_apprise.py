@@ -32,29 +32,29 @@ class AppriseTestCase:
 
 def test_get_apprise_urls():
     with pytest.raises(ValueError):
-        apprise.get_apprise_urls(FAKE_MANAGER)
+        apprise.get_apprise_urls()
 
     with pytest.raises(ValueError):
-        apprise.get_apprise_urls(FAKE_MANAGER, urls=["url"], file=Path.cwd())
+        apprise.get_apprise_urls(urls=["url"], file=Path.cwd())
 
     with pytest.raises(SystemExit):
-        apprise.get_apprise_urls(FAKE_MANAGER, file=TEST_FILES_PATH / "invalid_single_url.txt")
+        apprise.get_apprise_urls(file=TEST_FILES_PATH / "invalid_single_url.txt")
 
     with pytest.raises(SystemExit):
-        apprise.get_apprise_urls(FAKE_MANAGER, file=TEST_FILES_PATH / "invalid_multiple_urls.txt")
+        apprise.get_apprise_urls(file=TEST_FILES_PATH / "invalid_multiple_urls.txt")
 
-    result = apprise.get_apprise_urls(FAKE_MANAGER, file=TEST_FILES_PATH / "file_that_does_not_exists.txt")
+    result = apprise.get_apprise_urls(file=TEST_FILES_PATH / "file_that_does_not_exists.txt")
     assert result == []
 
-    result = apprise.get_apprise_urls(FAKE_MANAGER, file=TEST_FILES_PATH / "empty_file.txt")
+    result = apprise.get_apprise_urls(file=TEST_FILES_PATH / "empty_file.txt")
     assert result == []
 
-    result = apprise.get_apprise_urls(FAKE_MANAGER, file=TEST_FILES_PATH / "valid_single_url.txt")
+    result = apprise.get_apprise_urls(file=TEST_FILES_PATH / "valid_single_url.txt")
     assert isinstance(result, list), "Result is not a list"
     assert len(result) == 1, "This should be a single URL"
     assert isinstance(result[0], apprise.AppriseURL), "Parsed URL is not an AppriseURL"
 
-    result = apprise.get_apprise_urls(FAKE_MANAGER, file=TEST_FILES_PATH / "valid_multiple_urls.txt")
+    result = apprise.get_apprise_urls(file=TEST_FILES_PATH / "valid_multiple_urls.txt")
     assert isinstance(result, list), "Result is not a list"
     assert len(result) == 5, "These should be 5 URLs"
 
@@ -77,7 +77,7 @@ async def send_notification(test_case: AppriseTestCase):
     assert URL_SUCCESS, "Email URL should be set on enviroment"
     FAKE_MANAGER.config_manager.apprise_urls = []
     if test_case.urls and any(test_case.urls):
-        FAKE_MANAGER.config_manager.apprise_urls = apprise.get_apprise_urls(FAKE_MANAGER, urls=test_case.urls)
+        FAKE_MANAGER.config_manager.apprise_urls = apprise.get_apprise_urls(urls=test_case.urls)
     FAKE_MANAGER.path_manager = PathManager(FAKE_MANAGER)
     FAKE_MANAGER.path_manager.main_log = test_case.file or TEST_FILES_PATH / "valid_single_url.txt"
     result, logs = await apprise.send_apprise_notifications(FAKE_MANAGER)

@@ -62,7 +62,7 @@ class ConfigManager:
         self._load_global_settings_config()
         self._load_settings_config()
         self.apprise_file = self.manager.path_manager.config_folder / self.loaded_config / "apprise.txt"
-        self.apprise_urls = get_apprise_urls(self.manager, file=self.apprise_file)
+        self.apprise_urls = get_apprise_urls(file=self.apprise_file)
         self._set_apprise_fixed()
         self._set_pydantic_config()
 
