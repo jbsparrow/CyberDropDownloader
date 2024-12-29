@@ -78,6 +78,8 @@ def get_apprise_urls(manager: Manager, *, file: Path | None = None, urls: list[s
         raise ValueError("url of file are mutually exclusive")
 
     if file:
+        if not file.is_file():
+            return []
         with file.open(encoding="utf8") as apprise_file:
             urls = [line.strip() for line in apprise_file if line.strip()]
 
