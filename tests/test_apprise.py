@@ -26,6 +26,9 @@ def test_get_apprise_urls():
     with pytest.raises(SystemExit):
         apprise.get_apprise_urls(FAKE_MANAGER, file=TEST_FILES_PATH / "invalid_multiple_urls.txt")
 
+    result = apprise.get_apprise_urls(FAKE_MANAGER, file=TEST_FILES_PATH / "file_that_does_not_exists.txt")
+    assert result == []
+
     result = apprise.get_apprise_urls(FAKE_MANAGER, file=TEST_FILES_PATH / "valid_single_url.txt")
     assert isinstance(result, list), "Result is not a list"
     assert len(result) == 1, "This should be a single URL"
@@ -57,19 +60,25 @@ async def test_send_apprise_notifications():
         url: str
         result: NotificationResult
         exclude: list[str] = field(default_factory=list)
+        file: Path | None = None
 
     FAKE_MANAGER.config_manager = ConfigManager(FAKE_MANAGER)
 
     async def send_notification(test_case: AppriseTestCase):
-        FAKE_MANAGER.config_manager.apprise_urls = apprise.get_apprise_urls(FAKE_MANAGER, url=test_case.url)
+        FAKE_MANAGER.config_manager.apprise_urls = []
+        if test_case.url:
+            FAKE_MANAGER.config_manager.apprise_urls = apprise.get_apprise_urls(FAKE_MANAGER, url=test_case.url)
         FAKE_MANAGER.path_manager = PathManager(FAKE_MANAGER)
-        FAKE_MANAGER.path_manager.main_log = TEST_FILES_PATH / "valid_single_url.txt"
+        FAKE_MANAGER.path_manager.main_log = test_case.file or TEST_FILES_PATH / "valid_single_url.txt"
         result, logs = await apprise.send_apprise_notifications(FAKE_MANAGER)
         assert result.value == test_case.result.value, f"Result for this case should be {test_case.result.value}"
         assert isinstance(logs, list), "Invalid return type for logs"
         assert logs, "Logs can't be empty"
         logs_as_str = "\n".join([line.msg for line in logs])
-        assert all(match in logs_as_str for match in test_case.include), "Logs do not match expected pattern"
+        print(logs_as_str)
+        assert all(
+            match.casefold() in logs_as_str.casefold() for match in test_case.include
+        ), "Logs do not match expected pattern"
         if test_case.exclude:
             assert not any(match in logs_as_str for match in test_case.exclude), "Logs should not match exclude pattern"
         assert "error" not in logs_as_str.casefold(), "Apprise logs have errors"
@@ -84,6 +93,14 @@ async def test_send_apprise_notifications():
         [["There are no service(s) to notify"], url_fail, NotificationResult.FAILED],
         [["Sent Email to"], url_success, NotificationResult.SUCCESS, ["Preparing Email attachment"]],
         [["Sent Email to", "Preparing Email attachment"], url_success_attach_logs, NotificationResult.SUCCESS],
+        [
+            ["Sent Email to"],
+            url_success_attach_logs,
+            NotificationResult.SUCCESS,
+            ["Preparing Email attachment"],
+            TEST_FILES_PATH / "file_that_does_exists.txt",
+        ],
+        [[NotificationResult.NONE.value.plain], "", NotificationResult.NONE],
     ]
     for test_case in test_cases:
         case = AppriseTestCase(*test_case)

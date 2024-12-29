@@ -120,7 +120,7 @@ def _process_results(
 ) -> tuple[constants.NotificationResult, list[LogLine]]:
     result = [r for r in results.values() if r is not None]
     result_dict = {}
-    for key, value in result_dict.items():
+    for key, value in results.items():
         if value:
             result_dict[key] = str(constants.NotificationResult.SUCCESS.value)
         elif value is None:
@@ -128,8 +128,6 @@ def _process_results(
         else:
             result_dict[key] = str(constants.NotificationResult.FAILED.value)
 
-    if not result:
-        final_result = constants.NotificationResult.NONE
     if all(result):
         final_result = constants.NotificationResult.SUCCESS
     elif any(result):
@@ -187,7 +185,7 @@ async def send_apprise_notifications(manager: Manager) -> tuple[constants.Notifi
     """
     apprise_urls = manager.config_manager.apprise_urls
     if not apprise_urls:
-        return constants.NotificationResult.NONE, []
+        return constants.NotificationResult.NONE, [LogLine(msg=constants.NotificationResult.NONE.value.plain)]
 
     rich.print("\nSending Apprise Notifications.. ")
     text: Text = constants.LOG_OUTPUT_TEXT
@@ -212,11 +210,12 @@ async def send_apprise_notifications(manager: Manager) -> tuple[constants.Notifi
             "attach_logs": {"body": text.plain},
             "simplified": {},
         }
+        attach_file_failed_msg = "Unable to get copy of main log file. 'attach_logs' URLs will be proccessed without it"
         try:
             shutil.copy(main_log, temp_main_log)
             notifications_to_send["attach_logs"]["attach"] = str(temp_main_log.resolve())
         except OSError:
-            log("Unable to get copy of main log file. 'attach_logs' URLs will be proccessed without it", 40)
+            log(attach_file_failed_msg, 40)
 
         for tag, extras in notifications_to_send.items():
             msg = DEFAULT_APPRISE_MESSAGE | extras
