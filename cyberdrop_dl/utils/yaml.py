@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from datetime import date, timedelta
 from enum import Enum
 from pathlib import Path, PurePath
@@ -85,3 +86,4 @@ def handle_validation_error(e: ValidationError, *, title: str | None = None, sou
             f"  {error['msg']} (input_value='{error['input']}', input_type='{error['type']}')", style="bold red"
         )
     print_to_console(VALIDATION_ERROR_FOOTER)
+    sys.exit(1)
