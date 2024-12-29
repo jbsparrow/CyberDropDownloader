@@ -93,7 +93,6 @@ def _get_apprise_urls_from_file(apprise_file: Path) -> list[AppriseURL]:
     except ValidationError as e:
         sources = {"AppriseURLModel": apprise_file}
         handle_validation_error(e, sources=sources)
-        return []
 
 
 def _simplify_urls(apprise_urls: list[AppriseURLModel]) -> list[AppriseURL]:

@@ -17,6 +17,9 @@ FAKE_MANAGER.cache_manager = FakeCacheManager(FAKE_MANAGER)
 
 
 def test_get_apprise_urls():
+    with pytest.raises(ValueError):
+        apprise.get_apprise_urls(FAKE_MANAGER)
+
     with pytest.raises(SystemExit):
         apprise.get_apprise_urls(FAKE_MANAGER, file=TEST_FILES_PATH / "invalid_single_url.txt")
 

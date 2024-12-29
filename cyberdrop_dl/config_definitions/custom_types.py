@@ -64,7 +64,7 @@ class AppriseURLModel(FrozenModel):
             tags = set(parts[0].split(","))
             url: str = url.split("=", 1)[-1]
 
-        return {"url": url, "tags": tags or {"no_logs"}}
+        return {"url": url, "tags": tags}
 
 
 class HttpAppriseURL(AppriseURLModel):
