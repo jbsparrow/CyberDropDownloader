@@ -169,7 +169,14 @@ class BunkrrCrawler(Crawler):
             raise ScrapeError(422, f"Could not find source for: {scrape_item.url}", origin=scrape_item)
 
         link = URL(link)
-        await self.handle_direct_link(scrape_item, link, fallback_filename=soup.select_one("h1").text)
+        date = None
+        date_str = soup.select_one('span[class*="theDate"]')
+        if date_str:
+            date = self.parse_datetime(date_str.text.strip())
+
+        new_scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, possible_datetime=date)
+
+        await self.handle_direct_link(new_scrape_item, link, fallback_filename=soup.select_one("h1").text)
 
     async def handle_direct_link(
         self, scrape_item: ScrapeItem, url: URL | None = None, fallback_filename: str | None = None
