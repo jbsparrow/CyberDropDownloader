@@ -29,9 +29,6 @@ def test_get_apprise_urls():
     with pytest.raises(SystemExit):
         apprise.get_apprise_urls(FAKE_MANAGER, file=TEST_FILES_PATH / "invalid_multiple_urls.txt")
 
-    with pytest.raises(SystemExit):
-        apprise.get_apprise_urls(FAKE_MANAGER, file=TEST_FILES_PATH / "invalid_multiple_urls.txt")
-
     result = apprise.get_apprise_urls(FAKE_MANAGER, file=TEST_FILES_PATH / "file_that_does_not_exists.txt")
     assert result == []
 
