@@ -6,9 +6,7 @@ from abc import ABC, abstractmethod
 from dataclasses import field
 from datetime import datetime
 from functools import wraps
-from http.cookiejar import MozillaCookieJar
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol
-
 
 from bs4 import BeautifulSoup
 from yarl import URL
