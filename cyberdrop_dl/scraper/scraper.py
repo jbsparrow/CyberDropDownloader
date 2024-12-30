@@ -10,10 +10,9 @@ import aiofiles
 import arrow
 from yarl import URL
 
-from cyberdrop_dl import __version__ as current_version
 from cyberdrop_dl.clients.errors import JDownloaderError
 from cyberdrop_dl.downloader.downloader import Downloader
-from cyberdrop_dl.scraper import ALL_CRAWLERS, DEBUG_CRAWLERS
+from cyberdrop_dl.scraper import CRAWLERS
 from cyberdrop_dl.scraper.filters import (
     has_valid_extension,
     is_in_domain_list,
@@ -22,7 +21,7 @@ from cyberdrop_dl.scraper.filters import (
     remove_trailing_slash,
 )
 from cyberdrop_dl.scraper.jdownloader import JDownloader
-from cyberdrop_dl.utils.constants import BLOCKED_DOMAINS, PRERELEASE_TAGS, REGEX_LINKS
+from cyberdrop_dl.utils.constants import BLOCKED_DOMAINS, REGEX_LINKS
 from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext
@@ -47,12 +46,7 @@ class ScrapeMapper:
 
     def start_scrapers(self) -> None:
         """Starts all scrapers."""
-        crawlers = ALL_CRAWLERS
-        is_testing = next((tag for tag in PRERELEASE_TAGS if tag in current_version), False)
-        if not is_testing:
-            crawlers -= DEBUG_CRAWLERS
-
-        for crawler in crawlers:
+        for crawler in CRAWLERS:
             if not crawler.SUPPORTED_SITES:
                 site_crawler = crawler(self.manager)
                 self.existing_crawlers[site_crawler.domain] = site_crawler

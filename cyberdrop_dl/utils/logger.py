@@ -22,16 +22,10 @@ class RedactedConsole(Console):
         return _redact_message(output)
 
 
-def print_to_console(text: Text | str, *, error: bool = False, **kwargs) -> None:
-    msg = (ERROR_PREFIX + text) if error else text
-    console.print(msg, **kwargs)
-
-
 def log(message: Exception | str, level: int = 10, *, sleep: int | None = None, **kwargs) -> None:
     """Simple logging function."""
     logger.log(level, message, **kwargs)
     log_debug(message, level, **kwargs)
-    log_debug_console(message, level, sleep=sleep)
 
 
 def log_debug(message: Exception | str, level: int = 10, **kwargs) -> None:
@@ -39,12 +33,6 @@ def log_debug(message: Exception | str, level: int = 10, **kwargs) -> None:
     if constants.DEBUG_VAR:
         message = str(message)
         logger_debug.log(level, message.encode("ascii", "ignore").decode("ascii"), **kwargs)
-
-
-def log_debug_console(message: Exception | str, level: int, sleep: int | None = None) -> None:
-    if constants.CONSOLE_DEBUG_VAR:
-        message = str(message)
-        _log_to_console(level, message.encode("ascii", "ignore").decode("ascii"), sleep=sleep)
 
 
 def log_with_color(message: str, style: str, level: int, show_in_stats: bool = True, **kwargs) -> None:
@@ -64,12 +52,6 @@ def log_spacer(level: int, char: str = "-", *, log_to_console: bool = True, log_
     if log_to_console and constants.CONSOLE_LEVEL >= 50:
         console.print("")
     constants.LOG_OUTPUT_TEXT.append("\n", style="black")
-
-
-def _log_to_console(level: int, record: str, *_, **__) -> None:
-    level = level or 10
-    if level >= constants.CONSOLE_LEVEL:
-        console.log(record)
 
 
 def _redact_message(message: Exception | Text | str) -> str:

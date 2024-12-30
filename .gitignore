@@ -4,7 +4,7 @@
 /AppData/
 /Downloads/
 /Old Files/
-cyberdrop_dl_debug.log
+*.log
 .coverage
 
 # Python cache
