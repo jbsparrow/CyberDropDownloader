@@ -93,6 +93,7 @@ class Crawler(ABC):
         scrape_item: ScrapeItem,
         filename: str,
         ext: str,
+        *,
         custom_filename: str | None = None,
         debrid_link: URL | None = None,
     ) -> None:
