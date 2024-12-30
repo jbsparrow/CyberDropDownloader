@@ -31,8 +31,8 @@ Using anything other that `DEBUG` makes troubleshooting issues harder. Practical
 
 Same as `log_level` but it controls which messages are shown on the console.
 
-{% hint style="warning" %}
-Only use this option when running CDL with `--no-ui`; otherwise, the log messages might cause the UI screen to flicker.
+{% hint style="info" %}
+This option is ignored unless CDL is running with `--no-ui`
 {% endhint %}
 
 ## `ignore_history`
