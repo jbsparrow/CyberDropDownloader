@@ -1,0 +1,5 @@
+discord://avatar@webhook_id/webhook_token
+windows://
+another_tag=enigma2://hostname
+attach_logs=reddit://user:password@app_id/app_secret/subreddit
+tag_1,tag2=mailto://domain.com?user=userid&pass=password
