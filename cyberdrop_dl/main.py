@@ -252,7 +252,14 @@ async def director(manager: Manager) -> None:
         start_time = perf_counter()
 
 
-def main() -> None:
+def main():
+    profiling: bool = True
+    if not profiling:
+        return actual_main()
+    profiling(actual_main)
+
+
+def actual_main() -> None:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     exit_code = 1
@@ -267,6 +274,20 @@ def main() -> None:
             asyncio.run(manager.close())
     loop.close()
     sys.exit(exit_code)
+
+
+def profiling(func: Callable) -> None:
+    import cProfile
+    import pstats
+
+    with cProfile.Profile() as cdl_profile:
+        with contextlib.suppress(SystemExit):
+            func()
+
+    results = pstats.Stats(cdl_profile)
+    results.sort_stats(pstats.SortKey.TIME)
+    results.print_stats()
+    results.dump_stats(filename="cyberdrop_dl.profiling")
 
 
 if __name__ == "__main__":
