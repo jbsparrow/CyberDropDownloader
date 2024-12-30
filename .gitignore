@@ -5,6 +5,7 @@
 /Downloads/
 /Old Files/
 *.log
+.coverage
 
 # Python cache
 __pycache__

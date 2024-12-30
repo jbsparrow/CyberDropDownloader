@@ -45,9 +45,10 @@ def log_with_color(message: str, style: str, level: int, show_in_stats: bool = T
         constants.LOG_OUTPUT_TEXT.append_text(text.append("\n"))
 
 
-def log_spacer(level: int, char: str = "-", *, log_to_console: bool = True) -> None:
+def log_spacer(level: int, char: str = "-", *, log_to_console: bool = True, log_to_file: bool = True) -> None:
     spacer = char * min(int(constants.DEFAULT_CONSOLE_WIDTH / 2), 50)
-    log(spacer, level)
+    if log_to_file:
+        log(spacer, level)
     if log_to_console and constants.CONSOLE_LEVEL >= 50:
         console.print("")
     constants.LOG_OUTPUT_TEXT.append("\n", style="black")

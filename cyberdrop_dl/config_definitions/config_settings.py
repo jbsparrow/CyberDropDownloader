@@ -8,7 +8,7 @@ from cyberdrop_dl.utils.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE
 from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
 from cyberdrop_dl.utils.data_enums_classes.supported_domains import SUPPORTED_SITES_DOMAINS
 
-from .custom_types import AliasModel, HttpAppriseURLModel, NonEmptyStr
+from .custom_types import AliasModel, HttpAppriseURL, NonEmptyStr
 
 
 class DownloadOptions(BaseModel):
@@ -21,6 +21,7 @@ class DownloadOptions(BaseModel):
     remove_generated_id_from_filenames: bool = False
     scrape_single_forum_post: bool = False
     separate_posts: bool = False
+    separate_posts_format: NonEmptyStr = "{default}"
     skip_download_mark_completed: bool = False
     skip_referer_seen_before: bool = False
     maximum_number_of_children: list[NonNegativeInt] = []
@@ -40,7 +41,7 @@ class Files(AliasModel):
 
 class Logs(AliasModel):
     log_folder: Path = APP_STORAGE / "Configs" / "{config}" / "Logs"
-    webhook: HttpAppriseURLModel | None = Field(validation_alias="webhook_url", default=None)
+    webhook: HttpAppriseURL | None = Field(validation_alias="webhook_url", default=None)
     main_log: Path = Field(Path("downloader.log"), validation_alias="main_log_filename")
     last_forum_post: Path = Field(Path("Last_Scraped_Forum_Posts.csv"), validation_alias="last_forum_post_filename")
     unsupported_urls: Path = Field(Path("Unsupported_URLs.csv"), validation_alias="unsupported_urls_filename")

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 from datetime import date, timedelta
 from enum import Enum
 from pathlib import Path, PurePath
@@ -65,10 +66,10 @@ def load(file: Path, *, create: bool = False) -> dict:
         raise InvalidYamlError(file, e) from None
 
 
-def handle_validation_error(e: ValidationError, *, title: str | None = None, sources: dict | None = None):
+def handle_validation_error(e: ValidationError, *, title: str | None = None, sources: dict[str, Path] | None = None):
     logger_startup = logging.getLogger("cyberdrop_dl_startup")
     error_count = e.error_count()
-    source: Path = sources.get(e.title, None) if sources else None
+    source = sources.get(e.title) if sources else None
     title = title or e.title
     source = f"from {source.resolve()}" if source else ""
     msg = f"Found {error_count} error{'s' if error_count>1 else ''} parsing {title} {source}"
@@ -84,3 +85,4 @@ def handle_validation_error(e: ValidationError, *, title: str | None = None, sou
         msg += f"  {error['msg']} (input_value='{error['input']}', input_type='{error['type']}')\n"
         logger_startup.error(msg)
     logger_startup.error(VALIDATION_ERROR_FOOTER)
+    sys.exit(1)

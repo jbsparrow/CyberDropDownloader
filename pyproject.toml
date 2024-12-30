@@ -32,6 +32,7 @@ platformdirs = "^4.3.6"
 pycryptodomex = "^3.21.0"
 pydantic = "^2.10.4"
 pyyaml = "^6.0.2"
+pywin32 = {version = "^308", platform = "win32"}
 rich = "^13.9.4"
 send2trash = "^1.8.3"
 xxhash = "^3.5.0"
@@ -39,6 +40,12 @@ xxhash = "^3.5.0"
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^4.0.1"
 ruff = "^0.8.0"
+
+[tool.poetry.group.test.dependencies]
+pytest = "^8.3.4"
+pytest-asyncio = "^0.25.0"
+pytest-cov = "^6.0.0"
+pytest-mock = "*"
 
 [tool.poetry.scripts]
 cyberdrop-dl = "cyberdrop_dl.main:main"
@@ -72,6 +79,12 @@ ignore = [
     "E501",   # Suppress line-too-long, let formatter decide
     "COM812", # missing-trailing-comma
 ]
+
+[tool.pytest.ini_options]
+minversion = "8.3"
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "module"
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

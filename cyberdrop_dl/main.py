@@ -17,16 +17,11 @@ from cyberdrop_dl.clients.errors import InvalidYamlError
 from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.scraper.scraper import ScrapeMapper
 from cyberdrop_dl.ui.program_ui import ProgramUI
-from cyberdrop_dl.ui.prompts.user_prompts import get_cookies_from_browsers
 from cyberdrop_dl.utils import constants
+from cyberdrop_dl.utils.apprise import send_apprise_notifications
 from cyberdrop_dl.utils.logger import RedactedConsole, log, log_spacer, log_with_color
 from cyberdrop_dl.utils.sorting import Sorter
-from cyberdrop_dl.utils.utilities import (
-    check_latest_pypi,
-    check_partials_and_empty_folders,
-    send_webhook_message,
-    sent_apprise_notifications,
-)
+from cyberdrop_dl.utils.utilities import check_latest_pypi, check_partials_and_empty_folders, send_webhook_message
 from cyberdrop_dl.utils.yaml import handle_validation_error
 
 if TYPE_CHECKING:
@@ -63,7 +58,6 @@ def startup() -> Manager:
             "AuthSettings": manager.config_manager.authentication_settings,
         }
         handle_validation_error(e, sources=sources)
-        sys.exit(1)
 
     except KeyboardInterrupt:
         logger_startup.info("Exiting...")
@@ -88,12 +82,6 @@ async def runtime(manager: Manager) -> None:
         async with asyncio.TaskGroup() as task_group:
             manager.task_group = task_group
             await scrape_mapper.start()
-
-
-def pre_runtime(manager: Manager) -> None:
-    """Actions to complete before main runtime."""
-    if manager.config_manager.settings_data.browser_cookies.auto_import:
-        get_cookies_from_browsers(manager)
 
 
 async def post_runtime(manager: Manager) -> None:
@@ -237,7 +225,6 @@ async def director(manager: Manager) -> None:
         log_spacer(10)
 
         log("Starting CDL...\n", 20)
-        pre_runtime(manager)
         await runtime(manager)
         await post_runtime(manager)
 
@@ -253,7 +240,7 @@ async def director(manager: Manager) -> None:
             log_with_color("Finished downloading. Enjoy :)", "green", 20, show_in_stats=False)
 
         await send_webhook_message(manager)
-        sent_apprise_notifications(manager)
+        await send_apprise_notifications(manager)
         start_time = perf_counter()
 
 
