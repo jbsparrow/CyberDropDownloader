@@ -84,7 +84,37 @@ Setting this to `true` will prevent Cyberdrop-DL to scrape entire thread if an i
 |----------------|----------|
 | `bool` | `false` |
 
-Setting this to `true` will separate content from forum posts into separate folders.
+Setting this to `true` will separate content from forum and site posts into separate folders. Only affects sites which have 'posts': `Forums`, `reddit`, `coomer`, `kemono` and `nekohouse`.
+
+## `separate_posts_format`
+
+| Type           | Default  |
+|----------------|----------|
+| `NonEmptyStr`  | `{default}`|
+
+This is the format for the directory created when using `--separate-posts`.
+
+Unique Path Flags:
+
+> `date`: date of the post
+>
+> `number`: post number
+>
+> `id`: same as `number`
+>
+> `title`: post title
+
+{% hint style="warning" %}
+Not all sites support all possible flags. Ex: Posts from reddit only support the `title` flag
+{% endhint %}
+
+Setting it to `{default}` will use the default format, which is different for each crawler:
+
+| Site          | Default Format |
+|----------------|----------|
+| `Coomer`, `Kemono` an `Nekohouse` | `{date} - {title}`|
+| `Forums` | `post-{number}`|
+| `Reddit` | `{title}`|
 
 ## `skip_download_mark_complete`
 

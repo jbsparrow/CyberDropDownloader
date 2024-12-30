@@ -18,7 +18,6 @@ from cyberdrop_dl.clients.errors import InvalidYamlError
 from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.scraper.scraper import ScrapeMapper
 from cyberdrop_dl.ui.program_ui import ProgramUI
-from cyberdrop_dl.ui.prompts.user_prompts import get_cookies_from_browsers
 from cyberdrop_dl.utils.apprise import send_apprise_notifications
 from cyberdrop_dl.utils.logger import RedactedConsole, log, log_spacer, log_with_color, print_to_console
 from cyberdrop_dl.utils.sorting import Sorter
@@ -74,12 +73,6 @@ async def runtime(manager: Manager) -> None:
         async with asyncio.TaskGroup() as task_group:
             manager.task_group = task_group
             await scrape_mapper.start()
-
-
-def pre_runtime(manager: Manager) -> None:
-    """Actions to complete before main runtime."""
-    if manager.config_manager.settings_data.browser_cookies.auto_import:
-        get_cookies_from_browsers(manager)
 
 
 async def post_runtime(manager: Manager) -> None:
@@ -213,7 +206,6 @@ async def director(manager: Manager) -> None:
         log_spacer(10)
 
         log("Starting CDL...\n", 20)
-        pre_runtime(manager)
         await runtime(manager)
         await post_runtime(manager)
 

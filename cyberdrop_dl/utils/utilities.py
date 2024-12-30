@@ -27,15 +27,15 @@ if TYPE_CHECKING:
     from cyberdrop_dl.downloader.downloader import Downloader
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.scraper.crawler import Crawler
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
 
 
-def error_handling_wrapper(func: Callable) -> None:
+def error_handling_wrapper(func: Callable) -> Callable:
     """Wrapper handles errors for url scraping."""
 
     @wraps(func)
     async def wrapper(self: Crawler | Downloader, *args, **kwargs):
-        item: Crawler | Downloader | URL = args[0]
+        item: ScrapeItem | MediaItem | URL = args[0]
         link = item if isinstance(item, URL) else item.url
         origin = exc_info = None
         try:
