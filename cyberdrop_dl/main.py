@@ -291,6 +291,13 @@ def profile(func: Callable) -> None:
         with TemporaryDirectory() as temp_dir:
             old_cwd = Path.cwd()
             temp_dir_path = Path(temp_dir).resolve()
+            cookies_dir = old_cwd / "AppData/Cookies"
+            if cookies_dir.is_dir():
+                temp_cookies_dir = temp_dir_path / "AppData/Cookies"
+                temp_cookies_dir.mkdir(parents=True, exist_ok=True)
+                for cookie_file in cookies_dir.glob("*.txt"):
+                    shutil.copy(cookie_file, temp_cookies_dir)
+
             os.chdir(temp_dir_path)
             log_file = old_cwd / "cyberdrop_dl_debug.log"
             print(f"Using {temp_dir_path} as temp AppData dir")
