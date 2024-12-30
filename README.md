@@ -9,6 +9,7 @@
 [![GitHub License](https://img.shields.io/github/license/jbsparrow/CyberDropDownloader)](https://github.com/jbsparrow/CyberDropDownloader/blob/master/LICENSE)
 [![linting - Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/jbsparrow/CyberDropDownloader/actions/workflows/ruff.yaml)
 [![PyPI - Downloads](https://img.shields.io/pypi/dm/cyberdrop-dl-patched)](https://pypistats.org/packages/cyberdrop-dl-patched)
+
 [![Discord](https://discordapp.com/api/guilds/1070206871564197908/widget.png?style=banner2)](https://discord.com/invite/P5nsbKErwy)
 
 
