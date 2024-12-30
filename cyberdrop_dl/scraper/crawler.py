@@ -108,8 +108,6 @@ class Crawler(ABC):
             original_filename,
             debrid_link,
         )
-        if scrape_item.possible_datetime:
-            media_item.datetime = scrape_item.possible_datetime
 
         check_complete = await self.manager.db_manager.history_table.check_complete(self.domain, url, scrape_item.url)
         if check_complete:

@@ -53,6 +53,7 @@ class MediaItem:
         self.ext = Path(self.filename).suffix
         self.original_filename = self.original_filename or self.filename
         self.parents = self.origin.parents.copy()
+        self.datetime = self.origin.possible_datetime
 
 
 @dataclass(kw_only=True)
