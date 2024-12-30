@@ -5,7 +5,6 @@ import copy
 from abc import ABC, abstractmethod
 from dataclasses import field
 from functools import wraps
-from http.cookiejar import MozillaCookieJar
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from bs4 import BeautifulSoup
@@ -50,19 +49,6 @@ class Crawler(ABC):
         """Starts the crawler."""
         self.client = self.manager.client_manager.scraper_session
         self.downloader = Downloader(self.manager, self.domain)
-        self.cookiejar_file = self.manager.path_manager.cookies_dir / f"{self.primary_base_domain.host}.txt"
-        if self.cookiejar_file.is_file():
-            log(f"Found cookie file for: {self.domain}", 10)
-            try:
-                cookie_jar = MozillaCookieJar(self.cookiejar_file)
-                cookie_jar.load(ignore_discard=True)
-                for cookie in cookie_jar:
-                    self.manager.client_manager.cookies.update_cookies(
-                        {cookie.name: cookie.value}, response_url=URL(f"https://{cookie.domain}")
-                    )
-            except Exception:
-                log(f"Unable to apply cookies from {self.cookiejar_file}", 10, exc_info=True)
-
         self.downloader.startup()
 
     async def run(self, item: ScrapeItem) -> None:
