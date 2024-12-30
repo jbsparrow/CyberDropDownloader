@@ -280,7 +280,9 @@ def profile(func: Callable) -> None:
     import cProfile
     import os
     import pstats
+    import shutil
     from contextlib import contextmanager
+    from datetime import datetime
     from pathlib import Path
     from tempfile import TemporaryDirectory
 
@@ -290,13 +292,14 @@ def profile(func: Callable) -> None:
             old_cwd = Path.cwd()
             temp_dir_path = Path(temp_dir).resolve()
             os.chdir(temp_dir_path)
-            log_file = temp_dir_path / "cyberdrop_dl_debug.log"
-            print(f"Using {log_file} as temp AppData dir")
+            log_file = old_cwd / "cyberdrop_dl_debug.log"
+            print(f"Using {temp_dir_path} as temp AppData dir")
             try:
                 yield
             finally:
                 os.chdir(old_cwd)
-                log_file.replace("cyberdrop_dl_debug.log")
+                new_path = Path(f"cyberdrop_dl_debug_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
+                shutil.move(log_file, new_path)
 
     with temp_dir_context(), cProfile.Profile() as cdl_profile:
         with contextlib.suppress(SystemExit):
