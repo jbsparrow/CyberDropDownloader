@@ -4,8 +4,9 @@ import asyncio
 import copy
 from abc import ABC, abstractmethod
 from dataclasses import field
+from datetime import datetime
 from functools import wraps
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar, Protocol
 
 from bs4 import BeautifulSoup
 from yarl import URL
@@ -25,10 +26,18 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
+class Post(Protocol):
+    number: int
+    id: str
+    title: str
+    date: datetime | int
+
+
 class Crawler(ABC):
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {}
     domain = None
     primary_base_domain: URL = None
+    DEFAULT_POST_TITLE_FORMAT = "{date} - {number} - {title}"
 
     def __init__(self, manager: Manager, domain: str, folder_domain: str | None = None) -> None:
         self.manager = manager
@@ -282,6 +291,23 @@ class Crawler(ABC):
             title = f"{title} ({self.folder_domain})"
 
         return title
+
+    def add_separate_post_title(self, scrape_item: ScrapeItem, post: Post) -> None:
+        if not self.manager.config_manager.settings_data.download_options.separate_posts:
+            return
+        title_format = self.manager.config_manager.settings_data.download_options.separate_posts_format
+        if title_format.casefold() == "{default}":
+            title_format = self.DEFAULT_POST_TITLE_FORMAT
+        date = post.date
+        if isinstance(post.date, int):
+            date = datetime.fromtimestamp(date)
+        if isinstance(date, datetime):
+            date = date.isoformat()
+        id = "Unknown" if post.id is None else post.id
+        title = "Untitled" if post.title is None else post.title
+        date = "NO_DATE" if date is None else date
+        title = title_format.format(id=id, number=id, date=date, title=title)
+        scrape_item.add_to_parent_title(title)
 
 
 def create_task_id(func: Callable) -> None:

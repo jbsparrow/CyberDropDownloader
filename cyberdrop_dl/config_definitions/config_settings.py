@@ -21,6 +21,7 @@ class DownloadOptions(BaseModel):
     remove_generated_id_from_filenames: bool = False
     scrape_single_forum_post: bool = False
     separate_posts: bool = False
+    separate_posts_format: NonEmptyStr = "{default}"
     skip_download_mark_completed: bool = False
     skip_referer_seen_before: bool = False
     maximum_number_of_children: list[NonNegativeInt] = []
