@@ -256,7 +256,7 @@ def main():
     profiling: bool = True
     if not profiling:
         return actual_main()
-    profiling(actual_main)
+    profile(actual_main)
 
 
 def actual_main() -> None:
@@ -276,17 +276,34 @@ def actual_main() -> None:
     sys.exit(exit_code)
 
 
-def profiling(func: Callable) -> None:
+def profile(func: Callable) -> None:
     import cProfile
+    import os
     import pstats
+    from contextlib import contextmanager
+    from pathlib import Path
+    from tempfile import TemporaryDirectory
 
-    with cProfile.Profile() as cdl_profile:
+    @contextmanager
+    def temp_dir_context():
+        with TemporaryDirectory() as temp_dir:
+            old_cwd = Path.cwd()
+            temp_dir_path = Path(temp_dir).resolve()
+            os.chdir(temp_dir_path)
+            log_file = temp_dir_path / "cyberdrop_dl_debug.log"
+            print(f"Using {log_file} as temp AppData dir")
+            try:
+                yield
+            finally:
+                os.chdir(old_cwd)
+                log_file.replace("cyberdrop_dl_debug.log")
+
+    with temp_dir_context(), cProfile.Profile() as cdl_profile:
         with contextlib.suppress(SystemExit):
             func()
 
     results = pstats.Stats(cdl_profile)
     results.sort_stats(pstats.SortKey.TIME)
-    results.print_stats()
     results.dump_stats(filename="cyberdrop_dl.profiling")
 
 
