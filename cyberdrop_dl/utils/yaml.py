@@ -38,7 +38,7 @@ yaml.add_multi_representer(date, _save_date)
 yaml.add_representer(timedelta, _save_timedelta)
 yaml.add_representer(URL, _save_as_str)
 
-VALIDATION_ERROR_FOOTER = """Read the documentation for guidance on how to resolve this error: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options
+VALIDATION_ERROR_FOOTER = """Please read the documentation for guidance on how to resolve this error: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options
 Please note, this is not a bug. Do not open issues related to this"""
 
 
