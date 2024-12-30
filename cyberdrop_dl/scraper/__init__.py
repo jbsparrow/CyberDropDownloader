@@ -1,8 +1,10 @@
 # ruff: noqa: F401
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 
+from cyberdrop_dl import __version__ as current_version
 from cyberdrop_dl.scraper.crawlers.bunkrr_crawler import BunkrrCrawler
 from cyberdrop_dl.scraper.crawlers.celebforum_crawler import CelebForumCrawler
 from cyberdrop_dl.scraper.crawlers.chevereto_crawler import CheveretoCrawler
@@ -44,9 +46,17 @@ from cyberdrop_dl.scraper.crawlers.toonily_crawler import ToonilyCrawler
 from cyberdrop_dl.scraper.crawlers.xbunker_crawler import XBunkerCrawler
 from cyberdrop_dl.scraper.crawlers.xbunkr_crawler import XBunkrCrawler
 from cyberdrop_dl.scraper.crawlers.xxxbunker_crawler import XXXBunkerCrawler
+from cyberdrop_dl.utils import constants
 
 if TYPE_CHECKING:
     from cyberdrop_dl.scraper.crawler import Crawler
 
-ALL_CRAWLERS: set[type[Crawler]] = {crawler for name, crawler in globals().items() if "Crawler" in name}
+ALL_CRAWLERS: set[type[Crawler]] = {crawler for name, crawler in globals().items() if name.endswith("Crawler")}
 DEBUG_CRAWLERS = {SimpCityCrawler}
+CRAWLERS = ALL_CRAWLERS - DEBUG_CRAWLERS
+
+constants.RUNNING_PRERELEASE = next((tag for tag in constants.PRERELEASE_TAGS if tag in current_version), False)
+constants.RUNNING_IN_IDE = os.getenv("PYCHARM_HOSTED") or os.getenv("TERM_PROGRAM") == "vscode"
+if constants.RUNNING_PRERELEASE or constants.RUNNING_IN_IDE:
+    constants.DEBUG_VAR = True
+    CRAWLERS = ALL_CRAWLERS

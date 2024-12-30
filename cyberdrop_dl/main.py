@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
-import os
 import sys
 from functools import wraps
 from pathlib import Path
@@ -135,11 +134,9 @@ def setup_startup_logger() -> None:
 
 
 def setup_debug_logger(manager: Manager) -> Path | None:
-    running_in_IDE = os.getenv("PYCHARM_HOSTED") or os.getenv("TERM_PROGRAM") == "vscode"
-    if not running_in_IDE:
+    if not constants.RUNNING_IN_IDE:
         return None
 
-    constants.DEBUG_VAR = True
     logger_debug = logging.getLogger("cyberdrop_dl_debug")
     manager.config_manager.settings_data.runtime_options.log_level = 10
     logger_debug.setLevel(manager.config_manager.settings_data.runtime_options.log_level)

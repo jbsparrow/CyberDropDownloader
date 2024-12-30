@@ -18,6 +18,7 @@ from cyberdrop_dl.managers.log_manager import LogManager
 from cyberdrop_dl.managers.path_manager import PathManager
 from cyberdrop_dl.managers.progress_manager import ProgressManager
 from cyberdrop_dl.managers.realdebrid_manager import RealDebridManager
+from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.args import ParsedArgs
 from cyberdrop_dl.utils.data_enums_classes.supported_domains import SUPPORTED_FORUMS
 from cyberdrop_dl.utils.logger import log
@@ -62,6 +63,7 @@ class Manager:
 
     def startup(self) -> None:
         """Startup process for the manager."""
+
         if isinstance(self.parsed_args, Field):
             self.parsed_args = ParsedArgs.parse_args()
 
@@ -117,8 +119,6 @@ class Manager:
         if not isinstance(self.real_debrid_manager, RealDebridManager):
             self.real_debrid_manager = RealDebridManager(self)
         await self.async_db_hash_startup()
-
-        from cyberdrop_dl.utils import constants
 
         constants.MAX_NAME_LENGTHS["FILE"] = self.config_manager.global_settings_data.general.max_file_name_length
         constants.MAX_NAME_LENGTHS["FOLDER"] = self.config_manager.global_settings_data.general.max_folder_name_length
