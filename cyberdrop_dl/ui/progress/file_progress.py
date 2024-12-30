@@ -75,8 +75,13 @@ class FileProgress:
     def get_download_queue_length(self) -> int:
         """Returns the number of tasks in the downloader queue."""
         total = 0
-        for scraper in self.manager.scrape_mapper.existing_crawlers.values():
-            total += getattr(scraper.downloader, "waiting_items", 0)
+        unique_crawler_ids = set()
+        for crawler in self.manager.scrape_mapper.existing_crawlers.values():
+            crawler_id = id(crawler)  # Only count each instance of the crawler once
+            if crawler_id in unique_crawler_ids:
+                continue
+            unique_crawler_ids.add(crawler_id)
+            total += getattr(crawler.downloader, "waiting_items", 0)
 
         return total
 
@@ -133,6 +138,7 @@ class FileProgress:
             self.visible_tasks.append(task_id)
         else:
             self.invisible_tasks.append(task_id)
+        self.redraw()
         return task_id
 
     def remove_file(self, task_id: TaskID) -> None:
