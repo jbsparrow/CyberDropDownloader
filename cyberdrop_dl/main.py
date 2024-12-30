@@ -134,7 +134,7 @@ def setup_startup_logger() -> None:
 
 
 def setup_debug_logger(manager: Manager) -> Path | None:
-    if not constants.RUNNING_IN_IDE:
+    if not constants.DEBUG_VAR:
         return None
 
     logger_debug = logging.getLogger("cyberdrop_dl_debug")

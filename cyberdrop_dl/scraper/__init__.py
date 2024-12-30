@@ -56,7 +56,9 @@ DEBUG_CRAWLERS = {SimpCityCrawler}
 CRAWLERS = ALL_CRAWLERS - DEBUG_CRAWLERS
 
 constants.RUNNING_PRERELEASE = next((tag for tag in constants.PRERELEASE_TAGS if tag in current_version), False)
-constants.RUNNING_IN_IDE = os.getenv("PYCHARM_HOSTED") or os.getenv("TERM_PROGRAM") == "vscode"
-if constants.RUNNING_PRERELEASE or constants.RUNNING_IN_IDE:
-    constants.DEBUG_VAR = True
+RUNNING_IN_IDE = os.getenv("PYCHARM_HOSTED") or os.getenv("TERM_PROGRAM") == "vscode"
+if constants.RUNNING_PRERELEASE or RUNNING_IN_IDE:
     CRAWLERS = ALL_CRAWLERS
+
+if RUNNING_IN_IDE:
+    constants.DEBUG_VAR = True
