@@ -219,7 +219,7 @@ class Crawler(ABC):
                     return
 
                 await asyncio.sleep(wait_time)
-                soup = BeautifulSoup(text, "html.parser")
+                soup = BeautifulSoup(text, "lxml")
 
                 inputs = soup.select("form input")
                 data = {elem["name"]: elem["value"] for elem in inputs if elem.get("name") and elem.get("value")}

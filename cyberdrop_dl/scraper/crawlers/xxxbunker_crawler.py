@@ -104,7 +104,7 @@ class XXXBunkerCrawler(Crawler):
             async with self.request_limiter:
                 ajax_dict = await self.client.post_data(self.domain, self.api_download, data=data, origin=scrape_item)
 
-            ajax_soup = BeautifulSoup(ajax_dict["floater"], "html.parser")
+            ajax_soup = BeautifulSoup(ajax_dict["floater"], "lxml")
             link_str: str = ajax_soup.select_one("a#download-download").get("href")
             link = URL(link_str, encoded="%" in link_str)
 

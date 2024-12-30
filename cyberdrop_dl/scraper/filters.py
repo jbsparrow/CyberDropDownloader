@@ -106,7 +106,7 @@ async def filter_fn(response: ClientResponse) -> bool:
         final_page_selector = "li.pageNav-page a"
         current_page_selector = "li.pageNav-page.pageNav-page--current a"
 
-        soup = BeautifulSoup(await response.text(), "html.parser")
+        soup = BeautifulSoup(await response.text(), "lxml")
         try:
             last_page = int(soup.select(final_page_selector)[-1].text.split("page-")[-1])
             current_page = int(soup.select_one(current_page_selector).text.split("page-")[-1])
