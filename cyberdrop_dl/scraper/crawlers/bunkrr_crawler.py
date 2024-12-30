@@ -124,6 +124,7 @@ class BunkrrCrawler(Crawler):
 
             else:
                 src_filename, ext = get_filename_and_ext(src.name)
+                filename, _ = get_filename_and_ext(filename)
                 if not self.check_album_results(src, results):
                     await self.handle_file(src, new_scrape_item, src_filename, ext, custom_filename=filename)
 
