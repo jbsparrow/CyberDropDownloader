@@ -185,7 +185,7 @@ def setup_logger(manager: Manager, config_name: str) -> None:
         level=manager.config_manager.settings_data.runtime_options.log_level,
     )
 
-    if not manager.parsed_args.cli_only_args.no_ui:
+    if manager.parsed_args.cli_only_args.no_ui:
         constants.CONSOLE_LEVEL = manager.config_manager.settings_data.runtime_options.console_log_level
 
     rich_handler = RichHandler(
