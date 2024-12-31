@@ -165,7 +165,7 @@ class Sorter:
 
             codec = props.get("codec_name")
             duration = int(float(props.get("duration", 0))) or None
-            fps = float(Fraction(props.get("avg_frame_rate", 0))) or None
+            fps = float(Fraction(props.get("avg_frame_rate", 0))) if str(props.get("avg_frame_rate", 0)) not in {"0/0","0"} else None
             if fps:
                 fps = int(fps) if fps.is_integer() else f"{fps:.2f}"
 
