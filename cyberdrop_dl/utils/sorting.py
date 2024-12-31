@@ -154,6 +154,7 @@ class Sorter:
         """Sorts a video file into the sorted video folder."""
         if not self.video_format:
             return
+        
         codec = duration = fps = height = resolution = width = None
 
         with contextlib.suppress(RuntimeError, CalledProcessError):
