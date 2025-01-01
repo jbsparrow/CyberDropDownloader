@@ -9,6 +9,12 @@ repos:
       - id: check-yaml
       - id: detect-private-key
 
+  - repo: https://github.com/pappasam/toml-sort
+    rev: v0.24.2
+    hooks:
+      - id: toml-sort-fix
+        files: ^(.*\.toml)$
+
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.8.4
     hooks:
