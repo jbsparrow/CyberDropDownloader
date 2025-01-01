@@ -72,7 +72,7 @@ select = [
     "COM8",  # flake8-commas linter
     "E",  # pycodestyle errors
     "F",  # pyflakes
-    "FA100",  # future annotations
+    "FA102",  # future annotations
     "I",  # isort
     "N",  # PEP8 naming conventions
     "PTH",  # use pathlib instead of os
