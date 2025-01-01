@@ -97,7 +97,7 @@ unfixable = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"**/{tests,docs}/*" = ["E402"]  # imports not at the top of the file.
+"**/{tests,docs}/*" = ["E402", "T20"]  # imports not at the top of the file.
 "__init__.py" = ["E402"]  # imports not at the top of the file.
 
 [tool.ruff.lint.pydocstyle]
