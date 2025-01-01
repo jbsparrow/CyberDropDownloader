@@ -10,10 +10,10 @@ jobs:
       - name: ruff lint
         uses: astral-sh/ruff-action@v3
         with:
-          version: v0.8.0
+          version: "0.8.0"
 
       - name: ruff format check
         uses: astral-sh/ruff-action@v3
         with:
           args: "format --check"
-          version: v0.8.0
+          version: "0.8.0"
