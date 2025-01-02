@@ -115,7 +115,7 @@ class EHentaiCrawler(Crawler):
         page_url = scrape_item.url
         while True:
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url, origin=ScrapeItem)
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url, origin=scrape_item)
             next_page = soup.select_one(self.next_page_selector)
             yield soup
             if next_page:
