@@ -18,7 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Apprise notifications integration
 - Log startup errors to a file (validation, YAML, database and unknown errors)
 - Miscalculation of download and scrape queue length
-- Sorting video with invalid or missing fps metadate
+- Sorting videos with invalid or missing fps metadata
 - e-Hentai crawler
 
 ### Changed
