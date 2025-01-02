@@ -90,7 +90,8 @@ class EHentaiCrawler(Crawler):
         image = soup.select_one("img[id=img]")
         link = URL(image.get("src"))
         filename, ext = get_filename_and_ext(link.name)
-        await self.handle_file(link, scrape_item, filename, ext)
+        custom_filename, _ = get_filename_and_ext(f"{scrape_item.url.name}{ext}")
+        await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
