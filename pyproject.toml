@@ -1,13 +1,13 @@
 [tool.poetry]
 name = "cyberdrop-dl-patched"
-version = "6.1.0"
-description = "Bulk downloader for multiple file hosts"
 authors = ["Jacob B <admin@script-ware.net>"]
+description = "Bulk downloader for multiple file hosts"
+documentation = "https://script-ware.gitbook.io/cyberdrop-dl/"
+include = ["CHANGELOG.md"]
+packages = [{include = "cyberdrop_dl"}]
 readme = "README.md"
 repository = "https://github.com/jbsparrow/CyberDropDownloader"
-documentation = "https://script-ware.gitbook.io/cyberdrop-dl/"
-packages = [{ include = "cyberdrop_dl" }]
-include = ["CHANGELOG.md"]
+version = "6.1.0"
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.14"
@@ -24,15 +24,15 @@ certifi = "^2024.12.14"
 filedate = "^3.0"
 get-video-properties = "^0.1.1"
 inquirerpy = "^0.3.4"
-jeepney =   [{platform = "linux", version = "^0.8.0"},{platform = "bsd", version = "^0.8.0"}]
+jeepney = [{platform = "bsd", version = "^0.8.0"}, {platform = "linux", version = "^0.8.0"}]
 mediafire = "^0.6.1"
 myjdapi = "^1.1.7"
 pillow = "^11.0.0"
 platformdirs = "^4.3.6"
 pycryptodomex = "^3.21.0"
 pydantic = "^2.10.4"
+pywin32 = {platform = "win32", version = "^308"}
 pyyaml = "^6.0.2"
-pywin32 = {version = "^308", platform = "win32"}
 rich = "^13.9.4"
 send2trash = "^1.8.3"
 xxhash = "^3.5.0"
@@ -53,42 +53,64 @@ cyberdrop-dl = "cyberdrop_dl.main:main"
 [tool.poetry.urls]
 Changelog = "https://github.com/jbsparrow/CyberDropDownloader/blob/master/CHANGELOG.md"
 
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "module"
+asyncio_mode = "auto"
+minversion = "8.3"
+testpaths = ["tests"]
+
 [tool.ruff]
+exclude = ["cyberdrop_dl/dependencies/browser_cookie3/__init__.py"]
 line-length = 120
 target-version = "py311"
-exclude = ["cyberdrop_dl/dependencies/browser_cookie3/__init__.py"]
 
 [tool.ruff.lint]
 select = [
-    "E",    # pycodestyle errors
-    "W",    # pycodestyle warnings
-    "F",    # pyflakes
-    "I",    # isort
-    "B",    # flake8-bugbear
-    "C4",   # flake8-comprehensions
-    "UP",   # pyupgrade
-    "N",    # PEP8 naming conventions
-    "TCH",  # flake8-type-checking
-    "COM8", # flake8-commas linter
+    "ASYNC",  # async calls that do not await anything or use blocking methods
+    "B",  # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "COM8",  # flake8-commas linter
+    "E",  # pycodestyle errors
+    "F",  # pyflakes
+    "FA102",  # future annotations
+    "I",  # isort
+    "N",  # PEP8 naming conventions
+    "PTH",  # use pathlib instead of os
+    "Q",  # flake8-quotes
     "RUF",  # RUF specific fixes
-    "Q",    # flake8-quotes
+    "T20",  # flake8-print
+    "TC",  # flake8-type-checking
+    "TID",  # flake8-tidy-imports
+    "UP",  # pyupgrade
+    "W"  # pycodestyle warnings
 ]
-
+extend-safe-fixes = [
+    "TC"  # move import from and to TYPE_CHECKING blocks
+]
 ignore = [
-    "N806",   # Uppercase variables in functions
-    "E501",   # Suppress line-too-long, let formatter decide
-    "COM812", # missing-trailing-comma
+    "COM812",  # missing-trailing-comma
+    "E501",  # suppress line-too-long, let formatter decide
+    "N806"  # uppercase variables in functions
+]
+unfixable = [
+    "ERA"  # do not autoremove commented out code
 ]
 
-[tool.pytest.ini_options]
-minversion = "8.3"
-testpaths = ["tests"]
-asyncio_mode = "auto"
-asyncio_default_fixture_loop_scope = "module"
+[tool.ruff.lint.per-file-ignores]
+"**/{tests,docs}/*" = ["E402", "T20"]  # imports not at the top of the file.
+"__init__.py" = ["E402"]  # imports not at the top of the file.
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
+[tool.tomlsort]
+all = true
+ignore_case = true
+in_place = true
+sort_first = ["name", "python", "select", "tool"]
+spaces_before_inline_comment = 2
+spaces_indent_inline_array = 4
+
 [build-system]
-requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0"]
