@@ -227,6 +227,7 @@ runtime_options:
   --jdownloader-download-dir JDOWNLOADER_DOWNLOAD_DIR
   --jdownloader-autostart, --no-jdownloader-autostart
   --jdownloader-whitelist [JDOWNLOADER_WHITELIST ...]
+  --deep-scrape, --no-deep-scrape
 
 sorting:
   --sort-downloads, --no-sort-downloads
