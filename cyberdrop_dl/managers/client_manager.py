@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 DOWNLOAD_ERROR_ETAGS = {
     "d835884373f4d6c8f24742ceabe74946": "Imgur image has been removed",
     "65b7753c-528a": "SC Scrape Image",
+    "5c4fb843-ece": "PixHost Removed Image",
 }
 
 DDOS_GUARD_CHALLENGE_TITLES = ["Just a moment...", "DDoS-Guard"]

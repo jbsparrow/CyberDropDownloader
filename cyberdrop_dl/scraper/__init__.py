@@ -30,6 +30,7 @@ from cyberdrop_dl.scraper.crawlers.nudostartv_crawler import NudoStarTVCrawler
 from cyberdrop_dl.scraper.crawlers.omegascans_crawler import OmegaScansCrawler
 from cyberdrop_dl.scraper.crawlers.pimpandhost_crawler import PimpAndHostCrawler
 from cyberdrop_dl.scraper.crawlers.pixeldrain_crawler import PixelDrainCrawler
+from cyberdrop_dl.scraper.crawlers.pixhost_crawler import PixHostCrawler
 from cyberdrop_dl.scraper.crawlers.postimg_crawler import PostImgCrawler
 from cyberdrop_dl.scraper.crawlers.realbooru_crawler import RealBooruCrawler
 from cyberdrop_dl.scraper.crawlers.reddit_crawler import RedditCrawler
