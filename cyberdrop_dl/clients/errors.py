@@ -6,16 +6,14 @@ from typing import TYPE_CHECKING
 
 from yarl import URL
 
+from cyberdrop_dl.utils.constants import VALIDATION_ERROR_FOOTER
+
 if TYPE_CHECKING:
     from requests import Response
     from yaml.constructor import ConstructorError
 
     from cyberdrop_dl.scraper.crawler import ScrapeItem
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
-
-VALIDATION_ERROR_FOOTER = """
-Read the documentation for guidance on how to resolve this error: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options
-Please note, this is not a bug. Do not open issues related to this"""
 
 
 class CDLBaseError(Exception):

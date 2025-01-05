@@ -12,6 +12,7 @@ from yaml.error import YAMLError
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import InvalidYamlError
+from cyberdrop_dl.utils.constants import VALIDATION_ERROR_FOOTER
 
 
 class TimedeltaSerializer(BaseModel):
@@ -38,9 +39,6 @@ yaml.add_multi_representer(Enum, _save_as_str)
 yaml.add_multi_representer(date, _save_date)
 yaml.add_representer(timedelta, _save_timedelta)
 yaml.add_representer(URL, _save_as_str)
-
-VALIDATION_ERROR_FOOTER = """Please read the documentation for guidance on how to resolve this error: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options
-Please note, this is not a bug. Do not open issues related to this"""
 
 
 def save(file: Path, data: BaseModel | dict) -> None:
