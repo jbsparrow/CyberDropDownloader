@@ -147,22 +147,19 @@ class HashClient:
         for hash, size_dict in final_dict.items():
             for size in size_dict.keys():
                 # Get all matches from the database
-                all_matches = [
-                    (Path(x[0], x[1]))
-                    for x in await self.manager.db_manager.hash_table.get_files_with_hash_matches(
-                        hash, size, self.xxhash
-                    )
-                ]
-                all_matches = [file for file in all_matches if file.exists()]
+                db_matches = await self.manager.db_manager.hash_table.get_files_with_hash_matches(
+                    hash, size, self.xxhash
+                )
+                all_matches = [Path(*match) for match in db_matches]
                 for file in all_matches[1:]:
+                    if not file.is_file():
+                        continue
                     try:
-                        if not file.exists():
-                            continue
                         self.send2trash(file)
                         log(f"Removed new download : {file} with hash {hash}", 10)
                         self.manager.progress_manager.hash_progress.add_removed_file()
-                    except OSError:
-                        pass
+                    except OSError as e:
+                        log(f"Unable to remove {file = } with hash {hash} : {e}", 40)
 
     async def get_file_hashes_dict(self) -> dict:
         # first compare downloads to each other
@@ -175,8 +172,9 @@ class HashClient:
         for media_item in downloads:
             try:
                 self.hash_item(media_item)
-            except Exception:
-                log(f"After hash processing failed: {media_item.complete_file.resolve()}", 40, exc_info=True)
+            except Exception as e:
+                msg = f"Unable to hash file = {media_item.complete_file.resolve()}: {e}"
+                log(msg, 40)
         return self.hashes_dict
 
     def send2trash(self, path: Path) -> None:
