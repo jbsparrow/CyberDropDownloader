@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from yarl import URL
 
 if TYPE_CHECKING:
+    from requests import Response
     from yaml.constructor import ConstructorError
 
     from cyberdrop_dl.scraper.crawler import ScrapeItem
@@ -112,6 +113,30 @@ class MediaFireError(CDLBaseError):
         """This error will be thrown when a scrape fails."""
         ui_message = f"{status} MediaFire Error"
         super().__init__(ui_message, message=message, status=status, origin=origin)
+
+
+class RealDebridError(CDLBaseError):
+    """Base RealDebrid API error."""
+
+    def __init__(self, response: Response, error_codes: dict[int, str]) -> None:
+        url = URL(response.url)
+        self.path = url.path
+        try:
+            JSONResp: dict = response.json()
+            code = JSONResp.get("error_code")
+            if code == 16:
+                code = 7
+            error = error_codes.get(code, "Unknown error")
+
+        except AttributeError:
+            code = response.status_code
+            error = f"{code} - {HTTPStatus(code).phrase}"
+
+        error = error.capitalize()
+
+        """This error will be thrown when a scrape fails."""
+        ui_message = f"{code} RealDebrid Error"
+        super().__init__(ui_message, message=error, status=code, origin=url)
 
 
 class ScrapeError(CDLBaseError):
