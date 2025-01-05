@@ -59,7 +59,7 @@ class PixHostCrawler(Crawler):
             link = image.get("src")
             if not link:
                 continue
-            link = link.replace('https://t', 'https://img').replace('/thumbs/', '/images/')
+            link = link.replace("https://t", "https://img").replace("/thumbs/", "/images/")
             link = URL(link)
             filename, ext = get_filename_and_ext(link.name)
             await self.handle_file(link, scrape_item, filename, ext)
