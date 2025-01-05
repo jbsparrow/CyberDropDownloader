@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar
 
 import asyncpraw
@@ -23,10 +24,11 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
+@dataclass
 class Post:
-    id: int = None
     title: str
     date: int
+    id: int = None
 
     @property
     def number(self):
@@ -208,9 +210,9 @@ class RedditCrawler(Crawler):
             try:
                 post = await reddit.submission(url=head["location"])
             except asyncprawcore.exceptions.Forbidden:
-                raise ScrapeError(403, "Forbidden", origin=scrape_item) from None
+                raise ScrapeError(403, origin=scrape_item) from None
             except asyncprawcore.exceptions.NotFound:
-                raise ScrapeError(404, "Not Found", origin=scrape_item) from None
+                raise ScrapeError(404, origin=scrape_item) from None
 
             await self.post(scrape_item, post, reddit)
             return

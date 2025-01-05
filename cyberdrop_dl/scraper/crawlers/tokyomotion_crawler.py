@@ -97,8 +97,8 @@ class TokioMotionCrawler(Crawler):
             link = URL(src)
         except AttributeError:
             if "This is a private" in soup.text:
-                raise ScrapeError(403, f"Private video: {scrape_item.url}", origin=scrape_item) from None
-            raise ScrapeError(404, f"Could not find video source for {scrape_item.url}", origin=scrape_item) from None
+                raise ScrapeError(401, "Private video", origin=scrape_item) from None
+            raise ScrapeError(422, "Couldn't find video source", origin=scrape_item) from None
 
         title = soup.select_one("title").text.rsplit(" - TOKYO Motion")[0].strip()
 
@@ -116,7 +116,7 @@ class TokioMotionCrawler(Crawler):
         if user_title not in scrape_item.parent_title.split("/"):
             scrape_item.add_to_parent_title(user_title)
 
-        async for soup in self.web_pager(scrape_item.url):
+        async for soup in self.web_pager(scrape_item):
             albums = soup.select(self.album_selector)
             for album in albums:
                 link = album.get("href")
@@ -153,9 +153,9 @@ class TokioMotionCrawler(Crawler):
         if title not in scrape_item.parent_title.split("/"):
             scrape_item.add_to_parent_title(title)
 
-        async for soup in self.web_pager(scrape_item.url):
+        async for soup in self.web_pager(scrape_item):
             if "This is a private" in soup.text:
-                raise ScrapeError(403, f"Private album: {scrape_item.url}", origin=scrape_item)
+                raise ScrapeError(401, "Private album", origin=scrape_item)
             images = soup.select(self.image_div_selector)
             for image in images:
                 link = image.select_one(self.image_thumb_selector)
@@ -185,8 +185,8 @@ class TokioMotionCrawler(Crawler):
             link = URL(src)
         except AttributeError:
             if "This is a private" in soup.text:
-                raise ScrapeError(403, f"Private Photo: {scrape_item.url}", origin=scrape_item) from None
-            raise ScrapeError(404, f"Could not find image source for {scrape_item.url}", origin=scrape_item) from None
+                raise ScrapeError(401, "Private Photo", origin=scrape_item) from None
+            raise ScrapeError(422, "Couldn't find image source", origin=scrape_item) from None
 
         filename, ext = get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
@@ -225,7 +225,7 @@ class TokioMotionCrawler(Crawler):
             selector = self.album_selector
             scraper = self.album
 
-        async for soup in self.web_pager(scrape_item.url):
+        async for soup in self.web_pager(scrape_item):
             results = soup.select(self.search_div_selector)
             for result in results:
                 link = result.select_one(selector)
@@ -258,9 +258,9 @@ class TokioMotionCrawler(Crawler):
         if title not in scrape_item.parent_title.split("/"):
             scrape_item.add_to_parent_title(title)
 
-        async for soup in self.web_pager(scrape_item.url):
+        async for soup in self.web_pager(scrape_item):
             if "This is a private" in soup.text:
-                raise ScrapeError(403, f"Private playlist: {scrape_item.url}", origin=scrape_item)
+                raise ScrapeError(401, "Private playlist", origin=scrape_item)
             videos = soup.select(self.video_div_selector)
             for video in videos:
                 link = video.select_one(self.video_selector)
@@ -275,12 +275,12 @@ class TokioMotionCrawler(Crawler):
                 new_scrape_item = self.create_scrape_item(scrape_item, link, "", add_parent=scrape_item.url)
                 await self.video(new_scrape_item)
 
-    async def web_pager(self, url: URL) -> AsyncGenerator[BeautifulSoup]:
+    async def web_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
         """Generator of website pages."""
-        page_url = url
+        page_url = scrape_item.url
         while True:
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url)
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url, origin=scrape_item)
             next_page = soup.select_one(self.next_page_selector)
             yield soup
             if next_page:

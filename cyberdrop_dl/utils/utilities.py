@@ -17,7 +17,6 @@ from rich.text import Text
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import CDLBaseError, NoExtensionError
-from cyberdrop_dl.managers.real_debrid.errors import RealDebridError
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.logger import log, log_debug, log_spacer, log_with_color
 
@@ -44,9 +43,6 @@ def error_handling_wrapper(func: Callable) -> Callable:
             log_message_short = e_ui_failure = e.ui_message
             log_message = f"{e.ui_message} - {e.message}" if e.ui_message != e.message else e.message
             origin = e.origin
-        except RealDebridError as e:
-            log_message_short = log_message = f"RealDebridError - {e.error}"
-            e_ui_failure = f"RD - {e.error}"
         except TimeoutError:
             log_message_short = log_message = e_ui_failure = "Timeout"
         except ClientConnectorError as e:

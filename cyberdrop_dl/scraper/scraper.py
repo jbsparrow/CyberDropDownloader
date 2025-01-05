@@ -154,8 +154,9 @@ class ScrapeMapper:
         for title in links:
             for url in links[title]:
                 item = self.create_item_from_link(url)
-                item.add_to_parent_title(title)
-                item.part_of_album = True
+                if title:
+                    item.add_to_parent_title(title)
+                    item.part_of_album = True
                 if self.filter_items(item):
                     items.append(item)
         for item in items:
