@@ -17,7 +17,7 @@ class AllPornComixCrawler(XenforoCrawler):
         content=Selector("div[class=bbWrapper]", None),
         images=Selector("img[class*=bbImage]", "data-src"),
         date=Selector("time", "datetime"),
-        attachments=Selector("section[class=message-attachments] .attachmentList .file .file-preview", "href")
+        attachments=Selector("section[class=message-attachments] .attachmentList .file .file-preview", "href"),
     )
     selectors = XenforoSelectors(posts=post_selectors)
 
