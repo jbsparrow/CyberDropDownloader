@@ -6,7 +6,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 
-## [6.1.0] - 2025-01-05
+## [6.1.1] - 2025-01-05
+
+### Changed
+
+- Remove crawlers scrape lock
+
+### Fixed
+
+- v5 to v6 transfer [database] (`hash` table missing on second startup)
+- v4 to v6 transfer [logs] ('downloader.log' being used by another process)
+
+## [6.1.0] - 2025-01-04
 
 ### Fixed
 
