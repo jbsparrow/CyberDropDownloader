@@ -106,7 +106,7 @@ class GoFileCrawler(Crawler):
     def check_json_response(self, json_resp: dict, scrape_item: ScrapeItem | None = None) -> None:
         """Parses and raises errors from json response."""
         if json_resp["status"] == "error-notFound":
-            raise ScrapeError(404, "Album not found", origin=scrape_item)
+            raise ScrapeError(404, origin=scrape_item)
 
         json_resp: dict = json_resp["data"]
         is_password_protected = json_resp.get("password")
@@ -150,7 +150,7 @@ class GoFileCrawler(Crawler):
             async with self.request_limiter:
                 json_resp = await self.client.post_data(self.domain, create_account_address, data={})
                 if json_resp["status"] != "ok":
-                    raise ScrapeError(403, "Couldn't generate GoFile token", origin=scrape_item)
+                    raise ScrapeError(401, "Couldn't generate GoFile API token", origin=scrape_item)
 
             self.api_key = json_resp["data"]["token"]
         self.headers["Authorization"] = f"Bearer {self.api_key}"
@@ -170,6 +170,6 @@ class GoFileCrawler(Crawler):
             text = await self.client.get_text(self.domain, self.js_address, origin=scrape_item)
         match = re.search(WT_REGEX, str(text))
         if not match:
-            raise ScrapeError(403, "Couldn't generate GoFile websiteToken", origin=scrape_item)
+            raise ScrapeError(401, "Couldn't generate GoFile websiteToken", origin=scrape_item)
         self.website_token = match.group(1)
         self.manager.cache_manager.save("gofile_website_token", self.website_token)

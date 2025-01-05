@@ -200,7 +200,7 @@ class CheveretoCrawler(Crawler):
             link = URL(soup.select_one("div[id=image-viewer] img").get("src"))
             link = link.with_name(link.name.replace(".md.", ".").replace(".th.", "."))
         except AttributeError:
-            raise ScrapeError(422, f"Could not find img source for {scrape_item.url}", origin=scrape_item) from None
+            raise ScrapeError(422, "Couldn't find img source", origin=scrape_item) from None
 
         desc_rows = soup.select("p[class*=description-meta]")
         date = None

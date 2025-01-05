@@ -163,7 +163,7 @@ class ClientManager:
             with contextlib.suppress(ContentTypeError):
                 JSON_Resp: dict = await response.json()
                 if "status" in JSON_Resp and "notFound" in JSON_Resp["status"]:
-                    raise ScrapeError(HTTPStatus.NOT_FOUND, origin=origin)
+                    raise ScrapeError(404, origin=origin)
                 if "data" in JSON_Resp and "error" in JSON_Resp["data"]:
                     raise ScrapeError(JSON_Resp["status"], JSON_Resp["data"]["error"], origin=origin)
 
