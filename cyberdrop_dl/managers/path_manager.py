@@ -128,7 +128,7 @@ class PathManager:
 
     @property
     def completed_downloads(self) -> set[MediaItem]:
-        return self._completed_downloads
+        return self._completed_downloads_set
 
     @property
     def prev_downloads(self) -> set[MediaItem]:
