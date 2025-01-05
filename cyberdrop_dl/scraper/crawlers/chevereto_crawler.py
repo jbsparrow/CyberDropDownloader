@@ -101,7 +101,7 @@ class CheveretoCrawler(Crawler):
 
         title = self.create_title(soup.select_one(self.profile_title_selector).get("content"), None, None)
 
-        async for soup in self.web_pager(scrape_item.url):
+        async for soup in self.web_pager(scrape_item):
             links = soup.select(self.profile_item_selector)
             for link in links:
                 link = link.get("href")
@@ -113,16 +113,16 @@ class CheveretoCrawler(Crawler):
                 new_scrape_item = self.create_scrape_item(
                     scrape_item,
                     link,
-                    title,
-                    True,
+                    new_title_part=title,
+                    part_of_album=True,
                     add_parent=scrape_item.url,
                 )
-                await self.fetch(new_scrape_item)
+                self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
-        album_id = scrape_item.url.parts[2]
+        album_id = scrape_item.url.parts[2].rsplit(".")[-1]
         results = await self.get_album_results(album_id)
         scrape_item.album_id = album_id
         scrape_item.part_of_album = True
@@ -169,7 +169,7 @@ class CheveretoCrawler(Crawler):
             new_scrape_item = self.create_scrape_item(scrape_item, sub_album_link, "", True)
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
-        async for soup in self.web_pager(scrape_item.url):
+        async for soup in self.web_pager(scrape_item):
             links = soup.select(self.album_img_selector)
             for link in links:
                 link = link.get("src")
@@ -179,9 +179,9 @@ class CheveretoCrawler(Crawler):
                 new_scrape_item = self.create_scrape_item(
                     scrape_item,
                     link,
-                    title,
-                    True,
-                    album_id,
+                    new_title_part=title,
+                    part_of_album=True,
+                    album_id=album_id,
                     add_parent=scrape_item.url,
                 )
                 if not self.check_album_results(link, results):
@@ -200,7 +200,7 @@ class CheveretoCrawler(Crawler):
             link = URL(soup.select_one("div[id=image-viewer] img").get("src"))
             link = link.with_name(link.name.replace(".md.", ".").replace(".th.", "."))
         except AttributeError:
-            raise ScrapeError(404, f"Could not find img source for {scrape_item.url}", origin=scrape_item) from None
+            raise ScrapeError(422, f"Could not find img source for {scrape_item.url}", origin=scrape_item) from None
 
         desc_rows = soup.select("p[class*=description-meta]")
         date = None
@@ -227,12 +227,12 @@ class CheveretoCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def web_pager(self, url: URL) -> AsyncGenerator[BeautifulSoup]:
+    async def web_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
         """Generator of website pages."""
-        page_url = await self.get_sort_by_new_url(url)
+        page_url = await self.get_sort_by_new_url(scrape_item.url)
         while True:
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url)
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url, origin=scrape_item)
             next_page = soup.select_one(self.next_page_selector)
             yield soup
             if next_page:
