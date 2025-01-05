@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from abc import ABC, abstractmethod
 from collections import deque
 from typing import TYPE_CHECKING
 
@@ -18,22 +19,19 @@ def adjust_title(s: str, length: int = 40, placeholder: str = "...") -> str:
     return f"{s[:length - len(placeholder)]}{placeholder}" if len(s) >= length else s.ljust(length)
 
 
-class ScrapingProgress:
-    """Class that manages the download progress of individual files."""
+class DequeProgress(ABC):
+    progress: Progress
 
     def __init__(self, visible_tasks_limit: int, manager: Manager) -> None:
         self.manager = manager
-
-        self.progress = Progress(SpinnerColumn(), "[progress.description]{task.description}")
         self.overflow = Progress("[progress.description]{task.description}")
         self.queue = Progress("[progress.description]{task.description}")
         self.progress_group = Group(self.progress, self.overflow, self.queue)
-
         self.color = "plum3"
         self.type_str = "Files"
         self.progress_str = "[{color}]{description}"
-        self.overflow_str = "[{color}]... And {number} Other Links"
-        self.queue_str = "[{color}]... And {number} Links In Scrape Queue"
+        self.overflow_str = "[{color}]... And {number} Other {type_str}"
+        self.queue_str = "[{color}]... And {number} {type_str} In {title} Queue"
         self.overflow_task_id = self.overflow.add_task(
             self.overflow_str.format(color=self.color, number=0, type_str=self.type_str),
             visible=False,
@@ -42,7 +40,6 @@ class ScrapingProgress:
             self.queue_str.format(color=self.color, number=0, type_str=self.type_str),
             visible=False,
         )
-
         self.tasks: deque[TaskID] = deque([])
         self._tasks_visibility_limit = visible_tasks_limit
 
@@ -56,20 +53,10 @@ class ScrapingProgress:
 
     def get_progress(self) -> Panel:
         """Returns the progress bar."""
-        return Panel(self.progress_group, title="Scraping", border_style="green", padding=(1, 1))
+        return Panel(self.progress_group, title=self.title, border_style="green", padding=(1, 1))
 
-    def get_queue_length(self) -> int:
-        """Returns the number of tasks in the scraper queue."""
-        total = 0
-        unique_crawler_ids = set()
-        for crawler in self.manager.scrape_mapper.existing_crawlers.values():
-            crawler_id = id(crawler)  # Only count each instance of the crawler once
-            if crawler_id in unique_crawler_ids:
-                continue
-            unique_crawler_ids.add(crawler_id)
-            total += crawler.waiting_items
-
-        return total
+    @abstractmethod
+    def get_queue_length(self) -> int: ...
 
     def redraw(self, passed: bool = False) -> None:
         """Redraws the progress bar."""
@@ -91,13 +78,11 @@ class ScrapingProgress:
             visible=queue_length > 0,
         )
 
-        if not passed:
-            self.manager.progress_manager.file_progress.redraw(True)
-
-    def add_task(self, url: URL) -> TaskID:
+    def add_task(self, description: str, total: float | None = None) -> TaskID:
         """Adds a new task to the progress bar."""
         task_id = self.progress.add_task(
-            self.progress_str.format(color=self.color, description=str(url)),
+            self.progress_str.format(color=self.color, description=description),
+            total=total,
             visible=len(self.visible_tasks) >= self._tasks_visibility_limit,
         )
         self.tasks.append(task_id)
@@ -117,3 +102,34 @@ class ScrapingProgress:
         for task in new_visible_taks:
             self.progress.update(task, visible=True)
         self.redraw()
+
+
+class ScrapingProgress(DequeProgress):
+    """Class that manages the download progress of individual files."""
+
+    def __init__(self, visible_tasks_limit: int, manager: Manager) -> None:
+        self.progress = Progress(SpinnerColumn(), "[progress.description]{task.description}")
+        self.title = "Scraping"
+        super().__init__(visible_tasks_limit, manager)
+
+    def get_queue_length(self) -> int:
+        """Returns the number of tasks in the scraper queue."""
+        total = 0
+        unique_crawler_ids = set()
+        for crawler in self.manager.scrape_mapper.existing_crawlers.values():
+            crawler_id = id(crawler)  # Only count each instance of the crawler once
+            if crawler_id in unique_crawler_ids:
+                continue
+            unique_crawler_ids.add(crawler_id)
+            total += crawler.waiting_items
+
+        return total
+
+    def redraw(self, passed: bool = False) -> None:
+        super().redraw()
+        if not passed:
+            self.manager.progress_manager.file_progress.redraw(True)
+
+    def add_task(self, url: URL) -> TaskID:
+        """Adds a new task to the progress bar."""
+        return super().add_task(str(url))
