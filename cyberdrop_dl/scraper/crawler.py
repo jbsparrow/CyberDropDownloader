@@ -44,7 +44,7 @@ class Crawler(ABC):
         self.downloader = field(init=False)
         self.scraping_progress = manager.progress_manager.scraping_progress
         self.client: ScraperClient = field(init=False)
-        self._lock = asyncio.Semaphore(20)
+        self._lock = asyncio.Lock()
 
         self.domain = domain
         self.folder_domain = folder_domain or domain.capitalize()
