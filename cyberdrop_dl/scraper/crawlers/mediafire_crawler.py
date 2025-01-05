@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import calendar
-import contextlib
 import datetime
 from typing import TYPE_CHECKING
 
@@ -9,7 +8,7 @@ from aiolimiter import AsyncLimiter
 from mediafire import MediaFireApi, api
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import MaxChildrenError, ScrapeError
+from cyberdrop_dl.clients.errors import MediaFireError
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
@@ -48,17 +47,10 @@ class MediaFireCrawler(Crawler):
         try:
             folder_details: dict[str, dict] = self.api.folder_get_info(folder_key=folder_key)
         except api.MediaFireApiError as e:
-            raise ScrapeError(status=f"MF - {e.message}", origin=scrape_item) from None
+            raise MediaFireError(status=e.code, message=e.message, origin=scrape_item) from None
 
         title = self.create_title(folder_details["folder_info"]["name"], folder_key, None)
-        scrape_item.type = FILE_HOST_ALBUM
-        scrape_item.children = scrape_item.children_limit = 0
-
-        with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = (
-                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
-            )
-
+        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
         scrape_item.album_id = folder_key
         scrape_item.part_of_album = True
 
@@ -73,7 +65,7 @@ class MediaFireCrawler(Crawler):
                     chunk_size=chunk_size,
                 )
             except api.MediaFireApiError as e:
-                raise ScrapeError(status=f"MF - {e.message}", origin=scrape_item) from None
+                raise MediaFireError(status=e.code, message=e.message, origin=scrape_item) from None
 
             files = folder_contents["folder_content"]["files"]
 
@@ -90,9 +82,7 @@ class MediaFireCrawler(Crawler):
                     add_parent=scrape_item.url,
                 )
                 self.manager.task_group.create_task(self.run(new_scrape_item))
-                scrape_item.children += 1
-                if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
-                    raise MaxChildrenError(origin=scrape_item)
+                scrape_item.add_children()
 
             if folder_contents["folder_content"]["more_chunks"] == "yes":
                 chunk += 1

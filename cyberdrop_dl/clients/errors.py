@@ -105,6 +105,15 @@ class RestrictedFiletypeError(CDLBaseError):
         super().__init__(ui_message, origin=origin)
 
 
+class MediaFireError(CDLBaseError):
+    def __init__(
+        self, status: str | int, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None
+    ) -> None:
+        """This error will be thrown when a scrape fails."""
+        ui_message = f"{status} MediaFire Error"
+        super().__init__(ui_message, message=message, status=status, origin=origin)
+
+
 class ScrapeError(CDLBaseError):
     def __init__(
         self, status: str | int, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None
