@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 
 from yarl import URL
 
+from cyberdrop_dl.clients.errors import CDLBaseError
+
 if TYPE_CHECKING:
     from requests import Response
 
@@ -49,22 +51,25 @@ ERROR_CODES = {
 }
 
 
-class RealDebridError(BaseException):
+class RealDebridError(CDLBaseError):
     """Base RealDebrid API error."""
 
     def __init__(self, response: Response) -> None:
-        self.path = URL(response.url).path
+        url = URL(response.url)
+        self.path = url.path
         try:
             JSONResp: dict = response.json()
-            self.code = JSONResp.get("error_code")
-            if self.code == 16:
-                self.code = 7
-            self.error = ERROR_CODES.get(self.code, "Unknown error")
+            code = JSONResp.get("error_code")
+            if code == 16:
+                code = 7
+            error = ERROR_CODES.get(code, "Unknown error")
 
         except AttributeError:
-            self.code = response.status_code
-            self.error = f"{self.code} - {HTTPStatus(self.code).phrase}"
+            code = response.status_code
+            error = f"{code} - {HTTPStatus(code).phrase}"
 
-        self.error = self.error.capitalize()
-        self.msg = f"{self.code}: {self.error} at {self.path}"
-        super().__init__(self.msg)
+        error = error.capitalize()
+
+        """This error will be thrown when a scrape fails."""
+        ui_message = f"{code} RealDebrid Error"
+        super().__init__(ui_message, message=error, status=code, origin=url)
