@@ -50,7 +50,7 @@ class HashClient:
         self.xxhash = "xxh128"
         self.md5 = "md5"
         self.sha256 = "sha256"
-        self.hashed_paths: set[Path] = set()
+        self.hashed_media_items: set[MediaItem] = set()
         self.hashes_dict: defaultdict[defaultdict[set[Path]]] = defaultdict(lambda: defaultdict(set))
 
     async def startup(self) -> None:
@@ -116,10 +116,11 @@ class HashClient:
         return hash
 
     async def hash_item(self, media_item: MediaItem) -> None:
-        hash = await self._hash_item_helper(media_item.complete_file, media_item.original_filename, media_item.referer)
         absolute_path = media_item.complete_file.resolve()
         size = media_item.complete_file.stat().st_size
-        self.hashed_paths.add(absolute_path)
+        hash = await self._hash_item_helper(media_item.complete_file, media_item.original_filename, media_item.referer)
+
+        self.hashed_media_items.add(media_item)
         self.hashes_dict[hash][size].add(absolute_path)
 
     async def hash_item_during_download(self, media_item: MediaItem) -> None:
@@ -164,12 +165,10 @@ class HashClient:
     async def get_file_hashes_dict(self) -> dict:
         # first compare downloads to each other
         # get representive for each hash
-        downloads = (
-            f
-            for f in self.manager.path_manager.completed_downloads
-            if f.complete_file.resolve() not in self.hashed_paths and f.complete_file.is_file()
-        )
+        downloads = self.manager.path_manager.completed_downloads - self.hashed_media_items
         for media_item in downloads:
+            if not media_item.complete_file.is_file():
+                return
             try:
                 self.hash_item(media_item)
             except Exception as e:
