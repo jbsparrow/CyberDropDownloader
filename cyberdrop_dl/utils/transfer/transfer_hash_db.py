@@ -11,6 +11,7 @@ from cyberdrop_dl.utils.transfer.wrapper import db_transfer_context
 
 console = Console()
 
+
 def transfer_from_old_hash_table(db_path):
     """Transfers data from the old 'hash' table to new 'files' and 'temp_hash' tables, handling potential schema differences and errors.
 
