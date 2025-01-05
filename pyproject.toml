@@ -46,6 +46,7 @@ Repository = "https://github.com/jbsparrow/CyberDropDownloader"
 [tool.poetry]
 include = ["CHANGELOG.md"]
 packages = [{include = "cyberdrop_dl"}]
+requires-poetry = ">=2.0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = ">=4.0.1,<5"
