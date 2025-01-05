@@ -22,3 +22,5 @@ venv
 
 # MacOS system files
 **.DS_Store
+.aider*
+.env
