@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar
 
 import asyncpraw
@@ -23,10 +24,11 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
+@dataclass
 class Post:
-    id: int = None
     title: str
     date: int
+    id: int = None
 
     @property
     def number(self):
