@@ -51,7 +51,7 @@ class HashClient:
         self.md5 = "md5"
         self.sha256 = "sha256"
         self.hashed_paths: set[Path] = set()
-        self.hashes_dict: defaultdict[defaultdict[list]] = defaultdict(lambda: defaultdict(list))
+        self.hashes_dict: defaultdict[defaultdict[set[Path]]] = defaultdict(lambda: defaultdict(set))
 
     async def startup(self) -> None:
         pass
@@ -120,7 +120,7 @@ class HashClient:
         absolute_path = media_item.complete_file.resolve()
         size = media_item.complete_file.stat().st_size
         self.hashed_paths.add(absolute_path)
-        self.hashes_dict[hash][size].append(absolute_path)
+        self.hashes_dict[hash][size].add(absolute_path)
 
     async def hash_item_during_download(self, media_item: MediaItem) -> None:
         if self.manager.config_manager.settings_data.dupe_cleanup_options.hashing != Hashing.IN_PLACE:
@@ -145,7 +145,7 @@ class HashClient:
     async def final_dupe_cleanup(self, final_dict: dict[str, dict]) -> None:
         """cleanup files based on dedupe setting"""
         for hash, size_dict in final_dict.items():
-            for size in size_dict.keys():
+            for size in size_dict:
                 # Get all matches from the database
                 db_matches = await self.manager.db_manager.hash_table.get_files_with_hash_matches(
                     hash, size, self.xxhash
@@ -155,8 +155,8 @@ class HashClient:
                     if not file.is_file():
                         continue
                     try:
-                        self.send2trash(file)
-                        log(f"Removed new download : {file} with hash {hash}", 10)
+                        self.delete_file(file)
+                        log(f"Removed new download: {file} with hash {hash}", 10)
                         self.manager.progress_manager.hash_progress.add_removed_file()
                     except OSError as e:
                         log(f"Unable to remove {file = } with hash {hash} : {e}", 40)
@@ -177,12 +177,11 @@ class HashClient:
                 log(msg, 40)
         return self.hashes_dict
 
-    def send2trash(self, path: Path) -> None:
-        if not self.manager.config_manager.settings_data.dupe_cleanup_options.send_deleted_to_trash:
-            Path(path).unlink(missing_ok=True)
-            log(f"permanently deleted file at {path}", 10)
-            return True
-        else:
+    def delete_file(self, path: Path) -> None:
+        if self.manager.config_manager.settings_data.dupe_cleanup_options.send_deleted_to_trash:
             send2trash(path)
             log(f"sent file at{path} to trash", 10)
-            return True
+            return
+
+        Path(path).unlink(missing_ok=True)
+        log(f"permanently deleted file at {path}", 10)
