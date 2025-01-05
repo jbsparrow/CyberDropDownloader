@@ -44,7 +44,7 @@ class Crawler(ABC):
         self.downloader = field(init=False)
         self.scraping_progress = manager.progress_manager.scraping_progress
         self.client: ScraperClient = field(init=False)
-        self._lock = asyncio.Lock()
+        self._semaphore = asyncio.Semaphore(20)
 
         self.domain = domain
         self.folder_domain = folder_domain or domain.capitalize()
@@ -65,7 +65,7 @@ class Crawler(ABC):
         if not item.url.host:
             return
         self.waiting_items += 1
-        async with self._lock:
+        async with self._semaphore:
             self.waiting_items -= 1
             if item.url.path_qs not in self.scraped_items:
                 log(f"Scraping: {item.url}", 20)
