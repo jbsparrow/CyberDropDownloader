@@ -139,6 +139,7 @@ async def filter_fn(response: ClientResponse) -> bool:
             return False, "Discord channel page"
 
     filter_dict = {
+        "allporncomix.com": check_xenforo_last_page,
         "celebforum.to": check_xenforo_last_page,
         "f95zone.to": check_xenforo_last_page,
         "leakedmodels.com": check_xenforo_last_page,
