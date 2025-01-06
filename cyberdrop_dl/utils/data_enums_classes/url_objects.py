@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import contextlib
-from dataclasses import dataclass, field
+from dataclasses import InitVar, dataclass, field
 from enum import IntEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -29,34 +29,41 @@ FILE_HOST_PROFILE = ScrapeItemType.FILE_HOST_PROFILE
 FILE_HOST_ALBUM = ScrapeItemType.FILE_HOST_ALBUM
 
 
-@dataclass(unsafe_hash=True)
+@dataclass(unsafe_hash=True, slots=True)
 class MediaItem:
     url: URL
-    origin: ScrapeItem
+    origin: InitVar[ScrapeItem]
     download_folder: Path
     filename: str
     original_filename: str | None = None
-    debrid_link: URL | None = None
+    debrid_link: URL | None = field(default=None, hash=False, compare=False)
 
+    # exclude from __init__
     file_lock_reference_name: str | None = field(default=None, init=False)
     download_filename: str | None = field(default=None, init=False)
-    datetime: str | None = field(default=None, init=False)
     filesize: int | None = field(default=None, init=False)
-    current_attempt: int = field(default=0, init=False)
+    current_attempt: int = field(default=0, init=False, hash=False, compare=False)
     partial_file: Path | None = field(default=None, init=False)
     complete_file: Path | None = field(default=None, init=False)
-    task_id: TaskID | None = field(default=None, init=False)
+    task_id: TaskID | None = field(default=None, init=False, hash=False, compare=False)
 
-    def __post_init__(self) -> None:
-        self.referer = self.origin.url
-        self.album_id = self.origin.album_id
+    # slots for __post_init__
+    referer: URL = field(init=False)
+    album_id: str = field(init=False)
+    ext: str = field(init=False)
+    datetime: int | None = field(init=False, hash=False, compare=False)
+    parents: list[URL] = field(init=False, hash=False, compare=False)
+
+    def __post_init__(self, origin: ScrapeItem) -> None:
+        self.referer = origin.url
+        self.album_id = origin.album_id
         self.ext = Path(self.filename).suffix
         self.original_filename = self.original_filename or self.filename
-        self.parents = self.origin.parents.copy()
-        self.datetime = self.origin.possible_datetime
+        self.parents = origin.parents.copy()
+        self.datetime = origin.possible_datetime
 
 
-@dataclass(kw_only=True)
+@dataclass(kw_only=True, slots=True)
 class ScrapeItem:
     url: URL
     parent_title: str = ""

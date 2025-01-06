@@ -267,7 +267,7 @@ class ScrapeMapper:
             scrape_item.part_of_album = True
             download_folder = get_download_path(self.manager, scrape_item, "no_crawler")
             filename, _ = get_filename_and_ext(scrape_item.url.name)
-            media_item = MediaItem(scrape_item.url, scrape_item, download_folder, filename, None)
+            media_item = MediaItem(scrape_item.url, scrape_item, download_folder, filename)
             self.manager.task_group.create_task(self.no_crawler_downloader.run(media_item))
             return
 
