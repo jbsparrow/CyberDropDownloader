@@ -4,6 +4,9 @@ from .custom_types import AliasModel
 
 
 class ForumAuth(BaseModel):
+    allporncomix_xf_user_cookie: str = ""
+    allporncomix_username: str = ""
+    allporncomix_password: str = ""
     bellazon_xf_user_cookie: str = ""
     bellazon_username: str = ""
     bellazon_password: str = ""
