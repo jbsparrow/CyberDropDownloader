@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 class AllPornComixCrawler(XenforoCrawler):
     primary_base_domain = URL("https://forum.allporncomix.com")
     domain = "allporncomix"
+    login_required = False
     post_selectors = PostSelectors(
         content=Selector("div[class=bbWrapper]", None),
         images=Selector("img[class*=bbImage]", "data-src"),
