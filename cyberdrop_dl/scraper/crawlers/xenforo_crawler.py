@@ -90,6 +90,7 @@ class XenforoCrawler(Crawler):
     primary_base_domain = None
     selectors = XenforoSelectors()
     DEFAULT_POST_TITLE_FORMAT = "post-{number}"
+    thread_url_part = "threads"
 
     def __init__(self, manager: Manager, site: str, folder_domain: str | None = None) -> None:
         super().__init__(manager, site, folder_domain)
@@ -105,7 +106,7 @@ class XenforoCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        if "threads" not in scrape_item.url.parts:
+        if self.thread_url_part not in scrape_item.url.parts:
             log(f"Scrape Failed: Unknown URL path: {scrape_item.url}", 40)
             return
 
@@ -149,7 +150,7 @@ class XenforoCrawler(Crawler):
         thread_url = scrape_item.url
         post_number = 0
         post_sections = {scrape_item.url.fragment}
-        threads_part_index = scrape_item.url.parts.index("threads")
+        threads_part_index = scrape_item.url.parts.index(self.thread_url_part)
         thread_id = thread_url.parts[threads_part_index].split(".")[-1].split("#")[0]
         post_part_index = threads_part_index + 1
         if len(scrape_item.url.parts) > post_part_index:
