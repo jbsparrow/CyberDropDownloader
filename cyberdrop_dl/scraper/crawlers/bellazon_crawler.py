@@ -22,7 +22,7 @@ class BellazonCrawler(XenforoCrawler):
         date=Selector("time", "datetime"),
     )
     selectors = XenforoSelectors(
-        posts=post_selectors, 
+        posts=post_selectors,
         title=Selector("span.ipsType_break.ipsContained span", None),
     )
 
