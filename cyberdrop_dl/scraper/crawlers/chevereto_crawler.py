@@ -192,6 +192,9 @@ class CheveretoCrawler(Crawler):
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image."""
+        if await self.check_complete_from_referer(scrape_item):
+            return
+
         _, scrape_item.url = self.get_canonical_url(scrape_item, album=False)
         if await self.check_complete_from_referer(scrape_item):
             return
