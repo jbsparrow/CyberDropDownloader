@@ -32,6 +32,7 @@ CDN_POSSIBILITIES = re.compile("|".join(CDN_PATTERNS.values()))
 class UrlType(enum.StrEnum):
     album = enum.auto()
     image = enum.auto()
+    video = enum.auto()
 
 
 class CheveretoCrawler(Crawler):
@@ -79,6 +80,7 @@ class CheveretoCrawler(Crawler):
         self.profile_title_selector = 'meta[property="og:title"]'
         self.images_parts = "image", "img", "images"
         self.album_parts = "a", "album"
+        self.video_parts = "video", "videos"
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -96,6 +98,8 @@ class CheveretoCrawler(Crawler):
                 await self.album(scrape_item)
             elif any(part in scrape_item.url.parts for part in self.images_parts):
                 await self.image(scrape_item)
+            elif any(part in scrape_item.url.parts for part in self.video_parts):
+                await self.video(scrape_item)
             else:
                 await self.profile(scrape_item)
 
@@ -195,13 +199,25 @@ class CheveretoCrawler(Crawler):
                 if not self.check_album_results(link, results):
                     await self.handle_direct_link(new_scrape_item)
 
-    @error_handling_wrapper
+    async def video(self, scrape_item: ScrapeItem) -> None:
+        """Scrapes a video."""
+        url_type = UrlType.video
+        selector = "video"
+        await self._proccess_media_item(scrape_item, url_type, selector)
+
     async def image(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image."""
+        url_type = UrlType.image
+        selector = "div[id=image-viewer] img"
+        await self._proccess_media_item(scrape_item, url_type, selector)
+
+    @error_handling_wrapper
+    async def _proccess_media_item(self, scrape_item: ScrapeItem, url_type: UrlType, selector: str) -> None:
+        """Scrapes a media item."""
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        _, scrape_item.url = self.get_canonical_url(scrape_item, url_type=UrlType.image)
+        _, scrape_item.url = self.get_canonical_url(scrape_item, url_type=url_type)
         if await self.check_complete_from_referer(scrape_item):
             return
 
@@ -209,10 +225,10 @@ class CheveretoCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         try:
-            link = URL(soup.select_one("div[id=image-viewer] img").get("src"))
+            link = URL(soup.select_one(selector).get("src"))
             link = link.with_name(link.name.replace(".md.", ".").replace(".th.", "."))
         except AttributeError:
-            raise ScrapeError(422, "Couldn't find img source", origin=scrape_item) from None
+            raise ScrapeError(422, f"Couldn't find {url_type.value} source", origin=scrape_item) from None
 
         desc_rows = soup.select("p[class*=description-meta]")
         date = None
@@ -247,6 +263,9 @@ class CheveretoCrawler(Crawler):
         search_parts = self.album_parts
         if url_type == UrlType.image:
             search_parts = self.images_parts
+
+        elif url_type == UrlType.video:
+            search_parts = self.video_parts
 
         found_part = next(part for part in search_parts if part in scrape_item.url.parts)
         name_index = scrape_item.url.parts.index(found_part) + 1
