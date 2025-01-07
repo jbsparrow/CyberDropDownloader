@@ -83,7 +83,6 @@ class RedditCrawler(Crawler):
     async def user(self, scrape_item: ScrapeItem, reddit: asyncpraw.Reddit) -> None:
         """Scrapes user pages."""
         username = scrape_item.url.parts[-2] if len(scrape_item.url.parts) > 3 else scrape_item.url.name
-        scrape_item.url.name if scrape_item.url.name != "submitted" else None or scrape_item.url.parts[-2]
         title = self.create_title(username, None, None)
         scrape_item.add_to_parent_title(title)
         scrape_item.part_of_album = True
