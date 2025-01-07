@@ -71,6 +71,8 @@ class CheveretoCrawler(Crawler):
         self.album_img_selector = "a[class='image-container --media'] img"
         self.profile_item_selector = "a[class='image-container --media']"
         self.profile_title_selector = 'meta[property="og:title"]'
+        self.images_parts = "image", "img", "images"
+        self.album_parts = "a", "album"
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -84,9 +86,9 @@ class CheveretoCrawler(Crawler):
             scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path[1:]).with_query(
                 scrape_item.url.query,
             )
-            if "a" in scrape_item.url.parts or "album" in scrape_item.url.parts:
+            if any(part in scrape_item.url.parts for part in self.album_parts):
                 await self.album(scrape_item)
-            elif any(part in scrape_item.url.parts for part in ("image", "img", "images")):
+            elif any(part in scrape_item.url.parts for part in self.images_parts):
                 await self.image(scrape_item)
             else:
                 await self.profile(scrape_item)
@@ -122,7 +124,7 @@ class CheveretoCrawler(Crawler):
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
-        album_id = scrape_item.url.parts[2].rsplit(".")[-1]
+        album_id, scrape_item.url = self.get_canonical_url(scrape_item)
         results = await self.get_album_results(album_id)
         scrape_item.album_id = album_id
         scrape_item.part_of_album = True
@@ -190,6 +192,7 @@ class CheveretoCrawler(Crawler):
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image."""
+        _, scrape_item.url = self.get_canonical_url(scrape_item, album=False)
         if await self.check_complete_from_referer(scrape_item):
             return
 
@@ -226,6 +229,16 @@ class CheveretoCrawler(Crawler):
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+    def get_canonical_url(self, scrape_item: ScrapeItem, album: bool = True) -> tuple[str, URL]:
+        "Returns the id and canonical URL from a given item (album or image)"
+        search_parts = self.album_parts if album else self.images_parts
+        found_part = next(part for part in search_parts if part in scrape_item.url.parts)
+        name_index = scrape_item.url.parts.index(found_part) + 1
+        name = scrape_item.url.parts[name_index]
+        _id = name.rsplit(".")[-1]
+        new_parts = scrape_item.url.parts[1:name_index] + (_id,)
+        return _id, scrape_item.url.with_path("/".join(new_parts))
 
     async def web_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
         """Generator of website pages."""
