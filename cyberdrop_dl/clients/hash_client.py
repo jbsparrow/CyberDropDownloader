@@ -151,7 +151,7 @@ class HashClient:
                 db_matches = await self.manager.db_manager.hash_table.get_files_with_hash_matches(
                     hash, size, self.xxhash
                 )
-                all_matches = [Path(*match) for match in db_matches]
+                all_matches = [Path(*match[:2]) for match in db_matches]
                 for file in all_matches[1:]:
                     if not file.is_file():
                         continue
