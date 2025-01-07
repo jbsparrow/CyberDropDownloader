@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import calendar
 import datetime
+import enum
 import re
 from typing import TYPE_CHECKING, ClassVar
 
@@ -26,6 +27,11 @@ CDN_PATTERNS = {
 }
 
 CDN_POSSIBILITIES = re.compile("|".join(CDN_PATTERNS.values()))
+
+
+class UrlType(enum.StrEnum):
+    album = enum.auto()
+    image = enum.auto()
 
 
 class CheveretoCrawler(Crawler):
@@ -195,7 +201,7 @@ class CheveretoCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        _, scrape_item.url = self.get_canonical_url(scrape_item, album=False)
+        _, scrape_item.url = self.get_canonical_url(scrape_item, url_type=UrlType.image)
         if await self.check_complete_from_referer(scrape_item):
             return
 
@@ -233,9 +239,15 @@ class CheveretoCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    def get_canonical_url(self, scrape_item: ScrapeItem, album: bool = True) -> tuple[str, URL]:
+    def get_canonical_url(self, scrape_item: ScrapeItem, url_type: UrlType = UrlType.album) -> tuple[str, URL]:
         "Returns the id and canonical URL from a given item (album or image)"
-        search_parts = self.album_parts if album else self.images_parts
+        if url_type not in UrlType:
+            raise ValueError("Invalid URL Type")
+
+        search_parts = self.album_parts
+        if url_type == UrlType.image:
+            search_parts = self.images_parts
+
         found_part = next(part for part in search_parts if part in scrape_item.url.parts)
         name_index = scrape_item.url.parts.index(found_part) + 1
         name = scrape_item.url.parts[name_index]
