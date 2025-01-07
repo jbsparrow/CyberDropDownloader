@@ -134,7 +134,7 @@ class CheveretoCrawler(Crawler):
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
-        album_id, scrape_item.url = self.get_canonical_url(scrape_item)
+        album_id, canonical_url = self.get_canonical_url(scrape_item)
         results = await self.get_album_results(album_id)
         scrape_item.album_id = album_id
         scrape_item.part_of_album = True
@@ -147,6 +147,8 @@ class CheveretoCrawler(Crawler):
                 scrape_item.url / "sub",
                 origin=scrape_item,
             )
+
+        scrape_item.url = canonical_url
 
         if "This content is password protected" in sub_albums_soup.text and password:
             password_data = {"content-password": password}
@@ -217,12 +219,14 @@ class CheveretoCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        _, scrape_item.url = self.get_canonical_url(scrape_item, url_type=url_type)
+        _, canonical_url = self.get_canonical_url(scrape_item, url_type=url_type)
         if await self.check_complete_from_referer(scrape_item):
             return
 
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+
+        scrape_item.url = canonical_url
 
         try:
             link = URL(soup.select_one(selector).get("src"))
