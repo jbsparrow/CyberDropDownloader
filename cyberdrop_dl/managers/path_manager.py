@@ -1,13 +1,13 @@
 from __future__ import annotations
 
+import os
 from dataclasses import field
 from datetime import datetime
 from pathlib import Path
-import os
 from typing import TYPE_CHECKING
-from cyberdrop_dl.utils.utilities import purge_dir_tree
 
 from cyberdrop_dl.utils import constants
+from cyberdrop_dl.utils.utilities import purge_dir_tree
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -97,11 +97,11 @@ class PathManager:
             self.input_file.touch(exist_ok=True)
         self.history_db.touch(exist_ok=True)
 
-    def _set_output_filenames(self,now) -> None:
+    def _set_output_filenames(self, now) -> None:
         current_time_file_iso = now.strftime("%Y%m%d_%H%M%S")
-        current_time_folder_iso=now.strftime("%Y_%m_%d")
+        current_time_folder_iso = now.strftime("%Y_%m_%d")
         log_settings_config = self.manager.config_manager.settings_data.logs
-        log_files: dict[str,Path] = log_settings_config.model_dump()
+        log_files: dict[str, Path] = log_settings_config.model_dump()
 
         for model_name, log_file in log_files.items():
             if model_name not in self._logs_model_names:
@@ -120,10 +120,12 @@ class PathManager:
             internal_name = f"{model_name.replace('_log','')}_log"
             setattr(self, internal_name, self.log_folder / getattr(log_settings_config, model_name))
 
-    def _delete_logs_and_folders(self,now):
+    def _delete_logs_and_folders(self, now):
         if self.manager.config_manager.settings_data.logs.logs_expire_after:
             for file in set(self.log_folder.rglob("*.log")) | set(self.log_folder.rglob("*.csv")):
-                if (now-datetime.fromtimestamp(Path(file).stat().st_ctime))>self.manager.config_manager.settings_data.logs.logs_expire_after:
+                if (
+                    now - datetime.fromtimestamp(Path(file).stat().st_ctime)
+                ) > self.manager.config_manager.settings_data.logs.logs_expire_after:
                     file.unlink(missing_ok=True)
         purge_dir_tree(self.log_folder)
 

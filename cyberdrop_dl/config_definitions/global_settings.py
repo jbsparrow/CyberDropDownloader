@@ -4,9 +4,9 @@ from datetime import timedelta
 from pydantic import BaseModel, ByteSize, Field, NonNegativeFloat, PositiveInt, field_serializer, field_validator
 from yarl import URL
 
+from cyberdrop_dl.config_definitions.pydantic.validators import parse_duration_to_timedelta
 from .pydantic.custom_types import AliasModel, HttpURL, NonEmptyStr
 
-from cyberdrop_dl.config_definitions.pydantic.validators import parse_duration_to_timedelta
 DATE_PATTERN = re.compile(
     r"(\d+)\s*(second|seconds|minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years)", re.IGNORECASE
 )
