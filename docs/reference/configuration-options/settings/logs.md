@@ -78,6 +78,22 @@ If enabled, Cyberdrop-DL will add the current date and time as a suffix to each 
 
 This will prevent overriding old log files
 
+<<<<<<< HEAD
+=======
+
+
+## `max_num_logs`
+
+| Type              | Default  | Restrictions |
+|-------------------|----------|--------------|
+| `PositiveInt` |`null`| `null`| `>=1`|
+
+
+Automatically deletes any extra logs
+
+if a folder within the log folder is emptied, then the directory will also be deleted
+
+>>>>>>> b6aacd8c (feat: delete empty folders after auto log deleting)
 ## `log_line_width`
 
 | Type           | Default  | Restrictions |

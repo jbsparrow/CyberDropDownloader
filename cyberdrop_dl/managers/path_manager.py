@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import field
 from datetime import datetime
 from pathlib import Path
+import os
 from typing import TYPE_CHECKING
 
 from cyberdrop_dl.utils import constants
@@ -101,7 +102,11 @@ class PathManager:
             if model_name not in self._logs_model_names:
                 continue
             if log_settings_config.rotate_logs:
-                log_file = log_file.parent / f"{log_file.stem}__{current_time_iso}{log_file.suffix}"
+                log_file = (
+                    log_file.parent
+                    / datetime.now().strftime("%Y_%m_%d")
+                    / f"{log_file.stem}__{current_time_iso}{log_file.suffix}"
+                )
             log_files[model_name] = log_file
 
         log_settings_config = log_settings_config.model_copy(update=log_files)
@@ -109,7 +114,23 @@ class PathManager:
         for model_name in self._logs_model_names:
             internal_name = f"{model_name.replace('_log','')}_log"
             setattr(self, internal_name, self.log_folder / getattr(log_settings_config, model_name))
+    def _delete_logs_and_folders(self):
+        log_settings_config = self.manager.config_manager.settings_data.logs
+        log_files: dict[str, Path] = log_settings_config.model_dump()
+        if self.manager.config_manager.settings_data.logs.max_num_logs:
+            all_logs=[f for f in Path(self.log_folder).rglob('*.*')]
+            all_logs_sorted=sorted(all_logs, key=lambda f: Path(f).stat().st_ctime,reverse=True )
+            max_prev_logs=self.manager.config_manager.settings_data.logs.max_num_logs-1
+            for model_name, log_file in log_files.items():
+                if model_name not in self._logs_model_names:
+                    continue
+                for file in list(filter(lambda x:str(x).find(log_file.stem)!=-1,all_logs_sorted))[max_prev_logs:]:
+                    file.unlink(missing_ok=True)
+        for curr,_,_ in os.walk(self.log_folder,topdown=False):
+            if not os.listdir(curr):
+                Path(curr).rmdir()
 
+           
     def _create_output_folders(self):
         for model_name in self._logs_model_names:
             internal_name = f"{model_name.replace('_log','')}_log"
