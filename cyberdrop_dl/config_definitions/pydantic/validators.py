@@ -1,15 +1,10 @@
-    
 import re
 from datetime import timedelta
-
-from pydantic import BaseModel, ByteSize, Field, NonNegativeFloat, PositiveInt, field_serializer, field_validator
-from yarl import URL
-
-from .custom_types import AliasModel, HttpURL, NonEmptyStr
 
 DATE_PATTERN = re.compile(
     r"(\d+)\s*(second|seconds|minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years)", re.IGNORECASE
 )
+
 
 def parse_duration_to_timedelta(input_date: timedelta | str | int) -> timedelta:
     """Parses `datetime.timedelta`, `str` or `int` into a timedelta format.
