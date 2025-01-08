@@ -31,7 +31,7 @@ class DequeProgress(ABC):
             visible=False,
         )
         self.queue_task_id = self.queue.add_task(
-            self.queue_str.format(color=self.color, number=0, type_str=self.type_str),
+            self.queue_str.format(color=self.color, number=0, type_str=self.type_str, title=self.title),
             visible=False,
         )
         self.tasks: deque[TaskID] = deque([])
@@ -68,7 +68,9 @@ class DequeProgress(ABC):
 
         self.queue.update(
             self.queue_task_id,
-            description=self.queue_str.format(color=self.color, number=queue_length, type_str=self.type_str),
+            description=self.queue_str.format(
+                color=self.color, number=queue_length, type_str=self.type_str, title=self.title
+            ),
             visible=queue_length > 0,
         )
 

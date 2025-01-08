@@ -43,6 +43,7 @@ class FileProgress(DequeProgress):
         )
         self.title = "Downloads"
         self.downloaded_data = ByteSize(0)
+        super().__init__(visible_tasks_limit, manager)
 
     def get_queue_length(self) -> int:
         """Returns the number of tasks in the downloader queue."""
