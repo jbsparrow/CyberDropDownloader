@@ -213,7 +213,7 @@ class CheveretoCrawler(Crawler):
             return
 
         _, canonical_url = self.get_canonical_url(scrape_item, url_type=url_type)
-        if await self.check_complete_from_referer(scrape_item):
+        if await self.check_complete_from_referer(canonical_url):
             return
 
         async with self.request_limiter:
@@ -253,14 +253,13 @@ class CheveretoCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     def get_canonical_url(self, scrape_item: ScrapeItem, url_type: UrlType = UrlType.album) -> tuple[str, URL]:
-        "Returns the id and canonical URL from a given item (album or image)"
+        "Returns the id and canonical URL from a given item (album, image or video)"
         if url_type not in UrlType:
             raise ValueError("Invalid URL Type")
 
         search_parts = self.album_parts
         if url_type == UrlType.image:
             search_parts = self.images_parts
-
         elif url_type == UrlType.video:
             search_parts = self.video_parts
 
