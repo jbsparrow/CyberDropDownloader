@@ -91,9 +91,7 @@ class CheveretoCrawler(Crawler):
         if self.check_direct_link(scrape_item.url):
             await self.handle_direct_link(scrape_item)
         else:
-            scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path[1:]).with_query(
-                scrape_item.url.query,
-            )
+            scrape_item.url = scrape_item.url.with_host(self.primary_base_domain.host)
             if any(part in scrape_item.url.parts for part in self.album_parts):
                 await self.album(scrape_item)
             elif any(part in scrape_item.url.parts for part in self.images_parts):
@@ -143,9 +141,7 @@ class CheveretoCrawler(Crawler):
 
         async with self.request_limiter:
             sub_albums_soup: BeautifulSoup = await self.client.get_soup(
-                self.domain,
-                scrape_item.url / "sub",
-                origin=scrape_item,
+                self.domain, scrape_item.url / "sub", origin=scrape_item
             )
 
         scrape_item.url = canonical_url
@@ -204,17 +200,17 @@ class CheveretoCrawler(Crawler):
     async def video(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a video."""
         url_type = UrlType.video
-        selector = "video"
+        selector = "meta[property='og:video']", "content"
         await self._proccess_media_item(scrape_item, url_type, selector)
 
     async def image(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image."""
         url_type = UrlType.image
-        selector = "div[id=image-viewer] img"
+        selector = "div[id=image-viewer] img", "src"
         await self._proccess_media_item(scrape_item, url_type, selector)
 
     @error_handling_wrapper
-    async def _proccess_media_item(self, scrape_item: ScrapeItem, url_type: UrlType, selector: str) -> None:
+    async def _proccess_media_item(self, scrape_item: ScrapeItem, url_type: UrlType, selector: tuple[str, str]) -> None:
         """Scrapes a media item."""
         if await self.check_complete_from_referer(scrape_item):
             return
@@ -229,7 +225,7 @@ class CheveretoCrawler(Crawler):
         scrape_item.url = canonical_url
 
         try:
-            link = URL(soup.select_one(selector).get("src"))
+            link = URL(soup.select_one(selector[0]).get(selector[1]))
             link = link.with_name(link.name.replace(".md.", ".").replace(".th.", "."))
         except AttributeError:
             raise ScrapeError(422, f"Couldn't find {url_type.value} source", origin=scrape_item) from None
