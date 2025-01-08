@@ -73,7 +73,7 @@ class SortProgress:
     def set_queue_length(self, length: int) -> None:
         self.queue_length = length
 
-    def redraw(self, passed: bool = False) -> None:
+    def redraw(self) -> None:
         """Redraws the progress bar."""
         while len(self.visible_tasks) > self.tasks_visibility_limit:
             task_id = self.visible_tasks.pop(0)
@@ -106,9 +106,6 @@ class SortProgress:
             )
         else:
             self.queue.update(self.queue_task_id, visible=False)
-
-        if not passed:
-            self.manager.progress_manager.scraping_progress.redraw(True)
 
     def add_task(self, folder: str, expected_size: int | None) -> TaskID:
         """Adds a new task to the progress bar."""

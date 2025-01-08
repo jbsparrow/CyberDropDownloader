@@ -53,7 +53,7 @@ class DequeProgress(ABC):
     @abstractmethod
     def get_queue_length(self) -> int: ...
 
-    def redraw(self, passed: bool = False) -> None:
+    def redraw(self) -> None:
         """Redraws the progress bar."""
         for task in self.visible_tasks:
             self.progress.update(task, visible=True)

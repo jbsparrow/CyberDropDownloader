@@ -37,7 +37,7 @@ class ScrapingProgress(DequeProgress):
     def redraw(self, passed: bool = False) -> None:
         super().redraw()
         if not passed:
-            self.manager.progress_manager.file_progress.redraw(True)
+            self.manager.progress_manager.file_progress.redraw()
 
     def add_task(self, url: URL) -> TaskID:
         """Adds a new task to the progress bar."""
