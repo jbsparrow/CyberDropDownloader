@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections import deque
+from itertools import islice
 from typing import TYPE_CHECKING
 
 from rich.console import Group
@@ -39,11 +40,11 @@ class DequeProgress(ABC):
 
     @property
     def visible_tasks(self) -> list[TaskID]:
-        return self.tasks[: self._tasks_visibility_limit]
+        return list(islice(self.tasks, 0, self._tasks_visibility_limit))
 
     @property
     def invisible_tasks(self) -> list[TaskID]:
-        return self.tasks[-self._tasks_visibility_limit :]
+        return list(islice(self.tasks, self._tasks_visibility_limit, None))
 
     def get_progress(self) -> Panel:
         """Returns the progress bar."""
@@ -54,6 +55,9 @@ class DequeProgress(ABC):
 
     def redraw(self, passed: bool = False) -> None:
         """Redraws the progress bar."""
+        for task in self.visible_tasks:
+            self.progress.update(task, visible=True)
+
         self.overflow.update(
             self.overflow_task_id,
             description=self.overflow_str.format(
@@ -87,14 +91,10 @@ class DequeProgress(ABC):
 
     def remove_task(self, task_id: TaskID) -> None:
         """Removes a task from the progress bar."""
-        old_visible_taks = set(self.visible_tasks)
         if task_id not in self.tasks:
             msg = "Task ID not found"
             raise ValueError(msg)
 
         self.tasks.remove(task_id)
         self.progress.remove_task(task_id)
-        new_visible_taks = old_visible_taks - set(self.visible_tasks)
-        for task in new_visible_taks:
-            self.progress.update(task, visible=True)
         self.redraw()
