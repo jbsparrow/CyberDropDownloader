@@ -40,11 +40,17 @@ class DequeProgress(ABC):
 
     @property
     def visible_tasks(self) -> list[TaskID]:
-        return list(islice(self.tasks, 0, self._tasks_visibility_limit))
+        if len(self.tasks) > self._tasks_visibility_limit:
+            return [self.tasks[i] for i in range(self._tasks_visibility_limit)]
+        return list(self.tasks)
 
     @property
     def invisible_tasks(self) -> list[TaskID]:
         return list(islice(self.tasks, self._tasks_visibility_limit, None))
+
+    @property
+    def invisible_tasks_len(self) -> int:
+        return max(0, len(self.tasks) - self._tasks_visibility_limit)
 
     def get_progress(self) -> Panel:
         """Returns the progress bar."""
@@ -62,10 +68,10 @@ class DequeProgress(ABC):
             self.overflow_task_id,
             description=self.overflow_str.format(
                 color=self.color,
-                number=len(self.invisible_tasks),
+                number=self.invisible_tasks_len,
                 type_str=self.type_str,
             ),
-            visible=len(self.invisible_tasks) > 0,
+            visible=self.invisible_tasks_len > 0,
         )
 
         queue_length = self.get_queue_length()
