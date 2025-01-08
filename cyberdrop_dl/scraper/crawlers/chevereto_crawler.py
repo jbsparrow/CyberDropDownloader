@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import PasswordProtectedError, ScrapeError
-from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
@@ -84,24 +84,21 @@ class CheveretoCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = self.scraping_progress.add_task(scrape_item.url)
-
         if self.check_direct_link(scrape_item.url):
             await self.handle_direct_link(scrape_item)
+            return
+        scrape_item.url = scrape_item.url.with_host(self.primary_base_domain.host)
+        if any(part in scrape_item.url.parts for part in self.album_parts):
+            await self.album(scrape_item)
+        elif any(part in scrape_item.url.parts for part in self.images_parts):
+            await self.image(scrape_item)
+        elif any(part in scrape_item.url.parts for part in self.video_parts):
+            await self.video(scrape_item)
         else:
-            scrape_item.url = scrape_item.url.with_host(self.primary_base_domain.host)
-            if any(part in scrape_item.url.parts for part in self.album_parts):
-                await self.album(scrape_item)
-            elif any(part in scrape_item.url.parts for part in self.images_parts):
-                await self.image(scrape_item)
-            elif any(part in scrape_item.url.parts for part in self.video_parts):
-                await self.video(scrape_item)
-            else:
-                await self.profile(scrape_item)
-
-        self.scraping_progress.remove_task(task_id)
+            await self.profile(scrape_item)
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
