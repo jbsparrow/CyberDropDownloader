@@ -64,10 +64,8 @@ class GoFileCrawler(Crawler):
         if password:
             password = sha256(password.encode()).hexdigest()
 
-        content_url = self.api.joinpath("contents", content_id).with_query(
-            {"wt": self.website_token, "password": password}
-        )
-
+        content_query = {"wt": self.website_token, "password": password}
+        content_url = self.api.joinpath("contents", content_id).with_query(content_query)
         api_query = {"url": content_url, "headers_inc": self.headers, "origin": scrape_item}
 
         try:
@@ -138,19 +136,20 @@ class GoFileCrawler(Crawler):
         async with self._token_lock:
             if self._token_set:
                 return
-            if not self.api_key:
-                create_account_address = self.api / "accounts"
-                async with self.request_limiter:
-                    json_resp = await self.client.post_data(self.domain, create_account_address, data={})
-                    if json_resp["status"] != "ok":
-                        raise ScrapeError(401, "Couldn't generate GoFile API token", origin=scrape_item)
 
-                self.api_key = json_resp["data"]["token"]
+            self.api_key = self.api_key or await self._get_new_api_key(scrape_item)
             self.headers["Authorization"] = f"Bearer {self.api_key}"
-            self.client.client_manager.cookies.update_cookies(
-                {"accountToken": self.api_key}, response_url=self.primary_base_domain
-            )
+            self.client.client_manager.cookies.update_cookies({"accountToken": self.api_key}, self.primary_base_domain)
             self._token_set = True
+
+    async def _get_new_api_key(self, scrape_item: ScrapeItem) -> str:
+        create_account_address = self.api / "accounts"
+        async with self.request_limiter:
+            json_resp = await self.client.post_data(self.domain, create_account_address, data={})
+            if json_resp["status"] != "ok":
+                raise ScrapeError(401, "Couldn't generate GoFile API token", origin=scrape_item)
+
+        return json_resp["data"]["token"]
 
     @error_handling_wrapper
     async def get_website_token(self, scrape_item: ScrapeItem, update: bool = False) -> None:
@@ -163,8 +162,11 @@ class GoFileCrawler(Crawler):
                 self.manager.cache_manager.remove("gofile_website_token")
             if self.website_token:
                 return
-            async with self.request_limiter:
-                text = await self.client.get_text(self.domain, self.js_address, origin=scrape_item)
+            await self._update_website_token(scrape_item)
+
+    async def _update_website_token(self, scrape_item: ScrapeItem) -> None:
+        async with self.request_limiter:
+            text = await self.client.get_text(self.domain, self.js_address, origin=scrape_item)
             match = re.search(WT_REGEX, str(text))
             if not match:
                 raise ScrapeError(401, "Couldn't generate GoFile websiteToken", origin=scrape_item)
