@@ -12,16 +12,13 @@ from rich.progress import Progress, TaskID
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from cyberdrop_dl.managers.manager import Manager
-
 
 class DequeProgress(ABC):
     progress: Progress
     title: str
     type_str: str = "Files"
 
-    def __init__(self, visible_tasks_limit: int, manager: Manager) -> None:
-        self.manager = manager
+    def __init__(self, visible_tasks_limit: int) -> None:
         self.overflow = Progress("[progress.description]{task.description}")
         self.queue = Progress("[progress.description]{task.description}")
         self.progress_group = Group(self.progress, self.overflow, self.queue)
