@@ -114,9 +114,8 @@ class GoFileCrawler(Crawler):
         subfolders = []
         for child in children.values():
             if child["type"] == "folder":
-                child_url = self.primary_base_domain / "d" / child["code"]
-                new_scrape_item = self.create_scrape_item(scrape_item, url=child_url, add_parent=scrape_item.url)
-                subfolders.append(new_scrape_item)
+                folder_url = self.primary_base_domain / "d" / child["code"]
+                subfolders.append(folder_url)
                 continue
 
             link = URL(child["link"])
@@ -129,7 +128,8 @@ class GoFileCrawler(Crawler):
             await self.handle_file(link, new_scrape_item, filename, ext)
             scrape_item.add_children()
 
-        for subfolder in subfolders:
+        for folder_url in subfolders:
+            subfolder = self.create_scrape_item(scrape_item, url=folder_url, add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(subfolder))
 
     @error_handling_wrapper
