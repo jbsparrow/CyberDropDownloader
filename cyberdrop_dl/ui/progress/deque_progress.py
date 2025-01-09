@@ -13,6 +13,11 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 
+def adjust_title(s: str, length: int = 40, placeholder: str = "...") -> str:
+    """Collapse and truncate or pad the given string to fit in the given length."""
+    return f"{s[:length - len(placeholder)]}{placeholder}" if len(s) >= length else s.ljust(length)
+
+
 class DequeProgress(ABC):
     progress: Progress
     type_str: str = "Files"
