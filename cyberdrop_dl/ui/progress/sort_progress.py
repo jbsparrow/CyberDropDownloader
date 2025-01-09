@@ -22,7 +22,7 @@ class SortProgress(DequeProgress):
 
         Should work similar to the file_progress but for folders, with a percentage and progress bar for the files within the folders"""
         self.manager = manager
-        self.progress = Progress(
+        self._progress = Progress(
             SpinnerColumn(),
             "[progress.description]{task.description}",
             BarColumn(bar_width=None),
@@ -38,10 +38,10 @@ class SortProgress(DequeProgress):
     def get_queue_length(self) -> int:
         return self.queue_length
 
-    def get_progress(self) -> Panel:
+    def get_renderable(self) -> Panel:
         """Returns the progress bar."""
         return Panel(
-            self.progress_group,
+            self._progress_group,
             title=f"Sorting Downloads ━ Config: {self.manager.config_manager.loaded_config}",
             border_style="green",
             padding=(1, 1),
@@ -59,7 +59,7 @@ class SortProgress(DequeProgress):
 
     def advance_folder(self, task_id: TaskID, amount: int = 1) -> None:
         """Advances the progress of the given task by the given amount."""
-        self.progress.advance(task_id, amount)
+        self._progress.advance(task_id, amount)
 
     def increment_audio(self) -> None:
         self.audio_count += 1

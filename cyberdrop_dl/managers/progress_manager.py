@@ -17,6 +17,8 @@ from cyberdrop_dl.ui.progress.statistic_progress import DownloadStatsProgress, S
 from cyberdrop_dl.utils.logger import log, log_spacer, log_with_color
 
 if TYPE_CHECKING:
+    from rich.console import RenderableType
+
     from cyberdrop_dl.managers.manager import Manager
 
 
@@ -45,17 +47,17 @@ class ProgressManager:
         self.ui_refresh_rate = manager.config_manager.global_settings_data.ui_options.refresh_rate
 
         self.layout: Layout = field(init=False)
-        self.hash_remove_layout: Layout = field(init=False)
-        self.hash_layout: Layout = field(init=False)
-        self.sort_layout: Layout = field(init=False)
+        self.hash_remove_layout: RenderableType = field(init=False)
+        self.hash_layout: RenderableType = field(init=False)
+        self.sort_layout: RenderableType = field(init=False)
 
     def startup(self) -> None:
         """Startup process for the progress manager."""
         progress_layout = Layout()
         progress_layout.split_column(
             Layout(name="upper", ratio=2, minimum_size=8),
-            Layout(renderable=self.scraping_progress.get_progress(), name="Scraping", ratio=2),
-            Layout(renderable=self.file_progress.get_progress(), name="Downloads", ratio=2),
+            Layout(renderable=self.scraping_progress.get_renderable(), name="Scraping", ratio=2),
+            Layout(renderable=self.file_progress.get_renderable(), name="Downloads", ratio=2),
         )
         progress_layout["upper"].split_row(
             Layout(renderable=self.download_progress.get_progress(), name="Files", ratio=1),
@@ -69,7 +71,7 @@ class ProgressManager:
         self.layout = progress_layout
         self.hash_remove_layout = hash_remove_layout
         self.hash_layout = self.hash_progress.get_hash_progress()
-        self.sort_layout = self.sort_progress.get_progress()
+        self.sort_layout = self.sort_progress.get_renderable()
 
     def print_stats(self, start_time: timedelta | float) -> None:
         """Prints the stats of the program."""

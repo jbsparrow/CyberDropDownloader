@@ -25,7 +25,7 @@ class FileProgress(DequeProgress):
 
     def __init__(self, visible_tasks_limit: int, manager: Manager) -> None:
         self.manager = manager
-        self.progress = Progress(
+        self._progress = Progress(
             SpinnerColumn(),
             "[progress.description]{task.description}",
             BarColumn(bar_width=None),
@@ -63,4 +63,4 @@ class FileProgress(DequeProgress):
     def advance_file(self, task_id: TaskID, amount: int) -> None:
         """Advances the progress of the given task by the given amount."""
         self.downloaded_data += amount
-        self.progress.advance(task_id, amount)
+        self._progress.advance(task_id, amount)
