@@ -48,7 +48,7 @@ class LiveManager:
     @contextmanager
     def get_main_live(self, stop: bool = False) -> Generator[Live]:
         """Main UI startup and context manager."""
-        layout = self.manager.progress_manager.layout
+        layout = self.manager.progress_manager.main_runtime_layout
         with self.get_live(layout, stop=stop) as live:
             yield live
 

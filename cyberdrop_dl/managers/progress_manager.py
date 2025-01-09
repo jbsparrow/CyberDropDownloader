@@ -46,7 +46,7 @@ class ProgressManager:
 
         self.ui_refresh_rate = manager.config_manager.global_settings_data.ui_options.refresh_rate
 
-        self.layout: Layout = field(init=False)
+        self.main_runtime_layout: Layout = field(init=False)
         self.hash_remove_layout: RenderableType = field(init=False)
         self.hash_layout: RenderableType = field(init=False)
         self.sort_layout: RenderableType = field(init=False)
@@ -65,15 +65,12 @@ class ProgressManager:
             Layout(renderable=self.download_stats_progress.get_progress(), name="Download Failures", ratio=1),
         )
 
-        hash_remove_layout = Layout()
-        hash_remove_layout = self.hash_progress.get_removed_progress()
-
-        self.layout = progress_layout
-        self.hash_remove_layout = hash_remove_layout
+        self.main_runtime_layout = progress_layout
+        self.hash_remove_layout = self.hash_progress.get_removed_progress()
         self.hash_layout = self.hash_progress.get_hash_progress()
         self.sort_layout = self.sort_progress.get_renderable()
 
-    def print_stats(self, start_time: timedelta | float) -> None:
+    def print_stats(self, start_time: float) -> None:
         """Prints the stats of the program."""
         end_time = time.perf_counter()
         runtime = timedelta(seconds=int(end_time - start_time))
