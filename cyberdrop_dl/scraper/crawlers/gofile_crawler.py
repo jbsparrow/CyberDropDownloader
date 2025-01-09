@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import http
 import re
+from datetime import UTC, datetime, timedelta
 from hashlib import sha256
 from typing import TYPE_CHECKING
 
@@ -38,8 +39,9 @@ class GoFileCrawler(Crawler):
         self.website_token = manager.cache_manager.get("gofile_website_token")
         self.headers = {}
         self.request_limiter = AsyncLimiter(100, 60)
-        self.token_lock = asyncio.Lock()
-        self.token_set = False
+        self._token_lock = asyncio.Lock()
+        self._website_token_date = datetime.now(UTC) - timedelta(days=7)
+        self._token_set = False
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -148,8 +150,8 @@ class GoFileCrawler(Crawler):
     @error_handling_wrapper
     async def get_account_token(self, scrape_item: ScrapeItem) -> None:
         """Gets the token for the API."""
-        async with self.token_lock:
-            if self.token_set:
+        async with self._token_lock:
+            if self._token_set:
                 return
             if not self.api_key:
                 create_account_address = self.api / "accounts"
@@ -163,12 +165,14 @@ class GoFileCrawler(Crawler):
             self.client.client_manager.cookies.update_cookies(
                 {"accountToken": self.api_key}, response_url=self.primary_base_domain
             )
-            self.token_set = True
+            self._token_set = True
 
     @error_handling_wrapper
     async def get_website_token(self, scrape_item: ScrapeItem, update: bool = False) -> None:
         """Creates an anon GoFile account to use."""
-        async with self.token_lock:
+        async with self._token_lock:
+            if datetime.now(UTC) - self._website_token_date < timedelta(seconds=120):
+                return
             if update:
                 self.website_token = ""
                 self.manager.cache_manager.remove("gofile_website_token")
@@ -181,3 +185,4 @@ class GoFileCrawler(Crawler):
                 raise ScrapeError(401, "Couldn't generate GoFile websiteToken", origin=scrape_item)
             self.website_token = match.group(1)
             self.manager.cache_manager.save("gofile_website_token", self.website_token)
+            self._website_token_date = datetime.now(UTC)
