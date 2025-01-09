@@ -17,15 +17,16 @@ class DequeProgress(ABC):
     progress: Progress
     title: str
     type_str: str = "Files"
+    color = "plum3"
+    progress_str = "[{color}]{description}"
+    overflow_str = "[{color}]... And {number} Other {type_str}"
+    queue_str = "[{color}]... And {number} {type_str} In {title} Queue"
 
     def __init__(self, visible_tasks_limit: int) -> None:
         self.overflow = Progress("[progress.description]{task.description}")
         self.queue = Progress("[progress.description]{task.description}")
         self.progress_group = Group(self.progress, self.overflow, self.queue)
-        self.color = "plum3"
-        self.progress_str = "[{color}]{description}"
-        self.overflow_str = "[{color}]... And {number} Other {type_str}"
-        self.queue_str = "[{color}]... And {number} {type_str} In {title} Queue"
+
         self.overflow_task_id = self.overflow.add_task(
             self.overflow_str.format(color=self.color, number=0, type_str=self.type_str),
             visible=False,
@@ -36,6 +37,9 @@ class DequeProgress(ABC):
         )
         self.tasks: deque[TaskID] = deque([])
         self._tasks_visibility_limit = visible_tasks_limit
+
+    @abstractmethod
+    def get_queue_length(self) -> int: ...
 
     @property
     def visible_tasks(self) -> Sequence[TaskID]:
@@ -59,34 +63,6 @@ class DequeProgress(ABC):
         """Returns the progress bar."""
         return Panel(self.progress_group, title=self.title, border_style="green", padding=(1, 1))
 
-    @abstractmethod
-    def get_queue_length(self) -> int: ...
-
-    def redraw(self) -> None:
-        """Redraws the progress bar."""
-        for task in self.visible_tasks:
-            self.progress.update(task, visible=True)
-
-        self.overflow.update(
-            self.overflow_task_id,
-            description=self.overflow_str.format(
-                color=self.color,
-                number=self.invisible_tasks_len,
-                type_str=self.type_str,
-            ),
-            visible=self.invisible_tasks_len > 0,
-        )
-
-        queue_length = self.get_queue_length()
-
-        self.queue.update(
-            self.queue_task_id,
-            description=self.queue_str.format(
-                color=self.color, number=queue_length, type_str=self.type_str, title=self.title
-            ),
-            visible=queue_length > 0,
-        )
-
     def add_task(self, description: str, total: float | None = None) -> TaskID:
         """Adds a new task to the progress bar."""
         task_id = self.progress.add_task(
@@ -107,3 +83,30 @@ class DequeProgress(ABC):
         self.tasks.remove(task_id)
         self.progress.remove_task(task_id)
         self.redraw()
+
+    def redraw(self) -> None:
+        """Redraws the progress bar."""
+        for task in self.visible_tasks:
+            self.progress.update(task, visible=True)
+
+        invisible_tasks_len = self.invisible_tasks_len
+
+        self.overflow.update(
+            self.overflow_task_id,
+            description=self.overflow_str.format(
+                color=self.color,
+                number=invisible_tasks_len,
+                type_str=self.type_str,
+            ),
+            visible=invisible_tasks_len > 0,
+        )
+
+        queue_length = self.get_queue_length()
+
+        self.queue.update(
+            self.queue_task_id,
+            description=self.queue_str.format(
+                color=self.color, number=queue_length, type_str=self.type_str, title=self.title
+            ),
+            visible=queue_length > 0,
+        )
