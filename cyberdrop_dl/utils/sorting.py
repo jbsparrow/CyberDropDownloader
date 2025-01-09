@@ -36,10 +36,10 @@ class Sorter:
         self.incrementer_format: str = manager.config_manager.settings_data.sorting.sort_incrementer_format
         self.db_manager = manager.db_manager
 
-        self.audio_format: str = manager.config_manager.settings_data.sorting.sorted_audio
-        self.image_format: str = manager.config_manager.settings_data.sorting.sorted_image
-        self.video_format: str = manager.config_manager.settings_data.sorting.sorted_video
-        self.other_format: str = manager.config_manager.settings_data.sorting.sorted_other
+        self.audio_format: str | None = manager.config_manager.settings_data.sorting.sorted_audio
+        self.image_format: str | None = manager.config_manager.settings_data.sorting.sorted_image
+        self.video_format: str | None = manager.config_manager.settings_data.sorting.sorted_video
+        self.other_format: str | None = manager.config_manager.settings_data.sorting.sorted_other
 
     def _get_files(self, directory: Path) -> list[Path]:
         """Finds all files in a directory and returns them in a list."""
@@ -139,7 +139,7 @@ class Sorter:
             return
         height = resolution = width = None
         with (
-            contextlib.suppress(PIL.UnidentifiedImageError, PIL.Image.DecompressionBombError),
+            contextlib.suppress(PIL.UnidentifiedImageError, PIL.Image.DecompressionBombError),  # type: ignore
             Image.open(file) as image,
         ):  # type: ignore
             width, height = image.size
@@ -194,7 +194,7 @@ class Sorter:
         if self._process_file_move(file, base_name, self.other_format):
             self.manager.progress_manager.sort_progress.increment_other()
 
-    def _process_file_move(self, file: Path, base_name: str, format_str: str, **kwargs) -> None:
+    def _process_file_move(self, file: Path, base_name: str, format_str: str, **kwargs) -> bool:
         file_date = get_modified_date(file)
         file_date_us = file_date.strftime("%Y-%d-%m")
         file_date_iso = file_date.strftime("%Y-%m-%d")
