@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import http
 import re
 from datetime import UTC, datetime, timedelta
@@ -13,7 +12,6 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import (
     DownloadError,
-    MaxChildrenError,
     PasswordProtectedError,
     ScrapeError,
 )
@@ -91,15 +89,7 @@ class GoFileCrawler(Crawler):
 
         # Do not reset children inside nested folders
         if scrape_item.type != FILE_HOST_ALBUM:
-            scrape_item.type = FILE_HOST_ALBUM
-            scrape_item.children = scrape_item.children_limit = 0
-
-            with contextlib.suppress(IndexError, TypeError):
-                scrape_item.children_limit = (
-                    self.manager.config_manager.settings_data.download_options.maximum_number_of_children[
-                        scrape_item.type
-                    ]
-                )
+            scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
 
         children = json_resp["data"]["children"]
         await self.handle_children(children, scrape_item)
@@ -137,10 +127,7 @@ class GoFileCrawler(Crawler):
                 scrape_item, scrape_item.url, possible_datetime=child["createTime"]
             )
             await self.handle_file(link, new_scrape_item, filename, ext)
-
-            scrape_item.children += 1
-            if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
-                raise MaxChildrenError(origin=scrape_item)
+            scrape_item.add_children()
 
         for subfolder in subfolders:
             self.manager.task_group.create_task(self.run(subfolder))
