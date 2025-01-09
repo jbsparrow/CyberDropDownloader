@@ -344,7 +344,7 @@ class XenforoCrawler(Crawler):
                     if page_url.startswith("/"):
                         page_url = self.primary_base_domain / page_url[1:]
                     page_url = URL(page_url)
-                    log(f"scraping page: {page_url}")
+                    page_url = await self.pre_filter_link(page_url)
                     continue
             break
 
