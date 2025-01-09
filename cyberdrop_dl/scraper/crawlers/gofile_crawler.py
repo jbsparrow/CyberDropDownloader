@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import http
 import re
@@ -37,6 +38,8 @@ class GoFileCrawler(Crawler):
         self.website_token = manager.cache_manager.get("gofile_website_token")
         self.headers = {}
         self.request_limiter = AsyncLimiter(100, 60)
+        self.token_lock = asyncio.Lock()
+        self.token_set = False
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -145,31 +148,36 @@ class GoFileCrawler(Crawler):
     @error_handling_wrapper
     async def get_account_token(self, scrape_item: ScrapeItem) -> None:
         """Gets the token for the API."""
-        if not self.api_key:
-            create_account_address = self.api / "accounts"
-            async with self.request_limiter:
-                json_resp = await self.client.post_data(self.domain, create_account_address, data={})
-                if json_resp["status"] != "ok":
-                    raise ScrapeError(401, "Couldn't generate GoFile API token", origin=scrape_item)
+        async with self.token_lock:
+            if self.token_set:
+                return
+            if not self.api_key:
+                create_account_address = self.api / "accounts"
+                async with self.request_limiter:
+                    json_resp = await self.client.post_data(self.domain, create_account_address, data={})
+                    if json_resp["status"] != "ok":
+                        raise ScrapeError(401, "Couldn't generate GoFile API token", origin=scrape_item)
 
-            self.api_key = json_resp["data"]["token"]
-        self.headers["Authorization"] = f"Bearer {self.api_key}"
-        self.client.client_manager.cookies.update_cookies(
-            {"accountToken": self.api_key}, response_url=self.primary_base_domain
-        )
+                self.api_key = json_resp["data"]["token"]
+            self.headers["Authorization"] = f"Bearer {self.api_key}"
+            self.client.client_manager.cookies.update_cookies(
+                {"accountToken": self.api_key}, response_url=self.primary_base_domain
+            )
+            self.token_set = True
 
     @error_handling_wrapper
     async def get_website_token(self, scrape_item: ScrapeItem, update: bool = False) -> None:
         """Creates an anon GoFile account to use."""
-        if update:
-            self.website_token = ""
-            self.manager.cache_manager.remove("gofile_website_token")
-        if self.website_token:
-            return
-        async with self.request_limiter:
-            text = await self.client.get_text(self.domain, self.js_address, origin=scrape_item)
-        match = re.search(WT_REGEX, str(text))
-        if not match:
-            raise ScrapeError(401, "Couldn't generate GoFile websiteToken", origin=scrape_item)
-        self.website_token = match.group(1)
-        self.manager.cache_manager.save("gofile_website_token", self.website_token)
+        async with self.token_lock:
+            if update:
+                self.website_token = ""
+                self.manager.cache_manager.remove("gofile_website_token")
+            if self.website_token:
+                return
+            async with self.request_limiter:
+                text = await self.client.get_text(self.domain, self.js_address, origin=scrape_item)
+            match = re.search(WT_REGEX, str(text))
+            if not match:
+                raise ScrapeError(401, "Couldn't generate GoFile websiteToken", origin=scrape_item)
+            self.website_token = match.group(1)
+            self.manager.cache_manager.save("gofile_website_token", self.website_token)
