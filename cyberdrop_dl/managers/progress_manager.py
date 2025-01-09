@@ -67,7 +67,7 @@ class ProgressManager:
 
         self.main_runtime_layout = progress_layout
         self.hash_remove_layout = self.hash_progress.get_removed_progress()
-        self.hash_layout = self.hash_progress.get_hash_progress()
+        self.hash_layout = self.hash_progress.get_renderable()
         self.sort_layout = self.sort_progress.get_renderable()
 
     def print_stats(self, start_time: float) -> None:
