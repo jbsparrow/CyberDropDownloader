@@ -17,7 +17,7 @@ from cyberdrop_dl.clients.errors import (
     PasswordProtectedError,
     ScrapeError,
 )
-from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
@@ -45,15 +45,13 @@ class GoFileCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         await self.get_account_token(scrape_item)
         await self.get_website_token(scrape_item)
         await self.album(scrape_item)
-
-        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
