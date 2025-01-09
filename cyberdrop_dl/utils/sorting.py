@@ -106,7 +106,7 @@ class Sorter:
                     self.sort_other(file, folder_name)
 
                 self.manager.progress_manager.sort_progress.advance_folder(task_id)
-            self.manager.progress_manager.sort_progress.remove_folder(task_id)
+            self.manager.progress_manager.sort_progress.remove_task(task_id)
             queue_length -= 1
             self.manager.progress_manager.sort_progress.set_queue_length(queue_length)
             await asyncio.sleep(1)  # required to update the UI
