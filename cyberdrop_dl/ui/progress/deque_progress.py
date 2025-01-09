@@ -15,14 +15,14 @@ if TYPE_CHECKING:
 
 class DequeProgress(ABC):
     progress: Progress
-    title: str
     type_str: str = "Files"
     color = "plum3"
     progress_str = "[{color}]{description}"
     overflow_str = "[{color}]... And {number} Other {type_str}"
     queue_str = "[{color}]... And {number} {type_str} In {title} Queue"
 
-    def __init__(self, visible_tasks_limit: int) -> None:
+    def __init__(self, title: str, visible_tasks_limit: int) -> None:
+        self.title = title
         self.overflow = Progress("[progress.description]{task.description}")
         self.queue = Progress("[progress.description]{task.description}")
         self.progress_group = Group(self.progress, self.overflow, self.queue)

@@ -28,8 +28,6 @@ def adjust_title(s: str, length: int = 40, placeholder: str = "...") -> str:
 class FileProgress(DequeProgress):
     """Class that manages the download progress of individual files."""
 
-    title = "Downloads"
-
     def __init__(self, visible_tasks_limit: int, manager: Manager) -> None:
         self.manager = manager
         self.progress = Progress(
@@ -45,7 +43,7 @@ class FileProgress(DequeProgress):
             TimeRemainingColumn(),
         )
         self.downloaded_data = ByteSize(0)
-        super().__init__(visible_tasks_limit)
+        super().__init__("Downloads", visible_tasks_limit)
 
     def get_queue_length(self) -> int:
         """Returns the number of tasks in the downloader queue."""
