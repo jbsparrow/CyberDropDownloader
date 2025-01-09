@@ -111,12 +111,12 @@ class GoFileCrawler(Crawler):
         if json_resp["status"] == "error-notFound":
             raise ScrapeError(404, origin=scrape_item)
 
-        json_resp: dict = json_resp["data"]
-        is_password_protected = json_resp.get("password")
+        data: dict = json_resp["data"]
+        is_password_protected = data.get("password")
         if is_password_protected and (is_password_protected in {"passwordRequired", "passwordWrong"}):
             raise PasswordProtectedError(origin=scrape_item)
 
-        if not json_resp.get("canAccess"):
+        if not data.get("canAccess"):
             raise ScrapeError(403, "Album is private", origin=scrape_item)
 
     async def handle_children(self, children: dict, scrape_item: ScrapeItem) -> None:
