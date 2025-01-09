@@ -44,6 +44,7 @@ from cyberdrop_dl.scraper.crawlers.saint_crawler import SaintCrawler
 from cyberdrop_dl.scraper.crawlers.scrolller_crawler import ScrolllerCrawler
 from cyberdrop_dl.scraper.crawlers.simpcity_crawler import SimpCityCrawler
 from cyberdrop_dl.scraper.crawlers.socialmediagirls_crawler import SocialMediaGirlsCrawler
+from cyberdrop_dl.scraper.crawlers.titsintops_crawler import TitsInTopsCrawler
 from cyberdrop_dl.scraper.crawlers.tokyomotion_crawler import TokioMotionCrawler
 from cyberdrop_dl.scraper.crawlers.toonily_crawler import ToonilyCrawler
 from cyberdrop_dl.scraper.crawlers.xbunker_crawler import XBunkerCrawler

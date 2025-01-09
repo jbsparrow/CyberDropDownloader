@@ -103,9 +103,13 @@ class XenforoCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    async def pre_filter_link(self, link: URL) -> URL:
+        return link
+
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
+        scrape_item.url = await self.pre_filter_link(scrape_item.url)
         if self.thread_url_part not in scrape_item.url.parts:
             log(f"Scrape Failed: Unknown URL path: {scrape_item.url}", 40)
             return
