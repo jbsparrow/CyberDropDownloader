@@ -10,6 +10,8 @@ from rich.panel import Panel
 from rich.progress import Progress, TaskID
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from cyberdrop_dl.managers.manager import Manager
 
 
@@ -39,18 +41,22 @@ class DequeProgress(ABC):
         self._tasks_visibility_limit = visible_tasks_limit
 
     @property
-    def visible_tasks(self) -> list[TaskID]:
+    def visible_tasks(self) -> Sequence[TaskID]:
         if len(self.tasks) > self._tasks_visibility_limit:
             return [self.tasks[i] for i in range(self._tasks_visibility_limit)]
-        return list(self.tasks)
+        return self.tasks
 
     @property
-    def invisible_tasks(self) -> list[TaskID]:
+    def invisible_tasks(self) -> Sequence[TaskID]:
         return list(islice(self.tasks, self._tasks_visibility_limit, None))
 
     @property
     def invisible_tasks_len(self) -> int:
+        """Faster to compute than `len(self.invisible_tasks)`"""
         return max(0, len(self.tasks) - self._tasks_visibility_limit)
+
+    def has_visible_capacity(self) -> bool:
+        return len(self.tasks) < self._tasks_visibility_limit
 
     def get_progress(self) -> Panel:
         """Returns the progress bar."""
@@ -89,7 +95,7 @@ class DequeProgress(ABC):
         task_id = self.progress.add_task(
             self.progress_str.format(color=self.color, description=description),
             total=total,
-            visible=len(self.visible_tasks) >= self._tasks_visibility_limit,
+            visible=self.has_visible_capacity(),
         )
         self.tasks.append(task_id)
         self.redraw()
