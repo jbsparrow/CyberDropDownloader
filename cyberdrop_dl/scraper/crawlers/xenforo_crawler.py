@@ -98,10 +98,13 @@ class XenforoCrawler(Crawler):
         self.attachment_url_part = ["attachments"]
         self.attachment_url_hosts = ["smgmedia", "attachments.f95zone"]
         self.logged_in = False
-        self.login_attempts = 0
         self.request_limiter = AsyncLimiter(10, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+    async def async_startup(self) -> None:
+        if not self.logged_in:
+            await self.try_login()
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
@@ -109,9 +112,6 @@ class XenforoCrawler(Crawler):
         if self.thread_url_part not in scrape_item.url.parts:
             log(f"Scrape Failed: Unknown URL path: {scrape_item.url}", 40)
             return
-
-        if not self.logged_in and self.login_attempts == 0:
-            await self.try_login()
 
         await self.thread(scrape_item)
 
@@ -130,7 +130,6 @@ class XenforoCrawler(Crawler):
         password = getattr(forums_auth_data, f"{self.domain}_password")
 
         if session_cookie or (username and password):
-            self.login_attempts += 1
             await self.forum_login(login_url, session_cookie, username, password)
 
         if not self.logged_in:
