@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- PixHost.to support (forum)
+- PixHost.to support
 - AllPornComix support (forum)
 - Bellazon.com support (forum)
 - TitsInTops support (forum)
