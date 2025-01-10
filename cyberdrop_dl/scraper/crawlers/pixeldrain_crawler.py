@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import calendar
-import contextlib
 import datetime
 import json
 from typing import TYPE_CHECKING
@@ -9,7 +8,7 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import DownloadError, MaxChildrenError, NoExtensionError, ScrapeError
+from cyberdrop_dl.clients.errors import DownloadError, NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
@@ -48,13 +47,7 @@ class PixelDrainCrawler(Crawler):
         scrape_item.album_id = album_id
         scrape_item.part_of_album = True
         results = await self.get_album_results(album_id)
-        scrape_item.type = FILE_HOST_ALBUM
-        scrape_item.children = scrape_item.children_limit = 0
-
-        with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = (
-                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
-            )
+        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
 
         async with self.request_limiter:
             JSON_Resp = await self.client.get_json(
@@ -74,21 +67,18 @@ class PixelDrainCrawler(Crawler):
                 if "image" in file["mime_type"] or "video" in file["mime_type"]:
                     filename, ext = get_filename_and_ext(file["name"] + "." + file["mime_type"].split("/")[-1])
                 else:
-                    raise NoExtensionError from None
+                    raise
             new_scrape_item = self.create_scrape_item(
                 scrape_item,
                 link,
-                title,
-                True,
-                None,
-                date,
+                new_title_part=title,
+                part_of_album=True,
+                possible_datetime=date,
                 add_parent=scrape_item.url,
             )
             if not self.check_album_results(link, results):
                 await self.handle_file(link, new_scrape_item, filename, ext)
-            scrape_item.children += 1
-            if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
-                raise MaxChildrenError(origin=scrape_item)
+            scrape_item.add_children()
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
