@@ -43,12 +43,14 @@ class GoFileCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    async def async_startup(self) -> None:
+        await self.get_account_token()
+        await self.get_website_token()
+
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
 
-        await self.get_account_token(scrape_item)
-        await self.get_website_token(scrape_item)
         await self.album(scrape_item)
 
     @error_handling_wrapper
@@ -152,7 +154,7 @@ class GoFileCrawler(Crawler):
         return json_resp["data"]["token"]
 
     @error_handling_wrapper
-    async def get_website_token(self, scrape_item: ScrapeItem, update: bool = False) -> None:
+    async def get_website_token(self, scrape_item: ScrapeItem | None = None, update: bool = False) -> None:
         """Creates an anon GoFile account to use."""
         async with self._token_lock:
             if datetime.now(UTC) - self._website_token_date < timedelta(seconds=120):
@@ -164,7 +166,7 @@ class GoFileCrawler(Crawler):
                 return
             await self._update_website_token(scrape_item)
 
-    async def _update_website_token(self, scrape_item: ScrapeItem) -> None:
+    async def _update_website_token(self, scrape_item: ScrapeItem | None = None) -> None:
         async with self.request_limiter:
             text = await self.client.get_text(self.domain, self.js_address, origin=scrape_item)
             match = re.search(WT_REGEX, str(text))

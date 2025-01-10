@@ -54,11 +54,14 @@ class Crawler(ABC):
         self.scraped_items: list = []
         self.waiting_items = 0
 
-    def startup(self) -> None:
+    async def startup(self) -> None:
         """Starts the crawler."""
         self.client = self.manager.client_manager.scraper_session
         self.downloader = Downloader(self.manager, self.domain)
         self.downloader.startup()
+        await self.async_startup()
+
+    async def async_startup(self) -> None: ...  # noqa: B027
 
     async def run(self, item: ScrapeItem) -> None:
         """Runs the crawler loop."""
