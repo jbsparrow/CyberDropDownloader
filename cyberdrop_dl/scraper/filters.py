@@ -140,6 +140,7 @@ async def filter_fn(response: ClientResponse) -> bool:
 
     filter_dict = {
         "allporncomix.com": check_xenforo_last_page,
+        "www.bellazon.com": check_xenforo_last_page,
         "celebforum.to": check_xenforo_last_page,
         "f95zone.to": check_xenforo_last_page,
         "leakedmodels.com": check_xenforo_last_page,

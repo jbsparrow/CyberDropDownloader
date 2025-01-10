@@ -56,6 +56,7 @@ class XenforoSelectors:
     title: Selector = field(default=Selector("h1[class=p-title-value]", None))
     title_trash: Selector = field(default=Selector("span", None))
     quotes: Selector = field(default=Selector("blockquote", None))
+    post_name: str = "post-"
 
 
 @dataclass(frozen=True)
@@ -63,6 +64,7 @@ class ForumPost:
     soup: BeautifulSoup
     selectors: PostSelectors
     title: str | None = None
+    post_name: str = "post-"
 
     @property
     def content(self) -> Tag:
@@ -77,8 +79,11 @@ class ForumPost:
 
     @property
     def number(self):
+        if self.selectors.number.element == self.selectors.number.attribute:
+            number = int(self.soup.get(self.selectors.number.element))
+            return number
         number = self.soup.select_one(self.selectors.number.element)
-        return int(number.get(self.selectors.number.attribute).split("/")[-1].split("post-")[-1])
+        return int(number.get(self.selectors.number.attribute).split("/")[-1].split(self.post_name)[-1])
 
     @property
     def id(self):
@@ -89,12 +94,13 @@ class XenforoCrawler(Crawler):
     login_required = True
     primary_base_domain = None
     selectors = XenforoSelectors()
-    DEFAULT_POST_TITLE_FORMAT = "post-{number}"
+    POST_NAME = None
     thread_url_part = "threads"
 
     def __init__(self, manager: Manager, site: str, folder_domain: str | None = None) -> None:
         super().__init__(manager, site, folder_domain)
         self.primary_base_domain = self.primary_base_domain or URL(f"https://{site}")
+        self.POST_NAME = self.POST_NAME | "post-"
         self.attachment_url_part = ["attachments"]
         self.attachment_url_hosts = ["smgmedia", "attachments.f95zone"]
         self.logged_in = False
@@ -160,8 +166,8 @@ class XenforoCrawler(Crawler):
         if len(scrape_item.url.parts) > post_part_index:
             post_sections.add(scrape_item.url.parts[post_part_index])
 
-        if any("post-" in sec for sec in post_sections):
-            url_parts = str(scrape_item.url).rsplit("post-", 1)
+        if any(self.POST_NAME in sec for sec in post_sections):
+            url_parts = str(scrape_item.url).rsplit(self.POST_NAME, 1)
             thread_url = URL(url_parts[0].rstrip("#"))
             post_number = int(url_parts[-1].strip("/")) if len(url_parts) == 2 else 0
 
@@ -176,7 +182,7 @@ class XenforoCrawler(Crawler):
             posts = soup.select(self.selectors.posts.element)
             continue_scraping = False
             for post in posts:
-                current_post = ForumPost(post, selectors=self.selectors.posts)
+                current_post = ForumPost(post, selectors=self.selectors.posts, post_name=self.POST_NAME)
                 last_scraped_post_number = current_post.number
                 scrape_post, continue_scraping = self.check_post_number(post_number, current_post.number)
 
@@ -186,7 +192,7 @@ class XenforoCrawler(Crawler):
                         thread_url,
                         title,
                         possible_datetime=current_post.date,
-                        add_parent=scrape_item.url.joinpath(f"post-{current_post.number}"),
+                        add_parent=scrape_item.url.joinpath(f"{self.POST_NAME}{current_post.number}"),
                     )
                     trash: list[Tag] = title_block.find_all(self.selectors.quotes.element)
                     for element in trash:
@@ -323,8 +329,8 @@ class XenforoCrawler(Crawler):
     async def write_last_forum_post(self, scrape_item: ScrapeItem, post_number: int) -> None:
         if not post_number:
             return
-        post_string = f"post-{post_number}"
-        if "page-" in scrape_item.url.raw_name or "post-" in scrape_item.url.raw_name:
+        post_string = f"{self.POST_NAME}{post_number}"
+        if "page-" in scrape_item.url.raw_name or self.POST_NAME in scrape_item.url.raw_name:
             last_post_url = scrape_item.url.parent / post_string
         else:
             last_post_url = scrape_item.url / post_string
