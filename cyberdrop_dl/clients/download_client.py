@@ -145,7 +145,6 @@ class DownloadClient:
             media_item.filesize = int(resp.headers.get("Content-Length", "0"))
             if not media_item.complete_file:
                 proceed, skip = await self.get_final_file_info(media_item, domain)
-                await self.mark_incomplete(media_item, domain)
                 self.client_manager.check_bunkr_maint(resp.headers)
                 if skip:
                     self.manager.progress_manager.download_progress.add_skipped()
@@ -211,7 +210,6 @@ class DownloadClient:
             log(f"Download Skip {media_item.url} due to mark completed option", 10)
             self.manager.progress_manager.download_progress.add_skipped()
             # set completed path
-            await self.mark_incomplete(media_item, domain)
             await self.process_completed(media_item, domain)
             return False
 
