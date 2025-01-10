@@ -23,13 +23,14 @@ icon: globe-pointer
 | Img.kiwi        | Album: `/album/...` <br> Image: `/image/...` <br> Direct links  |
 | Imgur           | Album: `/a/...` <br> Image: `/...` <br> Direct links |
 | JPG.Church <br> JPG.Homes <br> JPG.Pet <br> JPEG.Pet <br> JPG1.Su <br> JPG2.Su <br> JPG3.Su <br> JPG4.Su <br> JPG5.Su | Album: `/a/...` <br> Image: `/img/...` <br> Direct links  |
-| Imagepond.net   | Album: `/a/...` <br> Image: `/img/...` <br> Direct links  |
+| Imagepond.net   | Album: `/a/...` <br> Image: `/img/...` <br> Video: `/video/..`  <br> Direct links  |
 | Kemono          | Afdian Model: `/afdian/user/<user>` <br> Boosty Model: `/boosty/user/<user>` <br> DLSite Model: `/dlsite/user/<user>` <br> Discord Server Channel: `/discord/server/...#...` <br> FanBox Model: `/fanbox/user/<user>` <br> Fantia Model: `/fantia/user/<user>` <br> Gumroad Model: `/gumroad/user/<user>` <br> Individual Post: `/<service>/user/<user>/post/<post_id>` <br> Patreon Model: `/patreon/user/<user>` <br> SubscribeStar Model: `/subscribestar/user/<user>` <br> Direct Links |
 | MediaFire       | File: `/file/...` <br>Folder: `/folder/...`|
 | Nekohouse.su    | Fanbox Model: `/fanbox/user/<user>` <br> Fantia Model: `/fantia/user/<user>` <br> Fantia Products Model: `/fantia_products/user/<user>` <br> Individual Post: `/service/user/<user>/post/...` <br> Subscribestar Model: `/subscribestar/user/<user>` <br> Twitter Model: `/twitter/user/<user>` <br> Direct Links |
 | Nudostar.TV     | Model: `/models/...`|
 | OmegaScans      | Chapter: `/series/.../...` <br> Series: `/series/...` <br> Direct links |
 | PimpAndHost     | Album: `/album/...` <br> Image: `/image/...`|
+| PixHost.to      | Gallery: `/gallery/...` <br> Image: `/show/...` |
 | PixelDrain      | File: `/u/...` <br> Folder: `/l/...` |
 | PostImg         | Album: `/gallery/...` <br> Image: `/...` <br> Direct links |
 | RealBooru       | File page (id query) <br>Tags (tags query) |
@@ -37,8 +38,9 @@ icon: globe-pointer
 | Rule34Vault     | File page: `/post/...` <br> Playlist: `/playlists/view/...` <br> Tag: `/...` |
 | Rule34.XXX      | File page (id query) <br> Tags (tags query) |
 | Rule34.XYZ      | File page: `/post/...` <br> Tag: `/...` |
-| Saint           | Albums: `/a/...` <br> Video: `/embed/...` <br> Direct links |
+| Saint           | Albums: `/a/...` <br> Video: `/embed/...`, `/d/...` <br> Direct links |
 | Scrolller       | Subreddit: `/r/...` |
+| TipsAndTops|
 | Toonily         | Chapter: `/webtoon/.../...` <br> Webtoon: `/webtoon/...` <br> Direct links  |
 | Tokyomotion.net | Albums: `/user/<user>/albums/` , `/album/<album_id>` <br> Photo: `/photo/<photo_id>` , `/user/<user>/favorite/photos` <br> Playlist: `/user/<user>/favorite/videos` <br> Profiles: `/user/<user>` <br> Search Results: `/search?...` <br> Video: `/video/<video_id>` |
 | XBunkr          | Albums: `/a/...` <br> Direct Links|
@@ -67,10 +69,13 @@ Supported domains via Real-Debrid include `mega.nz`, `rapidgator`, `google drive
 
 | Domain                      | Supported URL Paths  |
 | --------------------------- | -------------------- |
+| Bellazon.com                | Threads: `/main/topic/<thread_name>` |
 | CelebForum                  | Threads: `/threads/<thread_name>`|
 | F95Zone                     | Threads: `/threads/<thread_name>`|
+| Forums.AllPornComix.com | Threads: `/threads/<thread_name>`|
 | Forums.SocialMediaGirls.com | Threads: `/threads/<thread_name>`|
 | LeakedModels                | Threads: `/forum/threads/<thread_name>`|
 | Nudostar                    | Threads: `/forum/threads/<thread_name>`|
-| Reddit                      | User: `/user/<user>` , `/u/<user>` <br> Subreddit: `/r/<subreddit>` <br> Direct Links |
+| Reddit                      | User: `/user/<user>`, `/user/<user>/...` , `/u/<user>` <br> Subreddit: `/r/<subreddit>` <br> Direct Links |
+| TitsInTops.com              | Threads: `/forum/threads/<thread_name>`|
 | XBunker                     | Threads: `/threads/<thread_name>`|
