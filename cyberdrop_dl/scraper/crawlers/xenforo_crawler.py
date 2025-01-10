@@ -109,10 +109,6 @@ class XenforoCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        if self.thread_url_part not in scrape_item.url.parts:
-            log(f"Scrape Failed: Unknown URL path: {scrape_item.url}", 40)
-            return
-
         await self.thread(scrape_item)
 
     async def try_login(self) -> None:
@@ -141,6 +137,10 @@ class XenforoCrawler(Crawler):
     @error_handling_wrapper
     async def thread(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a forum thread."""
+        if self.thread_url_part not in scrape_item.url.parts:
+            log(f"Scrape Failed: Unknown URL path: {scrape_item.url}", 40)
+            return
+
         if not self.logged_in and self.login_required:
             return
 
