@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import DownloadError, MaxChildrenError, NoExtensionError
+from cyberdrop_dl.clients.errors import DownloadError, MaxChildrenError, NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
@@ -105,38 +105,7 @@ class PixelDrainCrawler(Crawler):
         except DownloadError as e:
             if e.status != 404:
                 raise
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(
-                    self.domain,
-                    scrape_item.url,
-                    origin=scrape_item,
-                )
-            meta_tag = soup.select_one('meta[property="og:type"]').get("content")
-            filename = soup.select_one('meta[property="og:title"]').get("content")
-            if "video" in meta_tag:
-                link = soup.select_one('meta[property="og:video"]').get("content")
-            elif "image" in meta_tag:
-                link = soup.select_one('meta[property="og:image"]').get("content")
-            else:
-                raise
-            if "filesystem" not in link:
-                raise
-            script_tag: str = soup.select_one('script:contains("window.initial_node")').string
-            start_sentence = "window.initial_node ="
-            end_sentence = "window.user = "
-
-            start_index = script_tag.find(start_sentence) + len(start_sentence)
-            end_index = script_tag.find(end_sentence)
-            extracted_text = script_tag[start_index:end_index].strip().removesuffix(";")
-
-            data = json.loads(extracted_text)
-            date: str = data["path"][0]["created"]
-            date = self.parse_datetime(date.replace("T", " ").split(".")[0])
-
-            link = URL(link)
-            filename, ext = get_filename_and_ext(filename)
-            new_scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, possible_datetime=date)
-            return await self.handle_file(link, new_scrape_item, filename, ext)
+            return await self.filesystem(scrape_item)
 
         link = await self.create_download_link(JSON_Resp["id"])
         date = self.parse_datetime(JSON_Resp["date_upload"].replace("T", " ").split(".")[0])
@@ -172,6 +141,38 @@ class PixelDrainCrawler(Crawler):
             else:
                 raise NoExtensionError from None
         new_scrape_item = self.create_scrape_item(scrape_item, link, "", False, None, date)
+        await self.handle_file(link, new_scrape_item, filename, ext)
+
+    async def filesystem(self, scrape_item: ScrapeItem) -> None:
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup(
+                self.domain,
+                scrape_item.url,
+                origin=scrape_item,
+            )
+        meta_tag: str = soup.select_one('meta[property="og:type"]').get("content")
+        filename: str = soup.select_one('meta[property="og:title"]').get("content")
+        link = None
+        if "video" in meta_tag:
+            link = soup.select_one('meta[property="og:video"]').get("content")
+        elif "image" in meta_tag:
+            link = soup.select_one('meta[property="og:image"]').get("content")
+
+        if not link or "filesystem" not in link:
+            raise ScrapeError(422, origin=scrape_item)
+
+        script_tag: str = soup.select_one('script:contains("window.initial_node")').string
+        start_sentence = "window.initial_node ="
+        end_sentence = "window.user = "
+        start_index = script_tag.find(start_sentence) + len(start_sentence)
+        end_index = script_tag.find(end_sentence)
+        extracted_json_str = script_tag[start_index:end_index].strip().removesuffix(";")
+        json_data = json.loads(extracted_json_str)
+        date_str: str = json_data["path"][0]["created"]
+        date = self.parse_datetime(date_str.replace("T", " ").split(".")[0])
+        link = URL(link)
+        filename, ext = get_filename_and_ext(filename)
+        new_scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, possible_datetime=date)
         await self.handle_file(link, new_scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
