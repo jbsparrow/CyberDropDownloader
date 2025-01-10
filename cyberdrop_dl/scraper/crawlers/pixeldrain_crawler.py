@@ -3,17 +3,20 @@ from __future__ import annotations
 import calendar
 import contextlib
 import datetime
+import json
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import MaxChildrenError, NoExtensionError
+from cyberdrop_dl.clients.errors import DownloadError, MaxChildrenError, NoExtensionError
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
+    from bs4 import BeautifulSoup
+
     from cyberdrop_dl.managers.manager import Manager
 
 
@@ -90,12 +93,48 @@ class PixelDrainCrawler(Crawler):
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a file."""
-        async with self.request_limiter:
-            JSON_Resp = await self.client.get_json(
-                self.domain,
-                self.api_address / "file" / scrape_item.url.parts[-1] / "info",
-                origin=scrape_item,
-            )
+        try:
+            async with self.request_limiter:
+                JSON_Resp = await self.client.get_json(
+                    self.domain,
+                    self.api_address / "file" / scrape_item.url.parts[-1] / "info",
+                    origin=scrape_item,
+                )
+        except DownloadError as e:
+            if e.status != 404:
+                raise
+            async with self.request_limiter:
+                soup: BeautifulSoup = await self.client.get_soup(
+                    self.domain,
+                    scrape_item.url,
+                    origin=scrape_item,
+                )
+            meta_tag = soup.select_one('meta[property="og:type"]').get("content")
+            filename = soup.select_one('meta[property="og:title"]').get("content")
+            if "video" in meta_tag:
+                link = soup.select_one('meta[property="og:video"]').get("content")
+            elif "image" in meta_tag:
+                link = soup.select_one('meta[property="og:image"]').get("content")
+            else:
+                raise
+            if "filesystem" not in link:
+                raise
+            script_tag: str = soup.select_one('script:contains("window.initial_node")').string
+            start_sentence = "window.initial_node ="
+            end_sentence = "window.user = "
+
+            start_index = script_tag.find(start_sentence) + len(start_sentence)
+            end_index = script_tag.find(end_sentence)
+            extracted_text = script_tag[start_index:end_index].strip().removesuffix(";")
+
+            data = json.loads(extracted_text)
+            date: str = data["path"][0]["created"]
+            date = self.parse_datetime(date.replace("T", " ").split(".")[0])
+
+            link = URL(link)
+            filename, ext = get_filename_and_ext(filename)
+            new_scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, possible_datetime=date)
+            return await self.handle_file(link, new_scrape_item, filename, ext)
 
         link = await self.create_download_link(JSON_Resp["id"])
         date = self.parse_datetime(JSON_Resp["date_upload"].replace("T", " ").split(".")[0])
