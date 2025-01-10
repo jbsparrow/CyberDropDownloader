@@ -247,7 +247,7 @@ class ScrapeMapper:
             # get most restrictive domain if multiple domain matches
             supported_domain = max(supported_domain, key=len)
             scraper = self.existing_crawlers[supported_domain]
-            if isinstance(scraper.client, Field):
+            if not scraper.ready:
                 await scraper.startup()
             self.manager.task_group.create_task(scraper.run(scrape_item))
             return

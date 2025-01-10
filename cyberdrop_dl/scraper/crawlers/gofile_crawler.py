@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import http
 import re
 from datetime import UTC, datetime, timedelta
@@ -37,9 +36,7 @@ class GoFileCrawler(Crawler):
         self.website_token = manager.cache_manager.get("gofile_website_token")
         self.headers = {}
         self.request_limiter = AsyncLimiter(100, 60)
-        self._token_lock = asyncio.Lock()
         self._website_token_date = datetime.now(UTC) - timedelta(days=7)
-        self._token_set = False
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -135,14 +132,9 @@ class GoFileCrawler(Crawler):
     @error_handling_wrapper
     async def get_account_token(self, scrape_item: ScrapeItem) -> None:
         """Gets the token for the API."""
-        async with self._token_lock:
-            if self._token_set:
-                return
-
-            self.api_key = self.api_key or await self._get_new_api_key(scrape_item)
-            self.headers["Authorization"] = f"Bearer {self.api_key}"
-            self.client.client_manager.cookies.update_cookies({"accountToken": self.api_key}, self.primary_base_domain)
-            self._token_set = True
+        self.api_key = self.api_key or await self._get_new_api_key(scrape_item)
+        self.headers["Authorization"] = f"Bearer {self.api_key}"
+        self.client.client_manager.cookies.update_cookies({"accountToken": self.api_key}, self.primary_base_domain)
 
     async def _get_new_api_key(self, scrape_item: ScrapeItem) -> str:
         create_account_address = self.api / "accounts"
@@ -156,7 +148,7 @@ class GoFileCrawler(Crawler):
     @error_handling_wrapper
     async def get_website_token(self, scrape_item: ScrapeItem | None = None, update: bool = False) -> None:
         """Creates an anon GoFile account to use."""
-        async with self._token_lock:
+        async with self.startup_lock:
             if datetime.now(UTC) - self._website_token_date < timedelta(seconds=120):
                 return
             if update:
