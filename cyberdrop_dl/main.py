@@ -27,8 +27,9 @@ from cyberdrop_dl.utils.yaml import handle_validation_error
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-logger_startup = logging.getLogger("cyberdrop_dl_startup")
-LOGGER_STARTUP_FILE = Path().cwd().joinpath("downloader.log")
+startup_logger = logging.getLogger("cyberdrop_dl_startup")
+STARTUP_LOGGER_FILE = Path().cwd().joinpath("startup.log")
+STARTUP_LOGGER_CONSOLE = None
 
 
 def startup() -> Manager:
@@ -42,14 +43,14 @@ def startup() -> Manager:
         manager = Manager()
         manager.startup()
         if manager.parsed_args.cli_only_args.multiconfig:
-            logger_startup.info("validating all configs, please wait...")
+            startup_logger.info("validating all configs, please wait...")
             manager.validate_all_configs()
 
         if not manager.parsed_args.cli_only_args.download:
             ProgramUI(manager)
 
     except InvalidYamlError as e:
-        logger_startup.error(e.message)
+        startup_logger.error(e.message)
         sys.exit(1)
 
     except ValidationError as e:
@@ -61,12 +62,12 @@ def startup() -> Manager:
         handle_validation_error(e, sources=sources)
 
     except KeyboardInterrupt:
-        logger_startup.info("Exiting...")
+        startup_logger.info("Exiting...")
         sys.exit(0)
 
     except Exception:
         msg = "An error occurred, please report this to the developer with your logs file:"
-        logger_startup.exception(msg)
+        startup_logger.exception(msg)
         sys.exit(1)
 
     else:
@@ -107,19 +108,21 @@ async def post_runtime(manager: Manager) -> None:
 
 
 def setup_startup_logger() -> None:
-    logger_startup.setLevel(10)
-    LOGGER_STARTUP_FILE.unlink(missing_ok=True)
+    global STARTUP_LOGGER_CONSOLE
+    startup_logger.setLevel(10)
+    STARTUP_LOGGER_FILE.unlink(missing_ok=True)
+    STARTUP_LOGGER_CONSOLE = RedactedConsole(
+        file=STARTUP_LOGGER_FILE.open("w", encoding="utf8"),
+        width=constants.DEFAULT_CONSOLE_WIDTH,
+    )
     rich_file_handler = RichHandler(
         **constants.RICH_HANDLER_CONFIG,
-        console=RedactedConsole(
-            file=LOGGER_STARTUP_FILE.open("w", encoding="utf8"),
-            width=constants.DEFAULT_CONSOLE_WIDTH,
-        ),
+        console=STARTUP_LOGGER_CONSOLE,
         level=10,
     )
     rich_handler = RichHandler(**(constants.RICH_HANDLER_CONFIG | {"show_time": False}), level=10)
-    logger_startup.addHandler(rich_file_handler)
-    logger_startup.addHandler(rich_handler)
+    startup_logger.addHandler(rich_file_handler)
+    startup_logger.addHandler(rich_handler)
 
 
 def setup_debug_logger(manager: Manager) -> Path | None:
@@ -214,8 +217,9 @@ async def director(manager: Manager) -> None:
     if manager.multiconfig:
         configs_to_run = manager.config_manager.get_configs()
 
-    if LOGGER_STARTUP_FILE.is_file() and LOGGER_STARTUP_FILE.stat().st_size == 0:
-        LOGGER_STARTUP_FILE.unlink()
+    if STARTUP_LOGGER_FILE.is_file() and STARTUP_LOGGER_FILE.stat().st_size == 0:
+        STARTUP_LOGGER_CONSOLE.file.close()
+        STARTUP_LOGGER_FILE.unlink()
 
     start_time = manager.start_time
     while configs_to_run:
@@ -258,7 +262,7 @@ def main() -> None:
             asyncio.run(director(manager))
             exit_code = 0
         except KeyboardInterrupt:
-            logger_startup.info("Trying to Exit ...")
+            startup_logger.info("Trying to Exit ...")
         finally:
             asyncio.run(manager.close())
     loop.close()
