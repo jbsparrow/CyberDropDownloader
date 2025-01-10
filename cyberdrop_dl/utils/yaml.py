@@ -65,13 +65,13 @@ def load(file: Path, *, create: bool = False) -> dict:
 
 
 def handle_validation_error(e: ValidationError, *, title: str | None = None, sources: dict[str, Path] | None = None):
-    logger_startup = logging.getLogger("cyberdrop_dl_startup")
+    startup_logger = logging.getLogger("cyberdrop_dl_startup")
     error_count = e.error_count()
     source = sources.get(e.title) if sources else None
     title = title or e.title
     source = f"from {source.resolve()}" if source else ""
     msg = f"Found {error_count} error{'s' if error_count>1 else ''} parsing {title} {source}"
-    logger_startup.error(msg)
+    startup_logger.error(msg)
     for error in e.errors(include_url=False):
         loc = ".".join(map(str, error["loc"]))
         if title == "CLI arguments":
@@ -81,6 +81,6 @@ def handle_validation_error(e: ValidationError, *, title: str | None = None, sou
             loc = f"--{loc}"
         msg = f"Value of '{loc}' is invalid:\n"
         msg += f"  {error['msg']} (input_value='{error['input']}', input_type='{error['type']}')\n"
-        logger_startup.error(msg)
-    logger_startup.error(VALIDATION_ERROR_FOOTER)
+        startup_logger.error(msg)
+    startup_logger.error(VALIDATION_ERROR_FOOTER)
     sys.exit(1)
