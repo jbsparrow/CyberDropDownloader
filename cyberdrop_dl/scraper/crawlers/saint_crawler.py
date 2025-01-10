@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import re
 from typing import TYPE_CHECKING
 
@@ -20,7 +21,7 @@ if TYPE_CHECKING:
 
 
 class SaintCrawler(Crawler):
-    primary_base_domain = URL("https://saint2.su")
+    primary_base_domain = URL("https://saint2.su/")
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "saint", "Saint")
@@ -35,6 +36,8 @@ class SaintCrawler(Crawler):
 
         if "a" in scrape_item.url.parts:
             await self.album(scrape_item)
+        elif "embed" in scrape_item.url.parts:
+            await self.embed(scrape_item)
         else:
             await self.video(scrape_item)
 
@@ -67,8 +70,8 @@ class SaintCrawler(Crawler):
                 await self.handle_file(link, scrape_item, filename, ext)
 
     @error_handling_wrapper
-    async def video(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a video page."""
+    async def embed(self, scrape_item: ScrapeItem) -> None:
+        """Scrapes a embeded video page."""
         if await self.check_complete_from_referer(scrape_item):
             return
 
@@ -80,3 +83,22 @@ class SaintCrawler(Crawler):
             raise ScrapeError(422, "Couldn't find video source", origin=scrape_item) from None
         filename, ext = get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
+
+    @error_handling_wrapper
+    async def video(self, scrape_item: ScrapeItem) -> None:
+        """Scrapes a video page."""
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+        try:
+            api_link = URL(soup.select_one("a:contains('Download Video')").get("href"))
+            link = get_url_from_base64(api_link)
+        except AttributeError:
+            raise ScrapeError(422, "Couldn't find video source", origin=scrape_item) from None
+        filename, ext = get_filename_and_ext(link.name)
+        await self.handle_file(link, scrape_item, filename, ext)
+
+
+def get_url_from_base64(link: URL) -> URL:
+    base64_str = link.query.get("file")
+    filename_decoded = base64.b64decode(base64_str).decode("utf-8")
+    return URL("https://some_cdn.saint2.cr/videos").with_host(link.host) / filename_decoded
