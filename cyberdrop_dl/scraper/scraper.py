@@ -62,7 +62,7 @@ class ScrapeMapper:
         if self.jdownloader.enabled and isinstance(self.jdownloader.jdownloader_agent, Field):
             self.jdownloader.jdownloader_setup()
 
-    def start_real_debrid(self) -> None:
+    async def start_real_debrid(self) -> None:
         """Starts RealDebrid."""
         if isinstance(self.manager.real_debrid_manager.api, Field):
             self.manager.real_debrid_manager.startup()
@@ -71,7 +71,7 @@ class ScrapeMapper:
             from cyberdrop_dl.scraper.crawlers.realdebrid_crawler import RealDebridCrawler
 
             self.existing_crawlers["real-debrid"] = RealDebridCrawler(self.manager)
-            self.existing_crawlers["real-debrid"].startup()
+            await self.existing_crawlers["real-debrid"].startup()
 
     async def start(self) -> None:
         """Starts the orchestra."""
@@ -79,7 +79,7 @@ class ScrapeMapper:
         self.manager.client_manager.load_cookie_files()
         self.start_scrapers()
         self.start_jdownloader()
-        self.start_real_debrid()
+        await self.start_real_debrid()
         self.no_crawler_downloader.startup()
 
         if self.manager.parsed_args.cli_only_args.retry_failed:
@@ -247,8 +247,8 @@ class ScrapeMapper:
             # get most restrictive domain if multiple domain matches
             supported_domain = max(supported_domain, key=len)
             scraper = self.existing_crawlers[supported_domain]
-            if isinstance(scraper.client, Field):
-                scraper.startup()
+            if not scraper.ready:
+                await scraper.startup()
             self.manager.task_group.create_task(scraper.run(scrape_item))
             return
 

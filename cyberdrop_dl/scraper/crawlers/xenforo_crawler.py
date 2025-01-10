@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
+from cyberdrop_dl.clients.errors import LoginError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FORUM, FORUM_POST, ScrapeItem
 from cyberdrop_dl.utils.logger import log
@@ -104,10 +105,13 @@ class XenforoCrawler(Crawler):
         self.attachment_url_part = ["attachments"]
         self.attachment_url_hosts = ["smgmedia", "attachments.f95zone"]
         self.logged_in = False
-        self.login_attempts = 0
         self.request_limiter = AsyncLimiter(10, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+    async def async_startup(self) -> None:
+        if not self.logged_in:
+            await self.try_login()
 
     async def pre_filter_link(self, link: URL) -> URL:
         return link
@@ -116,13 +120,6 @@ class XenforoCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
         scrape_item.url = await self.pre_filter_link(scrape_item.url)
-        if self.thread_url_part not in scrape_item.url.parts:
-            log(f"Scrape Failed: Unknown URL path: {scrape_item.url}", 40)
-            return
-
-        if not self.logged_in and self.login_attempts == 0:
-            await self.try_login()
-
         await self.thread(scrape_item)
 
     async def try_login(self) -> None:
@@ -140,8 +137,11 @@ class XenforoCrawler(Crawler):
         password = getattr(forums_auth_data, f"{self.domain}_password")
 
         if session_cookie or (username and password):
-            self.login_attempts += 1
-            await self.forum_login(login_url, session_cookie, username, password)
+            try:
+                await self.forum_login(login_url, session_cookie, username, password)
+            except LoginError:
+                if self.login_required:
+                    raise
 
         if not self.logged_in:
             msg = f"{self.folder_domain} login failed. "
@@ -152,6 +152,10 @@ class XenforoCrawler(Crawler):
     @error_handling_wrapper
     async def thread(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a forum thread."""
+        if self.thread_url_part not in scrape_item.url.parts:
+            log(f"Scrape Failed: Unknown URL path: {scrape_item.url}", 40)
+            return
+
         if not self.logged_in and self.login_required:
             return
 

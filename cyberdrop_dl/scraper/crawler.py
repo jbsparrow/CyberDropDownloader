@@ -45,6 +45,8 @@ class Crawler(ABC):
         self.scraping_progress = manager.progress_manager.scraping_progress
         self.client: ScraperClient = field(init=False)
         self._semaphore = asyncio.Semaphore(20)
+        self.startup_lock = asyncio.Lock()
+        self.ready: bool = False
 
         self.domain = domain
         self.folder_domain = folder_domain or domain.capitalize()
@@ -54,11 +56,18 @@ class Crawler(ABC):
         self.scraped_items: list = []
         self.waiting_items = 0
 
-    def startup(self) -> None:
+    async def startup(self) -> None:
         """Starts the crawler."""
-        self.client = self.manager.client_manager.scraper_session
-        self.downloader = Downloader(self.manager, self.domain)
-        self.downloader.startup()
+        async with self.startup_lock:
+            if self.ready:
+                return
+            self.client = self.manager.client_manager.scraper_session
+            self.downloader = Downloader(self.manager, self.domain)
+            self.downloader.startup()
+            await self.async_startup()
+            self.ready = True
+
+    async def async_startup(self) -> None: ...  # noqa: B027
 
     async def run(self, item: ScrapeItem) -> None:
         """Runs the crawler loop."""
