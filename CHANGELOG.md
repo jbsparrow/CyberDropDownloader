@@ -9,15 +9,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- PixHost.to support (forum)
+- AllPornComix support (forum)
+- Bellazon.com support (forum)
+- TitsInTops support (forum)
+- Video support for chevereto sites (`imagepond.net`, `img.kiwi` and `jpg5.su`)
+- Filesystem URLs support for images and videos (pixeldrain)
+- Indirect links support (saint)
+
 ### Changed
 
-### Deprecated
-
-### Removed
+- Better MediaFire errors handling
+- Better RealDebrid errors handling
+- Do not overload 403 and 404 errors
+- Use canonical URLs for files in database (chevereto)
 
 ### Fixed
 
-### Security
+- Files being hashed twice when using `Hashing.IN_PLACE`
+- Post information parsing (reddit)
+- Sub-path parsing, ex: submitted, comments (reddit)
+- "Loose Files" folder not being created (all crawlers)
+- Delete startup log file if empty
+- Make a single GoFile token acquisition request
+- Make a single login request try per forum
+- DDoS-Guard detection
+
 
 ## [6.1.1] - 2025-01-05
 
