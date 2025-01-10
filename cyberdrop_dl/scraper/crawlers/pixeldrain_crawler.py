@@ -114,34 +114,41 @@ class PixelDrainCrawler(Crawler):
             filename, ext = get_filename_and_ext(JSON_Resp["name"])
         except NoExtensionError:
             if "text/plain" in JSON_Resp["mime_type"]:
-                scrape_item.add_to_parent_title(f"{JSON_Resp['name']} (Pixeldrain)")
-                async with self.request_limiter:
-                    text = await self.client.get_text(
-                        self.domain,
-                        self.api_address / "file" / scrape_item.url.parts[-1],
-                        origin=scrape_item,
-                    )
-                lines = text.split("\n")
-                for line in lines:
-                    link = URL(line)
-                    new_scrape_item = self.create_scrape_item(
-                        scrape_item,
-                        link,
-                        "",
-                        False,
-                        None,
-                        date,
-                        add_parent=scrape_item.url,
-                    )
-                    self.handle_external_links(new_scrape_item)
+                new_scrape_item = self.create_scrape_item(
+                    scrape_item,
+                    scrape_item.url,
+                    new_title_part=f"{JSON_Resp['name']} (Pixeldrain)",
+                    possible_datetime=date,
+                    add_parent=scrape_item.url,
+                )
+                return await self.text(new_scrape_item)
+
             elif "image" in JSON_Resp["mime_type"] or "video" in JSON_Resp["mime_type"]:
                 filename, ext = get_filename_and_ext(
                     JSON_Resp["name"] + "." + JSON_Resp["mime_type"].split("/")[-1],
                 )
             else:
-                raise NoExtensionError from None
-        new_scrape_item = self.create_scrape_item(scrape_item, link, "", False, None, date)
+                raise
+
+        new_scrape_item = self.create_scrape_item(scrape_item, link, possible_datetime=date)
         await self.handle_file(link, new_scrape_item, filename, ext)
+
+    async def text(self, scrape_item: ScrapeItem):
+        async with self.request_limiter:
+            text = await self.client.get_text(
+                self.domain,
+                self.api_address / "file" / scrape_item.url.parts[-1],
+                origin=scrape_item,
+            )
+        lines = text.split("\n")
+        for line in lines:
+            link = URL(line)
+            new_scrape_item = self.create_scrape_item(
+                scrape_item,
+                link,
+                add_parent=scrape_item.url,
+            )
+            self.handle_external_links(new_scrape_item)
 
     async def filesystem(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
