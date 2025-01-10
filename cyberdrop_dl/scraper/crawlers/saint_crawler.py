@@ -71,7 +71,7 @@ class SaintCrawler(Crawler):
 
     @error_handling_wrapper
     async def embed(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a embeded video page."""
+        """Scrapes an embeded video page."""
         if await self.check_complete_from_referer(scrape_item):
             return
 
