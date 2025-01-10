@@ -40,7 +40,6 @@ icon: globe-pointer
 | Rule34.XYZ      | File page: `/post/...` <br> Tag: `/...` |
 | Saint           | Albums: `/a/...` <br> Video: `/embed/...`, `/d/...` <br> Direct links |
 | Scrolller       | Subreddit: `/r/...` |
-| TipsAndTops|
 | Toonily         | Chapter: `/webtoon/.../...` <br> Webtoon: `/webtoon/...` <br> Direct links  |
 | Tokyomotion.net | Albums: `/user/<user>/albums/` , `/album/<album_id>` <br> Photo: `/photo/<photo_id>` , `/user/<user>/favorite/photos` <br> Playlist: `/user/<user>/favorite/videos` <br> Profiles: `/user/<user>` <br> Search Results: `/search?...` <br> Video: `/video/<video_id>` |
 | XBunkr          | Albums: `/a/...` <br> Direct Links|
