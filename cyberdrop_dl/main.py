@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 
 logger_startup = logging.getLogger("cyberdrop_dl_startup")
 LOGGER_STARTUP_FILE = Path().cwd().joinpath("downloader.log")
+LOGGER_STARTUP_CONSOLE = None
 
 
 def startup() -> Manager:
@@ -107,14 +108,16 @@ async def post_runtime(manager: Manager) -> None:
 
 
 def setup_startup_logger() -> None:
+    global LOGGER_STARTUP_CONSOLE
     logger_startup.setLevel(10)
     LOGGER_STARTUP_FILE.unlink(missing_ok=True)
+    LOGGER_STARTUP_CONSOLE = RedactedConsole(
+        file=LOGGER_STARTUP_FILE.open("w", encoding="utf8"),
+        width=constants.DEFAULT_CONSOLE_WIDTH,
+    )
     rich_file_handler = RichHandler(
         **constants.RICH_HANDLER_CONFIG,
-        console=RedactedConsole(
-            file=LOGGER_STARTUP_FILE.open("w", encoding="utf8"),
-            width=constants.DEFAULT_CONSOLE_WIDTH,
-        ),
+        console=LOGGER_STARTUP_CONSOLE,
         level=10,
     )
     rich_handler = RichHandler(**(constants.RICH_HANDLER_CONFIG | {"show_time": False}), level=10)
@@ -215,6 +218,7 @@ async def director(manager: Manager) -> None:
         configs_to_run = manager.config_manager.get_configs()
 
     if LOGGER_STARTUP_FILE.is_file() and LOGGER_STARTUP_FILE.stat().st_size == 0:
+        LOGGER_STARTUP_CONSOLE.file.close()
         LOGGER_STARTUP_FILE.unlink()
 
     start_time = manager.start_time
