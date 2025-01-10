@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
+from cyberdrop_dl.clients.errors import LoginError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FORUM, FORUM_POST, ScrapeItem
 from cyberdrop_dl.utils.logger import log
@@ -130,7 +131,11 @@ class XenforoCrawler(Crawler):
         password = getattr(forums_auth_data, f"{self.domain}_password")
 
         if session_cookie or (username and password):
-            await self.forum_login(login_url, session_cookie, username, password)
+            try:
+                await self.forum_login(login_url, session_cookie, username, password)
+            except LoginError:
+                if self.login_required:
+                    raise
 
         if not self.logged_in:
             msg = f"{self.folder_domain} login failed. "
