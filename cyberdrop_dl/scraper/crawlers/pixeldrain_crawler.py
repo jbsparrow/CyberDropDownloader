@@ -93,6 +93,8 @@ class PixelDrainCrawler(Crawler):
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a file."""
+        if await self.check_complete_from_referer(scrape_item):
+            return
         try:
             async with self.request_limiter:
                 JSON_Resp = await self.client.get_json(
