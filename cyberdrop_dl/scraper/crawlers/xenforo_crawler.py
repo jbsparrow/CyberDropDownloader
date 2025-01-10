@@ -101,7 +101,7 @@ class XenforoCrawler(Crawler):
     def __init__(self, manager: Manager, site: str, folder_domain: str | None = None) -> None:
         super().__init__(manager, site, folder_domain)
         self.primary_base_domain = self.primary_base_domain or URL(f"https://{site}")
-        self.POST_NAME = self.POST_NAME | "post-"
+        self.POST_NAME = self.POST_NAME or "post-"
         self.attachment_url_part = ["attachments"]
         self.attachment_url_hosts = ["smgmedia", "attachments.f95zone"]
         self.logged_in = False
