@@ -174,7 +174,7 @@ class ClientManager:
 
         if response_text:
             soup = BeautifulSoup(response_text, "html.parser")
-            if cls.check_ddos_guard(soup) and cls.check_cloudflare(soup):
+            if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
                 raise DDOSGuardError(origin=origin)
         status = status if headers.get("Content-Type") else CustomHTTPStatus.IM_A_TEAPOT
         message = None if headers.get("Content-Type") else "No content-type in response header"
