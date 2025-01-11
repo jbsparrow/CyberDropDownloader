@@ -41,13 +41,13 @@ class GoFileCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def async_startup(self) -> None:
-        await self.get_account_token()
-        await self.get_website_token()
+        get_website_token = error_handling_wrapper(self.get_website_token)
+        await self.get_account_token(self.api)
+        await get_website_token(self, self.primary_base_domain)
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-
         await self.album(scrape_item)
 
     @error_handling_wrapper
@@ -74,7 +74,8 @@ class GoFileCrawler(Crawler):
         except DownloadError as e:
             if e.status != http.HTTPStatus.UNAUTHORIZED:
                 raise ScrapeError(e.status, e.message, origin=scrape_item) from e
-            await self.get_website_token(update=True)
+            async with self.startup_lock:
+                await self.get_website_token(update=True)
             content_url = content_url.update_query({"wt": self.website_token})
             api_query["url"] = content_url
             async with self.request_limiter:
@@ -130,40 +131,38 @@ class GoFileCrawler(Crawler):
             self.manager.task_group.create_task(self.run(subfolder))
 
     @error_handling_wrapper
-    async def get_account_token(self, scrape_item: ScrapeItem) -> None:
+    async def get_account_token(self, _) -> None:
         """Gets the token for the API."""
-        self.api_key = self.api_key or await self._get_new_api_key(scrape_item)
+        self.api_key = self.api_key or await self._get_new_api_key()
         self.headers["Authorization"] = f"Bearer {self.api_key}"
         self.client.client_manager.cookies.update_cookies({"accountToken": self.api_key}, self.primary_base_domain)
 
-    async def _get_new_api_key(self, scrape_item: ScrapeItem) -> str:
+    async def _get_new_api_key(self) -> str:
         create_account_address = self.api / "accounts"
         async with self.request_limiter:
             json_resp = await self.client.post_data(self.domain, create_account_address, data={})
             if json_resp["status"] != "ok":
-                raise ScrapeError(401, "Couldn't generate GoFile API token", origin=scrape_item)
+                raise ScrapeError(401, "Couldn't generate GoFile API token", origin=create_account_address)
 
         return json_resp["data"]["token"]
 
-    @error_handling_wrapper
-    async def get_website_token(self, scrape_item: ScrapeItem | None = None, update: bool = False) -> None:
+    async def get_website_token(self, _, update: bool = False) -> None:
         """Creates an anon GoFile account to use."""
-        async with self.startup_lock:
-            if datetime.now(UTC) - self._website_token_date < timedelta(seconds=120):
-                return
-            if update:
-                self.website_token = ""
-                self.manager.cache_manager.remove("gofile_website_token")
-            if self.website_token:
-                return
-            await self._update_website_token(scrape_item)
+        if datetime.now(UTC) - self._website_token_date < timedelta(seconds=120):
+            return
+        if update:
+            self.website_token = ""
+            self.manager.cache_manager.remove("gofile_website_token")
+        if self.website_token:
+            return
+        await self._update_website_token()
 
-    async def _update_website_token(self, scrape_item: ScrapeItem | None = None) -> None:
+    async def _update_website_token(self) -> None:
         async with self.request_limiter:
-            text = await self.client.get_text(self.domain, self.js_address, origin=scrape_item)
+            text = await self.client.get_text(self.domain, self.js_address, origin=self.js_address)
             match = re.search(WT_REGEX, str(text))
             if not match:
-                raise ScrapeError(401, "Couldn't generate GoFile websiteToken", origin=scrape_item)
+                raise ScrapeError(401, "Couldn't generate GoFile websiteToken", origin=self.js_address)
             self.website_token = match.group(1)
             self.manager.cache_manager.save("gofile_website_token", self.website_token)
             self._website_token_date = datetime.now(UTC)
