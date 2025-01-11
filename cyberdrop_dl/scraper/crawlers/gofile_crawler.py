@@ -147,7 +147,7 @@ class GoFileCrawler(Crawler):
         return json_resp["data"]["token"]
 
     @error_handling_wrapper
-    async def get_website_token(self, scrape_item: ScrapeItem | URL | None = None, update: bool = False) -> None:
+    async def get_website_token(self, _, update: bool = False) -> None:
         """Creates an anon GoFile account to use."""
         if datetime.now(UTC) - self._website_token_date < timedelta(seconds=120):
             return
@@ -156,14 +156,14 @@ class GoFileCrawler(Crawler):
             self.manager.cache_manager.remove("gofile_website_token")
         if self.website_token:
             return
-        await self._update_website_token(scrape_item)
+        await self._update_website_token()
 
-    async def _update_website_token(self, scrape_item: ScrapeItem | URL | None = None) -> None:
+    async def _update_website_token(self) -> None:
         async with self.request_limiter:
-            text = await self.client.get_text(self.domain, self.js_address, origin=scrape_item)
+            text = await self.client.get_text(self.domain, self.js_address, origin=self.js_address)
             match = re.search(WT_REGEX, str(text))
             if not match:
-                raise ScrapeError(401, "Couldn't generate GoFile websiteToken", origin=scrape_item)
+                raise ScrapeError(401, "Couldn't generate GoFile websiteToken", origin=self.js_address)
             self.website_token = match.group(1)
             self.manager.cache_manager.save("gofile_website_token", self.website_token)
             self._website_token_date = datetime.now(UTC)
