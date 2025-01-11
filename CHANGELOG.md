@@ -5,6 +5,36 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.2.0] - 2025-01-10
+
+### Added
+
+- PixHost.to support
+- Forum.AllPornComix.com support (forum)
+- Bellazon.com support (forum)
+- TitsInTops.com support (forum)
+- Video support for chevereto sites (`imagepond.net`, `img.kiwi` and `jpg5.su`)
+- Filesystem URLs support for images and videos (pixeldrain)
+- Indirect links support (saint)
+
+### Changed
+
+- Better MediaFire errors handling
+- Better RealDebrid errors handling
+- Do not overload 403 and 404 errors
+- Use canonical URLs for files in database (chevereto)
+
+### Fixed
+
+- Files being hashed twice when using `Hashing.IN_PLACE`
+- Post information parsing (reddit)
+- Sub-path parsing, ex: submitted, comments (reddit)
+- "Loose Files" folder not being created (all crawlers)
+- Delete startup log file if empty
+- Make a single GoFile token acquisition request
+- Make a single login request try per forum
+- DDoS-Guard detection
+
 
 ## [6.1.1] - 2025-01-05
 
