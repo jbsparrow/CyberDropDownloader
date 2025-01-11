@@ -10,9 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - PixHost.to support
-- AllPornComix support (forum)
+- forum.AllPornComix.com support (forum)
 - Bellazon.com support (forum)
-- TitsInTops support (forum)
+- TitsInTops.com support (forum)
 - Video support for chevereto sites (`imagepond.net`, `img.kiwi` and `jpg5.su`)
 - Filesystem URLs support for images and videos (pixeldrain)
 - Indirect links support (saint)
