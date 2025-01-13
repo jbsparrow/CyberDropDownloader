@@ -80,8 +80,6 @@ Every log file will be created inside a sub folder with the current date
 
 This will prevent overriding old log files
 
-<<<<<<< HEAD
-=======
 
 
 ## `logs_expire_after`
@@ -108,7 +106,6 @@ Log files with an absolute path not relative to `log_folder` will never be delet
 
 
 
->>>>>>> b6aacd8c (feat: delete empty folders after auto log deleting)
 ## `log_line_width`
 
 | Type           | Default  | Restrictions |
