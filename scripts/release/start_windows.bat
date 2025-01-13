@@ -9,13 +9,20 @@ set "COMMANDLINE_ARGS="
 set "AUTO_UPDATE=true"
 set "AUTO_UPDATE_PIP=true"
 
-rem Check if the user wants to skip auto-updating
+rem Parse arguments
+set "HELP=false"
 set "SKIP_UPDATE=false"
 for %%a in (%*) do (
     if "%%a"=="--no-update" (
         set "SKIP_UPDATE=true"
+    ) else if "%%a"=="-h" (
+        set "HELP=true"
+    ) else if "%%a"=="--help" (
+        set "HELP=true"
     )
 )
+
+if "%HELP%"=="true" goto :HELP
 
 rem Check the installed Python version
 chcp 65001 > nul
@@ -53,8 +60,9 @@ if [ "$AUTO_UPDATE_PIP" = true ]; then
     python -m pip install --upgrade pip
 fi
 
+pip uninstall -y -qq cyberdrop-dl
 rem Ensure Cyberdrop-DL is installed
-pip show cyberdrop-dl-patched >nul 2>&1
+where cyberdrop-dl >nul 2>&1
 if %ERRORLEVEL% neq 0 (
     echo Cyberdrop-DL is not installed, installing...
     pip install "cyberdrop-dl-patched>=6.0,<7.0"
@@ -63,13 +71,16 @@ if %ERRORLEVEL% neq 0 (
         pause
         exit /b 1
     )
+    where cyberdrop-dl >nul 2>&1
+    if %ERRORLEVEL% neq 0 (
+        echo Cyberdrop-DL was successfully installed, but could not be found in the virtual environment.
+        pause
+        exit /b 1
+    )
 ) else (
     if "%AUTO_UPDATE%"=="true" if "%SKIP_UPDATE%"=="false" (
         echo Updating Cyberdrop-DL...
-        pip uninstall -y -qq cyberdrop-dl
         pip install --upgrade "cyberdrop-dl-patched>=6.0,<7.0"
-    ) else (
-        echo Skipping update of Cyberdrop-DL as per user or script settings.
     )
 )
 
@@ -77,3 +88,18 @@ if %ERRORLEVEL% neq 0 (
 cls
 cyberdrop-dl %COMMANDLINE_ARGS%
 pause
+
+:HELP
+echo.
+echo Usage:
+echo   %~nx0 [OPTIONS]
+echo.
+echo Options:
+echo   --no-update       Skip updating Cyberdrop-DL.
+echo   -h, --help        Show this help message and exit.
+echo.
+echo Description:
+echo   This script sets up a virtual environment and runs Cyberdrop-DL.
+echo   By default, it ensures that Cyberdrop-DL is installed and up to date.
+echo.
+exit /b 0
