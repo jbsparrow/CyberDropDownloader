@@ -10,8 +10,6 @@ from .custom_types import AliasModel, HttpURL, NonEmptyStr
 DATE_PATTERN = re.compile(
     r"(\d+)\s*(second|seconds|minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years)", re.IGNORECASE
 )
-MIN_REQUIRED_FREE_SPACE = ByteSize._validate("512MB", "")
-DEFAULT_REQUIRED_FREE_SPACE = ByteSize._validate("5GB", "")
 
 def parse_duration_to_timedelta(input_date: timedelta | str | int) -> timedelta:
     """Parses `datetime.timedelta`, `str` or `int` into a timedelta format.
@@ -21,7 +19,7 @@ def parse_duration_to_timedelta(input_date: timedelta | str | int) -> timedelta:
     valid units:
         year(s), week(s), day(s), hour(s), minute(s), second(s), millisecond(s), microsecond(s)
 
-    for `int`, value is assummed as `days`
+    for `int`, value is assumed as `days`
     """
     if not input_date:
         return 0
