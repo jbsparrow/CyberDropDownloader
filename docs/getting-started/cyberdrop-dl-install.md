@@ -18,7 +18,7 @@ Extract the contents of the zip file to any location where you'd like the progra
 If you're using Windows or Linux, simply open the start file, and it will handle the rest for you
 
 {% hint style="info" %}
-If your are using Windows, **DO NOT** run the script as admin
+If you are using Windows, **DO NOT** run the script as admin
 {% endhint %}
 
 On macOS, you should be able to open the start file and have everything set up automatically. However, in some rare cases, macOS users may need to run the following command first::
