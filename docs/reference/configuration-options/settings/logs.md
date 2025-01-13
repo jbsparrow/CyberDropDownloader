@@ -82,16 +82,27 @@ This will prevent overriding old log files
 =======
 
 
-## `max_num_logs`
+## `logs_expire_after`
 
-| Type              | Default  | Restrictions |
-|-------------------|----------|--------------|
-| `PositiveInt` |`null`| `null`| `>=1`|
+| Type              | Default  |
+|-------------------|----------|
+| `timedelta` |`null`| `null`|
 
+When rotate_logs is enabled,this setting controls how long logs stay on the system, before being deleted
 
-Automatically deletes any extra logs
+- A `timedelta` input is expected to be a valid ISO 8601 timespan, ex: `P10DT2H30M10S`
+- An `int` input is assumed to be the number of days
+- A  `str` input is expected to be in the format; `<value> <unit>`, ex: `10 days`.
+- null will disable automatic delection of logs
 
-if a folder within the log folder is emptied, then the directory will also be deleted
+```
+Any log or csv file will be deleted within the log_folder regardless of if cdl made it
+```
+
+```
+If a log or csv file is not within the log_folder, it will not be deleted
+```
+
 
 >>>>>>> b6aacd8c (feat: delete empty folders after auto log deleting)
 ## `log_line_width`

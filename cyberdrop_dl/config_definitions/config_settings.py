@@ -47,7 +47,7 @@ class Logs(AliasModel):
     download_error_urls: Path = Field(Path("Download_Error_URLs.csv"), validation_alias="download_error_urls_filename")
     scrape_error_urls: Path = Field(Path("Scrape_Error_URLs.csv"), validation_alias="scrape_error_urls_filename")
     rotate_logs: bool = False
-    logs_expire_after: timedelta|None=timedelta(days=0)
+    logs_expire_after: timedelta|None=None
     log_line_width: PositiveInt = Field(default=240, ge=50)
 
     @field_validator("webhook", mode="before")
