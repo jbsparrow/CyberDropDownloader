@@ -76,6 +76,8 @@ Example:
 
 If enabled, Cyberdrop-DL will add the current date and time as a suffix to each log file, in the format `YYMMDD_HHMMSS`
 
+Every log file will be created inside a sub folder with the current date
+
 This will prevent overriding old log files
 
 <<<<<<< HEAD
@@ -88,20 +90,22 @@ This will prevent overriding old log files
 |-------------------|----------|
 | `timedelta` |`null`| `null`|
 
-When rotate_logs is enabled,this setting controls how long logs stay on the system, before being deleted
+With `rotate_logs` enabled, this setting specifies the retention period for log files before they are deleted
 
 - A `timedelta` input is expected to be a valid ISO 8601 timespan, ex: `P10DT2H30M10S`
 - An `int` input is assumed to be the number of days
 - A  `str` input is expected to be in the format; `<value> <unit>`, ex: `10 days`.
 - null will disable automatic delection of logs
 
-```
-Any log or csv file will be deleted within the log_folder regardless of if cdl made it
-```
 
-```
-If a log or csv file is not within the log_folder, it will not be deleted
-```
+{% hint style="warning" %}
+Any `.log` or `.csv` file within `log_folder` will be deleted, even if CDL did not create them
+{% endhint %}
+
+{% hint style="info" %}
+Log files with an absolute path not relative to `log_folder` will never be deleted
+{% endhint %}
+
 
 
 >>>>>>> b6aacd8c (feat: delete empty folders after auto log deleting)
