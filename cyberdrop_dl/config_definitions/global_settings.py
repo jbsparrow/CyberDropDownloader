@@ -75,7 +75,7 @@ class RateLimitingOptions(BaseModel):
 
         for `int`, value is assummed as `days`
         """
-        parse_duration_to_timedelta(input_date)
+        return parse_duration_to_timedelta(input_date)
 
 
 class UIOptions(BaseModel):

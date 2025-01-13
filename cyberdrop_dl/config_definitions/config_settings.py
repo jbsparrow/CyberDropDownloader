@@ -79,7 +79,7 @@ class Logs(AliasModel):
         valid units:
             year(s), week(s), day(s), hour(s), minute(s), second(s), millisecond(s), microsecond(s)
 
-        for `int`, value is assummed as `days`
+        for `int`, value is assumed as `days`
         """
         return parse_duration_to_timedelta(input_date)
 
