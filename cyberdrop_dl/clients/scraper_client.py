@@ -206,19 +206,25 @@ class ScraperClient:
         domain: str,
         url: URL,
         client_session: CachedSession,
-        data: dict,
+        data: dict | str,
         req_resp: bool = True,
         raw: bool = False,
         origin: ScrapeItem | URL | None = None,
+        cache_disabled: bool = False,
+        headers_inc: dict | None = None,
     ) -> dict | bytes:
         """Returns a JSON object from the given URL when posting data. If raw == True, returns raw binary data of response."""
-        async with client_session.post(
-            url,
-            headers=self._headers,
-            ssl=self.client_manager.ssl_context,
-            proxy=self.client_manager.proxy,
-            data=data,
-        ) as response:
+        headers = self._headers | headers_inc if headers_inc else self._headers
+        async with (
+            cache_control_manager(client_session, disabled=cache_disabled),
+            client_session.post(
+                url,
+                headers=headers,
+                ssl=self.client_manager.ssl_context,
+                proxy=self.client_manager.proxy,
+                data=data,
+            ) as response,
+        ):
             await self.client_manager.check_http_status(response, origin=origin)
             if req_resp:
                 content = await response.content.read()
