@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 import os
 from typing import TYPE_CHECKING
+from cyberdrop_dl.utils.utilities import purge_dir_tree
 
 from cyberdrop_dl.utils import constants
 
@@ -94,9 +95,11 @@ class PathManager:
         self.history_db.touch(exist_ok=True)
 
     def _set_output_filenames(self) -> None:
-        current_time_iso = datetime.now().strftime("%Y%m%d_%H%M%S")
+        now=datetime.now()
+        current_time_file_iso = now.strftime("%Y%m%d_%H%M%S")
+        current_time_folder_iso=now.strftime("%Y_%m_%d")
         log_settings_config = self.manager.config_manager.settings_data.logs
-        log_files: dict[str, Path] = log_settings_config.model_dump()
+        log_files: dict[str,Path] = log_settings_config.model_dump()
 
         for model_name, log_file in log_files.items():
             if model_name not in self._logs_model_names:
@@ -104,8 +107,8 @@ class PathManager:
             if log_settings_config.rotate_logs:
                 log_file = (
                     log_file.parent
-                    / datetime.now().strftime("%Y_%m_%d")
-                    / f"{log_file.stem}__{current_time_iso}{log_file.suffix}"
+                    /current_time_folder_iso
+                    / f"{log_file.stem}__{current_time_file_iso}{log_file.suffix}"
                 )
             log_files[model_name] = log_file
 
@@ -115,22 +118,13 @@ class PathManager:
             internal_name = f"{model_name.replace('_log','')}_log"
             setattr(self, internal_name, self.log_folder / getattr(log_settings_config, model_name))
     def _delete_logs_and_folders(self):
-        log_settings_config = self.manager.config_manager.settings_data.logs
-        log_files: dict[str, Path] = log_settings_config.model_dump()
-        if self.manager.config_manager.settings_data.logs.max_num_logs:
-            all_logs=[f for f in Path(self.log_folder).rglob('*.*')]
-            all_logs_sorted=sorted(all_logs, key=lambda f: Path(f).stat().st_ctime,reverse=True )
-            max_prev_logs=self.manager.config_manager.settings_data.logs.max_num_logs-1
-            for model_name, log_file in log_files.items():
-                if model_name not in self._logs_model_names:
-                    continue
-                for file in list(filter(lambda x:str(x).find(log_file.stem)!=-1,all_logs_sorted))[max_prev_logs:]:
+        now=datetime.now()
+        if self.manager.config_manager.settings_data.logs.logs_expire_after:
+            for file in set(self.log_folder.rglob("*.log")) | set(self.log_folder.rglob("*.csv")):
+                if (now-datetime.fromtimestamp(Path(file).stat().st_ctime))>self.manager.config_manager.settings_data.logs.logs_expire_after:
                     file.unlink(missing_ok=True)
-        for curr,_,_ in os.walk(self.log_folder,topdown=False):
-            if not os.listdir(curr):
-                Path(curr).rmdir()
+        purge_dir_tree(self.log_folder)
 
-           
     def _create_output_folders(self):
         for model_name in self._logs_model_names:
             internal_name = f"{model_name.replace('_log','')}_log"
