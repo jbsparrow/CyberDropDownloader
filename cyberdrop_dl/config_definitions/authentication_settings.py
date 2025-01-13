@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from .custom_types import AliasModel
+from .pydantic.custom_types import AliasModel
 
 
 class ForumAuth(BaseModel):

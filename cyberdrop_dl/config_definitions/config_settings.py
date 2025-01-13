@@ -8,7 +8,8 @@ from cyberdrop_dl.utils.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE
 from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
 from cyberdrop_dl.utils.data_enums_classes.supported_domains import SUPPORTED_SITES_DOMAINS
 
-from .custom_types import AliasModel, HttpAppriseURLModel, NonEmptyStr
+from .pydantic.custom_types import AliasModel, HttpAppriseURL, NonEmptyStr
+from cyberdrop_dl.config_definitions.pydantic.validators import parse_duration_to_timedelta
 
 
 class DownloadOptions(BaseModel):
@@ -40,7 +41,7 @@ class Files(AliasModel):
 
 class Logs(AliasModel):
     log_folder: Path = APP_STORAGE / "Configs" / "{config}" / "Logs"
-    webhook: HttpAppriseURLModel | None = Field(validation_alias="webhook_url", default=None)
+    webhook: HttpAppriseURL | None = Field(validation_alias="webhook_url", default=None)
     main_log: Path = Field(Path("downloader.log"), validation_alias="main_log_filename")
     last_forum_post: Path = Field(Path("Last_Scraped_Forum_Posts.csv"), validation_alias="last_forum_post_filename")
     unsupported_urls: Path = Field(Path("Unsupported_URLs.csv"), validation_alias="unsupported_urls_filename")
@@ -66,6 +67,21 @@ class Logs(AliasModel):
     @classmethod
     def fix_other_logs_extensions(cls, value: Path) -> Path:
         return value.with_suffix(".csv")
+    
+    @field_validator("logs_expire_after", mode="before")
+    @staticmethod
+    def parse_cache_duration(input_date: timedelta | str | int) -> timedelta:
+        """Parses `datetime.timedelta`, `str` or `int` into a timedelta format.
+
+        for `str`, the expected format is `value unit`, ex: `5 days`, `10 minutes`, `1 year`
+
+        valid units:
+            year(s), week(s), day(s), hour(s), minute(s), second(s), millisecond(s), microsecond(s)
+
+        for `int`, value is assummed as `days`
+        """
+        parse_duration_to_timedelta(input_date)
+        
 
 
 class FileSizeLimits(BaseModel):
