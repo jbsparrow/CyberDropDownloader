@@ -109,8 +109,8 @@ class PathManager:
             if log_settings_config.rotate_logs:
                 log_file = (
                     log_file.parent
-                    /current_time_folder_iso
-                    / f"{log_file.stem}__{current_time_file_iso}{log_file.suffix}"
+                    / current_time_folder_iso
+                    / f"{log_file.stem}_{current_time_file_iso}{log_file.suffix}"
                 )
             log_files[model_name] = log_file
 
