@@ -1,14 +1,16 @@
+from datetime import timedelta
 from logging import DEBUG
 from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, ByteSize, Field, NonNegativeInt, PositiveInt, field_serializer, field_validator
 
+from cyberdrop_dl.config_definitions.pydantic.validators import parse_duration_to_timedelta
 from cyberdrop_dl.utils.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE
 from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
 from cyberdrop_dl.utils.data_enums_classes.supported_domains import SUPPORTED_SITES_DOMAINS
 
-from .custom_types import AliasModel, HttpAppriseURL, NonEmptyStr
+from .pydantic.custom_types import AliasModel, HttpAppriseURL, NonEmptyStr
 
 
 class DownloadOptions(BaseModel):
@@ -49,6 +51,7 @@ class Logs(AliasModel):
     scrape_error_urls: Path = Field(Path("Scrape_Error_URLs.csv"), validation_alias="scrape_error_urls_filename")
     rotate_logs: bool = False
     log_line_width: PositiveInt = Field(default=240, ge=50)
+    logs_expire_after: timedelta | None = None
 
     @field_validator("webhook", mode="before")
     @classmethod
@@ -66,6 +69,22 @@ class Logs(AliasModel):
     @classmethod
     def fix_other_logs_extensions(cls, value: Path) -> Path:
         return value.with_suffix(".csv")
+
+    @field_validator("logs_expire_after", mode="before")
+    @staticmethod
+    def parse_logs_duration(input_date: timedelta | str | int | None) -> timedelta:
+        """Parses `datetime.timedelta`, `str` or `int` into a timedelta format.
+
+        for `str`, the expected format is `value unit`, ex: `5 days`, `10 minutes`, `1 year`
+
+        valid units:
+            year(s), week(s), day(s), hour(s), minute(s), second(s), millisecond(s), microsecond(s)
+
+        for `int`, value is assumed as `days`
+        """
+        if input_date is None:
+            return None
+        return parse_duration_to_timedelta(input_date)
 
 
 class FileSizeLimits(BaseModel):
