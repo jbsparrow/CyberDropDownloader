@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
-import os
 import sys
 from functools import wraps
 from pathlib import Path
@@ -18,24 +17,19 @@ from cyberdrop_dl.clients.errors import InvalidYamlError
 from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.scraper.scraper import ScrapeMapper
 from cyberdrop_dl.ui.program_ui import ProgramUI
-from cyberdrop_dl.ui.prompts.user_prompts import get_cookies_from_browsers
-from cyberdrop_dl.utils.logger import (
-    log,
-    log_spacer,
-    log_with_color,
-    print_to_console,
-)
+from cyberdrop_dl.utils import constants
+from cyberdrop_dl.utils.apprise import send_apprise_notifications
+from cyberdrop_dl.utils.logger import RedactedConsole, log, log_spacer, log_with_color
 from cyberdrop_dl.utils.sorting import Sorter
-from cyberdrop_dl.utils.utilities import (
-    check_latest_pypi,
-    check_partials_and_empty_folders,
-    send_webhook_message,
-    sent_apprise_notifications,
-)
+from cyberdrop_dl.utils.utilities import check_latest_pypi, check_partials_and_empty_folders, send_webhook_message
 from cyberdrop_dl.utils.yaml import handle_validation_error
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+startup_logger = logging.getLogger("cyberdrop_dl_startup")
+STARTUP_LOGGER_FILE = Path().cwd().joinpath("startup.log")
+STARTUP_LOGGER_CONSOLE = None
 
 
 def startup() -> Manager:
@@ -44,17 +38,19 @@ def startup() -> Manager:
     This will also run the UI for the program
     After this function returns, the manager will be ready to use and scraping / downloading can begin.
     """
+    setup_startup_logger()
     try:
         manager = Manager()
         manager.startup()
         if manager.parsed_args.cli_only_args.multiconfig:
+            startup_logger.info("validating all configs, please wait...")
             manager.validate_all_configs()
 
         if not manager.parsed_args.cli_only_args.download:
             ProgramUI(manager)
 
     except InvalidYamlError as e:
-        print_to_console(e.message, error=True)
+        startup_logger.error(e.message)
         sys.exit(1)
 
     except ValidationError as e:
@@ -64,11 +60,15 @@ def startup() -> Manager:
             "AuthSettings": manager.config_manager.authentication_settings,
         }
         handle_validation_error(e, sources=sources)
-        sys.exit(1)
 
     except KeyboardInterrupt:
-        print_to_console("Exiting...")
+        startup_logger.info("Exiting...")
         sys.exit(0)
+
+    except Exception:
+        msg = "An error occurred, please report this to the developer with your logs file:"
+        startup_logger.exception(msg)
+        sys.exit(1)
 
     else:
         return manager
@@ -84,12 +84,6 @@ async def runtime(manager: Manager) -> None:
         async with asyncio.TaskGroup() as task_group:
             manager.task_group = task_group
             await scrape_mapper.start()
-
-
-def pre_runtime(manager: Manager) -> None:
-    """Actions to complete before main runtime."""
-    if manager.config_manager.settings_data.browser_cookies.auto_import:
-        get_cookies_from_browsers(manager)
 
 
 async def post_runtime(manager: Manager) -> None:
@@ -114,45 +108,51 @@ async def post_runtime(manager: Manager) -> None:
         await manager.log_manager.update_last_forum_post()
 
 
+def setup_startup_logger() -> None:
+    global STARTUP_LOGGER_CONSOLE
+    startup_logger.setLevel(10)
+    STARTUP_LOGGER_FILE.unlink(missing_ok=True)
+    STARTUP_LOGGER_CONSOLE = RedactedConsole(
+        file=STARTUP_LOGGER_FILE.open("w", encoding="utf8"),
+        width=constants.DEFAULT_CONSOLE_WIDTH,
+    )
+    rich_file_handler = RichHandler(
+        **constants.RICH_HANDLER_CONFIG,
+        console=STARTUP_LOGGER_CONSOLE,
+        level=10,
+    )
+    rich_handler = RichHandler(**(constants.RICH_HANDLER_CONFIG | {"show_time": False}), level=10)
+    startup_logger.addHandler(rich_file_handler)
+    startup_logger.addHandler(rich_handler)
+
+
 def setup_debug_logger(manager: Manager) -> Path | None:
+    if not constants.DEBUG_VAR:
+        return None
+
     logger_debug = logging.getLogger("cyberdrop_dl_debug")
-    debug_log_file_path = None
-    running_in_IDE = os.getenv("PYCHARM_HOSTED") or os.getenv("TERM_PROGRAM") == "vscode"
-    from cyberdrop_dl.utils import constants
+    manager.config_manager.settings_data.runtime_options.log_level = 10
+    logger_debug.setLevel(manager.config_manager.settings_data.runtime_options.log_level)
+    debug_log_file_path = Path(__file__).parents[1] / "cyberdrop_dl_debug.log"
 
-    if running_in_IDE or manager.config_manager.settings_data.runtime_options.log_level == -1:
-        manager.config_manager.settings_data.runtime_options.log_level = 10
-        constants.DEBUG_VAR = True
+    rich_file_handler_debug = RichHandler(
+        **constants.RICH_HANDLER_DEBUG_CONFIG,
+        console=Console(
+            file=debug_log_file_path.open("w", encoding="utf8"),
+            width=manager.config_manager.settings_data.logs.log_line_width,
+        ),
+        level=manager.config_manager.settings_data.runtime_options.log_level,
+    )
 
-    if running_in_IDE or manager.config_manager.settings_data.runtime_options.console_log_level == -1:
-        constants.CONSOLE_DEBUG_VAR = True
+    logger_debug.addHandler(rich_file_handler_debug)
+    # aiosqlite_log = logging.getLogger("aiosqlite")
+    # aiosqlite_log.setLevel(manager.config_manager.settings_data.runtime_options.log_level)
+    # aiosqlite_log.addHandler(file_handler_debug)
 
-    if constants.DEBUG_VAR:
-        logger_debug.setLevel(manager.config_manager.settings_data.runtime_options.log_level)
-        debug_log_file_path = Path(__file__).parent / "cyberdrop_dl_debug.log"
-        if running_in_IDE:
-            debug_log_file_path = Path(__file__).parents[1] / "cyberdrop_dl_debug.log"
-
-        rich_file_handler_debug = RichHandler(
-            **constants.RICH_HANDLER_DEBUG_CONFIG,
-            console=Console(
-                file=debug_log_file_path.open("w", encoding="utf8"),
-                width=manager.config_manager.settings_data.logs.log_line_width,
-            ),
-            level=manager.config_manager.settings_data.runtime_options.log_level,
-        )
-
-        logger_debug.addHandler(rich_file_handler_debug)
-        # aiosqlite_log = logging.getLogger("aiosqlite")
-        # aiosqlite_log.setLevel(manager.config_manager.settings_data.runtime_options.log_level)
-        # aiosqlite_log.addHandler(file_handler_debug)
-
-    return debug_log_file_path.resolve() if debug_log_file_path else None
+    return debug_log_file_path.resolve()
 
 
 def setup_logger(manager: Manager, config_name: str) -> None:
-    from cyberdrop_dl.utils import constants
-
     logger = logging.getLogger("cyberdrop_dl")
     if manager.multiconfig:
         if len(logger.handlers) > 0:
@@ -166,20 +166,26 @@ def setup_logger(manager: Manager, config_name: str) -> None:
 
     logger.setLevel(manager.config_manager.settings_data.runtime_options.log_level)
 
-    if constants.DEBUG_VAR:
-        manager.config_manager.settings_data.runtime_options.log_level = 10
-
     rich_file_handler = RichHandler(
         **constants.RICH_HANDLER_CONFIG,
-        console=Console(
+        console=RedactedConsole(
             file=manager.path_manager.main_log.open("w", encoding="utf8"),
             width=manager.config_manager.settings_data.logs.log_line_width,
         ),
         level=manager.config_manager.settings_data.runtime_options.log_level,
     )
 
+    if manager.parsed_args.cli_only_args.no_ui:
+        constants.CONSOLE_LEVEL = manager.config_manager.settings_data.runtime_options.console_log_level
+
+    rich_handler = RichHandler(
+        **(constants.RICH_HANDLER_CONFIG | {"show_time": False}),
+        console=Console(),
+        level=constants.CONSOLE_LEVEL,
+    )
+
     logger.addHandler(rich_file_handler)
-    constants.CONSOLE_LEVEL = manager.config_manager.settings_data.runtime_options.console_log_level
+    logger.addHandler(rich_handler)
 
 
 def ui_error_handling_wrapper(func: Callable) -> None:
@@ -212,6 +218,10 @@ async def director(manager: Manager) -> None:
     if manager.multiconfig:
         configs_to_run = manager.config_manager.get_configs()
 
+    if STARTUP_LOGGER_FILE.is_file() and STARTUP_LOGGER_FILE.stat().st_size == 0:
+        STARTUP_LOGGER_CONSOLE.file.close()
+        STARTUP_LOGGER_FILE.unlink()
+
     start_time = manager.start_time
     while configs_to_run:
         current_config = configs_to_run[0]
@@ -224,7 +234,6 @@ async def director(manager: Manager) -> None:
         log_spacer(10)
 
         log("Starting CDL...\n", 20)
-        pre_runtime(manager)
         await runtime(manager)
         await post_runtime(manager)
 
@@ -240,7 +249,7 @@ async def director(manager: Manager) -> None:
             log_with_color("Finished downloading. Enjoy :)", "green", 20, show_in_stats=False)
 
         await send_webhook_message(manager)
-        sent_apprise_notifications(manager)
+        await send_apprise_notifications(manager)
         start_time = perf_counter()
 
 
@@ -254,7 +263,7 @@ def main() -> None:
             asyncio.run(director(manager))
             exit_code = 0
         except KeyboardInterrupt:
-            print_to_console("Trying to Exit ...")
+            startup_logger.info("Trying to Exit ...")
         finally:
             asyncio.run(manager.close())
     loop.close()

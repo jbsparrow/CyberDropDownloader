@@ -6,8 +6,8 @@ from dataclasses import field
 from re import Pattern
 from typing import TYPE_CHECKING
 
+from cyberdrop_dl.clients.errors import RealDebridError
 from cyberdrop_dl.managers.real_debrid.api import RealDebridApi
-from cyberdrop_dl.managers.real_debrid.errors import RealDebridError
 from cyberdrop_dl.utils.logger import log
 
 warnings.simplefilter(action="ignore", category=FutureWarning)

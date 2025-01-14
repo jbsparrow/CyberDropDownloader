@@ -5,6 +5,7 @@ import contextlib
 import datetime
 import json
 import re
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
@@ -20,8 +21,20 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
+@dataclass
+class Post:
+    id: int
+    title: str
+    date: int
+
+    @property
+    def number(self):
+        return self.id
+
+
 class KemonoCrawler(Crawler):
     primary_base_domain = URL("https://kemono.su")
+    DEFAULT_POST_TITLE_FORMAT = "{date} - {title}"
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "kemono", "Kemono")
@@ -181,12 +194,7 @@ class KemonoCrawler(Crawler):
         post_id = post["id"]
         title = post.get("title", "")
 
-        post_title = None
-        if self.manager.config_manager.settings_data.download_options.separate_posts:
-            post_title = f"{date} - {title}"
-            if self.manager.config_manager.settings_data.download_options.include_album_id_in_folder_name:
-                post_title = post_id + " - " + post_title
-
+        post_obj = Post(id=post_id, title=title, date=self.parse_datetime(date))
         new_title = self.create_title(user, None, None)
         scrape_item = self.create_scrape_item(
             scrape_item,
@@ -196,7 +204,7 @@ class KemonoCrawler(Crawler):
             None,
             self.parse_datetime(date),
         )
-        scrape_item.add_to_parent_title(post_title)
+        self.add_separate_post_title(scrape_item, post_obj)
         scrape_item.add_to_parent_title("Loose Files")
 
         yarl_links: list[URL] = []
@@ -249,12 +257,8 @@ class KemonoCrawler(Crawler):
         add_parent: URL | None = None,
     ) -> None:
         """Creates a new scrape item with the same parent as the old scrape item."""
-        post_title = None
-        if self.manager.config_manager.settings_data.download_options.separate_posts:
-            post_title = f"{date} - {title}"
-            if self.manager.config_manager.settings_data.download_options.include_album_id_in_folder_name:
-                post_title = post_id + " - " + post_title
 
+        post = Post(id=post_id, title=title, date=date)
         new_title = self.create_title(user, None, None)
         new_scrape_item = self.create_scrape_item(
             old_scrape_item,
@@ -262,10 +266,10 @@ class KemonoCrawler(Crawler):
             new_title,
             True,
             None,
-            self.parse_datetime(date),
+            post.date,
             add_parent=add_parent,
         )
-        new_scrape_item.add_to_parent_title(post_title)
+        self.add_separate_post_title(new_scrape_item, post)
         await self.handle_direct_link(new_scrape_item)
 
     async def get_user_info(self, scrape_item: ScrapeItem) -> dict:

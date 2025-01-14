@@ -9,7 +9,8 @@ from requests import Session
 from requests.exceptions import RequestException
 from yarl import URL
 
-from cyberdrop_dl.managers.real_debrid.errors import RealDebridError
+from cyberdrop_dl.clients.errors import RealDebridError
+from cyberdrop_dl.managers.real_debrid.errors import ERROR_CODES
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -84,7 +85,7 @@ class RealDebridApi:
             response.raise_for_status()
             JSONResp: dict = response.json()
         except RequestException:
-            raise RealDebridError(response) from None
+            raise RealDebridError(response, ERROR_CODES) from None
         except AttributeError:
             return response.text
         else:

@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
+from cyberdrop_dl.clients.errors import LoginError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FORUM, FORUM_POST, ScrapeItem
 from cyberdrop_dl.utils.logger import log
@@ -56,12 +57,15 @@ class XenforoSelectors:
     title: Selector = field(default=Selector("h1[class=p-title-value]", None))
     title_trash: Selector = field(default=Selector("span", None))
     quotes: Selector = field(default=Selector("blockquote", None))
+    post_name: str = "post-"
 
 
 @dataclass(frozen=True)
 class ForumPost:
     soup: BeautifulSoup
     selectors: PostSelectors
+    title: str | None = None
+    post_name: str = "post-"
 
     @property
     def content(self) -> Tag:
@@ -76,36 +80,46 @@ class ForumPost:
 
     @property
     def number(self):
+        if self.selectors.number.element == self.selectors.number.attribute:
+            number = int(self.soup.get(self.selectors.number.element))
+            return number
         number = self.soup.select_one(self.selectors.number.element)
-        return int(number.get(self.selectors.number.attribute).split("/")[-1].split("post-")[-1])
+        return int(number.get(self.selectors.number.attribute).split("/")[-1].split(self.post_name)[-1])
+
+    @property
+    def id(self):
+        return self.number
 
 
 class XenforoCrawler(Crawler):
     login_required = True
     primary_base_domain = None
     selectors = XenforoSelectors()
+    POST_NAME = None
+    thread_url_part = "threads"
 
     def __init__(self, manager: Manager, site: str, folder_domain: str | None = None) -> None:
         super().__init__(manager, site, folder_domain)
         self.primary_base_domain = self.primary_base_domain or URL(f"https://{site}")
+        self.POST_NAME = self.POST_NAME or "post-"
         self.attachment_url_part = ["attachments"]
         self.attachment_url_hosts = ["smgmedia", "attachments.f95zone"]
         self.logged_in = False
-        self.login_attempts = 0
         self.request_limiter = AsyncLimiter(10, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    async def async_startup(self) -> None:
+        if not self.logged_in:
+            await self.try_login()
+
+    async def pre_filter_link(self, link: URL) -> URL:
+        return link
+
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        if "threads" not in scrape_item.url.parts:
-            log(f"Scrape Failed: Unknown URL path: {scrape_item.url}", 40)
-            return
-
-        if not self.logged_in and self.login_attempts == 0:
-            await self.try_login()
-
+        scrape_item.url = await self.pre_filter_link(scrape_item.url)
         await self.thread(scrape_item)
 
     async def try_login(self) -> None:
@@ -123,8 +137,11 @@ class XenforoCrawler(Crawler):
         password = getattr(forums_auth_data, f"{self.domain}_password")
 
         if session_cookie or (username and password):
-            self.login_attempts += 1
-            await self.forum_login(login_url, session_cookie, username, password)
+            try:
+                await self.forum_login(login_url, session_cookie, username, password)
+            except LoginError:
+                if self.login_required:
+                    raise
 
         if not self.logged_in:
             msg = f"{self.folder_domain} login failed. "
@@ -135,6 +152,10 @@ class XenforoCrawler(Crawler):
     @error_handling_wrapper
     async def thread(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a forum thread."""
+        if self.thread_url_part not in scrape_item.url.parts:
+            log(f"Scrape Failed: Unknown URL path: {scrape_item.url}", 40)
+            return
+
         if not self.logged_in and self.login_required:
             return
 
@@ -143,14 +164,14 @@ class XenforoCrawler(Crawler):
         thread_url = scrape_item.url
         post_number = 0
         post_sections = {scrape_item.url.fragment}
-        threads_part_index = scrape_item.url.parts.index("threads")
+        threads_part_index = scrape_item.url.parts.index(self.thread_url_part)
         thread_id = thread_url.parts[threads_part_index].split(".")[-1].split("#")[0]
         post_part_index = threads_part_index + 1
         if len(scrape_item.url.parts) > post_part_index:
             post_sections.add(scrape_item.url.parts[post_part_index])
 
-        if any("post-" in sec for sec in post_sections):
-            url_parts = str(scrape_item.url).rsplit("post-", 1)
+        if any(self.POST_NAME in sec for sec in post_sections):
+            url_parts = str(scrape_item.url).rsplit(self.POST_NAME, 1)
             thread_url = URL(url_parts[0].rstrip("#"))
             post_number = int(url_parts[-1].strip("/")) if len(url_parts) == 2 else 0
 
@@ -165,7 +186,7 @@ class XenforoCrawler(Crawler):
             posts = soup.select(self.selectors.posts.element)
             continue_scraping = False
             for post in posts:
-                current_post = ForumPost(post, selectors=self.selectors.posts)
+                current_post = ForumPost(post, selectors=self.selectors.posts, post_name=self.POST_NAME)
                 last_scraped_post_number = current_post.number
                 scrape_post, continue_scraping = self.check_post_number(post_number, current_post.number)
 
@@ -175,7 +196,7 @@ class XenforoCrawler(Crawler):
                         thread_url,
                         title,
                         possible_datetime=current_post.date,
-                        add_parent=scrape_item.url.joinpath(f"post-{current_post.number}"),
+                        add_parent=scrape_item.url.joinpath(f"{self.POST_NAME}{current_post.number}"),
                     )
                     trash: list[Tag] = title_block.find_all(self.selectors.quotes.element)
                     for element in trash:
@@ -193,9 +214,7 @@ class XenforoCrawler(Crawler):
 
     async def post(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         """Scrapes a post."""
-        if self.manager.config_manager.settings_data.download_options.separate_posts:
-            scrape_item.add_to_parent_title(f"post-{post.number}")
-
+        self.add_separate_post_title(scrape_item, post)
         scrape_item.set_type(FORUM_POST, self.manager)
         posts_scrapers = [self.attachments, self.embeds, self.images, self.links, self.videos]
         for scraper in posts_scrapers:
@@ -314,8 +333,8 @@ class XenforoCrawler(Crawler):
     async def write_last_forum_post(self, scrape_item: ScrapeItem, post_number: int) -> None:
         if not post_number:
             return
-        post_string = f"post-{post_number}"
-        if "page-" in scrape_item.url.raw_name or "post-" in scrape_item.url.raw_name:
+        post_string = f"{self.POST_NAME}{post_number}"
+        if "page-" in scrape_item.url.raw_name or self.POST_NAME in scrape_item.url.raw_name:
             last_post_url = scrape_item.url.parent / post_string
         else:
             last_post_url = scrape_item.url / post_string
@@ -335,7 +354,7 @@ class XenforoCrawler(Crawler):
                     if page_url.startswith("/"):
                         page_url = self.primary_base_domain / page_url[1:]
                     page_url = URL(page_url)
-                    log(f"scraping page: {page_url}")
+                    page_url = await self.pre_filter_link(page_url)
                     continue
             break
 

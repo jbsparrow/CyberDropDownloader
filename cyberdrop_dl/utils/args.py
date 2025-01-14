@@ -65,6 +65,10 @@ class CommandLineOnlyArgs(BaseModel):
 
 
 class DeprecatedArgs(BaseModel):
+    output_folder: Path | None = Field(
+        None,
+        deprecated="'--output-folder' is deprecated and will be removed in the future. Use '--download-folder'",
+    )
     download_all_configs: bool = Field(
         False,
         description="Skip the UI and go straight to downloading (runs all configs sequentially)",
@@ -156,6 +160,10 @@ class ParsedArgs(AliasModel):
                 add_warning_msg_from("sort_all_configs")
                 self.config_settings.sorting.sort_downloads = True
                 self.cli_only_args.config = "ALL"
+
+            if self.deprecated_args.output_folder:
+                add_warning_msg_from("output_folder")
+                self.config_settings.files.download_folder = self.deprecated_args.output_folder
 
             if self.deprecated_args.download_all_configs:
                 add_warning_msg_from("download_all_configs")

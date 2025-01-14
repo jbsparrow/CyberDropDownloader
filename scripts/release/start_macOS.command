@@ -5,14 +5,53 @@
 PYTHON=""
 VENV_DIR=""
 COMMANDLINE_ARGS=""
+AUTO_UPDATE=true
+AUTO_UPDATE_PIP=true
+
+# Parse arguments
+HELP=false
+SKIP_UPDATE=false
+for arg in "$@"
+do
+    case "$arg" in
+        --no-update)
+            SKIP_UPDATE=true
+            ;;
+        -h|--help)
+            HELP=true
+            ;;
+    esac
+done
+
+# Define help message
+HELP_TEXT=$(cat << EOF
+
+Usage:
+  $0 [OPTIONS]
+
+Options:
+  --no-update       Skip updating Cyberdrop-DL.
+  -h, --help        Show this help message and exit.
+
+Description:
+  This script sets up a virtual environment and runs Cyberdrop-DL.
+  By default, it ensures that Cyberdrop-DL is installed and up to date.
+
+EOF
+)
+# Display help message
+if [ "$HELP" = true ]; then
+    echo "$HELP_TEXT"
+    exit 0
+fi
 
 # Check the installed Python version
 MIN_PYTHON_VER="3.11"
-MAX_PYTHON_VER="3.13"
+MAX_PYTHON_VER="3.14"
 
 if [ -z "$PYTHON" ]
 then
-      PYTHON=python3
+    PYTHON=python3
 fi
 
 "$PYTHON" -c "
@@ -36,14 +75,14 @@ fi
 
 if [ -z "$VENV_DIR" ]
 then
-      VENV_DIR="${0%/*}/venv"
+    VENV_DIR="${0%/*}/venv"
 fi
 
 if [ ! -f "${VENV_DIR}/bin/activate" ]
 then
-      echo Creating virtual environment
-      "$PYTHON" -m venv "${VENV_DIR}"
-      echo
+    echo Creating virtual environment
+    "$PYTHON" -m venv "${VENV_DIR}"
+    echo
 fi
 
 
@@ -51,11 +90,33 @@ echo Attempting to start venv
 . "${VENV_DIR}/bin/activate"
 echo
 
-echo Updating PIP
-"$PYTHON" -m pip install --upgrade pip
-echo
+if [ "$AUTO_UPDATE_PIP" = true ]; then
+    echo Updating PIP
+    "$PYTHON" -m pip install --upgrade pip
+    echo
+fi
 
-echo Installing / Updating Cyberdrop-DL
 pip uninstall -y -qq cyberdrop-dl
-pip install --upgrade "cyberdrop-dl-patched>=6.0,<7.0" && clear && cyberdrop-dl $COMMANDLINE_ARGS
-echo
+# Ensure Cyberdrop-DL is installed
+if ! command -v cyberdrop-dl >/dev/null 2>&1; then
+    echo Cyberdrop-DL is not installed, installing...
+    pip install "cyberdrop-dl-patched>=6.0,<7.0"
+    echo
+    if [ $? -ne 0 ]; then
+        echo "Failed to install Cyberdrop-DL."
+        exit 1
+    fi
+    if ! command -v cyberdrop-dl >/dev/null 2>&1; then
+        echo Cyberdrop-DL was successfully installed, but could not be found in the virtual environment.
+        exit 1
+    fi
+else
+    if [ "$AUTO_UPDATE" = true ] && [ "$SKIP_UPDATE" = false ]; then
+        echo Updating Cyberdrop-DL...
+        pip install --upgrade "cyberdrop-dl-patched>=6.0,<7.0"
+        echo
+    fi
+fi
+
+
+clear && cyberdrop-dl $COMMANDLINE_ARGS

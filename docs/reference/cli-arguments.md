@@ -171,6 +171,7 @@ download_options:
   --remove-generated-id-from-filenames, --no-remove-generated-id-from-filenames
   --scrape-single-forum-post, --no-scrape-single-forum-post
   --separate-posts, --no-separate-posts
+  --separate-posts-format SEPARATE_POSTS_FORMAT
   --skip-download-mark-completed, --no-skip-download-mark-completed
   --skip-referer-seen-before, --no-skip-referer-seen-before
   --maximum-number-of-children [MAXIMUM_NUMBER_OF_CHILDREN ...]
@@ -226,6 +227,7 @@ runtime_options:
   --jdownloader-download-dir JDOWNLOADER_DOWNLOAD_DIR
   --jdownloader-autostart, --no-jdownloader-autostart
   --jdownloader-whitelist [JDOWNLOADER_WHITELIST ...]
+  --deep-scrape, --no-deep-scrape
 
 sorting:
   --sort-downloads, --no-sort-downloads

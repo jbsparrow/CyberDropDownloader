@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar
 
 import asyncpraw
@@ -23,8 +24,20 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
+@dataclass
+class Post:
+    title: str
+    date: int
+    id: int = None
+
+    @property
+    def number(self):
+        return self.id
+
+
 class RedditCrawler(Crawler):
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {"reddit": ["reddit", "redd.it"]}
+    DEFAULT_POST_TITLE_FORMAT = "{title}"
     primary_base_domain = URL("https://www.reddit.com/")
 
     def __init__(self, manager: Manager, site: str) -> None:
@@ -69,7 +82,7 @@ class RedditCrawler(Crawler):
     @error_handling_wrapper
     async def user(self, scrape_item: ScrapeItem, reddit: asyncpraw.Reddit) -> None:
         """Scrapes user pages."""
-        username = scrape_item.url.name or scrape_item.url.parts[-2]
+        username = scrape_item.url.parts[-2] if len(scrape_item.url.parts) > 3 else scrape_item.url.name
         title = self.create_title(username, None, None)
         scrape_item.add_to_parent_title(title)
         scrape_item.part_of_album = True
@@ -197,9 +210,9 @@ class RedditCrawler(Crawler):
             try:
                 post = await reddit.submission(url=head["location"])
             except asyncprawcore.exceptions.Forbidden:
-                raise ScrapeError(403, "Forbidden", origin=scrape_item) from None
+                raise ScrapeError(403, origin=scrape_item) from None
             except asyncprawcore.exceptions.NotFound:
-                raise ScrapeError(404, "Not Found", origin=scrape_item) from None
+                raise ScrapeError(404, origin=scrape_item) from None
 
             await self.post(scrape_item, post, reddit)
             return
@@ -217,6 +230,7 @@ class RedditCrawler(Crawler):
         add_parent: URL | None = None,
     ) -> ScrapeItem:
         """Creates a new scrape item with the same parent as the old scrape item."""
+        post = Post(title=title, date=date)
         new_scrape_item = self.create_scrape_item(
             old_scrape_item,
             link,
@@ -226,6 +240,5 @@ class RedditCrawler(Crawler):
             date,
             add_parent=add_parent,
         )
-        if self.manager.config_manager.settings_data.download_options.separate_posts:
-            new_scrape_item.add_to_parent_title(title)
+        self.add_separate_post_title(new_scrape_item, post)
         return new_scrape_item

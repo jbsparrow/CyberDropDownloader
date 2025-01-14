@@ -16,7 +16,7 @@ you can craft it and directly [submit it as a Pull Request](#submitting-a-pull-r
 
 ### Submitting an Issue
 
-Before openning an issue, search through existing issues to ensure you are not opening a duplicate.
+Before opening an issue, search through existing issues to ensure you are not opening a duplicate.
 You must also [read the wiki](https://script-ware.gitbook.io/cyberdrop-dl/frequently-asked-questions) to learn how to solve most common problems.
 
 If your issue appears to be a bug, and hasn't been reported, open a new issue. Please do not report duplicate issues.
@@ -55,8 +55,7 @@ If everything is okay, your changes will be merged into the project.
 
 ## Setting up the development environment
 
-1. Install a [supported version of Python](https://www.python.org/downloads/). Cyberdrop-DL supports python `3.11` through `3.12`
-(python `3.13` is **NOT** supported yet)
+1. Install a [supported version of Python](https://www.python.org/downloads/). Cyberdrop-DL supports python `3.11` through `3.13`
 
 2. Clone the repo
 

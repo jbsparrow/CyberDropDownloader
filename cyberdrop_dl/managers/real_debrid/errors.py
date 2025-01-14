@@ -1,13 +1,3 @@
-from __future__ import annotations
-
-from http import HTTPStatus
-from typing import TYPE_CHECKING
-
-from yarl import URL
-
-if TYPE_CHECKING:
-    from requests import Response
-
 ERROR_CODES = {
     -1: "Internal error",
     1: "Missing parameter",
@@ -47,24 +37,3 @@ ERROR_CODES = {
     35: "Infringing file",
     36: "Fair Usage Limit",
 }
-
-
-class RealDebridError(BaseException):
-    """Base RealDebrid API error."""
-
-    def __init__(self, response: Response) -> None:
-        self.path = URL(response.url).path
-        try:
-            JSONResp: dict = response.json()
-            self.code = JSONResp.get("error_code")
-            if self.code == 16:
-                self.code = 7
-            self.error = ERROR_CODES.get(self.code, "Unknown error")
-
-        except AttributeError:
-            self.code = response.status_code
-            self.error = f"{self.code} - {HTTPStatus(self.code).phrase}"
-
-        self.error = self.error.capitalize()
-        self.msg = f"{self.code}: {self.error} at {self.path}"
-        super().__init__(self.msg)

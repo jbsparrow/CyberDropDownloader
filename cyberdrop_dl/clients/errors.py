@@ -6,15 +6,14 @@ from typing import TYPE_CHECKING
 
 from yarl import URL
 
+from cyberdrop_dl.utils.constants import VALIDATION_ERROR_FOOTER
+
 if TYPE_CHECKING:
+    from requests import Response
     from yaml.constructor import ConstructorError
 
     from cyberdrop_dl.scraper.crawler import ScrapeItem
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
-
-VALIDATION_ERROR_FOOTER = """
-Read the documentation for guidance on how to resolve this error: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options
-Please note, this is not a bug. Do not open issues related to this"""
 
 
 class CDLBaseError(Exception):
@@ -103,6 +102,39 @@ class RestrictedFiletypeError(CDLBaseError):
         """This error will be thrown when has a filytpe not allowed by config."""
         ui_message = "Restricted Filetype"
         super().__init__(ui_message, origin=origin)
+
+
+class MediaFireError(CDLBaseError):
+    def __init__(
+        self, status: str | int, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None
+    ) -> None:
+        """This error will be thrown when a scrape fails."""
+        ui_message = f"{status} MediaFire Error"
+        super().__init__(ui_message, message=message, status=status, origin=origin)
+
+
+class RealDebridError(CDLBaseError):
+    """Base RealDebrid API error."""
+
+    def __init__(self, response: Response, error_codes: dict[int, str]) -> None:
+        url = URL(response.url)
+        self.path = url.path
+        try:
+            JSONResp: dict = response.json()
+            code = JSONResp.get("error_code")
+            if code == 16:
+                code = 7
+            error = error_codes.get(code, "Unknown error")
+
+        except AttributeError:
+            code = response.status_code
+            error = f"{code} - {HTTPStatus(code).phrase}"
+
+        error = error.capitalize()
+
+        """This error will be thrown when a scrape fails."""
+        ui_message = f"{code} RealDebrid Error"
+        super().__init__(ui_message, message=error, status=code, origin=url)
 
 
 class ScrapeError(CDLBaseError):

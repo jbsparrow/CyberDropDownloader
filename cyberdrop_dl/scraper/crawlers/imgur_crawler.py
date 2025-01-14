@@ -48,7 +48,7 @@ class ImgurCrawler(Crawler):
         if self.imgur_client_id == "":
             log("To scrape imgur content, you need to provide a client id", 30)
             raise LoginError(message="No Imgur Client ID provided")
-        await self.check_imgur_credits()
+        await self.check_imgur_credits(scrape_item)
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
 
@@ -101,7 +101,7 @@ class ImgurCrawler(Crawler):
         if self.imgur_client_id == "":
             log("To scrape imgur content, you need to provide a client id", 30)
             raise LoginError(message="No Imgur Client ID provided")
-        await self.check_imgur_credits()
+        await self.check_imgur_credits(scrape_item)
 
         image_id = scrape_item.url.parts[-1]
         async with self.request_limiter:
@@ -129,9 +129,11 @@ class ImgurCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def check_imgur_credits(self) -> None:
+    async def check_imgur_credits(self, scrape_item: ScrapeItem | None = None) -> None:
         """Checks the remaining credits."""
-        credits_obj = await self.client.get_json(self.domain, self.imgur_api / "credits", headers_inc=self.headers)
+        credits_obj = await self.client.get_json(
+            self.domain, self.imgur_api / "credits", headers_inc=self.headers, origin=scrape_item
+        )
         self.imgur_client_remaining = credits_obj["data"]["ClientRemaining"]
         if self.imgur_client_remaining < 100:
-            raise ScrapeError(429, "Imgur API rate limit reached")
+            raise ScrapeError(429, "Imgur API rate limit reached", origin=scrape_item)

@@ -4,6 +4,12 @@ from .pydantic.custom_types import AliasModel
 
 
 class ForumAuth(BaseModel):
+    allporncomix_xf_user_cookie: str = ""
+    allporncomix_username: str = ""
+    allporncomix_password: str = ""
+    bellazon_xf_user_cookie: str = ""
+    bellazon_username: str = ""
+    bellazon_password: str = ""
     celebforum_xf_user_cookie: str = ""
     celebforum_username: str = ""
     celebforum_password: str = ""
@@ -22,6 +28,9 @@ class ForumAuth(BaseModel):
     socialmediagirls_xf_user_cookie: str = ""
     socialmediagirls_username: str = ""
     socialmediagirls_password: str = ""
+    titsintops_xf_user_cookie: str = ""
+    titsintops_username: str = ""
+    titsintops_password: str = ""
     xbunker_xf_user_cookie: str = ""
     xbunker_username: str = ""
     xbunker_password: str = ""

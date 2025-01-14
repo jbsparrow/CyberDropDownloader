@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import ssl
 from http import HTTPStatus
+from http.cookiejar import MozillaCookieJar
 from typing import TYPE_CHECKING
 
 import aiohttp
@@ -17,8 +18,9 @@ from cyberdrop_dl.clients.download_client import DownloadClient
 from cyberdrop_dl.clients.errors import DDOSGuardError, DownloadError, ScrapeError
 from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.managers.download_speed_manager import DownloadSpeedLimiter
+from cyberdrop_dl.ui.prompts.user_prompts import get_cookies_from_browsers
 from cyberdrop_dl.utils.constants import CustomHTTPStatus
-from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.logger import log, log_spacer
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -27,6 +29,7 @@ if TYPE_CHECKING:
 DOWNLOAD_ERROR_ETAGS = {
     "d835884373f4d6c8f24742ceabe74946": "Imgur image has been removed",
     "65b7753c-528a": "SC Scrape Image",
+    "5c4fb843-ece": "PixHost Removed Image",
 }
 
 DDOS_GUARD_CHALLENGE_TITLES = ["Just a moment...", "DDoS-Guard"]
@@ -97,6 +100,34 @@ class ClientManager:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    def load_cookie_files(self) -> None:
+        if self.manager.config_manager.settings_data.browser_cookies.auto_import:
+            get_cookies_from_browsers(self.manager)
+        cookie_files = sorted(self.manager.path_manager.cookies_dir.glob("*.txt"))
+        if not cookie_files:
+            return
+
+        domains_seen = set()
+        for file in cookie_files:
+            cookie_jar = MozillaCookieJar(file)
+            try:
+                cookie_jar.load(ignore_discard=True)
+            except OSError as e:
+                log(f"Unable to load cookies from '{file.name}':\n  {e!s}", 40)
+                continue
+            current_cookie_file_domains = set()
+            for cookie in cookie_jar:
+                simplified_domain = cookie.domain[1:] if cookie.domain.startswith(".") else cookie.domain
+                if simplified_domain not in current_cookie_file_domains:
+                    log(f"Found cookies for {simplified_domain} in file '{file.name}'", 20)
+                    current_cookie_file_domains.add(simplified_domain)
+                    if simplified_domain in domains_seen:
+                        log(f"Previous cookies for domain {simplified_domain} detected. They will be overwritten", 30)
+                domains_seen.add(simplified_domain)
+                self.cookies.update_cookies({cookie.name: cookie.value}, response_url=URL(f"https://{cookie.domain}"))
+
+        log_spacer(20, log_to_console=False)
+
     async def get_downloader_spacer(self, key: str) -> float:
         """Returns the download spacer for a domain."""
         if key in self.download_spacer:
@@ -133,7 +164,7 @@ class ClientManager:
             with contextlib.suppress(ContentTypeError):
                 JSON_Resp: dict = await response.json()
                 if "status" in JSON_Resp and "notFound" in JSON_Resp["status"]:
-                    raise ScrapeError(HTTPStatus.NOT_FOUND, origin=origin)
+                    raise ScrapeError(404, origin=origin)
                 if "data" in JSON_Resp and "error" in JSON_Resp["data"]:
                     raise ScrapeError(JSON_Resp["status"], JSON_Resp["data"]["error"], origin=origin)
 
@@ -143,7 +174,7 @@ class ClientManager:
 
         if response_text:
             soup = BeautifulSoup(response_text, "html.parser")
-            if cls.check_ddos_guard(soup) and cls.check_cloudflare(soup):
+            if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
                 raise DDOSGuardError(origin=origin)
         status = status if headers.get("Content-Type") else CustomHTTPStatus.IM_A_TEAPOT
         message = None if headers.get("Content-Type") else "No content-type in response header"

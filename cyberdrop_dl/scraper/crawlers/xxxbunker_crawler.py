@@ -109,21 +109,21 @@ class XXXBunkerCrawler(Crawler):
 
         except (AttributeError, TypeError):
             if ajax_soup and "You must be registered to download this video" in ajax_soup.text:
-                raise ScrapeError(403, f"Invalid PHPSESSID: {scrape_item.url}", origin=scrape_item) from None
+                raise ScrapeError(403, "Invalid cookies, PHPSESSID", origin=scrape_item) from None
 
             if "TRAFFIC VERIFICATION" in soup.text:
                 await asyncio.sleep(self.wait_time)
                 self.wait_time = min(self.wait_time + 10, MAX_WAIT)
                 self.rate_limit = max(self.rate_limit * 0.8, MIN_RATE_LIMIT)
                 self.request_limiter = AsyncLimiter(self.rate_limit, 60)
-                raise ScrapeError(429, f"Too many request: {scrape_item.url}", origin=scrape_item) from None
-            raise ScrapeError(404, f"Could not find video source for {scrape_item.url}", origin=scrape_item) from None
+                raise ScrapeError(429, origin=scrape_item) from None
+            raise ScrapeError(422, "Couldn't find video source", origin=scrape_item) from None
 
         # NOTE: hardcoding the extension to prevent quering the final server URL
         # final server URL is always different so it can not be saved to db.
         filename, ext = f"{video_id}.mp4", ".mp4"
-        custom_file_name, _ = get_filename_and_ext(f"{title} [{video_id}]{ext}")
-        await self.handle_file(link, scrape_item, filename, ext, custom_file_name)
+        custom_filename, _ = get_filename_and_ext(f"{title} [{video_id}]{ext}")
+        await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem) -> None:
@@ -145,11 +145,11 @@ class XXXBunkerCrawler(Crawler):
 
         # Not a valid URL
         else:
-            raise ScrapeError(400, f"Unsupported URL format: {scrape_item.url}", origin=scrape_item)
+            raise ScrapeError(400, "Unsupported URL format", origin=scrape_item)
 
         scrape_item.part_of_album = True
 
-        async for soup in self.web_pager(scrape_item.url):
+        async for soup in self.web_pager(scrape_item):
             videos = soup.select("a[data-anim='4']")
             for video in videos:
                 link = video.get("href")
@@ -163,9 +163,9 @@ class XXXBunkerCrawler(Crawler):
                 new_scrape_item = self.create_scrape_item(scrape_item, link, title, add_parent=scrape_item.url)
                 await self.video(new_scrape_item)
 
-    async def web_pager(self, url: URL) -> AsyncGenerator[BeautifulSoup]:
+    async def web_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
         """Generator of website pages."""
-        page_url = url
+        page_url = scrape_item.url
         rate_limited = True
         while True:
             attempt = 1
@@ -189,7 +189,7 @@ class XXXBunkerCrawler(Crawler):
                 await asyncio.sleep(self.wait_time)
 
             if rate_limited:
-                raise ScrapeError(429, f"Too many request: {url}")
+                raise ScrapeError(429, origin=scrape_item)
 
             next_page = soup.select_one("div.page-list")
             next_page = next_page.find("a", string="Next") if next_page else None

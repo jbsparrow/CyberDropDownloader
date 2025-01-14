@@ -10,10 +10,9 @@ import aiofiles
 import arrow
 from yarl import URL
 
-from cyberdrop_dl import __version__ as current_version
 from cyberdrop_dl.clients.errors import JDownloaderError
 from cyberdrop_dl.downloader.downloader import Downloader
-from cyberdrop_dl.scraper import ALL_CRAWLERS, DEBUG_CRAWLERS
+from cyberdrop_dl.scraper import CRAWLERS
 from cyberdrop_dl.scraper.filters import (
     has_valid_extension,
     is_in_domain_list,
@@ -22,7 +21,7 @@ from cyberdrop_dl.scraper.filters import (
     remove_trailing_slash,
 )
 from cyberdrop_dl.scraper.jdownloader import JDownloader
-from cyberdrop_dl.utils.constants import BLOCKED_DOMAINS, PRERELEASE_TAGS, REGEX_LINKS
+from cyberdrop_dl.utils.constants import BLOCKED_DOMAINS, REGEX_LINKS
 from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext
@@ -47,12 +46,7 @@ class ScrapeMapper:
 
     def start_scrapers(self) -> None:
         """Starts all scrapers."""
-        crawlers = ALL_CRAWLERS
-        is_testing = next((tag for tag in PRERELEASE_TAGS if tag in current_version), False)
-        if not is_testing:
-            crawlers -= DEBUG_CRAWLERS
-
-        for crawler in crawlers:
+        for crawler in CRAWLERS:
             if not crawler.SUPPORTED_SITES:
                 site_crawler = crawler(self.manager)
                 self.existing_crawlers[site_crawler.domain] = site_crawler
@@ -68,7 +62,7 @@ class ScrapeMapper:
         if self.jdownloader.enabled and isinstance(self.jdownloader.jdownloader_agent, Field):
             self.jdownloader.jdownloader_setup()
 
-    def start_real_debrid(self) -> None:
+    async def start_real_debrid(self) -> None:
         """Starts RealDebrid."""
         if isinstance(self.manager.real_debrid_manager.api, Field):
             self.manager.real_debrid_manager.startup()
@@ -77,16 +71,15 @@ class ScrapeMapper:
             from cyberdrop_dl.scraper.crawlers.realdebrid_crawler import RealDebridCrawler
 
             self.existing_crawlers["real-debrid"] = RealDebridCrawler(self.manager)
-            self.existing_crawlers["real-debrid"].startup()
+            await self.existing_crawlers["real-debrid"].startup()
 
     async def start(self) -> None:
         """Starts the orchestra."""
         self.manager.scrape_mapper = self
-
+        self.manager.client_manager.load_cookie_files()
         self.start_scrapers()
         self.start_jdownloader()
-        self.start_real_debrid()
-
+        await self.start_real_debrid()
         self.no_crawler_downloader.startup()
 
         if self.manager.parsed_args.cli_only_args.retry_failed:
@@ -161,8 +154,9 @@ class ScrapeMapper:
         for title in links:
             for url in links[title]:
                 item = self.create_item_from_link(url)
-                item.add_to_parent_title(title)
-                item.part_of_album = True
+                if title:
+                    item.add_to_parent_title(title)
+                    item.part_of_album = True
                 if self.filter_items(item):
                     items.append(item)
         for item in items:
@@ -253,8 +247,8 @@ class ScrapeMapper:
             # get most restrictive domain if multiple domain matches
             supported_domain = max(supported_domain, key=len)
             scraper = self.existing_crawlers[supported_domain]
-            if isinstance(scraper.client, Field):
-                scraper.startup()
+            if not scraper.ready:
+                await scraper.startup()
             self.manager.task_group.create_task(scraper.run(scrape_item))
             return
 
@@ -273,7 +267,7 @@ class ScrapeMapper:
             scrape_item.part_of_album = True
             download_folder = get_download_path(self.manager, scrape_item, "no_crawler")
             filename, _ = get_filename_and_ext(scrape_item.url.name)
-            media_item = MediaItem(scrape_item.url, scrape_item, download_folder, filename, None)
+            media_item = MediaItem(scrape_item.url, scrape_item, download_folder, filename)
             self.manager.task_group.create_task(self.no_crawler_downloader.run(media_item))
             return
 

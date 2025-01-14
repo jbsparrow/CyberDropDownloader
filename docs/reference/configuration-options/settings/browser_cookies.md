@@ -56,10 +56,8 @@ List of domains to extract cookies from. You can put any domain on the list, but
 
 ## Manual Cookie Extraction
 
-If cookie extraction fails, you can manually extract the cookies from your browser using tools like [cookie-editor](https://cookie-editor.com) and save them at `AppData/Cookies/<domain>.txt`, where domain is the full primary base domain of the site you exported the cookies from. The file must be a Netscape formatted cookie file
+If cookie extraction fails, you can manually extract the cookies from your browser using tools like [cookie-editor](https://cookie-editor.com) and save them at `AppData/Cookies/<site_name>.txt`. The file must be a Netscape formatted cookie file. You can use any name for the file as long as it has a `.txt` extension.
 
-### Examples
-
-- For SocialMediaGirls, the name should be `forums.socialmediagirls.com.txt`
-- For bunkrr, the name should be `bunkr.site.txt`
-- For cyberdrop, the name should be `cyberdrop.me.txt`
+{% hint style="info" %}
+Multiple cookie files are supported. You could have a `SocialMediaGirls.txt` file and a `cyberdrop.txt` file, for example
+{% endhint %}

@@ -13,7 +13,7 @@ Simply open a terminal and enter the following command:
 python3 --version
 ```
 
-If the version number is 3.11 or 3.12, you're all set!
+If the version number is 3.11, 3.12 or 3.13, you're all set!
 
 If you encounter an error when running the command, try the following:
 

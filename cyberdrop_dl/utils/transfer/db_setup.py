@@ -74,8 +74,6 @@ class TransitionManager:
                 pass
             Path("./config.yaml").rename(OLD_FILES / "config.yaml")
 
-        if Path("./downloader.log").is_file():
-            Path("./downloader.log").rename(OLD_FILES / "downloader.log")
         if Path("./Errored_Download_URLs.csv").is_file():
             Path("./Errored_Download_URLs.csv").rename(OLD_FILES / "Errored_Download_URLs.csv")
         if Path("./Errored_Scrape_URLs.csv").is_file():

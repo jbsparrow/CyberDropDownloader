@@ -53,9 +53,13 @@ class ScrapingProgress:
     def get_queue_length(self) -> int:
         """Returns the number of tasks in the scraper queue."""
         total = 0
-
-        for scraper in self.manager.scrape_mapper.existing_crawlers.values():
-            total += scraper.waiting_items
+        unique_crawler_ids = set()
+        for crawler in self.manager.scrape_mapper.existing_crawlers.values():
+            crawler_id = id(crawler)  # Only count each instance of the crawler once
+            if crawler_id in unique_crawler_ids:
+                continue
+            unique_crawler_ids.add(crawler_id)
+            total += crawler.waiting_items
 
         return total
 

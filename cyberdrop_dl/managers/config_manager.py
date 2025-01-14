@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import shutil
 from dataclasses import field
 from time import sleep
@@ -8,6 +9,7 @@ from typing import TYPE_CHECKING
 from cyberdrop_dl.config_definitions import AuthSettings, ConfigSettings, GlobalSettings
 from cyberdrop_dl.managers.log_manager import LogManager
 from cyberdrop_dl.utils import yaml
+from cyberdrop_dl.utils.apprise import get_apprise_urls
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -15,6 +17,7 @@ if TYPE_CHECKING:
     from pydantic import BaseModel
 
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.utils.apprise import AppriseURL
 
 
 class ConfigManager:
@@ -25,6 +28,8 @@ class ConfigManager:
         self.authentication_settings: Path = field(init=False)
         self.settings: Path = field(init=False)
         self.global_settings: Path = field(init=False)
+        self.deep_scrape: bool = False
+        self.apprise_urls: list[AppriseURL] = []
 
         self.authentication_data: AuthSettings = field(init=False)
         self.settings_data: ConfigSettings = field(init=False)
@@ -50,15 +55,16 @@ class ConfigManager:
         self.settings.parent.mkdir(parents=True, exist_ok=True)
         self.pydantic_config = self.manager.cache_manager.get("pydantic_config")
         self.load_configs()
-        if not self.pydantic_config:
-            self.pydantic_config = True
-            self.manager.cache_manager.save("pydantic_config", True)
 
     def load_configs(self) -> None:
         """Loads all the configs."""
         self._load_authentication_config()
         self._load_global_settings_config()
         self._load_settings_config()
+        self.apprise_file = self.manager.path_manager.config_folder / self.loaded_config / "apprise.txt"
+        self.apprise_urls = get_apprise_urls(file=self.apprise_file)
+        self._set_apprise_fixed()
+        self._set_pydantic_config()
 
     @staticmethod
     def get_model_fields(model: type[BaseModel], *, exclude_unset: bool = True) -> set[str]:
@@ -93,7 +99,9 @@ class ConfigManager:
         if self.settings.is_file():
             self.settings_data = ConfigSettings.model_validate(yaml.load(self.settings))
             set_fields = self.get_model_fields(self.settings_data)
-            if posible_fields == set_fields and self.pydantic_config:
+            self.deep_scrape = self.settings_data.runtime_options.deep_scrape
+            self.settings_data.runtime_options.deep_scrape = False
+            if posible_fields == set_fields and self.pydantic_config and not self.deep_scrape:
                 return
         else:
             from cyberdrop_dl.utils import constants
@@ -169,3 +177,18 @@ class ConfigManager:
         sleep(1)
         self.manager.log_manager = LogManager(self.manager)
         sleep(1)
+
+    def _set_apprise_fixed(self):
+        apprise_fixed = self.manager.cache_manager.get("apprise_fixed")
+        if apprise_fixed:
+            return
+        if os.name == "nt":
+            with self.apprise_file.open("a", encoding="utf8") as f:
+                f.write("windows://\n")
+        self.manager.cache_manager.save("apprise_fixed", True)
+
+    def _set_pydantic_config(self):
+        if self.pydantic_config:
+            return
+        self.manager.cache_manager.save("pydantic_config", True)
+        self.pydantic_config = True

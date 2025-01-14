@@ -66,8 +66,8 @@ class CyberdropCrawler(Crawler):
             title = self.create_title(soup.select_one("h1[id=title]").text, scrape_item.album_id, None)
         except AttributeError:
             raise ScrapeError(
-                404,
-                message="No album information found in response content",
+                422,
+                message="Unable to parse album information from response content",
                 origin=scrape_item,
             ) from None
 

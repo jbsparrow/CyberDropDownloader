@@ -50,6 +50,8 @@ class HashClient:
         self.xxhash = "xxh128"
         self.md5 = "md5"
         self.sha256 = "sha256"
+        self.hashed_media_items: set[MediaItem] = set()
+        self.hashes_dict: defaultdict[defaultdict[set[Path]]] = defaultdict(lambda: defaultdict(set))
 
     async def startup(self) -> None:
         pass
@@ -60,21 +62,21 @@ class HashClient:
             if not path.is_dir():
                 raise NotADirectoryError
             for file in path.rglob("*"):
-                await self.hash_item_helper(file, None, None)
+                await self._hash_item_helper(file, None, None)
 
     @staticmethod
     def _get_key_from_file(file: Path | str):
         return str(Path(file).absolute())
 
-    async def hash_item_helper(self, file: Path | str, original_filename: str, referer: URL):
-        hash = await self.hash_item(file, original_filename, referer, hash_type=self.xxhash)
+    async def _hash_item_helper(self, file: Path | str, original_filename: str, referer: URL):
+        hash = await self._hash_item(file, original_filename, referer, hash_type=self.xxhash)
         if self.manager.config_manager.settings_data.dupe_cleanup_options.add_md5_hash:
-            await self.hash_item(file, original_filename, referer, hash_type=self.md5)
+            await self._hash_item(file, original_filename, referer, hash_type=self.md5)
         if self.manager.config_manager.settings_data.dupe_cleanup_options.add_sha256_hash:
-            await self.hash_item(file, original_filename, referer, hash_type=self.sha256)
+            await self._hash_item(file, original_filename, referer, hash_type=self.sha256)
         return hash
 
-    async def hash_item(self, file: Path | str, original_filename: str, referer: URL, hash_type=None) -> str:
+    async def _hash_item(self, file: Path | str, original_filename: str, referer: URL, hash_type=None) -> str:
         """Generates hash of a file."""
         key = self._get_key_from_file(file)
         file = Path(file)
@@ -113,22 +115,30 @@ class HashClient:
         self.hashes[(key, hash_type)] = hash
         return hash
 
+    async def hash_item(self, media_item: MediaItem) -> None:
+        absolute_path = media_item.complete_file.resolve()
+        size = media_item.complete_file.stat().st_size
+        hash = await self._hash_item_helper(media_item.complete_file, media_item.original_filename, media_item.referer)
+
+        self.hashed_media_items.add(media_item)
+        self.hashes_dict[hash][size].add(absolute_path)
+
     async def hash_item_during_download(self, media_item: MediaItem) -> None:
+        if self.manager.config_manager.settings_data.dupe_cleanup_options.hashing != Hashing.IN_PLACE:
+            return
         try:
-            if self.manager.config_manager.settings_data.dupe_cleanup_options.hashing != Hashing.IN_PLACE:
-                return
-            await self.hash_item_helper(media_item.complete_file, media_item.original_filename, media_item.referer)
+            await self.hash_item(media_item)
         except Exception as e:
             log(f"After hash processing failed: {media_item.complete_file} with error {e}", 40, exc_info=True)
 
     async def cleanup_dupes_after_download(self) -> None:
+        if self.manager.config_manager.settings_data.dupe_cleanup_options.hashing == Hashing.OFF:
+            return
+        if not self.manager.config_manager.settings_data.dupe_cleanup_options.auto_dedupe:
+            return
+        if self.manager.config_manager.settings_data.runtime_options.ignore_history:
+            return
         with self.manager.live_manager.get_hash_live(stop=True):
-            if self.manager.config_manager.settings_data.dupe_cleanup_options.hashing == Hashing.OFF:
-                return
-            if not self.manager.config_manager.settings_data.dupe_cleanup_options.auto_dedupe:
-                return
-            if self.manager.config_manager.settings_data.runtime_options.ignore_history:
-                return
             file_hashes_dict = await self.get_file_hashes_dict()
         with self.manager.live_manager.get_remove_file_via_hash_live(stop=True):
             await self.final_dupe_cleanup(file_hashes_dict)
@@ -136,48 +146,41 @@ class HashClient:
     async def final_dupe_cleanup(self, final_dict: dict[str, dict]) -> None:
         """cleanup files based on dedupe setting"""
         for hash, size_dict in final_dict.items():
-            for size in size_dict.keys():
+            for size in size_dict:
                 # Get all matches from the database
-                all_matches = [
-                    (Path(x[0], x[1]))
-                    for x in await self.manager.db_manager.hash_table.get_files_with_hash_matches(
-                        hash, size, self.xxhash
-                    )
-                ]
-                all_matches = [file for file in all_matches if file.exists()]
+                db_matches = await self.manager.db_manager.hash_table.get_files_with_hash_matches(
+                    hash, size, self.xxhash
+                )
+                all_matches = [Path(*match[:2]) for match in db_matches]
                 for file in all_matches[1:]:
+                    if not file.is_file():
+                        continue
                     try:
-                        if not file.exists():
-                            continue
-                        self.send2trash(file)
-                        log(f"Removed new download : {file} with hash {hash}", 10)
+                        self.delete_file(file)
+                        log(f"Removed new download: {file} with hash {hash}", 10)
                         self.manager.progress_manager.hash_progress.add_removed_file()
-                    except OSError:
-                        pass
+                    except OSError as e:
+                        log(f"Unable to remove {file = } with hash {hash} : {e}", 40)
 
     async def get_file_hashes_dict(self) -> dict:
-        hashes_dict = defaultdict(lambda: defaultdict(list))
         # first compare downloads to each other
         # get representive for each hash
-        for media_item in list(self.manager.path_manager.completed_downloads):
-            hash = await self.hash_item_helper(
-                media_item.complete_file, media_item.original_filename, media_item.referer
-            )
-            item = media_item.complete_file.absolute()
+        downloads = self.manager.path_manager.completed_downloads - self.hashed_media_items
+        for media_item in downloads:
+            if not media_item.complete_file.is_file():
+                return
             try:
-                size = item.stat().st_size
-                if hash and Path(item).exists():
-                    hashes_dict[hash][size].append(item)
+                self.hash_item(media_item)
             except Exception as e:
-                log(f"After hash processing failed: {item} with error {e}", 40, exc_info=True)
-        return hashes_dict
+                msg = f"Unable to hash file = {media_item.complete_file.resolve()}: {e}"
+                log(msg, 40)
+        return self.hashes_dict
 
-    def send2trash(self, path: Path) -> None:
-        if not self.manager.config_manager.settings_data.dupe_cleanup_options.send_deleted_to_trash:
-            Path(path).unlink(missing_ok=True)
-            log(f"permanently deleted file at {path}", 10)
-            return True
-        else:
+    def delete_file(self, path: Path) -> None:
+        if self.manager.config_manager.settings_data.dupe_cleanup_options.send_deleted_to_trash:
             send2trash(path)
             log(f"sent file at{path} to trash", 10)
-            return True
+            return
+
+        Path(path).unlink(missing_ok=True)
+        log(f"permanently deleted file at {path}", 10)

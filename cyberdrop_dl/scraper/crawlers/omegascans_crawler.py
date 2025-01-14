@@ -11,7 +11,6 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import MaxChildrenError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
@@ -65,7 +64,7 @@ class OmegaScansCrawler(Crawler):
                 break
 
         if not series_id:
-            raise ScrapeError(404, "series_id not found", origin=ScrapeItem)
+            raise ScrapeError(422, "Unable to parse series_id from html", origin=scrape_item)
 
         page_number = 1
         number_per_page = 30
@@ -101,7 +100,6 @@ class OmegaScansCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         if "This chapter is premium" in soup.get_text():
-            log("Scrape Failed: This chapter is premium", 40)
             raise ScrapeError(401, "This chapter is premium", origin=scrape_item)
 
         title_parts = soup.select_one("title").get_text().split(" - ")

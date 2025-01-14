@@ -4,7 +4,8 @@
 /AppData/
 /Downloads/
 /Old Files/
-cyberdrop_dl_debug.log
+*.log
+.coverage
 
 # Python cache
 __pycache__
@@ -21,3 +22,5 @@ venv
 
 # MacOS system files
 **.DS_Store
+.aider*
+.env
