@@ -1,6 +1,4 @@
 from __future__ import annotations
-
-import os
 from dataclasses import field
 from datetime import datetime
 from pathlib import Path
