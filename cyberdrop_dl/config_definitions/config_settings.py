@@ -24,7 +24,6 @@ class DownloadOptions(BaseModel):
     scrape_single_forum_post: bool = False
     separate_posts: bool = False
     separate_posts_format: NonEmptyStr = "{default}"
-    separate_posts_format: NonEmptyStr = "{default}"
     skip_download_mark_completed: bool = False
     skip_referer_seen_before: bool = False
     maximum_number_of_children: list[NonNegativeInt] = []
@@ -44,7 +43,6 @@ class Files(AliasModel):
 
 class Logs(AliasModel):
     log_folder: Path = APP_STORAGE / "Configs" / "{config}" / "Logs"
-    webhook: HttpAppriseURL | None = Field(validation_alias="webhook_url", default=None)
     webhook: HttpAppriseURL | None = Field(validation_alias="webhook_url", default=None)
     main_log: Path = Field(Path("downloader.log"), validation_alias="main_log_filename")
     last_forum_post: Path = Field(Path("Last_Scraped_Forum_Posts.csv"), validation_alias="last_forum_post_filename")
@@ -74,7 +72,7 @@ class Logs(AliasModel):
 
     @field_validator("logs_expire_after", mode="before")
     @staticmethod
-    def parse_logs_duration(input_date: timedelta | str | int) -> timedelta:
+    def parse_logs_duration(input_date: timedelta | str | int | None) -> timedelta:
         """Parses `datetime.timedelta`, `str` or `int` into a timedelta format.
 
         for `str`, the expected format is `value unit`, ex: `5 days`, `10 minutes`, `1 year`
@@ -84,6 +82,8 @@ class Logs(AliasModel):
 
         for `int`, value is assumed as `days`
         """
+        if input_date is None:
+            return None
         return parse_duration_to_timedelta(input_date)
 
 
@@ -123,8 +123,6 @@ class RuntimeOptions(BaseModel):
     ignore_history: bool = False
     log_level: NonNegativeInt = DEBUG
     console_log_level: NonNegativeInt = 100
-    log_level: NonNegativeInt = DEBUG
-    console_log_level: NonNegativeInt = 100
     skip_check_for_partial_files: bool = False
     skip_check_for_empty_folders: bool = False
     delete_partial_files: bool = False
@@ -133,7 +131,6 @@ class RuntimeOptions(BaseModel):
     jdownloader_download_dir: Path | None = None
     jdownloader_autostart: bool = False
     jdownloader_whitelist: list[NonEmptyStr] = []
-    deep_scrape: bool = False
     deep_scrape: bool = False
 
     @field_validator("jdownloader_download_dir", mode="before")

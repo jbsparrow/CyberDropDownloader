@@ -8,8 +8,6 @@ from cyberdrop_dl.config_definitions.pydantic.validators import parse_duration_t
 
 from .pydantic.custom_types import AliasModel, HttpURL, NonEmptyStr
 
-DATE_PATTERN = re.compile(
-    r"(\d+)\s*(second|seconds|minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years)", re.IGNORECASE
 )
 MIN_REQUIRED_FREE_SPACE = ByteSize._validate("512MB", "")
 DEFAULT_REQUIRED_FREE_SPACE = ByteSize._validate("5GB", "")
