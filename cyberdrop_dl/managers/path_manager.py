@@ -35,10 +35,10 @@ class PathManager:
         self.history_db: Path = field(init=False)
         self.cache_db: Path = field(init=False)
 
-        self._completed_downloads: list[MediaItem] = []
-        self._completed_downloads_set = set()
-        self._prev_downloads: list[MediaItem] = []
-        self._prev_downloads_set = set()
+        self._completed_downloads: set[MediaItem] = set()
+        self._completed_downloads_paths: set[Path] = set()
+        self._prev_downloads: set[MediaItem] = set()
+        self._prev_downloads_paths: set[Path] = set()
 
         self.main_log: Path = field(init=False)
         self.last_forum_post_log: Path = field(init=False)
@@ -134,14 +134,12 @@ class PathManager:
             path.parent.mkdir(parents=True, exist_ok=True)
 
     def add_completed(self, media_item: MediaItem) -> None:
-        if media_item.complete_file.absolute() not in self._completed_downloads_set:
-            self._completed_downloads.append(media_item)
-            self._completed_downloads_set.add(media_item.complete_file.absolute())
+        self._completed_downloads.add(media_item)
+        self._completed_downloads_paths.add(media_item.complete_file.resolve())
 
     def add_prev(self, media_item: MediaItem) -> None:
-        if media_item.complete_file.absolute() not in self._prev_downloads_set:
-            self._prev_downloads.append(media_item)
-            self._prev_downloads_set.add(media_item.complete_file.absolute())
+        self._prev_downloads.add(media_item)
+        self._prev_downloads_paths.add(media_item.complete_file.resolve())
 
     @property
     def completed_downloads(self) -> set[MediaItem]:

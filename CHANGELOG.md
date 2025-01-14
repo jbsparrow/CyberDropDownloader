@@ -5,7 +5,88 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [6.0.0] - 2024-12-20
+## [6.2.0] - 2025-01-10
+
+### Added
+
+- PixHost.to support
+- Forum.AllPornComix.com support (forum)
+- Bellazon.com support (forum)
+- TitsInTops.com support (forum)
+- Video support for chevereto sites (`imagepond.net`, `img.kiwi` and `jpg5.su`)
+- Filesystem URLs support for images and videos (pixeldrain)
+- Indirect links support (saint)
+
+### Changed
+
+- Better MediaFire errors handling
+- Better RealDebrid errors handling
+- Do not overload 403 and 404 errors
+- Use canonical URLs for files in database (chevereto)
+
+### Fixed
+
+- Files being hashed twice when using `Hashing.IN_PLACE`
+- Post information parsing (reddit)
+- Sub-path parsing, ex: submitted, comments (reddit)
+- "Loose Files" folder not being created (all crawlers)
+- Delete startup log file if empty
+- Make a single GoFile token acquisition request
+- Make a single login request try per forum
+- DDoS-Guard detection
+
+
+## [6.1.1] - 2025-01-05
+
+### Changed
+
+- Remove crawlers scrape lock
+
+### Fixed
+
+- v5 to v6 transfer [database] (`hash` table missing on second startup)
+- v4 to v6 transfer [logs] ('downloader.log' being used by another process)
+
+## [6.1.0] - 2025-01-04
+
+### Fixed
+
+- Fallback to old file password check (cyberfile)
+- Handle stream redirects (bunkr)
+- Files being saved with the current date instead of the upload date
+- Sanitize filenames before downloading
+- Apprise notifications integration
+- Log startup errors to a file (validation, YAML, database and unknown errors)
+- Miscalculation of download and scrape queue length
+- Sorting videos with invalid or missing fps metadata
+- e-Hentai crawler
+
+### Changed
+
+- Set 512MB as the minimum required free space
+- `--console-log-level` will have no effect unless `--no-ui` was used
+- OS notification are enabled by default on Windows
+
+### Deprecated
+
+- `--output-folder` is deprecated. Use `--download-folder`
+- v4 support (importing v4 config and files) will be removed in a future version
+
+### Added
+
+- `--deep-scrape` option: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/runtime_options#deep_scrape
+- `--separate-posts-format` option: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/download_options#separate_posts_format
+- Allow any file name for cookie files
+- Redact username from log tracebacks
+
+
+## [6.0.1] - 2024-12-24
+
+### Fixed
+
+- Database v5 to v6 transfer
+
+## [6.0.0] - 2024-12-23
 
 ⚠️**BREAKING CHANGES**
 
@@ -20,6 +101,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 > 3. Removed `--sort-cdl-only` option
 
 > 4. The following arguments are deprecated and will be removed in a future version:
+>  - `--output-folder`
 >  - `--download-all-configs`
 >  - `--sort-all-configs`
 >  - `--sort-all-downloads`
@@ -31,6 +113,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 This update introduces the following changes:
+- Add Python 3.13 support
 - Add requests caching to speed up future download sessions for forums, Coomer, and Kemono.
 - Update Kemono & Coomer crawlers to use API calls
 - Update GoFile crawler to the new site design

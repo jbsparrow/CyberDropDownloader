@@ -23,6 +23,14 @@ def transfer_from_old_hash_table(db_path):
     """
 
     with db_transfer_context(db_path) as cursor:
+        # Check if the 'hash' table exists
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='hash'")
+        hash_table_exists = cursor.fetchone() is not None
+
+        if not hash_table_exists:
+            console.print("[bold yellow]Old 'hash' table not found. Skipping transfer.[/]")
+            return
+
         # Check if the 'hash_type' column exists in the 'hash' table
         cursor.execute("SELECT COUNT(*) FROM pragma_table_info('hash') WHERE name='hash_type'")
         has_hash_type_column = (cursor.fetchone())[0] > 0
@@ -61,12 +69,12 @@ def transfer_from_old_hash_table(db_path):
 
         # Insert data into 'files' and 'temp_hash' tables
         cursor.executemany(
-            "INSERT INTO files (folder, download_filename, original_filename, file_size, referer, date) VALUES (?, ?, ?, ?, ?, ?);",
+            "INSERT OR IGNORE INTO files (folder, download_filename, original_filename, file_size, referer, date) VALUES (?, ?, ?, ?, ?, ?);",
             data_to_insert_files,
         )
 
         cursor.executemany(
-            "INSERT INTO temp_hash (folder, download_filename, hash_type, hash) VALUES (?, ?, ?, ?);",
+            "INSERT OR IGNORE INTO temp_hash (folder, download_filename, hash_type, hash) VALUES (?, ?, ?, ?);",
             data_to_insert_hash,
         )
 

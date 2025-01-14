@@ -1,5 +1,5 @@
 import re
-from enum import IntEnum, StrEnum, auto
+from enum import Enum, IntEnum, StrEnum, auto
 from pathlib import Path
 
 from rich.text import Text
@@ -9,7 +9,7 @@ CONSOLE_LEVEL = 100
 MAX_NAME_LENGTHS = {"FILE": 95, "FOLDER": 60}
 DEFAULT_CONSOLE_WIDTH = 240
 DEBUG_VAR = False
-CONSOLE_DEBUG_VAR = False
+RUNNING_PRERELEASE = False
 CSV_DELIMITER = ","
 LOG_OUTPUT_TEXT = Text("")
 RICH_HANDLER_CONFIG = {"show_time": True, "rich_tracebacks": True, "tracebacks_show_locals": False}
@@ -21,6 +21,8 @@ RICH_HANDLER_DEBUG_CONFIG = {
     "tracebacks_extra_lines": 2,
     "locals_max_length": 20,
 }
+VALIDATION_ERROR_FOOTER = """Please read the documentation for guidance on how to resolve this error: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options
+This is not a bug. Do not open issues related to this"""
 
 
 # regex
@@ -61,6 +63,13 @@ class BROWSERS(StrEnum):
     opera_gx = auto()
     vivaldi = auto()
     chromium = auto()
+
+
+class NotificationResult(Enum):
+    SUCCESS = Text("Success", "green")
+    FAILED = Text("Failed", "bold red")
+    PARTIAL = Text("Partial Success", "yellow")
+    NONE = Text("No Notifications Sent", "yellow")
 
 
 # Pypi

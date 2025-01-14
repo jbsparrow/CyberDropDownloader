@@ -18,9 +18,10 @@ from cyberdrop_dl.managers.log_manager import LogManager
 from cyberdrop_dl.managers.path_manager import PathManager
 from cyberdrop_dl.managers.progress_manager import ProgressManager
 from cyberdrop_dl.managers.realdebrid_manager import RealDebridManager
+from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.args import ParsedArgs
 from cyberdrop_dl.utils.data_enums_classes.supported_domains import SUPPORTED_FORUMS
-from cyberdrop_dl.utils.logger import log, print_to_console
+from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.transfer.db_setup import TransitionManager
 
 if TYPE_CHECKING:
@@ -62,6 +63,7 @@ class Manager:
 
     def startup(self) -> None:
         """Startup process for the manager."""
+
         if isinstance(self.parsed_args, Field):
             self.parsed_args = ParsedArgs.parse_args()
 
@@ -118,8 +120,6 @@ class Manager:
             self.real_debrid_manager = RealDebridManager(self)
         await self.async_db_hash_startup()
 
-        from cyberdrop_dl.utils import constants
-
         constants.MAX_NAME_LENGTHS["FILE"] = self.config_manager.global_settings_data.general.max_file_name_length
         constants.MAX_NAME_LENGTHS["FOLDER"] = self.config_manager.global_settings_data.general.max_folder_name_length
 
@@ -151,6 +151,9 @@ class Manager:
 
         self.config_manager.settings_data = updated_config_settings
         self.config_manager.global_settings_data = updated_global_settings
+        self.config_manager.deep_scrape = (
+            self.parsed_args.config_settings.runtime_options.deep_scrape or self.config_manager.deep_scrape
+        )
 
     def merge_dicts(self, dict1: dict, dict2: dict):
         for key, val in dict1.items():
@@ -189,11 +192,10 @@ class Manager:
         for site, auth_entries in auth_data_others.items():
             auth_provided[site] = all(auth_entries.values())
 
-        config_settings = self.config_manager.settings_data.model_dump_json(indent=4)
+        config_settings = self.config_manager.settings_data.model_copy()
+        config_settings.runtime_options.deep_scrape = self.config_manager.deep_scrape
+        config_settings = config_settings.model_dump_json(indent=4)
         global_settings = self.config_manager.global_settings_data.model_dump_json(indent=4)
-        cookie_files = [str(p) for p in self.path_manager.cookies_dir.rglob("*.txt")] or None
-        if cookie_files:
-            cookie_files = f"\n{json.dumps(sorted(cookie_files), indent=4, sort_keys=True)}"
 
         log("Starting Cyberdrop-DL Process", 10)
         log(f"Running Version: {__version__}", 10)
@@ -205,7 +207,6 @@ class Manager:
         log(f"Using Authentication: \n{json.dumps(auth_provided, indent=4, sort_keys=True)}", 10)
         log(f"Using Settings: \n{config_settings}", 10)
         log(f"Using Global Settings: \n{global_settings}", 10)
-        log(f"Using Cookie Files: {cookie_files}", 10)
 
     async def close(self) -> None:
         """Closes the manager."""
@@ -218,7 +219,6 @@ class Manager:
         self.hash_manager: HashManager = field(init=False)
 
     def validate_all_configs(self) -> None:
-        print_to_console("validating all configs, please wait...")
         all_configs = self.config_manager.get_configs()
         all_configs.sort()
         if not all_configs:

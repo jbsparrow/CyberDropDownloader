@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
-def error_wrapper(func: Callable) -> None:
+def error_wrapper(func: Callable) -> Callable:
     """Wrapper handles limits for scrape session."""
 
     @wraps(func)

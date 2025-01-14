@@ -68,8 +68,8 @@ This is the maximum number of characters allowable in a folder name.
 
 ## `required_free_space`
 
-| Type           | Default  |
-|----------------|----------|
-| `ByteSize` | `5GB`|
+| Type           | Default  | Restrictions |
+|----------------|----------| ----------|
+| `ByteSize` | `5GB`| `>=512MB` |
 
 This is the minimum amount of free space require to start new downloads.

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import calendar
 import datetime
+import enum
 import re
 from typing import TYPE_CHECKING, ClassVar
 
@@ -10,7 +11,7 @@ from bs4 import BeautifulSoup
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import PasswordProtectedError, ScrapeError
-from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
@@ -26,6 +27,12 @@ CDN_PATTERNS = {
 }
 
 CDN_POSSIBILITIES = re.compile("|".join(CDN_PATTERNS.values()))
+
+
+class UrlType(enum.StrEnum):
+    album = enum.auto()
+    image = enum.auto()
+    video = enum.auto()
 
 
 class CheveretoCrawler(Crawler):
@@ -71,27 +78,27 @@ class CheveretoCrawler(Crawler):
         self.album_img_selector = "a[class='image-container --media'] img"
         self.profile_item_selector = "a[class='image-container --media']"
         self.profile_title_selector = 'meta[property="og:title"]'
+        self.images_parts = "image", "img", "images"
+        self.album_parts = "a", "album"
+        self.video_parts = "video", "videos"
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = self.scraping_progress.add_task(scrape_item.url)
-
         if self.check_direct_link(scrape_item.url):
             await self.handle_direct_link(scrape_item)
+            return
+        scrape_item.url = scrape_item.url.with_host(self.primary_base_domain.host)
+        if any(part in scrape_item.url.parts for part in self.album_parts):
+            await self.album(scrape_item)
+        elif any(part in scrape_item.url.parts for part in self.images_parts):
+            await self.image(scrape_item)
+        elif any(part in scrape_item.url.parts for part in self.video_parts):
+            await self.video(scrape_item)
         else:
-            scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path[1:]).with_query(
-                scrape_item.url.query,
-            )
-            if "a" in scrape_item.url.parts or "album" in scrape_item.url.parts:
-                await self.album(scrape_item)
-            elif any(part in scrape_item.url.parts for part in ("image", "img", "images")):
-                await self.image(scrape_item)
-            else:
-                await self.profile(scrape_item)
-
-        self.scraping_progress.remove_task(task_id)
+            await self.profile(scrape_item)
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
@@ -101,7 +108,7 @@ class CheveretoCrawler(Crawler):
 
         title = self.create_title(soup.select_one(self.profile_title_selector).get("content"), None, None)
 
-        async for soup in self.web_pager(scrape_item.url):
+        async for soup in self.web_pager(scrape_item):
             links = soup.select(self.profile_item_selector)
             for link in links:
                 link = link.get("href")
@@ -113,16 +120,16 @@ class CheveretoCrawler(Crawler):
                 new_scrape_item = self.create_scrape_item(
                     scrape_item,
                     link,
-                    title,
-                    True,
+                    new_title_part=title,
+                    part_of_album=True,
                     add_parent=scrape_item.url,
                 )
-                await self.fetch(new_scrape_item)
+                self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
-        album_id = scrape_item.url.parts[2]
+        album_id, canonical_url = self.get_canonical_url(scrape_item)
         results = await self.get_album_results(album_id)
         scrape_item.album_id = album_id
         scrape_item.part_of_album = True
@@ -131,10 +138,10 @@ class CheveretoCrawler(Crawler):
 
         async with self.request_limiter:
             sub_albums_soup: BeautifulSoup = await self.client.get_soup(
-                self.domain,
-                scrape_item.url / "sub",
-                origin=scrape_item,
+                self.domain, scrape_item.url / "sub", origin=scrape_item
             )
+
+        scrape_item.url = canonical_url
 
         if "This content is password protected" in sub_albums_soup.text and password:
             password_data = {"content-password": password}
@@ -169,7 +176,7 @@ class CheveretoCrawler(Crawler):
             new_scrape_item = self.create_scrape_item(scrape_item, sub_album_link, "", True)
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
-        async for soup in self.web_pager(scrape_item.url):
+        async for soup in self.web_pager(scrape_item):
             links = soup.select(self.album_img_selector)
             for link in links:
                 link = link.get("src")
@@ -179,28 +186,46 @@ class CheveretoCrawler(Crawler):
                 new_scrape_item = self.create_scrape_item(
                     scrape_item,
                     link,
-                    title,
-                    True,
-                    album_id,
+                    new_title_part=title,
+                    part_of_album=True,
+                    album_id=album_id,
                     add_parent=scrape_item.url,
                 )
                 if not self.check_album_results(link, results):
                     await self.handle_direct_link(new_scrape_item)
 
-    @error_handling_wrapper
+    async def video(self, scrape_item: ScrapeItem) -> None:
+        """Scrapes a video."""
+        url_type = UrlType.video
+        selector = "meta[property='og:video']", "content"
+        await self._proccess_media_item(scrape_item, url_type, selector)
+
     async def image(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image."""
+        url_type = UrlType.image
+        selector = "div[id=image-viewer] img", "src"
+        await self._proccess_media_item(scrape_item, url_type, selector)
+
+    @error_handling_wrapper
+    async def _proccess_media_item(self, scrape_item: ScrapeItem, url_type: UrlType, selector: tuple[str, str]) -> None:
+        """Scrapes a media item."""
         if await self.check_complete_from_referer(scrape_item):
+            return
+
+        _, canonical_url = self.get_canonical_url(scrape_item, url_type=url_type)
+        if await self.check_complete_from_referer(canonical_url):
             return
 
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
+        scrape_item.url = canonical_url
+
         try:
-            link = URL(soup.select_one("div[id=image-viewer] img").get("src"))
+            link = URL(soup.select_one(selector[0]).get(selector[1]))
             link = link.with_name(link.name.replace(".md.", ".").replace(".th.", "."))
         except AttributeError:
-            raise ScrapeError(404, f"Could not find img source for {scrape_item.url}", origin=scrape_item) from None
+            raise ScrapeError(422, f"Couldn't find {url_type.value} source", origin=scrape_item) from None
 
         desc_rows = soup.select("p[class*=description-meta]")
         date = None
@@ -227,12 +252,30 @@ class CheveretoCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def web_pager(self, url: URL) -> AsyncGenerator[BeautifulSoup]:
+    def get_canonical_url(self, scrape_item: ScrapeItem, url_type: UrlType = UrlType.album) -> tuple[str, URL]:
+        "Returns the id and canonical URL from a given item (album, image or video)"
+        if url_type not in UrlType:
+            raise ValueError("Invalid URL Type")
+
+        search_parts = self.album_parts
+        if url_type == UrlType.image:
+            search_parts = self.images_parts
+        elif url_type == UrlType.video:
+            search_parts = self.video_parts
+
+        found_part = next(part for part in search_parts if part in scrape_item.url.parts)
+        name_index = scrape_item.url.parts.index(found_part) + 1
+        name = scrape_item.url.parts[name_index]
+        _id = name.rsplit(".")[-1]
+        new_parts = scrape_item.url.parts[1:name_index] + (_id,)
+        return _id, scrape_item.url.with_path("/".join(new_parts))
+
+    async def web_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
         """Generator of website pages."""
-        page_url = await self.get_sort_by_new_url(url)
+        page_url = await self.get_sort_by_new_url(scrape_item.url)
         while True:
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url)
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url, origin=scrape_item)
             next_page = soup.select_one(self.next_page_selector)
             yield soup
             if next_page:

@@ -10,6 +10,8 @@ from .pydantic.custom_types import AliasModel, HttpURL, NonEmptyStr
 DATE_PATTERN = re.compile(
     r"(\d+)\s*(second|seconds|minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years)", re.IGNORECASE
 )
+MIN_REQUIRED_FREE_SPACE = ByteSize._validate("512MB", "")
+DEFAULT_REQUIRED_FREE_SPACE = ByteSize._validate("5GB", "")
 
 
 def convert_to_str(value: URL | str) -> str | None:
@@ -27,7 +29,7 @@ class General(BaseModel):
     flaresolverr: HttpURL | None = None
     max_file_name_length: PositiveInt = 95
     max_folder_name_length: PositiveInt = 60
-    required_free_space: ByteSize = ByteSize._validate("5GB", "")
+    required_free_space: ByteSize = Field(DEFAULT_REQUIRED_FREE_SPACE, gt=MIN_REQUIRED_FREE_SPACE)
 
     @field_serializer("required_free_space")
     def human_readable(self, value: ByteSize | int) -> str:

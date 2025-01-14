@@ -25,6 +25,7 @@ class DownloadOptions(BaseModel):
     scrape_single_forum_post: bool = False
     separate_posts: bool = False
     separate_posts_format: NonEmptyStr = "{default}"
+    separate_posts_format: NonEmptyStr = "{default}"
     skip_download_mark_completed: bool = False
     skip_referer_seen_before: bool = False
     maximum_number_of_children: list[NonNegativeInt] = []
@@ -44,6 +45,7 @@ class Files(AliasModel):
 
 class Logs(AliasModel):
     log_folder: Path = APP_STORAGE / "Configs" / "{config}" / "Logs"
+    webhook: HttpAppriseURL | None = Field(validation_alias="webhook_url", default=None)
     webhook: HttpAppriseURL | None = Field(validation_alias="webhook_url", default=None)
     main_log: Path = Field(Path("downloader.log"), validation_alias="main_log_filename")
     last_forum_post: Path = Field(Path("Last_Scraped_Forum_Posts.csv"), validation_alias="last_forum_post_filename")
@@ -122,6 +124,8 @@ class RuntimeOptions(BaseModel):
     ignore_history: bool = False
     log_level: NonNegativeInt = DEBUG
     console_log_level: NonNegativeInt = 100
+    log_level: NonNegativeInt = DEBUG
+    console_log_level: NonNegativeInt = 100
     skip_check_for_partial_files: bool = False
     skip_check_for_empty_folders: bool = False
     delete_partial_files: bool = False
@@ -130,6 +134,7 @@ class RuntimeOptions(BaseModel):
     jdownloader_download_dir: Path | None = None
     jdownloader_autostart: bool = False
     jdownloader_whitelist: list[NonEmptyStr] = []
+    deep_scrape: bool = False
     deep_scrape: bool = False
 
     @field_validator("jdownloader_download_dir", mode="before")

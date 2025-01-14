@@ -59,9 +59,9 @@ class Sorter:
                 return True
             for auto_index in itertools.count(1):
                 new_filename = f"{new_path.stem}{self.incrementer_format.format(i=auto_index)}{new_path.suffix}"
-                new_path = new_path.parent / new_filename
-                if not new_path.is_file():
-                    old_path.rename(new_path)
+                possible_new_path = new_path.parent / new_filename
+                if not possible_new_path.is_file():
+                    old_path.rename(possible_new_path)
                     break
         except OSError:
             return False
