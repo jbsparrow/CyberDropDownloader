@@ -50,6 +50,7 @@ class Logs(AliasModel):
     rotate_logs: bool = False
     logs_expire_after: timedelta|None=None
     log_line_width: PositiveInt = Field(default=240, ge=50)
+    logs_expire_after: timedelta|None=None
 
     @field_validator("webhook", mode="before")
     @classmethod
@@ -70,7 +71,7 @@ class Logs(AliasModel):
     
     @field_validator("logs_expire_after", mode="before")
     @staticmethod
-    def parse_cache_duration(input_date: timedelta | str | int) -> timedelta:
+    def parse_logs_duration(input_date: timedelta | str | int) -> timedelta:
         """Parses `datetime.timedelta`, `str` or `int` into a timedelta format.
 
         for `str`, the expected format is `value unit`, ex: `5 days`, `10 minutes`, `1 year`
@@ -80,8 +81,7 @@ class Logs(AliasModel):
 
         for `int`, value is assummed as `days`
         """
-        parse_duration_to_timedelta(input_date)
-        
+        return parse_duration_to_timedelta(input_date)
 
 
 class FileSizeLimits(BaseModel):
