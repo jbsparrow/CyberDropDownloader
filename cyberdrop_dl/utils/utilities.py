@@ -292,7 +292,7 @@ def sent_apprise_notifications(manager: Manager) -> None:
     if not apprise_file.is_file():
         return
 
-    from cyberdrop_dl.config_definitions.custom_types import AppriseURL
+    from cyberdrop_dl.config_definitions.pydantic.custom_types import AppriseURL
 
     try:
         with apprise_file.open(encoding="utf8") as file:

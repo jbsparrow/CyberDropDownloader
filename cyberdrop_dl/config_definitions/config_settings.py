@@ -1,11 +1,9 @@
-from datetime import timedelta
 from logging import DEBUG
 from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, ByteSize, Field, NonNegativeInt, PositiveInt, field_serializer, field_validator
 
-from cyberdrop_dl.config_definitions.pydantic.validators import parse_duration_to_timedelta
 from cyberdrop_dl.utils.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE
 from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
 from cyberdrop_dl.utils.data_enums_classes.supported_domains import SUPPORTED_SITES_DOMAINS
@@ -23,6 +21,7 @@ class DownloadOptions(BaseModel):
     remove_generated_id_from_filenames: bool = False
     scrape_single_forum_post: bool = False
     separate_posts: bool = False
+    separate_posts_format: NonEmptyStr = "{default}"
     skip_download_mark_completed: bool = False
     skip_referer_seen_before: bool = False
     maximum_number_of_children: list[NonNegativeInt] = []
@@ -49,7 +48,6 @@ class Logs(AliasModel):
     download_error_urls: Path = Field(Path("Download_Error_URLs.csv"), validation_alias="download_error_urls_filename")
     scrape_error_urls: Path = Field(Path("Scrape_Error_URLs.csv"), validation_alias="scrape_error_urls_filename")
     rotate_logs: bool = False
-    logs_expire_after: timedelta | None = None
     log_line_width: PositiveInt = Field(default=240, ge=50)
 
     @field_validator("webhook", mode="before")
@@ -68,20 +66,6 @@ class Logs(AliasModel):
     @classmethod
     def fix_other_logs_extensions(cls, value: Path) -> Path:
         return value.with_suffix(".csv")
-
-    @field_validator("logs_expire_after", mode="before")
-    @staticmethod
-    def parse_cache_duration(input_date: timedelta | str | int) -> timedelta:
-        """Parses `datetime.timedelta`, `str` or `int` into a timedelta format.
-
-        for `str`, the expected format is `value unit`, ex: `5 days`, `10 minutes`, `1 year`
-
-        valid units:
-            year(s), week(s), day(s), hour(s), minute(s), second(s), millisecond(s), microsecond(s)
-
-        for `int`, value is assumed as `days`
-        """
-        return parse_duration_to_timedelta(input_date)
 
 
 class FileSizeLimits(BaseModel):
@@ -118,8 +102,8 @@ class IgnoreOptions(BaseModel):
 
 class RuntimeOptions(BaseModel):
     ignore_history: bool = False
-    log_level: int = DEBUG
-    console_log_level: int = 100
+    log_level: NonNegativeInt = DEBUG
+    console_log_level: NonNegativeInt = 100
     skip_check_for_partial_files: bool = False
     skip_check_for_empty_folders: bool = False
     delete_partial_files: bool = False
@@ -128,6 +112,7 @@ class RuntimeOptions(BaseModel):
     jdownloader_download_dir: Path | None = None
     jdownloader_autostart: bool = False
     jdownloader_whitelist: list[NonEmptyStr] = []
+    deep_scrape: bool = False
 
     @field_validator("jdownloader_download_dir", mode="before")
     @classmethod
