@@ -1,17 +1,16 @@
+from datetime import timedelta
 from logging import DEBUG
 from pathlib import Path
 from typing import Literal
-from datetime import timedelta
 
 from pydantic import BaseModel, ByteSize, Field, NonNegativeInt, PositiveInt, field_serializer, field_validator
 
+from cyberdrop_dl.config_definitions.pydantic.validators import parse_duration_to_timedelta
 from cyberdrop_dl.utils.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE
 from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
 from cyberdrop_dl.utils.data_enums_classes.supported_domains import SUPPORTED_SITES_DOMAINS
 
 from .pydantic.custom_types import AliasModel, HttpAppriseURL, NonEmptyStr
-from cyberdrop_dl.config_definitions.pydantic.validators import parse_duration_to_timedelta
-
 
 
 class DownloadOptions(BaseModel):
@@ -54,7 +53,7 @@ class Logs(AliasModel):
     scrape_error_urls: Path = Field(Path("Scrape_Error_URLs.csv"), validation_alias="scrape_error_urls_filename")
     rotate_logs: bool = False
     log_line_width: PositiveInt = Field(default=240, ge=50)
-    logs_expire_after: timedelta|None=None
+    logs_expire_after: timedelta | None = None
 
     @field_validator("webhook", mode="before")
     @classmethod

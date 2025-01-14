@@ -5,6 +5,7 @@ from pydantic import BaseModel, ByteSize, Field, NonNegativeFloat, PositiveInt, 
 from yarl import URL
 
 from cyberdrop_dl.config_definitions.pydantic.validators import parse_duration_to_timedelta
+
 from .pydantic.custom_types import AliasModel, HttpURL, NonEmptyStr
 
 DATE_PATTERN = re.compile(
