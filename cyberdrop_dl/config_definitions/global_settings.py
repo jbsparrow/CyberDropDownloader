@@ -1,4 +1,3 @@
-import re
 from datetime import timedelta
 
 from pydantic import BaseModel, ByteSize, Field, NonNegativeFloat, PositiveInt, field_serializer, field_validator
@@ -8,7 +7,6 @@ from cyberdrop_dl.config_definitions.pydantic.validators import parse_duration_t
 
 from .pydantic.custom_types import AliasModel, HttpURL, NonEmptyStr
 
-)
 MIN_REQUIRED_FREE_SPACE = ByteSize._validate("512MB", "")
 DEFAULT_REQUIRED_FREE_SPACE = ByteSize._validate("5GB", "")
 
