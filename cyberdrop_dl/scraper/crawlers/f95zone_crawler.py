@@ -41,7 +41,7 @@ class F95ZoneCrawler(XenforoCrawler):
 
         if JSON_Resp["status"] == "ok":
             return URL(JSON_Resp["msg"])
-        return
+        return None
 
     async def filter_link(self, link: URL) -> bool:
         if any(part == "thumb" for part in link.parts):

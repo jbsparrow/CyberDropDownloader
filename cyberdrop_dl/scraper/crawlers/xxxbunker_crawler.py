@@ -83,7 +83,8 @@ class XXXBunkerCrawler(Crawler):
         video_iframe = ajax_soup = None
         try:
             video_iframe = soup.select_one("div.player-frame iframe")
-            video_iframe_url = URL(video_iframe.get("data-src"))
+            video_iframe_url_str: str = video_iframe.get("data-src", "")
+            video_iframe_url = URL(video_iframe_url_str, encoded="%" in video_iframe_url_str)
             video_id = video_iframe_url.parts[-1]
             async with self.request_limiter:
                 video_iframe_soup: BeautifulSoup = await self.client.get_soup(
@@ -93,7 +94,8 @@ class XXXBunkerCrawler(Crawler):
                 )
 
             src = video_iframe_soup.select_one("source")
-            src_url = URL(src.get("src"))
+            src_url_str: str = src.get("src")
+            src_url = URL(src_url_str, encoded="%" in src_url_str)
             internal_id = src_url.query.get("id")
 
             if "internal" in src_url.parts:
@@ -105,7 +107,8 @@ class XXXBunkerCrawler(Crawler):
                 ajax_dict = await self.client.post_data(self.domain, self.api_download, data=data, origin=scrape_item)
 
             ajax_soup = BeautifulSoup(ajax_dict["floater"], "html.parser")
-            link = URL(ajax_soup.select_one("a#download-download").get("href"))
+            link_str: str = ajax_soup.select_one("a#download-download").get("href")
+            link = URL(link_str, encoded="%" in link_str)
 
         except (AttributeError, TypeError):
             if ajax_soup and "You must be registered to download this video" in ajax_soup.text:
@@ -152,14 +155,15 @@ class XXXBunkerCrawler(Crawler):
         async for soup in self.web_pager(scrape_item):
             videos = soup.select("a[data-anim='4']")
             for video in videos:
-                link = video.get("href")
-                if not link:
+                link_str: str = video.get("href")
+                if not link_str:
                     continue
 
-                if link.startswith("/"):
-                    link = self.primary_base_domain / link[1:]
-
-                link = URL(link)
+                encoded = "%" in link_str
+                if link_str.startswith("/"):
+                    link = self.primary_base_domain.joinpath(link_str[1:], encoded=encoded)
+                else:
+                    link = URL(link, encoded=encoded)
                 new_scrape_item = self.create_scrape_item(scrape_item, link, title, add_parent=scrape_item.url)
                 await self.video(new_scrape_item)
 
@@ -194,14 +198,16 @@ class XXXBunkerCrawler(Crawler):
             next_page = soup.select_one("div.page-list")
             next_page = next_page.find("a", string="Next") if next_page else None
             yield soup
-            if next_page:
-                page_url = next_page.get("href")
-                if page_url:
-                    if page_url.startswith("/"):
-                        page_url = self.primary_base_domain / page_url[1:]
-                    page_url = URL(page_url)
-                    continue
-            break
+            if not next_page:
+                break
+            page_url_str: str = next_page.get("href")
+            if not page_url_str:
+                break
+            encoded = "%" in page_url_str
+            if page_url_str.startswith("/"):
+                page_url = self.primary_base_domain.joinpath(page_url_str[1:], encoded=encoded)
+            else:
+                page_url = URL(page_url_str, encoded=encoded)
 
     @staticmethod
     async def parse_relative_date(relative_date: timedelta | str) -> int:
