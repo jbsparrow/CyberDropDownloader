@@ -103,18 +103,25 @@ class HashClient:
             log(f"Error hashing {file} : {e}", 40, exc_info=True)
         return hash
 
-    async def hash_item(self, media_item: MediaItem) -> None:
+    def save_hash_data(self, media_item, hash):
         absolute_path = media_item.complete_file.resolve()
         size = media_item.complete_file.stat().st_size
         hash = await self._hash_item_helper(media_item.complete_file, media_item.original_filename, media_item.referer)
         self.hashed_media_items.add(media_item)
         self.hashes_dict[hash][size].add(absolute_path)
 
+    async def hash_item(self, media_item: MediaItem) -> None:
+        hash = await self._hash_item_helper(media_item.complete_file, media_item.original_filename, media_item.referer)
+        self.save_hash_data(media_item, hash)
+
     async def hash_item_during_download(self, media_item: MediaItem) -> None:
         if self.manager.config_manager.settings_data.dupe_cleanup_options.hashing != Hashing.IN_PLACE:
             return
         try:
-            await self.hash_item(media_item)
+            hash = await self._hash_item_helper(
+                media_item.complete_file, media_item.original_filename, media_item.referer
+            )
+            self.save_hash_data(media_item, hash)
         except Exception as e:
             log(f"After hash processing failed: {media_item.complete_file} with error {e}", 40, exc_info=True)
 
