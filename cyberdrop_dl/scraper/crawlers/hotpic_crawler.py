@@ -48,7 +48,7 @@ class HotPicCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         scrape_item.album_id = scrape_item.url.parts[2]
-        title = self.create_title(soup.select_one("title").text.rsplit(" - ")[0], scrape_item.album_id, None)
+        title = self.create_title(soup.select_one("title").text.rsplit(" - ")[0], scrape_item.album_id)
         scrape_item.add_to_parent_title(title)
         scrape_item.part_of_album = True
         scrape_item.type = FILE_HOST_ALBUM

@@ -51,7 +51,7 @@ class RealBooruCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         title_portion = scrape_item.url.query["tags"].strip()
-        title = self.create_title(title_portion, None, None)
+        title = self.create_title(title_portion)
         scrape_item.type = FILE_HOST_ALBUM
         scrape_item.children = scrape_item.children_limit = 0
 

@@ -138,13 +138,13 @@ class XXXBunkerCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         if "favoritevideos" in scrape_item.url.parts:
-            title = self.create_title(f"user {scrape_item.url.parts[2]} [favorites]", None, None)
+            title = self.create_title(f"user {scrape_item.url.parts[2]} [favorites]")
 
         elif "search" in scrape_item.url.parts:
-            title = self.create_title(f"{scrape_item.url.parts[2].replace('+', ' ')} [search]", None, None)
+            title = self.create_title(f"{scrape_item.url.parts[2].replace('+', ' ')} [search]")
 
         elif len(scrape_item.url.parts) >= 2:
-            title = self.create_title(f"{scrape_item.url.parts[2]} [categorie]", None, None)
+            title = self.create_title(f"{scrape_item.url.parts[2]} [categorie]")
 
         # Not a valid URL
         else:

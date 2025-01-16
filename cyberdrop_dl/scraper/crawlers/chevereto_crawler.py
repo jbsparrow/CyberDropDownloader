@@ -162,11 +162,7 @@ class CheveretoCrawler(Crawler):
         if "This content is password protected" in sub_albums_soup.text:
             raise PasswordProtectedError(message="Wrong password" if password else None, origin=scrape_item)
 
-        title = self.create_title(
-            sub_albums_soup.select_one(self.album_title_selector).get_text(),
-            album_id,
-            None,
-        )
+        title = self.create_title(sub_albums_soup.select_one(self.album_title_selector).get_text(), album_id)
 
         sub_albums = sub_albums_soup.select(self.profile_item_selector)
         for album in sub_albums:

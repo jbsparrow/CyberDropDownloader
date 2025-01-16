@@ -59,11 +59,7 @@ class FapelloCrawler(Crawler):
                 self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
             )
 
-        title = self.create_title(
-            soup.select_one('h2[class="font-semibold lg:text-2xl text-lg mb-2 mt-4"]').get_text(),
-            None,
-            None,
-        )
+        title = self.create_title(soup.select_one('h2[class="font-semibold lg:text-2xl text-lg mb-2 mt-4"]').get_text())
 
         content = soup.select("div[id=content] a")
         for post in content:

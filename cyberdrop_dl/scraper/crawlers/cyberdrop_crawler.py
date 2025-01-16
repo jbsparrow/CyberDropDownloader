@@ -53,7 +53,7 @@ class CyberdropCrawler(Crawler):
         date = title = None
 
         try:
-            title = self.create_title(soup.select_one("h1[id=title]").text, scrape_item.album_id, None)
+            title = self.create_title(soup.select_one("h1[id=title]").text, scrape_item.album_id)
         except AttributeError:
             msg = "Unable to parse album information from response content"
             raise ScrapeError(422, msg, origin=scrape_item) from None

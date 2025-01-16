@@ -59,7 +59,7 @@ class RedGifsCrawler(Crawler):
             for gif in gifs:
                 links: dict[str, str] = gif["urls"]
                 date = gif["createDate"]
-                title = self.create_title(user_id, None, None)
+                title = self.create_title(user_id)
 
                 link_str: str = links.get("hd") or links.get("sd")
                 link = URL(link_str, encoded="%" in link_str)
@@ -90,7 +90,7 @@ class RedGifsCrawler(Crawler):
             )
 
         title_part = JSON_Resp["gif"].get("title", "Loose Files")
-        title = self.create_title(title_part, None, None)
+        title = self.create_title(title_part)
         links: dict[str, str] = JSON_Resp["gif"]["urls"]
         date = JSON_Resp["gif"]["createDate"]
 

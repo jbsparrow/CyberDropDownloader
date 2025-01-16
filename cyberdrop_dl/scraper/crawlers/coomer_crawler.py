@@ -185,7 +185,7 @@ class CoomerCrawler(Crawler):
     ) -> None:
         """Creates a new scrape item with the same parent as the old scrape item."""
         post = Post(id=post_id, title=title, date=date)
-        new_title = self.create_title(user, None, None)
+        new_title = self.create_title(user)
         new_scrape_item = self.create_scrape_item(
             old_scrape_item,
             link,

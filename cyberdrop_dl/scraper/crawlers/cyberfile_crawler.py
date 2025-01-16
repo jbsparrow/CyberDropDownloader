@@ -64,7 +64,7 @@ class CyberfileCrawler(Crawler):
             data = {"pageType": "folder", "nodeId": nodeId, "pageStart": page, "perPage": 0, "filterOrderBy": ""}
             ajax_soup, ajax_title = await self.get_soup_from_ajax(data, scrape_item)
 
-            title = self.create_title(ajax_title, scrape_item.album_id, None)
+            title = self.create_title(ajax_title, scrape_item.album_id)
             num_pages = int(
                 ajax_soup.select("a[onclick*=loadImages]")[-1].get("onclick").split(",")[2].split(")")[0].strip(),
             )
@@ -121,7 +121,7 @@ class CyberfileCrawler(Crawler):
             }
 
             ajax_soup, ajax_title = await self.get_soup_from_ajax(data, scrape_item)
-            title = self.create_title(ajax_title, scrape_item.url.parts[2], None)
+            title = self.create_title(ajax_title, scrape_item.url.parts[2])
             num_pages = int(ajax_soup.select_one("input[id=rspTotalPages]").get("value"))
 
             tile_listings = ajax_soup.select("div[class=fileListing] div[class*=fileItem]")

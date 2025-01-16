@@ -42,7 +42,7 @@ class Rule34XYZCrawler(Crawler):
 
         scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
 
-        title = self.create_title(scrape_item.url.parts[1], None, None)
+        title = self.create_title(scrape_item.url.parts[1])
         scrape_item.part_of_album = True
 
         content_block = soup.select_one('div[class="box-grid ng-star-inserted"]')

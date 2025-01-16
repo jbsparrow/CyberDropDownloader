@@ -69,7 +69,7 @@ class ImgurCrawler(Crawler):
                 origin=scrape_item,
             )
         title_part = JSON_Obj["data"].get("title", album_id)
-        title = self.create_title(title_part, scrape_item.url.parts[2], None)
+        title = self.create_title(title_part, scrape_item.url.parts[2])
 
         async with self.request_limiter:
             JSON_Obj = await self.client.get_json(

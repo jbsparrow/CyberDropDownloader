@@ -57,9 +57,7 @@ class PimpAndHostCrawler(Crawler):
             )
 
         title = self.create_title(
-            soup.select_one("span[class=author-header__album-name]").get_text(),
-            scrape_item.album_id,
-            None,
+            soup.select_one("span[class=author-header__album-name]").get_text(), scrape_item.album_id
         )
         date = soup.select_one("span[class=date-time]").get("title")
         date = self.parse_datetime(date)

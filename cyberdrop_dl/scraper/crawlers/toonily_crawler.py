@@ -77,7 +77,7 @@ class ToonilyCrawler(Crawler):
         title_parts = soup.select_one("title").get_text().split(" - ")
         series_name = title_parts[0]
         chapter_title = title_parts[1]
-        series_title = self.create_title(series_name, None, None)
+        series_title = self.create_title(series_name)
         scrape_item.add_to_parent_title(series_title)
         scrape_item.add_to_parent_title(chapter_title)
 

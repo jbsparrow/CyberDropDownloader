@@ -42,7 +42,7 @@ class Rule34VaultCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        title = self.create_title(scrape_item.url.parts[1], None, None)
+        title = self.create_title(scrape_item.url.parts[1])
         scrape_item.part_of_album = True
         scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
 
@@ -81,7 +81,7 @@ class Rule34VaultCrawler(Crawler):
         title_str = soup.select_one("div[class*=title]").text
         scrape_item.part_of_album = True
         scrape_item.album_id = scrape_item.url.parts[-1]
-        title = self.create_title(title_str, scrape_item.album_id, None)
+        title = self.create_title(title_str, scrape_item.album_id)
 
         content_block = soup.select_one('div[class="box-grid ng-star-inserted"]')
         content = content_block.select('a[class="box ng-star-inserted"]')

@@ -38,7 +38,7 @@ class ScrolllerCrawler(Crawler):
     async def subreddit(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
         subreddit = scrape_item.url.parts[-1]
-        title = self.create_title(subreddit, None, None)
+        title = self.create_title(subreddit)
         scrape_item.add_to_parent_title(title)
         scrape_item.part_of_album = True
         scrape_item.set_type(FILE_HOST_ALBUM, self.manager)

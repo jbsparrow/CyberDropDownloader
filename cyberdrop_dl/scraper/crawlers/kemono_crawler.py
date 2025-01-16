@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import calendar
-import contextlib
 import datetime
 import json
 import re
@@ -12,7 +11,7 @@ from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import MaxChildrenError
-from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
@@ -44,10 +43,9 @@ class KemonoCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = self.scraping_progress.add_task(scrape_item.url)
-
         if "thumbnails" in scrape_item.url.parts:
             parts = [x for x in scrape_item.url.parts if x not in ("thumbnail", "/")]
             link = URL(f"https://{scrape_item.url.host}/{'/'.join(parts)}")
@@ -62,8 +60,6 @@ class KemonoCrawler(Crawler):
         else:
             await self.handle_direct_link(scrape_item)
 
-        self.scraping_progress.remove_task(task_id)
-
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile."""
@@ -71,13 +67,7 @@ class KemonoCrawler(Crawler):
         service, user, user_str = user_info["service"], user_info["user"], user_info["user_str"]
         offset, maximum_offset, post_limit = user_info["offset"], user_info["maximum_offset"], user_info["limit"]
         api_call = self.api_url / service / "user" / user
-        scrape_item.type = FILE_HOST_PROFILE
-        scrape_item.children = scrape_item.children_limit = 0
-
-        with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = (
-                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
-            )
+        scrape_item.set_type(FILE_HOST_PROFILE, self.manager)
 
         while offset <= maximum_offset:
             async with self.request_limiter:
@@ -93,9 +83,7 @@ class KemonoCrawler(Crawler):
 
             for post in JSON_Resp:
                 await self.handle_post_content(scrape_item, post, user, user_str)
-                scrape_item.children += 1
-                if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
-                    raise MaxChildrenError(origin=scrape_item)
+                scrape_item.add_children()
 
     @error_handling_wrapper
     async def discord(self, scrape_item: ScrapeItem) -> None:
@@ -103,13 +91,8 @@ class KemonoCrawler(Crawler):
         offset = 0
         channel = scrape_item.url.raw_fragment
         api_call = self.api_url / "discord/channel" / channel
-        scrape_item.type = FILE_HOST_PROFILE
-        scrape_item.children = scrape_item.children_limit = 0
+        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
 
-        with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = (
-                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
-            )
         while True:
             async with self.request_limiter:
                 JSON_Resp = await self.client.get_json(
@@ -123,9 +106,7 @@ class KemonoCrawler(Crawler):
 
             for post in JSON_Resp:
                 await self.handle_post_content(scrape_item, post, channel, channel)
-                scrape_item.children += 1
-                if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
-                    raise MaxChildrenError(origin=scrape_item)
+                scrape_item.add_children()
 
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem) -> None:
@@ -137,6 +118,7 @@ class KemonoCrawler(Crawler):
             user_info["user_str"],
             user_info["post"],
         )
+        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
         api_call = self.api_url / service / "user" / user / "post" / post_id
         async with self.request_limiter:
             post: dict = await self.client.get_json(self.domain, api_call, origin=scrape_item)
@@ -146,13 +128,6 @@ class KemonoCrawler(Crawler):
     @error_handling_wrapper
     async def handle_post_content(self, scrape_item: ScrapeItem, post: dict, user: str, user_str: str) -> None:
         """Handles the content of a post."""
-        scrape_item.type = FILE_HOST_ALBUM
-        scrape_item.children = scrape_item.children_limit = 0
-
-        with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = (
-                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
-            )
 
         date: str = post.get("published") or post.get("added")
         date = date.replace("T", " ")
@@ -161,8 +136,7 @@ class KemonoCrawler(Crawler):
 
         scrape_item.album_id = post_id
         scrape_item.part_of_album = True
-
-        scrape_item.children += await self.get_content_links(scrape_item, post, user_str)
+        await self.get_content_links(scrape_item, post, user_str)
 
         async def handle_file(file_obj: dict):
             link = self.primary_base_domain / ("data" + file_obj["path"])
@@ -182,27 +156,24 @@ class KemonoCrawler(Crawler):
             await handle_file(file)
             scrape_item.children += 1
 
-    async def get_content_links(self, scrape_item: ScrapeItem, post: dict, user: str) -> int:
+    async def get_content_links(self, scrape_item: ScrapeItem, post: dict, user: str) -> None:
         """Gets links out of content in post."""
         content = post.get("content", "")
         if not content:
-            return 0
+            return
 
-        new_children = 0
-
-        date = post["published"].replace("T", " ")
+        date_str = post["published"].replace("T", " ")
+        date = self.parse_datetime(date_str)
         post_id = post["id"]
         title = post.get("title", "")
 
-        post_obj = Post(id=post_id, title=title, date=self.parse_datetime(date))
-        new_title = self.create_title(user, None, None)
+        post_obj = Post(id=post_id, title=title, date=date)
+        new_title = self.create_title(user)
         scrape_item = self.create_scrape_item(
             scrape_item,
             scrape_item.url,
             new_title,
-            True,
-            None,
-            self.parse_datetime(date),
+            possible_datetime=date,
         )
         self.add_separate_post_title(scrape_item, post_obj)
         scrape_item.add_to_parent_title("Loose Files")
@@ -218,7 +189,7 @@ class KemonoCrawler(Crawler):
 
         for link in all_links:
             try:
-                url = URL(link)
+                url = URL(link, encoded="%" in link)
                 yarl_links.append(url)
             except ValueError:
                 pass
@@ -229,14 +200,10 @@ class KemonoCrawler(Crawler):
             scrape_item = self.create_scrape_item(
                 scrape_item,
                 link,
-                "",
                 add_parent=scrape_item.url.joinpath("post", post_id),
             )
             self.handle_external_links(scrape_item)
-            new_children += 1
-            if scrape_item.children_limit and (new_children + scrape_item.children) >= scrape_item.children_limit:
-                break
-        return new_children
+            scrape_item.add_children()
 
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:
@@ -259,14 +226,13 @@ class KemonoCrawler(Crawler):
         """Creates a new scrape item with the same parent as the old scrape item."""
 
         post = Post(id=post_id, title=title, date=date)
-        new_title = self.create_title(user, None, None)
+        new_title = self.create_title(user)
         new_scrape_item = self.create_scrape_item(
             old_scrape_item,
             link,
             new_title,
-            True,
-            None,
-            post.date,
+            part_of_album=True,
+            possible_datetime=post.date,
             add_parent=add_parent,
         )
         self.add_separate_post_title(new_scrape_item, post)

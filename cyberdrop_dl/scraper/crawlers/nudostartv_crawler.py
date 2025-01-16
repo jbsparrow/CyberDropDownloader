@@ -39,7 +39,7 @@ class NudoStarTVCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        title = self.create_title(soup.select_one("title").get_text().split("/")[0], None, None)
+        title = self.create_title(soup.select_one("title").get_text().split("/")[0])
         content = soup.select("div[id=list_videos_common_videos_list_items] div a")
         for page in content:
             link = URL(page.get("href"))

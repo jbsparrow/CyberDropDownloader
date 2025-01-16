@@ -43,7 +43,7 @@ class EromeCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        title = self.create_title(scrape_item.url.name, None, None)
+        title = self.create_title(scrape_item.url.name)
         albums = soup.select("a[class=album-link]")
 
         scrape_item.type = FILE_HOST_PROFILE
@@ -93,7 +93,7 @@ class EromeCrawler(Crawler):
         title_portion = soup.select_one("title").text.rsplit(" - Porn")[0].strip()
         if not title_portion:
             title_portion = scrape_item.url.name
-        title = self.create_title(title_portion, scrape_item.url.parts[2], None)
+        title = self.create_title(title_portion, scrape_item.url.parts[2])
         scrape_item.add_to_parent_title(title)
 
         images = soup.select('img[class="img-front lasyload"]')

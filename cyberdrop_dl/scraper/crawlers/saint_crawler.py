@@ -56,7 +56,7 @@ class SaintCrawler(Crawler):
         title_portion = soup.select_one("title").text.rsplit(" - Saint Video Hosting")[0].strip()
         if not title_portion:
             title_portion = scrape_item.url.name
-        title = self.create_title(title_portion, album_id, None)
+        title = self.create_title(title_portion, album_id)
         scrape_item.add_to_parent_title(title)
 
         videos = soup.select("a.btn-primary.action.download")

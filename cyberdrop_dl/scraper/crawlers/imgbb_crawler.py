@@ -52,11 +52,7 @@ class ImgBBCrawler(Crawler):
 
         scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
 
-        title = self.create_title(
-            soup.select_one("a[data-text=album-name]").get_text(),
-            scrape_item.album_id,
-            None,
-        )
+        title = self.create_title(soup.select_one("a[data-text=album-name]").get_text(), scrape_item.album_id)
         albums = soup.select("a[class='image-container --media']")
         for album in albums:
             sub_album_link_str = album.get("href")
