@@ -120,10 +120,4 @@ class EHentaiCrawler(Crawler):
             if not next_page:
                 break
             page_url_str: str = next_page.get(self.next_page_attribute)
-            if not page_url_str:
-                break
-            encoded = "%" in page_url_str
-            if page_url_str.startswith("/"):
-                page_url = self.primary_base_domain.joinpath(page_url_str[1:], encoded=encoded)
-            else:
-                page_url = URL(page_url_str, encoded=encoded)
+            page_url = self.parse_url(page_url_str)

@@ -65,11 +65,7 @@ class CyberdropCrawler(Crawler):
         links = soup.select("div[class*=image-container] a[class=image]")
         for link in links:
             link_str: str = link.get("href")
-            encoded = "%" in link_str
-            if link_str.startswith("/"):
-                link = self.primary_base_domain.with_path(link_str[1:], encoded=encoded)
-            else:
-                link = URL(link_str, encoded=encoded)
+            link = self.parse_url(link_str)
 
             new_scrape_item = self.create_scrape_item(
                 scrape_item,
@@ -100,7 +96,7 @@ class CyberdropCrawler(Crawler):
             JSON_Resp = await self.client.get_json(self.domain, api_url, origin=scrape_item)
 
         link_str: str = JSON_Resp["url"]
-        link = URL(link_str, encoded="%" in link_str)
+        link = self.parse_url(link_str)
         await self.handle_file(link, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

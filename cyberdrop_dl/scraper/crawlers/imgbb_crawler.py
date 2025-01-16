@@ -55,15 +55,15 @@ class ImgBBCrawler(Crawler):
         title = self.create_title(soup.select_one("a[data-text=album-name]").get_text(), scrape_item.album_id)
         albums = soup.select("a[class='image-container --media']")
         for album in albums:
-            sub_album_link_str = album.get("href")
-            sub_album_link = URL(sub_album_link_str, encoded="%" in sub_album_link_str)
-            new_scrape_item = self.create_scrape_item(scrape_item, sub_album_link, title, True)
+            link_str: str = album.get("href")
+            link = self.parse_url(link_str)
+            new_scrape_item = self.create_scrape_item(scrape_item, link, title, part_of_album=True)
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url / "sub", origin=scrape_item)
-        link_next_str: str = soup.select_one("a[id=list-most-recent-link]").get("href")
-        link_next = URL(link_next_str, encoded="%" in link_next_str)
+        link_str: str = soup.select_one("a[id=list-most-recent-link]").get("href")
+        link_next = self.parse_url(link_str)
 
         while True:
             async with self.request_limiter:
@@ -80,8 +80,8 @@ class ImgBBCrawler(Crawler):
             link_next = soup.select_one("a[data-pagination=next]")
             if not link_next:
                 break
-            link_next_str = link_next.get("href")
-            link_next = URL(link_next, encoded="%" in link_next_str)
+            link_str: str = link_next.get("href")
+            link_next = self.parse_url(link_str)
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
@@ -92,10 +92,10 @@ class ImgBBCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        link_str = soup.select_one("div[id=image-viewer-container] img").get("src")
-        link = URL(link_str, encoded="%" in link_str)
-        date = soup.select_one("p[class*=description-meta] span").get("title")
-        date = self.parse_datetime(date)
+        link_str: str = soup.select_one("div[id=image-viewer-container] img").get("src")
+        link = self.parse_url(link_str)
+        date_str: str = soup.select_one("p[class*=description-meta] span").get("title")
+        date = self.parse_datetime(date_str)
         scrape_item.possible_datetime = date
 
         filename, ext = get_filename_and_ext(link.name)

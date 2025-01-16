@@ -98,15 +98,11 @@ class BunkrrCrawler(Crawler):
         for card_listing in card_listings:
             filename = card_listing.select_one('p[class*="theName"]').text
             file_ext = "." + filename.split(".")[-1]
-            thumbnail = card_listing.select_one("img").get("src")
+            thumbnail: str = card_listing.select_one("img").get("src")
             date_str = card_listing.select_one('span[class*="theDate"]').text.strip()
             date = self.parse_datetime(date_str)
-            link_str = card_listing.find("a").get("href")
-            encoded = "%" in link_str
-            if link_str.startswith("/"):
-                link = scrape_item.url.with_path(link_str[1:], encoded=encoded)
-            else:
-                link = URL(link_str, encoded=encoded)
+            link_str: str = card_listing.find("a").get("href")
+            link = self.parse_url(link_str, scrape_item.url)
             new_scrape_item = self.create_scrape_item(
                 scrape_item,
                 link,
@@ -117,7 +113,7 @@ class BunkrrCrawler(Crawler):
 
             valid_extensions = FILE_FORMATS["Images"] | FILE_FORMATS["Videos"]
             src_str = thumbnail.replace("/thumbs/", "/")
-            src = URL(src_str, encoded="%" in src_str)
+            src = self.parse_url(src_str)
             src = src.with_suffix(file_ext).with_query(None)
             if file_ext.lower() not in FILE_FORMATS["Images"]:
                 src = src.with_host(src.host.replace("i-", ""))
@@ -170,7 +166,7 @@ class BunkrrCrawler(Crawler):
         if not link_str:
             raise ScrapeError(422, "Couldn't find source", origin=scrape_item)
 
-        link = URL(link_str, encoded="%" in link_str)
+        link = self.parse_url(link_str)
         date = None
         date_str = soup.select_one('span[class*="theDate"]')
         if date_str:
@@ -213,8 +209,8 @@ class BunkrrCrawler(Crawler):
             link_container = soup.select('a[download*=""]')[-1]
         except IndexError:
             link_container = soup.select("a[class*=download]")[-1]
-        link_str = link_container.get("href")
-        return URL(link_str, encoded="%" in link_str)
+        link_str: str = link_container.get("href")
+        return self.parse_url(link_str)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 

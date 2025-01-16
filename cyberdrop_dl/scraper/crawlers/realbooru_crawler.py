@@ -57,7 +57,7 @@ class RealBooruCrawler(Crawler):
             encoded = "%" in link_str
             if link_str.startswith("//"):
                 link = URL("https:" + link_str, encoded=encoded)
-            if link_str.startswith("/"):
+            elif link_str.startswith("/"):
                 link = self.primary_base_domain.joinpath(link_str[1:], encoded=encoded)
             else:
                 link = URL(link_str, encoded=encoded)

@@ -13,7 +13,7 @@ from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, S
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
+    from bs4 import BeautifulSoup, Tag
 
     from cyberdrop_dl.managers.manager import Manager
 
@@ -63,10 +63,10 @@ class ImgBoxCrawler(Crawler):
         scrape_item.add_to_parent_title(title)
 
         images = soup.find("div", attrs={"id": "gallery-view-content"})
-        images = images.findAll("img")
+        images: list[Tag] = images.findAll("img")
         for link in images:
             link_str: str = link.get("src").replace("thumbs", "images").replace("_b", "_o")
-            link = URL(link_str, encoded="%" in link_str)
+            link = self.parse_url(link_str)
             filename, ext = get_filename_and_ext(link.name)
             await self.handle_file(link, scrape_item, filename, ext)
             scrape_item.add_children()
@@ -81,7 +81,7 @@ class ImgBoxCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         link_str: str = soup.select_one("img[id=img]").get("src")
-        link = URL(link_str, encoded="%" in link_str)
+        link = self.parse_url(link_str)
         filename, ext = get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 

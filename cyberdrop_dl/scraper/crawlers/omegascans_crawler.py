@@ -23,7 +23,7 @@ class OmegaScansCrawler(Crawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "omegascans", "OmegaScans")
-        self.api_url = "https://api.omegascans.org/chapter/query?page={}&perPage={}&series_id={}"
+        self.api_url = URL("https://api.omegascans.org/chapter/query")
         self.request_limiter = AsyncLimiter(10, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -60,7 +60,7 @@ class OmegaScansCrawler(Crawler):
         page_number = 1
         number_per_page = 30
         while True:
-            api_url = URL(self.api_url.format(page_number, number_per_page, series_id))
+            api_url = self.api_url.with_query(page=page_number, perPage=number_per_page, series_id=series_id)
             async with self.request_limiter:
                 JSON_Obj = await self.client.get_json(self.domain, api_url, origin=scrape_item)
             if not JSON_Obj:
@@ -101,8 +101,8 @@ class OmegaScansCrawler(Crawler):
             scripts = soup.select("script")
             for script in scripts:
                 if "created" in script.get_text():
-                    date = script.get_text().split('created_at\\":\\"')[1].split(".")[0]
-                    date = self.parse_datetime_other(date)
+                    date_str = script.get_text().split('created_at\\":\\"')[1].split(".")[0]
+                    date = self.parse_datetime_other(date_str)
                     break
 
         new_scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, possible_datetime=date)
@@ -111,7 +111,7 @@ class OmegaScansCrawler(Crawler):
             link_str: str = image.get("src") or image.get("data-src")
             if not link_str:
                 continue
-            link = URL(link_str, encoded="%" in link_str)
+            link = self.parse_url(link_str)
             filename, ext = get_filename_and_ext(link.name)
             await self.handle_file(link, new_scrape_item, filename, ext)
 

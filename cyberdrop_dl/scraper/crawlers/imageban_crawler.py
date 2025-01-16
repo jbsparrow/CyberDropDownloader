@@ -56,28 +56,19 @@ class ImageBanCrawler(Crawler):
         scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
 
         for image in images:
-            link_path: str = image.get("href")
-            if not link_path or "javascript:void(0)" in link_path:
+            link_str: str = image.get("href")
+            if not link_str or "javascript:void(0)" in link_str:
                 continue
 
-            encoded = "%" in link_path
-            if link_path.startswith("/"):
-                link = URL("https://" + scrape_item.url.host).joinpath(link_path[1:], encoded=encoded)
-            else:
-                link = URL(link_path, encoded=encoded)
-
+            link = self.parse_url(link_str, scrape_item.url.with_path("/"))
             new_scrape_item = self.create_scrape_item(scrape_item, link, title, add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.add_children()
 
         next_page = soup.select_one('a[class*="page-link next"]')
         if next_page:
-            link_path: str = next_page.get("href")
-            encoded = "%" in link_path
-            if link_path.startswith("/"):
-                link = URL("https://" + scrape_item.url.host).joinpath(link_path[1:], encoded=encoded)
-            else:
-                link = URL(link_path, encoded=encoded)
+            link_str: str = next_page.get("href")
+            link = self.parse_url(link_str, scrape_item.url.with_path("/"))
             new_scrape_item = self.create_scrape_item(scrape_item, link)
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
@@ -92,11 +83,11 @@ class ImageBanCrawler(Crawler):
         content_block = soup.select("div[class=container-fluid]")[-1]
         images = content_block.select("img")
         scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
+        date = self.parse_datetime("-".join(scrape_item.url.parts[2:5]))
 
         for image in images:
             link_str: str = image.get("src")
-            link = URL(link_str, encoded="%" in link_str)
-            date = self.parse_datetime(f"{(link.parts[2])}-{(link.parts[3])}-{(link.parts[4])}")
+            link = self.parse_url(link_str)
             new_scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, possible_datetime=date)
             filename, ext = get_filename_and_ext(link.name)
             await self.handle_file(link, new_scrape_item, filename, ext)
@@ -116,10 +107,9 @@ class ImageBanCrawler(Crawler):
             raise ScrapeError(422, origin=scrape_item)
 
         date = self.parse_datetime("-".join(scrape_item.url.parts[2:5]))
-
         new_scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, possible_datetime=date)
-        link_str = image.get("src")
-        link = URL(link_str, encoded="%" in link_str)
+        link_str: str = image.get("src")
+        link = self.parse_url(link_str)
         filename, ext = get_filename_and_ext(link.name)
         await self.handle_file(link, new_scrape_item, filename, ext)
 

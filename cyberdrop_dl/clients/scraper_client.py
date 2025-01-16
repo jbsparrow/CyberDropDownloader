@@ -129,7 +129,7 @@ class ScraperClient:
                 raise InvalidContentTypeError(message=f"Received {content_type}, was expecting text", origin=origin)
             text = await CachedStreamReader(await response.read()).read()
             if with_response_url:
-                return BeautifulSoup(text, "html.parser"), URL(response.url)
+                return BeautifulSoup(text, "html.parser"), URL(response.url, encoded="%" in response.url)
             return BeautifulSoup(text, "html.parser")
 
     async def get_soup_and_return_url(

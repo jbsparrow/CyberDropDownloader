@@ -45,7 +45,7 @@ class EromeCrawler(Crawler):
 
         for album in albums:
             link_str: str = album["href"]
-            link = URL(link_str, encoded="%" in link_str)
+            link = self.parse_url(link_str)
             new_scrape_item = self.create_scrape_item(scrape_item, link, title, True, add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.add_children()
@@ -78,8 +78,8 @@ class EromeCrawler(Crawler):
         images = soup.select('img[class="img-front lasyload"]')
         videos = soup.select("div[class=media-group] div[class=video-lg] video source")
 
-        image_links = [URL(image["data-src"], encoded="%" in image["data-src"]) for image in images]
-        video_links = [URL(video["src"], encoded="%" in video["src"]) for video in videos]
+        image_links = [self.parse_url(image["data-src"]) for image in images]
+        video_links = [self.parse_url(video["src"]) for video in videos]
 
         for link in image_links + video_links:
             filename, ext = get_filename_and_ext(link.name)

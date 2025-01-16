@@ -50,7 +50,7 @@ class HotPicCrawler(Crawler):
         files = soup.select("a[class*=spotlight]")
         for file in files:
             link_str: str = file.get("href")
-            link = URL(link_str, encoded="%" in link_str)
+            link = self.parse_url(link_str)
             filename, ext = get_filename_and_ext(link.name)
             await self.handle_file(link, scrape_item, filename, ext)
             scrape_item.add_children()
@@ -64,6 +64,7 @@ class HotPicCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        link = URL(soup.select_one("img[id*=main-image]").get("src"))
+        link_str: str = soup.select_one("img[id*=main-image]").get("src")
+        link = self.parse_url(link_str)
         filename, ext = get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)

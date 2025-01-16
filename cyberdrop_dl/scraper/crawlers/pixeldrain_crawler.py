@@ -62,7 +62,7 @@ class PixelDrainCrawler(Crawler):
                 mime_type: str = file["mime_type"]
                 if not any(media in mime_type for media in ("image", "video")):
                     raise
-                filename, ext = get_filename_and_ext(f"{filename}.{mime_type.split("/")[-1]}")
+                filename, ext = get_filename_and_ext(f"{filename}.{mime_type.split('/')[-1]}")
 
             new_scrape_item = self.create_scrape_item(
                 scrape_item,
@@ -121,7 +121,7 @@ class PixelDrainCrawler(Crawler):
             text: str = await self.client.get_text(self.domain, api_url, origin=scrape_item)
         lines = text.split("\n")
         for line in lines:
-            link = URL(line, encoded="%" in line)
+            link = self.parse_url(line)
             new_scrape_item = self.create_scrape_item(
                 scrape_item,
                 link,
@@ -138,7 +138,7 @@ class PixelDrainCrawler(Crawler):
             )
         meta_tag: str = soup.select_one('meta[property="og:type"]').get("content")
         filename: str = soup.select_one('meta[property="og:title"]').get("content")
-        link_str = None
+        link_str: str = ""
         if "video" in meta_tag:
             link_str = soup.select_one('meta[property="og:video"]').get("content")
         elif "image" in meta_tag:
@@ -156,7 +156,7 @@ class PixelDrainCrawler(Crawler):
         json_data = json.loads(extracted_json_str)
         date_str: str = json_data["path"][0]["created"]
         date = self.parse_datetime(date_str.replace("T", " ").split(".")[0])
-        link = URL(link_str, encoded="%" in link_str)
+        link = self.parse_url(link_str)
         filename, ext = get_filename_and_ext(filename)
         new_scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, possible_datetime=date)
         await self.handle_file(link, new_scrape_item, filename, ext)

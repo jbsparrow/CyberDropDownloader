@@ -43,7 +43,7 @@ class NudoStarTVCrawler(Crawler):
         content = soup.select("div[id=list_videos_common_videos_list_items] div a")
         for page in content:
             link_str: str = page.get("href")
-            link = URL(link_str, encoded="%" in link_str)
+            link = self.parse_url(link_str)
             new_scrape_item = self.create_scrape_item(scrape_item, link, title, add_parent=scrape_item.url)
             await self.image(new_scrape_item)
             scrape_item.add_children()
@@ -51,7 +51,7 @@ class NudoStarTVCrawler(Crawler):
         next_page = soup.select_one("li[class=next] a")
         if next_page:
             link_str: str = next_page.get("href")
-            link = URL(link_str, encoded="%" in link_str)
+            link = self.parse_url(link_str)
             new_scrape_item = self.create_scrape_item(scrape_item, link)
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
@@ -62,6 +62,6 @@ class NudoStarTVCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
         image = soup.select_one("div[class=block-video] a img")
         link_str: str = image.get("src")
-        link = URL(link_str, encoded="%" in link_str)
+        link = self.parse_url(link_str)
         filename, ext = get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)

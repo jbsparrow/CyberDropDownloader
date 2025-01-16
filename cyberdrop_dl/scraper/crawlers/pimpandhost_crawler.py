@@ -47,16 +47,16 @@ class PimpAndHostCrawler(Crawler):
         title = self.create_title(
             soup.select_one("span[class=author-header__album-name]").get_text(), scrape_item.album_id
         )
-        date = soup.select_one("span[class=date-time]").get("title")
-        date = self.parse_datetime(date)
+        date_str: str = soup.select_one("span[class=date-time]").get("title")
+        date = self.parse_datetime(date_str)
 
         files = soup.select('a[class*="image-wrapper center-cropped im-wr"]')
         for file in files:
             link_str: str = file.get("href")
-            next_page = URL(link_str, encoded="%" in link_str)
+            link = self.parse_url(link_str)
             new_scrape_item = self.create_scrape_item(
                 scrape_item,
-                next_page,
+                link,
                 title,
                 possible_datetime=date,
                 add_parent=scrape_item.url,
@@ -66,14 +66,8 @@ class PimpAndHostCrawler(Crawler):
 
         next_page = soup.select_one("li[class=next] a")
         if next_page:
-            next_page_str = next_page.get("href")
-            encoded = "%" in next_page_str
-            if link_str.startswith("//"):
-                next_page = URL("https:" + next_page_str, encoded=encoded)
-            if link_str.startswith("/"):
-                next_page = self.primary_base_domain.joinpath(next_page_str[1:], encoded=encoded)
-            else:
-                next_page = URL(link_str, encoded=encoded)
+            next_page_str: str = next_page.get("href")
+            next_page = self.parse_url(next_page_str)
             new_scrape_item = self.create_scrape_item(scrape_item, next_page, possible_datetime=date)
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
@@ -85,18 +79,11 @@ class PimpAndHostCrawler(Crawler):
 
         link_tag = soup.select_one(".main-image-wrapper")
         link_str: str = link_tag.get("data-src")
-        encoded = "%" in link_str
-        if link_str.startswith("//"):
-            link = URL("https:" + link_str, encoded=encoded)
-        if link_str.startswith("/"):
-            link = self.primary_base_domain.joinpath(link_str[1:], encoded=encoded)
-        else:
-            link = URL(link_str, encoded=encoded)
+        link = self.parse_url(link_str)
+        date_str: str = soup.select_one("span[class=date-time]").get("title")
+        date = self.parse_datetime(date_str)
 
-        date = soup.select_one("span[class=date-time]").get("title")
-        date = self.parse_datetime(date)
-
-        new_scrape_item = self.create_scrape_item(scrape_item, link)
+        new_scrape_item = self.create_scrape_item(scrape_item, link, possible_datetime=date)
         filename, ext = get_filename_and_ext(link.name)
         await self.handle_file(link, new_scrape_item, filename, ext)
 

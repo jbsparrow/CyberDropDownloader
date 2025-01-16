@@ -112,13 +112,14 @@ class GoFileCrawler(Crawler):
                 subfolders.append(folder_url)
                 continue
 
-            link = URL(child["link"], encoded="%" in child["link"])
-            if child["link"] == "overloaded":
-                link = URL(child["directLink"], encoded="%" in child["directLink"])
+            link_str = child["link"]
+            if link_str == "overloaded":
+                link_str = child["directLink"]
+
+            link = self.parse_url(link_str)
+            date = child["createTime"]
             filename, ext = get_filename_and_ext(link.name)
-            new_scrape_item = self.create_scrape_item(
-                scrape_item, scrape_item.url, possible_datetime=child["createTime"]
-            )
+            new_scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, possible_datetime=date)
             await self.handle_file(link, new_scrape_item, filename, ext)
             scrape_item.add_children()
 
@@ -137,8 +138,8 @@ class GoFileCrawler(Crawler):
         create_account_address = self.api / "accounts"
         async with self.request_limiter:
             json_resp = await self.client.post_data(self.domain, create_account_address, data={})
-            if json_resp["status"] != "ok":
-                raise ScrapeError(401, "Couldn't generate GoFile API token", origin=create_account_address)
+        if json_resp["status"] != "ok":
+            raise ScrapeError(401, "Couldn't generate GoFile API token", origin=create_account_address)
 
         return json_resp["data"]["token"]
 
@@ -156,9 +157,9 @@ class GoFileCrawler(Crawler):
     async def _update_website_token(self) -> None:
         async with self.request_limiter:
             text = await self.client.get_text(self.domain, self.js_address, origin=self.js_address)
-            match = re.search(WT_REGEX, str(text))
-            if not match:
-                raise ScrapeError(401, "Couldn't generate GoFile websiteToken", origin=self.js_address)
-            self.website_token = match.group(1)
-            self.manager.cache_manager.save("gofile_website_token", self.website_token)
-            self._website_token_date = datetime.now(UTC)
+        match = re.search(WT_REGEX, str(text))
+        if not match:
+            raise ScrapeError(401, "Couldn't generate GoFile websiteToken", origin=self.js_address)
+        self.website_token = match.group(1)
+        self.manager.cache_manager.save("gofile_website_token", self.website_token)
+        self._website_token_date = datetime.now(UTC)

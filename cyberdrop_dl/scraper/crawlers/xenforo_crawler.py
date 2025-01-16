@@ -375,15 +375,12 @@ class XenforoCrawler(Crawler):
         if isinstance(link, str):
             encoded = "%" in link
             link_str = link.replace(".th.", ".").replace(".md.", ".").replace("ifr", "watch")
-            if link_str.endswith("/"):
-                link_str = link[:-1]
-            elif link_str.startswith("//"):
-                link_str = "https:" + link
-
-            if link_str.startswith("/"):
-                link = self.primary_base_domain.joinpath(link[1:], encoded=encoded)
+            if link_str.startswith("//"):
+                link = URL("https:" + link_str, encoded=encoded)
+            elif link_str.startswith("/"):
+                link = self.primary_base_domain.joinpath(link_str[1:], encoded=encoded)
             else:
-                link = URL(link, encoded=encoded)
+                link = URL(link_str, encoded=encoded)
 
         assert isinstance(link, URL)
         if await self.is_confirmation_link(link) or any(keyword in link.path for keyword in ("link-confirmation",)):

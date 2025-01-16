@@ -114,11 +114,7 @@ class CheveretoCrawler(Crawler):
                 link_str: str = link.get("href")
                 if not link_str:
                     continue
-                encoded = "%" in link_str
-                if link_str.startswith("/"):
-                    link = self.primary_base_domain.joinpath(link_str[1:], encoded=encoded)
-                else:
-                    link = URL(link_str, encoded=encoded)
+                link = self.parse_url(link_str)
                 new_scrape_item = self.create_scrape_item(
                     scrape_item,
                     link,
@@ -139,9 +135,8 @@ class CheveretoCrawler(Crawler):
         scrape_item.url = scrape_item.url.with_query(None)
 
         async with self.request_limiter:
-            sub_albums_soup: BeautifulSoup = await self.client.get_soup(
-                self.domain, scrape_item.url / "sub", origin=scrape_item
-            )
+            sub_albums = scrape_item.url / "sub"
+            sub_albums_soup: BeautifulSoup = await self.client.get_soup(self.domain, sub_albums, origin=scrape_item)
 
         scrape_item.url = canonical_url
 
@@ -166,24 +161,16 @@ class CheveretoCrawler(Crawler):
 
         sub_albums = sub_albums_soup.select(self.profile_item_selector)
         for album in sub_albums:
-            sub_album_link_str: str = album.get("href")
-            encoded = "%" in sub_album_link_str
-            if sub_album_link_str.startswith("/"):
-                sub_album_link = self.primary_base_domain.joinpath(sub_album_link_str[1:], encoded=encoded)
-            else:
-                sub_album_link = URL(sub_album_link_str, encoded=encoded)
-            new_scrape_item = self.create_scrape_item(scrape_item, sub_album_link)
+            link_str: str = album.get("href")
+            link = self.parse_url(link_str)
+            new_scrape_item = self.create_scrape_item(scrape_item, link)
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
         async for soup in self.web_pager(scrape_item):
             links = soup.select(self.album_img_selector)
             for link in links:
                 link_str: str = link.get("src")
-                encoded = "%" in link_str
-                if link_str.startswith("/"):
-                    link = self.primary_base_domain.joinpath(link_str[1:], encoded=encoded)
-                else:
-                    link = URL(link_str, encoded=encoded)
+                link = self.parse_url(link_str)
                 new_scrape_item = self.create_scrape_item(
                     scrape_item,
                     link,
@@ -224,7 +211,7 @@ class CheveretoCrawler(Crawler):
 
         try:
             link_str: str = soup.select_one(selector[0]).get(selector[1])
-            link = URL(link_str, encoded="%" in link_str)
+            link = self.parse_url(link_str)
             link = link.with_name(link.name.replace(".md.", ".").replace(".th.", "."))
         except AttributeError:
             raise ScrapeError(422, f"Couldn't find {url_type.value} source", origin=scrape_item) from None
@@ -270,7 +257,8 @@ class CheveretoCrawler(Crawler):
         name = scrape_item.url.parts[name_index]
         _id = name.rsplit(".")[-1]
         new_parts = scrape_item.url.parts[1:name_index] + (_id,)
-        return _id, scrape_item.url.with_path("/".join(new_parts))
+        new_path = "/".join(new_parts)
+        return _id, self.parse_url(new_path, scrape_item.url.with_path("/"))
 
     async def web_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
         """Generator of website pages."""
@@ -283,13 +271,7 @@ class CheveretoCrawler(Crawler):
             if not next_page:
                 break
             page_url_str: str = next_page.get("href")
-            if not page_url_str:
-                break
-            encoded = "%" in page_url_str
-            if page_url_str.startswith("/"):
-                page_url = self.primary_base_domain.joinpath(page_url_str[1:], encoded=encoded)
-            else:
-                page_url = URL(page_url_str, encoded=encoded)
+            page_url = self.parse_url(page_url_str)
 
     @staticmethod
     async def get_sort_by_new_url(url: URL) -> URL:

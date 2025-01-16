@@ -8,7 +8,6 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import LoginError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
@@ -41,9 +40,10 @@ class ImgurCrawler(Crawler):
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
-        if self.imgur_client_id == "":
-            log("To scrape imgur content, you need to provide a client id", 30)
-            raise LoginError(message="No Imgur Client ID provided")
+        if not self.imgur_client_id:
+            msg = "No Imgur Client ID provided"
+            raise LoginError(msg)
+
         await self.check_imgur_credits(scrape_item)
         scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
         album_id = scrape_item.url.parts[-1]
@@ -58,19 +58,15 @@ class ImgurCrawler(Crawler):
                 origin=scrape_item,
             )
         title_part = JSON_Obj["data"].get("title", album_id)
-        title = self.create_title(title_part, scrape_item.url.parts[2])
+        title = self.create_title(title_part, album_id)
 
         async with self.request_limiter:
-            JSON_Obj = await self.client.get_json(
-                self.domain,
-                self.imgur_api / f"album/{album_id}/images",
-                headers_inc=self.headers,
-                origin=scrape_item,
-            )
+            api_url = self.imgur_api / "album" / album_id / "images"
+            JSON_Obj = await self.client.get_json(self.domain, api_url, headers_inc=self.headers, origin=scrape_item)
 
         for image in JSON_Obj["data"]:
             link_str: str = image["link"]
-            link = URL(link_str, encoded="%" in link_str)
+            link = self.parse_url(link_str)
             date = image["datetime"]
             new_scrape_item = self.create_scrape_item(
                 scrape_item,
@@ -86,7 +82,6 @@ class ImgurCrawler(Crawler):
     async def image(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image."""
         if not self.imgur_client_id:
-            log("To scrape imgur content, you need to provide a client id", 40)
             msg = "No Imgur Client ID provided"
             raise LoginError(msg)
 
@@ -94,16 +89,12 @@ class ImgurCrawler(Crawler):
 
         image_id = scrape_item.url.parts[-1]
         async with self.request_limiter:
-            JSON_Obj = await self.client.get_json(
-                self.domain,
-                self.imgur_api / f"image/{image_id}",
-                headers_inc=self.headers,
-                origin=scrape_item,
-            )
+            api_url = self.imgur_api / "image" / image_id
+            JSON_Obj = await self.client.get_json(self.domain, api_url, headers_inc=self.headers, origin=scrape_item)
 
         date = JSON_Obj["data"]["datetime"]
         link_str: str = JSON_Obj["data"]["link"]
-        link = URL(link_str, encoded="%" in link_str)
+        link = self.parse_url(link_str)
         new_scrape_item = self.create_scrape_item(scrape_item, link, possible_datetime=date)
         await self.handle_direct(new_scrape_item)
 
@@ -114,7 +105,8 @@ class ImgurCrawler(Crawler):
         if any(extension == ext.lower() for extension in (".gifv", ".mp4")):
             filename = filename.replace(ext, ".mp4")
             ext = ".mp4"
-            link = URL("https://imgur.com/download").joinpath(filename.replace(ext, ""), encoded="%" in filename)
+            link_str = filename.replace(ext, "")
+            link = self.parse_url(link_str, URL("https://imgur.com/download"))
             new_scrape_item = self.create_scrape_item(scrape_item, link)
             return await self.handle_file(link, new_scrape_item, filename, ext)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)

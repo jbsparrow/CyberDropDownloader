@@ -47,8 +47,8 @@ class CoomerCrawler(Crawler):
         """Determines where to send the scrape item based on the url."""
         if "thumbnails" in scrape_item.url.parts:
             parts = [x for x in scrape_item.url.parts if x not in ("thumbnail", "/")]
-            link = URL(f"https://{scrape_item.url.host}/{'/'.join(parts)}")
-            scrape_item.url = link
+            new_path = "/".join(parts)
+            scrape_item.url = scrape_item.url.with_path(new_path)
             await self.handle_direct_link(scrape_item)
         elif "post" in scrape_item.url.parts:
             await self.post(scrape_item)
@@ -66,20 +66,21 @@ class CoomerCrawler(Crawler):
             msg = "No session cookie found in the config file, cannot scrape favorites"
             raise ScrapeError(401, msg, origin=scrape_item)
 
+        self.client.client_manager.cookies.update_cookies(
+            {"session": self.manager.config_manager.authentication_data.coomer.session},
+            response_url=self.primary_base_domain,
+        )
         async with self.request_limiter:
-            self.client.client_manager.cookies.update_cookies(
-                {"session": self.manager.config_manager.authentication_data.coomer.session},
-                response_url=self.primary_base_domain,
-            )
             favourites_api_url = (self.api_url / "account/favorites").with_query({"type": "artist"})
             JSON_Resp = await self.client.get_json(self.domain, favourites_api_url, origin=scrape_item)
-            self.client.client_manager.cookies.update_cookies({"session": ""}, response_url=self.primary_base_domain)
-            for user in JSON_Resp:
-                id = user["id"]
-                service = user["service"]
-                url = self.primary_base_domain / service / "user" / id
-                new_scrape_item = self.create_scrape_item(scrape_item, url, part_of_album=True)
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+
+        self.client.client_manager.cookies.update_cookies({"session": ""}, response_url=self.primary_base_domain)
+        for user in JSON_Resp:
+            id = user["id"]
+            service = user["service"]
+            url = self.primary_base_domain / service / "user" / id
+            new_scrape_item = self.create_scrape_item(scrape_item, url, part_of_album=True)
+            self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
@@ -93,14 +94,10 @@ class CoomerCrawler(Crawler):
         while offset <= maximum_offset:
             async with self.request_limiter:
                 query_api_call = api_call.with_query({"o": offset})
-                JSON_Resp = await self.client.get_json(
-                    self.domain,
-                    query_api_call,
-                    origin=scrape_item,
-                )
-                offset += post_limit
-                if not JSON_Resp:
-                    break
+                JSON_Resp = await self.client.get_json(self.domain, query_api_call, origin=scrape_item)
+            offset += post_limit
+            if not JSON_Resp:
+                break
 
             for post in JSON_Resp:
                 await self.handle_post_content(scrape_item, post, user, user_str)
@@ -141,8 +138,8 @@ class CoomerCrawler(Crawler):
             post_title = "Untitled"
 
         async def handle_file(file_obj: dict):
-            new_path = "data" + file_obj["path"]
-            link: URL = self.primary_base_domain.joinpath(new_path, encoded="%" in new_path)
+            link_str = "data" + file_obj["path"]
+            link = self.parse_url(link_str)
             link = link.with_query({"f": file_obj["name"]})
             await self.create_new_scrape_item(
                 link,
@@ -211,12 +208,12 @@ class CoomerCrawler(Crawler):
             profile_json, resp = await self.client.get_json(
                 self.domain, profile_api_url, origin=scrape_item, cache_disabled=True
             )
-            properties: dict = profile_json.get("props", {})
-            cached_response = await self.manager.cache_manager.request_cache.get_response(str(profile_api_url))
-            cached_properties = {} if not cached_response else (await cached_response.json()).get("props", {})
+        properties: dict = profile_json.get("props", {})
+        cached_response = await self.manager.cache_manager.request_cache.get_response(str(profile_api_url))
+        cached_properties = {} if not cached_response else (await cached_response.json()).get("props", {})
 
-            # Shift cache offsets if necessary
-            await self.shift_offsets(profile_api_url, properties, cached_properties, resp)
+        # Shift cache offsets if necessary
+        await self.shift_offsets(profile_api_url, properties, cached_properties, resp)
 
         limit = properties.get("limit", 50)
         user_str = properties.get("name", user)

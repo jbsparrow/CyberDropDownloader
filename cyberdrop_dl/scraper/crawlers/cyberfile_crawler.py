@@ -80,8 +80,7 @@ class CyberfileCrawler(Crawler):
                 if not link_str:
                     continue
 
-                link = URL(link_str, encoded="%" in link_str)
-
+                link = self.parse_url(link_str)
                 new_scrape_item = self.create_scrape_item(scrape_item, link, title, add_parent=scrape_item.url)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
                 scrape_item.add_children()
@@ -129,7 +128,7 @@ class CyberfileCrawler(Crawler):
                 if not link_str:
                     continue
 
-                link = URL(link_str, encoded="%" in link_str)
+                link = self.parse_url(link_str)
                 new_scrape_item = self.create_scrape_item(scrape_item, link, title, add_parent=scrape_item.url)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
                 scrape_item.add_children()
@@ -200,7 +199,7 @@ class CyberfileCrawler(Crawler):
             raise ScrapeError(422, "Couldn't find download button", origin=scrape_item) from None
 
         link_str = html_download_text.split("'")[1]
-        link = URL(link_str, encoded="%" in link_str)
+        link = self.parse_url(link_str)
         file_detail_table = ajax_soup.select('table[class="table table-bordered table-striped"]')[-1]
         uploaded_row = file_detail_table.select("tr")[-2]
         uploaded_date = uploaded_row.select_one("td[class=responsiveTable]").text.strip()
