@@ -59,7 +59,6 @@ class HistoryTable:
         await self.db_conn.commit()
         await self.fix_primary_keys()
         await self.add_columns_media()
-        await self.fix_bunkr_v4_entries()
 
     async def check_complete(self, domain: str, url: URL, referer: URL) -> bool:
         """Checks whether an individual file has completed given its domain and url path."""
@@ -263,24 +262,6 @@ class HistoryTable:
             return []
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    async def fix_bunkr_v4_entries(self) -> None:
-        """Fixes bunkr v4 entries in the database."""
-        cursor = await self.db_conn.cursor()
-        result = await cursor.execute("""SELECT * from media WHERE domain = 'bunkr' and completed = 1""")
-        bunkr_entries = await result.fetchall()
-
-        for entry in bunkr_entries:
-            entry_list = list(entry)
-            entry_list[0] = "bunkrr"
-            await self.db_conn.execute(
-                """INSERT or REPLACE INTO media VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)""",
-                entry_list,
-            )
-        await self.db_conn.commit()
-
-        await self.db_conn.execute("""DELETE FROM media WHERE domain = 'bunkr'""")
-        await self.db_conn.commit()
 
     async def fix_primary_keys(self) -> None:
         cursor = await self.db_conn.cursor()

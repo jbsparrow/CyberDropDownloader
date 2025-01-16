@@ -15,11 +15,11 @@ console = Console()
 
 
 class HashTable:
-    def __init__(self, db_conn: aiosqlite.Connection,batch_insert) -> None:
+    def __init__(self, db_conn: aiosqlite.Connection, batch_insert) -> None:
         self.db_conn: aiosqlite.Connection = db_conn
         self.insert_hash_items: list = []
         self.insert_file_items: list = []
-        self.batch_insert=False
+        self.batch_insert = False
 
     async def startup(self) -> None:
         """Startup process for the HistoryTable."""
@@ -29,8 +29,6 @@ class HashTable:
         await self.db_conn.execute(create_files)
         await self.db_conn.execute(create_hash)
         await self.db_conn.commit()
-
-    
 
     async def get_file_hash_exists(self, full_path: Path | str, hash_type: str) -> str | None:
         """gets the hash from a complete file path
@@ -91,7 +89,10 @@ class HashTable:
         except Exception as e:
             console.print(f"Error retrieving folder and filename: {e}")
             return []
-    async def queue_or_insert_hash_db(self, hash_value: str, hash_type: str, file: str, original_filename: str, referer: URL):
+
+    async def queue_or_insert_hash_db(
+        self, hash_value: str, hash_type: str, file: str, original_filename: str, referer: URL
+    ):
         if self.batch_insert:
             await self.queue_hash_db(hash_value, hash_type, file, original_filename, referer)
         else:
@@ -124,10 +125,10 @@ class HashTable:
             folder = str(full_path.parent)
             cursor = await self.db_conn.cursor()
             await cursor.execute(
-            """INSERT INTO hash (hash, hash_type, folder, download_filename)
+                """INSERT INTO hash (hash, hash_type, folder, download_filename)
             VALUES (?, ?, ?, ?)
              ON CONFLICT(download_filename, folder, hash_type) DO UPDATE SET hash = ?""",
-            (hash_value, hash_type, folder, download_filename, hash_value),
+                (hash_value, hash_type, folder, download_filename, hash_value),
             )
             await self.db_conn.commit()
         except Exception as e:
@@ -147,22 +148,24 @@ class HashTable:
             cursor = await self.db_conn.cursor()
 
             await cursor.execute(
-         """
+                """
         INSERT INTO files (folder, original_filename, download_filename, file_size, referer, date)
         VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT(download_filename, folder) DO UPDATE
         SET original_filename = ?, file_size = ?, referer = ?, date = ?
-        """,    
-        (folder,
-            original_filename,
-            download_filename,
-            file_size,
-            referer,
-            file_date,
-            original_filename,
-            file_size,
-            referer,
-            file_date,),
+        """,
+                (
+                    folder,
+                    original_filename,
+                    download_filename,
+                    file_size,
+                    referer,
+                    file_date,
+                    original_filename,
+                    file_size,
+                    referer,
+                    file_date,
+                ),
             )
             await self.db_conn.commit()
         except Exception as e:

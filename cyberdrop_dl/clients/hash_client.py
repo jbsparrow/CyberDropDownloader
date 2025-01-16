@@ -67,19 +67,24 @@ class HashClient:
     @staticmethod
     def _get_key_from_file(file: Path | str):
         return str(Path(file).absolute())
+
     async def _hash_item_helper(self, file: Path | str, original_filename: str, referer: URL):
         hash = await self._get_item_hash(file, original_filename, referer, hash_type=self.xxhash)
-        await self.manager.db_manager.hash_table.queue_or_insert_hash_db(hash,self.xxhash,file,original_filename,referer)
+        await self.manager.db_manager.hash_table.queue_or_insert_hash_db(
+            hash, self.xxhash, file, original_filename, referer
+        )
         if self.manager.config_manager.settings_data.dupe_cleanup_options.add_md5_hash:
             await self._get_item_hash(file, original_filename, referer, hash_type=self.md5)
-            await self.manager.db_manager.hash_table.queue_or_insert_hash_db(hash,self.md5,file,original_filename,referer)
+            await self.manager.db_manager.hash_table.queue_or_insert_hash_db(
+                hash, self.md5, file, original_filename, referer
+            )
         if self.manager.config_manager.settings_data.dupe_cleanup_options.add_sha256_hash:
             await self._get_item_hash(file, original_filename, referer, hash_type=self.sha256)
-            await self.manager.db_manager.hash_table.queue_or_insert_hash_db(hash,self.sha256,file,original_filename,referer)
+            await self.manager.db_manager.hash_table.queue_or_insert_hash_db(
+                hash, self.sha256, file, original_filename, referer
+            )
 
         return hash
-
-
 
     async def _get_item_hash(self, file: Path | str, original_filename: str, referer: URL, hash_type=None) -> str:
         """Generates hash of a file."""
@@ -96,8 +101,8 @@ class HashClient:
         except Exception as e:
             log(f"Error hashing {file} : {e}", 40, exc_info=True)
         return hash
-    
-    def save_hash_data(self,media_item,hash):
+
+    def save_hash_data(self, media_item, hash):
         absolute_path = media_item.complete_file.resolve()
         size = media_item.complete_file.stat().st_size
         self.hashed_media_items.add(media_item)
@@ -105,13 +110,16 @@ class HashClient:
 
     async def hash_item(self, media_item: MediaItem) -> None:
         hash = await self._hash_item_helper(media_item.complete_file, media_item.original_filename, media_item.referer)
-        self.save_hash_data(media_item,hash)
+        self.save_hash_data(media_item, hash)
+
     async def hash_item_during_download(self, media_item: MediaItem) -> None:
         if self.manager.config_manager.settings_data.dupe_cleanup_options.hashing != Hashing.IN_PLACE:
             return
         try:
-            hash = await self._hash_item_helper(media_item.complete_file, media_item.original_filename, media_item.referer)
-            self.save_hash_data(media_item,hash)
+            hash = await self._hash_item_helper(
+                media_item.complete_file, media_item.original_filename, media_item.referer
+            )
+            self.save_hash_data(media_item, hash)
         except Exception as e:
             log(f"After hash processing failed: {media_item.complete_file} with error {e}", 40, exc_info=True)
 
@@ -158,7 +166,7 @@ class HashClient:
             except Exception as e:
                 msg = f"Unable to hash file = {media_item.complete_file.resolve()}: {e}"
                 log(msg, 40)
-        #insert any hashes or data that has been saved to be batched
+        # insert any hashes or data that has been saved to be batched
         await self.manager.db_manager.hash_table.batch_insert_or_update_hash_db()
         return self.hashes_dict
 
