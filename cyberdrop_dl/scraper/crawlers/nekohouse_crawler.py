@@ -9,7 +9,8 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
+from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
@@ -53,10 +54,9 @@ class NekohouseCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = self.scraping_progress.add_task(scrape_item.url)
-
         if "thumbnails" in scrape_item.url.parts:
             parts = [x for x in scrape_item.url.parts if x not in ("thumbnail", "/")]
             link = URL(f"https://{scrape_item.url.host}/{'/'.join(parts)}")
@@ -70,8 +70,6 @@ class NekohouseCrawler(Crawler):
         else:
             await self.handle_direct_link(scrape_item)
 
-        self.scraping_progress.remove_task(task_id)
-
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile."""
@@ -80,6 +78,7 @@ class NekohouseCrawler(Crawler):
         service, user = self.get_service_and_user(scrape_item)
         user_str = await self.get_user_str_from_profile(soup)
         service_call = self.primary_base_domain / service / "user" / user
+        scrape_item.set_type(FILE_HOST_PROFILE, self.manager)
         while offset <= maximum_offset:
             async with self.request_limiter:
                 soup: BeautifulSoup = await self.client.get_soup(
@@ -94,21 +93,21 @@ class NekohouseCrawler(Crawler):
                     break
                 for post in posts:
                     # Create a new scrape item for each post
-                    post_url = post.get("href", "")
-                    if post_url[0] == "/":
-                        post_url = post_url[1:]
-                    post_id = post_url.split("/")[-1]
-                    if not post_url:
+                    post_url_str: str = post.get("href", "")
+                    if post_url_str.startswith("/"):
+                        post_url_str = post_url_str[1:]
+                    if not post_url_str:
                         continue
-                    post_link = self.primary_base_domain / post_url
+                    post_id = post_url_str.split("/")[-1]
+                    post_link = self.primary_base_domain.joinpath(post_url_str, encoded="%" in post_url_str)
                     # Call on self.post to scrape the post by creating a new scrape item
                     new_scrape_item = self.create_scrape_item(
                         scrape_item,
                         post_link,
-                        "",
                         add_parent=self.primary_base_domain / service / "user" / user,
                     )
                     await self.post(new_scrape_item, post_id, user, service, user_str)
+                    scrape_item.add_children()
 
     @error_handling_wrapper
     async def post(
@@ -120,6 +119,7 @@ class NekohouseCrawler(Crawler):
         user_str: str | None = None,
     ) -> None:
         """Scrapes a post."""
+        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
         if any(x is None for x in (post_id, user, service, user_str)):
             service, user, post_id = await self.get_service_user_and_post(scrape_item)
             user_str = await self.get_user_str_from_post(scrape_item)
@@ -207,6 +207,7 @@ class NekohouseCrawler(Crawler):
 
         for file in post["attachments"]:
             await handle_file(file)
+            scrape_item.add_children()
 
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:
@@ -228,14 +229,13 @@ class NekohouseCrawler(Crawler):
     ) -> None:
         """Creates a new scrape item with the same parent as the old scrape item."""
         post = Post(id=post_id, title=title, date=date)
-        new_title = self.create_title(user, None, None)
+        new_title = self.create_title(user)
         new_scrape_item = self.create_scrape_item(
             old_scrape_item,
             link,
             new_title,
-            True,
-            None,
-            post.date,
+            part_of_album=True,
+            possible_datetime=post.date,
             add_parent=add_parent,
         )
         self.add_separate_post_title(new_scrape_item, post)
@@ -294,12 +294,12 @@ class NekohouseCrawler(Crawler):
         return service, user, post
 
     @staticmethod
-    def parse_datetime(date: str) -> int:
+    def parse_datetime(date: str) -> int | None:
         """Parses a datetime string into a unix timestamp."""
         if not date:
             return None
         try:
-            date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+            parsed_date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
         except ValueError:
-            date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S.%f")
-        return calendar.timegm(date.timetuple())
+            parsed_date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S.%f")
+        return calendar.timegm(parsed_date.timetuple())

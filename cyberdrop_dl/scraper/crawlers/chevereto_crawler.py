@@ -106,17 +106,19 @@ class CheveretoCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        title = self.create_title(soup.select_one(self.profile_title_selector).get("content"), None, None)
+        title = self.create_title(soup.select_one(self.profile_title_selector).get("content"))
 
         async for soup in self.web_pager(scrape_item):
             links = soup.select(self.profile_item_selector)
             for link in links:
-                link = link.get("href")
-                if not link:
+                link_str: str = link.get("href")
+                if not link_str:
                     continue
-                if link.startswith("/"):
-                    link = self.primary_base_domain / link[1:]
-                link = URL(link)
+                encoded = "%" in link_str
+                if link_str.startswith("/"):
+                    link = self.primary_base_domain.joinpath(link_str[1:], encoded=encoded)
+                else:
+                    link = URL(link_str, encoded=encoded)
                 new_scrape_item = self.create_scrape_item(
                     scrape_item,
                     link,
@@ -168,21 +170,24 @@ class CheveretoCrawler(Crawler):
 
         sub_albums = sub_albums_soup.select(self.profile_item_selector)
         for album in sub_albums:
-            sub_album_link = album.get("href")
-            if sub_album_link.startswith("/"):
-                sub_album_link = self.primary_base_domain / sub_album_link[1:]
-
-            sub_album_link = URL(sub_album_link)
-            new_scrape_item = self.create_scrape_item(scrape_item, sub_album_link, "", True)
+            sub_album_link_str: str = album.get("href")
+            encoded = "%" in sub_album_link_str
+            if sub_album_link_str.startswith("/"):
+                sub_album_link = self.primary_base_domain.joinpath(sub_album_link_str[1:], encoded=encoded)
+            else:
+                sub_album_link = URL(sub_album_link_str, encoded=encoded)
+            new_scrape_item = self.create_scrape_item(scrape_item, sub_album_link)
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
         async for soup in self.web_pager(scrape_item):
             links = soup.select(self.album_img_selector)
             for link in links:
-                link = link.get("src")
-                if link.startswith("/"):
-                    link = self.primary_base_domain / link[1:]
-                link = URL(link)
+                link_str: str = link.get("src")
+                encoded = "%" in link_str
+                if link_str.startswith("/"):
+                    link = self.primary_base_domain.joinpath(link_str[1:], encoded=encoded)
+                else:
+                    link = URL(link_str, encoded=encoded)
                 new_scrape_item = self.create_scrape_item(
                     scrape_item,
                     link,
@@ -222,7 +227,8 @@ class CheveretoCrawler(Crawler):
         scrape_item.url = canonical_url
 
         try:
-            link = URL(soup.select_one(selector[0]).get(selector[1]))
+            link_str: str = soup.select_one(selector[0]).get(selector[1])
+            link = URL(link_str, encoded="%" in link_str)
             link = link.with_name(link.name.replace(".md.", ".").replace(".th.", "."))
         except AttributeError:
             raise ScrapeError(422, f"Couldn't find {url_type.value} source", origin=scrape_item) from None
@@ -278,14 +284,16 @@ class CheveretoCrawler(Crawler):
                 soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url, origin=scrape_item)
             next_page = soup.select_one(self.next_page_selector)
             yield soup
-            if next_page:
-                page_url = next_page.get("href")
-                if page_url:
-                    if page_url.startswith("/"):
-                        page_url = self.primary_base_domain / page_url[1:]
-                    page_url = URL(page_url)
-                    continue
-            break
+            if not next_page:
+                break
+            page_url_str: str = next_page.get("href")
+            if not page_url_str:
+                break
+            encoded = "%" in page_url_str
+            if page_url_str.startswith("/"):
+                page_url = self.primary_base_domain.joinpath(page_url_str[1:], encoded=encoded)
+            else:
+                page_url = URL(page_url_str, encoded=encoded)
 
     @staticmethod
     async def get_sort_by_new_url(url: URL) -> URL:
@@ -294,8 +302,8 @@ class CheveretoCrawler(Crawler):
     @staticmethod
     def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
-        date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
-        return calendar.timegm(date.timetuple())
+        date_time = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+        return calendar.timegm(date_time.timetuple())
 
     @staticmethod
     def check_direct_link(url: URL) -> bool:

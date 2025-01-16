@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import calendar
-import contextlib
 import datetime
 import json
 from dataclasses import dataclass
@@ -10,8 +9,8 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import MaxChildrenError, ScrapeError
-from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.clients.errors import ScrapeError
+from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
@@ -43,10 +42,9 @@ class CoomerCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = self.scraping_progress.add_task(scrape_item.url)
-
         if "thumbnails" in scrape_item.url.parts:
             parts = [x for x in scrape_item.url.parts if x not in ("thumbnail", "/")]
             link = URL(f"https://{scrape_item.url.host}/{'/'.join(parts)}")
@@ -54,26 +52,21 @@ class CoomerCrawler(Crawler):
             await self.handle_direct_link(scrape_item)
         elif "post" in scrape_item.url.parts:
             await self.post(scrape_item)
-        elif "onlyfans" in scrape_item.url.parts or "fansly" in scrape_item.url.parts:
+        elif any(part in scrape_item.url.parts for part in ("onlyfans", "fansly")):
             await self.profile(scrape_item)
         elif "favorites" in scrape_item.url.parts:
             await self.favorites(scrape_item)
         else:
             await self.handle_direct_link(scrape_item)
 
-        self.scraping_progress.remove_task(task_id)
-
     @error_handling_wrapper
     async def favorites(self, scrape_item: ScrapeItem) -> None:
         """Scrapes the users' favourites and creates scrape items for each artist found."""
         if not self.manager.config_manager.authentication_data.coomer.session:
-            raise ScrapeError(
-                401,
-                message="No session cookie found in the config file, cannot scrape favorites",
-                origin=scrape_item,
-            )
+            msg = "No session cookie found in the config file, cannot scrape favorites"
+            raise ScrapeError(401, msg, origin=scrape_item)
+
         async with self.request_limiter:
-            # Use the session cookie to get the user's favourites
             self.client.client_manager.cookies.update_cookies(
                 {"session": self.manager.config_manager.authentication_data.coomer.session},
                 response_url=self.primary_base_domain,
@@ -85,7 +78,7 @@ class CoomerCrawler(Crawler):
                 id = user["id"]
                 service = user["service"]
                 url = self.primary_base_domain / service / "user" / id
-                new_scrape_item = self.create_scrape_item(scrape_item, url, None, True, None, None)
+                new_scrape_item = self.create_scrape_item(scrape_item, url, part_of_album=True)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -95,13 +88,7 @@ class CoomerCrawler(Crawler):
         service, user, user_str = user_info["service"], user_info["user"], user_info["user_str"]
         offset, maximum_offset, post_limit = user_info["offset"], user_info["maximum_offset"], user_info["limit"]
         api_call = self.api_url / service / "user" / user
-        scrape_item.type = FILE_HOST_PROFILE
-        scrape_item.children = scrape_item.children_limit = 0
-
-        with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = (
-                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
-            )
+        scrape_item.set_type(FILE_HOST_PROFILE, self.manager)
 
         while offset <= maximum_offset:
             async with self.request_limiter:
@@ -117,9 +104,7 @@ class CoomerCrawler(Crawler):
 
             for post in JSON_Resp:
                 await self.handle_post_content(scrape_item, post, user, user_str)
-                scrape_item.children += 1
-                if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
-                    raise MaxChildrenError(origin=scrape_item)
+                scrape_item.add_children()
 
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem) -> None:
@@ -143,16 +128,10 @@ class CoomerCrawler(Crawler):
         if "#ad" in post["content"] and self.manager.config_manager.settings_data.ignore_options.ignore_coomer_ads:
             return
 
-        scrape_item.type = FILE_HOST_ALBUM
-        scrape_item.children = scrape_item.children_limit = 0
+        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
 
-        with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = (
-                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
-            )
-
-        date: str = post.get("published") or post.get("added")
-        date = date.replace("T", " ")
+        date_str: str = post.get("published") or post.get("added")
+        date = date_str.replace("T", " ")
         post_id = post["id"]
         post_title = post["title"]
 
@@ -162,7 +141,8 @@ class CoomerCrawler(Crawler):
             post_title = "Untitled"
 
         async def handle_file(file_obj: dict):
-            link: URL = self.primary_base_domain / ("data" + file_obj["path"])
+            new_path = "data" + file_obj["path"]
+            link: URL = self.primary_base_domain.joinpath(new_path, encoded="%" in new_path)
             link = link.with_query({"f": file_obj["name"]})
             await self.create_new_scrape_item(
                 link,
@@ -183,9 +163,7 @@ class CoomerCrawler(Crawler):
 
         for file in files:
             await handle_file(file)
-            scrape_item.children += 1
-            if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
-                raise MaxChildrenError(origin=scrape_item)
+            scrape_item.add_children()
 
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:
@@ -212,9 +190,8 @@ class CoomerCrawler(Crawler):
             old_scrape_item,
             link,
             new_title,
-            True,
-            None,
-            post.date,
+            part_of_album=True,
+            possible_datetime=post.date,
             add_parent=add_parent,
         )
         self.add_separate_post_title(new_scrape_item, post)
