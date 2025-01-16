@@ -86,10 +86,10 @@ class HistoryTable:
             return True
         return False
 
-    async def check_album(self, domain: str, album_id: str) -> bool | dict[Any, Any]:
+    async def check_album(self, domain: str, album_id: str) -> dict[Any, Any]:
         """Checks whether an album has completed given its domain and album id."""
         if self.ignore_history:
-            return False
+            return {}
 
         domain = get_db_domain(domain)
         cursor = await self.db_conn.cursor()

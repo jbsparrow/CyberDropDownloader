@@ -63,7 +63,10 @@ class SaintCrawler(Crawler):
 
         for video in videos:
             match: Match = re.search(r"\('(.+?)'\)", video.get("onclick"))
-            link = URL(match.group(1)) if match else None
+            link_str = match.group(1) if match else None
+            if not link_str:
+                continue
+            link = URL(link_str, encoded="%" in link_str)
             filename, ext = get_filename_and_ext(link.name)
             if not self.check_album_results(link, results):
                 await self.handle_file(link, scrape_item, filename, ext)
@@ -78,7 +81,8 @@ class SaintCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
         try:
-            link = URL(soup.select_one("video[id=main-video] source").get("src"))
+            link_str: str = soup.select_one("video[id=main-video] source").get("src")
+            link = URL(link_str, encoded="%" in link_str)
         except AttributeError:
             raise ScrapeError(422, "Couldn't find video source", origin=scrape_item) from None
         filename, ext = get_filename_and_ext(link.name)
@@ -90,7 +94,8 @@ class SaintCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
         try:
-            api_link = URL(soup.select_one("a:contains('Download Video')").get("href"))
+            api_link_str: str = soup.select_one("a:contains('Download Video')").get("href")
+            api_link = URL(api_link_str, encoded="%" in api_link_str)
             link = get_url_from_base64(api_link)
         except AttributeError:
             raise ScrapeError(422, "Couldn't find video source", origin=scrape_item) from None
@@ -99,6 +104,6 @@ class SaintCrawler(Crawler):
 
 
 def get_url_from_base64(link: URL) -> URL:
-    base64_str = link.query.get("file")
+    base64_str: str = link.query.get("file")
     filename_decoded = base64.b64decode(base64_str).decode("utf-8")
     return URL("https://some_cdn.saint2.cr/videos").with_host(link.host) / filename_decoded

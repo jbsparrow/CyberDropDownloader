@@ -247,7 +247,7 @@ class Crawler(ABC):
             return True
         return False
 
-    async def get_album_results(self, album_id: str) -> bool | dict[Any, Any]:
+    async def get_album_results(self, album_id: str) -> dict[Any, Any]:
         """Checks whether an album has completed given its domain and album id."""
         return await self.manager.db_manager.history_table.check_album(self.domain, album_id)
 

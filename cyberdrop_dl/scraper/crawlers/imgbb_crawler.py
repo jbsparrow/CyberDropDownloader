@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
@@ -27,9 +27,9 @@ class ImgBBCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         if await self.check_direct_link(scrape_item.url):
             image_id = scrape_item.url.parts[1]
@@ -40,8 +40,6 @@ class ImgBBCrawler(Crawler):
             await self.album(scrape_item)
         else:
             await self.image(scrape_item)
-
-        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
@@ -82,7 +80,7 @@ class ImgBBCrawler(Crawler):
                     scrape_item,
                     link,
                     title,
-                    True,
+                    part_of_album=True,
                     add_parent=scrape_item.url,
                 )
                 self.manager.task_group.create_task(self.run(new_scrape_item))
