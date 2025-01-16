@@ -9,11 +9,7 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import (
-    DownloadError,
-    PasswordProtectedError,
-    ScrapeError,
-)
+from cyberdrop_dl.clients.errors import DownloadError, PasswordProtectedError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
@@ -116,9 +112,9 @@ class GoFileCrawler(Crawler):
                 subfolders.append(folder_url)
                 continue
 
-            link = URL(child["link"])
+            link = URL(child["link"], encoded="%" in child["link"])
             if child["link"] == "overloaded":
-                link = URL(child["directLink"])
+                link = URL(child["directLink"], encoded="%" in child["directLink"])
             filename, ext = get_filename_and_ext(link.name)
             new_scrape_item = self.create_scrape_item(
                 scrape_item, scrape_item.url, possible_datetime=child["createTime"]
@@ -146,7 +142,7 @@ class GoFileCrawler(Crawler):
 
         return json_resp["data"]["token"]
 
-    async def get_website_token(self, _, update: bool = False) -> None:
+    async def get_website_token(self, _: ScrapeItem | URL | None = None, update: bool = False) -> None:
         """Creates an anon GoFile account to use."""
         if datetime.now(UTC) - self._website_token_date < timedelta(seconds=120):
             return

@@ -90,7 +90,7 @@ class BunkrrCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         title = soup.select_one("title").text.rsplit(" | Bunkr")[0].strip()
-        title = self.create_title(title, scrape_item.url.parts[2], None)
+        title = self.create_title(title, scrape_item.url.parts[2])
         scrape_item.add_to_parent_title(title)
 
         card_listings: list[Tag] = soup.select('div[class*="relative group/item theItem"]')
@@ -100,11 +100,12 @@ class BunkrrCrawler(Crawler):
             thumbnail = card_listing.select_one("img").get("src")
             date_str = card_listing.select_one('span[class*="theDate"]').text.strip()
             date = self.parse_datetime(date_str)
-            link = card_listing.find("a").get("href")
-            if link.startswith("/"):
-                link = URL("https://" + scrape_item.url.host + link)
-
-            link = URL(link)
+            link_str = card_listing.find("a").get("href")
+            encoded = "%" in link_str
+            if link_str.startswith("/"):
+                link = scrape_item.url.with_path(link_str[1:], encoded=encoded)
+            else:
+                link = URL(link_str, encoded=encoded)
             new_scrape_item = self.create_scrape_item(
                 scrape_item,
                 link,
@@ -115,8 +116,8 @@ class BunkrrCrawler(Crawler):
             )
 
             valid_extensions = FILE_FORMATS["Images"] | FILE_FORMATS["Videos"]
-            src = thumbnail.replace("/thumbs/", "/")
-            src = URL(src, encoded=True)
+            src_str = thumbnail.replace("/thumbs/", "/")
+            src = URL(src_str, encoded="%" in src_str)
             src = src.with_suffix(file_ext).with_query(None)
             if file_ext.lower() not in FILE_FORMATS["Images"]:
                 src = src.with_host(src.host.replace("i-", ""))
@@ -165,11 +166,11 @@ class BunkrrCrawler(Crawler):
             link_container = soup.select_one("a.btn.ic-download-01")
             src_selector = "href"
 
-        link = link_container.get(src_selector) if link_container else None
-        if not link:
+        link_str: str = link_container.get(src_selector) if link_container else None
+        if not link_str:
             raise ScrapeError(422, "Couldn't find source", origin=scrape_item)
 
-        link = URL(link)
+        link = URL(link_str, encoded="%" in link_str)
         date = None
         date_str = soup.select_one('span[class*="theDate"]')
         if date_str:
@@ -212,7 +213,8 @@ class BunkrrCrawler(Crawler):
             link_container = soup.select('a[download*=""]')[-1]
         except IndexError:
             link_container = soup.select("a[class*=download]")[-1]
-        return URL(link_container.get("href"))
+        link_str = link_container.get("href")
+        return URL(link_str, encoded="%" in link_str)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -235,8 +237,8 @@ class BunkrrCrawler(Crawler):
     @staticmethod
     def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
-        date = datetime.datetime.strptime(date, "%H:%M:%S %d/%m/%Y")
-        return calendar.timegm(date.timetuple())
+        date_time = datetime.datetime.strptime(date, "%H:%M:%S %d/%m/%Y")
+        return calendar.timegm(date_time.timetuple())
 
     @staticmethod
     def override_cdn(link: URL) -> URL:
