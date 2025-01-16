@@ -44,13 +44,15 @@ class RedGifsCrawler(Crawler):
         page = 1
         total_pages = 1
 
-        scrape_item.set_type(FILE_HOST_PROFILE, self.manage_token)
+        scrape_item.set_type(FILE_HOST_PROFILE, self.manager)
 
         while page <= total_pages:
             async with self.request_limiter:
+                api_url = self.redgifs_api / "v2/users" / user_id / "search"
+                api_url = api_url.with_query(f"order=new&count=40&page={page}")
                 JSON_Resp = await self.client.get_json(
                     self.domain,
-                    (self.redgifs_api / "v2/users" / user_id / "search").with_query(f"order=new&count=40&page={page}"),
+                    api_url,
                     headers_inc=self.headers,
                     origin=scrape_item,
                 )

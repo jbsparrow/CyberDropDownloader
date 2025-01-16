@@ -106,5 +106,5 @@ class Rule34XYZCrawler(Crawler):
     @staticmethod
     def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
-        date_time = datetime.datetime.strptime(date, "%b %d, %Y, %I:%M:%S %p")
-        return calendar.timegm(date_time.timetuple())
+        parsed_date = datetime.datetime.strptime(date, "%b %d, %Y, %I:%M:%S %p")
+        return calendar.timegm(parsed_date.timetuple())

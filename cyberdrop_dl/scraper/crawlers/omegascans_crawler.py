@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import calendar
-import contextlib
 import datetime
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import MaxChildrenError, ScrapeError
-from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.clients.errors import ScrapeError
+from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
@@ -29,10 +28,9 @@ class OmegaScansCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = self.scraping_progress.add_task(scrape_item.url)
-
         if "chapter" in scrape_item.url.name:
             await self.chapter(scrape_item)
         elif "series" in scrape_item.url.parts:
@@ -40,21 +38,14 @@ class OmegaScansCrawler(Crawler):
         else:
             await self.handle_direct_link(scrape_item)
 
-        self.scraping_progress.remove_task(task_id)
-
     @error_handling_wrapper
     async def series(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        scrape_item.type = FILE_HOST_ALBUM
-        scrape_item.children = scrape_item.children_limit = 0
-
-        with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = (
-                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
-            )
+        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
+        scrape_item.part_of_album = True
 
         scripts = soup.select("script")
         series_id = None
@@ -77,17 +68,9 @@ class OmegaScansCrawler(Crawler):
 
             for chapter in JSON_Obj["data"]:
                 chapter_url = scrape_item.url / chapter["chapter_slug"]
-                new_scrape_item = self.create_scrape_item(
-                    scrape_item,
-                    chapter_url,
-                    "",
-                    True,
-                    add_parent=scrape_item.url,
-                )
+                new_scrape_item = self.create_scrape_item(scrape_item, chapter_url, add_parent=scrape_item.url)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
-                scrape_item.children += 1
-                if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
-                    raise MaxChildrenError(origin=scrape_item)
+                scrape_item.add_children()
 
             if JSON_Obj["meta"]["current_page"] == JSON_Obj["meta"]["last_page"]:
                 break
@@ -102,6 +85,7 @@ class OmegaScansCrawler(Crawler):
         if "This chapter is premium" in soup.get_text():
             raise ScrapeError(401, "This chapter is premium", origin=scrape_item)
 
+        scrape_item.part_of_album = True
         title_parts = soup.select_one("title").get_text().split(" - ")
         series_name = title_parts[0]
         chapter_title = title_parts[1]
@@ -109,9 +93,10 @@ class OmegaScansCrawler(Crawler):
         scrape_item.add_to_parent_title(series_title)
         scrape_item.add_to_parent_title(chapter_title)
 
-        date = soup.select('h2[class="font-semibold font-sans text-muted-foreground text-xs"]')[-1].get_text()
+        date = None
+        date_str = soup.select('h2[class="font-semibold font-sans text-muted-foreground text-xs"]')[-1].get_text()
         try:
-            date = self.parse_datetime_standard(date)
+            date = self.parse_datetime_standard(date_str)
         except ValueError:
             scripts = soup.select("script")
             for script in scripts:
@@ -120,20 +105,15 @@ class OmegaScansCrawler(Crawler):
                     date = self.parse_datetime_other(date)
                     break
 
-        scrape_item.possible_datetime = date
-        scrape_item.part_of_album = True
-
+        new_scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, possible_datetime=date)
         images = soup.select("p[class*=flex] img")
         for image in images:
-            link = image.get("src")
-            if not link:
-                link = image.get("data-src")
-                if not link:
-                    continue
-            link = URL(link)
-
+            link_str: str = image.get("src") or image.get("data-src")
+            if not link_str:
+                continue
+            link = URL(link_str, encoded="%" in link_str)
             filename, ext = get_filename_and_ext(link.name)
-            await self.handle_file(link, scrape_item, filename, ext)
+            await self.handle_file(link, new_scrape_item, filename, ext)
 
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:
@@ -147,11 +127,11 @@ class OmegaScansCrawler(Crawler):
     @staticmethod
     def parse_datetime_standard(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
-        date = datetime.datetime.strptime(date, "%m/%d/%Y")
-        return calendar.timegm(date.timetuple())
+        parsed_date = datetime.datetime.strptime(date, "%m/%d/%Y")
+        return calendar.timegm(parsed_date.timetuple())
 
     @staticmethod
     def parse_datetime_other(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
-        date = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
-        return calendar.timegm(date.timetuple())
+        parsed_date = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
+        return calendar.timegm(parsed_date.timetuple())

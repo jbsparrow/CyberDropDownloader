@@ -298,8 +298,8 @@ class CheveretoCrawler(Crawler):
     @staticmethod
     def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
-        date_time = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
-        return calendar.timegm(date_time.timetuple())
+        parsed_date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+        return calendar.timegm(parsed_date.timetuple())
 
     @staticmethod
     def check_direct_link(url: URL) -> bool:

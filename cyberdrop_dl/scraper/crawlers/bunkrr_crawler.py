@@ -83,6 +83,7 @@ class BunkrrCrawler(Crawler):
         scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path)
         album_id = scrape_item.url.parts[2]
         scrape_item.album_id = album_id
+        scrape_item.part_of_album = True
         results = await self.get_album_results(album_id)
         scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
 
@@ -90,7 +91,7 @@ class BunkrrCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         title = soup.select_one("title").text.rsplit(" | Bunkr")[0].strip()
-        title = self.create_title(title, scrape_item.url.parts[2])
+        title = self.create_title(title, album_id)
         scrape_item.add_to_parent_title(title)
 
         card_listings: list[Tag] = soup.select('div[class*="relative group/item theItem"]')
@@ -109,7 +110,6 @@ class BunkrrCrawler(Crawler):
             new_scrape_item = self.create_scrape_item(
                 scrape_item,
                 link,
-                part_of_album=True,
                 album_id=album_id,
                 possible_datetime=date,
                 add_parent=scrape_item.url,
@@ -237,8 +237,8 @@ class BunkrrCrawler(Crawler):
     @staticmethod
     def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
-        date_time = datetime.datetime.strptime(date, "%H:%M:%S %d/%m/%Y")
-        return calendar.timegm(date_time.timetuple())
+        parsed_date = datetime.datetime.strptime(date, "%H:%M:%S %d/%m/%Y")
+        return calendar.timegm(parsed_date.timetuple())
 
     @staticmethod
     def override_cdn(link: URL) -> URL:

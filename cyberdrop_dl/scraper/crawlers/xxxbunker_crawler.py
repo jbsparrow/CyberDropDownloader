@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
-from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
@@ -39,24 +39,23 @@ class XXXBunkerCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    async def async_startup(self) -> None:
+        return await super().async_startup()
+        await self.check_session_cookie()
+
+    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         # Old behavior, not worth it with such a bad rate_limit: modify URL to always start on page 1
         """
         new_parts = [part for part in scrape_item.url.parts[1:] if "page-" not in part]
         scrape_item.url = scrape_item.url.with_path("/".join(new_parts)).with_query(scrape_item.url.query)
         """
-        if self.session_cookie is None:
-            await self.check_session_cookie()
-
         if any(part in scrape_item.url.parts for part in ("search", "categories", "favoritevideos")):
             await self.playlist(scrape_item)
         else:
             await self.video(scrape_item)
-
-        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
@@ -115,10 +114,7 @@ class XXXBunkerCrawler(Crawler):
                 raise ScrapeError(403, "Invalid cookies, PHPSESSID", origin=scrape_item) from None
 
             if "TRAFFIC VERIFICATION" in soup.text:
-                await asyncio.sleep(self.wait_time)
-                self.wait_time = min(self.wait_time + 10, MAX_WAIT)
-                self.rate_limit = max(self.rate_limit * 0.8, MIN_RATE_LIMIT)
-                self.request_limiter = AsyncLimiter(self.rate_limit, 60)
+                await self.adjust_rate_limit()
                 raise ScrapeError(429, origin=scrape_item) from None
             raise ScrapeError(422, "Couldn't find video source", origin=scrape_item) from None
 
@@ -185,9 +181,7 @@ class XXXBunkerCrawler(Crawler):
                     rate_limited = False
                     break
 
-                self.wait_time = min(self.wait_time + 10, MAX_WAIT)
-                self.rate_limit = max(self.rate_limit * 0.8, MIN_RATE_LIMIT)
-                self.request_limiter = AsyncLimiter(self.rate_limit, 60)
+                await self.adjust_rate_limit()
                 log(f"Rate limited: {page_url}, retrying in {self.wait_time} seconds")
                 attempt += 1
                 await asyncio.sleep(self.wait_time)
@@ -228,6 +222,12 @@ class XXXBunkerCrawler(Crawler):
 
         date = datetime.now() - relative_date
         return timegm(date.timetuple())
+
+    async def adjust_rate_limit(self):
+        await asyncio.sleep(self.wait_time)
+        self.wait_time = min(self.wait_time + 10, MAX_WAIT)
+        self.rate_limit = max(self.rate_limit * 0.8, MIN_RATE_LIMIT)
+        self.request_limiter = AsyncLimiter(self.rate_limit, 60)
 
     async def check_session_cookie(self) -> None:
         """Get Cookie from config file."""

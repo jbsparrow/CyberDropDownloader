@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import MaxChildrenError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
 from cyberdrop_dl.utils.logger import log
@@ -151,10 +150,8 @@ class KemonoCrawler(Crawler):
             files.extend(post["attachments"])
 
         for file in files:
-            if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
-                raise MaxChildrenError(origin=scrape_item)
             await handle_file(file)
-            scrape_item.children += 1
+            scrape_item.add_children()
 
     async def get_content_links(self, scrape_item: ScrapeItem, post: dict, user: str) -> None:
         """Gets links out of content in post."""

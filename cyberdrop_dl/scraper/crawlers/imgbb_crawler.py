@@ -72,13 +72,7 @@ class ImgBBCrawler(Crawler):
             for link in links:
                 link_str: str = link.get("href")
                 link = URL(link_str, encoded="%" in link_str)
-                new_scrape_item = self.create_scrape_item(
-                    scrape_item,
-                    link,
-                    title,
-                    part_of_album=True,
-                    add_parent=scrape_item.url,
-                )
+                new_scrape_item = self.create_scrape_item(scrape_item, link, title, add_parent=scrape_item.url)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
             scrape_item.add_children()
@@ -86,10 +80,8 @@ class ImgBBCrawler(Crawler):
             link_next = soup.select_one("a[data-pagination=next]")
             if not link_next:
                 break
-            link_next = link_next.get("href")
-            if not link_next:
-                break
-            link_next = URL(link_next, encoded="%" in link_next)
+            link_next_str = link_next.get("href")
+            link_next = URL(link_next, encoded="%" in link_next_str)
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
@@ -121,8 +113,8 @@ class ImgBBCrawler(Crawler):
     @staticmethod
     def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
-        date_time = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
-        return calendar.timegm(date_time.timetuple())
+        parsed_date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+        return calendar.timegm(parsed_date.timetuple())
 
     @staticmethod
     async def check_direct_link(url: URL) -> bool:

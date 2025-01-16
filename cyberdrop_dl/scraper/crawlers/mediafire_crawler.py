@@ -60,7 +60,7 @@ class MediaFireCrawler(Crawler):
                     content_type="files",
                     chunk=chunk,
                     chunk_size=chunk_size,
-                )
+                )  # type: ignore
             except api.MediaFireApiError as e:
                 raise MediaFireError(status=e.code, message=e.message, origin=scrape_item) from None
 
@@ -95,7 +95,8 @@ class MediaFireCrawler(Crawler):
 
         date = self.parse_datetime(soup.select("ul[class=details] li span")[-1].get_text())
         scrape_item.possible_datetime = date
-        link = URL(soup.select_one("a[id=downloadButton]").get("href"))
+        link_str: str = soup.select_one("a[id=downloadButton]").get("href")
+        link = URL(link_str, encoded="%" in link_str)
         filename, ext = get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 

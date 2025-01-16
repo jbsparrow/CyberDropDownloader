@@ -55,8 +55,7 @@ class CyberfileCrawler(Crawler):
         nodeId = int(script_func.split(",")[1].replace("'", ""))
         scrape_item.album_id = scrape_item.url.parts[2]
         scrape_item.part_of_album = True
-        # Do not reset if nested folder
-        if scrape_item.type != FILE_HOST_ALBUM:
+        if scrape_item.type != FILE_HOST_ALBUM:  # Do not reset if nested folder
             scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
 
         page = 1
@@ -83,15 +82,8 @@ class CyberfileCrawler(Crawler):
 
                 link = URL(link_str, encoded="%" in link_str)
 
-                new_scrape_item = self.create_scrape_item(
-                    scrape_item,
-                    link,
-                    title,
-                    part_of_album=True,
-                    add_parent=scrape_item.url,
-                )
+                new_scrape_item = self.create_scrape_item(scrape_item, link, title, add_parent=scrape_item.url)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
-
                 scrape_item.add_children()
 
             page += 1
@@ -106,9 +98,9 @@ class CyberfileCrawler(Crawler):
 
         new_folders = []
         node_id = ""
-        # Do not reset if nested folder
-        if scrape_item.type != FILE_HOST_ALBUM:
-            scrape_item.set_type(FILE_HOST_ALBUM, self.magaer)
+        if scrape_item.type != FILE_HOST_ALBUM:  # Do not reset if nested folder
+            scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
+        scrape_item.part_of_album = True
 
         page = 1
         while True:
@@ -138,16 +130,8 @@ class CyberfileCrawler(Crawler):
                     continue
 
                 link = URL(link_str, encoded="%" in link_str)
-
-                new_scrape_item = self.create_scrape_item(
-                    scrape_item,
-                    link,
-                    title,
-                    part_of_album=True,
-                    add_parent=scrape_item.url,
-                )
+                new_scrape_item = self.create_scrape_item(scrape_item, link, title, add_parent=scrape_item.url)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
-
                 scrape_item.add_children()
 
             page += 1
@@ -230,21 +214,16 @@ class CyberfileCrawler(Crawler):
     @staticmethod
     def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
-        date = datetime.datetime.strptime(date, "%d/%m/%Y %H:%M:%S")
-        return calendar.timegm(date.timetuple())
+        parsed_date = datetime.datetime.strptime(date, "%d/%m/%Y %H:%M:%S")
+        return calendar.timegm(parsed_date.timetuple())
 
     async def get_soup_from_ajax(
         self, data: dict, scrape_item: ScrapeItem, file: bool = False
     ) -> tuple[BeautifulSoup, str]:
         password = scrape_item.url.query.get("password", "")
-        final_entrypoint = self.api_details if file else self.api_load_files
         async with self.request_limiter:
-            ajax_dict: dict = await self.client.post_data(
-                self.domain,
-                final_entrypoint,
-                data=data,
-                origin=scrape_item,
-            )
+            final_entrypoint = self.api_details if file else self.api_load_files
+            ajax_dict: dict = await self.client.post_data(self.domain, final_entrypoint, data=data, origin=scrape_item)
 
         ajax_soup = BeautifulSoup(ajax_dict["html"].replace("\\", ""), "html.parser")
 

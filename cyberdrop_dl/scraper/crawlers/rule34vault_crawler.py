@@ -55,9 +55,7 @@ class Rule34VaultCrawler(Crawler):
                 link = self.primary_base_domain.joinpath(link_str[1:], encoded=encoded)
             else:
                 link = URL(link_str, encoded=encoded)
-            new_scrape_item = self.create_scrape_item(
-                scrape_item, link, title, part_of_album=True, add_parent=scrape_item.url
-            )
+            new_scrape_item = self.create_scrape_item(scrape_item, link, title, add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.add_children()
         if not content:
@@ -92,7 +90,7 @@ class Rule34VaultCrawler(Crawler):
                 link = self.primary_base_domain.joinpath(link_str[1:], encoded=encoded)
             else:
                 link = URL(link_str, encoded=encoded)
-            new_scrape_item = self.create_scrape_item(scrape_item, link, title, True, add_parent=scrape_item.url)
+            new_scrape_item = self.create_scrape_item(scrape_item, link, title, add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.add_children()
         if not content:
@@ -147,5 +145,5 @@ class Rule34VaultCrawler(Crawler):
     @staticmethod
     def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
-        date_time = datetime.datetime.strptime(date, "%b %d, %Y, %I:%M:%S %p")
-        return calendar.timegm(date_time.timetuple())
+        parsed_date = datetime.datetime.strptime(date, "%b %d, %Y, %I:%M:%S %p")
+        return calendar.timegm(parsed_date.timetuple())

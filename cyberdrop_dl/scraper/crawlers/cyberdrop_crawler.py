@@ -129,5 +129,5 @@ class CyberdropCrawler(Crawler):
     @staticmethod
     def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
-        date_time = datetime.datetime.strptime(date, "%d.%m.%Y")
-        return calendar.timegm(date_time.timetuple())
+        parsed_date = datetime.datetime.strptime(date, "%d.%m.%Y")
+        return calendar.timegm(parsed_date.timetuple())
