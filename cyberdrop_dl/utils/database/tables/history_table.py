@@ -4,7 +4,7 @@ import pathlib
 from sqlite3 import IntegrityError, Row
 from typing import TYPE_CHECKING, Any
 
-from cyberdrop_dl.utils.database.table_definitions import create_fixed_history, create_history
+from cyberdrop_dl.utils.database.table_definitions import create_history
 from cyberdrop_dl.utils.utilities import log
 
 if TYPE_CHECKING:
@@ -57,7 +57,6 @@ class HistoryTable:
         """Startup process for the HistoryTable."""
         await self.db_conn.execute(create_history)
         await self.db_conn.commit()
-        await self.fix_primary_keys()
         await self.add_columns_media()
 
     async def check_complete(self, domain: str, url: URL, referer: URL) -> bool:
@@ -262,25 +261,6 @@ class HistoryTable:
             return []
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    async def fix_primary_keys(self) -> None:
-        cursor = await self.db_conn.cursor()
-        result = await cursor.execute("""pragma table_info(media)""")
-        result = await result.fetchall()
-        if result[0][5] == 0:  # type: ignore
-            await self.db_conn.execute(create_fixed_history)
-            await self.db_conn.commit()
-
-            await self.db_conn.execute(
-                """INSERT INTO media_copy (domain, url_path, referer, download_path, download_filename, original_filename, completed) SELECT * FROM media GROUP BY domain, url_path, original_filename;""",
-            )
-            await self.db_conn.commit()
-
-            await self.db_conn.execute("""DROP TABLE media""")
-            await self.db_conn.commit()
-
-            await self.db_conn.execute("""ALTER TABLE media_copy RENAME TO media""")
-            await self.db_conn.commit()
 
     async def add_columns_media(self) -> None:
         cursor = await self.db_conn.cursor()
