@@ -34,7 +34,7 @@ class DBManager:
         self.ignore_history = self.manager.config_manager.settings_data.runtime_options.ignore_history
 
         self.history_table = HistoryTable(self._db_conn)
-        self.hash_table = HashTable(self._db_conn)
+        self.hash_table = HashTable(self._db_conn,self.manager.config_manager.settings_data.db_options.batch_hash_inserts)
         self.temp_referer_table = TempRefererTable(self._db_conn)
 
         self.history_table.ignore_history = self.ignore_history
