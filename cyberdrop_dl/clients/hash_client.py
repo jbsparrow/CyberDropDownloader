@@ -46,7 +46,6 @@ class HashClient:
 
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
-        self.hashes = defaultdict(lambda: None)
         self.xxhash = "xxh128"
         self.md5 = "md5"
         self.sha256 = "sha256"
@@ -78,16 +77,6 @@ class HashClient:
 
     async def _hash_item(self, file: Path | str, original_filename: str, referer: URL, hash_type=None) -> str:
         """Generates hash of a file."""
-        key = self._get_key_from_file(file)
-        file = Path(file)
-        if not file.is_file():
-            return
-        elif file.stat().st_size == 0:
-            return
-        elif file.suffix == ".part":
-            return
-        if self.hashes[(key, hash_type)]:
-            return self.hashes[(key, hash_type)]
         self.manager.progress_manager.hash_progress.update_currently_hashing(file)
         hash = await self.manager.db_manager.hash_table.get_file_hash_exists(file, hash_type)
         try:
@@ -112,14 +101,12 @@ class HashClient:
                 )
         except Exception as e:
             log(f"Error hashing {file} : {e}", 40, exc_info=True)
-        self.hashes[(key, hash_type)] = hash
         return hash
 
     async def hash_item(self, media_item: MediaItem) -> None:
         absolute_path = media_item.complete_file.resolve()
         size = media_item.complete_file.stat().st_size
         hash = await self._hash_item_helper(media_item.complete_file, media_item.original_filename, media_item.referer)
-
         self.hashed_media_items.add(media_item)
         self.hashes_dict[hash][size].add(absolute_path)
 
