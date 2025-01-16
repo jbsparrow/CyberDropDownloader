@@ -10,7 +10,7 @@ from multidict import MultiDict
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
-from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
@@ -43,9 +43,9 @@ class TokioMotionCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = self.scraping_progress.add_task(scrape_item.url)
         new_query = MultiDict(scrape_item.url.query)
         new_query.pop("page", None)
         scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path).with_query(new_query)
@@ -71,8 +71,6 @@ class TokioMotionCrawler(Crawler):
         else:
             await self.search(scrape_item)
 
-        self.scraping_progress.remove_task(task_id)
-
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a video."""
@@ -93,8 +91,8 @@ class TokioMotionCrawler(Crawler):
         try:
             srcSD = soup.select_one('source[title="SD"]')
             srcHD = soup.select_one('source[title="HD"]')
-            src = (srcHD or srcSD).get("src")
-            link = URL(src)
+            src: str = (srcHD or srcSD).get("src")
+            link = URL(src, encoded="%" in src)
         except AttributeError:
             if "This is a private" in soup.text:
                 raise ScrapeError(401, "Private video", origin=scrape_item) from None
@@ -119,14 +117,16 @@ class TokioMotionCrawler(Crawler):
         async for soup in self.web_pager(scrape_item):
             albums = soup.select(self.album_selector)
             for album in albums:
-                link = album.get("href")
-                if not link:
+                link_str: str = album.get("href")
+                if not link_str:
                     continue
 
-                if link.startswith("/"):
-                    link = self.primary_base_domain / link[1:]
+                encoded = "%" in link_str
+                if link_str.startswith("/"):
+                    link = self.primary_base_domain.joinpath(link_str[1:], encoded=encoded)
 
-                link = URL(link)
+                else:
+                    link = URL(link_str, encoded=encoded)
                 new_scrape_item = self.create_scrape_item(scrape_item, link, "albums", add_parent=scrape_item.url)
                 await self.album(new_scrape_item)
 
@@ -158,15 +158,16 @@ class TokioMotionCrawler(Crawler):
                 raise ScrapeError(401, "Private album", origin=scrape_item)
             images = soup.select(self.image_div_selector)
             for image in images:
-                link = image.select_one(self.image_thumb_selector)
-                if not link:
+                link_tag = image.select_one(self.image_thumb_selector)
+                if not link_tag:
                     continue
+                link_str: str = link_tag.select("href")
+                encoded = "%" in link_str
+                if link_str.startswith("/"):
+                    link = self.primary_base_domain.joinpath(link_str[1:], encoded=encoded)
 
-                link = link.get("src")
-                if link.startswith("/"):
-                    link = self.primary_base_domain / link[1:]
-
-                link = URL(link)
+                else:
+                    link = URL(link_str, encoded=encoded)
                 link = link.with_path(link.path.replace("/tmb/", "/"))
 
                 filename, ext = get_filename_and_ext(link.name)
@@ -181,8 +182,8 @@ class TokioMotionCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
         try:
             img = soup.select_one("img[class='img-responsive-mw']")
-            src = img.get("src")
-            link = URL(src)
+            src: str = img.get("src")
+            link = URL(src, encoded="%" in src)
         except AttributeError:
             if "This is a private" in soup.text:
                 raise ScrapeError(401, "Private Photo", origin=scrape_item) from None
@@ -228,15 +229,16 @@ class TokioMotionCrawler(Crawler):
         async for soup in self.web_pager(scrape_item):
             results = soup.select(self.search_div_selector)
             for result in results:
-                link = result.select_one(selector)
-                if not link:
+                link_tag = result.select_one(selector)
+                if not link_tag:
                     continue
+                link_str: str = link_tag.get("href")
+                encoded = "%" in link_str
+                if link_str.startswith("/"):
+                    link = self.primary_base_domain.joinpath(link_str[1:], encoded=encoded)
 
-                link = link.get("href")
-                if link.startswith("/"):
-                    link = self.primary_base_domain / link[1:]
-
-                link = URL(link)
+                else:
+                    link = URL(link_str, encoded=encoded)
                 new_scrape_item = self.create_scrape_item(scrape_item, link, "", add_parent=scrape_item.url)
                 await scraper(new_scrape_item)
 
@@ -263,15 +265,16 @@ class TokioMotionCrawler(Crawler):
                 raise ScrapeError(401, "Private playlist", origin=scrape_item)
             videos = soup.select(self.video_div_selector)
             for video in videos:
-                link = video.select_one(self.video_selector)
-                if not link:
+                link_tag = video.select_one(self.video_selector)
+                if not link_tag:
                     continue
+                link_str: str = link_tag.get("href")
+                encoded = "%" in link_str
+                if link_str.startswith("/"):
+                    link = self.primary_base_domain.joinpath(link_str[1:], encoded=encoded)
 
-                link = link.get("href")
-                if link.startswith("/"):
-                    link = self.primary_base_domain / link[1:]
-
-                link = URL(link)
+                else:
+                    link = URL(link_str, encoded=encoded)
                 new_scrape_item = self.create_scrape_item(scrape_item, link, "", add_parent=scrape_item.url)
                 await self.video(new_scrape_item)
 
@@ -283,14 +286,16 @@ class TokioMotionCrawler(Crawler):
                 soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url, origin=scrape_item)
             next_page = soup.select_one(self.next_page_selector)
             yield soup
-            if next_page:
-                page_url = next_page.get(self.next_page_attribute)
-                if page_url:
-                    if page_url.startswith("/"):
-                        page_url = self.primary_base_domain / page_url[1:]
-                    page_url = URL(page_url)
-                    continue
-            break
+            if not next_page:
+                break
+            page_url_str: str = next_page.get(self.next_page_attribute)
+            if not page_url_str:
+                break
+            encoded = "%" in page_url_str
+            if page_url_str.startswith("/"):
+                page_url = self.primary_base_domain.joinpath(page_url_str[1:], encoded=encoded)
+            else:
+                page_url = URL(page_url_str, encoded=encoded)
 
     @staticmethod
     async def parse_relative_date(relative_date: timedelta | str) -> int:

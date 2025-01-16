@@ -45,5 +45,6 @@ class F95ZoneCrawler(XenforoCrawler):
 
     async def filter_link(self, link: URL) -> bool:
         if any(part == "thumb" for part in link.parts):
-            return URL(str(link).replace("/thumb/", "/"))
+            url_str = str(link).replace("/thumb/", "/")
+            return URL(url_str, "%" in url_str)
         return link

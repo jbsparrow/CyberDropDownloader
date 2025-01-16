@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-import contextlib
 import json
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import MaxChildrenError
-from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
@@ -28,17 +26,13 @@ class ScrolllerCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = self.scraping_progress.add_task(scrape_item.url)
-
         if "r" in scrape_item.url.parts:
             await self.subreddit(scrape_item)
         else:
             log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
-            self.manager.progress_manager.scrape_stats_progress.add_failure("Unsupported Link")
-
-        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def subreddit(self, scrape_item: ScrapeItem) -> None:
@@ -47,13 +41,7 @@ class ScrolllerCrawler(Crawler):
         title = self.create_title(subreddit, None, None)
         scrape_item.add_to_parent_title(title)
         scrape_item.part_of_album = True
-        scrape_item.type = FILE_HOST_ALBUM
-        scrape_item.children = scrape_item.children_limit = 0
-
-        with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = (
-                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
-            )
+        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
 
         request_body = {
             "query": """
@@ -105,11 +93,11 @@ class ScrolllerCrawler(Crawler):
                 for item in items:
                     media_sources = [item for item in item["mediaSources"] if ".webp" not in item["url"]]
                     if media_sources:
-                        highest_res_image_url = URL(media_sources[-1]["url"])
+                        url_str = media_sources[-1]["url"]
+                        highest_res_image_url = URL(url_str, encoded="%" in url_str)
                         filename, ext = get_filename_and_ext(highest_res_image_url.name)
                         await self.handle_file(highest_res_image_url, scrape_item, filename, ext)
-                        if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
-                            raise MaxChildrenError(origin=scrape_item)
+                        scrape_item.add_children()
 
                 prev_iterator = iterator
                 iterator = data["data"]["getSubreddit"]["children"]["iterator"]

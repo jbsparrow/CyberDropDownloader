@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import contextlib
 from typing import TYPE_CHECKING, cast
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import MaxChildrenError, NoExtensionError
+from cyberdrop_dl.clients.errors import NoExtensionError
 from cyberdrop_dl.scraper.crawler import Crawler
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.logger import log
@@ -47,27 +46,19 @@ class XBunkrCrawler(Crawler):
 
         scrape_item.album_id = scrape_item.url.parts[2]
         scrape_item.part_of_album = True
-
-        scrape_item.type = FILE_HOST_ALBUM
-        scrape_item.children = scrape_item.children_limit = 0
-
-        with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = (
-                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
-            )
-
+        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
         title = self.create_title(soup.select_one("h1[id=title]").text, scrape_item.album_id, None)
 
         links = soup.select("a[class=image]")
         for link in links:
-            link = URL(link.get("href"))
+            link_str: str = link.get("href")
+            assert link_str
+            link = URL(link_str, encoded="%" in link_str)
             try:
                 filename, ext = get_filename_and_ext(link.name)
             except NoExtensionError:
-                log(f"Couldn't get extension for {link!s}", 30)
+                log(f"Couldn't get extension for {link}", 40)
                 continue
             new_scrape_item = self.create_scrape_item(scrape_item, link, title, True, add_parent=scrape_item.url)
             await self.handle_file(link, new_scrape_item, filename, ext)
-            scrape_item.children += 1
-            if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
-                raise MaxChildrenError(origin=scrape_item)
+            scrape_item.add_children()

@@ -1,15 +1,13 @@
 from __future__ import annotations
 
 import calendar
-import contextlib
 import datetime
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import MaxChildrenError
-from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
@@ -28,10 +26,9 @@ class ToonilyCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = self.scraping_progress.add_task(scrape_item.url)
-
         if "chapter" in scrape_item.url.name:
             await self.chapter(scrape_item)
         elif "webtoon" in scrape_item.url.parts:
@@ -39,21 +36,13 @@ class ToonilyCrawler(Crawler):
         else:
             await self.handle_direct_link(scrape_item)
 
-        self.scraping_progress.remove_task(task_id)
-
     @error_handling_wrapper
     async def series(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a series."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        scrape_item.type = FILE_HOST_PROFILE
-        scrape_item.children = scrape_item.children_limit = 0
-
-        with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = (
-                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
-            )
+        scrape_item.set_type(FILE_HOST_PROFILE, self.manager)
 
         chapters = soup.select("li[class*=wp-manga-chapter] a")
         for chapter in chapters:
@@ -62,20 +51,21 @@ class ToonilyCrawler(Crawler):
                 continue
             if chapter_path.endswith("/"):
                 chapter_path = chapter_path[:-1]
+
+            encoded = "%" in chapter_path
             if chapter_path.startswith("/"):
-                chapter_path = self.primary_base_domain / chapter_path[1:]
+                chapter_url = self.primary_base_domain.joinpath(chapter_path[1:], encoded=encoded)
             else:
-                chapter_path = URL(chapter_path)
+                chapter_url = URL(chapter_path, encoded=encoded)
+
             new_scrape_item = self.create_scrape_item(
                 scrape_item,
-                chapter_path,
-                "",
-                True,
+                chapter_url,
+                part_of_album=True,
                 add_parent=scrape_item.url,
             )
             self.manager.task_group.create_task(self.run(new_scrape_item))
-            if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
-                raise MaxChildrenError(origin=scrape_item)
+            scrape_item.add_children()
 
     @error_handling_wrapper
     async def chapter(self, scrape_item: ScrapeItem) -> None:
@@ -83,14 +73,7 @@ class ToonilyCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        scrape_item.type = FILE_HOST_ALBUM
-        scrape_item.children = scrape_item.children_limit = 0
-
-        with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = (
-                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
-            )
-
+        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
         title_parts = soup.select_one("title").get_text().split(" - ")
         series_name = title_parts[0]
         chapter_title = title_parts[1]
@@ -111,15 +94,14 @@ class ToonilyCrawler(Crawler):
 
         images = soup.select('div[class="page-break no-gaps"] img')
         for image in images:
-            link = image.get("data-src")
-            if not link:
+            link_str: str = image.get("data-src")
+            if not link_str:
                 continue
-            link = URL(link)
+            link = URL(link_str, encoded="%" in link_str)
 
             filename, ext = get_filename_and_ext(link.name)
             await self.handle_file(link, scrape_item, filename, ext)
-            if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
-                raise MaxChildrenError(origin=scrape_item)
+            scrape_item.add_children()
 
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:
@@ -133,5 +115,5 @@ class ToonilyCrawler(Crawler):
     @staticmethod
     def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
-        date = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
-        return calendar.timegm(date.timetuple())
+        date_time = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
+        return calendar.timegm(date_time.timetuple())

@@ -43,5 +43,5 @@ class TitsInTopsCrawler(XenforoCrawler):
             return False
         if link_obj.get("title") and "permanent link" in link_obj.get("title").lower():
             return False
-        link = link_obj.get(self.selectors.posts.links.element)
+        link: str = link_obj.get(self.selectors.posts.links.element)
         return not (is_image and self.is_attachment(link))
