@@ -318,7 +318,7 @@ class Crawler(ABC):
         scrape_item.add_to_parent_title(title)
 
 
-def create_task_id(func: Callable) -> None:
+def create_task_id(func: Callable) -> Callable:
     """Wrapper handles task_id creation and removal for ScrapeItems"""
 
     @wraps(func)
