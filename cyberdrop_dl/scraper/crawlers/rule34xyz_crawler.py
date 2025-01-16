@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
+from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
@@ -41,31 +42,26 @@ class Rule34XYZCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
-
-        title = self.create_title(scrape_item.url.parts[1])
         scrape_item.part_of_album = True
+        title = self.create_title(scrape_item.url.parts[1])
 
         content_block = soup.select_one('div[class="box-grid ng-star-inserted"]')
         content = content_block.select("a[class=boxInner]")
-        for file_page in content:
-            link_str: str = file_page.get("href")
-            encoded = "%" in link_str
-            if link_str.startswith("/"):
-                link = self.primary_base_domain.joinpath(link_str[1:], encoded=encoded)
-            else:
-                link = URL(link_str, encoded=encoded)
-            new_scrape_item = self.create_scrape_item(scrape_item, link, title, True, add_parent=scrape_item.url)
-            self.manager.task_group.create_task(self.run(new_scrape_item))
-            scrape_item.add_children()
         if not content:
             return
 
+        for file_page in content:
+            link_str: str = file_page.get("href")
+            link = self.parse_url(link_str)
+            new_scrape_item = self.create_scrape_item(scrape_item, link, title, add_parent=scrape_item.url)
+            self.manager.task_group.create_task(self.run(new_scrape_item))
+            scrape_item.add_children()
+
+        page = 2
         if len(scrape_item.url.parts) > 2:
             page = int(scrape_item.url.parts[-1])
-            next_page = scrape_item.url.with_path(f"/{scrape_item.url.parts[1]}/page/{page + 1}")
-        else:
-            next_page = scrape_item.url.with_path(f"/{scrape_item.url.parts[1]}/page/2")
-        new_scrape_item = self.create_scrape_item(scrape_item, next_page, "")
+        next_page = scrape_item.url.with_path("/") / scrape_item.url.parts[1] / "page" / f"{page + 1}"
+        new_scrape_item = self.create_scrape_item(scrape_item, next_page)
         self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -74,32 +70,18 @@ class Rule34XYZCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        date = self.parse_datetime(
-            soup.select_one('div[class="posted ng-star-inserted"]').text.split("(")[1].split(")")[0],
-        )
+        date_str: str = soup.select_one('div[class="posted ng-star-inserted"]').text.split("(")[1].split(")")[0]
+        date = self.parse_datetime(date_str)
         new_scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, possible_datetime=date)
 
-        image = soup.select_one('img[class*="img shadow-base"]')
-        if image:
-            link_str: str = image.get("src")
-            encoded = "%" in link_str
-            if link_str.startswith("/"):
-                link = self.primary_base_domain.joinpath(link_str[1:], encoded=encoded)
-            else:
-                link = URL(link_str, encoded=encoded)
-            filename, ext = get_filename_and_ext(link.name)
-            await self.handle_file(link, new_scrape_item, filename, ext)
+        media_tag = soup.select_one("video source") or soup.select_one('img[class*="img shadow-base"]')
+        if not media_tag:
+            raise ScrapeError(422, origin=scrape_item)
 
-        video = soup.select_one("video source")
-        if video:
-            link_str: str = video.get("src")
-            encoded = "%" in link_str
-            if link_str.startswith("/"):
-                link = self.primary_base_domain.joinpath(link_str[1:], encoded=encoded)
-            else:
-                link = URL(link_str, encoded=encoded)
-            filename, ext = get_filename_and_ext(link.name)
-            await self.handle_file(link, new_scrape_item, filename, ext)
+        link_str: str = media_tag.get("src")
+        link = self.parse_url(link_str)
+        filename, ext = get_filename_and_ext(link.name)
+        await self.handle_file(link, new_scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 

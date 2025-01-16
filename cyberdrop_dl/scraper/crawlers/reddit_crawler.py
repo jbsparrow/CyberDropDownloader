@@ -68,9 +68,9 @@ class RedditCrawler(Crawler):
                 check_for_updates=False,
             )
 
-            if "user" in scrape_item.url.parts or "u" in scrape_item.url.parts:
+            if any(part in scrape_item.url.parts for part in ("user", "u")):
                 await self.user(scrape_item, reddit)
-            elif "r" in scrape_item.url.parts and "comments" not in scrape_item.url.parts:
+            elif any(part in scrape_item.url.parts for part in ("comments", "r")):
                 await self.subreddit(scrape_item, reddit)
             elif "redd.it" in scrape_item.url.host:
                 await self.media(scrape_item, reddit)
@@ -129,9 +129,10 @@ class RedditCrawler(Crawler):
 
         try:
             media_url_str = submission.media["reddit_video"]["fallback_url"]
-            media_url = URL(media_url_str, encoded="%" in media_url_str)
         except (KeyError, TypeError):
-            media_url = URL(submission.url)
+            media_url_str = submission.url
+
+        media_url = self.parse_url(media_url_str)
 
         new_scrape_item = await self.create_new_scrape_item(
             media_url,
@@ -156,7 +157,7 @@ class RedditCrawler(Crawler):
             return
         items = [item for item in submission.media_metadata.values() if item["status"] == "valid"]
         links_strs = [item["s"]["u"] for item in items]
-        links = [URL(link, encoded="%" in link).with_host("i.redd.it").with_query(None) for link in links_strs]
+        links = [self.parse_url(link_str).with_host("i.redd.it").with_query(None) for link_str in links_strs]
         scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
 
         for link in links:

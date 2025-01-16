@@ -48,23 +48,19 @@ class Rule34VaultCrawler(Crawler):
 
         content_block = soup.select_one('div[class="box-grid ng-star-inserted"]')
         content = content_block.select('a[class="box ng-star-inserted"]')
+        if not content:
+            return
+
         for file_page in content:
             link_str: str = file_page.get("href")
-            encoded = "%" in link_str
-            if link_str.startswith("/"):
-                link = self.primary_base_domain.joinpath(link_str[1:], encoded=encoded)
-            else:
-                link = URL(link_str, encoded=encoded)
+            link = self.parse_url(link_str)
             new_scrape_item = self.create_scrape_item(scrape_item, link, title, add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.add_children()
-        if not content:
-            return
 
         page = scrape_item.url.query.get("page", 1)
         page_number = int(page)
         next_page = scrape_item.url.with_query(page=page_number + 1)
-
         new_scrape_item = self.create_scrape_item(scrape_item, next_page)
         self.manager.task_group.create_task(self.run(new_scrape_item))
 
@@ -75,26 +71,23 @@ class Rule34VaultCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
-
-        title_str = soup.select_one("div[class*=title]").text
         scrape_item.part_of_album = True
         scrape_item.album_id = scrape_item.url.parts[-1]
+
+        title_str = soup.select_one("div[class*=title]").text
         title = self.create_title(title_str, scrape_item.album_id)
 
         content_block = soup.select_one('div[class="box-grid ng-star-inserted"]')
         content = content_block.select('a[class="box ng-star-inserted"]')
+        if not content:
+            return
+
         for file_page in content:
             link_str: str = file_page.get("href")
-            encoded = "%" in link_str
-            if link_str.startswith("/"):
-                link = self.primary_base_domain.joinpath(link_str[1:], encoded=encoded)
-            else:
-                link = URL(link_str, encoded=encoded)
+            link = self.parse_url(link_str)
             new_scrape_item = self.create_scrape_item(scrape_item, link, title, add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.add_children()
-        if not content:
-            return
 
         page = scrape_item.url.query.get("page", 1)
         page_number = int(page)
@@ -108,37 +101,23 @@ class Rule34VaultCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        date = self.parse_datetime(
-            soup.select_one('div[class="posted-date-full text-secondary mt-4 ng-star-inserted"]').text,
-        )
+        date_str = soup.select_one('div[class="posted-date-full text-secondary mt-4 ng-star-inserted"]').text
+        date = self.parse_datetime(date_str)
         new_scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, possible_datetime=date)
 
-        image = soup.select_one('img[class*="img ng-star-inserted"]')
-        if image:
-            link_str: str = image.get("src").replace(".small", "").replace(".thumbnail", "")
-            encoded = "%" in link_str
-            if link_str.startswith("/"):
-                link = self.primary_base_domain.joinpath(link_str[1:], encoded=encoded)
-            else:
-                link = URL(link_str, encoded=encoded)
-            filename, ext = get_filename_and_ext(link.name)
-            await self.handle_file(link, new_scrape_item, filename, ext)
-        video = soup.select_one('div[class="con-video ng-star-inserted"] > video > source')
-        if video:
-            link_str = (
-                video.get("src")
-                .replace(".small", "")
-                .replace(".thumbnail", "")
-                .replace(".720", "")
-                .replace(".hevc", "")
-            )
-            encoded = "%" in link_str
-            if link_str.startswith("/"):
-                link = self.primary_base_domain.joinpath(link_str[1:], encoded=encoded)
-            else:
-                link = URL(link_str, encoded=encoded)
-            filename, ext = get_filename_and_ext(link.name)
-            await self.handle_file(link, new_scrape_item, filename, ext)
+        media_tag = soup.select_one('div[class="con-video ng-star-inserted"] > video > source') or soup.select_one(
+            'img[class*="img ng-star-inserted"]'
+        )
+        link_str: str = (
+            media_tag.get("src")
+            .replace(".small", "")
+            .replace(".thumbnail", "")
+            .replace(".720", "")
+            .replace(".hevc", "")
+        )
+        link = self.parse_url(link_str)
+        filename, ext = get_filename_and_ext(link.name)
+        await self.handle_file(link, new_scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 

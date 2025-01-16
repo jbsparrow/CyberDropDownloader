@@ -46,24 +46,11 @@ class ToonilyCrawler(Crawler):
 
         chapters = soup.select("li[class*=wp-manga-chapter] a")
         for chapter in chapters:
-            chapter_path: str = chapter.get("href")
-            if not chapter_path:
+            link_str: str = chapter.get("href")
+            if not link_str:
                 continue
-            if chapter_path.endswith("/"):
-                chapter_path = chapter_path[:-1]
-
-            encoded = "%" in chapter_path
-            if chapter_path.startswith("/"):
-                chapter_url = self.primary_base_domain.joinpath(chapter_path[1:], encoded=encoded)
-            else:
-                chapter_url = URL(chapter_path, encoded=encoded)
-
-            new_scrape_item = self.create_scrape_item(
-                scrape_item,
-                chapter_url,
-                part_of_album=True,
-                add_parent=scrape_item.url,
-            )
+            link = self.parse_url(link_str)
+            new_scrape_item = self.create_scrape_item(scrape_item, link, part_of_album=True, add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.add_children()
 
@@ -97,8 +84,7 @@ class ToonilyCrawler(Crawler):
             link_str: str = image.get("data-src")
             if not link_str:
                 continue
-            link = URL(link_str, encoded="%" in link_str)
-
+            link = self.parse_url(link_str)
             filename, ext = get_filename_and_ext(link.name)
             await self.handle_file(link, scrape_item, filename, ext)
             scrape_item.add_children()

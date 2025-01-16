@@ -71,7 +71,7 @@ class ImgBBCrawler(Crawler):
             links = soup.select("a[class*=image-container]")
             for link in links:
                 link_str: str = link.get("href")
-                link = URL(link_str, encoded="%" in link_str)
+                link = self.parse_url(link_str)
                 new_scrape_item = self.create_scrape_item(scrape_item, link, title, add_parent=scrape_item.url)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 

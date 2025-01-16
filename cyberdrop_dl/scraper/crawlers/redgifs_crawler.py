@@ -49,13 +49,8 @@ class RedGifsCrawler(Crawler):
         while page <= total_pages:
             async with self.request_limiter:
                 api_url = self.redgifs_api / "v2/users" / user_id / "search"
-                api_url = api_url.with_query(f"order=new&count=40&page={page}")
-                JSON_Resp = await self.client.get_json(
-                    self.domain,
-                    api_url,
-                    headers_inc=self.headers,
-                    origin=scrape_item,
-                )
+                url = api_url.with_query(f"order=new&count=40&page={page}")
+                JSON_Resp = await self.client.get_json(self.domain, url, headers_inc=self.headers, origin=scrape_item)
             total_pages = JSON_Resp["pages"]
             gifs = JSON_Resp["gifs"]
             for gif in gifs:
@@ -64,7 +59,7 @@ class RedGifsCrawler(Crawler):
                 title = self.create_title(user_id)
 
                 link_str: str = links.get("hd") or links.get("sd")
-                link = URL(link_str, encoded="%" in link_str)
+                link = self.parse_url(link_str)
                 filename, ext = get_filename_and_ext(link.name)
                 new_scrape_item = self.create_scrape_item(
                     scrape_item,
@@ -82,14 +77,9 @@ class RedGifsCrawler(Crawler):
     async def post(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a post."""
         post_id = scrape_item.url.parts[-1].split(".")[0]
-
         async with self.request_limiter:
-            JSON_Resp = await self.client.get_json(
-                self.domain,
-                self.redgifs_api / "v2/gifs" / post_id,
-                headers_inc=self.headers,
-                origin=scrape_item,
-            )
+            api_url = self.redgifs_api / "v2/gifs" / post_id
+            JSON_Resp = await self.client.get_json(self.domain, api_url, headers_inc=self.headers, origin=scrape_item)
 
         title_part = JSON_Resp["gif"].get("title", "Loose Files")
         title = self.create_title(title_part)
@@ -97,7 +87,7 @@ class RedGifsCrawler(Crawler):
         date = JSON_Resp["gif"]["createDate"]
 
         link_str: str = links.get("hd") or links.get("sd")
-        link = URL(link_str, encoded="%" in link_str)
+        link = self.parse_url(link_str)
 
         filename, ext = get_filename_and_ext(link.name)
         new_scrape_item = self.create_scrape_item(

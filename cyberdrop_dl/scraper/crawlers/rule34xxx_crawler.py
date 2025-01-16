@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
+from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.logger import log
@@ -55,10 +56,7 @@ class Rule34XXXCrawler(Crawler):
         content = soup.select("div[class=image-list] span a")
         for file_page in content:
             link_str: str = file_page.get("href")
-            encoded = "%" in link_str
-            if link_str.startswith("/"):
-                link = self.primary_base_domain.joinpath(link_str[1:], encoded=encoded)
-            link = URL(link_str, encoded=encoded)
+            link = self.parse_url(link_str)
             new_scrape_item = self.create_scrape_item(scrape_item, link, title, True, add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.add_children()
@@ -66,11 +64,7 @@ class Rule34XXXCrawler(Crawler):
         next_page = soup.select_one("a[alt=next]")
         if next_page:
             next_page_str: str = next_page.get("href")
-            next_page = (
-                scrape_item.url.with_query(next_page_str[1:])
-                if next_page_str.startswith("?")
-                else URL(next_page_str, encoded="%" in next_page)
-            )
+            next_page = self.parse_url(next_page_str, scrape_item.url)
             new_scrape_item = self.create_scrape_item(scrape_item, next_page)
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
@@ -79,18 +73,13 @@ class Rule34XXXCrawler(Crawler):
         """Scrapes an image."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
-        image = soup.select_one("img[id=image]")
-        if image:
-            link_str: str = image.get("src")
-            link = URL(link_str, encoded="%" in link_str)
-            filename, ext = get_filename_and_ext(link.name)
-            await self.handle_file(link, scrape_item, filename, ext)
-        video = soup.select_one("video source")
-        if video:
-            link_str: str = video.get("src")
-            link = URL(link_str, encoded="%" in link_str)
-            filename, ext = get_filename_and_ext(link.name)
-            await self.handle_file(link, scrape_item, filename, ext)
+        media_tag = soup.select_one("img[id=image]") or soup.select_one("video source")
+        if not media_tag:
+            raise ScrapeError(422, origin=scrape_item)
+        link_str: str = media_tag.get("src")
+        link = self.parse_url(link_str)
+        filename, ext = get_filename_and_ext(link.name)
+        await self.handle_file(link, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 

@@ -322,7 +322,9 @@ class Crawler(ABC):
         assert isinstance(link_str, str)
         encoded = "%" in link_str
         base = relative_to or self.primary_base_domain
-        if link_str.startswith("//"):
+        if link_str.startswith("?"):
+            link = base.with_query(link_str[1:])
+        elif link_str.startswith("//"):
             link = URL("https:" + link_str, encoded=encoded)
         elif link_str.startswith("/"):
             link = base.joinpath(link_str[1:], encoded=encoded)

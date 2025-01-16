@@ -50,7 +50,7 @@ class XBunkrCrawler(Crawler):
         for link in links:
             link_str: str = link.get("href")
             assert link_str
-            link = URL(link_str, encoded="%" in link_str)
+            link = self.parse_url(link_str)
             try:
                 filename, ext = get_filename_and_ext(link.name)
             except NoExtensionError:

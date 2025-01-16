@@ -59,8 +59,8 @@ class NekohouseCrawler(Crawler):
         """Determines where to send the scrape item based on the url."""
         if "thumbnails" in scrape_item.url.parts:
             parts = [x for x in scrape_item.url.parts if x not in ("thumbnail", "/")]
-            link = URL(f"https://{scrape_item.url.host}/{'/'.join(parts)}")
-            scrape_item.url = link
+            new_path = "/".join(parts)
+            scrape_item.url = scrape_item.url.with_path(new_path)
             await self.handle_direct_link(scrape_item)
         elif "post" in scrape_item.url.parts:
             post_id = scrape_item.url.parts[-1] if "user" not in scrape_item.url.parts else None
@@ -81,11 +81,8 @@ class NekohouseCrawler(Crawler):
         scrape_item.set_type(FILE_HOST_PROFILE, self.manager)
         while offset <= maximum_offset:
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(
-                    self.domain,
-                    service_call.with_query({"o": offset}),
-                    origin=scrape_item,
-                )
+                service_url = service_call.with_query({"o": offset})
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, service_url, origin=scrape_item)
                 offset += 50
 
                 posts = soup.select(self.post_selector)
@@ -94,18 +91,10 @@ class NekohouseCrawler(Crawler):
                 for post in posts:
                     # Create a new scrape item for each post
                     post_url_str: str = post.get("href", "")
-                    if post_url_str.startswith("/"):
-                        post_url_str = post_url_str[1:]
-                    if not post_url_str:
-                        continue
+                    post_link = self.parse_url(post_url_str)
                     post_id = post_url_str.split("/")[-1]
-                    post_link = self.primary_base_domain.joinpath(post_url_str, encoded="%" in post_url_str)
                     # Call on self.post to scrape the post by creating a new scrape item
-                    new_scrape_item = self.create_scrape_item(
-                        scrape_item,
-                        post_link,
-                        add_parent=self.primary_base_domain / service / "user" / user,
-                    )
+                    new_scrape_item = self.create_scrape_item(scrape_item, post_link, add_parent=service_call)
                     await self.post(new_scrape_item, post_id, user, service, user_str)
                     scrape_item.add_children()
 

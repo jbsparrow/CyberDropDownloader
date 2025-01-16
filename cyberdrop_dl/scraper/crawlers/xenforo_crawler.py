@@ -3,6 +3,7 @@ from __future__ import annotations
 import contextlib
 import re
 from dataclasses import dataclass, field
+from functools import singledispatch
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
@@ -173,7 +174,7 @@ class XenforoCrawler(Crawler):
         if any(self.POST_NAME in sec for sec in post_sections):
             url_parts = str(scrape_item.url).rsplit(self.POST_NAME, 1)
             thread_url_str = url_parts[0].rstrip("#")
-            thread_url = URL(thread_url_str, encoded="%" in thread_url_str)
+            thread_url = self.parse_url(thread_url_str)
             post_number = int(url_parts[-1].strip("/")) if len(url_parts) == 2 else 0
 
         last_scraped_post_number = None
@@ -190,15 +191,16 @@ class XenforoCrawler(Crawler):
                 current_post = ForumPost(post, selectors=self.selectors.posts, post_name=self.POST_NAME)
                 last_scraped_post_number = current_post.number
                 scrape_post, continue_scraping = self.check_post_number(post_number, current_post.number)
-
+                date = current_post.date
                 if scrape_post:
                     new_path = f"{self.POST_NAME}{current_post.number}"
+                    parent_url = self.parse_url(new_path, scrape_item.url)
                     new_scrape_item = self.create_scrape_item(
                         scrape_item,
                         thread_url,
                         title,
-                        possible_datetime=current_post.date,
-                        add_parent=scrape_item.url.joinpath(new_path, encoded="%" in new_path),
+                        possible_datetime=date,
+                        add_parent=parent_url,
                     )
                     trash: list[Tag] = title_block.find_all(self.selectors.quotes.element)
                     for element in trash:
@@ -264,24 +266,22 @@ class XenforoCrawler(Crawler):
         embed = re.search(HTTP_URL_PATTERNS[0], data) or re.search(HTTP_URL_PATTERNS[1], data)
         return embed.group(0).replace("www.", "") if embed else data
 
-    async def filter_link(self, link: URL | None) -> URL:
+    async def filter_link(self, link: URL | None) -> URL | None:
         return link
 
     async def process_children(self, scrape_item: ScrapeItem, links: list[Tag], selector: str) -> None:
         for link_obj in links:
-            link_str: Tag | str = link_obj.get(selector) or link_obj.get("href")
-            if not link_str:
-                continue
-            if not isinstance(link_str, str):
-                parent_simp_check = link_str.parent.get("data-simp")
+            link_tag: Tag = link_obj.get(selector)
+            if link_tag:
+                parent_simp_check = link_tag.parent.get("data-simp")
                 if parent_simp_check and "init" in parent_simp_check:
                     continue
-            if selector == self.selectors.posts.embeds.attribute:
-                link_str: str = self.process_embed(link_str)
-            if not link_str:
-                continue
 
-            if str(link_str).startswith("data:image/svg"):
+            link_str: str = link_tag or link_obj.get("href")
+            if selector == self.selectors.posts.embeds.attribute:
+                link_str: str = self.process_embed(link_tag)
+
+            if not link_str or link_str.startswith("data:image/svg"):
                 continue
 
             link = await self.get_absolute_link(link_str)
@@ -291,14 +291,20 @@ class XenforoCrawler(Crawler):
             await self.handle_link(scrape_item, link)
             scrape_item.add_children()
 
-    def is_attachment(self, link: URL | str) -> bool:
+    @singledispatch
+    def is_attachment(self, link: URL) -> bool:
         if not link:
             return False
-        if isinstance(link, str):
-            link = URL(link, encoded="%" in link)
-        return any(part in link.parts for part in self.attachment_url_part) or any(
-            host in link.host for host in self.attachment_url_hosts
-        )
+        parts = self.attachment_url_part
+        hosts = self.attachment_url_hosts
+        return any(part in link.parts for part in parts) or any(host in link.host for host in hosts)
+
+    @singledispatch.register(str)
+    def _(self, link_str: str) -> bool:
+        if not link_str:
+            return False
+        link = self.parse_url(link_str)
+        return self.is_attachment(link)
 
     async def handle_link(self, scrape_item: ScrapeItem, link: URL) -> None:
         if not link:
@@ -321,8 +327,8 @@ class XenforoCrawler(Crawler):
         new_scrape_item = self.create_scrape_item(scrape_item, link, "Attachments", part_of_album=True)
         await self.handle_file(link, new_scrape_item, filename, ext)
 
-    async def is_confirmation_link(self, link: URL) -> bool:
-        return False
+    def is_confirmation_link(self, link: URL) -> bool:
+        return any(keyword in link.path for keyword in ("link-confirmation",))
 
     @error_handling_wrapper
     async def handle_confirmation_link(self, link: URL, *, origin: ScrapeItem | None = None) -> URL | None:
@@ -331,19 +337,17 @@ class XenforoCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, link, origin=origin)
         confirm_button = soup.select_one("a[class*=button--cta]")
         if not confirm_button:
-            return None
-        url_str: str = confirm_button.get("href")
-        return URL(url_str, encoded="%" in url_str)
+            return
+        link_str: str = confirm_button.get("href")
+        return self.parse_url(link_str)
 
     async def write_last_forum_post(self, scrape_item: ScrapeItem, post_number: int) -> None:
         if not post_number:
             return
         post_string = f"{self.POST_NAME}{post_number}"
-        encoded = "%" in post_string
-        if "page-" in scrape_item.url.raw_name or self.POST_NAME in scrape_item.url.raw_name:
-            last_post_url = scrape_item.url.parent.joinpath(post_string, encoded=encoded)
-        else:
-            last_post_url = scrape_item.url.joinpath(post_string, encoded=encoded)
+        use_parent = "page-" in scrape_item.url.raw_name or self.POST_NAME in scrape_item.url.raw_name
+        base = scrape_item.url.parent if use_parent else scrape_item.url
+        last_post_url = self.parse_url(post_string, base)
         await self.manager.log_manager.write_last_post_log(last_post_url)
 
     async def thread_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
@@ -357,33 +361,24 @@ class XenforoCrawler(Crawler):
             if not next_page:
                 break
             page_url_str: str = next_page.get(self.selectors.next_page.attribute)
-            if not page_url_str:
-                break
-            encoded = "%" in page_url_str
-            if page_url_str.startswith("/"):
-                page_url = self.primary_base_domain.joinpath(page_url_str[1:], encoded=encoded)
-            else:
-                page_url = URL(page_url_str, encoded=encoded)
+            page_url = self.parse_url(page_url_str)
             page_url = await self.pre_filter_link(page_url)
 
     def is_valid_post_link(self, link_obj: Tag) -> bool:
         is_image = link_obj.select_one("img")
-        link: str = link_obj.get(self.selectors.posts.links.element)
-        return not (is_image and self.is_attachment(link))
+        link_str: str = link_obj.get(self.selectors.posts.links.element)
+        return not (is_image or self.is_attachment(link_str))
 
-    async def get_absolute_link(self, link: URL | str) -> URL | None:
-        if isinstance(link, str):
-            encoded = "%" in link
-            link_str = link.replace(".th.", ".").replace(".md.", ".").replace("ifr", "watch")
-            if link_str.startswith("//"):
-                link = URL("https:" + link_str, encoded=encoded)
-            elif link_str.startswith("/"):
-                link = self.primary_base_domain.joinpath(link_str[1:], encoded=encoded)
-            else:
-                link = URL(link_str, encoded=encoded)
+    @singledispatch
+    async def get_absolute_link(self, link: URL) -> URL | None:
+        absolute_link = link
+        if self.is_confirmation_link(link):
+            absolute_link = await self.handle_confirmation_link(link)
+        return absolute_link
 
-        assert isinstance(link, URL)
-        if await self.is_confirmation_link(link) or any(keyword in link.path for keyword in ("link-confirmation",)):
-            link = await self.handle_confirmation_link(link)
-
-        return link
+    @get_absolute_link.register(str)
+    async def _(self, link: str) -> URL | None:
+        parsed_link = None
+        link_str: str = link.replace(".th.", ".").replace(".md.", ".").replace("ifr", "watch")
+        parsed_link = self.parse_url(link_str)
+        return await self.get_absolute_link(parsed_link)

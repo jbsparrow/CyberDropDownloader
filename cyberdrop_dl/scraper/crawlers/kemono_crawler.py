@@ -47,8 +47,8 @@ class KemonoCrawler(Crawler):
         """Determines where to send the scrape item based on the url."""
         if "thumbnails" in scrape_item.url.parts:
             parts = [x for x in scrape_item.url.parts if x not in ("thumbnail", "/")]
-            link = URL(f"https://{scrape_item.url.host}/{'/'.join(parts)}")
-            scrape_item.url = link
+            new_path = "/".join(parts)
+            scrape_item.url = scrape_item.url.with_path(new_path)
             await self.handle_direct_link(scrape_item)
         elif "discord" in scrape_item.url.parts:
             await self.discord(scrape_item)
@@ -71,14 +71,10 @@ class KemonoCrawler(Crawler):
         while offset <= maximum_offset:
             async with self.request_limiter:
                 query_api_call = api_call.with_query({"o": offset})
-                JSON_Resp = await self.client.get_json(
-                    self.domain,
-                    query_api_call,
-                    origin=scrape_item,
-                )
-                offset += post_limit
-                if not JSON_Resp:
-                    break
+                JSON_Resp = await self.client.get_json(self.domain, query_api_call, origin=scrape_item)
+            offset += post_limit
+            if not JSON_Resp:
+                break
 
             for post in JSON_Resp:
                 await self.handle_post_content(scrape_item, post, user, user_str)
@@ -94,14 +90,11 @@ class KemonoCrawler(Crawler):
 
         while True:
             async with self.request_limiter:
-                JSON_Resp = await self.client.get_json(
-                    self.domain,
-                    api_call.with_query({"o": offset}),
-                    origin=scrape_item,
-                )
-                offset += 150
-                if not JSON_Resp:
-                    break
+                query_api_call = api_call.with_query({"o": offset})
+                JSON_Resp = await self.client.get_json(self.domain, query_api_call, origin=scrape_item)
+            offset += 150
+            if not JSON_Resp:
+                break
 
             for post in JSON_Resp:
                 await self.handle_post_content(scrape_item, post, channel, channel)
@@ -176,17 +169,12 @@ class KemonoCrawler(Crawler):
         scrape_item.add_to_parent_title("Loose Files")
 
         yarl_links: list[URL] = []
-        all_links = [
-            x.group().replace(".md.", ".")
-            for x in re.finditer(
-                r"(?:http(?!.*\.\.)[^ ]*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]|</|'))",
-                content,
-            )
-        ]
+        LINK_REGEX = r"(?:http(?!.*\.\.)[^ ]*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]|</|'))"
+        all_links = [x.group().replace(".md.", ".") for x in re.finditer(LINK_REGEX, content)]
 
         for link in all_links:
             try:
-                url = URL(link, encoded="%" in link)
+                url = self.parse_url(link)
                 yarl_links.append(url)
             except ValueError:
                 pass
@@ -249,12 +237,12 @@ class KemonoCrawler(Crawler):
             profile_json, resp = await self.client.get_json(
                 self.domain, profile_api_url, origin=scrape_item, cache_disabled=True
             )
-            properties: dict = profile_json.get("props", {})
-            cached_response = await self.manager.cache_manager.request_cache.get_response(str(profile_api_url))
-            cached_properties = {} if not cached_response else (await cached_response.json()).get("props", {})
+        properties: dict = profile_json.get("props", {})
+        cached_response = await self.manager.cache_manager.request_cache.get_response(str(profile_api_url))
+        cached_properties = {} if not cached_response else (await cached_response.json()).get("props", {})
 
-            # Shift cache offsets if necessary
-            await self.shift_offsets(profile_api_url, properties, cached_properties, resp)
+        # Shift cache offsets if necessary
+        await self.shift_offsets(profile_api_url, properties, cached_properties, resp)
 
         limit = properties.get("limit", 50)
         user_str = properties.get("name", user)

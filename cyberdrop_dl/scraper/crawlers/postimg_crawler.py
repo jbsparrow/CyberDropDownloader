@@ -54,7 +54,7 @@ class PostImgCrawler(Crawler):
 
             for image in JSON_Resp["images"]:
                 link_str: str = image[4]
-                link = URL(link_str, encoded="%" in link_str)
+                link = self.parse_url(link_str)
                 filename, ext = image[2], image[3]
                 new_scrape_item = self.create_scrape_item(scrape_item, link, title, add_parent=scrape_item.url)
                 await self.handle_file(link, new_scrape_item, filename, ext)
@@ -73,6 +73,6 @@ class PostImgCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         link_str: str = soup.select_one("a[id=download]").get("href").replace("?dl=1", "")
-        link = URL(link_str, encoded="%" in link_str)
+        link = self.parse_url(link_str)
         filename, ext = get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)

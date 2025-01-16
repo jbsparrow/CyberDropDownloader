@@ -87,26 +87,23 @@ class ScrolllerCrawler(Crawler):
                 origin=scrape_item,
             )
 
-            if data:
-                items = data["data"]["getSubreddit"]["children"]["items"]
+            if not data:
+                break
+            items = data["data"]["getSubreddit"]["children"]["items"]
 
-                for item in items:
-                    media_sources = [item for item in item["mediaSources"] if ".webp" not in item["url"]]
-                    if media_sources:
-                        url_str = media_sources[-1]["url"]
-                        highest_res_image_url = URL(url_str, encoded="%" in url_str)
-                        filename, ext = get_filename_and_ext(highest_res_image_url.name)
-                        await self.handle_file(highest_res_image_url, scrape_item, filename, ext)
-                        scrape_item.add_children()
+            for item in items:
+                media_sources = [item for item in item["mediaSources"] if ".webp" not in item["url"]]
+                if media_sources:
+                    url_str = media_sources[-1]["url"]
+                    highest_res_image_url = self.parse_url(url_str)
+                    filename, ext = get_filename_and_ext(highest_res_image_url.name)
+                    await self.handle_file(highest_res_image_url, scrape_item, filename, ext)
+                    scrape_item.add_children()
 
-                prev_iterator = iterator
-                iterator = data["data"]["getSubreddit"]["children"]["iterator"]
+            prev_iterator = iterator
+            iterator = data["data"]["getSubreddit"]["children"]["iterator"]
 
-                if not items or iterator == prev_iterator:
-                    break
-                if iterations > 0 and iterator is None:
-                    break
-            else:
+            if not items or iterator is None or iterator == prev_iterator or iterations > 0:
                 break
 
             iterations += 1

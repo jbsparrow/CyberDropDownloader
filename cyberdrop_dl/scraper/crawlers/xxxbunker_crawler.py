@@ -40,7 +40,6 @@ class XXXBunkerCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def async_startup(self) -> None:
-        return await super().async_startup()
         await self.check_session_cookie()
 
     @create_task_id
@@ -154,12 +153,7 @@ class XXXBunkerCrawler(Crawler):
                 link_str: str = video.get("href")
                 if not link_str:
                     continue
-
-                encoded = "%" in link_str
-                if link_str.startswith("/"):
-                    link = self.primary_base_domain.joinpath(link_str[1:], encoded=encoded)
-                else:
-                    link = URL(link, encoded=encoded)
+                link = self.parse_url(link_str)
                 new_scrape_item = self.create_scrape_item(scrape_item, link, title, add_parent=scrape_item.url)
                 await self.video(new_scrape_item)
 
@@ -195,13 +189,7 @@ class XXXBunkerCrawler(Crawler):
             if not next_page:
                 break
             page_url_str: str = next_page.get("href")
-            if not page_url_str:
-                break
-            encoded = "%" in page_url_str
-            if page_url_str.startswith("/"):
-                page_url = self.primary_base_domain.joinpath(page_url_str[1:], encoded=encoded)
-            else:
-                page_url = URL(page_url_str, encoded=encoded)
+            page_url = self.parse_url(page_url_str)
 
     @staticmethod
     async def parse_relative_date(relative_date: timedelta | str) -> int:
@@ -209,8 +197,6 @@ class XXXBunkerCrawler(Crawler):
         if isinstance(relative_date, str):
             time_str = relative_date.casefold()
             matches: list[str] = re.findall(DATE_PATTERN, time_str)
-
-            # Assume today
             time_dict = {"days": 0}
 
             for value, unit in matches:

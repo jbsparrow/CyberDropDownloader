@@ -66,7 +66,7 @@ class SaintCrawler(Crawler):
             link_str = match.group(1) if match else None
             if not link_str:
                 continue
-            link = URL(link_str, encoded="%" in link_str)
+            link = self.parse_url(link_str)
             filename, ext = get_filename_and_ext(link.name)
             if not self.check_album_results(link, results):
                 await self.handle_file(link, scrape_item, filename, ext)
@@ -94,9 +94,9 @@ class SaintCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
         try:
-            api_link_str: str = soup.select_one("a:contains('Download Video')").get("href")
-            api_link = URL(api_link_str, encoded="%" in api_link_str)
-            link = get_url_from_base64(api_link)
+            link_str: str = soup.select_one("a:contains('Download Video')").get("href")
+            link = self.parse_url(link_str)
+            link = get_url_from_base64(link)
         except AttributeError:
             raise ScrapeError(422, "Couldn't find video source", origin=scrape_item) from None
         filename, ext = get_filename_and_ext(link.name)

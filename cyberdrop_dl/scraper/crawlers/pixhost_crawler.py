@@ -51,7 +51,7 @@ class PixHostCrawler(Crawler):
             if not link_str:
                 continue
             link_str = link_str.replace("https://t", "https://img").replace("/thumbs/", "/images/")
-            link = URL(link_str, encoded="%" in link_str)
+            link = self.parse_url(link_str)
             filename, ext = get_filename_and_ext(link.name)
             await self.handle_file(link, scrape_item, filename, ext)
             scrape_item.add_children()
@@ -66,6 +66,6 @@ class PixHostCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         link_str: str = soup.select_one("img[class=image-img]").get("src")
-        link = URL(link_str, encoded="%" in link_str)
+        link = self.parse_url(link_str)
         filename, ext = get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)

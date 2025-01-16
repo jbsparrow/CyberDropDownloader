@@ -54,14 +54,7 @@ class RealBooruCrawler(Crawler):
         content = soup.select("div[class=items] div a")
         for file_page in content:
             link_str: str = file_page.get("href")
-            encoded = "%" in link_str
-            if link_str.startswith("//"):
-                link = URL("https:" + link_str, encoded=encoded)
-            elif link_str.startswith("/"):
-                link = self.primary_base_domain.joinpath(link_str[1:], encoded=encoded)
-            else:
-                link = URL(link_str, encoded=encoded)
-
+            link = self.parse_url(link_str)
             new_scrape_item = self.create_scrape_item(scrape_item, link, title, add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.add_children()
@@ -69,9 +62,7 @@ class RealBooruCrawler(Crawler):
         next_page = soup.select_one("a[alt=next]")
         if next_page:
             next_page_str: str = next_page.get("href")
-            next_page = URL(next_page_str, encoded="%" in next_page_str)
-            if next_page_str.startswith("?"):
-                next_page = scrape_item.url.with_query(next_page_str[1:])
+            next_page = self.parse_url(next_page_str)
             new_scrape_item = self.create_scrape_item(scrape_item, next_page)
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
