@@ -3,7 +3,6 @@ from __future__ import annotations
 import itertools
 from typing import TYPE_CHECKING
 
-from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
@@ -22,7 +21,6 @@ class PostImgCrawler(Crawler):
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "postimg", "PostImg")
         self.api_address = URL("https://postimg.cc/json")
-        self.request_limiter = AsyncLimiter(10, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 

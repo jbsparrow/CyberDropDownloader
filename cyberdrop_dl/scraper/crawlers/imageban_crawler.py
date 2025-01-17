@@ -4,7 +4,6 @@ import calendar
 import datetime
 from typing import TYPE_CHECKING
 
-from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
@@ -23,7 +22,6 @@ class ImageBanCrawler(Crawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "imageban", "ImageBan")
-        self.request_limiter = AsyncLimiter(10, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 

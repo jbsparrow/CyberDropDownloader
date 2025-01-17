@@ -4,7 +4,6 @@ import calendar
 import datetime
 from typing import TYPE_CHECKING
 
-from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
@@ -25,7 +24,7 @@ class EHentaiCrawler(Crawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "e-hentai", "E-Hentai")
-        self.request_limiter = AsyncLimiter(10, 1)
+
         self._warnings_set = False
         self.next_page_selector = "td[onclick='document.location=this.firstChild.href']:contains('>') a"
         self.next_page_attribute = "href"

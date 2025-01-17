@@ -4,7 +4,6 @@ import base64
 import re
 from typing import TYPE_CHECKING
 
-from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
@@ -25,7 +24,6 @@ class SaintCrawler(Crawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "saint", "Saint")
-        self.request_limiter = AsyncLimiter(10, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 

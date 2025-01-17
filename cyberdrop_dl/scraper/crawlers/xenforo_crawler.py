@@ -6,7 +6,6 @@ from dataclasses import dataclass, field
 from functools import singledispatch
 from typing import TYPE_CHECKING
 
-from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import LoginError
@@ -96,17 +95,15 @@ class XenforoCrawler(Crawler):
     login_required = True
     primary_base_domain = None
     selectors = XenforoSelectors()
-    POST_NAME = None
+    POST_NAME = "post-"
     thread_url_part = "threads"
 
     def __init__(self, manager: Manager, site: str, folder_domain: str | None = None) -> None:
         super().__init__(manager, site, folder_domain)
         self.primary_base_domain = self.primary_base_domain or URL(f"https://{site}")
-        self.POST_NAME = self.POST_NAME or "post-"
-        self.attachment_url_part = ["attachments"]
+        self.attachment_url_parts = ["attachments"]
         self.attachment_url_hosts = ["smgmedia", "attachments.f95zone"]
         self.logged_in = False
-        self.request_limiter = AsyncLimiter(10, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -295,7 +292,7 @@ class XenforoCrawler(Crawler):
     def is_attachment(self, link: URL) -> bool:
         if not link:
             return False
-        parts = self.attachment_url_part
+        parts = self.attachment_url_parts
         hosts = self.attachment_url_hosts
         return any(part in link.parts for part in parts) or any(host in link.host for host in hosts)
 

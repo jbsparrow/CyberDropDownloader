@@ -8,6 +8,7 @@ from datetime import datetime
 from functools import wraps
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol
 
+from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 from yarl import URL
 
@@ -46,6 +47,7 @@ class Crawler(ABC):
         self.client: ScraperClient = field(init=False)
         self._semaphore = asyncio.Semaphore(20)
         self.startup_lock = asyncio.Lock()
+        self.request_limiter = AsyncLimiter(10, 1)
         self.ready: bool = False
 
         self.domain = domain

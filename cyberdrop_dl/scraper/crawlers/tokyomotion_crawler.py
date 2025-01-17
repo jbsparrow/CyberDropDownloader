@@ -5,7 +5,6 @@ from calendar import timegm
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
-from aiolimiter import AsyncLimiter
 from multidict import MultiDict
 from yarl import URL
 
@@ -29,7 +28,7 @@ class TokioMotionCrawler(Crawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "tokyomotion", "Tokyomotion")
-        self.request_limiter = AsyncLimiter(10, 1)
+
         self.album_selector = 'a[href^="/album/"]'
         self.image_div_selector = "div[id*='_photo_']"
         self.image_selector = 'a[href^="/photo/"]'

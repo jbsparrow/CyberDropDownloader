@@ -4,7 +4,6 @@ import calendar
 import datetime
 from typing import TYPE_CHECKING
 
-from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
@@ -24,7 +23,6 @@ class OmegaScansCrawler(Crawler):
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "omegascans", "OmegaScans")
         self.api_url = URL("https://api.omegascans.org/chapter/query")
-        self.request_limiter = AsyncLimiter(10, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 

@@ -6,7 +6,6 @@ import enum
 import re
 from typing import TYPE_CHECKING, ClassVar
 
-from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 from yarl import URL
 
@@ -72,7 +71,7 @@ class CheveretoCrawler(Crawler):
     def __init__(self, manager: Manager, site: str) -> None:
         super().__init__(manager, site, self.FOLDER_DOMAINS.get(site, "Chevereto"))
         self.primary_base_domain = self.PRIMARY_BASE_DOMAINS.get(site, URL(f"https://{site}"))
-        self.request_limiter = AsyncLimiter(10, 1)
+
         self.next_page_selector = "a[data-pagination=next]"
         self.album_title_selector = "a[data-text=album-name]"
         self.album_img_selector = "a[class='image-container --media'] img"

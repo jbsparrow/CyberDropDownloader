@@ -6,7 +6,6 @@ import datetime
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
@@ -38,7 +37,6 @@ class NekohouseCrawler(Crawler):
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "nekohouse", "Nekohouse")
         self.services = ["fanbox", "fantia", "fantia_products", "subscribestar", "twitter"]
-        self.request_limiter = AsyncLimiter(10, 1)
 
         self.post_selector = "article.post-card a"
         self.post_content_selector = "div[class=scrape__files]"

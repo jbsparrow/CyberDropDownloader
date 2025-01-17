@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
@@ -22,7 +21,6 @@ class ScrolllerCrawler(Crawler):
         super().__init__(manager, "scrolller", "Scrolller")
         self.scrolller_api = URL("https://api.scrolller.com/api/v2/graphql")
         self.headers = {"Content-Type": "application/json"}
-        self.request_limiter = AsyncLimiter(10, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 

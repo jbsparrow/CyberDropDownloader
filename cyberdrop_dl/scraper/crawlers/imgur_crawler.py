@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import LoginError, ScrapeError
@@ -23,7 +22,6 @@ class ImgurCrawler(Crawler):
         self.imgur_client_id = self.manager.config_manager.authentication_data.imgur.client_id
         self.imgur_client_remaining = 12500
         self.headers = {"Authorization": f"Client-ID {self.imgur_client_id}"}
-        self.request_limiter = AsyncLimiter(10, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
