@@ -118,7 +118,10 @@ class XenforoCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
         scrape_item.url = await self.pre_filter_link(scrape_item.url)
-        await self.thread(scrape_item)
+        if self.is_attachment(scrape_item.url):
+            await self.handle_internal_link(scrape_item.url, scrape_item)
+        else:
+            await self.thread(scrape_item)
 
     async def try_login(self) -> None:
         login_url = self.primary_base_domain / "login"
