@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 CDN_PATTERNS = {
-    "jpg.church": r"^(?:https?:\/\/?)((jpg.church\/images)|(simp..jpg.church)|(jpg.fish\/images)|(simp..jpg.fish)|(jpg.fishing\/images)|(simp..jpg.fishing)|(simp..host.church)|(simp..jpg..su))(\/.*)",
+    "jpg5.su": r"^(?:https?:\/\/?)((jpg.church\/images)|(simp..jpg.church)|(jpg.fish\/images)|(simp..jpg.fish)|(jpg.fishing\/images)|(simp..jpg.fishing)|(simp..host.church)|(simp..jpg..su))(\/.*)",
     "imagepond.net": r"^(?:https?:\/\/)?(media.imagepond.net\/.*)",
     "img.kiwi": r"^(?:https?:\/\/)?img\.kiwi\/images\/.*",
 }
@@ -77,9 +77,10 @@ class CheveretoCrawler(Crawler):
         self.album_img_selector = "a[class='image-container --media'] img"
         self.profile_item_selector = "a[class='image-container --media']"
         self.profile_title_selector = 'meta[property="og:title"]'
-        self.images_parts = "image", "img", "images"
+        self.images_parts = "image", "img"
         self.album_parts = "a", "album"
         self.video_parts = "video", "videos"
+        self.direct_link_parts = ("images",)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -96,6 +97,9 @@ class CheveretoCrawler(Crawler):
             await self.image(scrape_item)
         elif any(part in scrape_item.url.parts for part in self.video_parts):
             await self.video(scrape_item)
+        elif any(part in scrape_item.url.parts for part in self.direct_link_parts):
+            filename, ext = get_filename_and_ext(scrape_item.url.name)
+            await self.handle_file(scrape_item.url, scrape_item, filename, ext)
         else:
             await self.profile(scrape_item)
 
@@ -256,7 +260,7 @@ class CheveretoCrawler(Crawler):
         name = scrape_item.url.parts[name_index]
         _id = name.rsplit(".")[-1]
         new_parts = scrape_item.url.parts[1:name_index] + (_id,)
-        new_path = "/".join(new_parts)
+        new_path = "/" + "/".join(new_parts)
         return _id, self.parse_url(new_path, scrape_item.url.with_path("/"))
 
     async def web_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:

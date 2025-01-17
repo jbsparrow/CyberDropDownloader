@@ -100,7 +100,7 @@ class BunkrrCrawler(Crawler):
             date_str = card_listing.select_one('span[class*="theDate"]').text.strip()
             date = self.parse_datetime(date_str)
             link_str: str = card_listing.find("a").get("href")
-            link = self.parse_url(link_str, scrape_item.url)
+            link = self.parse_url(link_str, scrape_item.url.with_path("/"))
             new_scrape_item = self.create_scrape_item(
                 scrape_item,
                 link,
@@ -221,7 +221,7 @@ class BunkrrCrawler(Crawler):
 
     @staticmethod
     def is_stream_redirect(url: URL) -> bool:
-        return any(part in url.host.split(".") for part in ("cdn12",))
+        return any(part in url.host.split(".") for part in ("cdn12",)) or url.host == "cdn.bunkr.ru"
 
     @staticmethod
     def is_cdn(url: URL) -> bool:

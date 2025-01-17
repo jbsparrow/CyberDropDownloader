@@ -3,7 +3,7 @@ from __future__ import annotations
 import contextlib
 import re
 from dataclasses import dataclass, field
-from functools import singledispatch
+from functools import singledispatchmethod
 from typing import TYPE_CHECKING
 
 from yarl import URL
@@ -190,8 +190,8 @@ class XenforoCrawler(Crawler):
                 scrape_post, continue_scraping = self.check_post_number(post_number, current_post.number)
                 date = current_post.date
                 if scrape_post:
-                    new_path = f"{self.POST_NAME}{current_post.number}"
-                    parent_url = self.parse_url(new_path, scrape_item.url)
+                    new_path = f"/{self.POST_NAME}{current_post.number}"
+                    parent_url = self.parse_url(new_path, thread_url)
                     new_scrape_item = self.create_scrape_item(
                         scrape_item,
                         thread_url,
@@ -268,8 +268,8 @@ class XenforoCrawler(Crawler):
 
     async def process_children(self, scrape_item: ScrapeItem, links: list[Tag], selector: str) -> None:
         for link_obj in links:
-            link_tag: Tag = link_obj.get(selector)
-            if link_tag:
+            link_tag: Tag | str = link_obj.get(selector)
+            if link_tag and not isinstance(link_tag, str):
                 parent_simp_check = link_tag.parent.get("data-simp")
                 if parent_simp_check and "init" in parent_simp_check:
                     continue
@@ -288,7 +288,7 @@ class XenforoCrawler(Crawler):
             await self.handle_link(scrape_item, link)
             scrape_item.add_children()
 
-    @singledispatch
+    @singledispatchmethod
     def is_attachment(self, link: URL) -> bool:
         if not link:
             return False
@@ -296,7 +296,7 @@ class XenforoCrawler(Crawler):
         hosts = self.attachment_url_hosts
         return any(part in link.parts for part in parts) or any(host in link.host for host in hosts)
 
-    @is_attachment.register(str)
+    @is_attachment.register
     def _(self, link_str: str) -> bool:
         if not link_str:
             return False
@@ -366,14 +366,14 @@ class XenforoCrawler(Crawler):
         link_str: str = link_obj.get(self.selectors.posts.links.element)
         return not (is_image or self.is_attachment(link_str))
 
-    @singledispatch
+    @singledispatchmethod
     async def get_absolute_link(self, link: URL) -> URL | None:
         absolute_link = link
         if self.is_confirmation_link(link):
             absolute_link = await self.handle_confirmation_link(link)
         return absolute_link
 
-    @get_absolute_link.register(str)
+    @get_absolute_link.register
     async def _(self, link: str) -> URL | None:
         parsed_link = None
         link_str: str = link.replace(".th.", ".").replace(".md.", ".").replace("ifr", "watch")
