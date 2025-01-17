@@ -299,7 +299,7 @@ class XenforoCrawler(Crawler):
         hosts = self.attachment_url_hosts
         return any(part in link.parts for part in parts) or any(host in link.host for host in hosts)
 
-    @singledispatch.register(str)
+    @is_attachment.register(str)
     def _(self, link_str: str) -> bool:
         if not link_str:
             return False
