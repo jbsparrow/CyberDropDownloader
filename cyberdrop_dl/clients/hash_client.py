@@ -68,7 +68,17 @@ class HashClient:
         return str(Path(file).absolute())
 
     async def _hash_item_helper(self, file: Path | str, original_filename: str, referer: URL):
-        hash = await self._hash_item(file, original_filename, referer, hash_type=self.xxhash)
+        file = Path(file)
+        if not file.is_file():
+            return
+        elif file.stat().st_size == 0:
+            return
+        elif file.suffix == ".part":
+            return
+        hash = await self._get_item_hash(file, original_filename, referer, hash_type=self.xxhash)
+        await self.manager.db_manager.hash_table.queue_or_insert_hash_db(
+            hash, self.xxhash, file, original_filename, referer
+        )
         if self.manager.config_manager.settings_data.dupe_cleanup_options.add_md5_hash:
             await self._hash_item(file, original_filename, referer, hash_type=self.md5)
         if self.manager.config_manager.settings_data.dupe_cleanup_options.add_sha256_hash:
