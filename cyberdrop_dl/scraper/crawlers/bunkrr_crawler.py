@@ -9,9 +9,10 @@ from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import NoExtensionError, ScrapeError
-from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.constants import FILE_FORMATS
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
+from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
@@ -55,12 +56,17 @@ class BunkrrCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = self.scraping_progress.add_task(scrape_item.url)
+        if scrape_item.url.path == "/":
+            log(f"Scrape Failed: Unknown URL path: {scrape_item.url}", 40)
+            return
 
         if self.is_reinforced_link(scrape_item.url):
-            scrape_item.url = await self.handle_reinforced_link(scrape_item.url)
+            scrape_item.url = await self.handle_reinforced_link(scrape_item.url, scrape_item)
+            if not scrape_item.url:
+                return
 
         if "a" in scrape_item.url.parts:
             await self.album(scrape_item)
@@ -68,8 +74,6 @@ class BunkrrCrawler(Crawler):
             await self.handle_direct_link(scrape_item)
         else:
             await self.file(scrape_item)
-
-        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
@@ -184,7 +188,7 @@ class BunkrrCrawler(Crawler):
         `fallback_filename` will only be used if the link has not `n` query parameter"""
         link = url or scrape_item.url
         if self.is_reinforced_link(link):
-            link: URL = await self.handle_reinforced_link(link)
+            link: URL = await self.handle_reinforced_link(link, scrape_item)
 
         if not link:
             return
@@ -198,11 +202,11 @@ class BunkrrCrawler(Crawler):
         await self.handle_file(link, scrape_item, src_filename, ext, custom_filename=filename)
 
     @error_handling_wrapper
-    async def handle_reinforced_link(self, url: URL) -> URL:
+    async def handle_reinforced_link(self, url: URL, scrape_item: ScrapeItem) -> URL | None:
         """Gets the download link for a given reinforced URL."""
         """get.bunkr.su"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, url)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, url, origin=scrape_item)
 
         try:
             link_container = soup.select('a[download*=""]')[-1]
