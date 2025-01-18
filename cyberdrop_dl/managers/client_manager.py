@@ -173,7 +173,7 @@ class ClientManager:
             response_text = await response.text()
 
         if response_text:
-            soup = BeautifulSoup(response_text, "lxml")
+            soup = BeautifulSoup(response_text, "html.parser")
             if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
                 raise DDOSGuardError(origin=origin)
         status = status if headers.get("Content-Type") else CustomHTTPStatus.IM_A_TEAPOT
@@ -294,7 +294,7 @@ class Flaresolverr:
         solution: dict = flaresolverr_resp.get("solution")
         if not solution:
             raise DDOSGuardError(message="Invalid response from flaresolverr", origin=origin)
-        response = BeautifulSoup(solution.get("response"), "lxml")
+        response = BeautifulSoup(solution.get("response"), "html.parser")
         response_url = URL(solution.get("url"))
         cookies: list[dict] = solution.get("cookies")
         user_agent = client_session.headers.get("User-Agent").strip()

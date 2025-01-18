@@ -224,7 +224,7 @@ class CyberfileCrawler(Crawler):
             final_entrypoint = self.api_details if file else self.api_load_files
             ajax_dict: dict = await self.client.post_data(self.domain, final_entrypoint, data=data, origin=scrape_item)
 
-        ajax_soup = BeautifulSoup(ajax_dict["html"].replace("\\", ""), "lxml")
+        ajax_soup = BeautifulSoup(ajax_dict["html"].replace("\\", ""), "html.parser")
 
         if "Password Required" in ajax_dict["html"]:
             if not password:
@@ -253,6 +253,6 @@ class CyberfileCrawler(Crawler):
                     data=data,
                     origin=scrape_item,
                 )
-                ajax_soup = BeautifulSoup(ajax_dict["html"].replace("\\", ""), "lxml")
+                ajax_soup = BeautifulSoup(ajax_dict["html"].replace("\\", ""), "html.parser")
 
         return ajax_soup, ajax_dict["page_title"]
