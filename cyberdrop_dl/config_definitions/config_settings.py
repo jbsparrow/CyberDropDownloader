@@ -188,11 +188,7 @@ class DupeCleanupOptions(BaseModel):
     add_md5_hash: bool = False
     add_sha256_hash: bool = False
     send_deleted_to_trash: bool = True
-
-
-class DB(BaseModel):
     batch_hash_inserts: bool = False
-    batch_media_inserts: bool = False
 
 
 class ConfigSettings(AliasModel):
@@ -207,4 +203,3 @@ class ConfigSettings(AliasModel):
     logs: Logs = Field(validation_alias="Logs", default=Logs())
     runtime_options: RuntimeOptions = Field(validation_alias="Runtime_Options", default=RuntimeOptions())
     sorting: Sorting = Field(validation_alias="Sorting", default=Sorting())
-    db_options: DB = Field(validation_alias="Sorting", default=DB())

@@ -35,7 +35,7 @@ class DBManager:
 
         self.history_table = HistoryTable(self._db_conn)
         self.hash_table = HashTable(
-            self._db_conn, self.manager.config_manager.settings_data.db_options.batch_hash_inserts
+            self._db_conn, self.manager.config_manager.settings_data.dupe_cleanup_options.batch_hatch_inserts
         )
         self.temp_referer_table = TempRefererTable(self._db_conn)
 
