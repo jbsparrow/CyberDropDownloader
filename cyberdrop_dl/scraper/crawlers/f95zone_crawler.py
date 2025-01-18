@@ -25,25 +25,23 @@ class F95ZoneCrawler(XenforoCrawler):
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, self.domain, "F95Zone")
 
-    async def is_confirmation_link(self, link: URL) -> bool:
-        parts = link.parts
-        if (len(parts) >= 1 and parts[1] == "masked") or "f95zone.to/masked/" in str(link):
-            return True
-        return False
+    def is_confirmation_link(self, link: URL) -> bool:
+        return "masked" in link.parts or super().is_confirmation_link(link)
 
     @error_handling_wrapper
     async def handle_confirmation_link(self, link: URL, *, origin: ScrapeItem | None = None) -> URL | None:
         """Override to handle protected link confirmation."""
         async with self.request_limiter:
-            JSON_Resp = await self.client.post_data(
-                self.domain, link, data={"xhr": "1", "download": "1"}, origin=origin
-            )
+            data = ({"xhr": "1", "download": "1"},)
+            JSON_Resp = await self.client.post_data(self.domain, link, data=data, origin=origin)
 
         if JSON_Resp["status"] == "ok":
-            return URL(JSON_Resp["msg"])
-        return
+            return self.parse_url(JSON_Resp["msg"])
+        return None
 
-    async def filter_link(self, link: URL) -> bool:
-        if any(part == "thumb" for part in link.parts):
-            return URL(str(link).replace("/thumb/", "/"))
+    async def filter_link(self, link: URL) -> URL:
+        if "thumb" in link.parts:
+            parts = [x for x in link.parts if x not in ("thumb", "/")]
+            new_path = "/".join(parts)
+            return link.with_path(new_path)
         return link
