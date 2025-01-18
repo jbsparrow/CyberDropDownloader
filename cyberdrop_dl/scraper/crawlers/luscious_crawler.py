@@ -36,8 +36,10 @@ class LusciousCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
 
-        if "albums" in scrape_item.url.parts and "read" not in scrape_item.url.parts:
-            await self.album(scrape_item)
+        if not "albums" in scrape_item.url.parts or "read" in scrape_item.url.parts:
+            log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
+            return
+        await self.album(scrape_item)
 
     async def create_graphql_query(self, operation: str, scrape_item: ScrapeItem, page: int = 1) -> str:
         """Creates a graphql query."""
