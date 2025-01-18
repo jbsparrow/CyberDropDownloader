@@ -22,4 +22,4 @@ class XBunkerCrawler(XenforoCrawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, self.domain, "XBunker")
-        self.attachment_url_part += "data"
+        self.attachment_url_parts += "data"

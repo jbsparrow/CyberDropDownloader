@@ -7,7 +7,8 @@ from multidict import MultiDict
 from yarl import URL
 
 from cyberdrop_dl.managers.real_debrid.api import RATE_LIMIT
-from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
+from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
@@ -24,28 +25,26 @@ class RealDebridCrawler(Crawler):
         self.headers = {}
         self.request_limiter = AsyncLimiter(RATE_LIMIT, 60)
 
+    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = self.scraping_progress.add_task(scrape_item.url)
         scrape_item.url = await self.get_original_url(scrape_item)
-
         if self.manager.real_debrid_manager.is_supported_folder(scrape_item.url):
             await self.folder(scrape_item)
         else:
             await self.file(scrape_item)
 
-        self.scraping_progress.remove_task(task_id)
-
     @error_handling_wrapper
     async def folder(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a folder."""
         original_url = scrape_item.url
-        log(f"scraping folder with RealDebrid: {original_url}", 10)
+        log(f"Scraping folder with RealDebrid: {original_url}", 10)
         folder_id = self.manager.real_debrid_manager.guess_folder(original_url)
         scrape_item.album_id = folder_id
         scrape_item.part_of_album = True
+        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
 
-        title = self.create_title(f"{folder_id} [{original_url.host.lower()}]", None, None)
+        title = self.create_title(f"{folder_id} [{original_url.host.lower()}]")
         scrape_item.add_to_parent_title(title)
 
         async with self.request_limiter:
@@ -55,12 +54,12 @@ class RealDebridCrawler(Crawler):
             new_scrape_item = self.create_scrape_item(
                 scrape_item,
                 link,
-                "",
-                True,
-                folder_id,
+                part_of_album=True,
+                album_id=folder_id,
                 add_parent=original_url,
             )
             await self.file(new_scrape_item)
+            scrape_item.add_children()
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
@@ -74,7 +73,7 @@ class RealDebridCrawler(Crawler):
         self_hosted = self.is_self_hosted(original_url)
 
         if not self_hosted:
-            title = self.create_title(f"files [{original_url.host.lower()}]", None, None)
+            title = self.create_title(f"files [{original_url.host.lower()}]")
             scrape_item.part_of_album = True
             scrape_item.add_to_parent_title(title)
             async with self.request_limiter:
@@ -126,6 +125,8 @@ class RealDebridCrawler(Crawler):
 
         frag = parts_dict["frag"] if parts_dict["frag"] else None
 
-        parsed_url = URL(f"https://{original_domain}").with_path(path).with_query(query).with_fragment(frag)
+        parsed_url = (
+            URL(f"https://{original_domain}").with_path(path, encoded="%" in path).with_query(query).with_fragment(frag)
+        )
         log(f"Parsed URL: {parsed_url}")
         return parsed_url
