@@ -105,13 +105,8 @@ class LusciousCrawler(Crawler):
         results = await self.get_album_results(album_id)
         scrape_item.album_id = album_id
         scrape_item.part_of_album = True
-        scrape_item.type = FILE_HOST_ALBUM
-        scrape_item.children = scrape_item.children_limit = 0
+        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
 
-        with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = (
-                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
-            )
 
         # Get album information
         async with self.request_limiter:
