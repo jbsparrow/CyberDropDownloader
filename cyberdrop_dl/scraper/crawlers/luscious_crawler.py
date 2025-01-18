@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from json import dumps as dump_json
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
@@ -40,7 +41,7 @@ class LusciousCrawler(Crawler):
             return
         await self.album(scrape_item)
 
-    async def create_graphql_query(self, operation: str, scrape_item: ScrapeItem, page: int = 1) -> dict:
+    async def create_graphql_query(self, operation: str, scrape_item: ScrapeItem, page: int = 1) -> str:
         """Creates a graphql query."""
         album_id = scrape_item.album_id
         data = {"id": "1", "operationName": operation, "query": self.graphql_queries[operation]}
@@ -64,7 +65,7 @@ class LusciousCrawler(Crawler):
             }
         elif operation == "AlbumGet":
             data["variables"] = {"id": f"{album_id}"}
-        return data
+        return dump_json(data)
 
     async def album_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[dict]:
         """Generator for album pages."""
