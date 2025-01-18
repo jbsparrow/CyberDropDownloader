@@ -125,7 +125,8 @@ class LusciousCrawler(Crawler):
 
         async for json_data in self.album_pager(scrape_item):
             for item in json_data["data"]["picture"]["list"]["items"]:
-                link = URL(item["url_to_original"])
+                link_str: str = item["url_to_original"]
+                link = self.parse_url(link_str)
                 filename, ext = get_filename_and_ext(link.name)
                 if not self.check_album_results(link, results):
                     await self.handle_file(link, scrape_item, filename, ext)
