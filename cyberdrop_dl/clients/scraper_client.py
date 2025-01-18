@@ -206,7 +206,7 @@ class ScraperClient:
         domain: str,
         url: URL,
         client_session: CachedSession,
-        data: dict | str,
+        data: dict,
         req_resp: bool = True,
         raw: bool = False,
         origin: ScrapeItem | URL | None = None,
