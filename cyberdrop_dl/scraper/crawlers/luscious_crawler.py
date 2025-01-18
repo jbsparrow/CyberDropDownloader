@@ -125,7 +125,7 @@ class LusciousCrawler(Crawler):
             )
 
         album_title = json_data["data"]["album"]["get"]["title"]
-        title = self.create_title(album_title, album_id, None)
+        title = self.create_title(album_title, album_id)
         scrape_item.add_to_parent_title(title)
 
         async for json_data in self.album_pager(scrape_item):
