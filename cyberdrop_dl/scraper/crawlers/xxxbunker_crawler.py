@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
-from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
@@ -39,24 +39,22 @@ class XXXBunkerCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    async def async_startup(self) -> None:
+        await self.check_session_cookie()
+
+    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = self.scraping_progress.add_task(scrape_item.url)
 
         # Old behavior, not worth it with such a bad rate_limit: modify URL to always start on page 1
         """
         new_parts = [part for part in scrape_item.url.parts[1:] if "page-" not in part]
         scrape_item.url = scrape_item.url.with_path("/".join(new_parts)).with_query(scrape_item.url.query)
         """
-        if self.session_cookie is None:
-            await self.check_session_cookie()
-
         if any(part in scrape_item.url.parts for part in ("search", "categories", "favoritevideos")):
             await self.playlist(scrape_item)
         else:
             await self.video(scrape_item)
-
-        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
@@ -83,7 +81,8 @@ class XXXBunkerCrawler(Crawler):
         video_iframe = ajax_soup = None
         try:
             video_iframe = soup.select_one("div.player-frame iframe")
-            video_iframe_url = URL(video_iframe.get("data-src"))
+            video_iframe_url_str: str = video_iframe.get("data-src", "")
+            video_iframe_url = URL(video_iframe_url_str, encoded="%" in video_iframe_url_str)
             video_id = video_iframe_url.parts[-1]
             async with self.request_limiter:
                 video_iframe_soup: BeautifulSoup = await self.client.get_soup(
@@ -93,7 +92,8 @@ class XXXBunkerCrawler(Crawler):
                 )
 
             src = video_iframe_soup.select_one("source")
-            src_url = URL(src.get("src"))
+            src_url_str: str = src.get("src")
+            src_url = URL(src_url_str, encoded="%" in src_url_str)
             internal_id = src_url.query.get("id")
 
             if "internal" in src_url.parts:
@@ -105,17 +105,15 @@ class XXXBunkerCrawler(Crawler):
                 ajax_dict = await self.client.post_data(self.domain, self.api_download, data=data, origin=scrape_item)
 
             ajax_soup = BeautifulSoup(ajax_dict["floater"], "html.parser")
-            link = URL(ajax_soup.select_one("a#download-download").get("href"))
+            link_str: str = ajax_soup.select_one("a#download-download").get("href")
+            link = URL(link_str, encoded="%" in link_str)
 
         except (AttributeError, TypeError):
             if ajax_soup and "You must be registered to download this video" in ajax_soup.text:
                 raise ScrapeError(403, "Invalid cookies, PHPSESSID", origin=scrape_item) from None
 
             if "TRAFFIC VERIFICATION" in soup.text:
-                await asyncio.sleep(self.wait_time)
-                self.wait_time = min(self.wait_time + 10, MAX_WAIT)
-                self.rate_limit = max(self.rate_limit * 0.8, MIN_RATE_LIMIT)
-                self.request_limiter = AsyncLimiter(self.rate_limit, 60)
+                await self.adjust_rate_limit()
                 raise ScrapeError(429, origin=scrape_item) from None
             raise ScrapeError(422, "Couldn't find video source", origin=scrape_item) from None
 
@@ -135,13 +133,13 @@ class XXXBunkerCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         if "favoritevideos" in scrape_item.url.parts:
-            title = self.create_title(f"user {scrape_item.url.parts[2]} [favorites]", None, None)
+            title = self.create_title(f"user {scrape_item.url.parts[2]} [favorites]")
 
         elif "search" in scrape_item.url.parts:
-            title = self.create_title(f"{scrape_item.url.parts[2].replace('+', ' ')} [search]", None, None)
+            title = self.create_title(f"{scrape_item.url.parts[2].replace('+', ' ')} [search]")
 
         elif len(scrape_item.url.parts) >= 2:
-            title = self.create_title(f"{scrape_item.url.parts[2]} [categorie]", None, None)
+            title = self.create_title(f"{scrape_item.url.parts[2]} [categorie]")
 
         # Not a valid URL
         else:
@@ -152,14 +150,10 @@ class XXXBunkerCrawler(Crawler):
         async for soup in self.web_pager(scrape_item):
             videos = soup.select("a[data-anim='4']")
             for video in videos:
-                link = video.get("href")
-                if not link:
+                link_str: str = video.get("href")
+                if not link_str:
                     continue
-
-                if link.startswith("/"):
-                    link = self.primary_base_domain / link[1:]
-
-                link = URL(link)
+                link = self.parse_url(link_str)
                 new_scrape_item = self.create_scrape_item(scrape_item, link, title, add_parent=scrape_item.url)
                 await self.video(new_scrape_item)
 
@@ -181,9 +175,7 @@ class XXXBunkerCrawler(Crawler):
                     rate_limited = False
                     break
 
-                self.wait_time = min(self.wait_time + 10, MAX_WAIT)
-                self.rate_limit = max(self.rate_limit * 0.8, MIN_RATE_LIMIT)
-                self.request_limiter = AsyncLimiter(self.rate_limit, 60)
+                await self.adjust_rate_limit()
                 log(f"Rate limited: {page_url}, retrying in {self.wait_time} seconds")
                 attempt += 1
                 await asyncio.sleep(self.wait_time)
@@ -194,14 +186,10 @@ class XXXBunkerCrawler(Crawler):
             next_page = soup.select_one("div.page-list")
             next_page = next_page.find("a", string="Next") if next_page else None
             yield soup
-            if next_page:
-                page_url = next_page.get("href")
-                if page_url:
-                    if page_url.startswith("/"):
-                        page_url = self.primary_base_domain / page_url[1:]
-                    page_url = URL(page_url)
-                    continue
-            break
+            if not next_page:
+                break
+            page_url_str: str = next_page.get("href")
+            page_url = self.parse_url(page_url_str)
 
     @staticmethod
     async def parse_relative_date(relative_date: timedelta | str) -> int:
@@ -209,8 +197,6 @@ class XXXBunkerCrawler(Crawler):
         if isinstance(relative_date, str):
             time_str = relative_date.casefold()
             matches: list[str] = re.findall(DATE_PATTERN, time_str)
-
-            # Assume today
             time_dict = {"days": 0}
 
             for value, unit in matches:
@@ -222,6 +208,12 @@ class XXXBunkerCrawler(Crawler):
 
         date = datetime.now() - relative_date
         return timegm(date.timetuple())
+
+    async def adjust_rate_limit(self):
+        await asyncio.sleep(self.wait_time)
+        self.wait_time = min(self.wait_time + 10, MAX_WAIT)
+        self.rate_limit = max(self.rate_limit * 0.8, MIN_RATE_LIMIT)
+        self.request_limiter = AsyncLimiter(self.rate_limit, 60)
 
     async def check_session_cookie(self) -> None:
         """Get Cookie from config file."""

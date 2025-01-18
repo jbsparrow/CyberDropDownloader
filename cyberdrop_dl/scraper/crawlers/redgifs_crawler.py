@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-import contextlib
 from typing import TYPE_CHECKING
 
-from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import MaxChildrenError
-from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_PROFILE, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
@@ -21,26 +18,21 @@ class RedGifsCrawler(Crawler):
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "redgifs", "RedGifs")
         self.redgifs_api = URL("https://api.redgifs.com/")
-        self.token = ""
         self.headers = {}
-        self.request_limiter = AsyncLimiter(10, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    async def async_startup(self) -> None:
+        await self.manage_token(self.redgifs_api / "v2/auth/temporary")
+
+    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = self.scraping_progress.add_task(scrape_item.url)
 
-        if not self.token:
-            await self.manage_token(self.redgifs_api / "v2/auth/temporary")
-
-        if self.token:
-            if "users" in scrape_item.url.parts:
-                await self.user(scrape_item)
-            else:
-                await self.post(scrape_item)
-
-        self.scraping_progress.remove_task(task_id)
+        if "users" in scrape_item.url.parts:
+            await self.user(scrape_item)
+        else:
+            await self.post(scrape_item)
 
     @error_handling_wrapper
     async def user(self, scrape_item: ScrapeItem) -> None:
@@ -50,74 +42,58 @@ class RedGifsCrawler(Crawler):
         page = 1
         total_pages = 1
 
-        scrape_item.type = FILE_HOST_PROFILE
-        scrape_item.children = scrape_item.children_limit = 0
+        scrape_item.set_type(FILE_HOST_PROFILE, self.manager)
 
-        with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = (
-                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
-            )
         while page <= total_pages:
             async with self.request_limiter:
-                JSON_Resp = await self.client.get_json(
-                    self.domain,
-                    (self.redgifs_api / "v2/users" / user_id / "search").with_query(f"order=new&count=40&page={page}"),
-                    headers_inc=self.headers,
-                    origin=scrape_item,
-                )
+                api_url = self.redgifs_api / "v2/users" / user_id / "search"
+                url = api_url.with_query(f"order=new&count=40&page={page}")
+                JSON_Resp = await self.client.get_json(self.domain, url, headers_inc=self.headers, origin=scrape_item)
             total_pages = JSON_Resp["pages"]
             gifs = JSON_Resp["gifs"]
             for gif in gifs:
-                links = gif["urls"]
+                links: dict[str, str] = gif["urls"]
                 date = gif["createDate"]
-                title = self.create_title(user_id, None, None)
+                title = self.create_title(user_id)
 
-                try:
-                    link = URL(links["hd"])
-                except (KeyError, TypeError):
-                    link = URL(links["sd"])
-
+                link_str: str = links.get("hd") or links.get("sd")
+                link = self.parse_url(link_str)
                 filename, ext = get_filename_and_ext(link.name)
                 new_scrape_item = self.create_scrape_item(
                     scrape_item,
                     link,
                     title,
-                    True,
-                    date,
+                    part_of_album=True,
+                    possible_datetime=date,
                     add_parent=scrape_item.url,
                 )
                 await self.handle_file(link, new_scrape_item, filename, ext)
-                if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
-                    raise MaxChildrenError(origin=scrape_item)
+                scrape_item.add_children()
             page += 1
 
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a post."""
         post_id = scrape_item.url.parts[-1].split(".")[0]
-
         async with self.request_limiter:
-            JSON_Resp = await self.client.get_json(
-                self.domain,
-                self.redgifs_api / "v2/gifs" / post_id,
-                headers_inc=self.headers,
-                origin=scrape_item,
-            )
+            api_url = self.redgifs_api / "v2/gifs" / post_id
+            JSON_Resp = await self.client.get_json(self.domain, api_url, headers_inc=self.headers, origin=scrape_item)
 
         title_part = JSON_Resp["gif"].get("title", "Loose Files")
-        title = self.create_title(title_part, None, None)
-        links = JSON_Resp["gif"]["urls"]
+        title = self.create_title(title_part)
+        links: dict[str, str] = JSON_Resp["gif"]["urls"]
         date = JSON_Resp["gif"]["createDate"]
 
-        link = URL(links["hd"] if "hd" in links else links["sd"])
+        link_str: str = links.get("hd") or links.get("sd")
+        link = self.parse_url(link_str)
 
         filename, ext = get_filename_and_ext(link.name)
         new_scrape_item = self.create_scrape_item(
             scrape_item,
             link,
             title,
-            True,
-            date,
+            part_of_album=True,
+            possible_datetime=date,
             add_parent=scrape_item.url,
         )
         await self.handle_file(link, new_scrape_item, filename, ext)
@@ -129,5 +105,5 @@ class RedGifsCrawler(Crawler):
         """Gets/Sets the redgifs token and header."""
         async with self.request_limiter:
             json_obj = await self.client.get_json(self.domain, token_url)
-        self.token = json_obj["token"]
-        self.headers = {"Authorization": f"Bearer {self.token}"}
+        token = json_obj["token"]
+        self.headers = {"Authorization": f"Bearer {token}"}

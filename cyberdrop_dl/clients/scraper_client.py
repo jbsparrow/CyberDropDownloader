@@ -9,7 +9,6 @@ import aiohttp
 from aiohttp_client_cache import CachedSession
 from aiohttp_client_cache.response import CachedStreamReader
 from bs4 import BeautifulSoup
-from yarl import URL
 
 from cyberdrop_dl.clients.errors import DDOSGuardError, InvalidContentTypeError
 from cyberdrop_dl.utils.constants import DEBUG_VAR
@@ -19,6 +18,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from multidict import CIMultiDictProxy
+    from yarl import URL
 
     from cyberdrop_dl.managers.client_manager import ClientManager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
@@ -129,7 +129,7 @@ class ScraperClient:
                 raise InvalidContentTypeError(message=f"Received {content_type}, was expecting text", origin=origin)
             text = await CachedStreamReader(await response.read()).read()
             if with_response_url:
-                return BeautifulSoup(text, "html.parser"), URL(response.url)
+                return BeautifulSoup(text, "html.parser"), response.url
             return BeautifulSoup(text, "html.parser")
 
     async def get_soup_and_return_url(

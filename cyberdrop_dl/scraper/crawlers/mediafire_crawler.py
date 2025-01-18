@@ -9,7 +9,7 @@ from mediafire import MediaFireApi, api
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import MediaFireError
-from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
@@ -29,16 +29,13 @@ class MediaFireCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = self.scraping_progress.add_task(scrape_item.url)
-
         if "folder" in scrape_item.url.parts:
             await self.folder(scrape_item)
         else:
             await self.file(scrape_item)
-
-        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def folder(self, scrape_item: ScrapeItem) -> None:
@@ -49,7 +46,7 @@ class MediaFireCrawler(Crawler):
         except api.MediaFireApiError as e:
             raise MediaFireError(status=e.code, message=e.message, origin=scrape_item) from None
 
-        title = self.create_title(folder_details["folder_info"]["name"], folder_key, None)
+        title = self.create_title(folder_details["folder_info"]["name"], folder_key)
         scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
         scrape_item.album_id = folder_key
         scrape_item.part_of_album = True
@@ -63,7 +60,7 @@ class MediaFireCrawler(Crawler):
                     content_type="files",
                     chunk=chunk,
                     chunk_size=chunk_size,
-                )
+                )  # type: ignore
             except api.MediaFireApiError as e:
                 raise MediaFireError(status=e.code, message=e.message, origin=scrape_item) from None
 
@@ -71,23 +68,21 @@ class MediaFireCrawler(Crawler):
 
             for file in files:
                 date = self.parse_datetime(file["created"])
-                link = URL(file["links"]["normal_download"])
+                link_str = file["links"]["normal_download"]
+                link = self.parse_url(link_str)
                 new_scrape_item = self.create_scrape_item(
                     scrape_item,
                     link,
                     title,
-                    True,
-                    None,
-                    date,
+                    possible_datetime=date,
                     add_parent=scrape_item.url,
                 )
                 self.manager.task_group.create_task(self.run(new_scrape_item))
                 scrape_item.add_children()
 
-            if folder_contents["folder_content"]["more_chunks"] == "yes":
-                chunk += 1
-            else:
+            if not folder_contents["folder_content"]["more_chunks"] == "yes":
                 break
+            chunk += 1
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
@@ -100,7 +95,8 @@ class MediaFireCrawler(Crawler):
 
         date = self.parse_datetime(soup.select("ul[class=details] li span")[-1].get_text())
         scrape_item.possible_datetime = date
-        link = URL(soup.select_one("a[id=downloadButton]").get("href"))
+        link_str: str = soup.select_one("a[id=downloadButton]").get("href")
+        link = self.parse_url(link_str)
         filename, ext = get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 
@@ -109,5 +105,5 @@ class MediaFireCrawler(Crawler):
     @staticmethod
     def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
-        date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
-        return calendar.timegm(date.timetuple())
+        parsed_date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+        return calendar.timegm(parsed_date.timetuple())
