@@ -77,23 +77,13 @@ class HashClient:
         elif file.suffix == ".part":
             return
         hash = await self._get_item_hash(file, original_filename, referer, hash_type=self.xxhash)
-        await self.manager.db_manager.hash_table.queue_or_insert_hash_db(
-            hash, self.xxhash, file, original_filename, referer
-        )
         if self.manager.config_manager.settings_data.dupe_cleanup_options.add_md5_hash:
             await self._get_item_hash(file, original_filename, referer, hash_type=self.md5)
-            await self.manager.db_manager.hash_table.queue_or_insert_hash_db(
-                hash, self.md5, file, original_filename, referer
-            )
         if self.manager.config_manager.settings_data.dupe_cleanup_options.add_sha256_hash:
             await self._get_item_hash(file, original_filename, referer, hash_type=self.sha256)
-            await self.manager.db_manager.hash_table.queue_or_insert_hash_db(
-                hash, self.sha256, file, original_filename, referer
-            )
-
         return hash
 
-    async def _get_item_hash(self, file: Path | str, original_filename: str, referer: URL, hash_type=None) -> str:
+    async def _get_item_hash(self, file: Path | str, original_filename: str, referer: URL, hash_type) -> str:
         """Generates hash of a file."""
         self.manager.progress_manager.hash_progress.update_currently_hashing(file)
         hash = await self.manager.db_manager.hash_table.get_file_hash_exists(file, hash_type)
@@ -103,6 +93,9 @@ class HashClient:
                 self.manager.progress_manager.hash_progress.add_new_completed_hash()
             else:
                 self.manager.progress_manager.hash_progress.add_prev_hash()
+            await self.manager.db_manager.hash_table.queue_or_insert_hash_db(
+                hash, hash_type, file, original_filename, referer
+            )
             return hash
 
         except Exception as e:
