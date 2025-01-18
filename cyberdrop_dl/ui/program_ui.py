@@ -69,7 +69,6 @@ class ProgramUI:
             5: self._edit_urls,
             6: self._change_config,
             7: self._manage_configs,
-            8: self._import_from_v4,
             9: self._check_updates,
             10: self._view_changelog,
         }
