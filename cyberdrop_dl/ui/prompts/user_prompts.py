@@ -38,7 +38,7 @@ def main_prompt(manager: Manager) -> int:
             "Create file hashes",
             "Sort files in download folder",
         ],
-        "group_2": ["Edit URLs.txt", "Change config", "Edit configs", "Import V4 items"],
+        "group_2": ["Edit URLs.txt", "Change config", "Edit configs"],
         "group_3": [
             "Check for updates",
             "View changelog",
