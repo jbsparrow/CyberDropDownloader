@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import time
 from collections import defaultdict
-from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -14,19 +13,10 @@ from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
 from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
-
     from yarl import URL
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
-
-
-@asynccontextmanager
-async def hash_scan_directory_context(manager: Manager) -> AsyncGenerator:
-    await manager.async_db_hash_startup()
-    yield
-    await manager.close()
 
 
 def hash_directory_scanner(manager: Manager, path: Path) -> None:
@@ -36,9 +26,10 @@ def hash_directory_scanner(manager: Manager, path: Path) -> None:
 
 async def _hash_directory_scanner_helper(manager: Manager, path: Path):
     start_time = time.perf_counter()
-    async with hash_scan_directory_context(manager):
-        await manager.hash_manager.hash_client.hash_directory(path)
-        manager.progress_manager.print_stats(start_time)
+    await manager.async_db_hash_startup()
+    await manager.hash_manager.hash_client.hash_directory(path)
+    manager.progress_manager.print_stats(start_time)
+    await manager.async_db_close()
 
 
 class HashClient:
@@ -57,6 +48,7 @@ class HashClient:
 
     async def hash_directory(self, path: Path) -> None:
         path = Path(path)
+        # log(f"scanning {path} recursely to create hashes", 10)
         with self.manager.live_manager.get_hash_live(stop=True):
             if not path.is_dir():
                 raise NotADirectoryError
