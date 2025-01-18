@@ -45,6 +45,11 @@ class LusciousCrawler(Crawler):
     async def create_graphql_query(self, operation: str, scrape_item: ScrapeItem, page: int = 1) -> dict:
         """Creates a graphql query."""
         album_id = scrape_item.album_id
+        data = {
+            "id": "1",
+            "operationName": operation,
+            "query": self.graphql_queries[operation]
+        }
         if operation == "PictureListInsideAlbum":
             query = scrape_item.url.query
 
@@ -55,28 +60,17 @@ class LusciousCrawler(Crawler):
             if only_animated == "true":
                 filters.append({"name": "is_animated", "value": "1"})
 
-            data = {
-                "id": "1",
-                "operationName": operation,
-                "query": self.graphql_queries[operation],
-                "variables": {
-                    "input": {
-                        "display": sorting,
-                        "filters": filters,
-                        "items_per_page": 50,
-                        "page": page,
-                    }
-                },
-            }
+            data ["variables"] = {
+                "input": {
+                    "display": sorting,
+                    "filters": filters,
+                    "items_per_page": 50,
+                    "page": page,
+                }
+             }  
         elif operation == "AlbumGet":
-            data = {
-                "id": "1",
-                "operationName": operation,
-                "query": self.graphql_queries[operation],
-                "variables": {"id": f"{album_id}"},
-            }
-
-        return json.dumps(data)
+            data["variables"] = {"id": f"{album_id}"}
+        return data
 
     async def album_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[dict]:
         """Generator for album pages."""
