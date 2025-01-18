@@ -53,7 +53,7 @@ class NoExtensionError(CDLBaseError):
 
 
 class PasswordProtectedError(CDLBaseError):
-    def __init__(self, *, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
+    def __init__(self, message: str | None = None, *, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
         """This error will be thrown when a file is password protected."""
         ui_message = "Password Protected"
         message = message or "File/Folder is password protected"
@@ -61,7 +61,7 @@ class PasswordProtectedError(CDLBaseError):
 
 
 class MaxChildrenError(CDLBaseError):
-    def __init__(self, *, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
+    def __init__(self, message: str | None = None, *, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
         """This error will be thrown when an scrape item reaches its max number or children."""
         ui_message = "Max Children Reached"
         message = message or "Max number of children reached"
@@ -69,7 +69,7 @@ class MaxChildrenError(CDLBaseError):
 
 
 class DDOSGuardError(CDLBaseError):
-    def __init__(self, *, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
+    def __init__(self, message: str | None = None, *, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
         """This error will be thrown when DDoS-Guard is detected."""
         ui_message = "DDoS-Guard"
         message = message or "DDoS-Guard detected"
@@ -152,7 +152,7 @@ class ScrapeError(CDLBaseError):
 
 
 class LoginError(CDLBaseError):
-    def __init__(self, *, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
+    def __init__(self, message: str | None = None, *, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
         """This error will be thrown when the login fails for a site."""
         ui_message = "Failed Login"
         super().__init__(ui_message, message=message, origin=origin)

@@ -4,10 +4,9 @@ import calendar
 import datetime
 from typing import TYPE_CHECKING
 
-from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
@@ -25,26 +24,22 @@ class EHentaiCrawler(Crawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "e-hentai", "E-Hentai")
-        self.request_limiter = AsyncLimiter(10, 1)
+
         self._warnings_set = False
         self.next_page_selector = "td[onclick='document.location=this.firstChild.href']:contains('>') a"
         self.next_page_attribute = "href"
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = self.scraping_progress.add_task(scrape_item.url)
-
         if "g" in scrape_item.url.parts:
             await self.album(scrape_item)
         elif "s" in scrape_item.url.parts:
             await self.image(scrape_item)
         else:
             log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
-            self.manager.progress_manager.scrape_stats_progress.add_failure("Unsupported Link")
-
-        self.scraping_progress.remove_task(task_id)
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
@@ -64,7 +59,8 @@ class EHentaiCrawler(Crawler):
 
             images = soup.select("div#gdt.gt200 a")
             for image in images:
-                link = URL(image.get("href"))
+                link_str: str = image.get("href")
+                link = URL(link_str, encoded="%" in link_str)
                 new_scrape_item = self.create_scrape_item(
                     scrape_item,
                     link,
@@ -88,7 +84,8 @@ class EHentaiCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         image = soup.select_one("img[id=img]")
-        link = URL(image.get("src"))
+        link_str: str = image.get("src")
+        link = URL(link_str, encoded="%" in link_str)
         filename, ext = get_filename_and_ext(link.name)
         custom_filename, _ = get_filename_and_ext(f"{scrape_item.url.name}{ext}")
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
@@ -108,8 +105,8 @@ class EHentaiCrawler(Crawler):
         """Parses a datetime string into a unix timestamp."""
         if date.count(":") == 1:
             date = date + ":00"
-        date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
-        return calendar.timegm(date.timetuple())
+        parsed_date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+        return calendar.timegm(parsed_date.timetuple())
 
     async def web_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
         """Generator of website pages."""
@@ -119,11 +116,7 @@ class EHentaiCrawler(Crawler):
                 soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url, origin=scrape_item)
             next_page = soup.select_one(self.next_page_selector)
             yield soup
-            if next_page:
-                page_url = next_page.get(self.next_page_attribute)
-                if page_url:
-                    if page_url.startswith("/"):
-                        page_url = self.primary_base_domain / page_url[1:]
-                    page_url = URL(page_url)
-                    continue
-            break
+            if not next_page:
+                break
+            page_url_str: str = next_page.get(self.next_page_attribute)
+            page_url = self.parse_url(page_url_str)
