@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import os
 import sys
 from functools import wraps
 from pathlib import Path
@@ -253,7 +254,7 @@ async def director(manager: Manager) -> None:
 
 
 def main():
-    profiling: bool = True
+    profiling: bool = False or os.getenv("CDL_PROFILING")
     if not profiling:
         return actual_main()
     profile(actual_main)
@@ -278,12 +279,10 @@ def actual_main() -> None:
 
 def profile(func: Callable) -> None:
     import cProfile
-    import os
     import pstats
     import shutil
     from contextlib import contextmanager
     from datetime import datetime
-    from pathlib import Path
     from tempfile import TemporaryDirectory
 
     @contextmanager
@@ -300,7 +299,7 @@ def profile(func: Callable) -> None:
 
             os.chdir(temp_dir_path)
             log_file = old_cwd / "cyberdrop_dl_debug.log"
-            print(f"Using {temp_dir_path} as temp AppData dir")
+            print(f"Using {temp_dir_path} as temp AppData dir")  # noqa: T201
             try:
                 yield
             finally:
