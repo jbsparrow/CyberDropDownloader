@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import contextlib
-import json
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
@@ -37,7 +35,7 @@ class LusciousCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
 
-        if not "albums" in scrape_item.url.parts or "read" in scrape_item.url.parts:
+        if "albums" not in scrape_item.url.parts or "read" in scrape_item.url.parts:
             log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
             return
         await self.album(scrape_item)
@@ -45,11 +43,7 @@ class LusciousCrawler(Crawler):
     async def create_graphql_query(self, operation: str, scrape_item: ScrapeItem, page: int = 1) -> dict:
         """Creates a graphql query."""
         album_id = scrape_item.album_id
-        data = {
-            "id": "1",
-            "operationName": operation,
-            "query": self.graphql_queries[operation]
-        }
+        data = {"id": "1", "operationName": operation, "query": self.graphql_queries[operation]}
         if operation == "PictureListInsideAlbum":
             query = scrape_item.url.query
 
@@ -60,14 +54,14 @@ class LusciousCrawler(Crawler):
             if only_animated == "true":
                 filters.append({"name": "is_animated", "value": "1"})
 
-            data ["variables"] = {
+            data["variables"] = {
                 "input": {
                     "display": sorting,
                     "filters": filters,
                     "items_per_page": 50,
                     "page": page,
                 }
-             }  
+            }
         elif operation == "AlbumGet":
             data["variables"] = {"id": f"{album_id}"}
         return data
@@ -100,7 +94,6 @@ class LusciousCrawler(Crawler):
         scrape_item.album_id = album_id
         scrape_item.part_of_album = True
         scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
-
 
         # Get album information
         async with self.request_limiter:
