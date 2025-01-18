@@ -82,7 +82,7 @@ class XXXBunkerCrawler(Crawler):
         try:
             video_iframe = soup.select_one("div.player-frame iframe")
             video_iframe_url_str: str = video_iframe.get("data-src", "")
-            video_iframe_url = URL(video_iframe_url_str, encoded="%" in video_iframe_url_str)
+            video_iframe_url = self.parse_url(video_iframe_url_str)
             video_id = video_iframe_url.parts[-1]
             async with self.request_limiter:
                 video_iframe_soup: BeautifulSoup = await self.client.get_soup(
@@ -93,7 +93,7 @@ class XXXBunkerCrawler(Crawler):
 
             src = video_iframe_soup.select_one("source")
             src_url_str: str = src.get("src")
-            src_url = URL(src_url_str, encoded="%" in src_url_str)
+            src_url = self.parse_url(src_url_str)
             internal_id = src_url.query.get("id")
 
             if "internal" in src_url.parts:
