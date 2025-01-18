@@ -61,3 +61,13 @@ If enabled, calculates the `md5` hash for every downloaded file and store it in 
 | `bool` | `false` |
 
 Deduped files are sent to the trash bin instead of being deleted
+
+## `batch_hash_inserts`
+
+| Type           | Default  |
+|----------------|----------|
+| `bool` | `false` |
+
+Advanced setting for how to handle insertions/updates of hashes into the database
+When true excecutemany is used instead of individual execute, which can improve performance
+however this does mean all hashes must be calculated before the database is updated
