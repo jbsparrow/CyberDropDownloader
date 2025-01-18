@@ -66,10 +66,6 @@ class Manager:
 
         if isinstance(self.parsed_args, Field):
             self.parsed_args = ParsedArgs.parse_args()
-
-        if not self.parsed_args.cli_only_args.appdata_folder:
-            self.first_time_setup.transfer_v4_to_v5()
-
         self.path_manager = PathManager(self)
         self.path_manager.pre_startup()
         self.cache_manager.startup(self.path_manager.cache_folder / "cache.yaml")
@@ -124,7 +120,7 @@ class Manager:
         if not isinstance(self.db_manager, DBManager):
             self.db_manager = DBManager(self, self.path_manager.history_db)
             await self.db_manager.startup()
-        await self.first_time_setup.transfer_v5_to_new_hashtable()
+        self.first_time_setup.transfer_v5_to_new_hashtable()
         if not isinstance(self.hash_manager, HashManager):
             self.hash_manager = HashManager(self)
             await self.hash_manager.startup()
