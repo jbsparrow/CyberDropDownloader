@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - bunkr reinforced link handling
+- Handle encoded URLS found while scraping (every crawler)
 
 ## [6.2.0] - 2025-01-10
 
