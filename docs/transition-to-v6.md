@@ -40,10 +40,12 @@ If the migration fails, the database will be rolled back to its previous state. 
 
 ## Import V4 config to V6
 
+Built into Cyberdrop-DL is a tool that allows you to import both your configs and your history DB from a v4 version of Cyberdrop-DL. You can use it by selecting "Import V4 Items".
+
 {% hint style="warning" %}
 Support for v4 is deprecated and will be removed in a future release. To upgrade to the latest version, you may need to perform a sequential upgrade. First, update CDL to the last version that supported v4 and then update to the latest version.
 
-Last version with v4 support: `6.1.0`
+Last version with v4 support: `6.2.0`
 
 You can install an specific version with pip by running:
 
@@ -51,9 +53,10 @@ You can install an specific version with pip by running:
 pip install cyberdrop-dl-patched==VERSION
 ```
 
+Then you can use the built in tool that allows you to import both your configs and your history DB from a v4 version of Cyberdrop-DL. You can use it by selecting "Import V4 Items".
+
 {% endhint %}
 
-Built into Cyberdrop-DL is a tool that allows you to import both your configs and your history DB from a v4 version of Cyberdrop-DL. You can use it by selecting "Import V4 Items".
 
 ### Importing previous configs</a>
 
