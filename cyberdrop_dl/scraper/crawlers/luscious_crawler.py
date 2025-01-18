@@ -42,7 +42,7 @@ class LusciousCrawler(Crawler):
             return
         await self.album(scrape_item)
 
-    async def create_graphql_query(self, operation: str, scrape_item: ScrapeItem, page: int = 1) -> str:
+    async def create_graphql_query(self, operation: str, scrape_item: ScrapeItem, page: int = 1) -> dict:
         """Creates a graphql query."""
         album_id = scrape_item.album_id
         if operation == "PictureListInsideAlbum":
