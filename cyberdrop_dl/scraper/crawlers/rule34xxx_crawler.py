@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import contextlib
 from typing import TYPE_CHECKING
 
-from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import MaxChildrenError
-from cyberdrop_dl.scraper.crawler import Crawler
+from cyberdrop_dl.clients.errors import ScrapeError
+from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
@@ -23,16 +21,15 @@ class Rule34XXXCrawler(Crawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "rule34.xxx", "Rule34XXX")
-        self.request_limiter = AsyncLimiter(10, 1)
-        self.cookies_set = False
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    async def async_startup(self) -> None:
+        await self.set_cookies()
+
+    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        task_id = self.scraping_progress.add_task(scrape_item.url)
-
-        await self.set_cookies()
 
         if "tags" in scrape_item.url.query_string:
             await self.tag(scrape_item)
@@ -42,70 +39,50 @@ class Rule34XXXCrawler(Crawler):
             log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
             self.manager.progress_manager.scrape_stats_progress.add_failure("Unsupported Link")
 
-        self.scraping_progress.remove_task(task_id)
-
     @error_handling_wrapper
     async def tag(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        scrape_item.type = FILE_HOST_ALBUM
-        scrape_item.children = scrape_item.children_limit = 0
-
-        with contextlib.suppress(IndexError, TypeError):
-            scrape_item.children_limit = (
-                self.manager.config_manager.settings_data.download_options.maximum_number_of_children[scrape_item.type]
-            )
+        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
 
         title_portion = scrape_item.url.query["tags"].strip()
-        title = self.create_title(title_portion, None, None)
+        title = self.create_title(title_portion)
         scrape_item.part_of_album = True
 
         content = soup.select("div[class=image-list] span a")
         for file_page in content:
-            link = file_page.get("href")
-            if link.startswith("/"):
-                link = f"{self.primary_base_domain}{link}"
-            link = URL(link, encoded=True)
+            link_str: str = file_page.get("href")
+            link = self.parse_url(link_str)
             new_scrape_item = self.create_scrape_item(scrape_item, link, title, True, add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
-            if scrape_item.children_limit and scrape_item.children >= scrape_item.children_limit:
-                raise MaxChildrenError(origin=scrape_item)
+            scrape_item.add_children()
 
         next_page = soup.select_one("a[alt=next]")
-        if next_page is not None:
-            next_page = next_page.get("href")
-            if next_page is not None:
-                next_page = scrape_item.url.with_query(next_page[1:]) if next_page.startswith("?") else URL(next_page)
-                new_scrape_item = self.create_scrape_item(scrape_item, next_page, "")
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+        if next_page:
+            next_page_str: str = next_page.get("href")
+            next_page = self.parse_url(next_page_str, scrape_item.url)
+            new_scrape_item = self.create_scrape_item(scrape_item, next_page)
+            self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
-        image = soup.select_one("img[id=image]")
-        if image:
-            link = URL(image.get("src"))
-            filename, ext = get_filename_and_ext(link.name)
-            await self.handle_file(link, scrape_item, filename, ext)
-        video = soup.select_one("video source")
-        if video:
-            link = URL(video.get("src"))
-            filename, ext = get_filename_and_ext(link.name)
-            await self.handle_file(link, scrape_item, filename, ext)
+        media_tag = soup.select_one("img[id=image]") or soup.select_one("video source")
+        if not media_tag:
+            raise ScrapeError(422, origin=scrape_item)
+        link_str: str = media_tag.get("src")
+        link = self.parse_url(link_str)
+        filename, ext = get_filename_and_ext(link.name)
+        await self.handle_file(link, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def set_cookies(self) -> None:
         """Sets the cookies for the client."""
-        if self.cookies_set:
-            return
-
         self.client.client_manager.cookies.update_cookies(
             {"resize-original": "1"}, response_url=self.primary_base_domain
         )
-
-        self.cookies_set = True

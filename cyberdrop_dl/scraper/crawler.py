@@ -8,6 +8,7 @@ from datetime import datetime
 from functools import wraps
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol
 
+from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 from yarl import URL
 
@@ -46,6 +47,7 @@ class Crawler(ABC):
         self.client: ScraperClient = field(init=False)
         self._semaphore = asyncio.Semaphore(20)
         self.startup_lock = asyncio.Lock()
+        self.request_limiter = AsyncLimiter(10, 1)
         self.ready: bool = False
 
         self.domain = domain
@@ -247,7 +249,7 @@ class Crawler(ABC):
             return True
         return False
 
-    async def get_album_results(self, album_id: str) -> bool | dict[Any, Any]:
+    async def get_album_results(self, album_id: str) -> dict[Any, Any]:
         """Checks whether an album has completed given its domain and album id."""
         return await self.manager.db_manager.history_table.check_album(self.domain, album_id)
 
@@ -317,8 +319,23 @@ class Crawler(ABC):
         title = title_format.format(id=id, number=id, date=date, title=title)
         scrape_item.add_to_parent_title(title)
 
+    def parse_url(self, link_str: str, relative_to: URL | None = None) -> URL:
+        assert link_str
+        assert isinstance(link_str, str)
+        encoded = "%" in link_str
+        base = relative_to or self.primary_base_domain
+        if link_str.startswith("?"):
+            link = base.with_query(link_str[1:])
+        elif link_str.startswith("//"):
+            link = URL("https:" + link_str, encoded=encoded)
+        elif link_str.startswith("/"):
+            link = base.joinpath(link_str[1:], encoded=encoded)
+        else:
+            link = URL(link_str, encoded=encoded)
+        return link
 
-def create_task_id(func: Callable) -> None:
+
+def create_task_id(func: Callable) -> Callable:
     """Wrapper handles task_id creation and removal for ScrapeItems"""
 
     @wraps(func)

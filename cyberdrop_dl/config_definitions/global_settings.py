@@ -26,7 +26,7 @@ class General(BaseModel):
     flaresolverr: HttpURL | None = None
     max_file_name_length: PositiveInt = 95
     max_folder_name_length: PositiveInt = 60
-    required_free_space: ByteSize = Field(DEFAULT_REQUIRED_FREE_SPACE, gt=MIN_REQUIRED_FREE_SPACE)
+    required_free_space: ByteSize = Field(DEFAULT_REQUIRED_FREE_SPACE, ge=MIN_REQUIRED_FREE_SPACE)
 
     @field_serializer("required_free_space")
     def human_readable(self, value: ByteSize | int) -> str:

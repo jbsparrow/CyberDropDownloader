@@ -9,11 +9,7 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import (
-    DownloadError,
-    PasswordProtectedError,
-    ScrapeError,
-)
+from cyberdrop_dl.clients.errors import DownloadError, PasswordProtectedError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
@@ -82,7 +78,7 @@ class GoFileCrawler(Crawler):
                 json_resp = await self.client.get_json(self.domain, **api_query)
 
         self.check_json_response(json_resp, scrape_item)
-        title = self.create_title(json_resp["data"]["name"], content_id, None)
+        title = self.create_title(json_resp["data"]["name"], content_id)
         scrape_item.add_to_parent_title(title)
 
         # Do not reset children inside nested folders
@@ -116,13 +112,14 @@ class GoFileCrawler(Crawler):
                 subfolders.append(folder_url)
                 continue
 
-            link = URL(child["link"])
-            if child["link"] == "overloaded":
-                link = URL(child["directLink"])
+            link_str = child["link"]
+            if link_str == "overloaded":
+                link_str = child["directLink"]
+
+            link = self.parse_url(link_str)
+            date = child["createTime"]
             filename, ext = get_filename_and_ext(link.name)
-            new_scrape_item = self.create_scrape_item(
-                scrape_item, scrape_item.url, possible_datetime=child["createTime"]
-            )
+            new_scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, possible_datetime=date)
             await self.handle_file(link, new_scrape_item, filename, ext)
             scrape_item.add_children()
 
@@ -141,12 +138,12 @@ class GoFileCrawler(Crawler):
         create_account_address = self.api / "accounts"
         async with self.request_limiter:
             json_resp = await self.client.post_data(self.domain, create_account_address, data={})
-            if json_resp["status"] != "ok":
-                raise ScrapeError(401, "Couldn't generate GoFile API token", origin=create_account_address)
+        if json_resp["status"] != "ok":
+            raise ScrapeError(401, "Couldn't generate GoFile API token", origin=create_account_address)
 
         return json_resp["data"]["token"]
 
-    async def get_website_token(self, _, update: bool = False) -> None:
+    async def get_website_token(self, _: ScrapeItem | URL | None = None, update: bool = False) -> None:
         """Creates an anon GoFile account to use."""
         if datetime.now(UTC) - self._website_token_date < timedelta(seconds=120):
             return
@@ -160,9 +157,9 @@ class GoFileCrawler(Crawler):
     async def _update_website_token(self) -> None:
         async with self.request_limiter:
             text = await self.client.get_text(self.domain, self.js_address, origin=self.js_address)
-            match = re.search(WT_REGEX, str(text))
-            if not match:
-                raise ScrapeError(401, "Couldn't generate GoFile websiteToken", origin=self.js_address)
-            self.website_token = match.group(1)
-            self.manager.cache_manager.save("gofile_website_token", self.website_token)
-            self._website_token_date = datetime.now(UTC)
+        match = re.search(WT_REGEX, str(text))
+        if not match:
+            raise ScrapeError(401, "Couldn't generate GoFile websiteToken", origin=self.js_address)
+        self.website_token = match.group(1)
+        self.manager.cache_manager.save("gofile_website_token", self.website_token)
+        self._website_token_date = datetime.now(UTC)
