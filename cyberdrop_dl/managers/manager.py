@@ -125,14 +125,15 @@ class Manager:
         if not isinstance(self.db_manager, DBManager):
             self.db_manager = DBManager(self, self.path_manager.history_db)
             await self.db_manager.startup()
-        await self.first_time_setup.transfer_v5_to_new_hashtable()
+        self.first_time_setup.transfer_v5_to_new_hashtable()
         if not isinstance(self.hash_manager, HashManager):
             self.hash_manager = HashManager(self)
             await self.hash_manager.startup()
         if not isinstance(self.live_manager, LiveManager):
             self.live_manager = LiveManager(self)
-        self.progress_manager = ProgressManager(self)
-        self.progress_manager.startup()
+        if not isinstance(self.progress_manager, ProgressManager):
+            self.progress_manager = ProgressManager(self)
+            self.progress_manager.startup()
 
     def process_additive_args(self) -> None:
         cli_ignore_options = self.parsed_args.config_settings.ignore_options
@@ -233,6 +234,12 @@ class Manager:
         log(f"Using Settings: \n{config_settings}", 10)
         log(f"Using Global Settings: \n{global_settings}", 10)
 
+    async def async_db_close(self) -> None:
+        if not isinstance(self.db_manager, Field):
+            await self.db_manager.close()
+        self.db_manager: DBManager = field(init=False)
+        self.hash_manager: HashManager = field(init=False)
+
         if (
             self.config_manager.settings_data.ignore_options.filename_regex_filter
             and not self.config_manager.valid_filename_filter_regex
@@ -241,9 +248,10 @@ class Manager:
 
     async def close(self) -> None:
         """Closes the manager."""
-        await self.db_manager.close()
         if not isinstance(self.client_manager, Field):
             await self.client_manager.close()
+        if not isinstance(self.db_manager, Field):
+            await self.db_manager.close()
         await self.cache_manager.close()
         self.cache_manager.close_sync()
         self.db_manager: DBManager = field(init=False)

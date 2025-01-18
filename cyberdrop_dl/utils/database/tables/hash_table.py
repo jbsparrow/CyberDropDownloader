@@ -113,12 +113,10 @@ class HashTable:
             download_filename = str(full_path.name)
             folder = str(full_path.parent)
             cursor = await self.db_conn.cursor()
-            await cursor.execute(
-                """INSERT INTO hash (hash, hash_type, folder, download_filename)
+            insert_query = """INSERT INTO hash (hash, hash_type, folder, download_filename)
             VALUES (?, ?, ?, ?)
-            ON CONFLICT(download_filename, folder, hash_type) DO UPDATE SET hash = ?""",
-                (hash_value, hash_type, folder, download_filename, hash_value),
-            )
+            ON CONFLICT(download_filename, folder, hash_type) DO UPDATE SET hash = ?"""
+            await cursor.execute(insert_query, (hash_value, hash_type, folder, download_filename, hash_value))
             await self.db_conn.commit()
         except Exception as e:
             console.print(f"Error inserting/updating record: {e}")
