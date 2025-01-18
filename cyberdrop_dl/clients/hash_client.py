@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import time
 from collections import defaultdict
-from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -14,19 +13,10 @@ from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
 from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
-
     from yarl import URL
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
-
-
-@asynccontextmanager
-async def hash_scan_directory_context(manager: Manager) -> AsyncGenerator:
-    await manager.async_db_hash_startup()
-    yield
-    await manager.close()
 
 
 def hash_directory_scanner(manager: Manager, path: Path) -> None:
@@ -36,9 +26,10 @@ def hash_directory_scanner(manager: Manager, path: Path) -> None:
 
 async def _hash_directory_scanner_helper(manager: Manager, path: Path):
     start_time = time.perf_counter()
-    async with hash_scan_directory_context(manager):
-        await manager.hash_manager.hash_client.hash_directory(path)
-        manager.progress_manager.print_stats(start_time)
+    await manager.async_db_hash_startup()
+    await manager.hash_manager.hash_client.hash_directory(path)
+    manager.progress_manager.print_stats(start_time)
+    await manager.db_manager.close()
 
 
 class HashClient:
@@ -62,7 +53,7 @@ class HashClient:
                 raise NotADirectoryError
             for file in path.rglob("*"):
                 await self._hash_item_helper(file, None, None)
-        await self.manager.db_manager.hash_table.insert_or_update_hash_db()
+        await self.manager.db_manager.hash_table.batch_insert_or_update_hash_db()
 
     @staticmethod
     def _get_key_from_file(file: Path | str):

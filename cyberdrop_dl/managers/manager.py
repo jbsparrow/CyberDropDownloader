@@ -204,9 +204,10 @@ class Manager:
 
     async def close(self) -> None:
         """Closes the manager."""
-        await self.db_manager.close()
         if not isinstance(self.client_manager, Field):
             await self.client_manager.close()
+        if not isinstance(self.db_manager, Field):
+            await self.db_manager.close()
         await self.cache_manager.close()
         self.db_manager: DBManager = field(init=False)
         self.cache_manager: CacheManager = field(init=False)
