@@ -67,7 +67,7 @@ class CoomerCrawler(Crawler):
         scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
         offset = int(scrape_item.url.query.get("o", 0))
         query = scrape_item.url.query.get("q", "")
-        if query == "": # Don't scrape if there is no query
+        if query == "":  # Don't scrape if there is no query
             msg = "No search query found in the URL"
             raise ScrapeError(400, msg, origin=scrape_item)
         search_url = (self.api_url / "posts").with_query({"q": query, "o": offset})
@@ -87,9 +87,6 @@ class CoomerCrawler(Crawler):
                 break
 
             for post in JSON_Resp.get("posts", []):
-                user = post["user"]
-                service = post["service"]
-                post_id = post["id"]
                 date_str = post.get("published")
                 date = date_str.replace("T", " ")
                 new_title = self.create_title(f"Search - {query}")
@@ -99,7 +96,9 @@ class CoomerCrawler(Crawler):
                 if post.get("attachments"):
                     files.extend(post["attachments"])
                 for file in files:
-                    file_url = (self.primary_base_domain / "data" / file["path"].strip('/')).with_query({"f": file["name"]})
+                    file_url = (self.primary_base_domain / "data" / file["path"].strip("/")).with_query(
+                        {"f": file["name"]}
+                    )
                     new_scrape_item = self.create_scrape_item(
                         scrape_item,
                         file_url,
@@ -108,8 +107,6 @@ class CoomerCrawler(Crawler):
                         possible_datetime=date,
                     )
                     await self.handle_direct_link(new_scrape_item)
-
-
 
     @error_handling_wrapper
     async def favorites(self, scrape_item: ScrapeItem) -> None:
