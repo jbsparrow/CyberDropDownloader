@@ -17,9 +17,9 @@ console = Console()
 class HashTable:
     def __init__(self, db_conn: aiosqlite.Connection, batch_insert) -> None:
         self.db_conn: aiosqlite.Connection = db_conn
-        self.insert_hash_items: list = []
-        self.insert_file_items: list = []
-        self.batch_insert = False
+        self.insert_hash_items: set = set()
+        self.insert_file_items: set = set()
+        self.batch_insert = batch_insert
 
     async def startup(self) -> None:
         """Startup process for the HistoryTable."""
@@ -239,7 +239,7 @@ class HashTable:
         full_path = Path(file).absolute()
         download_filename = str(full_path.name)
         folder = str(full_path.parent)
-        self.insert_hash_items.append((hash_value, hash_type, folder, download_filename, hash_value))
+        self.insert_hash_items.add([hash_value, hash_type, folder, download_filename, hash_value])
 
     async def queue_file_insert(self, original_filename, referer, file):
         referer = str(referer)
@@ -248,17 +248,19 @@ class HashTable:
         file_date = int(full_path.stat().st_mtime)
         download_filename = str(full_path.name)
         folder = str(full_path.parent)
-        self.insert_file_items.append(
-            folder,
-            original_filename,
-            download_filename,
-            file_size,
-            referer,
-            file_date,
-            original_filename,
-            file_size,
-            referer,
-            file_date,
+        self.insert_file_items.add(
+            [
+                folder,
+                original_filename,
+                download_filename,
+                file_size,
+                referer,
+                file_date,
+                original_filename,
+                file_size,
+                referer,
+                file_date,
+            ]
         )
 
     async def get_all_unique_hashes(self, hash_type=None) -> list:
