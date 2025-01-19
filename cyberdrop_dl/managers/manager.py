@@ -126,8 +126,9 @@ class Manager:
             await self.hash_manager.startup()
         if not isinstance(self.live_manager, LiveManager):
             self.live_manager = LiveManager(self)
-        self.progress_manager = ProgressManager(self)
-        self.progress_manager.startup()
+        if not isinstance(self.progress_manager, ProgressManager):
+            self.progress_manager = ProgressManager(self)
+            self.progress_manager.startup()
 
     def args_consolidation(self) -> None:
         """Consolidates runtime arguments with config values."""
@@ -201,6 +202,12 @@ class Manager:
         log(f"Using Authentication: \n{json.dumps(auth_provided, indent=4, sort_keys=True)}", 10)
         log(f"Using Settings: \n{config_settings}", 10)
         log(f"Using Global Settings: \n{global_settings}", 10)
+
+    async def async_db_close(self) -> None:
+        if not isinstance(self.db_manager, Field):
+            await self.db_manager.close()
+        self.db_manager: DBManager = field(init=False)
+        self.hash_manager: HashManager = field(init=False)
 
     async def close(self) -> None:
         """Closes the manager."""

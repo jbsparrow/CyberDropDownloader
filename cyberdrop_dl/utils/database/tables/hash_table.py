@@ -239,7 +239,7 @@ class HashTable:
         full_path = Path(file).absolute()
         download_filename = str(full_path.name)
         folder = str(full_path.parent)
-        self.insert_hash_items.add([hash_value, hash_type, folder, download_filename, hash_value])
+        self.insert_hash_items.add((hash_value, hash_type, folder, download_filename, hash_value))
 
     async def queue_file_insert(self, original_filename, referer, file):
         referer = str(referer)
@@ -249,7 +249,7 @@ class HashTable:
         download_filename = str(full_path.name)
         folder = str(full_path.parent)
         self.insert_file_items.add(
-            [
+            (
                 folder,
                 original_filename,
                 download_filename,
@@ -260,7 +260,7 @@ class HashTable:
                 file_size,
                 referer,
                 file_date,
-            ]
+            )
         )
 
     async def get_all_unique_hashes(self, hash_type=None) -> list:

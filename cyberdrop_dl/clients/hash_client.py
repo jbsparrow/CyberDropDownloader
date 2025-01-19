@@ -29,7 +29,7 @@ async def _hash_directory_scanner_helper(manager: Manager, path: Path):
     await manager.async_db_hash_startup()
     await manager.hash_manager.hash_client.hash_directory(path)
     manager.progress_manager.print_stats(start_time)
-    await manager.db_manager.close()
+    await manager.async_db_close()
 
 
 class HashClient:
@@ -48,12 +48,15 @@ class HashClient:
 
     async def hash_directory(self, path: Path) -> None:
         path = Path(path)
+        # log(f"scanning {path} recursely to create hashes", 10)
         with self.manager.live_manager.get_hash_live(stop=True):
             if not path.is_dir():
                 raise NotADirectoryError
             for file in path.rglob("*"):
                 await self._hash_item_helper(file, None, None)
+                # log(f"generated hashed for {file}", 10)
         await self.manager.db_manager.hash_table.batch_insert_or_update_hash_db()
+        # log("inserted/updated database")
 
     @staticmethod
     def _get_key_from_file(file: Path | str):
