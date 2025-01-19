@@ -80,7 +80,7 @@ class SaintCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
         try:
             link_str: str = soup.select_one("video[id=main-video] source").get("src")
-            link = URL(link_str, encoded="%" in link_str)
+            link = self.parse_url(link_str)
         except AttributeError:
             raise ScrapeError(422, "Couldn't find video source", origin=scrape_item) from None
         filename, ext = get_filename_and_ext(link.name)

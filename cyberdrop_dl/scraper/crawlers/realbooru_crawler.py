@@ -73,7 +73,7 @@ class RealBooruCrawler(Crawler):
         if not src_tag:
             raise ScrapeError(422, origin=scrape_item)
         link_str: str = src_tag.get("src")
-        link = URL(link_str, encoded="%" in link_str)
+        link = self.parse_url(link_str)
         filename, ext = get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 
