@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import time
 from collections import defaultdict
+from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from send2trash import send2trash
 
-from cyberdrop_dl.ui.prompts.basic_prompts import enter_to_continue
 from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
 from cyberdrop_dl.utils.logger import log
 
@@ -17,11 +18,86 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
+import random
+import string
+import tempfile
+import timeit
+
+# def hash_directory_scanner(manager: Manager, path: Path) -> None:
+#     asyncio.run(_hash_directory_scanner_helper(manager, path))
+#     enter_to_continue()
 
 
-def hash_directory_scanner(manager: Manager, path: Path) -> None:
-    asyncio.run(_hash_directory_scanner_helper(manager, path))
-    enter_to_continue()
+def generate_random_values():
+    """
+    Generates random values for the given function:
+        manager.db_manager.hash_table.queue_hash_db(hash_value, "xxhash", file, original_filename, referer)
+
+    Returns:
+        A tuple containing the generated random values:
+        (hash_value, file, original_filename, referer)
+    """
+
+    # Generate random hash_value (example: hexadecimal string)
+    hash_value = "".join(random.choices(string.hexdigits, k=32))
+
+    # Generate random file path (example: using random words)
+    with tempfile.NamedTemporaryFile(delete=False) as _:
+        file = Path(_.name)
+    # Generate random original_filename (similar to file)
+    original_filename = "test"
+
+    # Generate random referer URL (example: simplified URL)
+    referers = ["google.com", "example.com", "wikipedia.org", "youtube.com"]
+    referer = f"https://{random.choice(referers)}/"
+
+    return hash_value, file, original_filename, referer
+
+
+async def batch_helper(manager, num):
+    await manager.async_db_hash_startup()
+    for _ in range(num):
+        hash_value, file, original_filename, referer = generate_random_values()
+        await manager.db_manager.hash_table.queue_hash_db(hash_value, "xxhash", file, original_filename, referer)
+        os.remove(file)
+    await manager.db_manager.hash_table.batch_insert_or_update_hash_db()
+    await manager.async_db_close()
+
+
+async def iterative_helper(manager, num):
+    await manager.async_db_hash_startup()
+    for _ in range(num):
+        hash_value, file, original_filename, referer = generate_random_values()
+        await manager.db_manager.hash_table.insert_or_update_hash_db(
+            hash_value, "xxhash", file, original_filename, referer
+        )
+        os.remove(file)
+    await manager.async_db_close()
+
+
+def hash_directory_scanner(manager: Manager, path: Path, number: int = 10):
+    """
+    Times the execution of the hash_directory_scanner function using timeit.
+
+    Args:
+        manager: The manager object.
+        path: The path to the directory to hash.
+        number: The number of times to run the function (default: 10).
+    """
+
+    def wrapper(num):
+        asyncio.run(batch_helper(manager, num))
+
+    def wrapper2(num):
+        asyncio.run(iterative_helper(manager, num))
+
+    for num in [100, 300, 500, 1000, 5000]:
+        result = timeit.timeit(partial(wrapper2, num), number=number)
+        print(f"Average execution time for iterative hash_directory_scanner @{num}: {result / number:.4f} seconds")
+        result = timeit.timeit(partial(wrapper, num), number=number)
+        print(f"Average execution time for batch hash_directory_scanner@ {num}: {result / number:.4f} seconds")
+        pass
+    pass
 
 
 async def _hash_directory_scanner_helper(manager: Manager, path: Path):

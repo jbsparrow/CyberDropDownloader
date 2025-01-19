@@ -254,7 +254,7 @@ async def director(manager: Manager) -> None:
 
 
 def main():
-    profiling: bool = False
+    profiling: bool = True
     if not (profiling or os.getenv("CDL_PROFILING")):
         return actual_main()
     profile(actual_main)
