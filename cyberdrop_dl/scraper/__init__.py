@@ -25,6 +25,7 @@ from cyberdrop_dl.scraper.crawlers.imgbox_crawler import ImgBoxCrawler
 from cyberdrop_dl.scraper.crawlers.imgur_crawler import ImgurCrawler
 from cyberdrop_dl.scraper.crawlers.kemono_crawler import KemonoCrawler
 from cyberdrop_dl.scraper.crawlers.leakedmodels_crawler import LeakedModelsCrawler
+from cyberdrop_dl.scraper.crawlers.luscious_crawler import LusciousCrawler
 from cyberdrop_dl.scraper.crawlers.mediafire_crawler import MediaFireCrawler
 from cyberdrop_dl.scraper.crawlers.nekohouse_crawler import NekohouseCrawler
 from cyberdrop_dl.scraper.crawlers.nudostar_crawler import NudoStarCrawler

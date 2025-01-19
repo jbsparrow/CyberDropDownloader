@@ -60,7 +60,7 @@ class EHentaiCrawler(Crawler):
             images = soup.select("div#gdt.gt200 a")
             for image in images:
                 link_str: str = image.get("href")
-                link = URL(link_str, encoded="%" in link_str)
+                link = self.parse_url(link_str)
                 new_scrape_item = self.create_scrape_item(
                     scrape_item,
                     link,
@@ -85,7 +85,7 @@ class EHentaiCrawler(Crawler):
 
         image = soup.select_one("img[id=img]")
         link_str: str = image.get("src")
-        link = URL(link_str, encoded="%" in link_str)
+        link = self.parse_url(link_str)
         filename, ext = get_filename_and_ext(link.name)
         custom_filename, _ = get_filename_and_ext(f"{scrape_item.url.name}{ext}")
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
