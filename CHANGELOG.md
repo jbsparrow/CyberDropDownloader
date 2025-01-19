@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## UNRELEASED
 
+### Added
+
+- members.luscious.net support
+- Coomer search results support
+
 ### Fixed
 
 - bunkr reinforced link handling
