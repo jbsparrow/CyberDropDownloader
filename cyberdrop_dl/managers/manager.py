@@ -136,8 +136,15 @@ class Manager:
         self.progress_manager = ProgressManager(self)
         self.progress_manager.startup()
 
+    def process_additive_args(self) -> None:
+        cli_config_settings = self.parsed_args.config_settings
+        current_config_settings = self.config_manager.settings_data
+        cli_config_settings.ignore_options.skip_hosts += current_config_settings.ignore_options.skip_hosts
+        cli_config_settings.ignore_options.only_hosts += current_config_settings.ignore_options.only_hosts
+
     def args_consolidation(self) -> None:
         """Consolidates runtime arguments with config values."""
+        self.process_additive_args()
         cli_config_settings = self.parsed_args.config_settings.model_dump(exclude_unset=True)
         cli_global_settings = self.parsed_args.global_settings.model_dump(exclude_unset=True)
 
