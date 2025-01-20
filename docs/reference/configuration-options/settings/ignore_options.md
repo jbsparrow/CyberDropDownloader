@@ -55,3 +55,11 @@ You can supply hosts that you'd like the program to skip, to not scrape/download
 | `list[NonEmptyStr]` | `[]` |
 
 You can supply hosts that you'd like the program to exclusively scrape/download from. This setting accepts any domain, even if they are no supported
+
+## `filename_regex_filter`
+
+| Type  | Default |
+|----------------|----------|
+| `NonEmptyStr` or `null` | `null` |
+
+Any download with a filename that matches this regex expression will be skipped

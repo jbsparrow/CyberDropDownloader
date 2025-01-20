@@ -110,6 +110,7 @@ class IgnoreOptions(BaseModel):
     ignore_coomer_ads: bool = False
     skip_hosts: list[NonEmptyStr] = []
     only_hosts: list[NonEmptyStr] = []
+    filename_regex_filter: NonEmptyStr | None = None
 
     @field_validator("skip_hosts", "only_hosts", mode="before")
     @classmethod
