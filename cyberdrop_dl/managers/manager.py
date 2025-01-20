@@ -66,15 +66,8 @@ class Manager:
 
         if isinstance(self.parsed_args, Field):
             self.parsed_args = ParsedArgs.parse_args()
-
-        if not self.parsed_args.cli_only_args.appdata_folder:
-            self.first_time_setup.transfer_v4_to_v5()
-
         self.path_manager = PathManager(self)
         self.path_manager.pre_startup()
-        # need pathmanager to get proper appdata location
-        self.first_time_setup.transfer_v5_to_new_hashtable()
-
         self.cache_manager.startup(self.path_manager.cache_folder / "cache.yaml")
         self.config_manager = ConfigManager(self)
         self.config_manager.startup()
@@ -127,13 +120,15 @@ class Manager:
         if not isinstance(self.db_manager, DBManager):
             self.db_manager = DBManager(self, self.path_manager.history_db)
             await self.db_manager.startup()
+        self.first_time_setup.transfer_v5_to_new_hashtable()
         if not isinstance(self.hash_manager, HashManager):
             self.hash_manager = HashManager(self)
             await self.hash_manager.startup()
         if not isinstance(self.live_manager, LiveManager):
             self.live_manager = LiveManager(self)
-        self.progress_manager = ProgressManager(self)
-        self.progress_manager.startup()
+        if not isinstance(self.progress_manager, ProgressManager):
+            self.progress_manager = ProgressManager(self)
+            self.progress_manager.startup()
 
     def args_consolidation(self) -> None:
         """Consolidates runtime arguments with config values."""
@@ -208,11 +203,18 @@ class Manager:
         log(f"Using Settings: \n{config_settings}", 10)
         log(f"Using Global Settings: \n{global_settings}", 10)
 
+    async def async_db_close(self) -> None:
+        if not isinstance(self.db_manager, Field):
+            await self.db_manager.close()
+        self.db_manager: DBManager = field(init=False)
+        self.hash_manager: HashManager = field(init=False)
+
     async def close(self) -> None:
         """Closes the manager."""
-        await self.db_manager.close()
         if not isinstance(self.client_manager, Field):
             await self.client_manager.close()
+        if not isinstance(self.db_manager, Field):
+            await self.db_manager.close()
         await self.cache_manager.close()
         self.db_manager: DBManager = field(init=False)
         self.cache_manager: CacheManager = field(init=False)

@@ -21,8 +21,6 @@ from cyberdrop_dl.utils.data_enums_classes.supported_domains import SUPPORTED_FO
 from cyberdrop_dl.utils.utilities import clear_term
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from yarl import URL
 
     from cyberdrop_dl.managers.manager import Manager
@@ -40,7 +38,7 @@ def main_prompt(manager: Manager) -> int:
             "Create file hashes",
             "Sort files in download folder",
         ],
-        "group_2": ["Edit URLs.txt", "Change config", "Edit configs", "Import V4 items"],
+        "group_2": ["Edit URLs.txt", "Change config", "Edit configs"],
         "group_3": [
             "Check for updates",
             "View changelog",
@@ -222,30 +220,6 @@ def filter_cache_urls(manager: Manager, domains: list) -> set[URL]:
                 urls_to_remove.add(url)
                 cached_urls_copy.remove(url)
     return urls_to_remove
-
-
-""" ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ V4 IMPORT PROMPTS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-
-def import_cyberdrop_v4_items_prompt(manager: Manager) -> int:
-    """Import Cyberdrop_V4 Items."""
-    prompt_header(manager)
-    OPTIONS = [["Import config", "Import download_history.sql"]]
-    choices = basic_prompts.create_choices(OPTIONS)
-    console.print("V4 Import Menu")
-    return basic_prompts.ask_choice(choices)
-
-
-def import_v4_config_prompt(manager: Manager) -> tuple[str, Path] | None:
-    """Asks the user for the name and path of the config to import. Returns `None` if the config name is invalid."""
-    new_config = create_new_config(manager, title="What should this config be called:")
-    if not new_config:
-        return None
-    return new_config, basic_prompts.ask_file_path("Select the config file to import:")
-
-
-def import_v4_download_history_prompt() -> Path:
-    return basic_prompts.ask_file_path("Select the download_history.sql file to import:")
 
 
 """ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ OTHERS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
