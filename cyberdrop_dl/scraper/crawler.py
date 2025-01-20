@@ -326,6 +326,8 @@ class Crawler(ABC):
         base = relative_to or self.primary_base_domain
         if link_str.startswith("?"):
             link = base.with_query(link_str[1:])
+        elif link_str.startswith("/?"):
+            link = base.with_query(link_str[2:])
         elif link_str.startswith("//"):
             link = URL("https:" + link_str, encoded=encoded)
         elif link_str.startswith("/"):

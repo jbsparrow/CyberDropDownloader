@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from cyberdrop_dl import __version__ as current_version
 from cyberdrop_dl.scraper.crawlers.allporncomix_crawler import AllPornComixCrawler
 from cyberdrop_dl.scraper.crawlers.bellazon_crawler import BellazonCrawler
+from cyberdrop_dl.scraper.crawlers.bunkrr_albums_io_crawler import BunkrAlbumsIOCrawler
 from cyberdrop_dl.scraper.crawlers.bunkrr_crawler import BunkrrCrawler
 from cyberdrop_dl.scraper.crawlers.celebforum_crawler import CelebForumCrawler
 from cyberdrop_dl.scraper.crawlers.chevereto_crawler import CheveretoCrawler
@@ -57,7 +58,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.scraper.crawler import Crawler
 
 ALL_CRAWLERS: set[type[Crawler]] = {crawler for name, crawler in globals().items() if name.endswith("Crawler")}
-DEBUG_CRAWLERS = {SimpCityCrawler}
+DEBUG_CRAWLERS = {SimpCityCrawler, BunkrAlbumsIOCrawler}
 CRAWLERS = ALL_CRAWLERS - DEBUG_CRAWLERS
 
 constants.RUNNING_PRERELEASE = next((tag for tag in constants.PRERELEASE_TAGS if tag in current_version), False)
