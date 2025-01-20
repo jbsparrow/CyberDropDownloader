@@ -155,8 +155,9 @@ class HashClient:
                         log(f"Unable to remove {file = } with hash {hash} : {e}", 40)
 
     async def get_file_hashes_dict(self) -> dict:
-        # first compare downloads to each other
-        # get representive for each hash
+        """
+        get a dictionary of files based on matching file hashes and file size
+        """
         downloads = self.manager.path_manager.completed_downloads - self.hashed_media_items
         for media_item in downloads:
             if not media_item.complete_file.is_file():
