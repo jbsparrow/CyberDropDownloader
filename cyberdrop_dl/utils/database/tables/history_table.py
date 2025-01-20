@@ -30,24 +30,6 @@ def get_db_path(url: URL, referer: str = "") -> str:
     return url_path
 
 
-def get_db_domain(domain: str) -> str:
-    """Gets the domain to be put into the DB and checked from the DB."""
-    if domain in (
-        "img.kiwi",
-        "jpg.church",
-        "jpg.homes",
-        "jpg.fish",
-        "jpg.fishing",
-        "jpg.pet",
-        "jpeg.pet",
-        "jpg1.su",
-        "jpg2.su",
-        "jpg3.su",
-    ):
-        domain = "sharex"
-    return domain
-
-
 class HistoryTable:
     def __init__(self, db_conn: aiosqlite.Connection) -> None:
         self.db_conn: aiosqlite.Connection = db_conn
@@ -60,13 +42,18 @@ class HistoryTable:
         await self.fix_primary_keys()
         await self.add_columns_media()
         await self.fix_bunkr_v4_entries()
+        await self.fix_chevereto_domains()
+
+    async def fix_chevereto_domains(self) -> None:
+        query = """UPDATE media SET domain = 'jpg5.su' WHERE domain = 'sharex'"""
+        cursor = await self.db_conn.cursor()
+        await cursor.execute(query)
+        await self.db_conn.commit()
 
     async def check_complete(self, domain: str, url: URL, referer: URL) -> bool:
         """Checks whether an individual file has completed given its domain and url path."""
         if self.ignore_history:
             return False
-
-        domain = get_db_domain(domain)
 
         url_path = get_db_path(url, domain)
         cursor = await self.db_conn.cursor()
@@ -91,7 +78,6 @@ class HistoryTable:
         if self.ignore_history:
             return {}
 
-        domain = get_db_domain(domain)
         cursor = await self.db_conn.cursor()
         result = await cursor.execute(
             """SELECT url_path, completed FROM media WHERE domain = ? and album_id = ?""",
@@ -102,7 +88,7 @@ class HistoryTable:
 
     async def set_album_id(self, domain: str, media_item: MediaItem) -> None:
         """Sets an album_id in the database."""
-        domain = get_db_domain(domain)
+
         url_path = get_db_path(media_item.url, str(media_item.referer))
         await self.db_conn.execute(
             """UPDATE media SET album_id = ? WHERE domain = ? and url_path = ?""",
@@ -115,7 +101,6 @@ class HistoryTable:
         if self.ignore_history:
             return False
 
-        domain = get_db_domain(domain)
         cursor = await self.db_conn.cursor()
         result = await cursor.execute(
             """SELECT completed FROM media WHERE domain = ? and referer = ?""",
@@ -126,7 +111,7 @@ class HistoryTable:
 
     async def insert_incompleted(self, domain: str, media_item: MediaItem) -> None:
         """Inserts an uncompleted file into the database."""
-        domain = get_db_domain(domain)
+
         url_path = get_db_path(media_item.url, str(media_item.referer))
         download_filename = media_item.download_filename or ""
         try:
@@ -160,7 +145,7 @@ class HistoryTable:
 
     async def mark_complete(self, domain: str, media_item: MediaItem) -> None:
         """Mark a download as completed in the database."""
-        domain = get_db_domain(domain)
+
         url_path = get_db_path(media_item.url, str(media_item.referer))
         await self.db_conn.execute(
             """UPDATE media SET completed = 1, completed_at = CURRENT_TIMESTAMP WHERE domain = ? and url_path = ?""",
@@ -170,7 +155,7 @@ class HistoryTable:
 
     async def add_filesize(self, domain: str, media_item: MediaItem) -> None:
         """Add the file size to the db."""
-        domain = get_db_domain(domain)
+
         url_path = get_db_path(media_item.url, str(media_item.referer))
         file_size = pathlib.Path(media_item.complete_file).stat().st_size
         await self.db_conn.execute(
@@ -188,7 +173,7 @@ class HistoryTable:
 
     async def get_downloaded_filename(self, domain: str, media_item: MediaItem) -> str:
         """Returns the downloaded filename from the database."""
-        domain = get_db_domain(domain)
+
         url_path = get_db_path(media_item.url, str(media_item.referer))
         cursor = await self.db_conn.cursor()
         result = await cursor.execute(
