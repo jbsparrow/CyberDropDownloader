@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from yarl import URL
 
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
+from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_PROFILE
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -41,6 +42,7 @@ class BunkrAlbumsIOCrawler(Crawler):
         """Scrapes search results."""
         search_query = scrape_item.url.query.get("search")
         title = self.create_title(search_query)
+        scrape_item.set_type(FILE_HOST_PROFILE, self.manager)
         async for soup in self.web_pager(scrape_item):
             albums = soup.select(self.album_selector)
             for album in albums:
@@ -50,6 +52,7 @@ class BunkrAlbumsIOCrawler(Crawler):
                 link = self.parse_url(link_str)
                 new_scrape_item = self.create_scrape_item(scrape_item, link, title, add_parent=scrape_item.url)
                 self.handle_external_links(new_scrape_item)
+                scrape_item.add_children()
 
     async def web_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
         """Generator of website pages."""
