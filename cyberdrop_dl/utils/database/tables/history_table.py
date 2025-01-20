@@ -57,19 +57,17 @@ class HistoryTable:
 
         url_path = get_db_path(url, domain)
         cursor = await self.db_conn.cursor()
-        result = await cursor.execute(
-            """SELECT referer, completed FROM media WHERE domain = ? and url_path = ?""",
-            (domain, url_path),
-        )
+        query = """SELECT referer, completed FROM media WHERE domain = ? and url_path = ?"""
+        result = await cursor.execute(query, (domain, url_path))
         sql_file_check = await result.fetchone()
         if sql_file_check and sql_file_check[1] != 0:
             # Update the referer if it has changed so that check_complete_by_referer can work
-            if str(referer) != sql_file_check[0]:
-                await cursor.execute(
-                    """UPDATE media SET referer = ? WHERE domain = ? and url_path = ?""",
-                    (str(referer), domain, url_path),
-                )
+            if str(referer) != sql_file_check[0] and url != referer:
+                log(f"Updating referer of {url} from {sql_file_check[0]} to {referer}")
+                query = """UPDATE media SET referer = ? WHERE domain = ? and url_path = ?"""
+                await cursor.execute(query, (str(referer), domain, url_path))
                 await self.db_conn.commit()
+
             return True
         return False
 
