@@ -9,7 +9,7 @@ icon: globe-pointer
 | Domain          | Supported URL Paths |
 |-----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Bunkrr          | Albums: `/a/...` <br> Videos: `/v/...` <br> Others: `/f/...` <br> Direct links |
-| Coomer          | Fansly Model: `/fansly/user/<user>` <br> Favorites: `/favorites` <br> Individual Post: `/<service>/user/<user>/post/<post_id>` <br> OnlyFans Model: `/onlyfans/user/<user>` <br> Direct links |
+| Coomer          | Fansly Model: `/fansly/user/<user>` <br> Favorites: `/favorites` <br> Search: `/search?...` <br> Individual Post: `/<service>/user/<user>/post/<post_id>` <br> OnlyFans Model: `/onlyfans/user/<user>` <br> Direct links |
 | Cyberdrop       | Albums: `/a/...` <br> Files: `/f/...` <br> Direct links |
 | Cyberfile       | Files: `/...` <br> Folders: `/folder/...` <br> Shared: `/shared/...` |
 | E-Hentai        | Albums: `/g/...` <br> Files: `/s/...` |
@@ -25,6 +25,7 @@ icon: globe-pointer
 | JPG.Church <br> JPG.Homes <br> JPG.Pet <br> JPEG.Pet <br> JPG1.Su <br> JPG2.Su <br> JPG3.Su <br> JPG4.Su <br> JPG5.Su | Album: `/a/...` <br> Image: `/img/...` <br> Direct links  |
 | Imagepond.net   | Album: `/a/...` <br> Image: `/img/...` <br> Video: `/video/..`  <br> Direct links  |
 | Kemono          | Afdian Model: `/afdian/user/<user>` <br> Boosty Model: `/boosty/user/<user>` <br> DLSite Model: `/dlsite/user/<user>` <br> Discord Server Channel: `/discord/server/...#...` <br> FanBox Model: `/fanbox/user/<user>` <br> Fantia Model: `/fantia/user/<user>` <br> Gumroad Model: `/gumroad/user/<user>` <br> Individual Post: `/<service>/user/<user>/post/<post_id>` <br> Patreon Model: `/patreon/user/<user>` <br> SubscribeStar Model: `/subscribestar/user/<user>` <br> Direct Links |
+| Members.luscious.net        | Album: `/albums/...` |
 | MediaFire       | File: `/file/...` <br>Folder: `/folder/...`|
 | Nekohouse.su    | Fanbox Model: `/fanbox/user/<user>` <br> Fantia Model: `/fantia/user/<user>` <br> Fantia Products Model: `/fantia_products/user/<user>` <br> Individual Post: `/service/user/<user>/post/...` <br> Subscribestar Model: `/subscribestar/user/<user>` <br> Twitter Model: `/twitter/user/<user>` <br> Direct Links |
 | Nudostar.TV     | Model: `/models/...`|
