@@ -18,27 +18,13 @@ class HashProgress:
 
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
-        self.hash_progress = Progress(
-            "[progress.description]{task.description}",
-            BarColumn(bar_width=None),
-            "{task.completed}",
-        )
-        self.remove_progress = Progress(
-            "[progress.description]{task.description}",
-            BarColumn(bar_width=None),
-            "{task.completed}",
-        )
-        self.match_progress = Progress(
-            "[progress.description]{task.description}",
-            BarColumn(bar_width=None),
-            "{task.completed}",
-        )
-
+        self.hash_progress = self.create_generic_progress()
+        self.remove_progress = self.create_generic_progress()
+        self.match_progress = self.create_generic_progress()
         self.current_hashing_text = Progress("{task.description}")
 
         # hashing
-        self.hashed_files = 0
-        self.prev_hashed_files = 0
+        self.hashed_files = self.prev_hashed_files = 0
         self.hash_progress_group = Group(self.current_hashing_text, self.hash_progress)
         self.hashed_files_task_id = self.hash_progress.add_task("[green]Hashed", total=None)
         self.prev_hashed_files_task_id = self.hash_progress.add_task("[green]Previously Hashed", total=None)
@@ -53,7 +39,10 @@ class HashProgress:
             total=None,
         )
 
-    def get_hash_progress(self) -> Panel:
+    def create_generic_progress(self) -> Progress:
+        return Progress("[progress.description]{task.description}", BarColumn(bar_width=None), "{task.completed}")
+
+    def get_renderable(self) -> Panel:
         """Returns the progress bar."""
         return Panel(
             self.hash_progress_group,

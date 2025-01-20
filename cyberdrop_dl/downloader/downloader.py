@@ -125,7 +125,7 @@ class Downloader:
         """Attempts to remove the task from the progress bar."""
         if media_item.task_id is not None:
             with contextlib.suppress(ValueError):
-                self.manager.progress_manager.file_progress.remove_file(media_item.task_id)
+                self.manager.progress_manager.file_progress.remove_task(media_item.task_id)
         media_item.task_id = None
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

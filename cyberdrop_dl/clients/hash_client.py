@@ -51,7 +51,7 @@ class HashClient:
         self.md5 = "md5"
         self.sha256 = "sha256"
         self.hashed_media_items: set[MediaItem] = set()
-        self.hashes_dict: defaultdict[defaultdict[set[Path]]] = defaultdict(lambda: defaultdict(set))
+        self.hashes_dict: defaultdict[str, defaultdict[str, set[Path]]] = defaultdict(lambda: defaultdict(set))
 
     async def startup(self) -> None:
         pass
@@ -168,9 +168,9 @@ class HashClient:
         downloads = self.manager.path_manager.completed_downloads - self.hashed_media_items
         for media_item in downloads:
             if not media_item.complete_file.is_file():
-                return
+                continue
             try:
-                self.hash_item(media_item)
+                await self.hash_item(media_item)
             except Exception as e:
                 msg = f"Unable to hash file = {media_item.complete_file.resolve()}: {e}"
                 log(msg, 40)
