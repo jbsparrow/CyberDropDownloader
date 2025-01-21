@@ -125,25 +125,12 @@ class MediaFireError(CDLBaseError):
 class RealDebridError(CDLBaseError):
     """Base RealDebrid API error."""
 
-    def __init__(self, response: Response, error_codes: dict[int, str]) -> None:
+    def __init__(self, response: Response, code: int, message: str) -> None:
         url = URL(response.url)
         self.path = url.path
-        try:
-            JSONResp: dict = response.json()
-            code = JSONResp.get("error_code")
-            if code == 16:
-                code = 7
-            error = error_codes.get(code, "Unknown error")
-
-        except AttributeError:
-            code = response.status_code
-            error = f"{code} - {HTTPStatus(code).phrase}"
-
-        error = error.capitalize()
-
-        """This error will be thrown when a scrape fails."""
+        msg = message.capitalize()
         ui_message = f"{code} RealDebrid Error"
-        super().__init__(ui_message, message=error, status=code, origin=url)
+        super().__init__(ui_message, message=msg, status=code, origin=url)
 
 
 class ScrapeError(CDLBaseError):

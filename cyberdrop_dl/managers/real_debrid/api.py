@@ -82,13 +82,17 @@ class RealDebridApi:
     @staticmethod
     def handle_response(response: Response) -> dict | str | None:
         try:
-            response.raise_for_status()
             JSONResp: dict = response.json()
+            response.raise_for_status()
         except RequestException:
-            if response.status_code not in ERROR_CODES:
+            code = JSONResp.get("error_code")
+            if not code or code not in ERROR_CODES:
                 raise
-            raise RealDebridError(response, ERROR_CODES) from None
+            code = 7 if code == 16 else code
+            msg = ERROR_CODES.get(code, "Unknown error")
+            raise RealDebridError(response, code, msg) from None
         except AttributeError:
+            response.raise_for_status()
             return response.text
         else:
             return JSONResp
