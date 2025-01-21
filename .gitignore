@@ -7,6 +7,11 @@
 *.log
 *.profiling
 .coverage
+.config.yaml
+/build
+#config files
+*.yaml
+*.yml
 
 # Python cache
 __pycache__
