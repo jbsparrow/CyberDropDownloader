@@ -149,9 +149,13 @@ class Crawler(ABC):
         if not skip and self.manager.config_manager.settings_data.ignore_options.skip_hosts:
             skip_hosts = self.manager.config_manager.settings_data.ignore_options.skip_hosts
             if any(host in media_item.url.host for host in skip_hosts):
-                log(f"Download skip {media_item.url} due to skip_hosts config", 10)
+                log(f"Download skip {media_item.url} due to skip_urls config", 10)
                 skip = True
-
+        if not skip and self.manager.config_manager.settings_data.ignore_options.skip_urls:
+            skip_urls = self.manager.config_manager.settings_data.ignore_options.skip_urls
+            if any(url in str(media_item.url) for url in skip_urls):
+                log(f"Download skip {media_item.url} due to skip_urls config", 10)
+                skip = True
         if not skip and self.manager.config_manager.settings_data.ignore_options.only_hosts:
             only_hosts = self.manager.config_manager.settings_data.ignore_options.only_hosts
             if not any(host in media_item.url.host for host in only_hosts):

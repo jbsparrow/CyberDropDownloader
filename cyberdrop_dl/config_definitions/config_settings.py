@@ -110,8 +110,9 @@ class IgnoreOptions(BaseModel):
     ignore_coomer_ads: bool = False
     skip_hosts: list[NonEmptyStr] = []
     only_hosts: list[NonEmptyStr] = []
+    skip_urls: list[NonEmptyStr] = []
 
-    @field_validator("skip_hosts", "only_hosts", mode="before")
+    @field_validator("skip_hosts", "only_hosts", "skip_urls", mode="before")
     @classmethod
     def handle_falsy(cls, value: list) -> list:
         if not value:

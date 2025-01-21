@@ -15,10 +15,11 @@ from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.scraper import CRAWLERS
 from cyberdrop_dl.scraper.filters import (
     has_valid_extension,
-    is_in_domain_list,
+    host_is_in_domain_list,
     is_outside_date_range,
     is_valid_url,
     remove_trailing_slash,
+    url_is_in_domain_list,
 )
 from cyberdrop_dl.scraper.jdownloader import JDownloader
 from cyberdrop_dl.utils.constants import BLOCKED_DOMAINS, REGEX_LINKS
@@ -304,7 +305,7 @@ class ScrapeMapper:
         if not is_valid_url(scrape_item):
             return False
 
-        if is_in_domain_list(scrape_item, BLOCKED_DOMAINS):
+        if host_is_in_domain_list(scrape_item, BLOCKED_DOMAINS):
             log(f"Skipping {scrape_item.url} as it is a blocked domain", 10)
             return False
 
@@ -315,12 +316,17 @@ class ScrapeMapper:
             return False
 
         skip_hosts = self.manager.config_manager.settings_data.ignore_options.skip_hosts
-        if skip_hosts and is_in_domain_list(scrape_item, skip_hosts):
+        skip_urls = self.manager.config_manager.settings_data.ignore_options.skip_urls
+
+        if skip_hosts and host_is_in_domain_list(scrape_item, skip_hosts):
             log(f"Skipping URL by skip_hosts config: {scrape_item.url}", 10)
+            return False
+        if skip_urls and url_is_in_domain_list(scrape_item, skip_urls):
+            log(f"Skipping URL by skip_urls config: {scrape_item.url}", 10)
             return False
 
         only_hosts = self.manager.config_manager.settings_data.ignore_options.only_hosts
-        if only_hosts and not is_in_domain_list(scrape_item, only_hosts):
+        if only_hosts and not host_is_in_domain_list(scrape_item, only_hosts):
             log(f"Skipping URL by only_hosts config: {scrape_item.url}", 10)
             return False
 

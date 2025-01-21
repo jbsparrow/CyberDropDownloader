@@ -48,8 +48,12 @@ def is_outside_date_range(scrape_item: ScrapeItem, before: arrow, after: arrow) 
     return skip
 
 
-def is_in_domain_list(scrape_item: ScrapeItem, domain_list: list[str]) -> bool:
+def host_is_in_domain_list(scrape_item: ScrapeItem, domain_list: list[str]) -> bool:
     return any(domain in scrape_item.url.host for domain in domain_list)
+
+
+def url_is_in_domain_list(scrape_item: ScrapeItem, domain_list: list[str]) -> bool:
+    return any(domain in str(scrape_item.url) for domain in domain_list)
 
 
 def remove_trailing_slash(url: URL) -> URL:
