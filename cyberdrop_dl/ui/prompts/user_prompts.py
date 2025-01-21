@@ -105,6 +105,13 @@ def select_config(configs: list) -> str:
     )
 
 
+def switch_default_config(config_name) -> str:
+    """Asks the user if they want to switch the default config"""
+    return basic_prompts.ask_toggle(
+        message=f"Do you want to switch the default config to {config_name}?",
+    )
+
+
 def _check_valid_new_config_name(answer: str, manager: Manager) -> str | None:
     """Check if the provided config name if. Returns `None` if the config name is invalid."""
     msg = None

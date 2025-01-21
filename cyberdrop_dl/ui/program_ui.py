@@ -116,7 +116,8 @@ class ProgramUI:
         new_config_name, old_config_path = new_config
         transfer_v4_config(self.manager, new_config_name, old_config_path)
         self.manager.config_manager.change_config(new_config_name)
-        self.manager.first_time_setup.update_default_config(new_config_name)
+        if user_prompts.switch_default_config(new_config_name):
+            self.manager.first_time_setup.update_default_config(new_config_name)
 
     def _import_v4_download_history(self) -> None:
         import_download_history_path = user_prompts.import_v4_download_history_prompt()
@@ -139,6 +140,9 @@ class ProgramUI:
             self.manager.multiconfig = True
             return
         self.manager.config_manager.change_config(selected_config)
+        if user_prompts.switch_default_config(selected_config):
+            self.manager.first_time_setup.update_default_config(selected_config)
+            self.manager.config_manager.change_config(selected_config)
 
     def _view_changelog(self) -> None:
         clear_term()
