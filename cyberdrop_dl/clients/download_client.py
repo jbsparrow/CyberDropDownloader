@@ -173,7 +173,8 @@ class DownloadClient:
                 and any(s in content_type.lower() for s in ("html", "text"))
                 and ext not in FILE_FORMATS["Text"]
             ):
-                raise InvalidContentTypeError(message=f"Received '{content_type}', was expecting other")
+                msg = f"Received '{content_type}', was expecting other"
+                raise InvalidContentTypeError(message=msg)
 
             if resp.status != HTTPStatus.PARTIAL_CONTENT and media_item.partial_file.is_file():
                 media_item.partial_file.unlink()

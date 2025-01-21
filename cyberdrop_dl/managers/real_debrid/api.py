@@ -85,6 +85,8 @@ class RealDebridApi:
             response.raise_for_status()
             JSONResp: dict = response.json()
         except RequestException:
+            if response.status_code not in ERROR_CODES:
+                raise
             raise RealDebridError(response, ERROR_CODES) from None
         except AttributeError:
             return response.text
