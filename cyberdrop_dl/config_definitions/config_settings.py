@@ -10,7 +10,7 @@ from cyberdrop_dl.utils.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE
 from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
 from cyberdrop_dl.utils.data_enums_classes.supported_domains import SUPPORTED_SITES_DOMAINS
 
-from .pydantic.custom_types import AliasModel, HttpAppriseURL, NonEmptyStr
+from .pydantic.custom_types import AliasModel, HttpAppriseURL, HttpURL, NonEmptyStr
 
 
 class DownloadOptions(BaseModel):
@@ -110,7 +110,7 @@ class IgnoreOptions(BaseModel):
     ignore_coomer_ads: bool = False
     skip_hosts: list[NonEmptyStr] = []
     only_hosts: list[NonEmptyStr] = []
-    skip_urls: list[NonEmptyStr] = []
+    skip_urls: list[HttpURL] = []
 
     @field_validator("skip_hosts", "only_hosts", "skip_urls", mode="before")
     @classmethod
