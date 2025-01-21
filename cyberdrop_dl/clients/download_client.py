@@ -74,6 +74,8 @@ class DownloadClient:
         self._global_limiter = self.client_manager.global_rate_limiter
         self.trace_configs = []
         self._file_path = None
+        self.slow_download_period = timedelta(seconds=10).total_seconds()
+        self.download_speed_threshold = self.manager.config_manager.settings_data.runtime_options.slow_downloads_speed
         if DEBUG_VAR:
             self.add_request_log_hooks()
 
@@ -203,16 +205,15 @@ class DownloadClient:
             media_item.partial_file.touch()
 
         last_slow_speed_read = None
-        download_speed_threshold = self.manager.config_manager.settings_data.runtime_options.slow_downloads_speed
 
         def check_download_speed():
             nonlocal last_slow_speed_read
             speed = self.manager.progress_manager.file_progress.get_speed(media_item.task_id)
-            if speed > download_speed_threshold:
+            if speed > self.download_speed_threshold:
                 last_slow_speed_read = None
             elif not last_slow_speed_read:
                 last_slow_speed_read = time.perf_counter()
-            elif time.perf_counter() - last_slow_speed_read > timedelta(seconds=10):
+            elif time.perf_counter() - last_slow_speed_read > self.slow_download_period:
                 raise SlowDownloadError(origin=media_item)
 
         async with aiofiles.open(media_item.partial_file, mode="ab") as f:  # type: ignore
@@ -222,7 +223,7 @@ class DownloadClient:
                 await asyncio.sleep(0)
                 await f.write(chunk)
                 update_progress(chunk_size)
-                if download_speed_threshold:
+                if self.download_speed_threshold:
                     check_download_speed()
 
         if not content.total_bytes and not media_item.partial_file.stat().st_size:
