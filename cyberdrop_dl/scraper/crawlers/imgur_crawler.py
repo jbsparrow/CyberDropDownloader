@@ -38,7 +38,7 @@ class ImgurCrawler(Crawler):
             await self.image(scrape_item)
 
     async def gallery(self, scrape_item: ScrapeItem) -> None:
-        album_id = scrape_item.url.name.rsplit("-", 1)[1]
+        album_id = scrape_item.url.name.rsplit("-", 1)[-1]
         scrape_item.url = self.primary_base_domain / "a" / album_id
         await self.album(scrape_item)
 
@@ -105,7 +105,7 @@ class ImgurCrawler(Crawler):
         filename, ext = get_filename_and_ext(scrape_item.url.name)
         if ext.lower() in (".gifv", ".mp4"):
             filename = filename.replace(ext, ".mp4")
-            link_str = "/" + filename.replace(ext, "")
+            link_str = "/" + filename.rsplit(".", 1)[0]
             ext = ".mp4"
             link = self.parse_url(link_str, URL("https://imgur.com/download"))
             new_scrape_item = self.create_scrape_item(scrape_item, link)
