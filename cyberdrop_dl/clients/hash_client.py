@@ -48,12 +48,11 @@ class HashClient:
 
     async def hash_directory(self, path: Path) -> None:
         path = Path(path)
-        # log(f"scanning {path} recursely to create hashes", 10)
         with self.manager.live_manager.get_hash_live(stop=True):
             if not path.is_dir():
                 raise NotADirectoryError
             for file in path.rglob("*"):
-                await self.update_db_and_retrive_hash(file, None, None)
+                await self.update_db_and_retrive_hash(file)
 
     async def hash_item(self, media_item: MediaItem) -> None:
         hash = await self.update_db_and_retrive_hash(
@@ -72,7 +71,9 @@ class HashClient:
         except Exception as e:
             log(f"After hash processing failed: {media_item.complete_file} with error {e}", 40, exc_info=True)
 
-    async def update_db_and_retrive_hash(self, file: Path | str, original_filename: str, referer: URL):
+    async def update_db_and_retrive_hash(
+        self, file: Path | str, original_filename: str | None = None, referer: URL | None = None
+    ):
         file = Path(file)
         if not file.is_file():
             return
@@ -88,7 +89,11 @@ class HashClient:
         return hash
 
     async def _update_db_and_retrive_hash_helper(
-        self, file: Path | str, original_filename: str, referer: URL, hash_type=None
+        self,
+        file: Path | str,
+        original_filename: str | None = None,
+        referer: URL | None = None,
+        hash_type: str | None = None,
     ) -> str:
         """Generates hash of a file."""
         self.manager.progress_manager.hash_progress.update_currently_hashing(file)
@@ -117,11 +122,6 @@ class HashClient:
             log(f"Error hashing {file} : {e}", 40, exc_info=True)
         return hash
 
-    async def hash_item(self, media_item: MediaItem) -> None:
-        absolute_path = media_item.complete_file.resolve()
-        size = media_item.complete_file.stat().st_size
-        self.hashed_media_items.add(media_item)
-        self.hashes_dict[hash][size].add(absolute_path)
 
     def save_hash_data(self, media_item, hash):
         absolute_path = media_item.complete_file.resolve()
