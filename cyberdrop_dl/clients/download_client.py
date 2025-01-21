@@ -75,7 +75,7 @@ class DownloadClient:
         self.trace_configs = []
         self._file_path = None
         self.slow_download_period = timedelta(seconds=10).total_seconds()
-        self.download_speed_threshold = self.manager.config_manager.settings_data.runtime_options.slow_downloads_speed
+        self.download_speed_threshold = self.manager.config_manager.settings_data.runtime_options.slow_download_speed
         if DEBUG_VAR:
             self.add_request_log_hooks()
 

@@ -133,7 +133,7 @@ class RuntimeOptions(BaseModel):
     jdownloader_autostart: bool = False
     jdownloader_whitelist: list[NonEmptyStr] = []
     deep_scrape: bool = False
-    slow_downloads_speed: ByteSize = ByteSize(0)
+    slow_download_speed: ByteSize = ByteSize(0)
 
     @field_validator("jdownloader_download_dir", mode="before")
     @classmethod
@@ -148,6 +148,12 @@ class RuntimeOptions(BaseModel):
         if not value:
             return []
         return value
+
+    @field_serializer("slow_download_speed")
+    def human_readable(self, value: ByteSize | int) -> str:
+        if not isinstance(value, ByteSize):
+            value = ByteSize(value)
+        return value.human_readable(decimal=True)
 
 
 # TODO: allow None values in sorting format to skip that type of file
