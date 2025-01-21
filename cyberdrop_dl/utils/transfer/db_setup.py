@@ -69,10 +69,11 @@ class TransitionManager:
         if Path("./config.yaml").is_file():
             try:
                 transfer_v4_config(self.manager, "Imported V4", Path("./config.yaml"))
-                self.update_default_config(constants.APP_STORAGE / "Cache" / "cache.yaml", "Imported V4")
+                self.update_default_config_first_time(constants.APP_STORAGE / "Cache" / "cache.yaml", "Imported V4")
             except OSError:
                 pass
             Path("./config.yaml").rename(OLD_FILES / "config.yaml")
+            self.manager.config_manager.change_config("Imported V4")
 
         if Path("./Errored_Download_URLs.csv").is_file():
             Path("./Errored_Download_URLs.csv").rename(OLD_FILES / "Errored_Download_URLs.csv")
@@ -100,10 +101,18 @@ class TransitionManager:
         yaml.save(cache_file, cache)
 
     @staticmethod
-    def update_default_config(cache_file: Path, config_name: str) -> None:
-        """Updates the default config in the cache."""
+    def update_default_config_first_time(cache_file: Path, config_name: str) -> None:
+        """Updates the default config in the cache during first time startup"""
         cache = yaml.load(cache_file, create=True)
         if not cache:
             cache = {"first_startup_completed": False}
+        cache["default_config"] = config_name
+        yaml.save(cache_file, cache)
+
+    @staticmethod
+    def update_default_config(config_name: str) -> None:
+        """Updates the default config in the cache"""
+        cache_file = constants.APP_STORAGE / "Cache" / "cache.yaml"
+        cache = yaml.load(cache_file, create=True)
         cache["default_config"] = config_name
         yaml.save(cache_file, cache)

@@ -113,9 +113,10 @@ class ProgramUI:
 
     def _import_v4_config(self) -> None:
         new_config = user_prompts.import_v4_config_prompt(self.manager)
-        if not new_config:
-            return
-        transfer_v4_config(self.manager, *new_config)
+        new_config_name, old_config_path = new_config
+        transfer_v4_config(self.manager, new_config_name, old_config_path)
+        self.manager.config_manager.change_config(new_config_name)
+        self.manager.first_time_setup.update_default_config(new_config_name)
 
     def _import_v4_download_history(self) -> None:
         import_download_history_path = user_prompts.import_v4_download_history_prompt()
