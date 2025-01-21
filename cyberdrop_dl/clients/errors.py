@@ -90,6 +90,13 @@ class DownloadError(CDLBaseError):
         super().__init__(ui_message, message=message, status=status, origin=origin)
 
 
+class SlowDownloadError(DownloadError):
+    def __init__(self, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
+        """This error will be thrown when a download fails."""
+        ui_message = "Slow Download"
+        super().__init__(ui_message, origin=origin)
+
+
 class InsufficientFreeSpaceError(CDLBaseError):
     def __init__(self, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
         """This error will be thrown when no enough storage is available."""

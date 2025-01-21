@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import copy
 import itertools
+import time
+from datetime import timedelta
 from functools import partial, wraps
 from http import HTTPStatus
 from pathlib import Path
@@ -13,7 +15,12 @@ import aiohttp
 from aiohttp import ClientSession
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import DownloadError, InsufficientFreeSpaceError, InvalidContentTypeError
+from cyberdrop_dl.clients.errors import (
+    DownloadError,
+    InsufficientFreeSpaceError,
+    InvalidContentTypeError,
+    SlowDownloadError,
+)
 from cyberdrop_dl.utils.constants import DEBUG_VAR, FILE_FORMATS
 from cyberdrop_dl.utils.logger import log
 
@@ -194,6 +201,20 @@ class DownloadClient:
         media_item.partial_file.parent.mkdir(parents=True, exist_ok=True)
         if not media_item.partial_file.is_file():
             media_item.partial_file.touch()
+
+        last_slow_speed_read = None
+        download_speed_threshold = self.manager.config_manager.settings_data.runtime_options.slow_downloads_speed
+
+        def check_download_speed():
+            nonlocal last_slow_speed_read
+            speed = self.manager.progress_manager.file_progress.get_speed(media_item.task_id)
+            if speed > download_speed_threshold:
+                last_slow_speed_read = None
+            elif not last_slow_speed_read:
+                last_slow_speed_read = time.perf_counter()
+            elif time.perf_counter() - last_slow_speed_read > timedelta(seconds=10):
+                raise SlowDownloadError(origin=media_item)
+
         async with aiofiles.open(media_item.partial_file, mode="ab") as f:  # type: ignore
             async for chunk in content.iter_chunked(self.client_manager.speed_limiter.chunk_size):
                 chunk_size = len(chunk)
@@ -201,6 +222,9 @@ class DownloadClient:
                 await asyncio.sleep(0)
                 await f.write(chunk)
                 update_progress(chunk_size)
+                if download_speed_threshold:
+                    check_download_speed()
+
         if not content.total_bytes and not media_item.partial_file.stat().st_size:
             media_item.partial_file.unlink()
             raise DownloadError(status=HTTPStatus.INTERNAL_SERVER_ERROR, message="File is empty")

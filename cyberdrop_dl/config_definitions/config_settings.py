@@ -133,6 +133,7 @@ class RuntimeOptions(BaseModel):
     jdownloader_autostart: bool = False
     jdownloader_whitelist: list[NonEmptyStr] = []
     deep_scrape: bool = False
+    slow_downloads_speed: ByteSize = ByteSize(0)
 
     @field_validator("jdownloader_download_dir", mode="before")
     @classmethod
