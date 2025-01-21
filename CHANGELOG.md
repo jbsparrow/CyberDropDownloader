@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - bunkr reinforced link handling
 - Handle encoded URLS found while scraping (every crawler)
+- Imgur crawler
 
 ## [6.2.0] - 2025-01-10
 
