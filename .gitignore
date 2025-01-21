@@ -9,8 +9,7 @@
 .coverage
 #configs
 config.yaml
-*.yaml
-*.yml
+config.ymlgi
 
 # Python cache
 __pycache__
