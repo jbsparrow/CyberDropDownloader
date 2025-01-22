@@ -151,4 +151,8 @@ For example, scraping an album normally takes one single request. However, with 
 |----------------|----------|
 | `ByteSize` | `0`|
 
-Downloads with a speed lower than the this value for more than 10 seconds will be skipped. Set to `0` to disable
+{% hint style="info" %}
+This setting specifies speed and it's interpreted as `<value> / second`. ex: `8MB` means `8MB/s`
+{% endhint %}
+
+Downloads with a speed lower than this value for more than 10 seconds will be skipped. Set to `0` to disable
