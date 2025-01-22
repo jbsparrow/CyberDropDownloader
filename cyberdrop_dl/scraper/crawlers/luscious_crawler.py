@@ -3,7 +3,6 @@ from __future__ import annotations
 from json import dumps as dump_json
 from typing import TYPE_CHECKING
 
-from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id

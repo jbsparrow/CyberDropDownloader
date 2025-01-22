@@ -7,10 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## UNRELEASED
 
+### Added
+
+- members.luscious.net support
+- Coomer search results support
+- SendVid.com support
+
 ### Fixed
 
 - bunkr reinforced link handling
 - Handle encoded URLS found while scraping (every crawler)
+- Imgur crawler
 
 ## [6.2.0] - 2025-01-10
 

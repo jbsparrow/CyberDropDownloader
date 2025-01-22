@@ -28,12 +28,19 @@ class ImgurCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        if "i.imgur.com" in scrape_item.url.host:
+        if scrape_item.url.host == "i.imgur.com":
             await self.handle_direct(scrape_item)
         elif "a" in scrape_item.url.parts:
             await self.album(scrape_item)
+        elif "gallery" in scrape_item.url.parts:
+            await self.gallery(scrape_item)
         else:
             await self.image(scrape_item)
+
+    async def gallery(self, scrape_item: ScrapeItem) -> None:
+        album_id = scrape_item.url.name.rsplit("-", 1)[-1]
+        scrape_item.url = self.primary_base_domain / "a" / album_id
+        await self.album(scrape_item)
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
@@ -42,19 +49,16 @@ class ImgurCrawler(Crawler):
             msg = "No Imgur Client ID provided"
             raise LoginError(msg)
 
-        await self.check_imgur_credits(scrape_item)
         scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
         album_id = scrape_item.url.parts[-1]
         scrape_item.album_id = album_id
         scrape_item.part_of_album = True
 
         async with self.request_limiter:
-            JSON_Obj = await self.client.get_json(
-                self.domain,
-                self.imgur_api / f"album/{album_id}",
-                headers_inc=self.headers,
-                origin=scrape_item,
-            )
+            await self.check_imgur_credits(scrape_item)
+            api_url = self.imgur_api / "album" / album_id
+            JSON_Obj = await self.client.get_json(self.domain, api_url, headers_inc=self.headers, origin=scrape_item)
+
         title_part = JSON_Obj["data"].get("title", album_id)
         title = self.create_title(title_part, album_id)
 
@@ -83,10 +87,9 @@ class ImgurCrawler(Crawler):
             msg = "No Imgur Client ID provided"
             raise LoginError(msg)
 
-        await self.check_imgur_credits(scrape_item)
-
         image_id = scrape_item.url.parts[-1]
         async with self.request_limiter:
+            await self.check_imgur_credits(scrape_item)
             api_url = self.imgur_api / "image" / image_id
             JSON_Obj = await self.client.get_json(self.domain, api_url, headers_inc=self.headers, origin=scrape_item)
 
@@ -100,10 +103,10 @@ class ImgurCrawler(Crawler):
     async def handle_direct(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image."""
         filename, ext = get_filename_and_ext(scrape_item.url.name)
-        if any(extension == ext.lower() for extension in (".gifv", ".mp4")):
+        if ext.lower() in (".gifv", ".mp4"):
             filename = filename.replace(ext, ".mp4")
+            link_str = "/" + filename.rsplit(".", 1)[0]
             ext = ".mp4"
-            link_str = filename.replace(ext, "")
             link = self.parse_url(link_str, URL("https://imgur.com/download"))
             new_scrape_item = self.create_scrape_item(scrape_item, link)
             return await self.handle_file(link, new_scrape_item, filename, ext)

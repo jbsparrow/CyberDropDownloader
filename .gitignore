@@ -5,6 +5,7 @@
 /Downloads/
 /Old Files/
 *.log
+*.profiling
 .coverage
 
 # Python cache

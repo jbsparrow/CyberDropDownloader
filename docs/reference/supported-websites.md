@@ -21,7 +21,7 @@ icon: globe-pointer
 | ibb imgbb       | Album: `/album/...` <br> Image: `/...`|
 | ImgBox          | Album: `/g/...` <br> Images: `/...` <br> Direct links |
 | Img.kiwi        | Album: `/album/...` <br> Image: `/image/...` <br> Direct links  |
-| Imgur           | Album: `/a/...` <br> Image: `/...` <br> Direct links |
+| Imgur           | Album: `/a/...` <br> Gallery: `/gallery/...` <br> Image: `/...` <br> Direct links |
 | JPG.Church <br> JPG.Homes <br> JPG.Pet <br> JPEG.Pet <br> JPG1.Su <br> JPG2.Su <br> JPG3.Su <br> JPG4.Su <br> JPG5.Su | Album: `/a/...` <br> Image: `/img/...` <br> Direct links  |
 | Imagepond.net   | Album: `/a/...` <br> Image: `/img/...` <br> Video: `/video/..`  <br> Direct links  |
 | Kemono          | Afdian Model: `/afdian/user/<user>` <br> Boosty Model: `/boosty/user/<user>` <br> DLSite Model: `/dlsite/user/<user>` <br> Discord Server Channel: `/discord/server/...#...` <br> FanBox Model: `/fanbox/user/<user>` <br> Fantia Model: `/fantia/user/<user>` <br> Gumroad Model: `/gumroad/user/<user>` <br> Individual Post: `/<service>/user/<user>/post/<post_id>` <br> Patreon Model: `/patreon/user/<user>` <br> SubscribeStar Model: `/subscribestar/user/<user>` <br> Direct Links |
@@ -39,6 +39,7 @@ icon: globe-pointer
 | Rule34.XXX      | File page (id query) <br> Tags (tags query) |
 | Rule34.XYZ      | File page: `/post/...` <br> Tag: `/...` |
 | Saint           | Albums: `/a/...` <br> Video: `/embed/...`, `/d/...` <br> Direct links |
+| SendVid.com     | Videos: `/...` <br> Embeds: `/embed/...` <br> Direct Links |
 | Scrolller       | Subreddit: `/r/...` |
 | Toonily         | Chapter: `/webtoon/.../...` <br> Webtoon: `/webtoon/...` <br> Direct links  |
 | Tokyomotion.net | Albums: `/user/<user>/albums/` , `/album/<album_id>` <br> Photo: `/photo/<photo_id>` , `/user/<user>/favorite/photos` <br> Playlist: `/user/<user>/favorite/videos` <br> Profiles: `/user/<user>` <br> Search Results: `/search?...` <br> Video: `/video/<video_id>` |
