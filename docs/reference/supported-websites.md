@@ -39,6 +39,7 @@ icon: globe-pointer
 | Rule34.XXX      | File page (id query) <br> Tags (tags query) |
 | Rule34.XYZ      | File page: `/post/...` <br> Tag: `/...` |
 | Saint           | Albums: `/a/...` <br> Video: `/embed/...`, `/d/...` <br> Direct links |
+| SendVid.com     | Videos: `/...` <br> Embeds: `/embed/...` <br> Direct Links |
 | Scrolller       | Subreddit: `/r/...` |
 | Toonily         | Chapter: `/webtoon/.../...` <br> Webtoon: `/webtoon/...` <br> Direct links  |
 | Tokyomotion.net | Albums: `/user/<user>/albums/` , `/album/<album_id>` <br> Photo: `/photo/<photo_id>` , `/user/<user>/favorite/photos` <br> Playlist: `/user/<user>/favorite/videos` <br> Profiles: `/user/<user>` <br> Search Results: `/search?...` <br> Video: `/video/<video_id>` |
