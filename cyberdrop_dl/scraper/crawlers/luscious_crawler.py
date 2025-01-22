@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from yarl import URL
 
+from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.logger import log
@@ -68,10 +69,12 @@ class LusciousCrawler(Crawler):
         elif operation == "AlbumListWithPeek":
             sorting = query.get("display", "date_newest")
 
+            filters = [{"name": i, "value": v} for i, v in query.items() if i not in ("page", "display", "q")]
+
             data["variables"] = {
                 "input": {
                     "display": sorting,
-                    "filters": [{"name": i, "value": v} for i, v in query.items() if i not in ("page", "display")],
+                    "filters": filters,
                     "page": page,
                 }
             }
@@ -134,10 +137,9 @@ class LusciousCrawler(Crawler):
 
     @error_handling_wrapper
     async def search(self, scrape_item: ScrapeItem) -> None:
-        query = scrape_item.url.query.get("q", "")
+        query = scrape_item.url.query.get("tagged", "")
         if not query:
-            log(f"Scrape Failed: No search query provided for {scrape_item.url}", 40)
-            return
+            raise ScrapeError(400, "No search query provided.", 20)
 
         async for json_data in self.paginator(scrape_item, is_album=False):
             for item in json_data["data"]["album"]["list"]["items"]:
