@@ -94,7 +94,7 @@ class DownloadError(CDLBaseError):
 
 class SlowDownloadError(DownloadError):
     def __init__(self, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
-        """This error will be thrown when a download fails."""
+        """This error will be thrown when a file will be skipped do to a low download speed."""
         ui_message = "Slow Download"
         super().__init__(ui_message, origin=origin)
 
