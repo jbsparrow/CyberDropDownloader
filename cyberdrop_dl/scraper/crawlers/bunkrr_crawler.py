@@ -221,7 +221,7 @@ class BunkrrCrawler(Crawler):
 
     @staticmethod
     def is_stream_redirect(url: URL) -> bool:
-        return any(part in url.host.split(".") for part in ("cdn12",)) or url.host == "cdn.bunkr.ru"
+        return any(part in url.host for part in ("cdn12", "cdn-")) or url.host == "cdn.bunkr.ru"
 
     @staticmethod
     def is_cdn(url: URL) -> bool:
