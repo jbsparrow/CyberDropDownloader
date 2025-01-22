@@ -232,10 +232,10 @@ def _add_args_from_model(
             continue
         if cli_name == "links":
             default_options.pop("dest")
-            parser.add_argument(cli_name, metavar="LINK(S)", nargs="*", action="extend",**default_options)
+            parser.add_argument(cli_name, metavar="LINK(S)", nargs="*", action="extend", **default_options)
             continue
         if arg_type in (list, set):
-            parser.add_argument(*name_or_flags, nargs="*", action="extend",**default_options)
+            parser.add_argument(*name_or_flags, nargs="*", action="extend", **default_options)
             continue
         parser.add_argument(*name_or_flags, type=arg_type, **default_options)
 
