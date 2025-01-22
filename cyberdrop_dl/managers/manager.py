@@ -26,6 +26,7 @@ from cyberdrop_dl.utils.transfer.db_setup import TransitionManager
 
 if TYPE_CHECKING:
     from asyncio import TaskGroup
+    from collections.abc import Callable
 
     from cyberdrop_dl.scraper.scraper import ScrapeMapper
 
@@ -137,10 +138,34 @@ class Manager:
         self.progress_manager.startup()
 
     def process_additive_args(self) -> None:
-        cli_config_settings = self.parsed_args.config_settings
-        current_config_settings = self.config_manager.settings_data
-        cli_config_settings.ignore_options.skip_hosts += current_config_settings.ignore_options.skip_hosts
-        cli_config_settings.ignore_options.only_hosts += current_config_settings.ignore_options.only_hosts
+        cli_ignore_options = self.parsed_args.config_settings.ignore_options
+        config_skip_hosts = self.config_manager.settings_data.ignore_options.skip_hosts
+        config_only_hosts = self.config_manager.settings_data.ignore_options.only_hosts
+        exclude = set("+", "-")
+
+        def add(list_a: list, list_b: list) -> list:
+            new_list_as_set = set(list_a + list_b)
+            return sorted(new_list_as_set - exclude)
+
+        def remove(list_a: list, list_b: list) -> list:
+            new_list_as_set = set(list_a) - set(list_b)
+            return sorted(new_list_as_set - exclude)
+
+        def add_or_remove(input_list: list) -> Callable | None:
+            if input_list:
+                if input_list[0] == "+":
+                    return add
+                if input_list[0] == "-":
+                    return remove
+            return
+
+        if add_or_remove(cli_ignore_options.skip_hosts):
+            func = add_or_remove(cli_ignore_options.skip_hosts)
+            cli_ignore_options.skip_hosts = func(config_skip_hosts, cli_ignore_options.skip_hosts)
+
+        if add_or_remove(cli_ignore_options.only_hosts):
+            func = add_or_remove(cli_ignore_options.only_hosts)
+            cli_ignore_options.only_hosts = func(config_only_hosts, cli_ignore_options.only_hosts)
 
     def args_consolidation(self) -> None:
         """Consolidates runtime arguments with config values."""
