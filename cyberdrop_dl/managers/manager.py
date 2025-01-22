@@ -26,7 +26,6 @@ from cyberdrop_dl.utils.transfer.db_setup import TransitionManager
 
 if TYPE_CHECKING:
     from asyncio import TaskGroup
-    from collections.abc import Callable
 
     from cyberdrop_dl.scraper.scraper import ScrapeMapper
 
@@ -143,29 +142,24 @@ class Manager:
         config_only_hosts = self.config_manager.settings_data.ignore_options.only_hosts
         exclude = set("+", "-")
 
-        def add(list_a: list, list_b: list) -> list:
-            new_list_as_set = set(list_a + list_b)
+        def add(config_list: list, cli_list: list) -> list:
+            new_list_as_set = set(config_list + cli_list)
             return sorted(new_list_as_set - exclude)
 
-        def remove(list_a: list, list_b: list) -> list:
-            new_list_as_set = set(list_a) - set(list_b)
+        def remove(config_list: list, cli_list: list) -> list:
+            new_list_as_set = set(config_list) - set(cli_list)
             return sorted(new_list_as_set - exclude)
 
-        def add_or_remove(input_list: list) -> Callable | None:
-            if input_list:
-                if input_list[0] == "+":
-                    return add
-                if input_list[0] == "-":
-                    return remove
-            return
+        def add_or_remove(config_list: list, cli_list: list) -> list[str]:
+            if cli_list:
+                if cli_list[0] == "+":
+                    return add(config_list, cli_list)
+                if cli_list[0] == "-":
+                    return remove(config_list, cli_list)
+            return cli_list
 
-        if add_or_remove(cli_ignore_options.skip_hosts):
-            func = add_or_remove(cli_ignore_options.skip_hosts)
-            cli_ignore_options.skip_hosts = func(config_skip_hosts, cli_ignore_options.skip_hosts)
-
-        if add_or_remove(cli_ignore_options.only_hosts):
-            func = add_or_remove(cli_ignore_options.only_hosts)
-            cli_ignore_options.only_hosts = func(config_only_hosts, cli_ignore_options.only_hosts)
+        cli_ignore_options.skip_hosts = add_or_remove(config_skip_hosts, cli_ignore_options.skip_hosts)
+        cli_ignore_options.only_hosts = add_or_remove(config_only_hosts, cli_ignore_options.only_hosts)
 
     def args_consolidation(self) -> None:
         """Consolidates runtime arguments with config values."""
