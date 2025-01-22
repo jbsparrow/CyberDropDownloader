@@ -12,19 +12,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Members.luscious.net support
 - Coomer and Kemono search results support
+- SendVid.com support
 - Support for forum direct link URLs (attachments) as input URLs
 - `--logs-expire-after` option: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/logs#logs_expire_after
+- `--filename-regex-filter` option: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/ignore_options#filename_regex_filter
 
 ### Changed
 
 - `--rotate-logs` now creates a subfolder by date
-- SendVid.com support
 
 ### Fixed
 
 - Bunkr reinforced link handling
 - Handle encoded URLS found while scraping (every crawler)
 - Imgur crawler
+- MediaFire Crawler
 - JPG5 rate limit
 
 ### Deprecated
