@@ -8,7 +8,7 @@ from aiolimiter import AsyncLimiter
 from mediafire import MediaFireApi, api
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import MediaFireError
+from cyberdrop_dl.clients.errors import MediaFireError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
@@ -93,9 +93,15 @@ class MediaFireCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        date = self.parse_datetime(soup.select("ul[class=details] li span")[-1].get_text())
-        scrape_item.possible_datetime = date
-        link_str: str = soup.select_one("a[id=downloadButton]").get("href")
+        link_tag = soup.select_one("a[id=downloadButton]")
+        if not link_tag:
+            raise ScrapeError(422, origin=scrape_item)
+
+        date_tag = soup.select("ul[class=details] li span")
+        if date_tag:
+            date = self.parse_datetime(date_tag[-1].get_text())
+            scrape_item.possible_datetime = date
+        link_str: str = link_tag.get("href")
         link = self.parse_url(link_str)
         filename, ext = get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)

@@ -121,9 +121,9 @@ def transfer_v4_config(manager: Manager, new_config_name: str, old_config_path: 
     else:
         new_urls.touch(exist_ok=True)
 
-    manager.config_manager.authentication_data = AuthSettings.model_validate(new_auth_data.model_dump())
-    manager.config_manager.global_settings_data = GlobalSettings.model_validate(new_global_data.model_dump())
-    manager.config_manager.save_as_new_config(new_settings, ConfigSettings.model_validate(new_user_data.model_dump()))
+    manager.config_manager.authentication_data = new_auth_data
+    manager.config_manager.global_settings_data = new_global_data
+    manager.config_manager.save_as_new_config(new_settings, new_user_data)
     manager.config_manager.write_updated_authentication_config()
     manager.config_manager.write_updated_global_settings_config()
     manager.config_manager.change_config(new_config_name)

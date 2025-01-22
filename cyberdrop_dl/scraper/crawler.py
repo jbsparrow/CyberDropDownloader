@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import re
 from abc import ABC, abstractmethod
 from dataclasses import field
 from datetime import datetime
@@ -138,27 +139,32 @@ class Crawler(ABC):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def check_skip_by_config(self, media_item: MediaItem) -> bool:
-        skip = False
-
-        if self.manager.config_manager.settings_data.download_options.skip_referer_seen_before:
-            skip = await self.manager.db_manager.temp_referer_table.check_referer(media_item.referer)
-
-        if skip:
+        settings = self.manager.config_manager.settings_data
+        if (
+            settings.download_options.skip_referer_seen_before
+            and await self.manager.db_manager.temp_referer_table.check_referer(media_item.referer)
+        ):
             log(f"Download skip {media_item.url} as referer has been seen before", 10)
+            return True
 
-        if not skip and self.manager.config_manager.settings_data.ignore_options.skip_hosts:
-            skip_hosts = self.manager.config_manager.settings_data.ignore_options.skip_hosts
-            if any(host in media_item.url.host for host in skip_hosts):
-                log(f"Download skip {media_item.url} due to skip_hosts config", 10)
-                skip = True
+        skip_hosts = settings.ignore_options.skip_hosts
+        if skip_hosts and any(host in media_item.url.host for host in skip_hosts):
+            log(f"Download skip {media_item.url} due to skip_hosts config", 10)
+            return True
 
-        if not skip and self.manager.config_manager.settings_data.ignore_options.only_hosts:
-            only_hosts = self.manager.config_manager.settings_data.ignore_options.only_hosts
-            if not any(host in media_item.url.host for host in only_hosts):
-                log(f"Download skip {media_item.url} due to only_hosts config", 10)
-                skip = True
+        only_hosts = settings.ignore_options.only_hosts
+        if only_hosts and not any(host in media_item.url.host for host in only_hosts):
+            log(f"Download skip {media_item.url} due to only_hosts config", 10)
+            return True
 
-        return skip
+        valid_regex_filter = self.manager.config_manager.valid_filename_filter_regex
+        regex_filter = self.manager.config_manager.settings_data.ignore_options.filename_regex_filter
+
+        if valid_regex_filter and re.search(regex_filter, media_item.filename):
+            log(f"Download skip {media_item.url} due to filename regex filter config", 10)
+            return True
+
+        return False
 
     def check_post_number(self, post_number: int, current_post_number: int) -> tuple[bool, bool]:
         """Checks if the program should scrape the current post."""
@@ -324,17 +330,12 @@ class Crawler(ABC):
         assert isinstance(link_str, str)
         encoded = "%" in link_str
         base = relative_to or self.primary_base_domain
-        if link_str.startswith("?"):
-            link = base.with_query(link_str[1:])
-        elif link_str.startswith("/?"):
-            link = base.with_query(link_str[2:])
-        elif link_str.startswith("//"):
-            link = URL("https:" + link_str, encoded=encoded)
-        elif link_str.startswith("/"):
-            link = base.joinpath(link_str[1:], encoded=encoded)
-        else:
-            link = URL(link_str, encoded=encoded)
-        return link
+        new_url = URL(link_str, encoded=encoded)
+        if not new_url.absolute:
+            new_url = base.join(new_url)
+        if not new_url.scheme:
+            new_url = new_url.with_scheme(base.scheme or "https")
+        return new_url
 
 
 def create_task_id(func: Callable) -> Callable:
