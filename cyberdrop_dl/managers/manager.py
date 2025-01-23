@@ -136,8 +136,34 @@ class Manager:
         self.progress_manager = ProgressManager(self)
         self.progress_manager.startup()
 
+    def process_additive_args(self) -> None:
+        cli_ignore_options = self.parsed_args.config_settings.ignore_options
+        config_skip_hosts = self.config_manager.settings_data.ignore_options.skip_hosts
+        config_only_hosts = self.config_manager.settings_data.ignore_options.only_hosts
+        exclude = {"+", "-"}
+
+        def add(config_list: list[str], cli_list: list[str]) -> list[str]:
+            new_list_as_set = set(config_list + cli_list)
+            return sorted(new_list_as_set - exclude)
+
+        def remove(config_list: list[str], cli_list: list[str]) -> list[str]:
+            new_list_as_set = set(config_list) - set(cli_list)
+            return sorted(new_list_as_set - exclude)
+
+        def add_or_remove(config_list: list[str], cli_list: list[str]) -> list[str]:
+            if cli_list:
+                if cli_list[0] == "+":
+                    return add(config_list, cli_list)
+                if cli_list[0] == "-":
+                    return remove(config_list, cli_list)
+            return cli_list
+
+        cli_ignore_options.skip_hosts = add_or_remove(config_skip_hosts, cli_ignore_options.skip_hosts)
+        cli_ignore_options.only_hosts = add_or_remove(config_only_hosts, cli_ignore_options.only_hosts)
+
     def args_consolidation(self) -> None:
         """Consolidates runtime arguments with config values."""
+        self.process_additive_args()
         cli_config_settings = self.parsed_args.config_settings.model_dump(exclude_unset=True)
         cli_global_settings = self.parsed_args.global_settings.model_dump(exclude_unset=True)
 
