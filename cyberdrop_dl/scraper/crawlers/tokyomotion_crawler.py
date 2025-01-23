@@ -39,6 +39,8 @@ class TokioMotionCrawler(Crawler):
         self.video_div_selector = "div[id*='video_']"
         self.video_selector = 'a[href^="/video/"]'
         self.search_div_selector = "div[class^='well']"
+        self.video_date_selector = "div.pull-right.big-views-xs.visible-xs > span.text-white"
+        self.album_title_selector = "div.panel.panel-default > div.panel-heading > div.pull-left"
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -76,13 +78,18 @@ class TokioMotionCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item):
             return
 
+        canonical_url = scrape_item.url.with_path("/".join(scrape_item.url.parts[1:3]))
+        scrape_item.url = canonical_url
+        if await self.check_complete_from_referer(canonical_url):
+            return
+
         video_id = scrape_item.url.parts[2]
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         try:
-            relative_date_str = soup.select_one("div.pull-right.big-views-xs.visible-xs > span.text-white").text.strip()
-            date = await self.parse_relative_date(relative_date_str)
+            relative_date_str = soup.select_one(self.video_date_selector).text.strip()
+            date = parse_relative_date(relative_date_str)
             scrape_item.possible_datetime = date
         except AttributeError:
             pass
@@ -108,11 +115,7 @@ class TokioMotionCrawler(Crawler):
     @error_handling_wrapper
     async def albums(self, scrape_item: ScrapeItem) -> None:
         """Scrapes user albums."""
-        user = scrape_item.url.parts[2]
-        user_title = self.create_title(f"{user} [user]", scrape_item.album_id)
-        if user_title not in scrape_item.parent_title.split("/"):
-            scrape_item.add_to_parent_title(user_title)
-
+        self.add_user_title(scrape_item)
         async for soup in self.web_pager(scrape_item):
             albums = soup.select(self.album_selector)
             for album in albums:
@@ -126,24 +129,20 @@ class TokioMotionCrawler(Crawler):
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
-        title = scrape_item.url.parts[-1]
+        title = await self.get_album_title(scrape_item)
         if "user" in scrape_item.url.parts:
-            user = scrape_item.url.parts[2]
-            user_title = self.create_title(f"{user} [user]", scrape_item.album_id)
-            if user_title not in scrape_item.parent_title.split("/"):
-                scrape_item.add_to_parent_title(user_title)
+            self.add_user_title(scrape_item)
 
         else:
-            scrape_item.album_id = scrape_item.url.parts[2]
-            scrape_item.part_of_album = True
+            canonical_url = scrape_item.url.with_path("/".join(scrape_item.url.parts[1:3]))
+            scrape_item.url = canonical_url
+            album_id = scrape_item.url.parts[2]
+            scrape_item.album_id = album_id
+            title = self.create_title(title, album_id)
 
-        if self.folder_domain not in scrape_item.parent_title:
-            title = self.create_title(title, scrape_item.album_id)
+        scrape_item.part_of_album = True
 
-        if "favorite" in scrape_item.url.parts:
-            scrape_item.add_to_parent_title("favorite")
-
-        if title not in scrape_item.parent_title.split("/"):
+        if title not in scrape_item.parent_title:
             scrape_item.add_to_parent_title(title)
 
         async for soup in self.web_pager(scrape_item):
@@ -166,6 +165,7 @@ class TokioMotionCrawler(Crawler):
         """Scrapes an image."""
         if await self.check_complete_from_referer(scrape_item):
             return
+
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
         try:
@@ -183,10 +183,7 @@ class TokioMotionCrawler(Crawler):
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an user profile."""
-        user = scrape_item.url.parts[2]
-        user_title = self.create_title(f"{user} [user]", scrape_item.album_id)
-        if user_title not in scrape_item.parent_title.split("/"):
-            scrape_item.add_to_parent_title(user_title)
+        self.add_user_title(scrape_item)
 
         new_parts = ["albums", "favorite/photos", "videos", "favorite/videos"]
         scrapers = [self.albums, self.album, self.playlist, self.playlist]
@@ -200,12 +197,14 @@ class TokioMotionCrawler(Crawler):
         """Scrapes a search result."""
         search_type = scrape_item.url.query.get("search_type")
         if "search" not in scrape_item.url.parts or search_type == "users":
-            return
+            raise ScrapeError(400, "Unknown URL path")
 
         search_query = scrape_item.url.query.get("search_query")
-        search_title = self.create_title(f"{search_query} [{search_type} search]", scrape_item.album_id)
-        if search_title not in scrape_item.parent_title.split("/"):
-            scrape_item.add_to_parent_title(search_title)
+        search_title = f"{search_query} [{search_type} search]"
+        if not scrape_item.parent_title:
+            search_title = self.create_title(search_title)
+
+        scrape_item.add_to_parent_title(search_title)
 
         selector = self.video_selector
         scraper = self.video
@@ -228,20 +227,9 @@ class TokioMotionCrawler(Crawler):
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a video playlist."""
-        title = scrape_item.url.parts[-1]
-        user = scrape_item.url.parts[2]
-        user_title = self.create_title(f"{user} [user]", scrape_item.album_id)
-        if user_title not in scrape_item.parent_title.split("/"):
-            scrape_item.add_to_parent_title(user_title)
-
+        self.add_user_title(scrape_item)
         if "favorite" in scrape_item.url.parts:
             scrape_item.add_to_parent_title("favorite")
-
-        if self.folder_domain not in scrape_item.parent_title:
-            title = self.create_title(title, scrape_item.album_id)
-
-        if title not in scrape_item.parent_title.split("/"):
-            scrape_item.add_to_parent_title(title)
 
         async for soup in self.web_pager(scrape_item):
             if "This is a private" in soup.text:
@@ -253,8 +241,18 @@ class TokioMotionCrawler(Crawler):
                     continue
                 link_str: str = link_tag.get("href")
                 link = self.parse_url(link_str)
-                new_scrape_item = self.create_scrape_item(scrape_item, link, "", add_parent=scrape_item.url)
+                new_scrape_item = self.create_scrape_item(scrape_item, link, "videos", add_parent=scrape_item.url)
                 await self.video(new_scrape_item)
+
+    async def get_album_title(self, scrape_item: ScrapeItem) -> str:
+        if "favorite" in scrape_item.url.parts:
+            return "favorite"
+        if "album" in scrape_item.url.parts and len(scrape_item.url.parts) > 3:
+            return scrape_item.url.parts[3]
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+        title_tag = soup.select_one(self.album_title_selector)
+        return title_tag.get_text()
 
     async def web_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
         """Generator of website pages."""
@@ -269,20 +267,34 @@ class TokioMotionCrawler(Crawler):
             page_url_str: str = next_page.get(self.next_page_attribute)
             page_url = self.parse_url(page_url_str)
 
-    @staticmethod
-    async def parse_relative_date(relative_date: timedelta | str) -> int:
-        """Parses `datetime.timedelta` or `string` in a timedelta format. Returns `now() - parsed_timedelta` as an unix timestamp."""
-        if isinstance(relative_date, str):
-            time_str = relative_date.casefold()
-            matches: list[str] = re.findall(DATE_PATTERN, time_str)
-            time_dict = {"days": 0}  # Assume today
+    def add_user_title(self, scrape_item: ScrapeItem) -> None:
+        try:
+            user_index = scrape_item.url.parts.index("user")
+            user = scrape_item.url.parts[user_index + 1]
+        except ValueError:
+            return
+        user_title = f"{user} [user]"
+        full_user_title = self.create_title(user_title)
+        if not scrape_item.parent_title:
+            scrape_item.add_to_parent_title(full_user_title)
 
-            for value, unit in matches:
-                value = int(value)
-                unit = unit.lower()
-                time_dict[unit] = value
+        if user_title not in scrape_item.parent_title:
+            scrape_item.add_to_parent_title(user_title)
 
-            relative_date = timedelta(**time_dict)
 
-        date = datetime.now() - relative_date
-        return timegm(date.timetuple())
+def parse_relative_date(relative_date: timedelta | str) -> int:
+    """Parses `datetime.timedelta` or `string` in a timedelta format. Returns `now() - parsed_timedelta` as an unix timestamp."""
+    if isinstance(relative_date, str):
+        time_str = relative_date.casefold()
+        matches: list[str] = re.findall(DATE_PATTERN, time_str)
+        time_dict = {"days": 0}  # Assume today
+
+        for value, unit in matches:
+            value = int(value)
+            unit = unit.lower()
+            time_dict[unit] = value
+
+        relative_date = timedelta(**time_dict)
+
+    date = datetime.now() - relative_date
+    return timegm(date.timetuple())
