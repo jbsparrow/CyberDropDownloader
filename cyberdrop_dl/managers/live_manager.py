@@ -11,7 +11,7 @@ from cyberdrop_dl.utils.logger import console
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-    from rich.layout import Layout
+    from rich.console import RenderableType
 
     from cyberdrop_dl.managers.manager import Manager
 
@@ -35,7 +35,7 @@ class LiveManager:
         self.placeholder.add_task("running with no UI", total=100, completed=0)
 
     @contextmanager
-    def get_live(self, layout: Layout, stop: bool = False) -> Generator[Live]:
+    def get_live(self, layout: RenderableType, stop: bool = False) -> Generator[Live]:
         show = self.placeholder if self.no_ui else layout
         try:
             self.live.start()
@@ -48,7 +48,7 @@ class LiveManager:
     @contextmanager
     def get_main_live(self, stop: bool = False) -> Generator[Live]:
         """Main UI startup and context manager."""
-        layout = self.manager.progress_manager.layout
+        layout = self.manager.progress_manager.main_runtime_layout
         with self.get_live(layout, stop=stop) as live:
             yield live
 

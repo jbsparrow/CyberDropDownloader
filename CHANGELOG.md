@@ -5,17 +5,33 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## UNRELEASED
+## [6.3.0] - 2025-01-24
+
 
 ### Added
 
-- members.luscious.net support
-- Coomer search results support
+- Members.luscious.net support
+- Coomer and Kemono search results support
+- SendVid.com support
+- Support for forum direct link URLs (attachments) as input URLs
+- `--logs-expire-after` option: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/logs#logs_expire_after
+- `--filename-regex-filter` option: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/ignore_options#filename_regex_filter
+
+### Changed
+
+- `--rotate-logs` now creates a subfolder by date
 
 ### Fixed
 
-- bunkr reinforced link handling
+- Bunkr reinforced link handling
 - Handle encoded URLS found while scraping (every crawler)
+- Imgur crawler
+- MediaFire Crawler
+- JPG5 rate limit
+
+### Deprecated
+
+- Forums authentication settings (username, password and `xf_cookie`) will be removed in a future version
 
 ## [6.2.0] - 2025-01-10
 

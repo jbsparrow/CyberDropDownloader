@@ -163,10 +163,12 @@ class ClientManager:
         if any(domain in response.url.host for domain in ("gofile", "imgur")):
             with contextlib.suppress(ContentTypeError):
                 JSON_Resp: dict = await response.json()
-                if "status" in JSON_Resp and "notFound" in JSON_Resp["status"]:
+                status = JSON_Resp.get("status")
+                if status and isinstance(status, str) and "notFound" in status:
                     raise ScrapeError(404, origin=origin)
-                if "data" in JSON_Resp and "error" in JSON_Resp["data"]:
-                    raise ScrapeError(JSON_Resp["status"], JSON_Resp["data"]["error"], origin=origin)
+                data = JSON_Resp.get("data")
+                if data and isinstance(data, dict) and "error" in data:
+                    raise ScrapeError(status, data["error"], origin=origin)
 
         response_text = None
         with contextlib.suppress(UnicodeDecodeError):

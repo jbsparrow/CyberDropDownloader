@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 
 from aiohttp_client_cache import SQLiteBackend
 
+from cyberdrop_dl import __version__ as current_version
 from cyberdrop_dl.scraper.filters import filter_fn
 from cyberdrop_dl.utils import yaml
 from cyberdrop_dl.utils.data_enums_classes.supported_domains import SUPPORTED_FORUMS, SUPPORTED_WEBSITES
@@ -82,3 +83,6 @@ class CacheManager:
 
     async def close(self):
         await self.request_cache.close()
+
+    def close_sync(self):
+        self.save("version", current_version)

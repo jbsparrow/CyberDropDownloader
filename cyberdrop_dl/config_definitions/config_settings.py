@@ -111,6 +111,7 @@ class IgnoreOptions(BaseModel):
     skip_hosts: list[NonEmptyStr] = []
     only_hosts: list[NonEmptyStr] = []
     skip_urls: list[SkipURL] = []
+    filename_regex_filter: NonEmptyStr | None = None
 
     @field_validator("skip_hosts", "only_hosts", "skip_urls", mode="before")
     @classmethod
