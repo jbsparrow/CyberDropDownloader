@@ -49,12 +49,14 @@ class ScrapeMapper:
         for crawler in CRAWLERS:
             if not crawler.SUPPORTED_SITES:
                 site_crawler = crawler(self.manager)
+                assert site_crawler.domain not in self.existing_crawlers
                 self.existing_crawlers[site_crawler.domain] = site_crawler
                 continue
 
             for site, domains in crawler.SUPPORTED_SITES.items():
                 site_crawler = crawler(self.manager, site)
                 for domain in domains:
+                    assert domain not in self.existing_crawlers
                     self.existing_crawlers[domain] = site_crawler
 
     def start_jdownloader(self) -> None:
@@ -245,7 +247,7 @@ class ScrapeMapper:
 
         if supported_domain:
             # get most restrictive domain if multiple domain matches
-            supported_domain = max(supported_domain, key=len)
+            supported_domain = min(supported_domain, key=len)
             scraper = self.existing_crawlers[supported_domain]
             if not scraper.ready:
                 await scraper.startup()
