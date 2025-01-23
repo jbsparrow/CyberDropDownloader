@@ -46,7 +46,7 @@ When this is set to `true`, the program will skip post marked as ads by models i
 |----------------|----------|
 | `list[NonEmptyStr]` | `[]` |
 
-You can supply hosts that you'd like the program to skip, to not scrape/download from them. This setting accepts any domain, even if they are no supported. When passing hosts as CLI arguments, if the first host is `+`, any hosts after it will be added to the lists of hosts specified in the config file instead of overriding it. Similarly, if the first hosts is `-`, any hosts after it will be removed from the lists of hosts specified in the config
+You can supply hosts that you'd like the program to skip, to not scrape/download from them. This setting accepts any domain, even if they are not currently supported. When passing hosts as CLI arguments, if the first host is `+`, any hosts after it will be added to the lists of hosts specified in the config file instead of overriding it. Similarly, if the first host is `-`, any hosts after it will be removed from the lists of hosts specified in the config
 
 ## `only_hosts`
 
@@ -54,7 +54,16 @@ You can supply hosts that you'd like the program to skip, to not scrape/download
 |----------------|----------|
 | `list[NonEmptyStr]` | `[]` |
 
-You can supply hosts that you'd like the program to exclusively scrape/download from. This setting accepts any domain, even if they are no supported. When passing hosts as CLI arguments, if the first host is `+`, any hosts after it will be added to the lists of hosts specified in the config file instead of overriding it. Similarly, if the first hosts is `-`, any hosts after it will be removed from the lists of hosts specified in the config
+You can supply hosts that you'd like the program to exclusively scrape/download from. This setting accepts any domain, even if they are not currently supported. When passing hosts as CLI arguments, if the first host is `+`, any hosts after it will be added to the lists of hosts specified in the config file instead of overriding it. Similarly, if the first host is `-`, any hosts after it will be removed from the lists of hosts specified in the config
+
+## `skip_urls`
+
+| Type  | Default |
+|----------------|----------|
+| `list[URL]` | `[]` |
+
+You can supply a url that you'd like the program to skip, to not scrape/download from. This setting accepts any url in the protocol://domain format, . When passing hosts as CLI arguments, if the first url is `+`, any urls after it will be added to the lists of urls specified in the config file instead of overriding it. Similarly, if the first url is `-`, any urls after it will be removed from the lists of hosts specified in the config
+
 
 ## `filename_regex_filter`
 
