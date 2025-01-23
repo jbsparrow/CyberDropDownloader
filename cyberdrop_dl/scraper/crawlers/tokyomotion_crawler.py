@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+import contextlib
 import re
 from calendar import timegm
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING
 
-from multidict import MultiDict
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
@@ -31,7 +31,8 @@ class TokioMotionCrawler(Crawler):
 
         self.album_selector = 'a[href^="/album/"]'
         self.image_div_selector = "div[id*='_photo_']"
-        self.image_selector = 'a[href^="/photo/"]'
+        self.image_link_selector = 'a[href^="/photo/"]'
+        self.image_selector = "img[class='img-responsive-mw']"
         self.image_thumb_selector = "img[id^='album_photo_']"
         self.next_page_attribute = "href"
         self.next_page_selector = "a.prevnext"
@@ -47,9 +48,7 @@ class TokioMotionCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        new_query = MultiDict(scrape_item.url.query)
-        new_query.pop("page", None)
-        scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path).with_query(new_query)
+        scrape_item.url = scrape_item.url.without_query_params("page")
 
         if "video" in scrape_item.url.parts:
             await self.video(scrape_item)
@@ -87,12 +86,10 @@ class TokioMotionCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        try:
+        with contextlib.suppress(AttributeError):
             relative_date_str = soup.select_one(self.video_date_selector).text.strip()
             date = parse_relative_date(relative_date_str)
             scrape_item.possible_datetime = date
-        except AttributeError:
-            pass
 
         try:
             srcSD = soup.select_one('source[title="SD"]')
@@ -138,7 +135,9 @@ class TokioMotionCrawler(Crawler):
             scrape_item.url = canonical_url
             album_id = scrape_item.url.parts[2]
             scrape_item.album_id = album_id
-            title = self.create_title(title, album_id)
+            title = f"{title} {album_id}"
+            if not scrape_item.parent_title:
+                title = self.create_title(title)
 
         scrape_item.part_of_album = True
 
@@ -154,9 +153,7 @@ class TokioMotionCrawler(Crawler):
                 if not link_tag:
                     continue
                 link_str: str = link_tag.select("href")
-                link = self.parse_url(link_str)
-                link = link.with_path(link.path.replace("/tmb/", "/"))
-
+                link = self.parse_url(link_str.replace("/tmb/", "/"))
                 filename, ext = get_filename_and_ext(link.name)
                 await self.handle_file(link, scrape_item, filename, ext)
 
@@ -169,7 +166,7 @@ class TokioMotionCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
         try:
-            img = soup.select_one("img[class='img-responsive-mw']")
+            img = soup.select_one(self.image_selector)
             link_str: str = img.get("src")
             link = self.parse_url(link_str)
         except AttributeError:
@@ -184,7 +181,6 @@ class TokioMotionCrawler(Crawler):
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an user profile."""
         self.add_user_title(scrape_item)
-
         new_parts = ["albums", "favorite/photos", "videos", "favorite/videos"]
         scrapers = [self.albums, self.album, self.playlist, self.playlist]
         for part, scraper in zip(new_parts, scrapers, strict=False):
