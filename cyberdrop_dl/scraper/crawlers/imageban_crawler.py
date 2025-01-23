@@ -17,13 +17,16 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
-class ImageBanCrawler(Crawler):
+class ImageBamCrawler(Crawler):
     primary_base_domain = URL("https://www.imagebam.com/")
 
     def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "imageban", "ImageBan")
+        super().__init__(manager, "imagebam", "ImageBam")
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+    async def async_startup(self) -> None:
+        self.set_cookies()
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
@@ -34,6 +37,8 @@ class ImageBanCrawler(Crawler):
             await self.compilation(scrape_item)
         elif "show" in scrape_item.url.parts:
             await self.image(scrape_item)
+        elif "view" in scrape_item.url.parts:
+            await self.view(scrape_item)
         else:
             await self.handle_direct(scrape_item)
 
@@ -116,6 +121,19 @@ class ImageBanCrawler(Crawler):
         """Scrapes an image."""
         filename, ext = get_filename_and_ext(scrape_item.url.name)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
+
+    @error_handling_wrapper
+    async def view(self, scrape_item: ScrapeItem) -> None:
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+
+        if "Share this gallery" in soup.text:
+            return await self.album(scrape_item)
+        await self.image(scrape_item)
+
+    def set_cookies(self) -> None:
+        """Set cookies to bypass confirmation."""
+        self.client.client_manager.cookies.update_cookies({"nsfw_inter": "1"}, self.primary_base_domain)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
