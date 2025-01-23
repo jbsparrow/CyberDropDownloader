@@ -144,14 +144,14 @@ class TokioMotionCrawler(Crawler):
             scrape_item.url = canonical_url
             album_id = scrape_item.url.parts[2]
             scrape_item.album_id = album_id
-            title = f"{title} {album_id}"
-            if not scrape_item.parent_title:
-                title = self.create_title(title)
+            title = self.create_title(title, album_id)
 
         scrape_item.part_of_album = True
 
         if title not in scrape_item.parent_title:
             scrape_item.add_to_parent_title(title)
+        if title == "favorite":
+            scrape_item.add_to_parent_title("photos")
 
         async for soup in self.web_pager(scrape_item):
             if "This is a private" in soup.text:
@@ -161,7 +161,7 @@ class TokioMotionCrawler(Crawler):
                 link_tag = image.select_one(self.image_thumb_selector)
                 if not link_tag:
                     continue
-                link_str: str = link_tag.select("href")
+                link_str: str = link_tag.get("src")
                 link = self.parse_url(link_str.replace("/tmb/", "/"))
                 filename, ext = get_filename_and_ext(link.name)
                 await self.handle_file(link, scrape_item, filename, ext)
@@ -247,7 +247,7 @@ class TokioMotionCrawler(Crawler):
 
     async def get_album_title(self, scrape_item: ScrapeItem) -> str:
         if "favorite" in scrape_item.url.parts:
-            return "favorite/photos"
+            return "favorite"
         if "album" in scrape_item.url.parts and len(scrape_item.url.parts) > 3:
             return scrape_item.url.parts[3]
         async with self.request_limiter:
