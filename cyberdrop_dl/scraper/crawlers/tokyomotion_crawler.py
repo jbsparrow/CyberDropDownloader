@@ -110,18 +110,24 @@ class TokioMotionCrawler(Crawler):
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     @error_handling_wrapper
-    async def albums(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes user albums."""
-        self.add_user_title(scrape_item)
-        async for soup in self.web_pager(scrape_item):
-            albums = soup.select(self.album_selector)
-            for album in albums:
-                link_str: str = album.get("href")
-                if not link_str:
-                    continue
-                link = self.parse_url(link_str)
-                new_scrape_item = self.create_scrape_item(scrape_item, link, "albums", add_parent=scrape_item.url)
-                await self.album(new_scrape_item)
+    async def image(self, scrape_item: ScrapeItem) -> None:
+        """Scrapes an image."""
+        if await self.check_complete_from_referer(scrape_item):
+            return
+
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+        try:
+            img = soup.select_one(self.image_selector)
+            link_str: str = img.get("src")
+            link = self.parse_url(link_str)
+        except AttributeError:
+            if "This is a private" in soup.text:
+                raise ScrapeError(401, "Private Photo", origin=scrape_item) from None
+            raise ScrapeError(422, "Couldn't find image source", origin=scrape_item) from None
+
+        filename, ext = get_filename_and_ext(link.name)
+        await self.handle_file(link, scrape_item, filename, ext)
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
@@ -157,25 +163,21 @@ class TokioMotionCrawler(Crawler):
                 filename, ext = get_filename_and_ext(link.name)
                 await self.handle_file(link, scrape_item, filename, ext)
 
+    """------------------------------------------------------------------------------------------------------------------------"""
+
     @error_handling_wrapper
-    async def image(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an image."""
-        if await self.check_complete_from_referer(scrape_item):
-            return
-
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
-        try:
-            img = soup.select_one(self.image_selector)
-            link_str: str = img.get("src")
-            link = self.parse_url(link_str)
-        except AttributeError:
-            if "This is a private" in soup.text:
-                raise ScrapeError(401, "Private Photo", origin=scrape_item) from None
-            raise ScrapeError(422, "Couldn't find image source", origin=scrape_item) from None
-
-        filename, ext = get_filename_and_ext(link.name)
-        await self.handle_file(link, scrape_item, filename, ext)
+    async def albums(self, scrape_item: ScrapeItem) -> None:
+        """Scrapes user albums."""
+        self.add_user_title(scrape_item)
+        async for soup in self.web_pager(scrape_item):
+            albums = soup.select(self.album_selector)
+            for album in albums:
+                link_str: str = album.get("href")
+                if not link_str:
+                    continue
+                link = self.parse_url(link_str)
+                new_scrape_item = self.create_scrape_item(scrape_item, link, "albums", add_parent=scrape_item.url)
+                await self.album(new_scrape_item)
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
@@ -199,12 +201,10 @@ class TokioMotionCrawler(Crawler):
         search_title = f"{search_query} [{search_type} search]"
         if not scrape_item.parent_title:
             search_title = self.create_title(search_title)
-
         scrape_item.add_to_parent_title(search_title)
 
         selector = self.video_selector
         scraper = self.video
-
         if search_type == "photos":
             selector = self.album_selector
             scraper = self.album
@@ -240,6 +240,8 @@ class TokioMotionCrawler(Crawler):
                 new_scrape_item = self.create_scrape_item(scrape_item, link, "videos", add_parent=scrape_item.url)
                 await self.video(new_scrape_item)
 
+    """--------------------------------------------------------------------------------------------------------------------------"""
+
     async def get_album_title(self, scrape_item: ScrapeItem) -> str:
         if "favorite" in scrape_item.url.parts:
             return "favorite"
@@ -273,7 +275,6 @@ class TokioMotionCrawler(Crawler):
         full_user_title = self.create_title(user_title)
         if not scrape_item.parent_title:
             scrape_item.add_to_parent_title(full_user_title)
-
         if user_title not in scrape_item.parent_title:
             scrape_item.add_to_parent_title(user_title)
 
