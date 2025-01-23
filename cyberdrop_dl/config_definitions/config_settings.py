@@ -3,14 +3,14 @@ from logging import DEBUG
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ByteSize, Field, HttpURL, NonNegativeInt, PositiveInt, field_serializer, field_validator
+from pydantic import BaseModel, ByteSize, Field, NonNegativeInt, PositiveInt, field_serializer, field_validator
 
 from cyberdrop_dl.config_definitions.pydantic.validators import parse_duration_to_timedelta
 from cyberdrop_dl.utils.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE
 from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
 from cyberdrop_dl.utils.data_enums_classes.supported_domains import SUPPORTED_SITES_DOMAINS
 
-from .pydantic.custom_types import AliasModel, HttpAppriseURL, NonEmptyStr
+from .pydantic.custom_types import AliasModel, HttpAppriseURL, NonEmptyStr, SkipURL
 
 
 class DownloadOptions(BaseModel):
@@ -110,7 +110,7 @@ class IgnoreOptions(BaseModel):
     ignore_coomer_ads: bool = False
     skip_hosts: list[NonEmptyStr] = []
     only_hosts: list[NonEmptyStr] = []
-    skip_urls: list[HttpURL] = []
+    skip_urls: list[SkipURL] = []
 
     @field_validator("skip_hosts", "only_hosts", "skip_urls", mode="before")
     @classmethod

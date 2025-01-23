@@ -11,6 +11,7 @@ from pydantic import (
     Secret,
     SerializationInfo,
     StringConstraints,
+    TypeAdapter,
     model_serializer,
     model_validator,
 )
@@ -26,6 +27,8 @@ NonEmptyStr = Annotated[str, StringConstraints(min_length=1, strip_whitespace=Tr
 AnyURL = Annotated[AnyUrl, AfterValidator(convert_to_yarl)]
 SecretAnyURL = Secret[AnyURL]
 SecretHttpURL = Secret[HttpURL]
+http_url_adapter = TypeAdapter(HttpUrl)
+SkipURL = Annotated[str, AfterValidator(lambda value: str(http_url_adapter.validate_python(value)))]
 
 
 class AliasModel(BaseModel):
