@@ -140,6 +140,8 @@ class Manager:
         cli_ignore_options = self.parsed_args.config_settings.ignore_options
         config_skip_hosts = self.config_manager.settings_data.ignore_options.skip_hosts
         config_only_hosts = self.config_manager.settings_data.ignore_options.only_hosts
+        config_skip_urls = self.config_manager.settings_data.ignore_options.skip_urls
+
         exclude = {"+", "-"}
 
         def add(config_list: list[str], cli_list: list[str]) -> list[str]:
@@ -160,6 +162,7 @@ class Manager:
 
         cli_ignore_options.skip_hosts = add_or_remove(config_skip_hosts, cli_ignore_options.skip_hosts)
         cli_ignore_options.only_hosts = add_or_remove(config_only_hosts, cli_ignore_options.only_hosts)
+        cli_ignore_options.skip_urls = add_or_remove(config_skip_urls, cli_ignore_options.skip_urls)
 
     def args_consolidation(self) -> None:
         """Consolidates runtime arguments with config values."""
