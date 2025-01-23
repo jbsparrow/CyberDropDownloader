@@ -270,7 +270,7 @@ def actual_main() -> None:
             asyncio.run(director(manager))
             exit_code = 0
         except KeyboardInterrupt:
-            startup_logger.info("Trying to Exit ...")
+            Console().print("Trying to Exit ...")
         finally:
             asyncio.run(manager.close())
     loop.close()
