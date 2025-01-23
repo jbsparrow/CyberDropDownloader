@@ -185,6 +185,7 @@ class TokioMotionCrawler(Crawler):
         self.add_user_title(scrape_item)
         new_parts = ["albums", "favorite/photos", "videos", "favorite/videos"]
         scrapers = [self.albums, self.album, self.playlist, self.playlist]
+        scrape_item.part_of_album = True
         for part, scraper in zip(new_parts, scrapers, strict=False):
             link = scrape_item.url / part
             new_scrape_item = self.create_scrape_item(scrape_item, link, add_parent=scrape_item.url)
@@ -202,6 +203,7 @@ class TokioMotionCrawler(Crawler):
         if not scrape_item.parent_title:
             search_title = self.create_title(search_title)
         scrape_item.add_to_parent_title(search_title)
+        scrape_item.part_of_album = True
 
         selector = self.video_selector
         scraper = self.video
@@ -224,6 +226,7 @@ class TokioMotionCrawler(Crawler):
     async def playlist(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a video playlist."""
         self.add_user_title(scrape_item)
+        scrape_item.part_of_album = True
         if "favorite" in scrape_item.url.parts:
             scrape_item.add_to_parent_title("favorite")
 
