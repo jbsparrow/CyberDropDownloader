@@ -10,6 +10,7 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
+from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
@@ -68,8 +69,10 @@ class TokioMotionCrawler(Crawler):
         elif "user" in scrape_item.url.parts:
             await self.profile(scrape_item)
 
-        else:
+        elif "search" in scrape_item.url.parts and scrape_item.url.query.get("search_type") != "users":
             await self.search(scrape_item)
+        else:
+            log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
@@ -195,9 +198,6 @@ class TokioMotionCrawler(Crawler):
     async def search(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a search result."""
         search_type = scrape_item.url.query.get("search_type")
-        if "search" not in scrape_item.url.parts or search_type == "users":
-            raise ScrapeError(400, "Unknown URL path")
-
         search_query = scrape_item.url.query.get("search_query")
         search_title = f"{search_query} [{search_type} search]"
         if not scrape_item.parent_title:
