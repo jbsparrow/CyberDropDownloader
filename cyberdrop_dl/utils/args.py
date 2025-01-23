@@ -273,7 +273,7 @@ def parse_args() -> ParsedArgs:
     _add_args_from_model(deprecated, DeprecatedArgs, cli_args=True, deprecated=True)
     group_lists["deprecated_args"] = [deprecated]
 
-    args = parser.parse_args()
+    args = parser.parse_intermixed_args()
     parsed_args = {}
     for name, groups in group_lists.items():
         parsed_args[name] = {}
