@@ -247,7 +247,7 @@ class TokioMotionCrawler(Crawler):
 
     async def get_album_title(self, scrape_item: ScrapeItem) -> str:
         if "favorite" in scrape_item.url.parts:
-            return "favorite"
+            return "favorite/photos"
         if "album" in scrape_item.url.parts and len(scrape_item.url.parts) > 3:
             return scrape_item.url.parts[3]
         async with self.request_limiter:
