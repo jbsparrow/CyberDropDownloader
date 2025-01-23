@@ -45,7 +45,7 @@ class HistoryTable:
         await self.fix_chevereto_domains()
 
     async def fix_chevereto_domains(self) -> None:
-        query = """UPDATE media SET domain = 'jpg5.su' WHERE domain = 'sharex'"""
+        query = """UPDATE OR REPLACE media SET domain = 'jpg5.su' WHERE domain = 'sharex'"""
         cursor = await self.db_conn.cursor()
         await cursor.execute(query)
         await self.db_conn.commit()
