@@ -42,7 +42,11 @@ def retry(func: Callable) -> None:
                 if e.status != 999:
                     media_item.current_attempt += 1
 
-                log_message = f"with status {e.status} and message: {e.message}"
+                full_message = str(e.status)
+                if e.message != full_message:
+                    full_message = f"{e.status} - {e.message}"
+
+                log_message = f"with error: {full_message}"
                 log(f"{self.log_prefix} failed: {media_item.url} {log_message}", 40)
                 if media_item.current_attempt < max_attempts:
                     retry_msg = f"Retrying {self.log_prefix.lower()}: {media_item.url} , retry attempt: {media_item.current_attempt + 1}"
@@ -162,7 +166,10 @@ class Downloader:
 
         except (DownloadError, ClientResponseError) as e:
             ui_message = getattr(e, "ui_message", e.status)
-            log_message_short = log_message = f"{e.status} - {e.message}"
+            full_message = e.message
+            if e.message != ui_message:
+                full_message = f"{e.status} - {e.message}"
+            log_message_short = log_message = full_message
             log(f"{self.log_prefix} failed: {media_item.url} with error: {log_message}", 40)
             await self.manager.log_manager.write_download_error_log(media_item.url, log_message_short, origin)
             self.manager.progress_manager.download_stats_progress.add_failure(ui_message)

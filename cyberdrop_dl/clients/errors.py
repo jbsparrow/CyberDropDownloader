@@ -56,24 +56,24 @@ class PasswordProtectedError(CDLBaseError):
     def __init__(self, message: str | None = None, *, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
         """This error will be thrown when a file is password protected."""
         ui_message = "Password Protected"
-        message = message or "File/Folder is password protected"
-        super().__init__(ui_message, message=message, origin=origin)
+        msg = message or "File/Folder is password protected"
+        super().__init__(ui_message, message=msg, origin=origin)
 
 
 class MaxChildrenError(CDLBaseError):
     def __init__(self, message: str | None = None, *, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
         """This error will be thrown when an scrape item reaches its max number or children."""
         ui_message = "Max Children Reached"
-        message = message or "Max number of children reached"
-        super().__init__(ui_message, message=message, origin=origin)
+        msg = message or "Max number of children reached"
+        super().__init__(ui_message, message=msg, origin=origin)
 
 
 class DDOSGuardError(CDLBaseError):
     def __init__(self, message: str | None = None, *, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
         """This error will be thrown when DDoS-Guard is detected."""
         ui_message = "DDoS-Guard"
-        message = message or "DDoS-Guard detected"
-        super().__init__(ui_message, message=message, origin=origin)
+        msg = message or "DDoS-Guard detected"
+        super().__init__(ui_message, message=msg, origin=origin)
 
 
 class DownloadError(CDLBaseError):
@@ -82,12 +82,21 @@ class DownloadError(CDLBaseError):
     ) -> None:
         """This error will be thrown when a download fails."""
         ui_message = str(status)
+        msg = message
         if isinstance(status, int):
             try:
-                ui_message = f"{status} {HTTPStatus(status).phrase}"
+                msg = HTTPStatus(status).phrase
+                ui_message = f"{status} {msg}"
             except ValueError:
                 ui_message = f"{status} HTTP Error"
-        super().__init__(ui_message, message=message, status=status, origin=origin)
+        super().__init__(ui_message, message=msg, status=status, origin=origin)
+
+
+class SlowDownloadError(DownloadError):
+    def __init__(self, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
+        """This error will be thrown when a file will be skipped do to a low download speed."""
+        ui_message = "Slow Download"
+        super().__init__(ui_message, origin=origin)
 
 
 class InsufficientFreeSpaceError(CDLBaseError):
@@ -116,25 +125,12 @@ class MediaFireError(CDLBaseError):
 class RealDebridError(CDLBaseError):
     """Base RealDebrid API error."""
 
-    def __init__(self, response: Response, error_codes: dict[int, str]) -> None:
+    def __init__(self, response: Response, code: int, message: str) -> None:
         url = URL(response.url)
         self.path = url.path
-        try:
-            JSONResp: dict = response.json()
-            code = JSONResp.get("error_code")
-            if code == 16:
-                code = 7
-            error = error_codes.get(code, "Unknown error")
-
-        except AttributeError:
-            code = response.status_code
-            error = f"{code} - {HTTPStatus(code).phrase}"
-
-        error = error.capitalize()
-
-        """This error will be thrown when a scrape fails."""
+        msg = message.capitalize()
         ui_message = f"{code} RealDebrid Error"
-        super().__init__(ui_message, message=error, status=code, origin=url)
+        super().__init__(ui_message, message=msg, status=code, origin=url)
 
 
 class ScrapeError(CDLBaseError):
@@ -143,12 +139,14 @@ class ScrapeError(CDLBaseError):
     ) -> None:
         """This error will be thrown when a scrape fails."""
         ui_message = str(status)
+        msg = message
         if isinstance(status, int):
             try:
-                ui_message = f"{status} {HTTPStatus(status).phrase}"
+                msg = HTTPStatus(status).phrase
+                ui_message = f"{status} {msg}"
             except ValueError:
                 ui_message = f"{status} HTTP Error"
-        super().__init__(ui_message, message=message, status=status, origin=origin)
+        super().__init__(ui_message, message=msg, status=status, origin=origin)
 
 
 class LoginError(CDLBaseError):
