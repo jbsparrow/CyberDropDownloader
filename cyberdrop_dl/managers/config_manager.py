@@ -56,6 +56,8 @@ class ConfigManager:
         self.settings.parent.mkdir(parents=True, exist_ok=True)
         self.pydantic_config = self.manager.cache_manager.get("pydantic_config")
         self.load_configs()
+        if not self.manager.parsed_args.cli_only_args.appdata_folder:
+            self.manager.first_time_setup.transfer_v4_to_v6()
 
     def get_loaded_config(self):
         loaded_config = self.loaded_config or self.get_default_config()
