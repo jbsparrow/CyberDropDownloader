@@ -232,10 +232,10 @@ def _add_args_from_model(
             continue
         if cli_name == "links":
             default_options.pop("dest")
-            parser.add_argument(cli_name, metavar="LINK(S)", nargs="*", **default_options)
+            parser.add_argument(cli_name, metavar="LINK(S)", nargs="*", action="extend", **default_options)
             continue
         if arg_type in (list, set):
-            parser.add_argument(*name_or_flags, nargs="*", **default_options)
+            parser.add_argument(*name_or_flags, nargs="*", action="extend", **default_options)
             continue
         parser.add_argument(*name_or_flags, type=arg_type, **default_options)
 
@@ -273,7 +273,7 @@ def parse_args() -> ParsedArgs:
     _add_args_from_model(deprecated, DeprecatedArgs, cli_args=True, deprecated=True)
     group_lists["deprecated_args"] = [deprecated]
 
-    args = parser.parse_args()
+    args = parser.parse_intermixed_args()
     parsed_args = {}
     for name, groups in group_lists.items():
         parsed_args[name] = {}
