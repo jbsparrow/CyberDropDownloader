@@ -73,7 +73,7 @@ class Manager:
         self.config_manager = ConfigManager(self)
         self.config_manager.startup()
         if not self.parsed_args.cli_only_args.appdata_folder:
-            self.first_time_setup.transfer_v4_to_v5()
+            self.first_time_setup.transfer_v4_to_v6()
 
         self.args_consolidation()
         self.cache_manager.load_request_cache()

@@ -30,7 +30,7 @@ class TransitionManager:
         if NEW_DB_FILE.exists():
             transfer_from_old_hash_table(NEW_DB_FILE)
 
-    def transfer_v4_to_v5(self):
+    def transfer_v4_to_v6(self):
         """
         Makes some changes for transfer from v4 to v5
 
