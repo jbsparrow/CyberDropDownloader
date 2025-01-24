@@ -67,8 +67,8 @@ class ImageBamCrawler(Crawler):
         for image in images:
             link_str: str = image.get("href")
             link = self.parse_url(link_str)
-            new_scrape_item = self.create_scrape_item(scrape_item, link, add_parent=scrape_item.url)
             if not self.check_album_results(link, results):
+                new_scrape_item = self.create_scrape_item(scrape_item, link, add_parent=scrape_item.url)
                 await self.image(new_scrape_item)
             scrape_item.add_children()
 
