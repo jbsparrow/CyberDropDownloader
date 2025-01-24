@@ -118,7 +118,7 @@ class ProgramUI:
         new_config_name, old_config_path = new_config
         transfer_v4_config(self.manager, new_config_name, old_config_path)
         self.manager.config_manager.change_config(new_config_name)
-        if user_prompts.switch_default_config_to(new_config_name):
+        if user_prompts.switch_default_config_to(self.manager, new_config_name):
             self.manager.config_manager.change_default_config(new_config_name)
 
     def _import_v4_download_history(self) -> None:
@@ -142,7 +142,7 @@ class ProgramUI:
             self.manager.multiconfig = True
             return
         self.manager.config_manager.change_config(selected_config)
-        if user_prompts.switch_default_config_to(selected_config):
+        if user_prompts.switch_default_config_to(self.manager, selected_config):
             self.manager.config_manager.change_default_config(selected_config)
         self.manager.config_manager.change_config(selected_config)
 
@@ -210,7 +210,7 @@ class ProgramUI:
         config_name = user_prompts.create_new_config(self.manager)
         if not config_name:
             return
-        if user_prompts.switch_default_config_to(config_name):
+        if user_prompts.switch_default_config_to(self.manager, config_name):
             self.manager.config_manager.change_default_config(config_name)
         self.manager.config_manager.change_config(config_name)
         config_file = self.manager.path_manager.config_folder / config_name / "settings.yaml"
@@ -223,7 +223,7 @@ class ProgramUI:
         configs = self.manager.config_manager.get_configs()
         selected_config = user_prompts.select_config(configs)
         self.manager.config_manager.change_default_config(selected_config)
-        if user_prompts.activate_config(selected_config) is not None:
+        if user_prompts.activate_config(self.manager, selected_config) is not None:
             self.manager.config_manager.change_config(selected_config)
 
     def _delete_config(self) -> None:
