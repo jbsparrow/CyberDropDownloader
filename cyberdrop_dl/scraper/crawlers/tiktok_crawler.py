@@ -6,7 +6,7 @@ from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
+from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_PROFILE, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext, log
 
 if TYPE_CHECKING:
@@ -28,10 +28,10 @@ class TikTokCrawler(Crawler):
         """Determines where to send the scrape item based on the URL."""
         # await self.test(scrape_item)
 
-        if "@" in scrape_item.url.parts[1]:
+        if "video" in scrape_item.url.parts or "photo" in scrape_item.url.parts:
+            await self.video(scrape_item)
+        elif "@" in scrape_item.url.parts[1]:
             await self.profile(scrape_item)
-        # else:
-        #     await self.video(scrape_item)
 
     async def profile_post_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[dict]:
         """Generator for profile posts."""
@@ -76,13 +76,13 @@ class TikTokCrawler(Crawler):
         for image in post["images"]:
             image_url = URL(image)
             filename, ext = get_filename_and_ext(image_url.name)
+            scrape_item.add_children()
             await self.handle_file(image_url, new_scrape_item, filename, ext)
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a TikTok profile."""
-        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
-        scrape_item.part_of_album = True
+        scrape_item.set_type(FILE_HOST_PROFILE, self.manager)
 
         async for json_data in self.profile_post_pager(scrape_item):
             for item in json_data["data"]["videos"]:
@@ -95,17 +95,34 @@ class TikTokCrawler(Crawler):
                 filename, ext = f'{item["video_id"]}.mp4', "mp4"
                 date = item["create_time"]
 
-                new_scrape_item = self.create_scrape_item(scrape_item, post_url, "", True, scrape_item.album_id, date)
+                new_scrape_item = self.create_scrape_item(scrape_item, post_url, "", False, scrape_item.album_id, date)
+                scrape_item.add_children()
                 await self.handle_file(post_url, new_scrape_item, filename, ext)
 
-    # @error_handling_wrapper
-    # async def video(self, scrape_item: ScrapeItem) -> None:
-    #     """Scrapes a TikTok video."""
-    #     scrape_item.url = await self.get_stream_link(scrape_item.url)
-    #     if await self.check_complete_from_referer(scrape_item):
-    #         return
+    @error_handling_wrapper
+    async def video(self, scrape_item: ScrapeItem) -> None:
+        """Scrapes a TikTok video."""
 
-    #     async with self.request_limiter:
-    #         video_url = scrape_item.url
-    #         filename, ext = get_filename_and_ext(video_url.name)
-    #         await self.handle_file(video_url, scrape_item, filename, ext)
+        async with self.request_limiter:
+            video_data_url = self.api_url.with_query({"url": str(scrape_item.url)})
+            json_data = await self.client.get_json(self.primary_base_domain, video_data_url, origin=scrape_item)
+
+            username = scrape_item.url.parts[1][1:]
+            if scrape_item.album_id is None:
+                author_id = json_data["data"]["author"]["id"]
+                scrape_item.album_id = author_id
+                new_title = self.create_title(username)
+                scrape_item.add_to_parent_title(new_title)
+
+            json_data["data"]["video_id"] = json_data["data"]["id"]
+            if len(json_data["data"].get("images", [])) > 0:
+                await self.handle_image_post(scrape_item, json_data["data"])
+                return
+
+            video_url = URL(json_data["data"]["play"])
+            filename, ext = f'{json_data["data"]["video_id"]}.mp4', "mp4"
+            date = json_data["data"]["create_time"]
+
+            new_scrape_item = self.create_scrape_item(scrape_item, video_url, "", False, scrape_item.album_id, date)
+            scrape_item.add_children()
+            await self.handle_file(video_url, new_scrape_item, filename, ext)
