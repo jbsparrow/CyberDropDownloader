@@ -364,6 +364,7 @@ class DownloadClient:
 
             media_item.filename = downloaded_filename
         media_item.download_filename = media_item.complete_file.name
+        await self.manager.db_manager.history_table.add_download_filename(domain, media_item)
         return proceed, skip
 
     async def iterate_filename(self, complete_file: Path, media_item: MediaItem) -> tuple[Path, Path | None]:
