@@ -7,7 +7,7 @@ from yarl import URL
 
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_PROFILE, ScrapeItem
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext, log
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -26,7 +26,6 @@ class TikTokCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the URL."""
-        # await self.test(scrape_item)
 
         if "video" in scrape_item.url.parts or "photo" in scrape_item.url.parts:
             await self.video(scrape_item)
@@ -60,12 +59,6 @@ class TikTokCrawler(Crawler):
             break
 
     @error_handling_wrapper
-    async def test(self, scrape_item: ScrapeItem) -> None:
-        """Tests the TikTok crawler."""
-        username = scrape_item.url.parts[1][1:]
-        log(username)
-
-    @error_handling_wrapper
     async def handle_image_post(self, scrape_item: ScrapeItem, post: dict) -> None:
         """Handles an image carousel post."""
         post_id = post["video_id"]
@@ -78,6 +71,8 @@ class TikTokCrawler(Crawler):
             filename, ext = get_filename_and_ext(image_url.name)
             scrape_item.add_children()
             await self.handle_file(image_url, new_scrape_item, filename, ext)
+        if self.manager.parsed_args.cli_only_args.download_tiktok_audios:
+            await self.handle_audio(new_scrape_item, post)
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
@@ -97,6 +92,8 @@ class TikTokCrawler(Crawler):
 
                 new_scrape_item = self.create_scrape_item(scrape_item, post_url, "", True, scrape_item.album_id, date)
                 scrape_item.add_children()
+                if self.manager.parsed_args.cli_only_args.download_tiktok_audios:
+                    await self.handle_audio(new_scrape_item, item)
                 await self.handle_file(post_url, new_scrape_item, filename, ext)
 
     @error_handling_wrapper
@@ -125,4 +122,18 @@ class TikTokCrawler(Crawler):
 
             new_scrape_item = self.create_scrape_item(scrape_item, video_url, "", True, scrape_item.album_id, date)
             scrape_item.add_children()
+            if self.manager.parsed_args.cli_only_args.download_tiktok_audios:
+                await self.handle_audio(new_scrape_item, json_data["data"])
             await self.handle_file(video_url, new_scrape_item, filename, ext)
+
+    @error_handling_wrapper
+    async def handle_audio(self, scrape_item: ScrapeItem, data: dict) -> None:
+        """Handles an audio file."""
+        audio_url = URL(data["music_info"]["play"])
+        filename = f'{data["music_info"]["title"]}.mp3'
+        ext = "mp3"
+        new_scrape_item = self.create_scrape_item(
+            scrape_item, audio_url, "Audios", True, scrape_item.album_id, data["create_time"]
+        )
+        scrape_item.add_children()
+        await self.handle_file(audio_url, new_scrape_item, filename, ext)
