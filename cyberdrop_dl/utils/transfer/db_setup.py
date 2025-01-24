@@ -79,7 +79,7 @@ class TransitionManager:
         if Path("./config.yaml").is_file():
             try:
                 transfer_v4_config(self.manager, "Imported V4", Path("./config.yaml"))
-                self.update_default_config("Imported V4")
+                self.manager.config_manager.change_default_config("Imported V4")
                 self.manager.config_manager.change_config("Imported V4")
             except OSError:
                 pass
@@ -108,11 +108,4 @@ class TransitionManager:
         """Updates the cache to reflect the new location."""
         cache = yaml.load(CACHE_FILE, create=True)
         cache["first_startup_completed"] = True
-        yaml.save(CACHE_FILE, cache)
-
-    @staticmethod
-    def update_default_config(config_name: str) -> None:
-        """Updates the default config in the cache"""
-        cache = yaml.load(CACHE_FILE, create=True)
-        cache["default_config"] = config_name
         yaml.save(CACHE_FILE, cache)

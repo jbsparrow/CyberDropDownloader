@@ -117,7 +117,7 @@ class ProgramUI:
         transfer_v4_config(self.manager, new_config_name, old_config_path)
         self.manager.config_manager.change_config(new_config_name)
         if user_prompts.switch_default_config(new_config_name):
-            self.manager.first_time_setup.update_default_config(new_config_name)
+            self.manager.config_manager.change_default_config(new_config_name)
 
     def _import_v4_download_history(self) -> None:
         import_download_history_path = user_prompts.import_v4_download_history_prompt()
@@ -141,8 +141,8 @@ class ProgramUI:
             return
         self.manager.config_manager.change_config(selected_config)
         if user_prompts.switch_default_config(selected_config):
-            self.manager.first_time_setup.update_default_config(selected_config)
-            self.manager.config_manager.change_config(selected_config)
+            self.manager.config_manager.change_default_config(selected_config)
+        self.manager.config_manager.change_config(selected_config)
 
     def _view_changelog(self) -> None:
         clear_term()
@@ -208,6 +208,8 @@ class ProgramUI:
         config_name = user_prompts.create_new_config(self.manager)
         if not config_name:
             return
+        if user_prompts.switch_default_config(config_name):
+            self.manager.config_manager.change_default_config(config_name)
         self.manager.config_manager.change_config(config_name)
         config_file = self.manager.path_manager.config_folder / config_name / "settings.yaml"
         self._open_in_text_editor(config_file)
@@ -219,6 +221,8 @@ class ProgramUI:
         configs = self.manager.config_manager.get_configs()
         selected_config = user_prompts.select_config(configs)
         self.manager.config_manager.change_default_config(selected_config)
+        if user_prompts.active_config_bool(selected_config) is not None:
+            self.manager.config_manager.change_config(selected_config)
 
     def _delete_config(self) -> None:
         configs = self.manager.config_manager.get_configs()
@@ -236,6 +240,8 @@ class ProgramUI:
             return
 
         self.manager.config_manager.delete_config(selected_config)
+        if user_prompts.default_config_bool():
+            self._change_default_config()
 
     def _edit_auto_cookies_extration(self) -> None:
         user_prompts.auto_cookie_extraction(self.manager)
