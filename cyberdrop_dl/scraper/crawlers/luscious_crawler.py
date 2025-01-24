@@ -80,7 +80,7 @@ class LusciousCrawler(Crawler):
             }
         return dump_json(data)
 
-    async def paginator(self, scrape_item: ScrapeItem, is_album: bool) -> AsyncGenerator[dict]:
+    async def paginator(self, scrape_item: ScrapeItem, is_album: bool = False) -> AsyncGenerator[dict]:
         """Generator for album pages."""
         page = int(scrape_item.url.query.get("page", 1))
         query_name = "PictureListInsideAlbum" if is_album else "AlbumListWithPeek"
