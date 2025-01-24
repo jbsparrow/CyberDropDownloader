@@ -90,6 +90,7 @@ class Downloader:
 
         self.waiting_items += 1
         media_item.current_attempt = 0
+        await self.client.mark_incomplete(media_item, self.domain)
         async with self._semaphore:
             self.waiting_items -= 1
             self.processed_items.add(media_item.url.path)
