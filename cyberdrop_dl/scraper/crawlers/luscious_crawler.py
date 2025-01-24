@@ -143,7 +143,8 @@ class LusciousCrawler(Crawler):
 
         async for json_data in self.paginator(scrape_item):
             for item in json_data["data"]["album"]["list"]["items"]:
-                album_url = self.primary_base_domain / item["url"].replace("/albums/", "albums/")
+                album_url_str: str = item["url"]
+                album_url = self.parse_url(album_url_str)
                 new_scrape_item = self.create_scrape_item(
                     parent_scrape_item=scrape_item,
                     url=album_url,
