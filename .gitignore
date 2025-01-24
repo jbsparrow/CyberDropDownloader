@@ -10,10 +10,6 @@
 .config.yaml
 /build
 
-#config files
-*.yaml
-*.yml
-
 # Python cache
 __pycache__
 # venv

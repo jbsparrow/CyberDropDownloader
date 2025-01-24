@@ -105,21 +105,21 @@ def select_config(configs: list) -> str:
     )
 
 
-def switch_default_config(config_name) -> str:
+def switch_default_config_to(config_name) -> str:
     """Asks the user if they want to switch the default config to the provided config"""
     return basic_prompts.ask_toggle(
         message=f"Do you want to switch the default config to {config_name}?",
     )
 
 
-def default_config_bool() -> str:
+def switch_default_config() -> str:
     """Asks the user if they want to switch the default config"""
     return basic_prompts.ask_toggle(
         message="Do you want to switch the default config?",
     )
 
 
-def active_config_bool(config) -> str:
+def activate_config(config) -> str:
     """Asks the user if they want to activate the provided config"""
     return basic_prompts.ask_toggle(message=f"Do also want to activate the {config} config?")
 
