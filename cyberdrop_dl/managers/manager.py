@@ -258,11 +258,9 @@ class Manager:
         """Closes the manager."""
         if not isinstance(self.client_manager, Field):
             await self.client_manager.close()
-        if not isinstance(self.db_manager, Field):
-            await self.db_manager.close()
+        await self.async_db_close()
         await self.cache_manager.close()
         self.cache_manager.close_sync()
-        self.db_manager: DBManager = field(init=False)
         self.cache_manager: CacheManager = field(init=False)
         self.hash_manager: HashManager = field(init=False)
 
