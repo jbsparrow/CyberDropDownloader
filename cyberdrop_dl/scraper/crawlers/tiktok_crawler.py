@@ -95,7 +95,7 @@ class TikTokCrawler(Crawler):
                 filename, ext = f'{item["video_id"]}.mp4', "mp4"
                 date = item["create_time"]
 
-                new_scrape_item = self.create_scrape_item(scrape_item, post_url, "", False, scrape_item.album_id, date)
+                new_scrape_item = self.create_scrape_item(scrape_item, post_url, "", True, scrape_item.album_id, date)
                 scrape_item.add_children()
                 await self.handle_file(post_url, new_scrape_item, filename, ext)
 
@@ -123,6 +123,6 @@ class TikTokCrawler(Crawler):
             filename, ext = f'{json_data["data"]["video_id"]}.mp4', "mp4"
             date = json_data["data"]["create_time"]
 
-            new_scrape_item = self.create_scrape_item(scrape_item, video_url, "", False, scrape_item.album_id, date)
+            new_scrape_item = self.create_scrape_item(scrape_item, video_url, "", True, scrape_item.album_id, date)
             scrape_item.add_children()
             await self.handle_file(video_url, new_scrape_item, filename, ext)
