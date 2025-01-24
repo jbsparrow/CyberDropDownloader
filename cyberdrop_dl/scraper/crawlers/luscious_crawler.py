@@ -40,7 +40,7 @@ class LusciousCrawler(Crawler):
             log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
             return
         if scrape_item.url.parts[-1] == "list":
-            await self.search(scrape_item)
+            return await self.search(scrape_item)
         await self.album(scrape_item)
 
     async def create_graphql_query(self, operation: str, scrape_item: ScrapeItem, page: int = 1) -> str:
