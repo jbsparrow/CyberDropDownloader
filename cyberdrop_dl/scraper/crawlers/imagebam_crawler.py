@@ -69,7 +69,7 @@ class ImageBamCrawler(Crawler):
             link = self.parse_url(link_str)
             if not self.check_album_results(link, results):
                 new_scrape_item = self.create_scrape_item(scrape_item, link, add_parent=scrape_item.url)
-                await self.image(new_scrape_item)
+                self.manager.task_group.create_task(self.image(new_scrape_item))
             scrape_item.add_children()
 
     @error_handling_wrapper

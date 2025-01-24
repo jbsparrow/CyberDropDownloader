@@ -20,7 +20,7 @@ from cyberdrop_dl.scraper.crawlers.f95zone_crawler import F95ZoneCrawler
 from cyberdrop_dl.scraper.crawlers.fapello_crawler import FapelloCrawler
 from cyberdrop_dl.scraper.crawlers.gofile_crawler import GoFileCrawler
 from cyberdrop_dl.scraper.crawlers.hotpic_crawler import HotPicCrawler
-from cyberdrop_dl.scraper.crawlers.imageban_crawler import ImageBamCrawler
+from cyberdrop_dl.scraper.crawlers.imagebam_crawler import ImageBamCrawler
 from cyberdrop_dl.scraper.crawlers.imgbb_crawler import ImgBBCrawler
 from cyberdrop_dl.scraper.crawlers.imgbox_crawler import ImgBoxCrawler
 from cyberdrop_dl.scraper.crawlers.imgur_crawler import ImgurCrawler
