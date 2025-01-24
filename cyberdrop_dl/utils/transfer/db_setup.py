@@ -94,18 +94,16 @@ class TransitionManager:
 
         self.set_first_startup_completed()
 
-    @staticmethod
-    def check_cache_for_moved() -> bool:
+    def check_cache_for_moved(self) -> bool:
         """Checks the cache for moved files."""
         cache = yaml.load(CACHE_FILE, create=True)
         if not cache:
             cache = {"first_startup_completed": False}
-            yaml.save(CACHE_FILE, cache)
+            self.manager.cache_manager.dump(cache)
         return bool(cache.get("first_startup_completed", False))
 
-    @staticmethod
-    def set_first_startup_completed() -> None:
+    def set_first_startup_completed(self) -> None:
         """Updates the cache to reflect the new location."""
         cache = yaml.load(CACHE_FILE, create=True)
         cache["first_startup_completed"] = True
-        yaml.save(CACHE_FILE, cache)
+        self.manager.cache_manager.dump(cache)

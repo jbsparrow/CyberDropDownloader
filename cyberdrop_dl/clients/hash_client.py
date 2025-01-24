@@ -122,7 +122,6 @@ class HashClient:
             log(f"Error hashing {file} : {e}", 40, exc_info=True)
         return hash
 
-
     def save_hash_data(self, media_item, hash):
         absolute_path = media_item.complete_file.resolve()
         size = media_item.complete_file.stat().st_size
