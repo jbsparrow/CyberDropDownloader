@@ -39,9 +39,9 @@ class TransitionManager:
         OLD_DOWNLOAD_STORAGE = Path(platformdirs.user_downloads_path()) / "Cyberdrop-DL Downloads"
         OLD_DB_STORAGE = Path(platformdirs.user_data_dir("Cyberdrop-DL"))
 
-        if constants.APP_STORAGE.exists():
-            if CACHE_FILE.is_file() and self.check_cache_for_moved():
-                return
+        self.manager.config_manager.settings.parent.mkdir(parents=True, exist_ok=True)
+        if self.check_cache_for_moved():
+            return
 
         OLD_FILES = Path("./Old Files")
         OLD_FILES.mkdir(parents=True, exist_ok=True)
@@ -79,11 +79,11 @@ class TransitionManager:
         if Path("./config.yaml").is_file():
             try:
                 transfer_v4_config(self.manager, "Imported V4", Path("./config.yaml"))
-                self.update_default_config_first_time("Imported V4")
+                self.update_default_config("Imported V4")
+                self.manager.config_manager.change_config("Imported V4")
             except OSError:
                 pass
             Path("./config.yaml").rename(OLD_FILES / "config.yaml")
-            self.manager.config_manager.change_config("Imported V4")
 
         if Path("./Errored_Download_URLs.csv").is_file():
             Path("./Errored_Download_URLs.csv").rename(OLD_FILES / "Errored_Download_URLs.csv")
@@ -108,15 +108,6 @@ class TransitionManager:
         """Updates the cache to reflect the new location."""
         cache = yaml.load(CACHE_FILE, create=True)
         cache["first_startup_completed"] = True
-        yaml.save(CACHE_FILE, cache)
-
-    @staticmethod
-    def update_default_config_first_time(config_name: str) -> None:
-        """Updates the default config in the cache during first time startup"""
-        cache = yaml.load(CACHE_FILE, create=True)
-        if not cache:
-            cache = {"first_startup_completed": False}
-        cache["default_config"] = config_name
         yaml.save(CACHE_FILE, cache)
 
     @staticmethod
