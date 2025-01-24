@@ -67,7 +67,7 @@ class ImageBamCrawler(Crawler):
         for image in images:
             link_str: str = image.get("href")
             link = self.parse_url(link_str)
-            new_scrape_item = self.create_scrape_item(scrape_item, link)
+            new_scrape_item = self.create_scrape_item(scrape_item, link, add_parent=scrape_item.url)
             if not self.check_album_results(link, results):
                 await self.image(new_scrape_item)
             scrape_item.add_children()
@@ -103,8 +103,8 @@ class ImageBamCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     def is_cdn(self, url: URL) -> bool:
-        bare_host = url.host.strip(".com")
-        return "imageban" in url.host.split(".") and "." in bare_host
+        host: str = url.host
+        return "imagebam" in host.split(".") and "." in host.rstrip(".com")
 
     def get_view_url(self, url: URL) -> URL:
         view_id = url.name.rsplit("_", 1)[0]
