@@ -246,6 +246,14 @@ class Manager:
         ):
             log("Regex pattern of filename filter is invalid. Regex check has been disabled", 40)
 
+    async def async_db_close(self) -> None:
+        "Partial shutdown for managers used for hash directory scanner"
+        if not isinstance(self.db_manager, Field):
+            await self.db_manager.close()
+        self.db_manager: DBManager = field(init=False)
+        self.hash_manager: HashManager = field(init=False)
+        self.progress_manager.hash_progress.reset()
+
     async def close(self) -> None:
         """Closes the manager."""
         if not isinstance(self.client_manager, Field):
