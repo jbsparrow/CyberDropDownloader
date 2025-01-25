@@ -56,10 +56,15 @@ class TikTokCrawler(Crawler):
 
     @error_handling_wrapper
     async def handle_image_post(self, scrape_item: ScrapeItem, post: dict) -> None:
+        author_id = post["author"]["id"]
         post_id = post["video_id"]
+        canonical_url = await self.get_canonical_url(author_id, post_id)
+        if await self.check_complete_from_referer(canonical_url):
+            return
+
         title = post.get("title") or f"Post {post_id}"
         new_scrape_item = self.create_scrape_item(
-            scrape_item, scrape_item.url, title, True, post_id, post["create_time"]
+            scrape_item, canonical_url, title, True, post_id, post["create_time"]
         )
         for image_url in map(self.parse_url, post["images"]):
             filename, ext = get_filename_and_ext(image_url.name)
@@ -72,13 +77,20 @@ class TikTokCrawler(Crawler):
         scrape_item.set_type(FILE_HOST_PROFILE, self.manager)
         async for json_data in self.profile_post_pager(scrape_item):
             for item in json_data["data"]["videos"]:
+                author_id = item["author"]["id"]
+                post_id = item["video_id"]
+                canonical_url = await self.get_canonical_url(author_id, post_id)
+                if await self.check_complete_from_referer(canonical_url):
+                    continue
+
+
                 post_url = self.parse_url(item["play"])
                 if item.get("images"):
                     await self.handle_image_post(scrape_item, item)
                 elif not post_url.path.endswith("mp3"):
                     filename, ext = f'{item["video_id"]}.mp4', "mp4"
                     new_scrape_item = self.create_scrape_item(
-                        scrape_item, post_url, "", True, scrape_item.album_id, item["create_time"]
+                        scrape_item, canonical_url, "", True, scrape_item.album_id, item["create_time"]
                     )
                     scrape_item.add_children()
                     await self.handle_audio(new_scrape_item, item)
@@ -89,6 +101,12 @@ class TikTokCrawler(Crawler):
         async with self.request_limiter:
             video_data_url = self.api_url.with_query({"url": str(scrape_item.url)})
             json_data = await self.client.get_json(self.domain, video_data_url, origin=scrape_item)
+
+            author_id = json_data["data"]["author"]["id"]
+            video_id = json_data["data"]["id"]
+            canonical_url = await self.get_canonical_url(author_id, video_id)
+            if await self.check_complete_from_referer(canonical_url):
+                return
 
             if scrape_item.album_id is None:
                 scrape_item.album_id = json_data["data"]["author"]["id"]
@@ -102,7 +120,7 @@ class TikTokCrawler(Crawler):
             video_url = self.parse_url(json_data["data"]["play"])
             filename, ext = f'{json_data["data"]["video_id"]}.mp4', "mp4"
             new_scrape_item = self.create_scrape_item(
-                scrape_item, scrape_item.url, "", True, scrape_item.album_id, json_data["data"]["create_time"]
+                scrape_item, canonical_url, "", True, scrape_item.album_id, json_data["data"]["create_time"]
             )
             scrape_item.add_children()
             if self.manager.parsed_args.cli_only_args.download_tiktok_audios:
@@ -113,16 +131,33 @@ class TikTokCrawler(Crawler):
     async def handle_audio(self, scrape_item: ScrapeItem, data: dict, new_folder: bool = True) -> None:
         if not self.manager.parsed_args.cli_only_args.download_tiktok_audios:
             return
+        title = data["music_info"]["title"]
+        audio_id = data["music_info"]["id"]
+        canonical_audio_url = await self.get_canonical_audio_url(title, audio_id)
+        if await self.check_complete_from_referer(canonical_audio_url):
+            return
+
         audio_url = self.parse_url(data["music_info"]["play"])
         filename = f'{data["music_info"]["title"]}.mp3'
         filename, ext = get_filename_and_ext(filename)
         new_scrape_item = self.create_scrape_item(
             scrape_item,
-            scrape_item.url,
+            canonical_audio_url,
             "Audios" if new_folder else "",
             True,
             scrape_item.album_id,
             data["create_time"],
         )
+
         await self.handle_file(audio_url, new_scrape_item, filename, ext)
         scrape_item.add_children()
+
+    async def get_canonical_url(self, author: str, post_id: str = None) -> URL:
+        if post_id is None:
+            return self.primary_base_domain / f"@{author}"
+        return self.primary_base_domain / f"@{author}/video/{post_id}"
+
+    async def get_canonical_audio_url(self, audio_title: str, audio_id: str) -> URL:
+        if "original audio" in audio_title.lower():
+            return self.primary_base_domain / f"music/original-audio-{audio_id}"
+        return self.primary_base_domain / f"music/{audio_title.replace(' ', '-').lower()}-{audio_id}"
