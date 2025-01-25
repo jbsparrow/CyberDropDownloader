@@ -108,6 +108,7 @@ class ClientManager:
             return
 
         domains_seen = set()
+        cookie_jars = []
         for file in cookie_files:
             cookie_jar = MozillaCookieJar(file)
             try:
@@ -116,6 +117,7 @@ class ClientManager:
                 log(f"Unable to load cookies from '{file.name}':\n  {e!s}", 40)
                 continue
             current_cookie_file_domains = set()
+            cookie_jars.append(cookie_jar)
             for cookie in cookie_jar:
                 simplified_domain = cookie.domain.removeprefix(".")
                 if simplified_domain not in current_cookie_file_domains:
@@ -126,6 +128,10 @@ class ClientManager:
                 domains_seen.add(simplified_domain)
                 self.cookies.update_cookies({cookie.name: cookie.value}, response_url=URL(f"https://{cookie.domain}"))  # type: ignore
 
+        yt_dlp_cookies_file = self.manager.path_manager.cookies_dir / "cookies.yt_dlp"
+        yt_dlp_cookie_jar = merge_cookie_jars(cookie_jars)
+        yt_dlp_cookies_file.unlink(missing_ok=True)
+        yt_dlp_cookie_jar.save(yt_dlp_cookies_file, ignore_discard=True, ignore_expires=True)
         log_spacer(20, log_to_console=False)
 
     async def get_downloader_spacer(self, key: str) -> float:
@@ -361,3 +367,13 @@ class Flaresolverr:
                 )
 
         return fs_resp.soup, fs_resp.url
+
+
+def merge_cookie_jars(*cookie_jars):
+    """Merge multiple MozillaCookieJar instances into one."""
+    merged_jar = MozillaCookieJar()
+    for jar in cookie_jars:
+        for cookie in jar:
+            merged_jar.set_cookie(cookie)
+
+    return merged_jar
