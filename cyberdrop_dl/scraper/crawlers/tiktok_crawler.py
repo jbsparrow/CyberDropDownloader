@@ -91,9 +91,9 @@ class TikTokCrawler(Crawler):
                     new_scrape_item = self.create_scrape_item(
                         scrape_item, canonical_url, "", True, scrape_item.album_id, item["create_time"]
                     )
-                    scrape_item.add_children()
                     await self.handle_audio(new_scrape_item, item)
                     await self.handle_file(post_url, new_scrape_item, filename, ext)
+                    scrape_item.add_children()
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
@@ -121,10 +121,9 @@ class TikTokCrawler(Crawler):
             new_scrape_item = self.create_scrape_item(
                 scrape_item, canonical_url, "", True, scrape_item.album_id, json_data["data"]["create_time"]
             )
-            scrape_item.add_children()
-            if self.manager.parsed_args.cli_only_args.download_tiktok_audios:
-                await self.handle_audio(new_scrape_item, json_data["data"])
+            await self.handle_audio(new_scrape_item, json_data["data"])
             await self.handle_file(video_url, new_scrape_item, filename, ext)
+            scrape_item.add_children()
 
     @error_handling_wrapper
     async def handle_audio(self, scrape_item: ScrapeItem, data: dict, new_folder: bool = True) -> None:
