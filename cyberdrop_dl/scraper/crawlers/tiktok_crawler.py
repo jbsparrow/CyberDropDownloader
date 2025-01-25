@@ -82,8 +82,7 @@ class TikTokCrawler(Crawler):
                         scrape_item, post_url, "", True, scrape_item.album_id, item["create_time"]
                     )
                     scrape_item.add_children()
-                    if self.manager.parsed_args.cli_only_args.download_tiktok_audios:
-                        await self.handle_audio(new_scrape_item, item)
+                    await self.handle_audio(new_scrape_item, item)
                     await self.handle_file(post_url, new_scrape_item, filename, ext)
 
     @error_handling_wrapper
