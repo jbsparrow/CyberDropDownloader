@@ -57,7 +57,7 @@ class TikTokCrawler(Crawler):
     @error_handling_wrapper
     async def handle_image_post(self, scrape_item: ScrapeItem, post: dict) -> None:
         post_id = post["video_id"]
-        title = post["title"] if post["title"] else f"Post {post_id}"
+        title = post.get("title") or f"Post {post_id}"
         new_scrape_item = self.create_scrape_item(
             scrape_item, scrape_item.url, title, True, post_id, post["create_time"]
         )
