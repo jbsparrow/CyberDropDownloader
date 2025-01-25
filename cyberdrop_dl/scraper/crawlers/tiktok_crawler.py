@@ -73,7 +73,7 @@ class TikTokCrawler(Crawler):
         scrape_item.set_type(FILE_HOST_PROFILE, self.manager)
         async for json_data in self.profile_post_pager(scrape_item):
             for item in json_data["data"]["videos"]:
-                post_url = URL(item["play"])
+                post_url = self.parse_url(item["play"])
                 if item.get("images"):
                     await self.handle_image_post(scrape_item, item)
                 elif not post_url.path.endswith("mp3"):
