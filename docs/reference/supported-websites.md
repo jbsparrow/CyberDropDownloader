@@ -10,6 +10,7 @@ icon: globe-pointer
 |-----------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | Bunkrr          | Albums: `/a/...` <br> Videos: `/v/...` <br> Others: `/f/...` <br> Direct links |
 | Coomer          | Fansly Model: `/fansly/user/<user>` <br> Favorites: `/favorites` <br> Search: `/search?...` <br> Individual Post: `/<service>/user/<user>/post/<post_id>` <br> OnlyFans Model: `/onlyfans/user/<user>` <br> Direct links |
+| Comics.8muses.com | Album: `/comics/album/...` |
 | Cyberdrop       | Albums: `/a/...` <br> Files: `/f/...` <br> Direct links |
 | Cyberfile       | Files: `/...` <br> Folders: `/folder/...` <br> Shared: `/shared/...` |
 | E-Hentai        | Albums: `/g/...` <br> Files: `/s/...` |

@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add support for https://comics.8muses.com
 - Add support for https://www.imagebam.com
 
 ### Removed
