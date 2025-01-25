@@ -116,6 +116,7 @@ class TikTokCrawler(Crawler):
             return
         audio_url = self.parse_url(data["music_info"]["play"])
         filename = f'{data["music_info"]["title"]}.mp3'
+        filename, ext = get_filename_and_ext(filename)
         new_scrape_item = self.create_scrape_item(
             scrape_item, audio_url, "Audios" if new_folder else "", True, scrape_item.album_id, data["create_time"]
         )
