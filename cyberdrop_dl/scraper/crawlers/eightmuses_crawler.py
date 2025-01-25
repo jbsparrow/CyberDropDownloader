@@ -73,7 +73,7 @@ class EightMusesCrawler(Crawler):
                 image_link = self.parse_url(image.select_one("img").get("data-src").replace("/th/", "/fm/"))
                 new_scrape_item = self.create_scrape_item(
                     scrape_item,
-                    image_link,
+                    tile_link,
                     tile_title,
                     False,
                     f'{scrape_item.album_id}/{tile_title.replace(" ", "-")}',
