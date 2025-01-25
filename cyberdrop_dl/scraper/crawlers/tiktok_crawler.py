@@ -27,8 +27,10 @@ class TikTokCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if any(part in scrape_item.url.parts for part in ("video", "photo")):
             await self.video(scrape_item)
-        elif "@" in scrape_item.url.parts[1]:
+        elif len(scrape_item.url.parts)>0 and "@" in scrape_item.url.parts[1]::
             await self.profile(scrape_item)
+        else:
+            log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
 
     async def profile_post_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[dict]:
         username = scrape_item.url.parts[1][1:]
