@@ -76,6 +76,8 @@ class YtDlpCrawler(Crawler):
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "youtube", "Youtube")
         self.cookies_file = self.manager.path_manager.cookies_dir / "cookies.yt_dlp"
+        self.archive_file = self.manager.path_manager.cache_folder / "yt_dlp_archive.txt"
+        self.options = {"cookiefile": str(self.cookies_file), "download_archive": str(self.archive_file)}
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
@@ -91,6 +93,8 @@ class YtDlpCrawler(Crawler):
         if info is None:
             info = await self.extract_info(scrape_item)
         if not info:
+            return
+        if await self.check_archive(info):
             return
         format_ids = format_selector(info)
         formats = get_formats(info, format_ids)
@@ -120,9 +124,16 @@ class YtDlpCrawler(Crawler):
         return False
 
     async def extract_info(self, scrape_item: ScrapeItem, **options) -> dict:
-        """Helper function to add cookies before calling yt-dlp"""
-        options = options | {"cookiefile": str(self.cookies_file)}
+        """Helper function to add cookies and archive file before calling yt-dlp"""
+        options = options | self.options
         return await extract_info_async(scrape_item, **options)
+
+    async def check_archive(self, info: dict) -> bool:
+        def is_in_archive():
+            with yt_dlp_context(**self.options) as ydl:
+                return ydl.in_download_archive(info)
+
+        return await asyncio.to_thread(is_in_archive)
 
 
 def format_selector(info: dict) -> tuple[str]:
