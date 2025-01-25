@@ -26,7 +26,7 @@ class TikTokCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        if any(part in scrape_item.url.parts for part in ("video", "photo", "v")):
+        if any(part in scrape_item.url.parts for part in ("video", "photo", "v")) or scrape_item.url.host.startswith("vm.tiktok"):
             await self.video(scrape_item)
         elif len(scrape_item.url.parts) > 1 and "@" in scrape_item.url.parts[1]:
             await self.profile(scrape_item)
