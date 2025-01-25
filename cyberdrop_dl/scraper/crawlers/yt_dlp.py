@@ -4,6 +4,7 @@ import asyncio
 import json
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, fields
+from functools import lru_cache
 from typing import TYPE_CHECKING
 
 from yarl import URL
@@ -65,9 +66,13 @@ class YtDlpFormat:
 
     @classmethod
     def from_dict(cls, format_dict: dict) -> YtDlpFormat:
-        field_names = [f.name for f in fields(cls)]
-        proper_dict = {k: v for k, v in format_dict.items() if k in field_names}
+        proper_dict = {k: v for k, v in format_dict.items() if k in cls.field_names}
         return cls(**proper_dict)
+
+    @classmethod
+    @lru_cache
+    def field_names(cls) -> list[str]:
+        return [f.name for f in fields(cls)]
 
 
 class YtDlpCrawler(Crawler):
