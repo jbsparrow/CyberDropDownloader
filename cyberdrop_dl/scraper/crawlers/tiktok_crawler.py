@@ -61,7 +61,7 @@ class TikTokCrawler(Crawler):
         new_scrape_item = self.create_scrape_item(
             scrape_item, scrape_item.url, title, True, post_id, post["create_time"]
         )
-        for image_url in map(URL, post["images"]):
+        for image_url in map(self.parse_url, post["images"]):
             filename, ext = get_filename_and_ext(image_url.name)
             scrape_item.add_children()
             await self.handle_file(image_url, new_scrape_item, filename, ext)
