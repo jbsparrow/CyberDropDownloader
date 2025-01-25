@@ -88,7 +88,7 @@ class TikTokCrawler(Crawler):
     async def video(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
             video_data_url = self.api_url.with_query({"url": str(scrape_item.url)})
-            json_data = await self.client.get_json(self.primary_base_domain, video_data_url, origin=scrape_item)
+            json_data = await self.client.get_json(self.domain, video_data_url, origin=scrape_item)
 
             if scrape_item.album_id is None:
                 scrape_item.album_id = json_data["data"]["author"]["id"]
