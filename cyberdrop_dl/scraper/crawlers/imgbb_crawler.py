@@ -3,7 +3,7 @@ from __future__ import annotations
 import calendar
 import datetime
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from yarl import URL
 
@@ -18,10 +18,11 @@ if TYPE_CHECKING:
 
 
 class ImgBBCrawler(Crawler):
+    SUPPORTED_SITES: ClassVar[dict[str, list]] = {"imgbb": ["ibb.co", "imgbb.co"]}
     primary_base_domain = URL("https://ibb.co")
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "imgbb", "ImgBB")
+    def __init__(self, manager: Manager, site: str) -> None:
+        super().__init__(manager, site, "ImgBB")
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 

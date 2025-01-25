@@ -162,6 +162,13 @@ class HistoryTable:
         )
         await self.db_conn.commit()
 
+    async def add_download_filename(self, domain: str, media_item: MediaItem) -> None:
+        """Add the download_filename to the db."""
+        url_path = get_db_path(media_item.url, str(media_item.referer))
+        query = """UPDATE media SET download_filename=? WHERE domain = ? and url_path = ? and download_filename = '' """
+        await self.db_conn.execute(query, (media_item.download_filename, domain, url_path))
+        await self.db_conn.commit()
+
     async def check_filename_exists(self, filename: str) -> bool:
         """Checks whether a downloaded filename exists in the database."""
         cursor = await self.db_conn.cursor()

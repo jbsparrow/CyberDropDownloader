@@ -64,3 +64,11 @@ class FileProgress(DequeProgress):
         """Advances the progress of the given task by the given amount."""
         self.downloaded_data += amount
         self._progress.advance(task_id, amount)
+
+    def get_speed(self, task_id: TaskID) -> float:
+        if task_id not in self._tasks:
+            msg = "Task ID not found"
+            raise ValueError(msg)
+
+        task = self._progress._tasks[task_id]
+        return task.finished_speed or task.speed or 0

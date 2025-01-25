@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Add support for TikTok profiles, videos, and photos
 - Add new CLI argument `--download-tiktok-audios` to download audio files from TikTok posts
+- Add support for https://www.imagebam.com
+
+### Removed
+
+- Remove support for ImageBan as the website no longer exists
 
 
 ## [6.3.0] - 2025-01-24
