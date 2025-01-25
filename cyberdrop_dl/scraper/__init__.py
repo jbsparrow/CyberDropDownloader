@@ -53,6 +53,7 @@ from cyberdrop_dl.scraper.crawlers.toonily_crawler import ToonilyCrawler
 from cyberdrop_dl.scraper.crawlers.xbunker_crawler import XBunkerCrawler
 from cyberdrop_dl.scraper.crawlers.xbunkr_crawler import XBunkrCrawler
 from cyberdrop_dl.scraper.crawlers.xxxbunker_crawler import XXXBunkerCrawler
+from cyberdrop_dl.scraper.crawlers.yt_dlp import YtDlpCrawler
 from cyberdrop_dl.utils import constants
 
 if TYPE_CHECKING:
