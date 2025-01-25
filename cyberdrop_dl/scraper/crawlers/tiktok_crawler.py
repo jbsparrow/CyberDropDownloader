@@ -28,7 +28,7 @@ class TikTokCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if any(part in scrape_item.url.parts for part in ("video", "photo")):
             await self.video(scrape_item)
-        elif len(scrape_item.url.parts)>0 and "@" in scrape_item.url.parts[1]::
+        elif len(scrape_item.url.parts) > 1 and "@" in scrape_item.url.parts[1]:
             await self.profile(scrape_item)
         else:
             log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
@@ -118,7 +118,12 @@ class TikTokCrawler(Crawler):
         filename = f'{data["music_info"]["title"]}.mp3'
         filename, ext = get_filename_and_ext(filename)
         new_scrape_item = self.create_scrape_item(
-            scrape_item, scrape_item.url, "Audios" if new_folder else "", True, scrape_item.album_id, data["create_time"]
+            scrape_item,
+            scrape_item.url,
+            "Audios" if new_folder else "",
+            True,
+            scrape_item.album_id,
+            data["create_time"],
         )
         await self.handle_file(audio_url, new_scrape_item, filename, "mp3")
         scrape_item.add_children()
