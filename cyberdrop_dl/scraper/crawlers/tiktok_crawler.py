@@ -26,7 +26,9 @@ class TikTokCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        if any(part in scrape_item.url.parts for part in ("video", "photo", "v")) or scrape_item.url.host.startswith("vm.tiktok"):
+        if any(part in scrape_item.url.parts for part in ("video", "photo", "v")) or scrape_item.url.host.startswith(
+            "vm.tiktok"
+        ):
             await self.video(scrape_item)
         elif len(scrape_item.url.parts) > 1 and "@" in scrape_item.url.parts[1]:
             await self.profile(scrape_item)
@@ -63,9 +65,7 @@ class TikTokCrawler(Crawler):
             return
 
         title = post.get("title") or f"Post {post_id}"
-        new_scrape_item = self.create_scrape_item(
-            scrape_item, canonical_url, title, True, post_id, post["create_time"]
-        )
+        new_scrape_item = self.create_scrape_item(scrape_item, canonical_url, title, True, post_id, post["create_time"])
         for image_url in map(self.parse_url, post["images"]):
             filename, ext = get_filename_and_ext(image_url.name)
             await self.handle_file(image_url, new_scrape_item, filename, ext)
@@ -82,7 +82,6 @@ class TikTokCrawler(Crawler):
                 canonical_url = await self.get_canonical_url(author_id, post_id)
                 if await self.check_complete_from_referer(canonical_url):
                     continue
-
 
                 post_url = self.parse_url(item["play"])
                 if item.get("images"):
