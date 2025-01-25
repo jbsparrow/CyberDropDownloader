@@ -65,8 +65,7 @@ class TikTokCrawler(Crawler):
             filename, ext = get_filename_and_ext(image_url.name)
             await self.handle_file(image_url, new_scrape_item, filename, ext)
             scrape_item.add_children()
-        if self.manager.parsed_args.cli_only_args.download_tiktok_audios:
-            await self.handle_audio(new_scrape_item, post, False)
+        await self.handle_audio(new_scrape_item, post, False)
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
