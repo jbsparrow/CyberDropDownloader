@@ -99,7 +99,7 @@ class TikTokCrawler(Crawler):
                 await self.handle_image_post(scrape_item, json_data["data"])
                 return
 
-            video_url = URL(json_data["data"]["play"])
+            video_url = self.parse_url(json_data["data"]["play"])
             filename, ext = f'{json_data["data"]["video_id"]}.mp4', "mp4"
             new_scrape_item = self.create_scrape_item(
                 scrape_item, video_url, "", True, scrape_item.album_id, json_data["data"]["create_time"]
