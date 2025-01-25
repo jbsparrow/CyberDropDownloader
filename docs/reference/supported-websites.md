@@ -17,7 +17,7 @@ icon: globe-pointer
 | Fapello         | Individual Post: `/.../...` <br> Model: `/...` |
 | GoFile          | Album: `/d/...`|
 | HotPic          | Album: `/album/...` <br> Image: `/i/...`|
-| ImageBan        | Album: `/a/...` <br> Compilation: `/c/...` <br> Image: `/show/...` |
+| ImageBam        | Album: `/view/...` <br> Image: `/view/...` <br> Direct links |
 | ibb imgbb       | Album: `/album/...` <br> Image: `/...`|
 | ImgBox          | Album: `/g/...` <br> Images: `/...` <br> Direct links |
 | Img.kiwi        | Album: `/album/...` <br> Image: `/image/...` <br> Direct links  |

@@ -30,6 +30,10 @@ class ImageBamCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
+        if any(part in scrape_item.url.parts for part in ("gallery", "image")):
+            await self.view(scrape_item)
+            return
+
         if self.is_cdn(scrape_item.url):
             scrape_item.url = self.get_view_url(scrape_item.url)
 
