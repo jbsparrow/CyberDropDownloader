@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass, fields
 from typing import TYPE_CHECKING
 
@@ -17,7 +18,7 @@ from cyberdrop_dl.utils.logger import log, log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Generator, Sequence
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
@@ -74,6 +75,7 @@ class YtDlpCrawler(Crawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "youtube", "Youtube")
+        self.cookies_file = self.manager.path_manager.cookies_dir / "cookies.yt_dlp"
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
@@ -87,7 +89,7 @@ class YtDlpCrawler(Crawler):
             return
 
         if info is None:
-            info = await extract_info_async(scrape_item)
+            info = await self.extract_info(scrape_item)
         if not info:
             return
         format_ids = format_selector(info)
@@ -111,10 +113,16 @@ class YtDlpCrawler(Crawler):
     @staticmethod
     def is_supported(url: URL) -> bool:
         """Checks if an URL is supported without making any request"""
+        url = clean_url(url)
         for extractor in PROPER_EXTRACTORS:
             if extractor.suitable(str(url)):
                 return True
         return False
+
+    async def extract_info(self, scrape_item: ScrapeItem, **options) -> dict:
+        """Helper function to add cookies before calling yt-dlp"""
+        options = options | {"cookiefile": str(self.cookies_file)}
+        return await extract_info_async(scrape_item, **options)
 
 
 def format_selector(info: dict) -> tuple[str]:
@@ -142,13 +150,10 @@ def get_formats(info: dict, format_ids: Sequence) -> list[YtDlpFormat]:
     return [YtDlpFormat.from_dict(f) for f in formats if f["format_id"] in format_ids]
 
 
-def extract_info(scrape_item: ScrapeItem, options: dict | None = None) -> dict:
+def extract_info(scrape_item: ScrapeItem, **options) -> dict:
     url_as_str = str(scrape_item.url)
-    if not options:
-        options = {}
-    options = options | DEFAULT_EXTRACT_OPTIONS
     try:
-        with YoutubeDL(options) as ydl:
+        with yt_dlp_context(**options) as ydl:
             info: dict | list = ydl.sanitize_info(ydl.extract_info(url_as_str, download=False))  # type: ignore
             if isinstance(info, list):
                 msg = "URL have multiple children. Only URLs of single media items (1 single video) are supported"
@@ -163,9 +168,9 @@ def extract_info(scrape_item: ScrapeItem, options: dict | None = None) -> dict:
     return {}
 
 
-async def extract_info_async(scrape_item: ScrapeItem, options: dict | None = None):
+async def extract_info_async(scrape_item: ScrapeItem, **options):
     async def _extract_info_async() -> dict:
-        return await asyncio.to_thread(extract_info, scrape_item, options)
+        return await asyncio.to_thread(extract_info, scrape_item, **options)
 
     try:
         # Using a timeout it required cause some URLs could take several minutes to return (ex: youtube paylist)
@@ -188,4 +193,16 @@ def clean_url(url: URL) -> URL:
 
 
 def create_db_url(info: dict) -> URL:
-    return URL(f"//ytdlp/{info["extractor"]}/{info["id"]}")
+    return URL(f"//yt-dlp/{info["extractor"]}/{info["id"]}")
+
+
+@contextmanager
+def yt_dlp_context(**options) -> Generator[YoutubeDL]:
+    if not options:
+        options = {}
+    options = options | DEFAULT_EXTRACT_OPTIONS
+    try:
+        with YoutubeDL(options) as ydl:
+            yield ydl
+    finally:
+        pass
