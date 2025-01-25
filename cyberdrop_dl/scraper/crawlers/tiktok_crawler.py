@@ -112,7 +112,9 @@ class TikTokCrawler(Crawler):
 
     @error_handling_wrapper
     async def handle_audio(self, scrape_item: ScrapeItem, data: dict, new_folder: bool = True) -> None:
-        audio_url = URL(data["music_info"]["play"])
+        if not self.manager.parsed_args.cli_only_args.download_tiktok_audios:
+            return
+        audio_url = self.parse_url(data["music_info"]["play"])
         filename = f'{data["music_info"]["title"]}.mp3'
         new_scrape_item = self.create_scrape_item(
             scrape_item, audio_url, "Audios" if new_folder else "", True, scrape_item.album_id, data["create_time"]
