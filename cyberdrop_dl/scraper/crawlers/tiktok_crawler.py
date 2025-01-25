@@ -46,7 +46,7 @@ class TikTokCrawler(Crawler):
             if scrape_item.album_id is None:
                 author_id = json_data["data"]["videos"][0]["author"]["id"]
                 scrape_item.album_id = author_id
-                scrape_item.add_to_parent_title(self.create_title(username))
+                scrape_item.add_to_parent_title(self.create_title(username, author_id))
 
             yield json_data
 
