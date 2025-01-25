@@ -96,6 +96,7 @@ class YtDlpCrawler(Crawler):
             return
         if await self.check_archive(info):
             return
+
         format_ids = format_selector(info)
         formats = get_formats(info, format_ids)
         formats_as_dict = [asdict(f) for f in formats]
@@ -114,15 +115,6 @@ class YtDlpCrawler(Crawler):
             # headers = fmt.http_headers
             await self.handle_file(database_url, scrape_item, filename, ext, debrid_link=link)
 
-    @staticmethod
-    def is_supported(url: URL) -> bool:
-        """Checks if an URL is supported without making any request"""
-        url = clean_url(url)
-        for extractor in PROPER_EXTRACTORS:
-            if extractor.suitable(str(url)):
-                return True
-        return False
-
     async def extract_info(self, scrape_item: ScrapeItem, **options) -> dict:
         """Helper function to add cookies and archive file before calling yt-dlp"""
         options = options | self.options
@@ -134,6 +126,18 @@ class YtDlpCrawler(Crawler):
                 return ydl.in_download_archive(info)
 
         return await asyncio.to_thread(is_in_archive)
+
+    @staticmethod
+    def is_supported(url: URL) -> bool:
+        """Checks if an URL is supported without making any request"""
+        url = clean_url(url)
+        for extractor in PROPER_EXTRACTORS:
+            if extractor.suitable(str(url)):
+                return True
+        return False
+
+
+## ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~``
 
 
 def format_selector(info: dict) -> tuple[str]:
@@ -203,8 +207,12 @@ def clean_url(url: URL) -> URL:
     return parsed_url
 
 
-def create_db_url(info: dict) -> URL:
-    return URL(f"//yt-dlp/{info["extractor"]}/{info["id"]}")
+def create_db_url(info_dict: dict) -> URL:
+    video_id = info_dict.get("id")
+    assert video_id
+    extractor: str = info_dict.get("extractor_key") or info_dict.get("ie_key")  # type: ignore
+    assert extractor
+    return URL("//yt-dlp/") / extractor.lower() / video_id
 
 
 @contextmanager
