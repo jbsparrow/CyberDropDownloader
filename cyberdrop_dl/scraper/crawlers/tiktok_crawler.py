@@ -102,7 +102,7 @@ class TikTokCrawler(Crawler):
             video_url = self.parse_url(json_data["data"]["play"])
             filename, ext = f'{json_data["data"]["video_id"]}.mp4', "mp4"
             new_scrape_item = self.create_scrape_item(
-                scrape_item, video_url, "", True, scrape_item.album_id, json_data["data"]["create_time"]
+                scrape_item, scrape_item.url, "", True, scrape_item.album_id, json_data["data"]["create_time"]
             )
             scrape_item.add_children()
             if self.manager.parsed_args.cli_only_args.download_tiktok_audios:
