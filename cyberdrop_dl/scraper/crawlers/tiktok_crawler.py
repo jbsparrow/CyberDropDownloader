@@ -150,7 +150,7 @@ class TikTokCrawler(Crawler):
         await self.handle_file(audio_url, new_scrape_item, filename, ext)
         scrape_item.add_children()
 
-    async def get_canonical_url(self, author: str, post_id: str | None) -> URL:
+    async def get_canonical_url(self, author: str, post_id: str | None = None) -> URL:
         if post_id is None:
             return self.primary_base_domain / f"@{author}"
         return self.primary_base_domain / f"@{author}/video/{post_id}"
