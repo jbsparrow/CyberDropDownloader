@@ -34,7 +34,7 @@ class CommandLineOnlyArgs(BaseModel):
     completed_before: date | None = Field(None, description="only download completed downloads at or before this date")
     config: str | None = Field(None, description="name of config to load")
     config_file: Path | None = Field(None, description="path to the CDL settings.yaml file to load")
-    download: bool = Field(False, description="skips UI, start download inmediatly")
+    download: bool = Field(False, description="skips UI, start download immediatly")
     max_items_retry: int = Field(0, description="max number of links to retry")
     no_ui: bool = Field(False, description="disables the UI/progress view entirely")
     retry_all: bool = Field(False, description="retry all downloads")
@@ -42,6 +42,7 @@ class CommandLineOnlyArgs(BaseModel):
     retry_maintenance: bool = Field(
         False, description="retry download of maintenance files (bunkr). Requires files to be hashed"
     )
+    download_tiktok_audios: bool = Field(False, description="download TikTok audios")
 
     @computed_field
     @property

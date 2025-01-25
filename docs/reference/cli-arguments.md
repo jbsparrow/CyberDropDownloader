@@ -83,6 +83,14 @@ If both `config` and `config-file` are supplied, `config-file` takes priority
 
 Skips UI, start download immediately
 
+### `download-tiktok-audios`
+
+| Type           | Default  | Action |
+|----------------|----------|--------|
+| `BoolFlag` | `False` | `store_true`|
+
+Download TikTok audios from posts and save them as separate files
+
 ### `max-items-retry`
 
 | Type           | Default  |
