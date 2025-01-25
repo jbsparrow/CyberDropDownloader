@@ -41,7 +41,7 @@ class TikTokCrawler(Crawler):
                 {"cursor": cursor, "unique_id": username, "count": "50"}
             )
             async with self.request_limiter:
-                json_data = await self.client.get_json(self.primary_base_domain, posts_api_url, origin=scrape_item)
+                json_data = await self.client.get_json(self.domain, posts_api_url, origin=scrape_item)
 
             if scrape_item.album_id is None:
                 author_id = json_data["data"]["videos"][0]["author"]["id"]
