@@ -125,5 +125,5 @@ class TikTokCrawler(Crawler):
             scrape_item.album_id,
             data["create_time"],
         )
-        await self.handle_file(audio_url, new_scrape_item, filename, "mp3")
+        await self.handle_file(audio_url, new_scrape_item, filename, ext)
         scrape_item.add_children()
