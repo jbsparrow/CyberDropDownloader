@@ -75,26 +75,27 @@ class PornPicsCrawler(Crawler):
         gallery_id = scrape_item.url.name.rsplit("-", 1)[-1]
         results = await self.get_album_results(gallery_id)
 
-        def update_scrape_item(soup: BeautifulSoup) -> None:
-            canonical_url = self.primary_base_domain / "galleries" / gallery_id
-            scrape_item.url = canonical_url
-            title = soup.select_one("h1").text
-            title = self.create_title(title, gallery_id)
-            scrape_item.add_to_parent_title(title)
-            scrape_item.part_of_album = True
-            scrape_item.album_id = gallery_id
-            scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        async for soup, items in self._web_pager(scrape_item):
-            if soup:
-                update_scrape_item(soup)
+        canonical_url = self.primary_base_domain / "galleries" / gallery_id
+        scrape_item.url = canonical_url
+        title = soup.select_one("h1").text
+        title = self.create_title(title, gallery_id)
+        scrape_item.add_to_parent_title(title)
+        scrape_item.part_of_album = True
+        scrape_item.album_id = gallery_id
+        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
+        images = soup.select(self.image_selector)
 
-            for link in items:
-                if not self.check_album_results(link, results):
-                    filename, ext = get_filename_and_ext(link.name)
-                    new_scrape_item = self.create_scrape_item(scrape_item, link, add_parent=scrape_item.url)
-                    await self.handle_file(link, new_scrape_item, filename, ext)
-                scrape_item.add_children()
+        for image in images:
+            link_str: str = image.get("href")
+            link = self.parse_url(link_str)
+            if not self.check_album_results(link, results):
+                filename, ext = get_filename_and_ext(link.name)
+                new_scrape_item = self.create_scrape_item(scrape_item, link, add_parent=scrape_item.url)
+                await self.handle_file(link, new_scrape_item, filename, ext)
+            scrape_item.add_children()
 
     async def image(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image."""
