@@ -31,7 +31,7 @@ class PornPicsCrawler(Crawler):
             await self.image(scrape_item)
         elif scrape_item.url.query.get("q"):
             await self.collection(scrape_item, "search")
-        elif len(scrape_item.url.parts) < 2:
+        elif len(scrape_item.url.parts) < 3:
             raise ValueError
 
         if "galleries" in scrape_item.url.parts:
@@ -84,7 +84,7 @@ class PornPicsCrawler(Crawler):
         scrape_item.add_to_parent_title(title)
         await self.process_subgalleries(scrape_item, soup)
 
-    async def process_subgalleries(self, scrape_item: ScrapeItem, soup: BeautifulSoup):
+    async def process_subgalleries(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> None:
         """Queue galleries in colletions"""
         scrape_item.part_of_album = True
         scrape_item.set_type(FILE_HOST_PROFILE, self.manager)
@@ -106,5 +106,6 @@ class PornPicsCrawler(Crawler):
 
     def is_cdn(self, url: URL) -> bool:
         assert url.host
-        base_host: str = self.primary_base_domain.host
-        return len(base_host.split(".")) > len(url.host.split("."))
+        base_host: str = self.primary_base_domain.host.removeprefix("www.")
+        url_host: str = url.host.removeprefix("www.")
+        return len(url_host.split(".")) > len(base_host.split("."))
