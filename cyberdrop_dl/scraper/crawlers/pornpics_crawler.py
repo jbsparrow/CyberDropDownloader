@@ -20,6 +20,7 @@ class PornPicsCrawler(Crawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "pornpics", "PornPics")
+        self.image_selector = "div#main a.rel-link"
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -29,24 +30,24 @@ class PornPicsCrawler(Crawler):
         if self.is_cdn(scrape_item.url):
             await self.image(scrape_item)
         elif scrape_item.url.query.get("q"):
-            await self.generic(scrape_item, "search")
+            await self.collection(scrape_item, "search")
         elif len(scrape_item.url.parts) < 2:
             raise ValueError
 
         if "galleries" in scrape_item.url.parts:
             await self.gallery(scrape_item)
         elif "channels" in scrape_item.url.parts:
-            await self.channel(scrape_item)
+            await self.collection(scrape_item, "channel")
         elif "pornstars" in scrape_item.url.parts:
-            await self.generic(scrape_item, "pornstars")
+            await self.collection(scrape_item, "pornstar")
         elif "tags" in scrape_item.url.parts:
-            await self.generic(scrape_item, "tags")
+            await self.collection(scrape_item, "tag")
         else:
-            await self.generic(scrape_item, "category")
+            await self.collection(scrape_item, "category")
 
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album."""
+        """Scrapes a gallery."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
         gallery_id = scrape_item.url.name.rsplit("-", 1)[-1]
@@ -60,7 +61,7 @@ class PornPicsCrawler(Crawler):
         results = await self.get_album_results(gallery_id)
         scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
 
-        images = soup.select("div#main a.rel-link")
+        images = soup.select(self.image_selector)
         for image in images:
             link_str: str = image.get("href")
             link = self.parse_url(link_str)
@@ -71,39 +72,20 @@ class PornPicsCrawler(Crawler):
             scrape_item.add_children()
 
     @error_handling_wrapper
-    async def channel(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album."""
+    async def collection(self, scrape_item: ScrapeItem, type: str) -> None:
+        """Scrapes a collection."""
+        assert type in ("search", "channel", "pornstar", "tag", "category")
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        title = soup.select_one("h2").text
-        title = self.create_title(f"{title} [channel]")
-        scrape_item.add_to_parent_title(title)
-        await self.process_subgalleries(scrape_item, soup)
-
-    @error_handling_wrapper
-    async def search(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album."""
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
-
-        title = scrape_item.url.query.get("q")
-        title = self.create_title(f"{title} [search]")
-        scrape_item.add_to_parent_title(title)
-        await self.process_subgalleries(scrape_item, soup)
-
-    @error_handling_wrapper
-    async def generic(self, scrape_item: ScrapeItem, type: str) -> None:
-        """Scrapes an album."""
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
-
-        title = soup.select_one("h1").text.removesuffix(" Nude Pics").removesuffix(" Porn Pics")
+        selector = "h2" if type == "channel" else "h1"
+        title = soup.select_one(selector).text.removesuffix(" Nude Pics").removesuffix(" Porn Pics")
         title = self.create_title(f"{title} [{type}]")
         scrape_item.add_to_parent_title(title)
         await self.process_subgalleries(scrape_item, soup)
 
     async def process_subgalleries(self, scrape_item: ScrapeItem, soup: BeautifulSoup):
+        """Queue galleries in colletions"""
         scrape_item.part_of_album = True
         scrape_item.set_type(FILE_HOST_PROFILE, self.manager)
         galleries = soup.select("div#main a.rel-link")
@@ -115,7 +97,7 @@ class PornPicsCrawler(Crawler):
             scrape_item.add_children()
 
     async def image(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an image page."""
+        """Scrapes an image."""
         link = scrape_item.url
         gallery_id = link.parts[-2]
         filename, ext = get_filename_and_ext(link.name)
