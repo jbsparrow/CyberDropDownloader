@@ -122,8 +122,17 @@ class XenforoCrawler(Crawler):
             await self.handle_internal_link(scrape_item.url, scrape_item)
         elif self.thread_url_part in scrape_item.url.parts:
             await self.thread(scrape_item)
+        elif any(p in scrape_item.url.parts for p in ("goto", "posts")):
+            await self.handle_redirect(scrape_item)
         else:
             raise ValueError
+
+    @error_handling_wrapper
+    async def handle_redirect(self, scrape_item: ScrapeItem) -> None:
+        async with self.request_limiter:
+            _, url = await self.client.get_soup_and_return_url(self.domain, scrape_item.url, origin=scrape_item)
+        scrape_item.url = url
+        self.manager.task_group.create_task(self.run(scrape_item))
 
     async def try_login(self) -> None:
         login_url = self.primary_base_domain / "login"
