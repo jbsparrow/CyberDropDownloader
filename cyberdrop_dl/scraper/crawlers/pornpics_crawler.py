@@ -7,7 +7,6 @@ from yarl import URL
 
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
-from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
@@ -116,7 +115,6 @@ class PornPicsCrawler(Crawler):
         while True:
             soup, items = await self._get_items(scrape_item, page_url)
             yield (soup, items)
-            log(f"{ len(items) =}")
             if len(items) < limit:
                 break
             offset += limit
