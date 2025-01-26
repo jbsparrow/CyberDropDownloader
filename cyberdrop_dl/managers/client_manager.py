@@ -369,7 +369,7 @@ class Flaresolverr:
         return fs_resp.soup, fs_resp.url
 
 
-def merge_cookie_jars(*cookie_jars):
+def merge_cookie_jars(cookie_jars: list[MozillaCookieJar]) -> MozillaCookieJar:
     """Merge multiple MozillaCookieJar instances into one."""
     merged_jar = MozillaCookieJar()
     for jar in cookie_jars:
