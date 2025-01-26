@@ -29,7 +29,8 @@ class PornPicsCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        multi_part = len(scrape_item.url.parts) > 2
+        parts_limit = 2 if scrape_item.url.name else 3
+        multi_part = len(scrape_item.url.parts) > parts_limit
         if self.is_cdn(scrape_item.url):
             await self.image(scrape_item)
         elif "galleries" in scrape_item.url.parts and multi_part:
@@ -40,7 +41,7 @@ class PornPicsCrawler(Crawler):
             await self.collection(scrape_item, "pornstar")
         elif "tags" in scrape_item.url.parts and multi_part:
             await self.collection(scrape_item, "tag")
-        elif len(scrape_item.url.parts) == 2:
+        elif len(scrape_item.url.parts) == parts_limit:
             await self.collection(scrape_item, "category")
         elif scrape_item.url.query.get("q"):
             await self.collection(scrape_item, "search")
