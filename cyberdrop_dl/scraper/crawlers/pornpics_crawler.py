@@ -99,8 +99,8 @@ class PornPicsCrawler(Crawler):
         link = scrape_item.url
         gallery_id = link.parts[-2]
         filename, ext = get_filename_and_ext(link.name)
-        new_scrape_item = self.create_scrape_item(scrape_item, link, album_id=gallery_id, add_parent=scrape_item.url)
-        await self.handle_file(link, new_scrape_item, filename, ext)
+        scrape_item.album_id = gallery_id
+        await self.handle_file(link, scrape_item, filename, ext)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~``
 
@@ -110,16 +110,16 @@ class PornPicsCrawler(Crawler):
         page_url = scrape_item.url.without_query_params("limit", "offset")
         offset = int(scrape_item.url.query.get("offset") or 0)
         while True:
-            page_url = page_url.update_query(offset=offset, limit=limit)
             soup, items = await self._get_items(scrape_item, page_url)
             yield (soup, items)
             if len(items) < limit:
                 break
             offset += limit
+            page_url = page_url.update_query(offset=offset, limit=limit)
 
     async def _get_items(self, scrape_item: ScrapeItem, page_url: URL) -> tuple[BeautifulSoup | None, list[URL]]:
         offset = page_url.query.get("offset")
-        if not offset:  # '"offset": 0' does not return JSON
+        if not offset:  # offset = 0 does not return JSON
             async with self.request_limiter:
                 soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url, origin=scrape_item)
             items = soup.select(self.image_selector)
