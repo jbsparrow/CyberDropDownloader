@@ -28,7 +28,12 @@ class PornPicsCrawler(Crawler):
         """Determines where to send the scrape item based on the url."""
         if self.is_cdn(scrape_item.url):
             await self.image(scrape_item)
-        elif "galleries" in scrape_item.url.parts:
+        elif scrape_item.url.query.get("q"):
+            await self.generic(scrape_item, "search")
+        elif len(scrape_item.url.parts) < 2:
+            raise ValueError
+
+        if "galleries" in scrape_item.url.parts:
             await self.gallery(scrape_item)
         elif "channels" in scrape_item.url.parts:
             await self.channel(scrape_item)
@@ -36,12 +41,8 @@ class PornPicsCrawler(Crawler):
             await self.generic(scrape_item, "pornstars")
         elif "tags" in scrape_item.url.parts:
             await self.generic(scrape_item, "tags")
-        elif scrape_item.url.query.get("q"):
-            await self.search(scrape_item)
-        elif len(scrape_item.url.parts) > 1:
-            await self.generic(scrape_item, "category")
         else:
-            raise ValueError
+            await self.generic(scrape_item, "category")
 
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem) -> None:
