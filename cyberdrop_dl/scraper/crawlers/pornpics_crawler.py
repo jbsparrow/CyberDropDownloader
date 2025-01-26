@@ -72,7 +72,8 @@ class PornPicsCrawler(Crawler):
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a gallery."""
-        gallery_id = scrape_item.url.name.rsplit("-", 1)[-1]
+        gallery_base = scrape_item.url.name or scrape_item.url.parent.name
+        gallery_id = gallery_base.rsplit("-", 1)[-1]
         results = await self.get_album_results(gallery_id)
 
         async with self.request_limiter:
@@ -131,7 +132,7 @@ class PornPicsCrawler(Crawler):
 
         async with self.request_limiter:
             # The response is JSON but the "content-type" is wrong so we have to request it as text
-            json_resp = await self.client.get_text(self.domain, page_url, origin=scrape_item, cache_disabled=True)
+            json_resp = await self.client.get_text(self.domain, page_url, origin=scrape_item)
             json_resp = json.loads(json_resp)
         return None, [self.parse_url(g["g_url"]) for g in json_resp]
 
