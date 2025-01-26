@@ -9,10 +9,11 @@ from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, F
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
 class PornPicsCrawler(Crawler):
@@ -49,40 +50,49 @@ class PornPicsCrawler(Crawler):
     async def collection(self, scrape_item: ScrapeItem, type: str) -> None:
         """Scrapes a collection."""
         assert type in ("search", "channel", "pornstar", "tag", "category")
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        selector = "h2" if type == "channel" else "h1"
-        title = soup.select_one(selector).text.removesuffix(" Nude Pics").removesuffix(" Porn Pics")
-        title = self.create_title(f"{title} [{type}]")
-        scrape_item.add_to_parent_title(title)
-        self.process_subgalleries(scrape_item, soup)
+        def update_scrape_item(soup: BeautifulSoup) -> None:
+            selector = "h2" if type == "channel" else "h1"
+            title = soup.select_one(selector).text.removesuffix(" Nude Pics").removesuffix(" Porn Pics")
+            title = self.create_title(f"{title} [{type}]")
+            scrape_item.add_to_parent_title(title)
+            scrape_item.part_of_album = True
+            scrape_item.set_type(FILE_HOST_PROFILE, self.manager)
+
+        async for soup, items in self._web_pager(scrape_item):
+            if soup:
+                update_scrape_item(soup)
+            for link in items:
+                new_scrape_item = self.create_scrape_item(scrape_item, link, add_parent=scrape_item.url)
+                self.manager.task_group.create_task(self.run(new_scrape_item))
+                scrape_item.add_children()
 
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a gallery."""
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
         gallery_id = scrape_item.url.name.rsplit("-", 1)[-1]
-        canonical_url = self.primary_base_domain / "galleries" / gallery_id
-        scrape_item.url = canonical_url
-        title = soup.select_one("h1").text
-        title = self.create_title(title, gallery_id)
-        scrape_item.add_to_parent_title(title)
-        scrape_item.part_of_album = True
-        scrape_item.album_id = gallery_id
         results = await self.get_album_results(gallery_id)
-        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
 
-        images = soup.select(self.image_selector)
-        for image in images:
-            link_str: str = image.get("href")
-            link = self.parse_url(link_str)
-            if not self.check_album_results(link, results):
-                filename, ext = get_filename_and_ext(link.name)
-                new_scrape_item = self.create_scrape_item(scrape_item, link, add_parent=scrape_item.url)
-                await self.handle_file(link, new_scrape_item, filename, ext)
-            scrape_item.add_children()
+        def update_scrape_item(soup: BeautifulSoup) -> None:
+            canonical_url = self.primary_base_domain / "galleries" / gallery_id
+            scrape_item.url = canonical_url
+            title = soup.select_one("h1").text
+            title = self.create_title(title, gallery_id)
+            scrape_item.add_to_parent_title(title)
+            scrape_item.part_of_album = True
+            scrape_item.album_id = gallery_id
+            scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
+
+        async for soup, items in self._web_pager(scrape_item):
+            if soup:
+                update_scrape_item(soup)
+
+            for link in items:
+                if not self.check_album_results(link, results):
+                    filename, ext = get_filename_and_ext(link.name)
+                    new_scrape_item = self.create_scrape_item(scrape_item, link, add_parent=scrape_item.url)
+                    await self.handle_file(link, new_scrape_item, filename, ext)
+                scrape_item.add_children()
 
     async def image(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image."""
@@ -92,17 +102,32 @@ class PornPicsCrawler(Crawler):
         new_scrape_item = self.create_scrape_item(scrape_item, link, album_id=gallery_id, add_parent=scrape_item.url)
         await self.handle_file(link, new_scrape_item, filename, ext)
 
-    def process_subgalleries(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> None:
-        """Queue galleries in colletions"""
-        scrape_item.part_of_album = True
-        scrape_item.set_type(FILE_HOST_PROFILE, self.manager)
-        galleries = soup.select("div#main a.rel-link")
-        for gallery in galleries:
-            link_str: str = gallery.get("href")
-            link = self.parse_url(link_str)
-            new_scrape_item = self.create_scrape_item(scrape_item, link, add_parent=scrape_item.url)
-            self.manager.task_group.create_task(self.run(new_scrape_item))
-            scrape_item.add_children()
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~``
+
+    async def _web_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[tuple[BeautifulSoup | None, list[URL]]]:
+        """Generator of website pages."""
+        limit = 20
+        page_url = scrape_item.url.without_query_params("limit", "offset")
+        offset = int(scrape_item.url.query.get("offset") or 0)
+        while True:
+            page_url = page_url.update_query(offset=offset, limit=limit)
+            soup, items = await self._get_items(scrape_item, page_url)
+            yield (soup, items)
+            if len(items) < limit:
+                break
+            offset += limit
+
+    async def _get_items(self, scrape_item: ScrapeItem, page_url: URL) -> tuple[BeautifulSoup | None, list[URL]]:
+        offset = page_url.query.get("offset")
+        if not offset:  # '"offset": 0' does not return JSON
+            async with self.request_limiter:
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url, origin=scrape_item)
+            items = soup.select(self.image_selector)
+            return soup, [self.parse_url(image.get("href")) for image in items]
+
+        async with self.request_limiter:
+            json_resp = await self.client.get_json(self.domain, page_url, origin=scrape_item)
+        return None, [self.parse_url(g["g_url"]) for g in json_resp]
 
     def is_cdn(self, url: URL) -> bool:
         assert url.host
