@@ -120,8 +120,10 @@ class XenforoCrawler(Crawler):
         scrape_item.url = await self.pre_filter_link(scrape_item.url)
         if self.is_attachment(scrape_item.url):
             await self.handle_internal_link(scrape_item.url, scrape_item)
-        else:
+        elif self.thread_url_part in scrape_item.url.parts:
             await self.thread(scrape_item)
+        else:
+            raise ValueError
 
     async def try_login(self) -> None:
         login_url = self.primary_base_domain / "login"
@@ -153,10 +155,6 @@ class XenforoCrawler(Crawler):
     @error_handling_wrapper
     async def thread(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a forum thread."""
-        if self.thread_url_part not in scrape_item.url.parts:
-            log(f"Scrape Failed: Unknown URL path: {scrape_item.url}", 40)
-            return
-
         if not self.logged_in and self.login_required:
             return
 

@@ -347,6 +347,8 @@ def create_task_id(func: Callable) -> Callable:
         task_id = self.scraping_progress.add_task(scrape_item.url)
         try:
             return await func(self, *args, **kwargs)
+        except ValueError:
+            log(f"Scrape Failed: Unknown URL path: {scrape_item.url}", 40)
         finally:
             self.scraping_progress.remove_task(task_id)
 
