@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING
 
 from yarl import URL
 
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
+from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
@@ -112,6 +114,7 @@ class PornPicsCrawler(Crawler):
         while True:
             soup, items = await self._get_items(scrape_item, page_url)
             yield (soup, items)
+            log(f"{ len(items) =}")
             if len(items) < limit:
                 break
             offset += limit
@@ -126,7 +129,9 @@ class PornPicsCrawler(Crawler):
             return soup, [self.parse_url(image.get("href")) for image in items]
 
         async with self.request_limiter:
-            json_resp = await self.client.get_json(self.domain, page_url, origin=scrape_item)
+            # The response is JSON but the "content-type" is wrong so we have to request it as text
+            json_resp = await self.client.get_text(self.domain, page_url, origin=scrape_item, cache_disabled=True)
+            json_resp = json.loads(json_resp)
         return None, [self.parse_url(g["g_url"]) for g in json_resp]
 
     def is_cdn(self, url: URL) -> bool:
