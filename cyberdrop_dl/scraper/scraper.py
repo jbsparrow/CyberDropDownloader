@@ -247,7 +247,7 @@ class ScrapeMapper:
 
         if supported_domain:
             # get most restrictive domain if multiple domain matches
-            supported_domain = min(supported_domain, key=len)
+            supported_domain = max(supported_domain, key=len)
             scraper = self.existing_crawlers[supported_domain]
             if not scraper.ready:
                 await scraper.startup()
