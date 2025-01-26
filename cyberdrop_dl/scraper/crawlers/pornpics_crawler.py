@@ -32,7 +32,9 @@ class PornPicsCrawler(Crawler):
             await self.gallery(scrape_item)
         elif "channels" in scrape_item.url.parts:
             await self.channel(scrape_item)
-        elif scrape_item.url.query.get("g"):
+        elif "pornstars" in scrape_item.url.parts:
+            await self.pornstars(scrape_item)
+        elif scrape_item.url.query.get("q"):
             await self.search(scrape_item)
         elif len(scrape_item.url.parts) > 1:
             await self.category(scrape_item)
@@ -82,8 +84,19 @@ class PornPicsCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        title = scrape_item.url.query.get("s")
+        title = scrape_item.url.query.get("q")
         title = self.create_title(f"{title} [search]")
+        scrape_item.add_to_parent_title(title)
+        await self.process_subgalleries(scrape_item, soup)
+
+    @error_handling_wrapper
+    async def pornstars(self, scrape_item: ScrapeItem) -> None:
+        """Scrapes an album."""
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+
+        title = soup.select_one("h1").text.removesuffix(" Nude Pics")
+        title = self.create_title(f"{title} [pornstars]")
         scrape_item.add_to_parent_title(title)
         await self.process_subgalleries(scrape_item, soup)
 
