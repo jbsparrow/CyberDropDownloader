@@ -136,8 +136,8 @@ class ScrapeStatsProgress(StatsProgress):
 
 
 def prettify_failure(failure: str) -> str:
-    return split_by_uppercase(failure).capitalize()
+    return " ".join(s.capitalize() for s in split_by_uppercase(failure))
 
 
-def split_by_uppercase(text: str) -> str:
-    return " ".join(re.findall(SPLIT_BY_UPPERCASE_REGEX, text))
+def split_by_uppercase(text: str) -> list[str]:
+    return re.findall(SPLIT_BY_UPPERCASE_REGEX, text)
