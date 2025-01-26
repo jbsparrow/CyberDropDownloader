@@ -221,7 +221,7 @@ class XenforoCrawler(Crawler):
             if not continue_scraping:
                 break
 
-        await self.write_last_forum_post(scrape_item, last_scraped_post_number)
+        await self.write_last_forum_post(thread_url, last_scraped_post_number)
 
     async def post(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         """Scrapes a post."""
@@ -348,13 +348,11 @@ class XenforoCrawler(Crawler):
         link_str: str = confirm_button.get("href")
         return self.parse_url(link_str)
 
-    async def write_last_forum_post(self, scrape_item: ScrapeItem, post_number: int) -> None:
+    async def write_last_forum_post(self, thread_url: URL, post_number: int) -> None:
         if not post_number:
             return
         post_string = f"{self.POST_NAME}{post_number}"
-        use_parent = "page-" in scrape_item.url.raw_name or self.POST_NAME in scrape_item.url.raw_name
-        base = scrape_item.url.parent if use_parent else scrape_item.url
-        last_post_url = self.parse_url(post_string, base)
+        last_post_url = self.parse_url(post_string, thread_url)
         await self.manager.log_manager.write_last_post_log(last_post_url)
 
     async def thread_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
