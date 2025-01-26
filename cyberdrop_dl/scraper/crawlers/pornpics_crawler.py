@@ -68,7 +68,7 @@ class PornPicsCrawler(Crawler):
             if not self.check_album_results(link, results):
                 filename, ext = get_filename_and_ext(link.name)
                 new_scrape_item = self.create_scrape_item(scrape_item, link, add_parent=scrape_item.url)
-                await self.handle_file(link, new_scrape_item, filename, ext, custom_filename=filename)
+                await self.handle_file(link, new_scrape_item, filename, ext)
             scrape_item.add_children()
 
     @error_handling_wrapper
@@ -102,7 +102,7 @@ class PornPicsCrawler(Crawler):
         gallery_id = link.parts[-2]
         filename, ext = get_filename_and_ext(link.name)
         new_scrape_item = self.create_scrape_item(scrape_item, link, album_id=gallery_id, add_parent=scrape_item.url)
-        await self.handle_file(link, new_scrape_item, filename, ext, custom_filename=filename)
+        await self.handle_file(link, new_scrape_item, filename, ext)
 
     def is_cdn(self, url: URL) -> bool:
         assert url.host
