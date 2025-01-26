@@ -29,23 +29,23 @@ class PornPicsCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
+        multi_part = len(scrape_item.url.parts) > 2
         if self.is_cdn(scrape_item.url):
             await self.image(scrape_item)
+        elif "galleries" in scrape_item.url.parts and multi_part:
+            await self.gallery(scrape_item)
+        elif "channels" in scrape_item.url.parts and multi_part:
+            await self.collection(scrape_item, "channel")
+        elif "pornstars" in scrape_item.url.parts and multi_part:
+            await self.collection(scrape_item, "pornstar")
+        elif "tags" in scrape_item.url.parts and multi_part:
+            await self.collection(scrape_item, "tag")
+        elif len(scrape_item.url.parts) == 2:
+            await self.collection(scrape_item, "category")
         elif scrape_item.url.query.get("q"):
             await self.collection(scrape_item, "search")
-        elif len(scrape_item.url.parts) < 3:
-            raise ValueError
-
-        if "galleries" in scrape_item.url.parts:
-            await self.gallery(scrape_item)
-        elif "channels" in scrape_item.url.parts:
-            await self.collection(scrape_item, "channel")
-        elif "pornstars" in scrape_item.url.parts:
-            await self.collection(scrape_item, "pornstar")
-        elif "tags" in scrape_item.url.parts:
-            await self.collection(scrape_item, "tag")
         else:
-            await self.collection(scrape_item, "category")
+            raise ValueError
 
     @error_handling_wrapper
     async def collection(self, scrape_item: ScrapeItem, type: str) -> None:
