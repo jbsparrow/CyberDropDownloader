@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import re
 from typing import NamedTuple
 
 from rich.console import Group
 from rich.panel import Panel
 from rich.progress import BarColumn, Progress, TaskID
+
+SPLIT_BY_UPPERCASE_REGEX = re.compile(r"[A-Z][a-z]*|[a-z]+|\d+")
 
 
 class TaskInfo(NamedTuple):
@@ -88,6 +91,7 @@ class StatsProgress:
     def add_failure(self, failure_type: str) -> None:
         """Adds a failed file to the progress bar."""
         self.failed_files += 1
+        failure_type = prettify_failure(failure_type)
         if failure_type in self.failure_types:
             self.progress.advance(self.failure_types[failure_type], 1)
         else:
@@ -129,3 +133,11 @@ class ScrapeStatsProgress(StatsProgress):
             self.sent_to_jdownloader += 1
         else:
             self.unsupported_urls_skipped += 1
+
+
+def prettify_failure(failure: str) -> str:
+    return split_by_uppercase(failure).capitalize()
+
+
+def split_by_uppercase(text: str) -> str:
+    return " ".join(re.findall(SPLIT_BY_UPPERCASE_REGEX, text))
