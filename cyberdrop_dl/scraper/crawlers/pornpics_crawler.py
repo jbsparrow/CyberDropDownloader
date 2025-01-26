@@ -39,7 +39,7 @@ class PornPicsCrawler(Crawler):
         elif scrape_item.url.query.get("q"):
             await self.search(scrape_item)
         elif len(scrape_item.url.parts) > 1:
-            await self.category(scrape_item)
+            await self.generic(scrape_item, "category")
         else:
             raise ValueError
 
