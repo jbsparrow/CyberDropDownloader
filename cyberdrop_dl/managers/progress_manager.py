@@ -21,6 +21,12 @@ if TYPE_CHECKING:
     from rich.console import RenderableType
 
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.ui.progress.statistic_progress import UiFailureTotal
+
+log_cyan = partial(log_with_color, style="cyan", level=20)
+log_yellow = partial(log_with_color, style="yellow", level=20)
+log_green = partial(log_with_color, style="green", level=20)
+log_red = partial(log_with_color, style="red", level=20)
 
 
 class ProgressManager:
@@ -77,11 +83,6 @@ class ProgressManager:
         runtime = timedelta(seconds=int(end_time - start_time))
         data_size = ByteSize(self.file_progress.downloaded_data).human_readable(decimal=True)
 
-        log_cyan = partial(log_with_color, style="cyan", level=20)
-        log_yellow = partial(log_with_color, style="yellow", level=20)
-        log_green = partial(log_with_color, style="green", level=20)
-        log_red = partial(log_with_color, style="red", level=20)
-
         log("Printing Stats...\n", 20)
         log_cyan(f"Run Stats (config: {self.manager.config_manager.loaded_config}):")
         log_yellow(f"  Total Runtime: {runtime}")
@@ -112,13 +113,17 @@ class ProgressManager:
         log_green(f"  Videos: {self.sort_progress.video_count:,}")
         log_green(f"  Other Files: {self.sort_progress.other_count:,}")
 
-        def log_failures(failures: dict, title: str = "Failures:") -> None:
-            log_spacer(20, "")
-            log_cyan(title)
-            if not failures:
-                log_green("  None")
-            for name, count in failures.items():
-                log_red(f"  {name}: {count:,}")
-
         log_failures(self.scrape_stats_progress.return_totals(), "Scrape Failures:")
         log_failures(self.download_stats_progress.return_totals(), "Download Failures:")
+
+
+def log_failures(failures: list[UiFailureTotal], title: str = "Failures:") -> None:
+    log_spacer(20, "")
+    log_cyan(title)
+    if not failures:
+        return log_green("  None")
+    error_codes = (f.error_code for f in failures if f.error_code is not None)
+    error_padding = len(str(max(error_codes)))
+    for f in failures:
+        error = f.error_code if f.error_code is not None else ""
+        log_red(f"  {error:>{error_padding}} {f.msg}: {f.count:,}")

@@ -19,6 +19,20 @@ class TaskInfo(NamedTuple):
     progress: float
 
 
+class UiFailureTotal(NamedTuple):
+    full_msg: str
+    count: int
+    error_code: int | None
+    msg: str
+
+    @classmethod
+    def from_pair(cls, full_msg: str, count: int) -> UiFailureTotal:
+        error_code, msg = full_msg.split(" ", 1)
+        if error_code.isdigit():
+            return cls(full_msg, count, int(error_code), msg)
+        return cls(full_msg, count, None, full_msg)
+
+
 def get_tasks_info_sorted(progress: Progress) -> tuple[list[TaskInfo], bool]:
     tasks = [
         TaskInfo(
@@ -100,13 +114,13 @@ class StatsProgress:
             self.failure_types[key] = self.progress.add_task(key, total=self.failed_files, completed=1)
         self.update_total(self.failed_files)
 
-    def return_totals(self) -> dict:
+    def return_totals(self) -> list[UiFailureTotal]:
         """Returns the total number of failed sites and reasons."""
         failures = {}
         for key, task_id in self.failure_types.items():
             task = next(task for task in self.progress.tasks if task.id == task_id)
             failures[key] = task.completed
-        return dict(sorted(failures.items()))
+        return sorted(UiFailureTotal.from_pair(*f) for f in failures.items())
 
 
 class DownloadStatsProgress(StatsProgress):
