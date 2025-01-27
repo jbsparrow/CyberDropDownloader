@@ -113,17 +113,21 @@ class ProgressManager:
         log_green(f"  Videos: {self.sort_progress.video_count:,}")
         log_green(f"  Other Files: {self.sort_progress.other_count:,}")
 
-        log_failures(self.scrape_stats_progress.return_totals(), "Scrape Failures:")
-        log_failures(self.download_stats_progress.return_totals(), "Download Failures:")
+        last_padding = log_failures(self.scrape_stats_progress.return_totals(), "Scrape Failures:")
+        log_failures(self.download_stats_progress.return_totals(), "Download Failures:", last_padding)
 
 
-def log_failures(failures: list[UiFailureTotal], title: str = "Failures:") -> None:
+def log_failures(failures: list[UiFailureTotal], title: str = "Failures:", last_padding: int = 0) -> int:
     log_spacer(20, "")
     log_cyan(title)
     if not failures:
-        return log_green("  None")
+        log_green("  None")
+        return 0
+    error_padding = last_padding
     error_codes = (f.error_code for f in failures if f.error_code is not None)
-    error_padding = len(str(max(error_codes)))
+    if error_codes:
+        error_padding = max(len(str(max(error_codes))), error_padding)
     for f in failures:
         error = f.error_code if f.error_code is not None else ""
-        log_red(f"  {error:>{error_padding}} {f.msg}: {f.count:,}")
+        log_red(f"  {error:>{error_padding}}{' ' if error_padding else ''}{f.msg}: {f.count:,}")
+    return error_padding
