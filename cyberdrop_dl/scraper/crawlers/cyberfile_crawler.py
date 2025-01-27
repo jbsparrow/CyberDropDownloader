@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import calendar
 import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
@@ -18,13 +18,20 @@ if TYPE_CHECKING:
 
 
 class CyberfileCrawler(Crawler):
-    primary_base_domain = URL("https://cyberfile.me/")
+    PRIMARY_BASE_DOMAINS: ClassVar[dict[str, URL]] = {
+        "cyberfile": URL("https://cyberfile.me/"),
+        "iceyfile": URL("https://iceyfile.com/"),
+    }
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "cyberfile", "Cyberfile")
-        self.api_load_files = URL("https://cyberfile.me/account/ajax/load_files")
-        self.api_details = URL("https://cyberfile.me/account/ajax/file_details")
-        self.api_password_process = URL("https://cyberfile.me/ajax/folder_password_process")
+    FOLDER_DOMAINS: ClassVar[dict[str, str]] = {"cyberfile": "Cyberfile", "iceyfile": "Iceyfile"}
+    SUPPORTED_SITES: ClassVar[dict[str, list]] = {"cyberfile": ["cyberfile"], "iceyfile": ["iceyfile"]}
+
+    def __init__(self, manager: Manager, site: str) -> None:
+        super().__init__(manager, site, self.FOLDER_DOMAINS.get(site, "Cyberfile"))
+        self.primary_base_domain = self.PRIMARY_BASE_DOMAINS.get(site, URL(f"https://{site}"))
+        self.api_load_files = self.primary_base_domain / "account/ajax/load_files"
+        self.api_details = self.primary_base_domain / "account/ajax/file_details"
+        self.api_password_process = self.primary_base_domain / "ajax/folder_password_process"
         self.request_limiter = AsyncLimiter(5, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
