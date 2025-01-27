@@ -61,7 +61,7 @@ class StatsProgress:
             BarColumn(bar_width=None),
             "[progress.percentage]{task.percentage:>6.2f}%",
             "━",
-            "{task.completed}",
+            "{task.completed:,}",
         )
         self.progress_group = Group(self.progress)
         self.failure_types: dict[str, TaskID] = {}
