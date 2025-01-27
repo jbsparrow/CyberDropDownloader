@@ -209,13 +209,16 @@ class CyberfileCrawler(Crawler):
         data = {"u": content_id}
         ajax_soup, page_title = await self.get_soup_from_ajax(data, scrape_item, file=True)
         file_menu = ajax_soup.select_one('ul[class="dropdown-menu dropdown-info account-dropdown-resize-menu"] li a')
-        file_button = ajax_soup.select_one('div[class="btn-group responsiveMobileMargin"] button')
         try:
-            html_download_text = file_menu.get("onclick") if file_menu else file_button.get("onclick")
-        except AttributeError:
+            if file_menu:
+                html_download_text = file_menu.get("onclick")
+            else:
+                file_button = ajax_soup.select('div[class="btn-group responsiveMobileMargin"] button')[-1]
+                html_download_text = file_button.get("onclick")
+        except (AttributeError, IndexError):
             raise ScrapeError(422, "Couldn't find download button", origin=scrape_item) from None
 
-        link_str = html_download_text.split("'")[1]
+        link_str = html_download_text.split("'")[1].strip().removesuffix("'")
         link = self.parse_url(link_str)
         file_detail_table = ajax_soup.select('table[class="table table-bordered table-striped"]')[-1]
         uploaded_row = file_detail_table.select("tr")[-2]
