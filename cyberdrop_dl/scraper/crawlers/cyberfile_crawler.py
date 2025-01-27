@@ -32,7 +32,6 @@ class CyberfileCrawler(Crawler):
         self.primary_base_domain = self.PRIMARY_BASE_DOMAINS.get(site, URL(f"https://{site}"))
         self.api_load_files = self.primary_base_domain / "account/ajax/load_files"
         self.api_details = self.primary_base_domain / "account/ajax/file_details"
-        self.api_details = URL("https://iceyfile.com/account/ajax/file_details")
         self.api_password_process = self.primary_base_domain / "ajax/folder_password_process"
         self.request_limiter = AsyncLimiter(5, 1)
 
