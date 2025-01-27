@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import calendar
+import contextlib
 import datetime
 from typing import TYPE_CHECKING, ClassVar
 
@@ -31,6 +32,7 @@ class CyberfileCrawler(Crawler):
         self.primary_base_domain = self.PRIMARY_BASE_DOMAINS.get(site, URL(f"https://{site}"))
         self.api_load_files = self.primary_base_domain / "account/ajax/load_files"
         self.api_details = self.primary_base_domain / "account/ajax/file_details"
+        self.api_details = URL("https://iceyfile.com/account/ajax/file_details")
         self.api_password_process = self.primary_base_domain / "ajax/folder_password_process"
         self.request_limiter = AsyncLimiter(5, 1)
 
@@ -205,7 +207,7 @@ class CyberfileCrawler(Crawler):
     async def handle_content_id(self, scrape_item: ScrapeItem, content_id: int) -> None:
         """Scrapes a file using the content id."""
         data = {"u": content_id}
-        ajax_soup, _ = await self.get_soup_from_ajax(data, scrape_item, file=True)
+        ajax_soup, page_title = await self.get_soup_from_ajax(data, scrape_item, file=True)
         file_menu = ajax_soup.select_one('ul[class="dropdown-menu dropdown-info account-dropdown-resize-menu"] li a')
         file_button = ajax_soup.select_one('div[class="btn-group responsiveMobileMargin"] button')
         try:
@@ -219,8 +221,11 @@ class CyberfileCrawler(Crawler):
         uploaded_row = file_detail_table.select("tr")[-2]
         uploaded_date = uploaded_row.select_one("td[class=responsiveTable]").text.strip()
         uploaded_date = self.parse_datetime(uploaded_date)
+        ajax_title = None
+        with contextlib.suppress(AttributeError):
+            ajax_title = ajax_soup.select_one("div.image-name-title").text
         scrape_item.possible_datetime = uploaded_date
-        filename, ext = get_filename_and_ext(ajax_soup.title or link.name)
+        filename, ext = get_filename_and_ext(page_title or ajax_title or link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
