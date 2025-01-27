@@ -16,6 +16,7 @@ dependencies = [
     "get-video-properties>=0.1.1,<0.2",
     "inquirerpy>=0.3.4,<0.4",
     "jeepney>=0.8.0,<0.9 ; sys_platform == 'bsd' or sys_platform == 'linux'",
+    "lz4 (>=4.4.3,<5.0.0)",
     "mediafire>=0.6.1,<0.7",
     "myjdapi>=1.1.7,<2",
     "pillow>=11.0.0,<12",
