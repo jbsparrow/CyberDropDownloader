@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 from typing import NamedTuple
 
 from rich.console import Group
@@ -132,6 +133,7 @@ class ScrapeStatsProgress(StatsProgress):
             self.unsupported_urls_skipped += 1
 
 
+@lru_cache
 def prettify_failure(failure: str) -> str:
     return " ".join(s.capitalize() for s in split_by_uppercase(failure))
 
