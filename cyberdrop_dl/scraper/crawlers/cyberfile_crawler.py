@@ -43,8 +43,10 @@ class CyberfileCrawler(Crawler):
             await self.folder(scrape_item)
         elif "shared" in scrape_item.url.parts:
             await self.shared(scrape_item)
-        else:
+        elif scrape_item.url.path != "/":
             await self.file(scrape_item)
+        else:
+            raise ValueError
 
     @error_handling_wrapper
     async def folder(self, scrape_item: ScrapeItem) -> None:
@@ -152,6 +154,11 @@ class CyberfileCrawler(Crawler):
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a file."""
 
+        file_id = scrape_item.url.parts[1]
+        canonical_url = self.primary_base_domain / file_id
+        if await self.check_complete_from_referer(canonical_url):
+            return
+
         def get_password_info(soup: BeautifulSoup, *, raise_with_message: str | None = None) -> tuple[bool, str]:
             password = scrape_item.url.query.get("password", "")
             password_protected = False
@@ -162,6 +169,7 @@ class CyberfileCrawler(Crawler):
             return password_protected, password
 
         contentId = None
+        scrape_item.url = canonical_url
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
