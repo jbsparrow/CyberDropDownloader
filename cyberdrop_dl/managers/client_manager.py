@@ -44,7 +44,7 @@ DDOS_GUARD_CHALLENGE_SELECTORS = [
     ".lds-ring",
 ]
 
-CLOUDFLARE_CHALLENGE_TITLES = ["Simpcity Cuck Detection"]
+CLOUDFLARE_CHALLENGE_TITLES = ["Simpcity Cuck Detection", "Attention Required! | Cloudflare"]
 CLOUDFLARE_CHALLENGE_SELECTORS = ["captchawrapper", "cf-turnstile"]
 
 
