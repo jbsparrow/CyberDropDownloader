@@ -90,8 +90,8 @@ class ProgressManager:
         log_spacer(20, "")
         log_cyan("Download Stats:")
         log_green(f"  Downloaded: {self.download_progress.completed_files:,} files")
-        log_yellow(f"  Skipped (Previously Downloaded): {self.download_progress.previously_completed_files:,} files")
         log_yellow(f"  Skipped (By Config): {self.download_progress.skipped_files:,} files")
+        log_yellow(f"  Skipped (Previously Downloaded): {self.download_progress.previously_completed_files:,} files")
         log_red(f"  Failed: {self.download_stats_progress.failed_files:,} files")
 
         log_spacer(20, "")
@@ -101,8 +101,8 @@ class ProgressManager:
 
         log_spacer(20, "")
         log_cyan("Dupe Stats:")
-        log_yellow(f"  Previously Hashed: {self.hash_progress.prev_hashed_files:,} files")
         log_yellow(f"  Newly Hashed: {self.hash_progress.hashed_files:,} files")
+        log_yellow(f"  Previously Hashed: {self.hash_progress.prev_hashed_files:,} files")
         log_yellow(f"  Removed (Downloads): {self.hash_progress.removed_files:,} files")
 
         log_spacer(20, "")

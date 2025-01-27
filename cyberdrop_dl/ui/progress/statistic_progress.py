@@ -13,8 +13,8 @@ SPLIT_BY_UPPERCASE_REGEX = re.compile(r"[A-Z][a-z]*|[a-z]+|\d+")
 class TaskInfo(NamedTuple):
     id: TaskID
     description: str
-    completed: int
-    total: int
+    completed: float
+    total: float | None
     progress: float
 
 
@@ -36,7 +36,7 @@ def get_tasks_info_sorted(progress: Progress) -> tuple[list[TaskInfo], bool]:
 
 
 class StatsProgress:
-    """Base Class that keeps track of failures and reasons."""
+    """Base class that keeps track of failures and reasons."""
 
     title = "Download Failures"
 
@@ -85,29 +85,26 @@ class StatsProgress:
             self.failure_types[task.description] = self.progress.add_task(
                 task.description,
                 total=task.total,
-                completed=task.completed,
+                completed=task.completed,  # type: ignore
             )
 
-    def add_failure(self, failure_type: str) -> None:
+    def add_failure(self, failure: str) -> None:
         """Adds a failed file to the progress bar."""
         self.failed_files += 1
-        failure_type = prettify_failure(failure_type)
-        if failure_type in self.failure_types:
-            self.progress.advance(self.failure_types[failure_type], 1)
+        key = prettify_failure(failure)
+        task_id = self.failure_types.get(key)
+        if task_id is not None:
+            self.progress.advance(task_id)
         else:
-            self.failure_types[failure_type] = self.progress.add_task(
-                failure_type,
-                total=self.failed_files,
-                completed=1,
-            )
+            self.failure_types[key] = self.progress.add_task(key, total=self.failed_files, completed=1)
         self.update_total(self.failed_files)
 
     def return_totals(self) -> dict:
         """Returns the total number of failed sites and reasons."""
         failures = {}
-        for failure_type, task_id in self.failure_types.items():
+        for key, task_id in self.failure_types.items():
             task = next(task for task in self.progress.tasks if task.id == task_id)
-            failures[failure_type] = task.completed
+            failures[key] = task.completed
         return dict(sorted(failures.items()))
 
 
