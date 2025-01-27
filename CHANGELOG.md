@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Iceyfile.com support
 - Support cookie extraction from Arc Browser, Lynx and W3M
 
 ### Removed
