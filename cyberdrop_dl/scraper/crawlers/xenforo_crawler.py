@@ -362,14 +362,17 @@ class XenforoCrawler(Crawler):
 
         await self.forum_login(login_url, session_cookie, username, password)
 
+        if not (self.login_required or self.logged_in):
+            log(f"Scraping {self.domain} without an account", 30)
+
     @error_handling_wrapper
     async def forum_login(self, login_url: URL, session_cookie: str, username: str, password: str) -> None:
         """Logs into a forum."""
 
         attempt = 0
-        wait_time: int = 5
-
-        if not ((username and password) or session_cookie) and self.login_required:
+        retries = wait_time = 5
+        missing_credentials = not (username and password) or session_cookie
+        if missing_credentials:
             msg = f"Login wasn't provided for {login_url.host}"
             raise LoginError(message=msg)
 
@@ -392,7 +395,7 @@ class XenforoCrawler(Crawler):
             data: dict = {elem["name"]: elem["value"] for elem in inputs if elem.get("name") and elem.get("value")}
             return data | credentials
 
-        while attempt < 5:
+        while attempt < retries:
             try:
                 attempt += 1
                 assert login_url.host
@@ -410,11 +413,8 @@ class XenforoCrawler(Crawler):
             except TimeoutError:
                 continue
 
-        if self.login_required:
-            msg = "Failed to login after 5 attempts"
-            raise LoginError(message=msg)
-
-        log(f"Scraping {self.domain} without an account", 30)
+        msg = f"Failed to login after {retries} attempts"
+        raise LoginError(message=msg)
 
     async def check_login_with_request(self, login_url: URL) -> tuple[str, bool]:
         text = await self.client.get_text(self.domain, login_url)
