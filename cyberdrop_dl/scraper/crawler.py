@@ -279,6 +279,9 @@ class Crawler(ABC):
             new_url = new_url.with_scheme(base.scheme or "https")
         return new_url
 
+    def update_cookies(self, cookies: dict, response_url: URL) -> None:
+        self.client.client_manager.cookies.update_cookies(cookies, response_url)
+
 
 def create_task_id(func: Callable) -> Callable:
     """Wrapper handles task_id creation and removal for ScrapeItems"""

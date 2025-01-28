@@ -367,7 +367,7 @@ class XenforoCrawler(Crawler):
 
     @error_handling_wrapper
     async def forum_login(self, login_url: URL, session_cookie: str, username: str, password: str) -> None:
-        """Logs into a forum."""
+        """Logs in to a forum."""
 
         attempt = 0
         retries = wait_time = 5
@@ -376,11 +376,9 @@ class XenforoCrawler(Crawler):
             msg = f"Login wasn't provided for {login_url.host}"
             raise LoginError(message=msg)
 
+        cookies = {"xf_user": session_cookie}
         if session_cookie:
-            self.client.client_manager.cookies.update_cookies(
-                {"xf_user": session_cookie},
-                response_url=self.primary_base_domain,
-            )
+            self.update_cookies(cookies, self.primary_base_domain)
 
         text, logged_in = await self.check_login_with_request(login_url)
         if logged_in:
