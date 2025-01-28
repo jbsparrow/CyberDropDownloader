@@ -174,13 +174,16 @@ class XenforoCrawler(Crawler):
         scrape_item.set_type(FORUM, self.manager)
         thread = self.get_thread_info(scrape_item.url)
         last_scraped_post_number = None
+        title = None
         async for soup in self.thread_pager(scrape_item):
-            title_block = soup.select_one(self.selectors.title.element)
-            trash: list[Tag] = title_block.find_all(self.selectors.title_trash.element)
-            for element in trash:
-                element.decompose()
+            if not title:
+                title_block = soup.select_one(self.selectors.title.element)
+                trash: list[Tag] = title_block.find_all(self.selectors.title_trash.element)
+                for element in trash:
+                    element.decompose()
 
-            title = self.create_title(title_block.text.replace("\n", ""), thread_id=thread.id_)
+                title = self.create_title(title_block.text.replace("\n", ""), thread_id=thread.id_)
+
             scrape_item.add_to_parent_title(title)
             posts = soup.select(self.selectors.posts.element)
             continue_scraping = False
