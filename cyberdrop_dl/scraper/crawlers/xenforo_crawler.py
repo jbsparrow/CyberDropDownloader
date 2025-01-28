@@ -20,7 +20,7 @@ from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
+    from collections.abc import AsyncGenerator, Sequence
 
     from bs4 import Tag
 
@@ -97,13 +97,19 @@ class ForumPost:
 
 
 @dataclass(frozen=True, slots=True)
-class ForumThread:
+class ThreadInfo:
     name: str
     id_: int
     page: int
     post: int
     url: URL
     complete_url: URL
+
+
+@dataclass(frozen=True, slots=True)
+class ForumThreadPage:
+    thread: ThreadInfo
+    posts: Sequence[Tag]
 
 
 class XenforoCrawler(Crawler):
@@ -165,20 +171,20 @@ class XenforoCrawler(Crawler):
                 title = self.create_title(title_block.text.replace("\n", ""), thread_id=thread.id_)
                 scrape_item.add_to_parent_title(title)
 
-            continue_scraping, last_post_url = self.process_thread_page(scrape_item, thread, soup)
+            posts = soup.select(self.selectors.posts.element)
+            forum_thread_page = ForumThreadPage(thread, posts)
+            continue_scraping, last_post_url = self.process_thread_page(scrape_item, forum_thread_page)
             if not continue_scraping:
                 break
 
         await self.write_last_forum_post(thread.url, last_post_url)
 
-    def process_thread_page(
-        self, scrape_item: ScrapeItem, thread: ForumThread, soup: BeautifulSoup
-    ) -> tuple[bool, URL]:
-        posts = soup.select(self.selectors.posts.element)
+    def process_thread_page(self, scrape_item: ScrapeItem, forum_page: ForumThreadPage) -> tuple[bool, URL]:
         continue_scraping = False
         create = partial(self.create_scrape_item, scrape_item)
+        thread = forum_page.thread
         post_url = thread.url
-        for post in posts:
+        for post in forum_page.posts:
             current_post = ForumPost(post, selectors=self.selectors.posts, post_name=self.POST_NAME)
             continue_scraping, scrape_post = self.check_post_number(thread.post, current_post.number)
             date = current_post.date
@@ -452,12 +458,12 @@ class XenforoCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    def get_thread_info(self, url: URL) -> ForumThread:
+    def get_thread_info(self, url: URL) -> ThreadInfo:
         name_index = url.parts.index(self.thread_url_part) + 1
         name, id_ = get_thread_name_and_id(url, name_index)
         thread_url = get_thread_canonical_url(url, name_index)
         page, post = get_thread_page_and_post(url, name_index, self.PAGE_NAME, self.POST_NAME)
-        return ForumThread(name, id_, page, post, thread_url, url)
+        return ThreadInfo(name, id_, page, post, thread_url, url)
 
 
 def get_thread_name_and_id(url: URL, thread_name_index: int) -> tuple[str, int]:
