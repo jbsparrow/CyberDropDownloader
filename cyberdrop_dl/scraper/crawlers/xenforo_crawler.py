@@ -358,9 +358,16 @@ class XenforoCrawler(Crawler):
     async def forum_login(self, login_url: URL, session_cookie: str, username: str, password: str) -> None:
         """Logs into a forum."""
 
+        attempt = 0
+
+        text, logged_in = await self.check_login_with_request(login_url)
+        if logged_in:
+            return
+
         wait_time: int = 5
-        if (not username or not password) and not session_cookie:
-            log(f"Login wasn't provided for {login_url.host}", 30)
+
+        if not ((username and password) or session_cookie):
+            log(f"Login wasn't provided for {login_url.host}", 40)
             raise LoginError(message="Login wasn't provided")
 
         if session_cookie:
@@ -368,40 +375,38 @@ class XenforoCrawler(Crawler):
                 {"xf_user": session_cookie},
                 response_url=self.primary_base_domain,
             )
-        attempt = 0
 
         credentials = {"login": username, "password": password, "_xfRedirect": str(self.primary_base_domain)}
+
+        def prepare_login_data(resp_text) -> dict:
+            soup = BeautifulSoup(resp_text, "html.parser")
+            inputs = soup.select("form input")
+            data: dict = {elem["name"]: elem["value"] for elem in inputs if elem.get("name") and elem.get("value")}
+            return data | credentials
+
         while attempt < 5:
             try:
                 attempt += 1
                 assert login_url.host
                 await set_return_value(str(login_url), False, pop=False)
                 await set_return_value(str(login_url / "login"), False, pop=False)
-
-                text = await self.client.get_text(self.domain, login_url)
-                if any(p in text for p in ('<span class="p-navgroup-user-linkText">', "You are already logged in.")):
+                await asyncio.sleep(wait_time)
+                data = prepare_login_data(text)
+                await self.client.post_data(self.domain, login_url / "login", data=data, req_resp=False)
+                await asyncio.sleep(wait_time)
+                text, logged_in = await self.check_login_with_request(login_url)
+                if logged_in:
                     self.logged_in = True
                     return
 
-                await asyncio.sleep(wait_time)
-                soup = BeautifulSoup(text, "html.parser")
-
-                inputs = soup.select("form input")
-                data = {elem["name"]: elem["value"] for elem in inputs if elem.get("name") and elem.get("value")}
-                data.update(credentials)
-                await self.client.post_data(self.domain, login_url / "login", data=data, req_resp=False)
-                await asyncio.sleep(wait_time)
-                text = await self.client.get_text(self.domain, login_url)
-                if not any(
-                    p in text for p in ('<span class="p-navgroup-user-linkText">', "You are already logged in.")
-                ):
-                    continue
-                self.logged_in = True
-                return
-
             except TimeoutError:
                 continue
+
         raise LoginError(message="Failed to login after 5 attempts")
+
+    async def check_login_with_request(self, login_url: URL) -> tuple[str, bool]:
+        text = await self.client.get_text(self.domain, login_url)
+        return text, any(p in text for p in ('<span class="p-navgroup-user-linkText">', "You are already logged in."))
 
     def is_valid_post_link(self, link_obj: Tag) -> bool:
         is_image = link_obj.select_one("img")
