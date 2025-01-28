@@ -3,8 +3,8 @@ from __future__ import annotations
 import contextlib
 import re
 from dataclasses import dataclass, field
-from functools import singledispatchmethod
-from typing import TYPE_CHECKING
+from functools import partial, singledispatchmethod
+from typing import TYPE_CHECKING, NamedTuple
 
 from yarl import URL
 
@@ -96,6 +96,7 @@ class XenforoCrawler(Crawler):
     primary_base_domain = None
     selectors = XenforoSelectors()
     POST_NAME = "post-"
+    PAGE_NAME = "page-"
     thread_url_part = "threads"
 
     def __init__(self, manager: Manager, site: str, folder_domain: str | None = None) -> None:
@@ -168,22 +169,7 @@ class XenforoCrawler(Crawler):
             return
 
         scrape_item.set_type(FORUM, self.manager)
-
-        thread_url = scrape_item.url
-        post_number = 0
-        post_sections = {scrape_item.url.fragment}
-        threads_part_index = scrape_item.url.parts.index(self.thread_url_part)
-        thread_id = thread_url.parts[threads_part_index].split(".")[-1].split("#")[0]
-        post_part_index = threads_part_index + 1
-        if len(scrape_item.url.parts) > post_part_index:
-            post_sections.add(scrape_item.url.parts[post_part_index])
-
-        if any(self.POST_NAME in sec for sec in post_sections):
-            url_parts = str(scrape_item.url).rsplit(self.POST_NAME, 1)
-            thread_url_str = url_parts[0].rstrip("#")
-            thread_url = self.parse_url(thread_url_str)
-            post_number = int(url_parts[-1].strip("/")) if len(url_parts) == 2 else 0
-
+        thread = self.get_thread_info(scrape_item.url)
         last_scraped_post_number = None
         async for soup in self.thread_pager(scrape_item):
             title_block = soup.select_one(self.selectors.title.element)
@@ -191,24 +177,20 @@ class XenforoCrawler(Crawler):
             for element in trash:
                 element.decompose()
 
-            title = self.create_title(title_block.text.replace("\n", ""), thread_id=thread_id)
+            title = self.create_title(title_block.text.replace("\n", ""), thread_id=thread.id_)
+            scrape_item.add_to_parent_title(title)
             posts = soup.select(self.selectors.posts.element)
             continue_scraping = False
+            create = partial(self.create_scrape_item, scrape_item)
             for post in posts:
                 current_post = ForumPost(post, selectors=self.selectors.posts, post_name=self.POST_NAME)
                 last_scraped_post_number = current_post.number
-                scrape_post, continue_scraping = self.check_post_number(post_number, current_post.number)
+                scrape_post, continue_scraping = self.check_post_number(thread.post, current_post.number)
                 date = current_post.date
                 if scrape_post:
                     new_path = f"/{self.POST_NAME}{current_post.number}"
-                    parent_url = self.parse_url(new_path, thread_url)
-                    new_scrape_item = self.create_scrape_item(
-                        scrape_item,
-                        thread_url,
-                        title,
-                        possible_datetime=date,
-                        add_parent=parent_url,
-                    )
+                    parent_url = self.parse_url(new_path, thread.url)
+                    new_scrape_item = create(thread.url, possible_datetime=date, add_parent=parent_url)
                     trash: list[Tag] = title_block.find_all(self.selectors.quotes.element)
                     for element in trash:
                         element.decompose()
@@ -221,7 +203,7 @@ class XenforoCrawler(Crawler):
             if not continue_scraping:
                 break
 
-        await self.write_last_forum_post(thread_url, last_scraped_post_number)
+        await self.write_last_forum_post(thread.url, last_scraped_post_number)
 
     async def post(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         """Scrapes a post."""
@@ -348,7 +330,7 @@ class XenforoCrawler(Crawler):
         link_str: str = confirm_button.get("href")
         return self.parse_url(link_str)
 
-    async def write_last_forum_post(self, thread_url: URL, post_number: int) -> None:
+    async def write_last_forum_post(self, thread_url: URL, post_number: int | None) -> None:
         if not post_number:
             return
         post_string = f"{self.POST_NAME}{post_number}"
@@ -387,3 +369,50 @@ class XenforoCrawler(Crawler):
         link_str: str = link.replace(".th.", ".").replace(".md.", ".").replace("ifr", "watch")
         parsed_link = self.parse_url(link_str)
         return await self.get_absolute_link(parsed_link)
+
+    def get_thread_info(self, url: URL) -> ThreadInfo:
+        name_index = url.parts.index(self.thread_url_part) + 1
+        name, id_ = get_thread_name_and_id(url, name_index)
+        thread_url = get_thread_canonical_url(url, name_index)
+        page, post = get_thread_page_and_post(url, name_index, self.PAGE_NAME, self.POST_NAME)
+
+        return ThreadInfo(name, id_, page, post, thread_url, url)
+
+
+class ThreadInfo(NamedTuple):
+    name: str
+    id_: int
+    page: int
+    post: int
+    url: URL
+    complete_url: URL
+
+
+def get_thread_name_and_id(url: URL, thread_name_index: int) -> tuple[str, int]:
+    thread_name, thread_id_str = url.parts[thread_name_index].rsplit(".", 1)
+    thread_id = int(thread_id_str)
+    return thread_name, thread_id
+
+
+def get_thread_canonical_url(url: URL, thread_name_index: int) -> URL:
+    new_parts = url.parts[: thread_name_index + 1]
+    new_path = "/".join(new_parts)
+    thread_url = url.with_path(new_path).with_fragment(None).with_query(None)
+    return thread_url
+
+
+def get_thread_page_and_post(url: URL, thread_name_index: int, page_name: str, post_name: str) -> tuple[int, int]:
+    post_or_page_index = thread_name_index + 1
+    extra_parts = set(url.parts[post_or_page_index:])
+    sections = {url.fragment} if url.fragment else set()
+    sections.update(extra_parts)
+
+    def find_number(search_value: str) -> int:
+        for sec in sections:
+            if search_value in sec:
+                return int(sec.replace(search_value, "").strip())
+        return 0
+
+    post_number = find_number(post_name)
+    page_number = find_number(page_name)
+    return page_number, post_number
