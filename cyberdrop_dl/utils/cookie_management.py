@@ -35,23 +35,19 @@ def cookie_wrapper(func: Callable) -> Callable:
         try:
             return func(*args, **kwargs)
         except PermissionError:
-            msg = """
-            We've encountered a Permissions Error. Please close all browsers and try again
-            If you are still having issues, make sure all browsers processes are closed in Task Manager
-            """
+            msg = """We've encountered a Permissions Error. Please close all browsers and try again
+                     If you are still having issues, make sure all browsers processes are closed in Task Manager"""
             msg = dedent(msg)
 
         except ValueError as e:
             msg = str(e)
 
         except UnsupportedBrowserError as e:
-            msg = f"\nERROR: {e!s}"
+            msg = f"ERROR: {e!s}"
 
         except browser_cookie3.BrowserCookieError as e:
-            msg = """
-            Browser extraction ran into an error, the selected browser(s) may not be available on your system
-            If you are still having issues, make sure all browsers processes are closed in Task Manager.
-            """
+            msg = """Browser extraction ran into an error, the selected browser(s) may not be available on your system
+                     If you are still having issues, make sure all browsers processes are closed in Task Manager."""
 
             msg = dedent(msg) + f"\nERROR: {e!s}"
 
@@ -72,6 +68,7 @@ def get_cookies_from_browsers(
         raise ValueError(msg)
 
     browsers = browsers or manager.config_manager.settings_data.browser_cookies.browsers
+    browsers = list(map(str.lower, browsers))
     domains: list[str] = domains or manager.config_manager.settings_data.browser_cookies.sites
     extractors = [(str(b), getattr(browser_cookie3, b)) for b in browsers if hasattr(browser_cookie3, b)]
 
