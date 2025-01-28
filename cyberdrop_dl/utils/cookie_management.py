@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import os
 from functools import wraps
 from http.cookiejar import MozillaCookieJar
 from textwrap import dedent
@@ -21,7 +22,8 @@ console = Console()
 COOKIE_ERROR_FOOTER = "\n\nNothing has been saved."
 
 
-class UnsupportedBrowserError(browser_cookie3.BrowserCookieError): ...
+class UnsupportedBrowserError(browser_cookie3.BrowserCookieError):
+    pass
 
 
 def cookie_wrapper(func: Callable) -> Callable:
@@ -43,8 +45,7 @@ def cookie_wrapper(func: Callable) -> Callable:
             msg = str(e)
 
         except UnsupportedBrowserError as e:
-            msg = "Cookie extraction from Chrome is not supported on Windows"
-            msg = dedent(msg) + f"\nERROR: {e!s}"
+            msg = f"\nERROR: {e!s}"
 
         except browser_cookie3.BrowserCookieError as e:
             msg = """
@@ -72,7 +73,7 @@ def get_cookies_from_browsers(
 
     browsers = browsers or manager.config_manager.settings_data.browser_cookies.browsers
     domains: list[str] = domains or manager.config_manager.settings_data.browser_cookies.sites
-    extractors = [getattr(browser_cookie3, b) for b in browsers if hasattr(browser_cookie3, b)]
+    extractors = [(str(b), getattr(browser_cookie3, b)) for b in browsers if hasattr(browser_cookie3, b)]
 
     if not extractors:
         msg = "None of the provided browsers is supported for extraction"
@@ -80,12 +81,11 @@ def get_cookies_from_browsers(
 
     for domain in domains:
         cookie_jar = MozillaCookieJar()
-        for extractor in extractors:
+        for extractor_name, extractor in extractors:
             try:
                 cookies = extractor(domain_name=domain)
             except browser_cookie3.BrowserCookieError as e:
-                if "Unable to get key for cookie decryption" in str(e) and extractor == "chrome":
-                    raise UnsupportedBrowserError(str(e)) from None
+                check_unsupported_browser(e, extractor_name)
                 raise
             for cookie in cookies:
                 cookie_jar.set_cookie(cookie)
@@ -116,3 +116,14 @@ def clear_cookies(manager: Manager, domains: list[str] | None = None) -> None:
         manager.path_manager.cookies_dir.mkdir(parents=True, exist_ok=True)
         cookie_file_path = manager.path_manager.cookies_dir / f"{domain}.txt"
         cookie_jar.save(cookie_file_path, ignore_discard=True, ignore_expires=True)
+
+
+def check_unsupported_browser(error: browser_cookie3.BrowserCookieError, extractor_name: str) -> None:
+    msg = str(error)
+    if is_decrypt_error(msg) and extractor_name == "chrome" and os.name == "nt":
+        msg = f"Cookie extraction from Chrome is not supported on Windows - {msg}"
+        raise UnsupportedBrowserError(msg)
+
+
+def is_decrypt_error(error_as_str: str) -> bool:
+    return "Unable to get key for cookie decryption" in error_as_str
