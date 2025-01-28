@@ -6,9 +6,9 @@ from http.cookiejar import MozillaCookieJar
 from textwrap import dedent
 from typing import TYPE_CHECKING
 
+import browser_cookie3
 from rich.console import Console
 
-from cyberdrop_dl.dependencies import browser_cookie3
 from cyberdrop_dl.utils.data_enums_classes.supported_domains import SUPPORTED_FORUMS
 
 if TYPE_CHECKING:
