@@ -34,15 +34,12 @@ def cookie_wrapper(func: Callable) -> Callable:
         msg = ""
         try:
             return func(*args, **kwargs)
-        except PermissionError:
+        except PermissionError as e:
             msg = """We've encountered a Permissions Error. Please close all browsers and try again
                      If you are still having issues, make sure all browsers processes are closed in Task Manager"""
-            msg = dedent(msg)
+            msg = dedent(msg) + f"\nERROR: {e!s}"
 
-        except ValueError as e:
-            msg = str(e)
-
-        except UnsupportedBrowserError as e:
+        except (ValueError, UnsupportedBrowserError) as e:
             msg = f"ERROR: {e!s}"
 
         except browser_cookie3.BrowserCookieError as e:
