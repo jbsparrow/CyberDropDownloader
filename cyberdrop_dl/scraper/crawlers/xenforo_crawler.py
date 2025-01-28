@@ -1,9 +1,11 @@
+# ruff : noqa: RUF009
+
 from __future__ import annotations
 
 import asyncio
 import contextlib
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from functools import partial, singledispatchmethod
 from typing import TYPE_CHECKING, NamedTuple
 
@@ -36,30 +38,30 @@ HTTP_URL_PATTERNS = [re.compile(regex) for regex in HTTP_URL_REGEX_STRS]
 @dataclass(frozen=True)
 class Selector:
     element: str
-    attribute: str = None
+    attribute: str | None = None
 
 
 @dataclass(frozen=True)
 class PostSelectors(Selector):
     element: str = "div[class*=message-main]"
-    attachments: Selector = field(default=Selector("section[class=message-attachments] a ", "href"))
-    content: Selector = field(default=Selector("div[class*=message-userContent]", None))
-    date: Selector = field(default=Selector("time", "data-timestamp"))
-    embeds: Selector = field(default=Selector("span[data-s9e-mediaembed-iframe]", "data-s9e-mediaembed-iframe"))
-    iframe: Selector = field(default=Selector("iframe[class=saint-iframe]", "href"))
-    images: Selector = field(default=Selector("img[class*=bbImage]", "src"))
-    links: Selector = field(default=Selector("a", "href"))
-    number: Selector = field(default=Selector("li[class=u-concealed] a", "href"))
-    videos: Selector = field(default=Selector("video source", "src"))
+    attachments: Selector = Selector("section[class=message-attachments] a ", "href")
+    content: Selector = Selector("div[class*=message-userContent]", None)
+    date: Selector = Selector("time", "data-timestamp")
+    embeds: Selector = Selector("span[data-s9e-mediaembed-iframe]", "data-s9e-mediaembed-iframe")
+    iframe: Selector = Selector("iframe[class=saint-iframe]", "href")
+    images: Selector = Selector("img[class*=bbImage]", "src")
+    links: Selector = Selector("a", "href")
+    number: Selector = Selector("li[class=u-concealed] a", "href")
+    videos: Selector = Selector("video source", "src")
 
 
 @dataclass(frozen=True)
 class XenforoSelectors:
-    next_page: Selector = field(default=Selector("a[class*=pageNav-jump--next]", "href"))
-    posts: PostSelectors = field(default=PostSelectors())
-    title: Selector = field(default=Selector("h1[class=p-title-value]", None))
-    title_trash: Selector = field(default=Selector("span", None))
-    quotes: Selector = field(default=Selector("blockquote", None))
+    next_page: Selector = Selector("a[class*=pageNav-jump--next]", "href")
+    posts: PostSelectors = PostSelectors()
+    title: Selector = Selector("h1[class=p-title-value]", None)
+    title_trash: Selector = Selector("span", None)
+    quotes: Selector = Selector("blockquote", None)
     post_name: str = "post-"
 
 
