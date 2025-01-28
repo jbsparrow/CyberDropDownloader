@@ -115,15 +115,16 @@ class CoomerCrawler(Crawler):
             msg = "No session cookie found in the config file, cannot scrape favorites"
             raise ScrapeError(401, msg, origin=scrape_item)
 
-        self.client.client_manager.cookies.update_cookies(
-            {"session": self.manager.config_manager.authentication_data.coomer.session},
-            response_url=self.primary_base_domain,
-        )
+        cookies = {"session": self.manager.config_manager.authentication_data.coomer.session}
+        self.update_cookies(cookies, self.primary_base_domain)
+
         async with self.request_limiter:
             favourites_api_url = (self.api_url / "account/favorites").with_query({"type": "artist"})
             JSON_Resp = await self.client.get_json(self.domain, favourites_api_url, origin=scrape_item)
 
-        self.client.client_manager.cookies.update_cookies({"session": ""}, response_url=self.primary_base_domain)
+        cookies = {"session": ""}
+        self.update_cookies(cookies, self.primary_base_domain)
+
         for user in JSON_Resp:
             id = user["id"]
             service = user["service"]

@@ -132,7 +132,8 @@ class GoFileCrawler(Crawler):
         """Gets the token for the API."""
         self.api_key = self.api_key or await self._get_new_api_key()
         self.headers["Authorization"] = f"Bearer {self.api_key}"
-        self.client.client_manager.cookies.update_cookies({"accountToken": self.api_key}, self.primary_base_domain)
+        cookies = {"accountToken": self.api_key}
+        self.update_cookies(cookies, self.primary_base_domain)
 
     async def _get_new_api_key(self) -> str:
         create_account_address = self.api / "accounts"
