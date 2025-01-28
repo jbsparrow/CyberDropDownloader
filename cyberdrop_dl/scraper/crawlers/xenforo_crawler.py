@@ -370,8 +370,8 @@ class XenforoCrawler(Crawler):
         wait_time: int = 5
 
         if not ((username and password) or session_cookie) and self.login_required:
-            log(f"Login wasn't provided for {login_url.host}", 40)
-            raise LoginError(message="Login wasn't provided")
+            msg = f"Login wasn't provided for {login_url.host}"
+            raise LoginError(message=msg)
 
         if session_cookie:
             self.client.client_manager.cookies.update_cookies(
@@ -411,7 +411,8 @@ class XenforoCrawler(Crawler):
                 continue
 
         if self.login_required:
-            raise LoginError(message="Failed to login after 5 attempts")
+            msg = "Failed to login after 5 attempts"
+            raise LoginError(message=msg)
 
         log(f"Scraping {self.domain} without an account", 30)
 
