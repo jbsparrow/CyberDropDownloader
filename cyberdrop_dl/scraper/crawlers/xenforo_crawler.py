@@ -94,6 +94,15 @@ class ForumPost:
         return self.number
 
 
+class ThreadInfo(NamedTuple):
+    name: str
+    id_: int
+    page: int
+    post: int
+    url: URL
+    complete_url: URL
+
+
 class XenforoCrawler(Crawler):
     login_required = True
     primary_base_domain = None
@@ -393,10 +402,10 @@ class XenforoCrawler(Crawler):
             data: dict = {elem["name"]: elem["value"] for elem in inputs if elem.get("name") and elem.get("value")}
             return data | credentials
 
+        assert login_url.host
         while attempt < retries:
             try:
                 attempt += 1
-                assert login_url.host
                 await set_return_value(str(login_url), False, pop=False)
                 await set_return_value(str(login_url / "login"), False, pop=False)
                 await asyncio.sleep(wait_time)
@@ -427,15 +436,6 @@ class XenforoCrawler(Crawler):
         page, post = get_thread_page_and_post(url, name_index, self.PAGE_NAME, self.POST_NAME)
 
         return ThreadInfo(name, id_, page, post, thread_url, url)
-
-
-class ThreadInfo(NamedTuple):
-    name: str
-    id_: int
-    page: int
-    post: int
-    url: URL
-    complete_url: URL
 
 
 def get_thread_name_and_id(url: URL, thread_name_index: int) -> tuple[str, int]:
