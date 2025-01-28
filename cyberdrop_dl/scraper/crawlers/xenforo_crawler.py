@@ -152,7 +152,8 @@ class XenforoCrawler(Crawler):
         """Scrapes a forum thread."""
         scrape_item.set_type(FORUM, self.manager)
         thread = self.get_thread_info(scrape_item.url)
-        title = last_scraped_post_number = None
+        title = None
+        last_post_url = thread.url
         async for soup in self.thread_pager(scrape_item):
             if not title:
                 title_block = soup.select_one(self.selectors.title.element)
@@ -163,27 +164,31 @@ class XenforoCrawler(Crawler):
                 title = self.create_title(title_block.text.replace("\n", ""), thread_id=thread.id_)
                 scrape_item.add_to_parent_title(title)
 
-            posts = soup.select(self.selectors.posts.element)
-            continue_scraping = False
-            create = partial(self.create_scrape_item, scrape_item)
-            for post in posts:
-                current_post = ForumPost(post, selectors=self.selectors.posts, post_name=self.POST_NAME)
-                last_scraped_post_number = current_post.number
-                scrape_post, continue_scraping = self.check_post_number(thread.post, current_post.number)
-                date = current_post.date
-                if scrape_post:
-                    post_string = f"{self.POST_NAME}{current_post.number}"
-                    parent_url = thread.url / post_string
-                    new_scrape_item = create(thread.url, possible_datetime=date, add_parent=parent_url)
-                    self.manager.task_group.create_task(self.post(new_scrape_item, current_post))
-                    scrape_item.add_children()
-
-                if not continue_scraping:
-                    break
+            continue_scraping, last_post_url = self.process_thread_page(scrape_item, thread, soup)
             if not continue_scraping:
                 break
 
-        await self.write_last_forum_post(thread.url, last_scraped_post_number)
+        await self.write_last_forum_post(thread.url, last_post_url)
+
+    def process_thread_page(self, scrape_item: ScrapeItem, thread: ThreadInfo, soup: BeautifulSoup) -> tuple[bool, URL]:
+        posts = soup.select(self.selectors.posts.element)
+        continue_scraping = False
+        create = partial(self.create_scrape_item, scrape_item)
+        post_url = thread.url
+        for post in posts:
+            current_post = ForumPost(post, selectors=self.selectors.posts, post_name=self.POST_NAME)
+            scrape_post, continue_scraping = self.check_post_number(thread.post, current_post.number)
+            date = current_post.date
+            post_string = f"{self.POST_NAME}{current_post.number}"
+            post_url = thread.url / post_string
+            if scrape_post:
+                new_scrape_item = create(thread.url, possible_datetime=date, add_parent=post_url)
+                self.manager.task_group.create_task(self.post(new_scrape_item, current_post))
+                scrape_item.add_children()
+
+            if not continue_scraping:
+                break
+        return continue_scraping, post_url
 
     async def post(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         """Scrapes a post."""
@@ -327,11 +332,9 @@ class XenforoCrawler(Crawler):
         link_str: str = confirm_button.get("href")
         return self.parse_url(link_str)
 
-    async def write_last_forum_post(self, thread_url: URL, post_number: int | None) -> None:
-        if not post_number:
+    async def write_last_forum_post(self, thread_url: URL, last_post_url: URL | None) -> None:
+        if not last_post_url or last_post_url == thread_url:
             return
-        post_string = f"{self.POST_NAME}{post_number}"
-        last_post_url = thread_url / post_string
         await self.manager.log_manager.write_last_post_log(last_post_url)
 
     def is_valid_post_link(self, link_obj: Tag) -> bool:
