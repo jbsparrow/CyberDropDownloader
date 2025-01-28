@@ -35,13 +35,13 @@ HTTP_URL_REGEX_STRS = [
 HTTP_URL_PATTERNS = [re.compile(regex) for regex in HTTP_URL_REGEX_STRS]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Selector:
     element: str
     attribute: str | None = None
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class PostSelectors(Selector):
     element: str = "div[class*=message-main]"
     attachments: Selector = Selector("section[class=message-attachments] a ", "href")
@@ -55,7 +55,7 @@ class PostSelectors(Selector):
     videos: Selector = Selector("video source", "src")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class XenforoSelectors:
     next_page: Selector = Selector("a[class*=pageNav-jump--next]", "href")
     posts: PostSelectors = PostSelectors()
