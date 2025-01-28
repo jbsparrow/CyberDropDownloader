@@ -390,7 +390,7 @@ class XenforoCrawler(Crawler):
 
         cookies = {"xf_user": session_cookie}
         if session_cookie:
-            self.update_cookies(cookies, self.primary_base_domain)
+            self.update_cookies(cookies)
 
         text, logged_in = await self.check_login_with_request(login_url)
         if logged_in:

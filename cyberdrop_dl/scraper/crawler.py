@@ -280,7 +280,12 @@ class Crawler(ABC):
             new_url = new_url.with_scheme(base.scheme or "https")
         return new_url
 
-    def update_cookies(self, cookies: dict, response_url: URL) -> None:
+    def update_cookies(self, cookies: dict, url: URL | None = None) -> None:
+        """Update cookies for the provided URL
+
+        If `url` is `None`, defaults to `self.primary_base_domain`
+        """
+        response_url = url or self.primary_base_domain
         self.client.client_manager.cookies.update_cookies(cookies, response_url)
 
 

@@ -82,4 +82,4 @@ class RealBooruCrawler(Crawler):
     def set_cookies(self) -> None:
         """Sets the cookies for the client."""
         cookies = {"resize-original": "1"}
-        self.update_cookies(cookies, self.primary_base_domain)
+        self.update_cookies(cookies)

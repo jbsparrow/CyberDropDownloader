@@ -116,14 +116,14 @@ class CoomerCrawler(Crawler):
             raise ScrapeError(401, msg, origin=scrape_item)
 
         cookies = {"session": self.manager.config_manager.authentication_data.coomer.session}
-        self.update_cookies(cookies, self.primary_base_domain)
+        self.update_cookies(cookies)
 
         async with self.request_limiter:
             favourites_api_url = (self.api_url / "account/favorites").with_query({"type": "artist"})
             JSON_Resp = await self.client.get_json(self.domain, favourites_api_url, origin=scrape_item)
 
         cookies = {"session": ""}
-        self.update_cookies(cookies, self.primary_base_domain)
+        self.update_cookies(cookies)
 
         for user in JSON_Resp:
             id = user["id"]
