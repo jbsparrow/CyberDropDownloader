@@ -194,10 +194,6 @@ class XenforoCrawler(Crawler):
                     post_string = f"{self.POST_NAME}{current_post.number}"
                     parent_url = thread.url / post_string
                     new_scrape_item = create(thread.url, possible_datetime=date, add_parent=parent_url)
-                    trash: list[Tag] = title_block.find_all(self.selectors.quotes.element)
-                    for element in trash:
-                        element.decompose()
-
                     await self.post(new_scrape_item, current_post)
                     scrape_item.add_children()
 
