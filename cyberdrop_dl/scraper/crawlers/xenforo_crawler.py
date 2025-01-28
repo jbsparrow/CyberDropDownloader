@@ -367,11 +367,6 @@ class XenforoCrawler(Crawler):
         """Logs into a forum."""
 
         attempt = 0
-        text, logged_in = await self.check_login_with_request(login_url)
-        if logged_in:
-            self.logged_in = True
-            return
-
         wait_time: int = 5
 
         if not ((username and password) or session_cookie) and self.login_required:
@@ -383,6 +378,11 @@ class XenforoCrawler(Crawler):
                 {"xf_user": session_cookie},
                 response_url=self.primary_base_domain,
             )
+
+        text, logged_in = await self.check_login_with_request(login_url)
+        if logged_in:
+            self.logged_in = True
+            return
 
         credentials = {"login": username, "password": password, "_xfRedirect": str(self.primary_base_domain)}
 
