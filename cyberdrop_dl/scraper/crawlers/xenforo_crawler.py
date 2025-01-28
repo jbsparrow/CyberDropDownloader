@@ -97,7 +97,7 @@ class ForumPost:
 
 
 @dataclass(frozen=True, slots=True)
-class ThreadInfo:
+class ForumThread:
     name: str
     id_: int
     page: int
@@ -171,7 +171,9 @@ class XenforoCrawler(Crawler):
 
         await self.write_last_forum_post(thread.url, last_post_url)
 
-    def process_thread_page(self, scrape_item: ScrapeItem, thread: ThreadInfo, soup: BeautifulSoup) -> tuple[bool, URL]:
+    def process_thread_page(
+        self, scrape_item: ScrapeItem, thread: ForumThread, soup: BeautifulSoup
+    ) -> tuple[bool, URL]:
         posts = soup.select(self.selectors.posts.element)
         continue_scraping = False
         create = partial(self.create_scrape_item, scrape_item)
@@ -450,12 +452,12 @@ class XenforoCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    def get_thread_info(self, url: URL) -> ThreadInfo:
+    def get_thread_info(self, url: URL) -> ForumThread:
         name_index = url.parts.index(self.thread_url_part) + 1
         name, id_ = get_thread_name_and_id(url, name_index)
         thread_url = get_thread_canonical_url(url, name_index)
         page, post = get_thread_page_and_post(url, name_index, self.PAGE_NAME, self.POST_NAME)
-        return ThreadInfo(name, id_, page, post, thread_url, url)
+        return ForumThread(name, id_, page, post, thread_url, url)
 
 
 def get_thread_name_and_id(url: URL, thread_name_index: int) -> tuple[str, int]:
