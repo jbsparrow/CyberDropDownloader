@@ -188,8 +188,8 @@ class XenforoCrawler(Crawler):
                 scrape_post, continue_scraping = self.check_post_number(thread.post, current_post.number)
                 date = current_post.date
                 if scrape_post:
-                    new_path = f"/{self.POST_NAME}{current_post.number}"
-                    parent_url = self.parse_url(new_path, thread.url)
+                    post_string = f"{self.POST_NAME}{current_post.number}"
+                    parent_url = thread.url / post_string
                     new_scrape_item = create(thread.url, possible_datetime=date, add_parent=parent_url)
                     trash: list[Tag] = title_block.find_all(self.selectors.quotes.element)
                     for element in trash:
@@ -334,7 +334,7 @@ class XenforoCrawler(Crawler):
         if not post_number:
             return
         post_string = f"{self.POST_NAME}{post_number}"
-        last_post_url = self.parse_url(post_string, thread_url)
+        last_post_url = thread_url / post_string
         await self.manager.log_manager.write_last_post_log(last_post_url)
 
     async def thread_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
@@ -395,7 +395,7 @@ def get_thread_name_and_id(url: URL, thread_name_index: int) -> tuple[str, int]:
 
 
 def get_thread_canonical_url(url: URL, thread_name_index: int) -> URL:
-    new_parts = url.parts[: thread_name_index + 1]
+    new_parts = url.parts[1 : thread_name_index + 1]
     new_path = "/".join(new_parts)
     thread_url = url.with_path(new_path).with_fragment(None).with_query(None)
     return thread_url
