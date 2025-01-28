@@ -164,24 +164,6 @@ class Crawler(ABC):
 
         return False
 
-    def check_post_number(self, post_number: int, current_post_number: int) -> tuple[bool, bool]:
-        """Checks if the program should scrape the current post."""
-        """Returns (scrape_post, continue_scraping)"""
-        scrape_single_forum_post = self.manager.config_manager.settings_data.download_options.scrape_single_forum_post
-
-        scrape_post = continue_scraping = True
-
-        if scrape_single_forum_post:
-            if not post_number or post_number == current_post_number:
-                continue_scraping = False
-            else:
-                scrape_post = False
-
-        elif post_number and post_number > current_post_number:
-            scrape_post = False
-
-        return scrape_post, continue_scraping
-
     def handle_external_links(self, scrape_item: ScrapeItem) -> None:
         """Maps external links to the scraper class."""
         self.manager.task_group.create_task(self.manager.scrape_mapper.filter_and_send_to_crawler(scrape_item))

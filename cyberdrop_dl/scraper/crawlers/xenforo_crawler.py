@@ -177,7 +177,7 @@ class XenforoCrawler(Crawler):
         post_url = thread.url
         for post in posts:
             current_post = ForumPost(post, selectors=self.selectors.posts, post_name=self.POST_NAME)
-            scrape_post, continue_scraping = self.check_post_number(thread.post, current_post.number)
+            continue_scraping, scrape_post = self.check_post_number(thread.post, current_post.number)
             date = current_post.date
             post_string = f"{self.POST_NAME}{current_post.number}"
             post_url = thread.url / post_string
@@ -331,6 +331,23 @@ class XenforoCrawler(Crawler):
             return
         link_str: str = confirm_button.get("href")
         return self.parse_url(link_str)
+
+    def check_post_number(self, post_number: int, current_post_number: int) -> tuple[bool, bool]:
+        """Checks if the program should scrape the current post."""
+        """Returns (scrape_post, continue_scraping)"""
+        scrape_single_forum_post = self.manager.config_manager.settings_data.download_options.scrape_single_forum_post
+        scrape_post = continue_scraping = True
+
+        if scrape_single_forum_post:
+            if not post_number or post_number == current_post_number:
+                continue_scraping = False
+            else:
+                scrape_post = False
+
+        elif post_number and post_number > current_post_number:
+            scrape_post = False
+
+        return continue_scraping, scrape_post
 
     async def write_last_forum_post(self, thread_url: URL, last_post_url: URL | None) -> None:
         if not last_post_url or last_post_url == thread_url:
