@@ -151,8 +151,8 @@ class XenforoCrawler(Crawler):
                     element.decompose()
 
                 title = self.create_title(title_block.text.replace("\n", ""), thread_id=thread.id_)
+                scrape_item.add_to_parent_title(title)
 
-            scrape_item.add_to_parent_title(title)
             posts = soup.select(self.selectors.posts.element)
             continue_scraping = False
             create = partial(self.create_scrape_item, scrape_item)
