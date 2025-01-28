@@ -121,6 +121,8 @@ class XenforoCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
+        if not self.logged_in and self.login_required:
+            return
         scrape_item.url = await self.pre_filter_link(scrape_item.url)
         if self.is_attachment(scrape_item.url):
             await self.handle_internal_link(scrape_item.url, scrape_item)
@@ -168,13 +170,9 @@ class XenforoCrawler(Crawler):
     @error_handling_wrapper
     async def thread(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a forum thread."""
-        if not self.logged_in and self.login_required:
-            return
-
         scrape_item.set_type(FORUM, self.manager)
         thread = self.get_thread_info(scrape_item.url)
-        last_scraped_post_number = None
-        title = None
+        title = last_scraped_post_number = None
         async for soup in self.thread_pager(scrape_item):
             if not title:
                 title_block = soup.select_one(self.selectors.title.element)
