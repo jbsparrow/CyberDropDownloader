@@ -34,8 +34,8 @@ class Post(Protocol):
 
 class Crawler(ABC):
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {}
-    domain = None
-    primary_base_domain: URL = None
+    domain: str = None  # type: ignore
+    primary_base_domain: URL = None  # type: ignore
     DEFAULT_POST_TITLE_FORMAT = "{date} - {number} - {title}"
 
     def __init__(self, manager: Manager, domain: str, folder_domain: str | None = None) -> None:
@@ -144,6 +144,7 @@ class Crawler(ABC):
             log(f"Download skip {media_item.url} as referer has been seen before", 10)
             return True
 
+        assert media_item.url.host
         skip_hosts = settings.ignore_options.skip_hosts
         if skip_hosts and any(host in media_item.url.host for host in skip_hosts):
             log(f"Download skip {media_item.url} due to skip_hosts config", 10)
@@ -157,7 +158,7 @@ class Crawler(ABC):
         valid_regex_filter = self.manager.config_manager.valid_filename_filter_regex
         regex_filter = self.manager.config_manager.settings_data.ignore_options.filename_regex_filter
 
-        if valid_regex_filter and re.search(regex_filter, media_item.filename):
+        if valid_regex_filter and regex_filter and re.search(regex_filter, media_item.filename):
             log(f"Download skip {media_item.url} due to filename regex filter config", 10)
             return True
 
@@ -258,7 +259,7 @@ class Crawler(ABC):
             title_format = self.DEFAULT_POST_TITLE_FORMAT
         date = post.date
         if isinstance(post.date, int):
-            date = datetime.fromtimestamp(date)
+            date = datetime.fromtimestamp(date)  # type: ignore
         if isinstance(date, datetime):
             date = date.isoformat()
         id = "Unknown" if post.id is None else post.id

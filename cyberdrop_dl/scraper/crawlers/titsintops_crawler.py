@@ -19,7 +19,6 @@ class TitsInTopsCrawler(XenforoCrawler):
         images=Selector("a[class*=file-preview]", "href"),
     )
     selectors = XenforoSelectors(posts=post_selectors)
-    login_required = True
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, self.domain, "TitsInTops")
@@ -41,7 +40,8 @@ class TitsInTopsCrawler(XenforoCrawler):
         text = link_obj.text
         if text and "view attachment" in text.lower():
             return False
-        if link_obj.get("title") and "permanent link" in link_obj.get("title").lower():
+        title: str = link_obj.get("title")  # type: ignore
+        if title and "permanent link" in title.lower():
             return False
-        link_str: str = link_obj.get(self.selectors.posts.links.element)
+        link_str: str = link_obj.get(self.selectors.posts.links.element)  # type: ignore
         return not (is_image and self.is_attachment(link_str))

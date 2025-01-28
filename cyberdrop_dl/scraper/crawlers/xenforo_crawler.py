@@ -38,14 +38,14 @@ HTTP_URL_PATTERNS = [re.compile(regex) for regex in HTTP_URL_REGEX_STRS]
 @dataclass(frozen=True, slots=True)
 class Selector:
     element: str
-    attribute: str | None = None
+    attribute: str = ""
 
 
 @dataclass(frozen=True, slots=True)
 class PostSelectors(Selector):
     element: str = "div[class*=message-main]"
     attachments: Selector = Selector("section[class=message-attachments] a ", "href")
-    content: Selector = Selector("div[class*=message-userContent]", None)
+    content: Selector = Selector("div[class*=message-userContent]")
     date: Selector = Selector("time", "data-timestamp")
     embeds: Selector = Selector("span[data-s9e-mediaembed-iframe]", "data-s9e-mediaembed-iframe")
     iframe: Selector = Selector("iframe[class=saint-iframe]", "href")
@@ -59,9 +59,9 @@ class PostSelectors(Selector):
 class XenforoSelectors:
     next_page: Selector = Selector("a[class*=pageNav-jump--next]", "href")
     posts: PostSelectors = PostSelectors()
-    title: Selector = Selector("h1[class=p-title-value]", None)
-    title_trash: Selector = Selector("span", None)
-    quotes: Selector = Selector("blockquote", None)
+    title: Selector = Selector("h1[class=p-title-value]")
+    title_trash: Selector = Selector("span")
+    quotes: Selector = Selector("blockquote")
     post_name: str = "post-"
 
 
@@ -242,7 +242,7 @@ class XenforoCrawler(Crawler):
             page_url = self.parse_url(page_url_str)
             page_url = self.pre_filter_link(page_url)
 
-    async def process_children(self, scrape_item: ScrapeItem, links: list[Tag], selector: str) -> None:
+    async def process_children(self, scrape_item: ScrapeItem, links: list[Tag], selector: str | None) -> None:
         for link_obj in links:
             link_tag: Tag | str = link_obj.get(selector)
             if link_tag and not isinstance(link_tag, str):
@@ -268,9 +268,10 @@ class XenforoCrawler(Crawler):
     def is_attachment(self, link: URL) -> bool:
         if not link:
             return False
+        assert link.host
         parts = self.attachment_url_parts
         hosts = self.attachment_url_hosts
-        return any(part in link.parts for part in parts) or any(host in link.host for host in hosts)
+        return any(p in link.parts for p in parts) or any(h in link.host for h in hosts)
 
     @is_attachment.register
     def _(self, link_str: str) -> bool:
@@ -297,6 +298,7 @@ class XenforoCrawler(Crawler):
         if not link:
             return
         try:
+            assert self.domain and link.host
             if self.domain not in link.host:
                 new_scrape_item = self.create_scrape_item(scrape_item, link)
                 new_scrape_item.reset_childen()
@@ -405,7 +407,7 @@ class XenforoCrawler(Crawler):
 
         assert login_url.host
         while attempt < retries:
-            try:
+            with contextlib.suppress(TimeoutError):
                 attempt += 1
                 await set_return_value(str(login_url), False, pop=False)
                 await set_return_value(str(login_url / "login"), False, pop=False)
@@ -417,9 +419,6 @@ class XenforoCrawler(Crawler):
                 if logged_in:
                     self.logged_in = True
                     return
-
-            except TimeoutError:
-                continue
 
         msg = f"Failed to login after {retries} attempts"
         raise LoginError(message=msg)
@@ -435,7 +434,6 @@ class XenforoCrawler(Crawler):
         name, id_ = get_thread_name_and_id(url, name_index)
         thread_url = get_thread_canonical_url(url, name_index)
         page, post = get_thread_page_and_post(url, name_index, self.PAGE_NAME, self.POST_NAME)
-
         return ThreadInfo(name, id_, page, post, thread_url, url)
 
 
