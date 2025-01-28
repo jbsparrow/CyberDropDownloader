@@ -115,15 +115,12 @@ class XenforoCrawler(Crawler):
         if not self.logged_in:
             await self.login_setup()
 
-    async def pre_filter_link(self, link: URL) -> URL:
-        return link
-
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
         if not self.logged_in and self.login_required:
             return
-        scrape_item.url = await self.pre_filter_link(scrape_item.url)
+        scrape_item.url = self.pre_filter_link(scrape_item.url)
         if self.is_attachment(scrape_item.url):
             await self.handle_internal_link(scrape_item.url, scrape_item)
         elif self.thread_url_part in scrape_item.url.parts:
@@ -221,9 +218,6 @@ class XenforoCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def filter_link(self, link: URL | None) -> URL | None:
-        return link
-
     async def thread_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
         """Generator of forum thread pages."""
         page_url = scrape_item.url
@@ -236,7 +230,7 @@ class XenforoCrawler(Crawler):
                 break
             page_url_str: str = next_page.get(self.selectors.next_page.attribute)
             page_url = self.parse_url(page_url_str)
-            page_url = await self.pre_filter_link(page_url)
+            page_url = self.pre_filter_link(page_url)
 
     async def process_children(self, scrape_item: ScrapeItem, links: list[Tag], selector: str) -> None:
         for link_obj in links:
@@ -254,7 +248,7 @@ class XenforoCrawler(Crawler):
                 continue
 
             link = await self.get_absolute_link(link_str)
-            link = await self.filter_link(link)
+            link = self.filter_link(link)
             if not link:
                 continue
             await self.handle_link(scrape_item, link)
@@ -342,6 +336,12 @@ class XenforoCrawler(Crawler):
         data = data.replace(r"\/\/", "https://www.").replace("\\", "")
         embed = re.search(HTTP_URL_PATTERNS[0], data) or re.search(HTTP_URL_PATTERNS[1], data)
         return embed.group(0).replace("www.", "") if embed else data
+
+    def pre_filter_link(self, link: URL) -> URL:
+        return link
+
+    def filter_link(self, link: URL | None) -> URL | None:
+        return link
 
     """ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 

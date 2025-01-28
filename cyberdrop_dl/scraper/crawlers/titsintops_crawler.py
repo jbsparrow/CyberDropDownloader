@@ -25,7 +25,7 @@ class TitsInTopsCrawler(XenforoCrawler):
         super().__init__(manager, self.domain, "TitsInTops")
         self.attachment_url_part = ["attachments", "data"]
 
-    async def filter_link(self, link: URL):
+    def filter_link(self, link: URL):
         return URL(
             str(link)
             .replace("index.php%3F", "index.php/")
@@ -33,7 +33,7 @@ class TitsInTopsCrawler(XenforoCrawler):
             .replace("index.php/goto", "index.php?goto")
         )
 
-    async def pre_filter_link(self, link):
+    def pre_filter_link(self, link):
         return URL(str(link).replace("index.php?", "index.php/").replace("index.php%3F", "index.php/"))
 
     def is_valid_post_link(self, link_obj: Tag) -> bool:
