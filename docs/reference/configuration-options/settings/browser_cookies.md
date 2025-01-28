@@ -27,7 +27,7 @@ List of browsers to use for extraction. Each item must be a supported browser's 
 | Browser   | Windows            | Linux              | MacOS              |
 |-----------|--------------------|--------------------|--------------------|
 | Brave     | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| Chrome    | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Chrome    | :x:                | :white_check_mark: | :white_check_mark: |
 | Chromium  | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | Edge      | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | Firefox   | :white_check_mark: | :white_check_mark: | :white_check_mark: |
