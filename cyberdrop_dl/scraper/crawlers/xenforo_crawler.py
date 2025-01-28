@@ -1,15 +1,18 @@
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import re
 from dataclasses import dataclass, field
 from functools import partial, singledispatchmethod
 from typing import TYPE_CHECKING, NamedTuple
 
+from bs4 import BeautifulSoup
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import LoginError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
+from cyberdrop_dl.scraper.filters import set_return_value
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FORUM, FORUM_POST, ScrapeItem
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
@@ -17,7 +20,7 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_an
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
-    from bs4 import BeautifulSoup, Tag
+    from bs4 import Tag
 
     from cyberdrop_dl.managers.manager import Manager
 
@@ -350,6 +353,55 @@ class XenforoCrawler(Crawler):
             page_url_str: str = next_page.get(self.selectors.next_page.attribute)
             page_url = self.parse_url(page_url_str)
             page_url = await self.pre_filter_link(page_url)
+
+    @error_handling_wrapper
+    async def forum_login(self, login_url: URL, session_cookie: str, username: str, password: str) -> None:
+        """Logs into a forum."""
+
+        wait_time: int = 5
+        if (not username or not password) and not session_cookie:
+            log(f"Login wasn't provided for {login_url.host}", 30)
+            raise LoginError(message="Login wasn't provided")
+
+        if session_cookie:
+            self.client.client_manager.cookies.update_cookies(
+                {"xf_user": session_cookie},
+                response_url=self.primary_base_domain,
+            )
+        attempt = 0
+
+        credentials = {"login": username, "password": password, "_xfRedirect": str(self.primary_base_domain)}
+        while attempt < 5:
+            try:
+                attempt += 1
+                assert login_url.host
+                await set_return_value(str(login_url), False, pop=False)
+                await set_return_value(str(login_url / "login"), False, pop=False)
+
+                text = await self.client.get_text(self.domain, login_url)
+                if any(p in text for p in ('<span class="p-navgroup-user-linkText">', "You are already logged in.")):
+                    self.logged_in = True
+                    return
+
+                await asyncio.sleep(wait_time)
+                soup = BeautifulSoup(text, "html.parser")
+
+                inputs = soup.select("form input")
+                data = {elem["name"]: elem["value"] for elem in inputs if elem.get("name") and elem.get("value")}
+                data.update(credentials)
+                await self.client.post_data(self.domain, login_url / "login", data=data, req_resp=False)
+                await asyncio.sleep(wait_time)
+                text = await self.client.get_text(self.domain, login_url)
+                if not any(
+                    p in text for p in ('<span class="p-navgroup-user-linkText">', "You are already logged in.")
+                ):
+                    continue
+                self.logged_in = True
+                return
+
+            except TimeoutError:
+                continue
+        raise LoginError(message="Failed to login after 5 attempts")
 
     def is_valid_post_link(self, link_obj: Tag) -> bool:
         is_image = link_obj.select_one("img")
