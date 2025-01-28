@@ -113,7 +113,7 @@ class XenforoCrawler(Crawler):
 
     async def async_startup(self) -> None:
         if not self.logged_in:
-            await self.try_login()
+            await self.login_setup()
 
     async def pre_filter_link(self, link: URL) -> URL:
         return link
@@ -136,36 +136,26 @@ class XenforoCrawler(Crawler):
     @error_handling_wrapper
     async def handle_redirect(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
-            _, url = await self.client.get_soup_and_return_url(self.domain, scrape_item.url, origin=scrape_item)
+            _, url = await self.client.get_soup_and_return_url(self.domain, scrape_item.url, origin=scrape_item)  # type: ignore
         scrape_item.url = url
         self.manager.task_group.create_task(self.run(scrape_item))
 
-    async def try_login(self) -> None:
+    @error_handling_wrapper
+    async def login_setup(self) -> None:
         login_url = self.primary_base_domain / "login"
         host_cookies: dict = self.client.client_manager.cookies.filter_cookies(self.primary_base_domain)
         session_cookie = host_cookies.get("xf_user")
         session_cookie = session_cookie.value if session_cookie else None
-        forums_auth_data = self.manager.config_manager.authentication_data.forums
         if session_cookie:
             self.logged_in = True
             return
 
+        forums_auth_data = self.manager.config_manager.authentication_data.forums
         session_cookie = getattr(forums_auth_data, f"{self.domain}_xf_user_cookie")
         username = getattr(forums_auth_data, f"{self.domain}_username")
         password = getattr(forums_auth_data, f"{self.domain}_password")
 
-        if session_cookie or (username and password):
-            try:
-                await self.forum_login(login_url, session_cookie, username, password)
-            except LoginError:
-                if self.login_required:
-                    raise
-
-        if not self.logged_in:
-            msg = f"{self.folder_domain} login failed. "
-            if not self.login_required:
-                msg += "Scraping without an account."
-            log(msg, 40)
+        await self.forum_login(login_url, session_cookie, username, password)
 
     @error_handling_wrapper
     async def thread(self, scrape_item: ScrapeItem) -> None:
@@ -359,11 +349,12 @@ class XenforoCrawler(Crawler):
 
         text, logged_in = await self.check_login_with_request(login_url)
         if logged_in:
+            self.logged_in = True
             return
 
         wait_time: int = 5
 
-        if not ((username and password) or session_cookie):
+        if not ((username and password) or session_cookie) and self.login_required:
             log(f"Login wasn't provided for {login_url.host}", 40)
             raise LoginError(message="Login wasn't provided")
 
@@ -388,8 +379,8 @@ class XenforoCrawler(Crawler):
                 await set_return_value(str(login_url), False, pop=False)
                 await set_return_value(str(login_url / "login"), False, pop=False)
                 await asyncio.sleep(wait_time)
-                data = prepare_login_data(text)
-                await self.client.post_data(self.domain, login_url / "login", data=data, req_resp=False)
+                login_data = prepare_login_data(text)
+                await self.client.post_data(self.domain, login_url / "login", data=login_data, req_resp=False)
                 await asyncio.sleep(wait_time)
                 text, logged_in = await self.check_login_with_request(login_url)
                 if logged_in:
@@ -399,7 +390,10 @@ class XenforoCrawler(Crawler):
             except TimeoutError:
                 continue
 
-        raise LoginError(message="Failed to login after 5 attempts")
+        if self.login_required:
+            raise LoginError(message="Failed to login after 5 attempts")
+
+        log(f"Scraping {self.domain} without an account", 30)
 
     async def check_login_with_request(self, login_url: URL) -> tuple[str, bool]:
         text = await self.client.get_text(self.domain, login_url)
