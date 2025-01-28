@@ -107,7 +107,6 @@ class ThreadInfo(NamedTuple):
 
 class XenforoCrawler(Crawler):
     login_required = True
-    primary_base_domain = None
     selectors = XenforoSelectors()
     POST_NAME = "post-"
     PAGE_NAME = "page-"
@@ -115,7 +114,7 @@ class XenforoCrawler(Crawler):
 
     def __init__(self, manager: Manager, site: str, folder_domain: str | None = None) -> None:
         super().__init__(manager, site, folder_domain)
-        self.primary_base_domain = self.primary_base_domain or URL(f"https://{site}")
+        assert self.primary_base_domain, "Subclasses must override primary_base_domain"
         self.attachment_url_parts = ["attachments", "data"]
         self.attachment_url_hosts = ["smgmedia", "attachments.f95zone"]
         self.logged_in = False
