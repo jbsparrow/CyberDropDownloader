@@ -194,7 +194,7 @@ class XenforoCrawler(Crawler):
                     post_string = f"{self.POST_NAME}{current_post.number}"
                     parent_url = thread.url / post_string
                     new_scrape_item = create(thread.url, possible_datetime=date, add_parent=parent_url)
-                    await self.post(new_scrape_item, current_post)
+                    self.manager.task_group.create_task(self.post(new_scrape_item, current_post))
                     scrape_item.add_children()
 
                 if not continue_scraping:
