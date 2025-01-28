@@ -7,7 +7,7 @@ import contextlib
 import re
 from dataclasses import dataclass
 from functools import partial, singledispatchmethod
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING
 
 from bs4 import BeautifulSoup
 from yarl import URL
@@ -96,7 +96,8 @@ class ForumPost:
         return self.number
 
 
-class ThreadInfo(NamedTuple):
+@dataclass(frozen=True, slots=True)
+class ThreadInfo:
     name: str
     id_: int
     page: int
