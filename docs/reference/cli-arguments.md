@@ -144,25 +144,28 @@ Bulk asynchronous downloader for multiple file hosts
 
 options:
   -h, --help            show this help message and exit
-  -V, --version         show program version number and exit
+  -V, --version         show program's version number and exit
 
 CLI-only Options:
   LINK(S)               link(s) to content to download (passing multiple links is supported)
-  --appdata-folder APPDATA_FOLDER AppData folder path
+  --appdata-folder APPDATA_FOLDER
+                        AppData folder path (default: None)
   --completed-after COMPLETED_AFTER
-                        only download completed downloads at or after this date
+                        only download completed downloads at or after this date (default: None)
   --completed-before COMPLETED_BEFORE
-                        only download completed downloads at or before this date
-  --config CONFIG       name of config to load
+                        only download completed downloads at or before this date (default: None)
+  --config CONFIG       name of config to load (default: None)
   --config-file CONFIG_FILE
-                        path to the CDL settings.yaml file to load
-  --download            skips UI, start download inmediatly
+                        path to the CDL settings.yaml file to load (default: None)
+  --download            skips UI, start download immediatly (default: False)
   --max-items-retry MAX_ITEMS_RETRY
-                        max number of links to retry
-  --no-ui               disables the UI/progress view entirely
-  --retry-all           retry all downloads
-  --retry-failed        retry failed downloads
-  --retry-maintenance   retry download of maintenance files (bunkr). Requires files to be hashed
+                        max number of links to retry (default: 0)
+  --no-ui               disables the UI/progress view entirely (default: False)
+  --retry-all           retry all downloads (default: False)
+  --retry-failed        retry failed downloads (default: False)
+  --retry-maintenance   retry download of maintenance files (bunkr). Requires files to be hashed (default: False)
+  --download-tiktok-audios
+                        download TikTok audios (default: False)
 
 browser_cookies:
   --browsers [BROWSERS ...]
@@ -211,6 +214,7 @@ ignore_options:
   --ignore-coomer-ads, --no-ignore-coomer-ads
   --skip-hosts [SKIP_HOSTS ...]
   --only-hosts [ONLY_HOSTS ...]
+  --filename-regex-filter FILENAME_REGEX_FILTER
 
 logs:
   --log-folder LOG_FOLDER
@@ -222,6 +226,7 @@ logs:
   --scrape-error-urls SCRAPE_ERROR_URLS
   --rotate-logs, --no-rotate-logs
   --log-line-width LOG_LINE_WIDTH
+  --logs-expire-after LOGS_EXPIRE_AFTER
 
 runtime_options:
   --ignore-history, --no-ignore-history
@@ -236,6 +241,7 @@ runtime_options:
   --jdownloader-autostart, --no-jdownloader-autostart
   --jdownloader-whitelist [JDOWNLOADER_WHITELIST ...]
   --deep-scrape, --no-deep-scrape
+  --slow-download-speed SLOW_DOWNLOAD_SPEED
 
 sorting:
   --sort-downloads, --no-sort-downloads
@@ -275,6 +281,7 @@ ui_options:
   --downloading-item-limit DOWNLOADING_ITEM_LIMIT
 
 Deprecated:
+  --output-folder OUTPUT_FOLDER
   --download-all-configs
                         Skip the UI and go straight to downloading (runs all configs sequentially)
   --sort-all-configs    Sort all configs sequentially
