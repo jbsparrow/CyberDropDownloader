@@ -36,6 +36,7 @@ from cyberdrop_dl.scraper.crawlers.omegascans_crawler import OmegaScansCrawler
 from cyberdrop_dl.scraper.crawlers.pimpandhost_crawler import PimpAndHostCrawler
 from cyberdrop_dl.scraper.crawlers.pixeldrain_crawler import PixelDrainCrawler
 from cyberdrop_dl.scraper.crawlers.pixhost_crawler import PixHostCrawler
+from cyberdrop_dl.scraper.crawlers.pornpics_crawler import PornPicsCrawler
 from cyberdrop_dl.scraper.crawlers.postimg_crawler import PostImgCrawler
 from cyberdrop_dl.scraper.crawlers.realbooru_crawler import RealBooruCrawler
 from cyberdrop_dl.scraper.crawlers.reddit_crawler import RedditCrawler
@@ -48,6 +49,7 @@ from cyberdrop_dl.scraper.crawlers.scrolller_crawler import ScrolllerCrawler
 from cyberdrop_dl.scraper.crawlers.sendvid_crawler import SendVidCrawler
 from cyberdrop_dl.scraper.crawlers.simpcity_crawler import SimpCityCrawler
 from cyberdrop_dl.scraper.crawlers.socialmediagirls_crawler import SocialMediaGirlsCrawler
+from cyberdrop_dl.scraper.crawlers.tiktok_crawler import TikTokCrawler
 from cyberdrop_dl.scraper.crawlers.titsintops_crawler import TitsInTopsCrawler
 from cyberdrop_dl.scraper.crawlers.tokyomotion_crawler import TokioMotionCrawler
 from cyberdrop_dl.scraper.crawlers.toonily_crawler import ToonilyCrawler

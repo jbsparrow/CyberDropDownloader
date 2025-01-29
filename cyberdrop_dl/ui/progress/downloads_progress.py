@@ -20,7 +20,7 @@ class DownloadsProgress:
             BarColumn(bar_width=None),
             "[progress.percentage]{task.percentage:>6.2f}%",
             "━",
-            "{task.completed}",
+            "{task.completed:,}",
         )
         self.progress_group = Group(self.progress)
 
@@ -38,7 +38,7 @@ class DownloadsProgress:
             title=f"Config: {self.manager.config_manager.loaded_config}",
             border_style="green",
             padding=(1, 1),
-            subtitle=f"Total Files: [white]{self.total_files}",
+            subtitle=f"Total Files: [white]{self.total_files:,}",
         )
 
     def get_progress(self) -> Panel:
@@ -52,7 +52,7 @@ class DownloadsProgress:
         self.progress.update(self.previously_completed_files_task_id, total=self.total_files)
         self.progress.update(self.skipped_files_task_id, total=self.total_files)
         self.progress.update(self.failed_files_task_id, total=self.total_files)
-        self.panel.subtitle = f"Total Files: [white]{self.total_files}"
+        self.panel.subtitle = f"Total Files: [white]{self.total_files:,}"
 
     def add_completed(self) -> None:
         """Adds a completed file to the progress bar."""

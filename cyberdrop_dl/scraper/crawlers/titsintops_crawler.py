@@ -19,13 +19,12 @@ class TitsInTopsCrawler(XenforoCrawler):
         images=Selector("a[class*=file-preview]", "href"),
     )
     selectors = XenforoSelectors(posts=post_selectors)
-    login_required = True
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, self.domain, "TitsInTops")
         self.attachment_url_part = ["attachments", "data"]
 
-    async def filter_link(self, link: URL):
+    def filter_link(self, link: URL):
         return URL(
             str(link)
             .replace("index.php%3F", "index.php/")
@@ -33,7 +32,7 @@ class TitsInTopsCrawler(XenforoCrawler):
             .replace("index.php/goto", "index.php?goto")
         )
 
-    async def pre_filter_link(self, link):
+    def pre_filter_link(self, link):
         return URL(str(link).replace("index.php?", "index.php/").replace("index.php%3F", "index.php/"))
 
     def is_valid_post_link(self, link_obj: Tag) -> bool:
@@ -41,7 +40,8 @@ class TitsInTopsCrawler(XenforoCrawler):
         text = link_obj.text
         if text and "view attachment" in text.lower():
             return False
-        if link_obj.get("title") and "permanent link" in link_obj.get("title").lower():
+        title: str = link_obj.get("title")  # type: ignore
+        if title and "permanent link" in title.lower():
             return False
-        link_str: str = link_obj.get(self.selectors.posts.links.element)
+        link_str: str = link_obj.get(self.selectors.posts.links.element)  # type: ignore
         return not (is_image and self.is_attachment(link_str))

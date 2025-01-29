@@ -14,7 +14,7 @@ class SocialMediaGirlsCrawler(XenforoCrawler):
     primary_base_domain = URL("https://forums.socialmediagirls.com")
     domain = "socialmediagirls"
     post_selectors = PostSelectors(
-        content=Selector("div[class=bbWrapper]", None),
+        content=Selector("div[class=bbWrapper]"),
         images=Selector("img[class*=bbImage]", "data-src"),
         date=Selector("time", "data-time"),
     )

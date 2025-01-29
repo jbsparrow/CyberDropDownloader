@@ -116,4 +116,5 @@ class ImageBamCrawler(Crawler):
 
     def set_cookies(self) -> None:
         """Set cookies to bypass confirmation."""
-        self.client.client_manager.cookies.update_cookies({"nsfw_inter": "1"}, self.primary_base_domain)
+        cookies = {"nsfw_inter": "1"}
+        self.update_cookies(cookies)

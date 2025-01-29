@@ -34,8 +34,9 @@ icon: globe-pointer
 | PimpAndHost     | Album: `/album/...` <br> Image: `/image/...`|
 | PixHost.to      | Gallery: `/gallery/...` <br> Image: `/show/...` |
 | PixelDrain      | File: `/u/...` <br> Folder: `/l/...` |
+| PornPics.com    | Categories `/categories/....` <br> Channels  `/channels/...` <br> Gallery `/galleries/...` <br> Pornstars `/pornstars/...` <br> Search  `/?q=<query>` <br> Tags `/tags/...` <br> Direct Links |
 | PostImg         | Album: `/gallery/...` <br> Image: `/...` <br> Direct links |
-| RealBooru       | File page (id query) <br>Tags (tags query) |
+| RealBooru       | File page (id query) <br> Tags (tags query) |
 | RedGifs         | User: `/users/<user>` <br> Video: `/watch/...` |
 | Rule34Vault     | File page: `/post/...` <br> Playlist: `/playlists/view/...` <br> Tag: `/...` |
 | Rule34.XXX      | File page (id query) <br> Tags (tags query) |
@@ -43,6 +44,7 @@ icon: globe-pointer
 | Saint           | Albums: `/a/...` <br> Video: `/embed/...`, `/d/...` <br> Direct links |
 | SendVid.com     | Videos: `/...` <br> Embeds: `/embed/...` <br> Direct Links |
 | Scrolller       | Subreddit: `/r/...` |
+| TikTok          | User: `/@<user>` <br> Video: `/@<user>/video/<video_id>` <br> Photo: `/@<user>/photo/<photo_id>` <br> |
 | Toonily         | Chapter: `/webtoon/.../...` <br> Webtoon: `/webtoon/...` <br> Direct links  |
 | Tokyomotion.net | Albums: `/user/<user>/albums/` , `/album/<album_id>` <br> Photo: `/photo/<photo_id>` , `/user/<user>/favorite/photos` <br> Playlist: `/user/<user>/favorite/videos` <br> Profiles: `/user/<user>` <br> Search Results: `/search?...` <br> Video: `/video/<video_id>` |
 | XBunkr          | Albums: `/a/...` <br> Direct Links|
@@ -74,7 +76,7 @@ Supported domains via Real-Debrid include `mega.nz`, `rapidgator`, `google drive
 | Bellazon.com                | Threads: `/main/topic/<thread_name>` |
 | CelebForum                  | Threads: `/threads/<thread_name>`|
 | F95Zone                     | Threads: `/threads/<thread_name>`|
-| Forums.AllPornComix.com | Threads: `/threads/<thread_name>`|
+| Forums.AllPornComix.com     | Threads: `/threads/<thread_name>`|
 | Forums.SocialMediaGirls.com | Threads: `/threads/<thread_name>`|
 | LeakedModels                | Threads: `/forum/threads/<thread_name>`|
 | Nudostar                    | Threads: `/forum/threads/<thread_name>`|

@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 class NudoStarCrawler(XenforoCrawler):
-    primary_base_domain = URL("https://nudostar.com")
+    primary_base_domain = URL("https://nudostar.com/forum/")
     post_selectors = PostSelectors(
         date=Selector("time", "data-time"),
         number=Selector("a[class=u-concealed]", "href"),

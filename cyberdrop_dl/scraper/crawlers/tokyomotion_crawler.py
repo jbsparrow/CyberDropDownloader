@@ -161,8 +161,8 @@ class TokioMotionCrawler(Crawler):
                 link_tag = image.select_one(self.image_thumb_selector)
                 if not link_tag:
                     continue
-                link_str: str = link_tag.get("src")
-                link = self.parse_url(link_str.replace("/tmb/", "/"))
+                link_str: str = link_tag.get("src").replace("/tmb/", "/")
+                link = self.parse_url(link_str)
                 filename, ext = get_filename_and_ext(link.name)
                 await self.handle_file(link, scrape_item, filename, ext)
 
