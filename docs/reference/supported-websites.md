@@ -33,6 +33,7 @@ icon: globe-pointer
 | PimpAndHost     | Album: `/album/...` <br> Image: `/image/...`|
 | PixHost.to      | Gallery: `/gallery/...` <br> Image: `/show/...` |
 | PixelDrain      | File: `/u/...` <br> Folder: `/l/...` |
+| PornPics.com    | Categories `/categories/....` <br> Channels  `/channels/...` <br> Gallery `/galleries/...` <br> Pornstars `/pornstars/...` <br> Search  `/?q=<query>` <br> Tags `/tags/...` <br> Direct Links |
 | PostImg         | Album: `/gallery/...` <br> Image: `/...` <br> Direct links |
 | RealBooru       | File page (id query) <br> Tags (tags query) |
 | RedGifs         | User: `/users/<user>` <br> Video: `/watch/...` |
@@ -74,7 +75,7 @@ Supported domains via Real-Debrid include `mega.nz`, `rapidgator`, `google drive
 | Bellazon.com                | Threads: `/main/topic/<thread_name>` |
 | CelebForum                  | Threads: `/threads/<thread_name>`|
 | F95Zone                     | Threads: `/threads/<thread_name>`|
-| Forums.AllPornComix.com | Threads: `/threads/<thread_name>`|
+| Forums.AllPornComix.com     | Threads: `/threads/<thread_name>`|
 | Forums.SocialMediaGirls.com | Threads: `/threads/<thread_name>`|
 | LeakedModels                | Threads: `/forum/threads/<thread_name>`|
 | Nudostar                    | Threads: `/forum/threads/<thread_name>`|
