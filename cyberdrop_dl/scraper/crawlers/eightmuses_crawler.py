@@ -57,29 +57,26 @@ class EightMusesCrawler(Crawler):
 
             image = tile.select_one("div[class=image]")
             itemType = image.get("itemtype")
-            if itemType == "https://schema.org/ImageGallery":
-                new_scrape_item = self.create_scrape_item(
-                    scrape_item,
-                    tile_link,
-                    tile_title,
-                    True,
-                    f'{scrape_item.album_id}/{tile_title.replace(" ", "-")}',
-                    add_parent=scrape_item.url,
+            part_of_album = itemType == "https://schema.org/ImageGallery"         
+            new_scrape_item = self.create_scrape_item(
+                scrape_item,
+                tile_link,
+                tile_title,
+                part_of_album=part_of_album,
+                album_id = f'{scrape_item.album_id}/{tile_title.replace(" ", "-")},
+                add_parent=scrape_item.url,
                 )
+                
+            if part_of_album:
                 await self.album(new_scrape_item)
-            else:
-                filename, ext = get_filename_and_ext(f"{tile_title}.jpg")
-                image_link = self.parse_url(image.select_one("img").get("data-src").replace("/th/", "/fm/"))
-                new_scrape_item = self.create_scrape_item(
-                    scrape_item,
-                    tile_link,
-                    tile_title,
-                    False,
-                    f'{scrape_item.album_id}/{tile_title.replace(" ", "-")}',
-                    add_parent=scrape_item.url,
-                )
-                await self.handle_file(image_link, scrape_item, filename, ext)
-                scrape_item.add_children()
+                continue
+          
+            filename, ext = get_filename_and_ext(f"{tile_title}.jpg")
+            image_link_str: str = image.select_one("img").get("data-src").replace("/th/", "/fm/")
+            image_link = self.parse_url(image_link_str)
+            if not self.check_album_results(image_link, results):
+                await self.handle_file(image_link, new_scrape_item, filename, ext)
+            scrape_item.add_children()
 
     async def get_title_parts(self, soup: BeautifulSoup) -> tuple:
         """Gets the album title, sub-album title, and comic title."""
