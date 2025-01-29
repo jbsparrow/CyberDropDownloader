@@ -76,7 +76,7 @@ class ScrapeItem:
     parents: list[URL] = field(default_factory=list, init=False)
     children: int = field(default=0, init=False)
     children_limit: int = field(default=0, init=False)
-    type: int | None = field(default=None, init=False)
+    type: ScrapeItemType | None = field(default=None, init=False)
     completed_at: int | None = field(default=None, init=False)
     created_at: int | None = field(default=None, init=False)
     children_limits: list[int] = field(default_factory=list, init=False)
@@ -88,7 +88,7 @@ class ScrapeItem:
         title = sanitize_folder(title)
         self.parent_title = (self.parent_title + "/" + title) if self.parent_title else title
 
-    def set_type(self, scrape_item_type: ScrapeItemType, manager: Manager) -> None:
+    def set_type(self, scrape_item_type: ScrapeItemType | None, manager: Manager) -> None:
         self.type = scrape_item_type
         self.children_limits = manager.config_manager.settings_data.download_options.maximum_number_of_children
         self.reset_childen()
@@ -106,9 +106,11 @@ class ScrapeItem:
             raise MaxChildrenError(origin=self)
 
     def reset(self, reset_parents: bool = False, reset_parent_title: bool = False) -> None:
-        self.album_id = None
-        self.possible_datetime = None
-        self.type = None
+        """Resets `album_id`, `type` and `posible_datetime` back to `None`
+
+        Only useful when the scrape item will be send to a different crawler and you want to get a diferent download path
+        """
+        self.album_id = self.possible_datetime = self.type = None
         self.reset_childen()
         if reset_parents:
             self.parents = []

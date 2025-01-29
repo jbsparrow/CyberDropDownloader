@@ -319,6 +319,7 @@ class XenforoCrawler(Crawler):
             if self.is_attachment(link):
                 return await self.handle_internal_link(link, scrape_item)
             new_scrape_item = self.create_scrape_item(scrape_item, link)
+            new_scrape_item.set_type(None, self.manager)
             self.handle_external_links(new_scrape_item)
         except TypeError:
             log(f"Scrape Failed: encountered while handling {link}", 40)

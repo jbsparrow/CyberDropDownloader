@@ -164,8 +164,10 @@ class Crawler(ABC):
 
         return False
 
-    def handle_external_links(self, scrape_item: ScrapeItem) -> None:
+    def handle_external_links(self, scrape_item: ScrapeItem, reset: bool = False) -> None:
         """Maps external links to the scraper class."""
+        if reset:
+            scrape_item.reset()
         self.manager.task_group.create_task(self.manager.scrape_mapper.filter_and_send_to_crawler(scrape_item))
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
