@@ -404,7 +404,7 @@ class XenforoCrawler(Crawler):
         await self.forum_login(login_url, session_cookie, username, password)
 
         if not (self.login_required or self.logged_in):
-            log(f"Scraping {self.domain} without an account", 30)
+            log(f"Scraping {self.folder_domain} without an account", 30)
 
     @error_handling_wrapper
     async def forum_login(self, login_url: URL, session_cookie: str, username: str, password: str) -> None:
@@ -412,13 +412,14 @@ class XenforoCrawler(Crawler):
 
         attempt = 0
         retries = wait_time = 5
-        missing_credentials = not (username and password) or session_cookie
+        manual_login = username and password
+        missing_credentials = not (manual_login or session_cookie)
         if missing_credentials:
-            msg = f"Login wasn't provided for {login_url.host}"
+            msg = f"Login info wasn't provided for {self.folder_domain}"
             raise LoginError(message=msg)
 
-        cookies = {"xf_user": session_cookie}
         if session_cookie:
+            cookies = {"xf_user": session_cookie}
             self.update_cookies(cookies)
 
         text, logged_in = await self.check_login_with_request(login_url)
