@@ -81,9 +81,7 @@ class EightMusesCrawler(Crawler):
                 await self.handle_file(image_link, new_scrape_item, filename, ext)
             scrape_item.add_children()
 
-    async def get_title_parts(self, soup: BeautifulSoup) -> tuple:
-        """Gets the album title, sub-album title, and comic title."""
-        titles = soup.select("div[class=top-menu-breadcrumb] > ol > li > a")[1:]
-        title_parts = [title.text for title in titles]
-
-        return title_parts
+def get_title_parts(soup: BeautifulSoup) -> tuple:
+    """Gets the album title, sub-album title, and comic title."""
+    titles = soup.select("div[class=top-menu-breadcrumb] > ol > li > a")[1:]
+    return [title.text for title in titles]
