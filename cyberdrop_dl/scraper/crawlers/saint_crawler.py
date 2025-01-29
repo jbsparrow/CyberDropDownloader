@@ -103,5 +103,7 @@ class SaintCrawler(Crawler):
 
 def get_url_from_base64(link: URL) -> URL:
     base64_str: str = link.query.get("file")
+    if not base64_str:
+        return link
     filename_decoded = base64.b64decode(base64_str).decode("utf-8")
     return URL("https://some_cdn.saint2.cr/videos").with_host(link.host) / filename_decoded
