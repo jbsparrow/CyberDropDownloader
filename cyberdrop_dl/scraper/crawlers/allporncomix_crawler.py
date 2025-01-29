@@ -15,7 +15,7 @@ class AllPornComixCrawler(XenforoCrawler):
     domain = "allporncomix"
     login_required = False
     post_selectors = PostSelectors(
-        content=Selector("div[class=bbWrapper]", None),
+        content=Selector("div[class=bbWrapper]"),
         images=Selector("img[class*=bbImage]", "data-src"),
         date=Selector("time", "datetime"),
         attachments=Selector("section[class=message-attachments] .attachmentList .file .file-preview", "href"),

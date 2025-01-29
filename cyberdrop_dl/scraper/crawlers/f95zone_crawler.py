@@ -39,7 +39,7 @@ class F95ZoneCrawler(XenforoCrawler):
             return self.parse_url(JSON_Resp["msg"])
         return None
 
-    async def filter_link(self, link: URL) -> URL:
+    def filter_link(self, link: URL) -> URL:
         if "thumb" in link.parts:
             parts = [x for x in link.parts if x not in ("thumb", "/")]
             new_path = "/".join(parts)

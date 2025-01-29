@@ -49,7 +49,7 @@ class MediaItem:
 
     # slots for __post_init__
     referer: URL = field(init=False)
-    album_id: str = field(init=False)
+    album_id: str | None = field(init=False)
     ext: str = field(init=False)
     datetime: int | None = field(init=False, hash=False, compare=False)
     parents: list[URL] = field(init=False, hash=False, compare=False)
@@ -76,10 +76,10 @@ class ScrapeItem:
     parents: list[URL] = field(default_factory=list, init=False)
     children: int = field(default=0, init=False)
     children_limit: int = field(default=0, init=False)
-    type: int | None = field(default=None, init=False)
+    type: ScrapeItemType | None = field(default=None, init=False)
     completed_at: int | None = field(default=None, init=False)
     created_at: int | None = field(default=None, init=False)
-    children_limits: list[int] = field(default=list, init=False)
+    children_limits: list[int] = field(default_factory=list, init=False)
 
     def add_to_parent_title(self, title: str) -> None:
         """Adds a title to the parent title."""
@@ -88,17 +88,31 @@ class ScrapeItem:
         title = sanitize_folder(title)
         self.parent_title = (self.parent_title + "/" + title) if self.parent_title else title
 
-    def set_type(self, scrape_item_type: ScrapeItemType, manager: Manager) -> None:
+    def set_type(self, scrape_item_type: ScrapeItemType | None, manager: Manager) -> None:
         self.type = scrape_item_type
-        self.children_limit = manager.config_manager.settings_data.download_options.maximum_number_of_children
+        self.children_limits = manager.config_manager.settings_data.download_options.maximum_number_of_children
         self.reset_childen()
 
     def reset_childen(self) -> None:
         self.children = self.children_limit = 0
+        if self.type is None:
+            return
         with contextlib.suppress(IndexError, TypeError):
-            self.children_limit = self.children_limit[self.type]
+            self.children_limit = self.children_limits[self.type]
 
     def add_children(self, number: int = 1) -> None:
         self.children += number
         if self.children_limit and self.children >= self.children_limit:
             raise MaxChildrenError(origin=self)
+
+    def reset(self, reset_parents: bool = False, reset_parent_title: bool = False) -> None:
+        """Resets `album_id`, `type` and `posible_datetime` back to `None`
+
+        Only useful when the scrape item will be send to a different crawler and you want to get a diferent download path
+        """
+        self.album_id = self.possible_datetime = self.type = None
+        self.reset_childen()
+        if reset_parents:
+            self.parents = []
+        if reset_parent_title:
+            self.parent_title = ""

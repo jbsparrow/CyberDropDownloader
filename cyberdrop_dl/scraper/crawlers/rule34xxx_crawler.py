@@ -83,6 +83,5 @@ class Rule34XXXCrawler(Crawler):
 
     async def set_cookies(self) -> None:
         """Sets the cookies for the client."""
-        self.client.client_manager.cookies.update_cookies(
-            {"resize-original": "1"}, response_url=self.primary_base_domain
-        )
+        cookies = {"resize-original": "1"}
+        self.update_cookies(cookies)

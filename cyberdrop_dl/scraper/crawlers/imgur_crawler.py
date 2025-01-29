@@ -105,9 +105,9 @@ class ImgurCrawler(Crawler):
         filename, ext = get_filename_and_ext(scrape_item.url.name)
         if ext.lower() in (".gifv", ".mp4"):
             filename = filename.replace(ext, ".mp4")
-            link_str = "/" + filename.rsplit(".", 1)[0]
+            file_id = filename.rsplit(".", 1)[0]
             ext = ".mp4"
-            link = self.parse_url(link_str, URL("https://imgur.com/download"))
+            link = URL("https://imgur.com/download") / file_id
             new_scrape_item = self.create_scrape_item(scrape_item, link)
             return await self.handle_file(link, new_scrape_item, filename, ext)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
