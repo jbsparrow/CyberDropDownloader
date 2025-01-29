@@ -49,11 +49,10 @@ class EightMusesCrawler(Crawler):
 
         tiles = soup.select("a[class*=c-tile]")
         for tile in tiles:
-            href = tile.get("href")
-            if href:
-                tile_link = self.parse_url(href)
-            else:
+            tile_link_str: str = tile.get("href")
+            if not tile_link_str:
                 continue
+            tile_link = self.parse_url(tile_link_str)
             tile_title = tile.get("title", "")
 
             image = tile.select_one("div[class=image]")
