@@ -342,7 +342,9 @@ class XenforoCrawler(Crawler):
         if not confirm_button:
             return
         link_str: str = confirm_button.get("href")
-        return self.parse_url(link_str)
+        link_str = link_str.split('" class="link link--internal', 1)[0]
+        new_link = self.parse_url(link_str)
+        return await self.get_absolute_link(new_link)
 
     def check_post_number(self, post_number: int, current_post_number: int) -> tuple[bool, bool]:
         """Checks if the program should scrape the current post.
