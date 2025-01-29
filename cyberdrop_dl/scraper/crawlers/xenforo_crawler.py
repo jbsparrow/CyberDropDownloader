@@ -6,7 +6,7 @@ import asyncio
 import contextlib
 import re
 from dataclasses import dataclass
-from functools import partial, singledispatchmethod
+from functools import cached_property, partial, singledispatchmethod
 from typing import TYPE_CHECKING
 
 from bs4 import BeautifulSoup
@@ -72,27 +72,27 @@ class ForumPost:
     title: str | None = None
     post_name: str = "post-"
 
-    @property
+    @cached_property
     def content(self) -> Tag:
         return self.soup.select_one(self.selectors.content.element)
 
-    @property
-    def date(self):
+    @cached_property
+    def date(self) -> int | None:
         date = None
         with contextlib.suppress(AttributeError):
             date = int(self.content.select_one(self.selectors.date.element).get(self.selectors.date.attribute))
         return date
 
-    @property
-    def number(self):
+    @cached_property
+    def number(self) -> int:
         if self.selectors.number.element == self.selectors.number.attribute:
             number = int(self.soup.get(self.selectors.number.element))
             return number
         number = self.soup.select_one(self.selectors.number.element)
         return int(number.get(self.selectors.number.attribute).split("/")[-1].split(self.post_name)[-1])
 
-    @property
-    def id(self):
+    @cached_property
+    def id(self) -> int:
         return self.number
 
 
@@ -315,7 +315,6 @@ class XenforoCrawler(Crawler):
         if not link or link == self.primary_base_domain:
             return
         try:
-            assert self.domain and link.host
             if self.is_attachment(link):
                 return await self.handle_internal_link(link, scrape_item)
             new_scrape_item = self.create_scrape_item(scrape_item, link)
@@ -436,7 +435,6 @@ class XenforoCrawler(Crawler):
             data: dict = {elem["name"]: elem["value"] for elem in inputs if elem.get("name") and elem.get("value")}
             return data | credentials
 
-        assert login_url.host
         while attempt < retries:
             with contextlib.suppress(TimeoutError):
                 attempt += 1

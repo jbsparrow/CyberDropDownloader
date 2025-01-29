@@ -29,7 +29,7 @@ class Post(Protocol):
     number: int
     id: str
     title: str
-    date: datetime | int
+    date: datetime | int | None
 
 
 class Crawler(ABC):
