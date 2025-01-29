@@ -316,14 +316,10 @@ class XenforoCrawler(Crawler):
             return
         try:
             assert self.domain and link.host
-            if self.domain not in link.host:
-                new_scrape_item = self.create_scrape_item(scrape_item, link)
-                new_scrape_item.reset_childen()
-                self.handle_external_links(new_scrape_item)
-            elif self.is_attachment(link):
-                await self.handle_internal_link(link, scrape_item)
-            else:
-                log(f"Unknown link type: {link}", 30)
+            if self.is_attachment(link):
+                return await self.handle_internal_link(link, scrape_item)
+            new_scrape_item = self.create_scrape_item(scrape_item, link)
+            self.handle_external_links(new_scrape_item)
         except TypeError:
             log(f"Scrape Failed: encountered while handling {link}", 40)
 
