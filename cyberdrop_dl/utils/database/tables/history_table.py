@@ -50,6 +50,12 @@ class HistoryTable:
         await cursor.execute(query)
         await self.db_conn.commit()
 
+    async def delete_invalid_rows(self) -> None:
+        query = """DELETE FROM media WHERE download_filename = '' """
+        cursor = await self.db_conn.cursor()
+        await cursor.execute(query)
+        await self.db_conn.commit()
+
     async def check_complete(self, domain: str, url: URL, referer: URL) -> bool:
         """Checks whether an individual file has completed given its domain and url path."""
         if self.ignore_history:
