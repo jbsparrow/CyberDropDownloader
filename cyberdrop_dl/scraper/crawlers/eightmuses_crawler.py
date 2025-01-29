@@ -37,15 +37,18 @@ class EightMusesCrawler(Crawler):
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
-        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        if not scrape_item.parents:
-            title_parts = await self.get_title_parts(soup)
+        if not scrape_item.album_id:
+            scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
+            title_parts = self.get_title_parts(soup)
             album_title = title_parts[-1]
             scrape_item.album_id = album_title.replace(" ", "-")
-            scrape_item.add_to_parent_title(album_title)
+            title = self.create_title(album_title, scrape_item.album_id )
+            scrape_item.add_to_parent_title(title)
+
+        results = await self.get_album_results(scrape_item.album_id)
 
         tiles = soup.select("a[class*=c-tile]")
         for tile in tiles:
