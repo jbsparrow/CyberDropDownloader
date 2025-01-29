@@ -312,7 +312,7 @@ class XenforoCrawler(Crawler):
         return await self.get_absolute_link(parsed_link)
 
     async def handle_link(self, scrape_item: ScrapeItem, link: URL) -> None:
-        if not link:
+        if not link or link == self.primary_base_domain:
             return
         try:
             assert self.domain and link.host

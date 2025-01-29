@@ -73,12 +73,13 @@ class ScraperClient:
     def add_request_log_hooks(self) -> None:
         async def on_request_start(*args):
             params: aiohttp.TraceRequestStartParams = args[2]
-            log(f"Starting download {params.method} request to {params.url}", 20)
+            log(f"Starting scrape {params.method} request to {params.url}", 10)
 
         async def on_request_end(*args):
             params: aiohttp.TraceRequestEndParams = args[2]
-            log(f"Finishing download {params.method} request to {params.url}", 20)
-            log(f"Response status for {params.url}: {params.response.status}", 20)
+            msg = f"Finishing scrape {params.method} request to {params.url}"
+            msg += f"-> response status: {params.response.status}"
+            log(msg, 10)
 
         trace_config = aiohttp.TraceConfig()
         trace_config.on_request_start.append(on_request_start)
