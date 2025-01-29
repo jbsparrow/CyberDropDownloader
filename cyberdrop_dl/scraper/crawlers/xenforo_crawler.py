@@ -130,7 +130,8 @@ class XenforoCrawler(Crawler):
 
     async def async_startup(self) -> None:
         if not self.logged_in:
-            await self.login_setup()
+            login_url = self.primary_base_domain / "login"
+            await self.login_setup(login_url)
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
@@ -303,8 +304,10 @@ class XenforoCrawler(Crawler):
 
     @get_absolute_link.register
     async def _(self, link: str) -> URL | None:
-        parsed_link = None
-        link_str: str = link.replace(".th.", ".").replace(".md.", ".").replace("ifr", "watch")
+        link_str = link
+        text_to_replace = [(".th.", "."), (".md.", "."), ("ifr", "watch")]
+        for old, new in text_to_replace:
+            link_str = link_str.replace(old, new)
         parsed_link = self.parse_url(link_str)
         return await self.get_absolute_link(parsed_link)
 
@@ -342,11 +345,11 @@ class XenforoCrawler(Crawler):
         return self.parse_url(link_str)
 
     def check_post_number(self, post_number: int, current_post_number: int) -> tuple[bool, bool]:
-        """Checks if the program should scrape the current post."""
-        """Returns (scrape_post, continue_scraping)"""
+        """Checks if the program should scrape the current post.
+
+        Returns (continue_scraping, scrape_post)"""
         scrape_single_forum_post = self.manager.config_manager.settings_data.download_options.scrape_single_forum_post
         scrape_post = continue_scraping = True
-
         if scrape_single_forum_post:
             if not post_number or post_number == current_post_number:
                 continue_scraping = False
@@ -387,8 +390,7 @@ class XenforoCrawler(Crawler):
     """ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @error_handling_wrapper
-    async def login_setup(self) -> None:
-        login_url = self.primary_base_domain / "login"
+    async def login_setup(self, login_url: URL) -> None:
         host_cookies: dict = self.client.client_manager.cookies.filter_cookies(self.primary_base_domain)
         session_cookie = host_cookies.get("xf_user")
         session_cookie = session_cookie.value if session_cookie else None
@@ -450,7 +452,7 @@ class XenforoCrawler(Crawler):
                     self.logged_in = True
                     return
 
-        msg = f"Failed to login after {retries} attempts"
+        msg = f"Failed to login on {self.folder_domain} after {retries} attempts"
         raise LoginError(message=msg)
 
     async def check_login_with_request(self, login_url: URL) -> tuple[str, bool]:
