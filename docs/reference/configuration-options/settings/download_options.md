@@ -182,3 +182,29 @@ No **FORUM** limit, no **FORUM_POST** limit, no **FILE_HOST_PROFILE** limit, max
 ```
 {% endtab %}
 {% endtabs %}
+
+
+## `maximum_thread_nesting`
+
+| Type           | Default  |
+|----------------|----------|
+| `int` or null | 1 |
+
+{% hint style="warning" %}
+It is not recommended to set this above the default value of 1, as there is a high chance infinite nesting in certain cases
+For example when dealing with megathreads,as if a megathread is linked to another megathread you could scraping a undesirable amount of data
+{% endhint %}
+
+Restricts how many levels deep the scraper is allowed to go while scraping a thread
+
+Values
+0: No nesting allowed, only the top level thread is allowed
+None: unlimited parents
+1>: limits to the value given
+
+Example
+maximum_thread_nesting=1
+and the thread you are scraping is a megathread
+
+In this case all threads in the megathread would be scraped
+However, if a thread that came from the megathread had another thread that new thread would be skipped. Because the new thread would have 2 parents
