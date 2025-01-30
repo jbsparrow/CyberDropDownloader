@@ -317,7 +317,7 @@ class XenforoCrawler(Crawler):
         assert link.host
         new_scrape_item = self.create_scrape_item(scrape_item, link)
         if self.is_attachment(link):
-            return await self.handle_internal_link(scrape_item)
+            return await self.handle_internal_link(new_scrape_item)
         if self.primary_base_domain.host in link.host:  # type: ignore
             origin = scrape_item.parents[0]
             return log(f"Skipping nested thread URL {link} found on {origin}", 10)
