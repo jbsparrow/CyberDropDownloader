@@ -140,7 +140,7 @@ class XenforoCrawler(Crawler):
             return
         scrape_item.url = self.pre_filter_link(scrape_item.url)
         if self.is_attachment(scrape_item.url):
-            await self.handle_internal_link(scrape_item.url, scrape_item)
+            await self.handle_internal_link(scrape_item)
         elif self.thread_url_part in scrape_item.url.parts:
             await self.thread(scrape_item)
         elif any(p in scrape_item.url.parts for p in ("goto", "posts")):
@@ -332,11 +332,13 @@ class XenforoCrawler(Crawler):
         except TypeError:
             log(f"Scrape Failed: encountered while handling {link}", 40)
 
-    async def handle_internal_link(self, link: URL, scrape_item: ScrapeItem) -> None:
+    @error_handling_wrapper
+    async def handle_internal_link(self, scrape_item: ScrapeItem) -> None:
         """Handles internal links."""
-        filename, ext = get_filename_and_ext(link.name, True)
-        new_scrape_item = self.create_scrape_item(scrape_item, link, "Attachments", part_of_album=True)
-        await self.handle_file(link, new_scrape_item, filename, ext)
+        filename, ext = get_filename_and_ext(scrape_item.url.name, forum=True)
+        scrape_item.add_to_parent_title("Attachments")
+        scrape_item.part_of_album = True
+        await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
     @error_handling_wrapper
     async def handle_confirmation_link(self, link: URL, *, origin: ScrapeItem | None = None) -> URL | None:
