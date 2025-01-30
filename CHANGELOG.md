@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [UNRELEASED]
-- Add support for restricting the level of nesting for threads
+- Add new CLI argument '--max-thread-nesting' to restricting the level of nesting when scraping threads
 
 
 ## [UNRELEASED]
