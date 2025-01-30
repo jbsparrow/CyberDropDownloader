@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import contextlib
+from functools import singledispatch
 from http import HTTPStatus
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -81,14 +83,8 @@ class DownloadError(CDLBaseError):
         self, status: str | int, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None
     ) -> None:
         """This error will be thrown when a download fails."""
-        ui_message = str(status)
+        ui_message = create_error_msg(status)
         msg = message
-        if isinstance(status, int):
-            try:
-                msg = HTTPStatus(status).phrase
-                ui_message = f"{status} {msg}"
-            except ValueError:
-                ui_message = f"{status} HTTP Error"
         super().__init__(ui_message, message=msg, status=status, origin=origin)
 
 
@@ -138,14 +134,8 @@ class ScrapeError(CDLBaseError):
         self, status: str | int, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None
     ) -> None:
         """This error will be thrown when a scrape fails."""
-        ui_message = str(status)
+        ui_message = create_error_msg(status)
         msg = message
-        if isinstance(status, int):
-            try:
-                msg = HTTPStatus(status).phrase
-                ui_message = f"{status} {msg}"
-            except ValueError:
-                ui_message = f"{status} HTTP Error"
         super().__init__(ui_message, message=msg, status=status, origin=origin)
 
 
@@ -166,3 +156,16 @@ class InvalidYamlError(CDLBaseError):
         mark = e.problem_mark if hasattr(e, "problem_mark") else e
         message = f"File '{file.resolve()}' has an invalid config. Please verify and edit it manually\n {mark}\n\n{VALIDATION_ERROR_FOOTER}"
         super().__init__("Invalid YAML", message=message, origin=file)
+
+
+@singledispatch
+def create_error_msg(error: int) -> str:
+    with contextlib.suppress(ValueError):
+        msg = HTTPStatus(error).phrase
+        return f"{error} {msg}"
+    return f"{error} HTTP Error"
+
+
+@create_error_msg.register
+def _(error: str) -> str:
+    return error
