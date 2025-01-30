@@ -16,6 +16,7 @@
 
 * [Supported Websites](reference/supported-websites.md)
 * [Configuration Options](reference/configuration-options/README.md)
+* * [Special Type Options](reference/configuration-options/special_setting_types.md)
   * [Authentication](reference/configuration-options/authentication.md)
   * [Settings](reference/configuration-options/settings/README.md)
     * [Browser Cookies](reference/configuration-options/settings/browser_cookies.md)
