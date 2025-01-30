@@ -18,7 +18,7 @@ from rich.text import Text
 from yarl import URL
 
 from cyberdrop_dl import __version__ as current_version
-from cyberdrop_dl.clients.errors import CDLBaseError, NoExtensionError
+from cyberdrop_dl.clients.errors import CDLBaseError, InvalidExtensionError, NoExtensionError
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.logger import log, log_debug, log_spacer, log_with_color
 
@@ -125,7 +125,7 @@ def get_filename_and_ext(filename: str, forum: bool = False, raise_error: bool =
         name, ext = filename_as_path.name.rsplit("-", 1)
         filename_as_path = Path(f"{name}.{ext}")
     if len(filename_as_path.suffix) > 5:
-        raise NoExtensionError
+        raise InvalidExtensionError
 
     filename_as_path = filename_as_path.with_suffix(filename_as_path.suffix.lower())
     filename_as_path = Path(truncate_str(filename_as_path.stem.removesuffix(".")) + filename_as_path.suffix)
