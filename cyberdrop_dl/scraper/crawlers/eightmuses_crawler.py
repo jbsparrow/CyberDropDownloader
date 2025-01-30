@@ -27,10 +27,8 @@ class EightMusesCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
         if "album" in scrape_item.url.parts:
-            await self.album(scrape_item)
-        else:
-            log(f"Scrape Failed: Unknown URL path: {scrape_item.url}", 40)
-            return
+            return await self.album(scrape_item)
+        raise ValueError
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
