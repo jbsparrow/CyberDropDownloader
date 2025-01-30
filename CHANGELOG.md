@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Files in the download queue are saved to the database and can be retried with `--retry-failed`
-- CLI `--skip-hosts` and `--only-hosts` values will be added to / removed from config values when passing `+` or `-` as the first argument, respectively
+- CLI `--skip-hosts` and `--only-hosts` values will be added to / removed from config values when passing `+` or `-` as the first argument, respectively. See: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/special_setting_types#AdditiveArgs
 - CLI arguments that accept multiple values can now be used multiple times in the same command
 - Forum posts are now processed asynchronously instead of sequentially
 - Prettify failures messages
