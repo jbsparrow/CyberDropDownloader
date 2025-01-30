@@ -41,7 +41,7 @@ Special type for some settings that accept multiple values as input (`lists` or 
 
 ### Examples:
 
-If you have the following `skip_host` setting in you config file:
+If you have the following `skip_hosts` setting in you config file:
 
 ```yaml
 skip_hosts:
