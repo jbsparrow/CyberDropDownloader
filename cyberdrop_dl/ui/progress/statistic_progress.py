@@ -32,6 +32,8 @@ class UiFailureTotal(NamedTuple):
 
     @classmethod
     def from_pair(cls, full_msg: str, count: int) -> UiFailureTotal:
+        if full_msg in ("Unknown", "Duration Not Allowed", "Restricted Filetype", "Insufficient Free Space"):
+            return cls(full_msg, count, None, full_msg)
         error_code, msg = full_msg.split(" ", 1)
         if error_code.isdigit():
             return cls(full_msg, count, int(error_code), msg)

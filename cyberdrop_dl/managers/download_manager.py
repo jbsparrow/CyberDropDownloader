@@ -95,3 +95,20 @@ class DownloadManager:
         if media_item.ext.lower() in FILE_FORMATS["Audio"] and ignore_options.exclude_audio:
             return False
         return not (ignore_options.exclude_other and media_item.ext.lower() not in valid_extensions)
+
+    def check_runtime(self, media_item: MediaItem) -> bool:
+        """Checks if the download is above the maximum runtime."""
+        if not media_item.duration:
+            return True
+
+        duration_limits = self.manager.config_manager.settings_data.media_duration
+        min_audio_duration = duration_limits.minimum_audio_runtime.total_seconds()
+        max_audio_duration = duration_limits.minimum_video_runtime.total_seconds()
+        min_video_duration = duration_limits.maximum_audio_runtime.total_seconds()
+        max_video_duration = duration_limits.maximum_video_runtime.total_seconds()
+
+        if media_item.ext.lower() in FILE_FORMATS["Audio"]:
+            return min_audio_duration <= media_item.duration <= max_audio_duration
+        if media_item.ext.lower() in FILE_FORMATS["Videos"]:
+            return min_video_duration <= media_item.duration <= max_video_duration
+        return True
