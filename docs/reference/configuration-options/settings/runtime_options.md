@@ -8,11 +8,11 @@ These are higher level options that effect the overarching functions of the prog
 |----------------|----------|
 | `NonNegativeInt` | `10`|
 
-Defines the logging level for messages, according to [Python logging levels](https://docs.python.org/3/library/logging.html#levels). Messages with a level below this threshold will not be logged. Setting a value above 50 will disable logging entirely.
+Defines the logging level for messages, according to [Python logging levels](https://docs.python.org/3/library/logging.html#levels). Only messages with a level equal or greater than this setting will be logged, with the exception of `NOTSET` which will disable all logging messages. Setting a value above 50 will also disable logging entirely.
 
 | Level          | Value | Description |
 |----------------|----------|----------|
-| `NOTSET`   | 0  | All events are logged |
+| `NOTSET`   | 0  | Disables all log messages |
 | `DEBUG`    | 10 | Offers detailed information, typically useful to troubleshoot problems |
 | `INFO`     | 20 | Provides general information about scrape and download progress|
 | `WARNING`  | 30 | Highlights a potential issue or something that might need attention (e.g. `Login wasn't provided for <FORUM>`)|
