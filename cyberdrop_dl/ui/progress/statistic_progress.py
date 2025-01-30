@@ -27,9 +27,11 @@ class UiFailureTotal(NamedTuple):
 
     @classmethod
     def from_pair(cls, full_msg: str, count: int) -> UiFailureTotal:
-        if full_msg == "Unknown":
-            return cls(full_msg, count, 0, full_msg)
-        error_code, msg = full_msg.split(" ", 1)
+        parts = full_msg.split(" ", 1)
+        if len(parts) > 1 and parts[0].isdigit:
+            return cls(full_msg, count, int(parts[0]), msg)
+
+``
         if error_code.isdigit():
             return cls(full_msg, count, int(error_code), msg)
         return cls(full_msg, count, None, full_msg)
