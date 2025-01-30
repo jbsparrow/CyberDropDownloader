@@ -431,9 +431,13 @@ class DownloadClient:
         max_video_runtime: float = runtime_limits.maximum_video_runtime.total_seconds()
         min_audio_runtime: float = runtime_limits.minimum_audio_runtime.total_seconds()
         max_audio_runtime: float = runtime_limits.maximum_audio_runtime.total_seconds()
-        if media_item.ext.lower() in FILE_FORMATS["Videos"] and all(runtime == 0 for runtime in (min_video_runtime, max_video_runtime)):
+        if media_item.ext.lower() in FILE_FORMATS["Videos"] and all(
+            runtime == 0 for runtime in (min_video_runtime, max_video_runtime)
+        ):
             return True
-        if media_item.ext.lower() in FILE_FORMATS["Audio"] and all(runtime == 0 for runtime in (min_audio_runtime, max_audio_runtime)):
+        if media_item.ext.lower() in FILE_FORMATS["Audio"] and all(
+            runtime == 0 for runtime in (min_audio_runtime, max_audio_runtime)
+        ):
             return True
 
         duration: float = get_duration(media_item)
