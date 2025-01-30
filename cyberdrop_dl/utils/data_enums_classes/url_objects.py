@@ -121,4 +121,4 @@ class ScrapeItem:
     def parent_threads(self):
         if not isinstance(self.parents, list):
             return []
-        return list(filter(lambda x: any(y in x for y in {"threads"}), self.parents))
+        return list(filter(lambda x: any(y in str(x) for y in {"threads"}), self.parents))
