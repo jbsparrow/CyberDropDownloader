@@ -154,7 +154,7 @@ class Crawler(ABC):
         if only_hosts and not any(host in media_item.url.host for host in only_hosts):
             log(f"Download skip {media_item.url} due to only_hosts config", 10)
             return True
-          
+
         skip_urls = self.manager.config_manager.settings_data.ignore_options.skip_urls
         if skip_urls and any(url in str(media_item.url) for url in skip_urls):
             log(f"Download skip {media_item.url} due to skip_urls config", 10)
