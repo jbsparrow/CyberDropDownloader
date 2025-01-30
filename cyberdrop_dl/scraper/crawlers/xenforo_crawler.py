@@ -319,8 +319,6 @@ class XenforoCrawler(Crawler):
                 if self.is_attachment(link):
                     return await self.handle_internal_link(link, scrape_item)
                 origin = scrape_item.parents[0]
-                if len(scrape_item.parent_threads) > 1:
-                    pass
                 if self.manager.config_manager.settings_data.download_options.maximum_thread_depth is None:
                     pass
                 elif (
