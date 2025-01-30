@@ -160,9 +160,9 @@ def get_pretty_failure(failure: str) -> str:
 
 
 def capitalize_words(text: str) -> str:
-    """Capitilize first letter of each word
+    """Capitalize first letter of each word
 
-    Unlike `str.capwords()`, this only caps the first letter without modifiying the rest of the word"""
+    Unlike `str.capwords()`, this only caps the first letter of each word without modifying the rest of the word"""
     return " ".join([capitalize_first_letter(word) for word in text.split()])
 
 
