@@ -322,11 +322,14 @@ class XenforoCrawler(Crawler):
                 if self.manager.config_manager.settings_data.download_options.maximum_thread_depth is None:
                     pass
                 elif (
-                    scrape_item.parents
+                    len(scrape_item.parent_threads) - 1
                     > self.manager.config_manager.settings_data.download_options.maximum_thread_depth
                 ):
                     return log(f"Skipping nested thread URL {link} found on {origin}", 10)
-            new_scrape_item = self.create_scrape_item(scrape_item, link)
+            if URL(link).host == self.primary_base_domain.host:
+                new_scrape_item = self.create_scrape_item(scrape_item, link, add_parent=scrape_item.url)
+            else:
+                new_scrape_item = self.create_scrape_item(scrape_item, link)
             new_scrape_item.set_type(None, self.manager)
             self.handle_external_links(new_scrape_item)
         except TypeError:
