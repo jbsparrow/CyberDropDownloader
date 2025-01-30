@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import re
+import contextlib
 from functools import lru_cache
 from typing import NamedTuple
 
@@ -8,7 +8,12 @@ from rich.console import Group
 from rich.panel import Panel
 from rich.progress import BarColumn, Progress, TaskID
 
-SPLIT_BY_UPPERCASE_REGEX = re.compile(r"[A-Z][a-z]*|[a-z]+|\d+")
+FAILURE_OVERRIDES = {
+    "ClientConnectorCertificateError": "Client Connector Certificate Error",
+    "ClientConnectorDNSError": "Client Connector DNS Error",
+    "ClientConnectorError": "Client Connector Error",
+    "ConnectionTimeoutError": "Connection Timeout Error",
+}
 
 
 class TaskInfo(NamedTuple):
@@ -106,7 +111,7 @@ class StatsProgress:
     def add_failure(self, failure: str) -> None:
         """Adds a failed file to the progress bar."""
         self.failed_files += 1
-        key = prettify_failure(failure)
+        key = get_pretty_failure(failure)
         task_id = self.failure_types.get(key)
         if task_id is not None:
             self.progress.advance(task_id)
@@ -148,9 +153,18 @@ class ScrapeStatsProgress(StatsProgress):
 
 
 @lru_cache
-def prettify_failure(failure: str) -> str:
-    return " ".join(s.capitalize() for s in split_by_uppercase(failure))
+def get_pretty_failure(failure: str) -> str:
+    with contextlib.suppress(KeyError):
+        return FAILURE_OVERRIDES[failure]
+    return capitalize_words(failure)
 
 
-def split_by_uppercase(text: str) -> list[str]:
-    return re.findall(SPLIT_BY_UPPERCASE_REGEX, text)
+def capitalize_words(text: str) -> str:
+    """Capitilize first letter of each word
+
+    Unlike `str.capwords()`, this only caps the first letter without modifiying the rest of the word"""
+    return " ".join([capitalize_first_letter(word) for word in text.split()])
+
+
+def capitalize_first_letter(word: str) -> str:
+    return word[0].capitalize() + word[1:]
