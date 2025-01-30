@@ -44,7 +44,7 @@ When this is set to `true`, the program will skip post marked as ads by models i
 
 | Type                | Default  | Additional Info |
 |---------------------|----------| --------------- |
-| `list[NonEmptyStr]` | `[]`     | This is an [`AdditiveArg`](../special_setting_types.md#AdditiveArgs)
+| `list[NonEmptyStr]` | `[]`     | This is an [`AdditiveArg`](../special_setting_types.md#additiveargs)
 
 You can supply hosts that you'd like the program to skip, to not scrape/download from them. This setting accepts any domain, even if they are no supported.
 
@@ -52,13 +52,9 @@ You can supply hosts that you'd like the program to skip, to not scrape/download
 
 | Type                | Default  | Additional Info |
 |---------------------|----------| --------------- |
-| `list[NonEmptyStr]` | `[]`     | This is an [`AdditiveArg`](../special_setting_types.md#AdditiveArgs)
+| `list[NonEmptyStr]` | `[]`     | This is an [`AdditiveArg`](../special_setting_types.md#additiveargs
 
 You can supply hosts that you'd like the program to exclusively scrape/download from. This setting accepts any domain, even if they are no supported.
-
-{% hint style="info" %}
-This setting is an `Additive`
-{% endhint %}
 
 ## `filename_regex_filter`
 

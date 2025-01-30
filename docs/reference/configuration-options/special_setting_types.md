@@ -1,6 +1,6 @@
 ---
 description: Configuration settings with special behavior or details.
-icon: user-lock
+icon: sparkles
 ---
 
 # Special Setting Types
@@ -56,7 +56,7 @@ You will get the following results:
 | -------------- | --------------------- | ------- |
 | `--skip-host instagram.com`           | `[instagram.com]`  |  config values were overridden by CLI values |
 | `--skip-host "+" instagram.com`     | `[drive.google.com, youtube.com, facebook.com, instagram.com]`    | config values and CLI values were merged |
-| `--skip-host "-" instagram.com youtube.com`   | `[drive.google.com]`        | CLI values were removed from the config values |
+| `--skip-host "-" drive.google.com youtube.com`   | `[facebook.com]`        | CLI values were removed from the config values |
 
 {% hint style="info" %}
 Always use quotes for "+" and "-" to make sure your shell does not try to parse them as additional flags
