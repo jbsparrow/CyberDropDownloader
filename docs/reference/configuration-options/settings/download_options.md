@@ -184,7 +184,7 @@ No **FORUM** limit, no **FORUM_POST** limit, no **FILE_HOST_PROFILE** limit, max
 {% endtabs %}
 
 
-## `maximum_thread_nesting`
+## `maximum_thread_depth`
 
 | Type           | Default  |
 |----------------|----------|
@@ -204,7 +204,7 @@ None: unlimited parents
 1>: limits to the value given
 
 ### Example
-maximum_thread_nesting=1
+maximum_thread_depth=1
 input_thread: a megathread or a thread that links to many other threads
 
 In this case all threads in the megathread would be scraped
