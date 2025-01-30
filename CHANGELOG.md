@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add support for https://www.imagebam.com
 - Add support for https://comics.8muses.com
 - Pornpics.com support
+- Add minimum/maximum audio and video duration config options and CLI arguments
 
 ### Removed
 

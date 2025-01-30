@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 import aiofiles
 import aiohttp
 from aiohttp import ClientSession
+from videoprops import get_audio_properties, get_video_properties
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import (
@@ -233,7 +234,7 @@ class DownloadClient:
     async def download_file(self, manager: Manager, domain: str, media_item: MediaItem) -> bool:
         """Starts a file."""
         if self.manager.config_manager.settings_data.download_options.skip_download_mark_completed:
-            log(f"Download Skip {media_item.url} due to mark completed option", 10)
+            log(f"Download Removed {media_item.url} due to mark completed option", 10)
             self.manager.progress_manager.download_progress.add_skipped()
             # set completed path
             await self.process_completed(media_item, domain)
@@ -249,6 +250,14 @@ class DownloadClient:
         downloaded = await self._download(domain, manager, media_item, save_content)
         if downloaded:
             media_item.partial_file.rename(media_item.complete_file)
+            proceed = self.check_file_runtime(media_item)
+            await self.manager.db_manager.history_table.add_duration(domain, media_item)
+            if not proceed:
+                log(f"Download Skip {media_item.url} due to runtime restrictions", 10)
+                media_item.complete_file.unlink()
+                await self.mark_incomplete(media_item, domain)
+                self.manager.progress_manager.download_progress.add_skipped()
+                return False
             await self.process_completed(media_item, domain)
             await self.handle_media_item_completion(media_item, downloaded=True)
         return downloaded
@@ -402,6 +411,45 @@ class DownloadClient:
             proceed = min_other_filesize < media.filesize < max_other_filesize
 
         return proceed
+
+    def check_file_runtime(self, media_item: MediaItem) -> bool:
+        """Checks the file runtime against the config runtime limits."""
+
+        def get_duration(media_item: MediaItem) -> float:
+            if media_item.duration:
+                return media_item.duration
+            if media_item.ext.lower() in FILE_FORMATS["Videos"]:
+                props: dict = get_video_properties(str(media_item.complete_file))
+                return float(props.get("duration", 0)) or None
+            if media_item.ext.lower() in FILE_FORMATS["Audio"]:
+                props: dict = get_audio_properties(str(media_item.complete_file))
+                return float(props.get("duration", 0)) or None
+            return None
+
+        runtime_limits = self.manager.config_manager.settings_data.media_duration
+        min_video_runtime: float = runtime_limits.minimum_video_runtime.total_seconds()
+        max_video_runtime: float = runtime_limits.maximum_video_runtime.total_seconds()
+        min_audio_runtime: float = runtime_limits.minimum_audio_runtime.total_seconds()
+        max_audio_runtime: float = runtime_limits.maximum_audio_runtime.total_seconds()
+        if media_item.ext.lower() in FILE_FORMATS["Videos"] and all(
+            runtime == 0 for runtime in (min_video_runtime, max_video_runtime)
+        ):
+            return True
+        if media_item.ext.lower() in FILE_FORMATS["Audio"] and all(
+            runtime == 0 for runtime in (min_audio_runtime, max_audio_runtime)
+        ):
+            return True
+
+        duration: float = get_duration(media_item)
+        media_item.duration = duration
+        if duration is None:
+            return True
+
+        if media_item.ext.lower() in FILE_FORMATS["Videos"]:
+            return min_video_runtime <= media_item.duration <= max_video_runtime
+        elif media_item.ext.lower() in FILE_FORMATS["Audio"]:
+            return min_audio_runtime <= media_item.duration <= max_audio_runtime
+        return True
 
     @property
     def file_path(self) -> str | None:

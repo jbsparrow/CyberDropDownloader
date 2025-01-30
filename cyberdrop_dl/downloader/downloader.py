@@ -13,6 +13,7 @@ from filedate import File
 
 from cyberdrop_dl.clients.errors import (
     DownloadError,
+    DurationError,
     InsufficientFreeSpaceError,
     RestrictedFiletypeError,
     create_error_msg,
@@ -115,6 +116,8 @@ class Downloader:
             raise InsufficientFreeSpaceError(origin=media_item)
         if not self.manager.download_manager.check_allowed_filetype(media_item):
             raise RestrictedFiletypeError(origin=media_item)
+        if not self.manager.download_manager.check_runtime(media_item):
+            raise DurationError(origin=media_item)
 
     def set_file_datetime(self, media_item: MediaItem, complete_file: Path) -> None:
         """Sets the file's datetime."""
@@ -155,6 +158,7 @@ class Downloader:
         origin = media_item.referer
         try:
             media_item.current_attempt = media_item.current_attempt or 1
+            media_item.duration = await self.manager.db_manager.history_table.get_duration(self.domain, media_item)
             self.check_file_can_download(media_item)
             downloaded = await self.client.download_file(self.manager, self.domain, media_item)
             if downloaded:

@@ -102,6 +102,26 @@ class FileSizeLimits(BaseModel):
         return value.human_readable(decimal=True)
 
 
+class MediaDuration(BaseModel):
+    maximum_video_runtime: timedelta = timedelta(seconds=0)
+    maximum_audio_runtime: timedelta = timedelta(seconds=0)
+    minimum_video_runtime: timedelta = timedelta(seconds=0)
+    minimum_audio_runtime: timedelta = timedelta(seconds=0)
+
+    @field_validator("*", mode="before")
+    @staticmethod
+    def parse_runtime_duration(input_date: timedelta | str | int | None) -> timedelta:
+        """Parses `datetime.timedelta`, `str` or `int` into a timedelta format.
+        for `str`, the expected format is `value unit`, ex: `5 days`, `10 minutes`, `1 year`
+        valid units:
+            year(s), week(s), day(s), hour(s), minute(s), second(s), millisecond(s), microsecond(s)
+        for `int`, value is assumed as `days`
+        """
+        if input_date is None:
+            return None
+        return parse_duration_to_timedelta(input_date)
+
+
 class IgnoreOptions(BaseModel):
     exclude_videos: bool = False
     exclude_images: bool = False
@@ -205,6 +225,7 @@ class ConfigSettings(AliasModel):
         validation_alias="Dupe_Cleanup_Options", default=DupeCleanupOptions()
     )
     file_size_limits: FileSizeLimits = Field(validation_alias="File_Size_Limits", default=FileSizeLimits())
+    media_duration: MediaDuration = Field(validation_alias="Media_Duration", default=MediaDuration())
     files: Files = Field(validation_alias="Files", default=Files())
     ignore_options: IgnoreOptions = Field(validation_alias="Ignore_Options", default=IgnoreOptions())
     logs: Logs = Field(validation_alias="Logs", default=Logs())

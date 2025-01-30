@@ -202,6 +202,12 @@ file_size_limits:
   --minimum-other-size MINIMUM_OTHER_SIZE
   --minimum-video-size MINIMUM_VIDEO_SIZE
 
+media_duration:
+  --maximum-video-runtime MAXIMUM_VIDEO_RUNTIME
+  --maximum-audio-runtime MAXIMUM_AUDIO_RUNTIME
+  --minimum-video-runtime MINIMUM_VIDEO_RUNTIME
+  --minimum-audio-runtime MINIMUM_AUDIO_RUNTIME
+
 files:
   -i INPUT_FILE, --input-file INPUT_FILE
   -d DOWNLOAD_FOLDER, --download-folder DOWNLOAD_FOLDER

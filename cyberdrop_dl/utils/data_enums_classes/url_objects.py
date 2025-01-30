@@ -37,6 +37,7 @@ class MediaItem:
     filename: str
     original_filename: str | None = None
     debrid_link: URL | None = field(default=None, hash=False, compare=False)
+    duration: float | None = field(default=None, hash=False, compare=False)
 
     # exclude from __init__
     file_lock_reference_name: str | None = field(default=None, init=False)
