@@ -140,7 +140,7 @@ class XenforoCrawler(Crawler):
             return
         scrape_item.url = self.pre_filter_link(scrape_item.url)
         if self.is_attachment(scrape_item.url):
-            await self.handle_internal_link(scrape_item.url, scrape_item)
+            await self.handle_internal_link(scrape_item)
         elif self.thread_url_part in scrape_item.url.parts:
             await self.thread(scrape_item)
         elif any(p in scrape_item.url.parts for p in ("goto", "posts")):
@@ -315,21 +315,22 @@ class XenforoCrawler(Crawler):
         if not link or link == self.primary_base_domain:
             return
         assert link.host
+        new_scrape_item = self.create_scrape_item(scrape_item, link)
         if self.is_attachment(link):
-            return await self.handle_internal_link(link, scrape_item)
+            return await self.handle_internal_link(scrape_item)
         if self.primary_base_domain.host in link.host:  # type: ignore
             origin = scrape_item.parents[0]
             return log(f"Skipping nested thread URL {link} found on {origin}", 10)
-        new_scrape_item = self.create_scrape_item(scrape_item, link)
         new_scrape_item.set_type(None, self.manager)
         self.handle_external_links(new_scrape_item)
 
     @error_handling_wrapper
-    async def handle_internal_link(self, link: URL, scrape_item: ScrapeItem) -> None:
+    async def handle_internal_link(self, scrape_item: ScrapeItem) -> None:
         """Handles internal links."""
-        filename, ext = get_filename_and_ext(link.name, True)
-        new_scrape_item = self.create_scrape_item(scrape_item, link, "Attachments", part_of_album=True)
-        await self.handle_file(link, new_scrape_item, filename, ext)
+        filename, ext = get_filename_and_ext(scrape_item.url.name, forum=True)
+        scrape_item.add_to_parent_title("Attachments")
+        scrape_item.part_of_album = True
+        await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
     @error_handling_wrapper
     async def handle_confirmation_link(self, link: URL, *, origin: ScrapeItem | None = None) -> URL | None:
