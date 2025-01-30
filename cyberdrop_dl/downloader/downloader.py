@@ -11,7 +11,12 @@ from typing import TYPE_CHECKING
 from aiohttp import ClientError, ClientResponseError
 from filedate import File
 
-from cyberdrop_dl.clients.errors import DownloadError, InsufficientFreeSpaceError, RestrictedFiletypeError
+from cyberdrop_dl.clients.errors import (
+    DownloadError,
+    InsufficientFreeSpaceError,
+    RestrictedFiletypeError,
+    create_error_msg,
+)
 from cyberdrop_dl.utils.constants import CustomHTTPStatus
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -24,7 +29,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
 
-def retry(func: Callable) -> None:
+def retry(func: Callable) -> Callable:
     """This function is a wrapper that handles retrying for failed downloads."""
 
     @wraps(func)
@@ -165,7 +170,7 @@ class Downloader:
             self.attempt_task_removal(media_item)
 
         except (DownloadError, ClientResponseError) as e:
-            ui_message = getattr(e, "ui_message", e.status)
+            ui_message = create_error_msg(getattr(e, "ui_message", e.status))
             full_message = e.message
             if e.message != ui_message:
                 full_message = f"{e.status} - {e.message}"
