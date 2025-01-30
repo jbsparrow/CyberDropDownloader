@@ -119,6 +119,6 @@ class ScrapeItem:
 
     @property
     def parent_threads(self):
-        if isinstance(self.parents, field):
+        if not isinstance(self.parents, list):
             return []
         return list(filter(lambda x: any(y in x for y in {"threads"}), self.parents))
