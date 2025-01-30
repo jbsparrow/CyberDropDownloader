@@ -13,9 +13,11 @@ from typing import TYPE_CHECKING
 import aiofiles
 import rich
 from aiohttp import ClientConnectorError, ClientSession, FormData
+from requests import request
 from rich.text import Text
 from yarl import URL
 
+from cyberdrop_dl import __version__ as current_version
 from cyberdrop_dl.clients.errors import CDLBaseError, NoExtensionError
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.logger import log, log_debug, log_spacer, log_with_color
@@ -111,14 +113,17 @@ def truncate_str(text: str, max_length: int = 0) -> str:
     return text.strip()
 
 
-def get_filename_and_ext(filename: str, forum: bool = False) -> tuple[str, str]:
+def get_filename_and_ext(filename: str, forum: bool = False, raise_error: bool = True) -> tuple[str, str]:
     """Returns the filename and extension of a given file, throws `NoExtensionError` if there is no extension."""
     filename_as_path = Path(filename)
     if not filename_as_path.suffix:
+        if not raise_error:
+            new_filename, ext = get_filename_and_ext(filename + constants.DEFAULT_FILE_EXT)
+            return Path(new_filename).stem, ext
         raise NoExtensionError
     if filename_as_path.suffix.isnumeric() and forum:
         name, ext = filename_as_path.name.rsplit("-", 1)
-        filename_as_path = Path(name + ext)
+        filename_as_path = Path(f"{name}.{ext}")
     if len(filename_as_path.suffix) > 5:
         raise NoExtensionError
 
@@ -230,10 +235,6 @@ def delete_empty_folders(manager: Manager):
 
 def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -> tuple[str, str]:
     """Checks if the current version is the latest version."""
-
-    from requests import request
-
-    from cyberdrop_dl import __version__ as current_version
 
     with request("GET", constants.PYPI_JSON_URL, timeout=30) as response:
         contents = response.content
