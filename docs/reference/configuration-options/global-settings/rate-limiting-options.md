@@ -34,6 +34,10 @@ The number of seconds to wait while reading data from a website before timing ou
 |----------------|----------|
 | `PositiveInt` | `50`|
 
+{% hint style="info" %}
+This setting specifies speed and it's interpreted as `<value> / second`. ex: `50` means `50 requests / second`
+{% endhint %}
+
 This is the maximum number of requests that can be made by the program per second.
 
 ## `download_delay`
@@ -72,6 +76,10 @@ Some domains have internal limits set by the program, such as `bunkrr`, `cyberfi
 | Type           | Default  |
 |----------------|----------|
 | `ByteSize` | `0`|
+
+{% hint style="info" %}
+This setting specifies speed and it's interpreted as `<value> / second`. ex: `8MB` means `8MB/s`
+{% endhint %}
 
 This is the max rate of downloading in bytes (per second) for all downloads combined. Set to `0` to disable
 

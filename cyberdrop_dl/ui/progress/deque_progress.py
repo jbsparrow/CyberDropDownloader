@@ -23,8 +23,8 @@ class DequeProgress(ABC):
     type_str: str = "Files"
     color = "plum3"
     progress_str = "[{color}]{description}"
-    overflow_str = "[{color}]... And {number} Other {type_str}"
-    queue_str = "[{color}]... And {number} {type_str} In {title} Queue"
+    overflow_str = "[{color}]... and {number:,} other {type_str}"
+    queue_str = "[{color}]... and {number:,} {type_str} in {title} queue"
 
     def __init__(self, title: str, visible_tasks_limit: int) -> None:
         self.title = title

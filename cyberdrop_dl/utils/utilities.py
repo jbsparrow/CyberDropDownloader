@@ -51,7 +51,8 @@ def error_handling_wrapper(func: Callable) -> Callable:
         except Exception as e:
             exc_info = e
             if hasattr(e, "status") and hasattr(e, "message"):
-                log_message_short = log_message = e_ui_failure = f"{e.status} - {e.message}"
+                msg = f"{e.status} - {e.message}" if str(e.status) != e.message else e.message
+                log_message_short = log_message = e_ui_failure = msg
             else:
                 log_message = str(e)
                 log_message_short = "See Log for Details"

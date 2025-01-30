@@ -45,6 +45,12 @@ class DBManager:
         await self.history_table.startup()
         await self.hash_table.startup()
         await self.temp_referer_table.startup()
+        await self.run_fixes()
+
+    async def run_fixes(self):
+        if not self.manager.cache_manager.get("fixed_empty_download_filenames"):
+            await self.history_table.delete_invalid_rows()
+            self.manager.cache_manager.save("fixed_empty_download_filenames", True)
 
     async def close(self) -> None:
         """Close the DBManager."""

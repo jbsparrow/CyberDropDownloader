@@ -34,7 +34,7 @@ class CommandLineOnlyArgs(BaseModel):
     completed_before: date | None = Field(None, description="only download completed downloads at or before this date")
     config: str | None = Field(None, description="name of config to load")
     config_file: Path | None = Field(None, description="path to the CDL settings.yaml file to load")
-    download: bool = Field(False, description="skips UI, start download inmediatly")
+    download: bool = Field(False, description="skips UI, start download immediatly")
     max_items_retry: int = Field(0, description="max number of links to retry")
     no_ui: bool = Field(False, description="disables the UI/progress view entirely")
     retry_all: bool = Field(False, description="retry all downloads")
@@ -42,6 +42,7 @@ class CommandLineOnlyArgs(BaseModel):
     retry_maintenance: bool = Field(
         False, description="retry download of maintenance files (bunkr). Requires files to be hashed"
     )
+    download_tiktok_audios: bool = Field(False, description="download TikTok audios")
 
     @computed_field
     @property
@@ -232,10 +233,10 @@ def _add_args_from_model(
             continue
         if cli_name == "links":
             default_options.pop("dest")
-            parser.add_argument(cli_name, metavar="LINK(S)", nargs="*", **default_options)
+            parser.add_argument(cli_name, metavar="LINK(S)", nargs="*", action="extend", **default_options)
             continue
         if arg_type in (list, set):
-            parser.add_argument(*name_or_flags, nargs="*", **default_options)
+            parser.add_argument(*name_or_flags, nargs="*", action="extend", **default_options)
             continue
         parser.add_argument(*name_or_flags, type=arg_type, **default_options)
 
@@ -273,7 +274,7 @@ def parse_args() -> ParsedArgs:
     _add_args_from_model(deprecated, DeprecatedArgs, cli_args=True, deprecated=True)
     group_lists["deprecated_args"] = [deprecated]
 
-    args = parser.parse_args()
+    args = parser.parse_intermixed_args()
     parsed_args = {}
     for name, groups in group_lists.items():
         parsed_args[name] = {}

@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import itertools
+import time
 from functools import partial, wraps
 from http import HTTPStatus
 from pathlib import Path
@@ -13,7 +14,12 @@ import aiohttp
 from aiohttp import ClientSession
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import DownloadError, InsufficientFreeSpaceError, InvalidContentTypeError
+from cyberdrop_dl.clients.errors import (
+    DownloadError,
+    InsufficientFreeSpaceError,
+    InvalidContentTypeError,
+    SlowDownloadError,
+)
 from cyberdrop_dl.utils.constants import DEBUG_VAR, FILE_FORMATS
 from cyberdrop_dl.utils.logger import log
 
@@ -67,18 +73,21 @@ class DownloadClient:
         self._global_limiter = self.client_manager.global_rate_limiter
         self.trace_configs = []
         self._file_path = None
+        self.slow_download_period = 10  # seconds
+        self.download_speed_threshold = self.manager.config_manager.settings_data.runtime_options.slow_download_speed
         if DEBUG_VAR:
             self.add_request_log_hooks()
 
     def add_request_log_hooks(self) -> None:
         async def on_request_start(*args):
             params: aiohttp.TraceRequestStartParams = args[2]
-            log(f"Starting download {params.method} request to {params.url}", 20)
+            log(f"Starting download {params.method} request to {params.url}", 10)
 
         async def on_request_end(*args):
             params: aiohttp.TraceRequestEndParams = args[2]
-            log(f"Finishing download {params.method} request to {params.url}", 20)
-            log(f"Response status for {params.url}: {params.response.status}", 20)
+            msg = f"Finishing download {params.method} request to {params.url}"
+            msg += f"-> response status: {params.response.status}"
+            log(msg, 10)
 
         trace_config = aiohttp.TraceConfig()
         trace_config.on_request_start.append(on_request_start)
@@ -145,7 +154,6 @@ class DownloadClient:
             media_item.filesize = int(resp.headers.get("Content-Length", "0"))
             if not media_item.complete_file:
                 proceed, skip = await self.get_final_file_info(media_item, domain)
-                await self.mark_incomplete(media_item, domain)
                 self.client_manager.check_bunkr_maint(resp.headers)
                 if skip:
                     self.manager.progress_manager.download_progress.add_skipped()
@@ -164,7 +172,8 @@ class DownloadClient:
                 and any(s in content_type.lower() for s in ("html", "text"))
                 and ext not in FILE_FORMATS["Text"]
             ):
-                raise InvalidContentTypeError(message=f"Received '{content_type}', was expecting other")
+                msg = f"Received '{content_type}', was expecting other"
+                raise InvalidContentTypeError(message=msg)
 
             if resp.status != HTTPStatus.PARTIAL_CONTENT and media_item.partial_file.is_file():
                 media_item.partial_file.unlink()
@@ -194,6 +203,19 @@ class DownloadClient:
         media_item.partial_file.parent.mkdir(parents=True, exist_ok=True)
         if not media_item.partial_file.is_file():
             media_item.partial_file.touch()
+
+        last_slow_speed_read = None
+
+        def check_download_speed():
+            nonlocal last_slow_speed_read
+            speed = self.manager.progress_manager.file_progress.get_speed(media_item.task_id)
+            if speed > self.download_speed_threshold:
+                last_slow_speed_read = None
+            elif not last_slow_speed_read:
+                last_slow_speed_read = time.perf_counter()
+            elif time.perf_counter() - last_slow_speed_read > self.slow_download_period:
+                raise SlowDownloadError(origin=media_item)
+
         async with aiofiles.open(media_item.partial_file, mode="ab") as f:  # type: ignore
             async for chunk in content.iter_chunked(self.client_manager.speed_limiter.chunk_size):
                 chunk_size = len(chunk)
@@ -201,6 +223,9 @@ class DownloadClient:
                 await asyncio.sleep(0)
                 await f.write(chunk)
                 update_progress(chunk_size)
+                if self.download_speed_threshold:
+                    check_download_speed()
+
         if not content.total_bytes and not media_item.partial_file.stat().st_size:
             media_item.partial_file.unlink()
             raise DownloadError(status=HTTPStatus.INTERNAL_SERVER_ERROR, message="File is empty")
@@ -211,7 +236,6 @@ class DownloadClient:
             log(f"Download Skip {media_item.url} due to mark completed option", 10)
             self.manager.progress_manager.download_progress.add_skipped()
             # set completed path
-            await self.mark_incomplete(media_item, domain)
             await self.process_completed(media_item, domain)
             return False
 
@@ -341,6 +365,7 @@ class DownloadClient:
 
             media_item.filename = downloaded_filename
         media_item.download_filename = media_item.complete_file.name
+        await self.manager.db_manager.history_table.add_download_filename(domain, media_item)
         return proceed, skip
 
     async def iterate_filename(self, complete_file: Path, media_item: MediaItem) -> tuple[Path, Path | None]:

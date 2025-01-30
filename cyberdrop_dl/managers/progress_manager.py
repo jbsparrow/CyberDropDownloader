@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 from dataclasses import field
 from datetime import timedelta
+from functools import partial
 from typing import TYPE_CHECKING
 
 from pydantic import ByteSize
@@ -20,6 +21,12 @@ if TYPE_CHECKING:
     from rich.console import RenderableType
 
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.ui.progress.statistic_progress import UiFailureTotal
+
+log_cyan = partial(log_with_color, style="cyan", level=20)
+log_yellow = partial(log_with_color, style="yellow", level=20)
+log_green = partial(log_with_color, style="green", level=20)
+log_red = partial(log_with_color, style="red", level=20)
 
 
 class ProgressManager:
@@ -74,49 +81,53 @@ class ProgressManager:
         """Prints the stats of the program."""
         end_time = time.perf_counter()
         runtime = timedelta(seconds=int(end_time - start_time))
+        data_size = ByteSize(self.file_progress.downloaded_data).human_readable(decimal=True)
 
         log("Printing Stats...\n", 20)
-        log_with_color(f"Run Stats (config: {self.manager.config_manager.loaded_config}):", "cyan", 20)
-        log_with_color(f"  Total Runtime: {runtime}", "yellow", 20)
-        data_size = ByteSize(self.file_progress.downloaded_data).human_readable(decimal=True)
-        log_with_color(f"  Total Downloaded Data: {data_size }", "yellow", 20)
+        log_cyan(f"Run Stats (config: {self.manager.config_manager.loaded_config}):")
+        log_yellow(f"  Total Runtime: {runtime}")
+        log_yellow(f"  Total Downloaded Data: {data_size}")
 
         log_spacer(20, "")
-        log_with_color("Download Stats:", "cyan", 20)
-        log_with_color(f"  Downloaded: {self.download_progress.completed_files} files", "green", 20)
-        log_with_color(
-            f"  Skipped (Previously Downloaded): {self.download_progress.previously_completed_files} files",
-            "yellow",
-            20,
-        )
-        log_with_color(f"  Skipped (By Config): {self.download_progress.skipped_files} files", "yellow", 20)
-        log_with_color(f"  Failed: {self.download_stats_progress.failed_files} files", "red", 20)
+        log_cyan("Download Stats:")
+        log_green(f"  Downloaded: {self.download_progress.completed_files:,} files")
+        log_yellow(f"  Skipped (By Config): {self.download_progress.skipped_files:,} files")
+        log_yellow(f"  Skipped (Previously Downloaded): {self.download_progress.previously_completed_files:,} files")
+        log_red(f"  Failed: {self.download_stats_progress.failed_files:,} files")
 
         log_spacer(20, "")
-        log_with_color("Unsupported URLs Stats:", "cyan", 20)
-        log_with_color(f"  Sent to Jdownloader: {self.scrape_stats_progress.sent_to_jdownloader}", "yellow", 20)
-        log_with_color(f"  Skipped: {self.scrape_stats_progress.unsupported_urls_skipped}", "yellow", 20)
+        log_cyan("Unsupported URLs Stats:")
+        log_yellow(f"  Sent to Jdownloader: {self.scrape_stats_progress.sent_to_jdownloader:,}")
+        log_yellow(f"  Skipped: {self.scrape_stats_progress.unsupported_urls_skipped:,}")
 
         log_spacer(20, "")
-        log_with_color("Dupe Stats:", "cyan", 20)
-        log_with_color(f"  Previously Hashed: {self.hash_progress.prev_hashed_files} files", "yellow", 20)
-        log_with_color(f"  Newly Hashed: {self.hash_progress.hashed_files} files", "yellow", 20)
-        log_with_color(f"  Removed (Downloads): {self.hash_progress.removed_files} files", "yellow", 20)
+        log_cyan("Dupe Stats:")
+        log_yellow(f"  Newly Hashed: {self.hash_progress.hashed_files:,} files")
+        log_yellow(f"  Previously Hashed: {self.hash_progress.prev_hashed_files:,} files")
+        log_yellow(f"  Removed (Downloads): {self.hash_progress.removed_files:,} files")
 
         log_spacer(20, "")
-        log_with_color("Sort Stats:", "cyan", 20)
-        log_with_color(f"  Organized: {self.sort_progress.audio_count} Audios", "green", 20)
-        log_with_color(f"  Organized: {self.sort_progress.image_count} Images", "green", 20)
-        log_with_color(f"  Organized: {self.sort_progress.video_count} Videos", "green", 20)
-        log_with_color(f"  Organized: {self.sort_progress.other_count} Other Files", "green", 20)
+        log_cyan("Sort Stats:")
+        log_green(f"  Audios: {self.sort_progress.audio_count:,}")
+        log_green(f"  Images: {self.sort_progress.image_count:,}")
+        log_green(f"  Videos: {self.sort_progress.video_count:,}")
+        log_green(f"  Other Files: {self.sort_progress.other_count:,}")
 
-        def log_failures(failures: dict, title: str = "Failures:") -> None:
-            log_spacer(20, "")
-            log_with_color(title, "cyan", 20)
-            if not failures:
-                log_with_color("  None", "green", 20)
-            for name, count in failures.items():
-                log_with_color(f"  ({name}): {count}", "red", 20)
+        last_padding = log_failures(self.scrape_stats_progress.return_totals(), "Scrape Failures:")
+        log_failures(self.download_stats_progress.return_totals(), "Download Failures:", last_padding)
 
-        log_failures(self.scrape_stats_progress.return_totals(), "Scrape Failures:")
-        log_failures(self.download_stats_progress.return_totals(), "Download Failures:")
+
+def log_failures(failures: list[UiFailureTotal], title: str = "Failures:", last_padding: int = 0) -> int:
+    log_spacer(20, "")
+    log_cyan(title)
+    if not failures:
+        log_green("  None")
+        return 0
+    error_padding = last_padding
+    error_codes = (f.error_code for f in failures if f.error_code is not None)
+    if error_codes:
+        error_padding = max(len(str(max(error_codes))), error_padding)
+    for f in failures:
+        error = f.error_code if f.error_code is not None else ""
+        log_red(f"  {error:>{error_padding}}{' ' if error_padding else ''}{f.msg}: {f.count:,}")
+    return error_padding

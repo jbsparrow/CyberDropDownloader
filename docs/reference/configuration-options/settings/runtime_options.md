@@ -144,3 +144,15 @@ Use this option only when absolutely necessary, as it will significantly increas
 
 For example, scraping an album normally takes one single request. However, with `--deep-scrape`, CDL will make `n` requests per album, where `n` is the total number of items in the album
 {% endhint %}
+
+## `slow_download_speed`
+
+| Type           | Default  |
+|----------------|----------|
+| `ByteSize` | `0`|
+
+{% hint style="info" %}
+This setting specifies speed and it's interpreted as `<value> / second`. ex: `8MB` means `8MB/s`
+{% endhint %}
+
+Downloads with a speed lower than this value for more than 10 seconds will be skipped. Set to `0` to disable

@@ -222,7 +222,5 @@ class XXXBunkerCrawler(Crawler):
             self.session_cookie = ""
             return
 
-        self.client.client_manager.cookies.update_cookies(
-            {"PHPSESSID": self.session_cookie},
-            response_url=self.primary_base_domain,
-        )
+        cookies = {"PHPSESSID": self.session_cookie}
+        self.update_cookies(cookies)

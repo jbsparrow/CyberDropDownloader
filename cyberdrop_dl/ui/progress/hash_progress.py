@@ -40,7 +40,7 @@ class HashProgress:
         )
 
     def create_generic_progress(self) -> Progress:
-        return Progress("[progress.description]{task.description}", BarColumn(bar_width=None), "{task.completed}")
+        return Progress("[progress.description]{task.description}", BarColumn(bar_width=None), "{task.completed:,}")
 
     def get_renderable(self) -> Panel:
         """Returns the progress bar."""

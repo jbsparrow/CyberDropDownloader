@@ -45,7 +45,13 @@ class HistoryTable:
         await self.fix_chevereto_domains()
 
     async def fix_chevereto_domains(self) -> None:
-        query = """UPDATE media SET domain = 'jpg5.su' WHERE domain = 'sharex'"""
+        query = """UPDATE OR REPLACE media SET domain = 'jpg5.su' WHERE domain = 'sharex'"""
+        cursor = await self.db_conn.cursor()
+        await cursor.execute(query)
+        await self.db_conn.commit()
+
+    async def delete_invalid_rows(self) -> None:
+        query = """DELETE FROM media WHERE download_filename = '' """
         cursor = await self.db_conn.cursor()
         await cursor.execute(query)
         await self.db_conn.commit()
@@ -160,6 +166,13 @@ class HistoryTable:
             """UPDATE media SET file_size=? WHERE domain = ? and url_path = ?""",
             (file_size, domain, url_path),
         )
+        await self.db_conn.commit()
+
+    async def add_download_filename(self, domain: str, media_item: MediaItem) -> None:
+        """Add the download_filename to the db."""
+        url_path = get_db_path(media_item.url, str(media_item.referer))
+        query = """UPDATE media SET download_filename=? WHERE domain = ? and url_path = ? and download_filename = '' """
+        await self.db_conn.execute(query, (media_item.download_filename, domain, url_path))
         await self.db_conn.commit()
 
     async def check_filename_exists(self, filename: str) -> bool:

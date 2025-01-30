@@ -11,7 +11,12 @@ from typing import TYPE_CHECKING
 from aiohttp import ClientError, ClientResponseError
 from filedate import File
 
-from cyberdrop_dl.clients.errors import DownloadError, InsufficientFreeSpaceError, RestrictedFiletypeError
+from cyberdrop_dl.clients.errors import (
+    DownloadError,
+    InsufficientFreeSpaceError,
+    RestrictedFiletypeError,
+    create_error_msg,
+)
 from cyberdrop_dl.utils.constants import CustomHTTPStatus
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -24,7 +29,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
 
-def retry(func: Callable) -> None:
+def retry(func: Callable) -> Callable:
     """This function is a wrapper that handles retrying for failed downloads."""
 
     @wraps(func)
@@ -42,7 +47,11 @@ def retry(func: Callable) -> None:
                 if e.status != 999:
                     media_item.current_attempt += 1
 
-                log_message = f"with status {e.status} and message: {e.message}"
+                full_message = str(e.status)
+                if e.message != full_message:
+                    full_message = f"{e.status} - {e.message}"
+
+                log_message = f"with error: {full_message}"
                 log(f"{self.log_prefix} failed: {media_item.url} {log_message}", 40)
                 if media_item.current_attempt < max_attempts:
                     retry_msg = f"Retrying {self.log_prefix.lower()}: {media_item.url} , retry attempt: {media_item.current_attempt + 1}"
@@ -90,6 +99,7 @@ class Downloader:
 
         self.waiting_items += 1
         media_item.current_attempt = 0
+        await self.client.mark_incomplete(media_item, self.domain)
         async with self._semaphore:
             self.waiting_items -= 1
             self.processed_items.add(media_item.url.path)
@@ -160,8 +170,11 @@ class Downloader:
             self.attempt_task_removal(media_item)
 
         except (DownloadError, ClientResponseError) as e:
-            ui_message = getattr(e, "ui_message", e.status)
-            log_message_short = log_message = f"{e.status} - {e.message}"
+            ui_message = create_error_msg(getattr(e, "ui_message", e.status))
+            full_message = e.message
+            if e.message != ui_message:
+                full_message = f"{e.status} - {e.message}"
+            log_message_short = log_message = full_message
             log(f"{self.log_prefix} failed: {media_item.url} with error: {log_message}", 40)
             await self.manager.log_manager.write_download_error_log(media_item.url, log_message_short, origin)
             self.manager.progress_manager.download_stats_progress.add_failure(ui_message)

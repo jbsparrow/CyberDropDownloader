@@ -14,7 +14,7 @@ class XBunkerCrawler(XenforoCrawler):
     primary_base_domain = URL("https://xbunker.nu/")
     domain = "xbunker"
     post_selectors = PostSelectors(
-        content=Selector("div[class=bbWrapper]", None),
+        content=Selector("div[class=bbWrapper]"),
         images=Selector("img[class*=bbImage], a[class*=js-lbImage]", "data-src"),
         date=Selector("time", "data-time"),
     )
