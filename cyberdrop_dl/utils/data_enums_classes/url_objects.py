@@ -117,8 +117,21 @@ class ScrapeItem:
         if reset_parent_title:
             self.parent_title = ""
 
+    def check_depth(self, manager: Manager):
+        if self.url in self.parents:
+            return True
+        elif manager.config_manager.settings_data.download_options.maximum_thread_depth is None:
+            return False
+        elif len(self.parent_threads) > manager.config_manager.settings_data.download_options.maximum_thread_depth:
+            return True
+
     @property
     def parent_threads(self):
         if not isinstance(self.parents, list):
             return []
-        return list(filter(lambda x: any(y in str(x) for y in {"threads"}), self.parents))
+        return list(
+            filter(
+                lambda x: (any(y in str(x) for y in {"threads"}) and all(y not in str(x) for y in {"post"})),
+                self.parents,
+            )
+        )
