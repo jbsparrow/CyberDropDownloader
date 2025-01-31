@@ -65,7 +65,6 @@ minversion = "8.3"
 testpaths = ["tests"]
 
 [tool.ruff]
-exclude = ["cyberdrop_dl/dependencies/browser_cookie3/__init__.py"]
 line-length = 120
 target-version = "py311"
 
