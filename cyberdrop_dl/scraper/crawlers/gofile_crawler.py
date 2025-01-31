@@ -119,7 +119,7 @@ class GoFileCrawler(Crawler):
 
             link = self.parse_url(link_str)
             date = child["createTime"]
-            filename, ext = get_filename_and_ext(link.name, raise_error=allow_no_extension)
+            filename, ext = get_filename_and_ext(link.name, allow_no_extension=allow_no_extension)
             new_scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, possible_datetime=date)
             await self.handle_file(link, new_scrape_item, filename, ext)
             scrape_item.add_children()
