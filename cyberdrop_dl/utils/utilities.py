@@ -128,8 +128,8 @@ def get_filename_and_ext(filename: str, forum: bool = False, *, allow_no_extensi
         raise InvalidExtensionError
 
     filename_as_path = filename_as_path.with_suffix(filename_as_path.suffix.lower())
-    filename_as_path = Path(truncate_str(filename_as_path.stem.removesuffix(".")) + filename_as_path.suffix)
-    filename_as_path = Path(sanitize_filename(filename_as_path.name))
+    filename_as_str = truncate_str(filename_as_path.stem.removesuffix(".")) + filename_as_path.suffix
+    filename_as_path = Path(sanitize_filename(filename_as_str))
     return filename_as_path.name, filename_as_path.suffix
 
 
