@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from rich.live import Live
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
+from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.logger import console
 
 if TYPE_CHECKING:
@@ -35,12 +36,13 @@ class LiveManager:
         self.placeholder.add_task("running with no UI", total=100, completed=0)
 
     @contextmanager
-    def get_live(self, layout: RenderableType, stop: bool = False) -> Generator[Live]:
+    def get_live(self, layout: RenderableType, stop: bool = False) -> Generator[Live | None]:
         show = self.placeholder if self.no_ui else layout
+        live = self.live if not (10 <= constants.CONSOLE_LEVEL <= 50) else None
         try:
             self.live.start()
             self.live.update(show, refresh=True)
-            yield self.live
+            yield live
         finally:
             if stop:
                 self.live.stop()
