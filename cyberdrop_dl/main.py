@@ -243,7 +243,6 @@ async def director(manager: Manager) -> None:
         await runtime(manager)
         await post_runtime(manager)
 
-        log_spacer(20)
         manager.progress_manager.print_stats(start_time)
 
         if not configs_to_run:
