@@ -78,6 +78,7 @@ class BunkrrCrawler(Crawler):
         """Scrapes an album."""
         if not scrape_item.url:
             return
+        allow_no_extension = self.manager.config_manager.settings_data.ignore_options.exclude_files_with_no_extension
         scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path)
         album_id = scrape_item.url.parts[2]
         scrape_item.album_id = album_id
@@ -122,8 +123,8 @@ class BunkrrCrawler(Crawler):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
             else:
-                src_filename, ext = get_filename_and_ext(src.name)
-                filename, _ = get_filename_and_ext(filename)
+                src_filename, ext = get_filename_and_ext(src.name, raise_error=allow_no_extension)
+                filename, _ = get_filename_and_ext(filename, raise_error=allow_no_extension)
                 if not self.check_album_results(src, results):
                     await self.handle_file(src, new_scrape_item, src_filename, ext, custom_filename=filename)
 
@@ -181,6 +182,7 @@ class BunkrrCrawler(Crawler):
         If `link` is not supplied, `scrape_item.url` will be used by default
 
         `fallback_filename` will only be used if the link has not `n` query parameter"""
+        allow_no_extension = self.manager.config_manager.settings_data.ignore_options.exclude_files_with_no_extension
         link = url or scrape_item.url
         if self.is_reinforced_link(link):
             link: URL = await self.handle_reinforced_link(link, scrape_item)
@@ -190,7 +192,7 @@ class BunkrrCrawler(Crawler):
         try:
             src_filename, ext = get_filename_and_ext(link.name)
         except NoExtensionError:
-            src_filename, ext = get_filename_and_ext(scrape_item.url.name)
+            src_filename, ext = get_filename_and_ext(scrape_item.url.name, raise_error=allow_no_extension)
         filename = link.query.get("n") or fallback_filename
         if not url:
             scrape_item = self.create_scrape_item(scrape_item, URL("https://get.bunkrr.su/"))

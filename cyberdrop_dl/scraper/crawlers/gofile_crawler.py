@@ -106,6 +106,7 @@ class GoFileCrawler(Crawler):
     async def handle_children(self, children: dict, scrape_item: ScrapeItem) -> None:
         """Sends files to downloader and adds subfolder to scrape queue."""
         subfolders = []
+        allow_no_extension = self.manager.config_manager.settings_data.ignore_options.exclude_files_with_no_extension
         for child in children.values():
             if child["type"] == "folder":
                 folder_url = self.primary_base_domain / "d" / child["code"]
@@ -118,7 +119,7 @@ class GoFileCrawler(Crawler):
 
             link = self.parse_url(link_str)
             date = child["createTime"]
-            filename, ext = get_filename_and_ext(link.name)
+            filename, ext = get_filename_and_ext(link.name, raise_error=allow_no_extension)
             new_scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, possible_datetime=date)
             await self.handle_file(link, new_scrape_item, filename, ext)
             scrape_item.add_children()
