@@ -56,6 +56,10 @@ class Crawler(ABC):
         self.scraped_items: list = []
         self.waiting_items = 0
 
+    @property
+    def allow_no_extension(self) -> bool:
+        return not self.manager.config_manager.settings_data.ignore_options.exclude_files_with_no_extension
+
     async def startup(self) -> None:
         """Starts the crawler."""
         async with self.startup_lock:
