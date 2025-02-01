@@ -107,7 +107,7 @@ async def post_runtime(manager: Manager) -> None:
         sorter = Sorter(manager)
         await sorter.run()
 
-    await check_partials_and_empty_folders(manager)
+    check_partials_and_empty_folders(manager)
 
     if manager.config_manager.settings_data.runtime_options.update_last_forum_post:
         await manager.log_manager.update_last_forum_post()

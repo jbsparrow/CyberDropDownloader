@@ -78,6 +78,7 @@ class BunkrrCrawler(Crawler):
         """Scrapes an album."""
         if not scrape_item.url:
             return
+
         scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path)
         album_id = scrape_item.url.parts[2]
         scrape_item.album_id = album_id
@@ -122,8 +123,8 @@ class BunkrrCrawler(Crawler):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
             else:
-                src_filename, ext = get_filename_and_ext(src.name)
-                filename, _ = get_filename_and_ext(filename)
+                src_filename, ext = get_filename_and_ext(src.name, allow_no_extension=self.allow_no_extension)
+                filename, _ = get_filename_and_ext(filename, allow_no_extension=self.allow_no_extension)
                 if not self.check_album_results(src, results):
                     await self.handle_file(src, new_scrape_item, src_filename, ext, custom_filename=filename)
 
@@ -190,7 +191,7 @@ class BunkrrCrawler(Crawler):
         try:
             src_filename, ext = get_filename_and_ext(link.name)
         except NoExtensionError:
-            src_filename, ext = get_filename_and_ext(scrape_item.url.name)
+            src_filename, ext = get_filename_and_ext(scrape_item.url.name, allow_no_extension=self.allow_no_extension)
         filename = link.query.get("n") or fallback_filename
         if not url:
             scrape_item = self.create_scrape_item(scrape_item, URL("https://get.bunkrr.su/"))

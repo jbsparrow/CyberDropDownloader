@@ -29,6 +29,7 @@ This is not a bug. Do not open issues related to this"""
 RAR_MULTIPART_PATTERN = re.compile(r"^part\d+")
 SANITIZE_FILENAME_PATTERN = re.compile(r'[<>:"/\\|?*\']')
 REGEX_LINKS = re.compile(r"(?:http.*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]))")
+DEFAULT_FILE_EXT = ".mp4"
 
 
 class CustomHTTPStatus(IntEnum):
