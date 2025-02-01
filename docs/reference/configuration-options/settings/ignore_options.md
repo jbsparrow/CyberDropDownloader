@@ -42,19 +42,19 @@ When this is set to `true`, the program will skip post marked as ads by models i
 
 ## `skip_hosts`
 
-| Type  | Default |
-|----------------|----------|
-| `list[NonEmptyStr]` | `[]` |
+| Type                | Default  | Additional Info |
+|---------------------|----------| --------------- |
+| `list[NonEmptyStr]` | `[]`     | This is an [`AdditiveArg`](../special_setting_types.md#additiveargs)
 
-You can supply hosts that you'd like the program to skip, to not scrape/download from them. This setting accepts any domain, even if they are no supported. When passing hosts as CLI arguments, if the first host is `+`, any hosts after it will be added to the lists of hosts specified in the config file instead of overriding it. Similarly, if the first hosts is `-`, any hosts after it will be removed from the lists of hosts specified in the config
+You can supply hosts that you'd like the program to skip, to not scrape/download from them. This setting accepts any domain, even if they are no supported.
 
 ## `only_hosts`
 
-| Type  | Default |
-|----------------|----------|
-| `list[NonEmptyStr]` | `[]` |
+| Type                | Default  | Additional Info |
+|---------------------|----------| --------------- |
+| `list[NonEmptyStr]` | `[]`     | This is an [`AdditiveArg`](../special_setting_types.md#additiveargs
 
-You can supply hosts that you'd like the program to exclusively scrape/download from. This setting accepts any domain, even if they are no supported. When passing hosts as CLI arguments, if the first host is `+`, any hosts after it will be added to the lists of hosts specified in the config file instead of overriding it. Similarly, if the first hosts is `-`, any hosts after it will be removed from the lists of hosts specified in the config
+You can supply hosts that you'd like the program to exclusively scrape/download from. This setting accepts any domain, even if they are no supported.
 
 ## `filename_regex_filter`
 
