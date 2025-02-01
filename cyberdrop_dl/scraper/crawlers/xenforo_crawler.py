@@ -314,15 +314,26 @@ class XenforoCrawler(Crawler):
     async def handle_link(self, scrape_item: ScrapeItem, link: URL) -> None:
         if not link or link == self.primary_base_domain:
             return
-        assert link.host
-        new_scrape_item = self.create_scrape_item(scrape_item, link)
-        if self.is_attachment(link):
-            return await self.handle_internal_link(new_scrape_item)
-        if self.primary_base_domain.host in link.host:  # type: ignore
-            origin = scrape_item.parents[0]
-            return log(f"Skipping nested thread URL {link} found on {origin}", 10)
-        new_scrape_item.set_type(None, self.manager)
-        self.handle_external_links(new_scrape_item)
+        try:
+            if self.primary_base_domain.host in link.host:  # type: ignore
+                if self.is_attachment(link):
+                    return await self.handle_internal_link(link, scrape_item)
+                origin = scrape_item.parents[0]
+                if self.manager.config_manager.settings_data.download_options.maximum_thread_depth is None:
+                    pass
+                elif (
+                    len(scrape_item.parent_threads)
+                    > self.manager.config_manager.settings_data.download_options.maximum_thread_depth
+                ):
+                    return log(f"Skipping nested thread URL {link} found on {origin}", 10)
+            if URL(link).host == self.primary_base_domain.host:
+                new_scrape_item = self.create_scrape_item(scrape_item, link, add_parent=scrape_item.url)
+            else:
+                new_scrape_item = self.create_scrape_item(scrape_item, link)
+            new_scrape_item.set_type(None, self.manager)
+            self.handle_external_links(new_scrape_item)
+        except TypeError:
+            log(f"Scrape Failed: encountered while handling {link}", 40)
 
     @error_handling_wrapper
     async def handle_internal_link(self, scrape_item: ScrapeItem) -> None:
