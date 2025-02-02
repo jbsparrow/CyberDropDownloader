@@ -7,9 +7,9 @@ icon: user-lock
 
 All the options in these list are optional. The default value for all of them is an empty `str`
 
-|Type |Default|
-|----|---|
-|`str`|`""`|
+| Type  | Default |
+| ----- | ------- |
+| `str` | `""`    |
 
 <details>
 
@@ -80,7 +80,6 @@ Some examples of what to put in for what it asks for:
 - Email: `your_email@domain.com`
 
 - Description: `Cyberdrop-DL client`
-
 
 ## `client_id`
 
