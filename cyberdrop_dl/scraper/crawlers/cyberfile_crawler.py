@@ -26,6 +26,7 @@ class CyberfileCrawler(Crawler):
 
     FOLDER_DOMAINS: ClassVar[dict[str, str]] = {"cyberfile": "Cyberfile", "iceyfile": "Iceyfile"}
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {"cyberfile": ["cyberfile"], "iceyfile": ["iceyfile"]}
+    update_unsupported = True
 
     def __init__(self, manager: Manager, site: str) -> None:
         super().__init__(manager, site, self.FOLDER_DOMAINS.get(site, "Cyberfile"))
