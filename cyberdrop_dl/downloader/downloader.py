@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import contextlib
 from dataclasses import field
 from functools import wraps
@@ -22,6 +21,7 @@ from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
+    import asyncio
     from collections.abc import Callable
 
     from cyberdrop_dl.clients.download_client import DownloadClient
@@ -80,12 +80,12 @@ class Downloader:
         self._current_attempt_filesize = {}
         self._file_lock_vault = manager.download_manager.file_locks
         self._ignore_history = manager.config_manager.settings_data.runtime_options.ignore_history
-        self._semaphore: asyncio.Semaphore = field(init=False)
+        self.semaphore: asyncio.Semaphore = field(init=False)
 
     def startup(self) -> None:
         """Starts the downloader."""
         self.client = self.manager.client_manager.downloader_session
-        self._semaphore = asyncio.Semaphore(self.manager.download_manager.get_download_limit(self.domain))
+        self.semaphore = self.manager.download_manager.get_download_limit(self.domain)
 
         self.manager.path_manager.download_folder.mkdir(parents=True, exist_ok=True)
         if self.manager.config_manager.settings_data.sorting.sort_downloads:
@@ -100,11 +100,11 @@ class Downloader:
         self.waiting_items += 1
         media_item.current_attempt = 0
         await self.client.mark_incomplete(media_item, self.domain)
-        async with self._semaphore:
+        async with self.semaphore:
             self.waiting_items -= 1
             self.processed_items.add(media_item.url.path)
             self.manager.progress_manager.download_progress.update_total()
-            async with self.manager.client_manager.download_session_limit:
+            async with self.manager.client_manager.global_download_semaphore:
                 await self.start_download(media_item)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
