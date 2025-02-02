@@ -287,16 +287,4 @@ ui_options:
   --scraping-item-limit SCRAPING_ITEM_LIMIT
   --downloading-item-limit DOWNLOADING_ITEM_LIMIT
 
-Deprecated:
-  --output-folder OUTPUT_FOLDER
-  --download-all-configs
-                        Skip the UI and go straight to downloading (runs all configs sequentially)
-  --sort-all-configs    Sort all configs sequentially
-  --sort-all-downloads  sort all downloads, not just those downloaded by Cyberdrop-DL
-  --sort-cdl-only       only sort files downloaded by Cyberdrop-DL
-  --main-log-filename MAIN_LOG_FILENAME
-  --last-forum-post-filename LAST_FORUM_POST_FILENAME
-  --unsupported-urls-filename UNSUPPORTED_URLS_FILENAME
-  --download-error-urls-filename DOWNLOAD_ERROR_URLS_FILENAME
-  --scrape-error-urls-filename SCRAPE_ERROR_URLS_FILENAME
 ```
