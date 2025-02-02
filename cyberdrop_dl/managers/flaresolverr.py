@@ -14,6 +14,12 @@ if TYPE_CHECKING:
     from cyberdrop_dl.scraper.crawler import ScrapeItem
 
 
+FAILED_RESOLVE_MSG = "Failed to resolve URL with flaresolverr"
+FAILED_SESSION_CREATE_MSG = "Failed to create flaresolverr session"
+INVALID_RESPONSE_MSG = "Invalid response from flaresolverr"
+NOT_CONFIGURED_MSG = "FlareSolverr is not configured"
+
+
 class Flaresolverr:
     """Class that handles communication with flaresolverr."""
 
@@ -22,6 +28,7 @@ class Flaresolverr:
         self.flaresolverr_url: URL = manager.config_manager.global_settings_data.general.flaresolverr  # type: ignore
         self.enabled = bool(self.flaresolverr_url)
         self.session_id = None
+        self.update_cookies: bool = True
 
     async def _request(
         self,
@@ -32,7 +39,7 @@ class Flaresolverr:
     ) -> dict:
         """Base request function to call flaresolverr."""
         if not self.enabled:
-            raise DDOSGuardError(message="FlareSolverr is not configured", origin=origin)
+            raise DDOSGuardError(message=NOT_CONFIGURED_MSG, origin=origin)
 
         if not (self.session_id or kwargs.get("session")):
             await self._create_session()
@@ -61,12 +68,12 @@ class Flaresolverr:
         session_id = "cyberdrop-dl"
         async with ClientSession() as client_session:
             flaresolverr_resp = await self._request("sessions.create", client_session, session=session_id)
-        status = flaresolverr_resp.get("status")
+        status = flaresolverr_resp["status"]
         if status != "ok":
-            raise DDOSGuardError(message="Failed to create flaresolverr session")
+            raise DDOSGuardError(message=FAILED_SESSION_CREATE_MSG)
         self.session_id = session_id
 
-    async def _destroy_session(self):
+    async def _destroy_session(self) -> None:
         if self.session_id:
             async with ClientSession() as client_session:
                 await self._request("sessions.destroy", client_session, session=self.session_id)
@@ -76,34 +83,33 @@ class Flaresolverr:
         url: URL,
         client_session: ClientSession,
         origin: ScrapeItem | URL | None = None,
-        update_cookies: bool = True,
     ) -> tuple[BeautifulSoup, URL]:
         """Returns the resolved URL from the given URL."""
         flaresolverr_resp: dict = await self._request("request.get", client_session, origin, url=url)
 
-        status = flaresolverr_resp.get("status")
+        status = flaresolverr_resp["status"]
         if status != "ok":
-            raise DDOSGuardError(message="Failed to resolve URL with flaresolverr", origin=origin)
+            raise DDOSGuardError(message=FAILED_RESOLVE_MSG, origin=origin)
 
-        solution: dict = flaresolverr_resp.get("solution")
+        solution: dict = flaresolverr_resp.get("solution")  # type: ignore
         if not solution:
-            raise DDOSGuardError(message="Invalid response from flaresolverr", origin=origin)
+            raise DDOSGuardError(message=INVALID_RESPONSE_MSG, origin=origin)
 
-        response = BeautifulSoup(solution.get("response"), "html.parser")
-        response_url_str: str = solution.get("url")
+        response = BeautifulSoup(solution["response"], "html.parser")
+        response_url_str: str = solution["url"]
         response_url = URL(response_url_str, encoded="%" in response_url_str)
-        cookies: list[dict] = solution.get("cookies")
-        user_agent = client_session.headers.get("User-Agent").strip()
-        flaresolverr_user_agent = solution.get("userAgent").strip()
+        cookies: list[dict] = solution["cookies"]
+        user_agent = client_session.headers["User-Agent"].strip()
+        flaresolverr_user_agent = solution["userAgent"].strip()
         mismatch_msg = f"Config user_agent and flaresolverr user_agent do not match:\n  Cyberdrop-DL: {user_agent}\n  Flaresolverr: {flaresolverr_user_agent}"
 
         if self.client_manager.check_ddos_guard(response) or self.client_manager.check_cloudflare(response):
-            if not update_cookies:
-                raise DDOSGuardError(message="Invalid response from flaresolverr", origin=origin)
+            if not self.update_cookies:
+                raise DDOSGuardError(message=INVALID_RESPONSE_MSG, origin=origin)
             if flaresolverr_user_agent != user_agent:
                 raise DDOSGuardError(message=mismatch_msg, origin=origin)
 
-        if update_cookies:
+        if self.update_cookies:
             if flaresolverr_user_agent != user_agent:
                 msg = f"{mismatch_msg}\nResponse was successful but cookies will not be valid"
                 log(msg, 30)
