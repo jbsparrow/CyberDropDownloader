@@ -136,7 +136,7 @@ To define the end of a group, insert an group with no name. (`---` or `===`)
 
 Here is an example URL file with two groups:
 
-```
+```text
 https://example.com/file1.jpg
 === Group 1
 https://example.com/file2.jpg
