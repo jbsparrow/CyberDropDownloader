@@ -13,12 +13,12 @@ DEFAULT_REQUIRED_FREE_SPACE = convert_to_byte_size("5GB")
 
 class General(BaseModel):
     allow_insecure_connections: bool = False
-    user_agent: NonEmptyStr = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0"
-    proxy: HttpURL | None = None
     flaresolverr: HttpURL | None = None
     max_file_name_length: PositiveInt = 95
     max_folder_name_length: PositiveInt = 60
+    proxy: HttpURL | None = None
     required_free_space: ByteSizeSerilized = DEFAULT_REQUIRED_FREE_SPACE
+    user_agent: NonEmptyStr = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0"
 
     @field_serializer("flaresolverr", "proxy")
     def serialize(self, value: URL | str) -> str | None:
@@ -38,14 +38,14 @@ class General(BaseModel):
 class RateLimiting(BaseModel):
     connection_timeout: PositiveInt = 15
     download_attempts: PositiveInt = 5
-    read_timeout: PositiveInt = 300
-    rate_limit: PositiveInt = 50
     download_delay: NonNegativeFloat = 0.5
-    max_simultaneous_downloads: PositiveInt = 15
-    max_simultaneous_downloads_per_domain: PositiveInt = 3
     download_speed_limit: ByteSizeSerilized = ByteSize(0)
     file_host_cache_expire_after: timedelta = timedelta(days=7)
     forum_cache_expire_after: timedelta = timedelta(weeks=4)
+    max_simultaneous_downloads_per_domain: PositiveInt = 3
+    max_simultaneous_downloads: PositiveInt = 15
+    rate_limit: PositiveInt = 50
+    read_timeout: PositiveInt = 300
 
     @field_validator("file_host_cache_expire_after", "forum_cache_expire_after", mode="before")
     @staticmethod
@@ -54,10 +54,10 @@ class RateLimiting(BaseModel):
 
 
 class UIOptions(BaseModel):
-    vi_mode: bool = False
+    downloading_item_limit: PositiveInt = 5
     refresh_rate: PositiveInt = 10
     scraping_item_limit: PositiveInt = 5
-    downloading_item_limit: PositiveInt = 5
+    vi_mode: bool = False
 
 
 class GlobalSettings(AliasModel):
