@@ -57,7 +57,7 @@ class ProgramUI:
         enter_to_continue()
 
     @repeat_until_done
-    def run(self) -> None:
+    def run(self) -> bool | None:
         """Program UI."""
         clear_term()
         options_map = {
@@ -80,11 +80,11 @@ class ProgramUI:
             clear_term()
         return return_to_main
 
-    def _download(self) -> True:
+    def _download(self) -> bool:
         """Starts download process."""
         return True
 
-    def _retry_failed_download(self) -> True:
+    def _retry_failed_download(self) -> bool:
         """Sets retry failed and starts download process."""
         self.manager.parsed_args.cli_only_args.retry_failed = True
         return True
@@ -119,7 +119,7 @@ class ProgramUI:
             console.print(Markdown(changelog_content, justify="left"))
 
     @repeat_until_done
-    def _manage_configs(self) -> None:
+    def _manage_configs(self) -> Choice | None:
         options_map = {
             1: self._change_default_config,
             2: self._create_new_config,
@@ -142,7 +142,7 @@ class ProgramUI:
         enter_to_continue()
 
     def _clear_cache(self) -> None:
-        domains = user_prompts.domains_prompt(domain_message="Select site(s) to clear cache for:")
+        domains, _ = user_prompts.domains_prompt(domain_message="Select site(s) to clear cache for:")
         if not domains:
             console.print("No domains selected", style="red")
             enter_to_continue()
@@ -235,7 +235,7 @@ class ProgramUI:
         except ValueError:
             self.print_error("No default text editor found")
 
-    def _process_answer(self, answer: Any, options_map=dict) -> Choice | None:
+    def _process_answer(self, answer: Any, options_map: dict) -> Choice | None:
         """Checks prompt answer and executes corresponding function."""
         if answer == EXIT_CHOICE.value:
             self.manager.cache_manager.close_sync()
@@ -251,7 +251,7 @@ class ProgramUI:
 
         return function_to_call()
 
-    def _get_changelog(self) -> str:
+    def _get_changelog(self) -> str | None:
         """Get latest changelog file from github. Returns its content."""
         path = self.manager.path_manager.config_folder.parent / "CHANGELOG.md"
         url = "https://raw.githubusercontent.com/jbsparrow/CyberDropDownloader/refs/heads/master/CHANGELOG.md"

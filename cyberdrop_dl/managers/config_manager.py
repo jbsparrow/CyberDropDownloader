@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 class ConfigManager:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
-        self.loaded_config: str = None
+        self.loaded_config: str = None  # type: ignore
 
         self.authentication_settings: Path = field(init=False)
         self.settings: Path = field(init=False)
@@ -43,7 +43,7 @@ class ConfigManager:
         self.loaded_config = self.get_loaded_config()
         cli_config = self.manager.parsed_args.cli_only_args.config
         if cli_config and cli_config.casefold() != "all":
-            self.loaded_config = self.manager.parsed_args.cli_only_args.config
+            self.loaded_config = cli_config
 
         self.settings = self.manager.path_manager.config_folder / self.loaded_config / "settings.yaml"
         self.global_settings = self.manager.path_manager.config_folder / "global_settings.yaml"
@@ -84,7 +84,7 @@ class ConfigManager:
             self.valid_filename_filter_regex = True
 
     @staticmethod
-    def get_model_fields(model: type[BaseModel], *, exclude_unset: bool = True) -> set[str]:
+    def get_model_fields(model: BaseModel, *, exclude_unset: bool = True) -> set[str]:
         fields = set()
         default_dict: dict = model.model_dump(exclude_unset=exclude_unset)
         for submodel_name, submodel in default_dict.items():

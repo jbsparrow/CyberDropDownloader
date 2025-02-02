@@ -152,7 +152,7 @@ class DomainType(IntEnum):
     FORUM = 1
 
 
-def domains_prompt(*, domain_message: str = "Select site(s):") -> list[str]:
+def domains_prompt(*, domain_message: str = "Select site(s):") -> tuple[list[str], list[str]]:
     """Asks the user to select website(s) for cookie actions and cache actions."""
     OPTIONS = [["forum", "file-host"]]
     choices = basic_prompts.create_choices(OPTIONS)
