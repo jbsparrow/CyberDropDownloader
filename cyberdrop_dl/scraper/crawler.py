@@ -44,7 +44,7 @@ class Crawler(ABC):
 
     def __init__(self, manager: Manager, domain: str, folder_domain: str | None = None) -> None:
         self.manager = manager
-        self.downloader = field(init=False)
+        self.downloader: Downloader = field(init=False)
         self.scraping_progress = manager.progress_manager.scraping_progress
         self.client: ScraperClient = field(init=False)
         self._semaphore = asyncio.Semaphore(20)

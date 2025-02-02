@@ -6,17 +6,18 @@ from functools import wraps
 from typing import TYPE_CHECKING, Any
 
 import aiohttp
-from aiohttp_client_cache import CachedSession
 from aiohttp_client_cache.response import CachedStreamReader
 from bs4 import BeautifulSoup
 
 from cyberdrop_dl.clients.errors import DDOSGuardError, InvalidContentTypeError
+from cyberdrop_dl.managers.client_manager import create_session
 from cyberdrop_dl.utils.constants import DEBUG_VAR
 from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from aiohttp_client_cache import CachedSession
     from multidict import CIMultiDictProxy
     from yarl import URL
 
@@ -29,21 +30,10 @@ def limiter(func: Callable) -> Any:
 
     @wraps(func)
     async def wrapper(self: ScraperClient, *args, **kwargs) -> Any:
-        domain_limiter = await self.client_manager.get_rate_limiter(args[0])
-        async with self.client_manager.session_limit:
-            await self._global_limiter.acquire()
-            await domain_limiter.acquire()
-
-            async with CachedSession(
-                headers=self._headers,
-                raise_for_status=False,
-                cookie_jar=self.client_manager.cookies,
-                timeout=self._timeouts,
-                trace_configs=self.trace_configs,
-                cache=self.client_manager.manager.cache_manager.request_cache,
-            ) as client:
-                kwargs["client_session"] = client
-                return await func(self, *args, **kwargs)
+        domain = args[0]
+        request_limiter = self.client_manager.limiter(domain)
+        async with request_limiter:
+            return await func(self, *args, **kwargs)
 
     return wrapper
 
@@ -61,11 +51,6 @@ class ScraperClient:
     def __init__(self, client_manager: ClientManager) -> None:
         self.client_manager = client_manager
         self._headers = {"user-agent": client_manager.user_agent}
-        self._timeouts = aiohttp.ClientTimeout(
-            total=client_manager.connection_timeout + 60,
-            connect=client_manager.connection_timeout,
-        )
-        self._global_limiter = self.client_manager.global_rate_limiter
         self.trace_configs = []
         if DEBUG_VAR:
             self.add_request_log_hooks()
@@ -87,6 +72,7 @@ class ScraperClient:
         self.trace_configs.append(trace_config)
 
     @limiter
+    @create_session
     async def get_soup(
         self,
         domain: str,
@@ -140,16 +126,17 @@ class ScraperClient:
         return await self.get_soup(domain, url, origin=origin, with_response_url=True, **kwargs)
 
     @limiter
+    @create_session
     async def get_json(
         self,
         domain: str,
         url: URL,
+        client_session: CachedSession,
         params: dict | None = None,
         headers_inc: dict | None = None,
-        client_session: CachedSession = None,
         origin: ScrapeItem | URL | None = None,
         cache_disabled: bool = False,
-    ) -> dict:
+    ) -> tuple[dict, aiohttp.ClientResponse] | dict:
         """Returns a JSON object from the given URL."""
         headers = self._headers | headers_inc if headers_inc else self._headers
         async with (
@@ -173,6 +160,7 @@ class ScraperClient:
             return json_resp
 
     @limiter
+    @create_session
     async def get_text(
         self,
         domain: str,
@@ -202,6 +190,7 @@ class ScraperClient:
             return await response.text()
 
     @limiter
+    @create_session
     async def post_data(
         self,
         domain: str,
@@ -235,6 +224,7 @@ class ScraperClient:
             return {}
 
     @limiter
+    @create_session
     async def get_head(
         self, domain: str, url: URL, client_session: CachedSession, *, origin: ScrapeItem | URL | None = None
     ) -> CIMultiDictProxy[str]:

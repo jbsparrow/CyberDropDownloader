@@ -21,6 +21,7 @@ from cyberdrop_dl.clients.errors import (
     InvalidContentTypeError,
     SlowDownloadError,
 )
+from cyberdrop_dl.managers.client_manager import create_session
 from cyberdrop_dl.utils.constants import DEBUG_VAR, FILE_FORMATS
 from cyberdrop_dl.utils.logger import log
 
@@ -41,19 +42,8 @@ def limiter(func: Callable) -> Any:
 
     @wraps(func)
     async def wrapper(self: DownloadClient, *args, **kwargs) -> Any:
-        domain_limiter = await self.client_manager.get_rate_limiter(args[0])
-        await asyncio.sleep(await self.client_manager.get_downloader_spacer(args[0]))
-        await self._global_limiter.acquire()
-        await domain_limiter.acquire()
-
-        async with aiohttp.ClientSession(
-            headers=self._headers,
-            raise_for_status=False,
-            cookie_jar=self.client_manager.cookies,
-            timeout=self._timeouts,
-            trace_configs=self.trace_configs,
-        ) as client:
-            kwargs["client_session"] = client
+        domain = args[0]
+        async with self.client_manager.limiter(domain, download=True):
             return await func(self, *args, **kwargs)
 
     return wrapper
@@ -109,11 +99,10 @@ class DownloadClient:
         self.client_manager = client_manager
 
         self._headers = {"user-agent": client_manager.user_agent}
-        self._timeouts = aiohttp.ClientTimeout(
+        self._timeout = aiohttp.ClientTimeout(
             total=client_manager.read_timeout + client_manager.connection_timeout,
             connect=client_manager.connection_timeout,
         )
-        self._global_limiter = self.client_manager.global_rate_limiter
         self.trace_configs = []
         self._file_path = None
         self.slow_download_period = 10  # seconds
@@ -154,7 +143,7 @@ class DownloadClient:
                 download_headers["Authorization"] = f"Bearer {api_key.value}"
         return download_headers
 
-    @limiter
+    @create_session
     async def _download(
         self,
         domain: str,
@@ -175,7 +164,7 @@ class DownloadClient:
             resume_point = media_item.partial_file.stat().st_size if media_item.partial_file.exists() else 0
             download_headers["Range"] = f"bytes={resume_point}-"
 
-        await asyncio.sleep(self.client_manager.download_delay)
+        await asyncio.sleep(self.client_manager.global_download_delay)
 
         download_url = media_item.debrid_link or media_item.url
         async with client_session.get(

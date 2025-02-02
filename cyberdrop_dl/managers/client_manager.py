@@ -3,9 +3,11 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import ssl
+from contextlib import asynccontextmanager
+from functools import wraps
 from http import HTTPStatus
 from http.cookiejar import MozillaCookieJar
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import aiohttp
 import certifi
@@ -23,6 +25,8 @@ from cyberdrop_dl.utils.constants import CustomHTTPStatus
 from cyberdrop_dl.utils.logger import log, log_spacer
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.scraper.crawler import ScrapeItem
 
@@ -54,20 +58,24 @@ class ClientManager:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
         global_settings_data = manager.config_manager.global_settings_data
-        self.connection_timeout = global_settings_data.rate_limiting_options.connection_timeout
-        self.read_timeout = global_settings_data.rate_limiting_options.read_timeout
-        self.rate_limit = global_settings_data.rate_limiting_options.rate_limit
+        rate_limiting_options = global_settings_data.rate_limiting_options
 
-        self.download_delay = global_settings_data.rate_limiting_options.download_delay
+        self.rate_limit = rate_limiting_options.rate_limit
+        self.auto_import_cookies = self.manager.config_manager.settings_data.browser_cookies.auto_import
+
         self.user_agent = global_settings_data.general.user_agent
         self.verify_ssl = not global_settings_data.general.allow_insecure_connections
-        self.simultaneous_per_domain = global_settings_data.rate_limiting_options.max_simultaneous_downloads_per_domain
 
         self.ssl_context = ssl.create_default_context(cafile=certifi.where()) if self.verify_ssl else False
         self.cookies = aiohttp.CookieJar(quote_cookie=False)
-        self.proxy = global_settings_data.general.proxy
+        self.proxy: URL | None = global_settings_data.general.proxy  # type: ignore
 
-        self.domain_rate_limits = {
+        read_timeout = rate_limiting_options.read_timeout
+        connection_timeout = rate_limiting_options.connection_timeout
+        total_timeout = read_timeout + connection_timeout
+        self._timeout = aiohttp.ClientTimeout(total=total_timeout, connect=connection_timeout)
+
+        self.request_limiters = {
             "bunkrr": AsyncLimiter(5, 1),
             "cyberdrop": AsyncLimiter(5, 1),
             "coomer": AsyncLimiter(1, 1),
@@ -87,11 +95,10 @@ class ClientManager:
             "kemono": 0.5,
         }
 
-        self.global_rate_limiter = AsyncLimiter(self.rate_limit, 1)
-        self.session_limit = asyncio.Semaphore(50)
-        self.download_session_limit = asyncio.Semaphore(
-            self.manager.config_manager.global_settings_data.rate_limiting_options.max_simultaneous_downloads,
-        )
+        self.global_request_limiter = AsyncLimiter(self.rate_limit, 1)
+        self.global_request_semaphore = asyncio.Semaphore(50)
+        self.global_download_semaphore = asyncio.Semaphore(rate_limiting_options.max_simultaneous_downloads)
+        self.global_download_delay = rate_limiting_options.download_delay
 
         self.scraper_session = ScraperClient(self)
         self.downloader_session = DownloadClient(manager, self)
@@ -100,8 +107,12 @@ class ClientManager:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    def register_limiter(self, domain: str, limiter: AsyncLimiter) -> None:
+        assert domain not in self.request_limiters
+        self.request_limiters.update({domain: limiter})
+
     def load_cookie_files(self) -> None:
-        if self.manager.config_manager.settings_data.browser_cookies.auto_import:
+        if self.auto_import_cookies:
             get_cookies_from_browsers(self.manager)
         cookie_files = sorted(self.manager.path_manager.cookies_dir.glob("*.txt"))
         if not cookie_files:
@@ -128,17 +139,17 @@ class ClientManager:
 
         log_spacer(20, log_to_console=False)
 
-    async def get_downloader_spacer(self, key: str) -> float:
+    def get_downloader_spacer(self, key: str) -> float:
         """Returns the download spacer for a domain."""
         if key in self.download_spacer:
             return self.download_spacer[key]
         return 0.1
 
-    async def get_rate_limiter(self, domain: str) -> AsyncLimiter:
+    def get_request_limiter(self, domain: str) -> AsyncLimiter:
         """Get a rate limiter for a domain."""
-        if domain in self.domain_rate_limits:
-            return self.domain_rate_limits[domain]
-        return self.domain_rate_limits["other"]
+        if domain in self.request_limiters:
+            return self.request_limiters[domain]
+        return self.request_limiters["other"]
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -220,6 +231,19 @@ class ClientManager:
 
     async def close(self) -> None:
         await self.flaresolverr._destroy_session()
+
+    @asynccontextmanager
+    async def limiter(self, domain: str, download: bool = False):
+        request_limiter = self.get_request_limiter(domain)
+        download_spacer = self.get_downloader_spacer(domain)
+        async with (
+            self.global_request_semaphore,
+            self.global_request_limiter,
+            request_limiter,
+        ):
+            if download:
+                await asyncio.sleep(download_spacer)
+            yield
 
 
 class Flaresolverr:
@@ -321,3 +345,20 @@ class Flaresolverr:
                 )
 
         return response, response_url
+
+
+def create_session(func: Callable) -> Any:
+    """Wrapper handles client session creation to pass cookies."""
+
+    @wraps(func)
+    async def wrapper(self: DownloadClient | ScraperClient, *args, **kwargs) -> Any:
+        async with aiohttp.ClientSession(
+            headers=self._headers,
+            cookie_jar=self.client_manager.cookies,
+            timeout=self.client_manager._timeout,
+            trace_configs=self.trace_configs,
+        ) as client:
+            kwargs["client_session"] = client
+            return await func(self, *args, **kwargs)
+
+    return wrapper

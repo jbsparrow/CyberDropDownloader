@@ -41,11 +41,8 @@ class FileLocksVault:
 class DownloadManager:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
-        self._download_instances: dict = {}
-
         self.file_locks = FileLocksVault()
-
-        self.download_limits = {
+        self.download_limits_overrides = {
             "bunkr": 1,
             "bunkrr": 1,
             "cyberdrop": 1,
@@ -53,16 +50,16 @@ class DownloadManager:
             "pixeldrain": 2,
             "xxxbunker": 2,
         }
-
-    def get_download_limit(self, key: str) -> int:
-        """Returns the download limit for a domain."""
-        rate_limiting_options = self.manager.config_manager.global_settings_data.rate_limiting_options
-        instances = self.download_limits.get(key, rate_limiting_options.max_simultaneous_downloads_per_domain)
-
-        return min(
-            instances,
-            rate_limiting_options.max_simultaneous_downloads_per_domain,
+        self.max_limit = (
+            manager.config_manager.global_settings_data.rate_limiting_options.max_simultaneous_downloads_per_domain
         )
+
+    def get_download_limit(self, domain: str) -> asyncio.Semaphore:
+        """Returns the download limit for a domain."""
+        limit_override = self.download_limits_overrides.get(domain)
+        if limit_override:
+            return asyncio.Semaphore(limit_override)
+        return asyncio.Semaphore(self.max_limit)
 
     @staticmethod
     def basic_auth(username: str, password: str) -> str:
@@ -79,7 +76,6 @@ class DownloadManager:
         while not folder.is_dir() and folder.parents:
             folder = folder.parent
 
-        # check if we reached an anchor (root) that does not exists, ex: disconnected USB drive
         if not folder.is_dir():
             return False
         free_space = disk_usage(folder).free
