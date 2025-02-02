@@ -34,17 +34,9 @@ def main_prompt(manager: Manager) -> int:
     """Main prompt for the program."""
     prompt_header(manager)
     OPTIONS = {
-        "group_1": [
-            "Download",
-            "Retry failed downloads",
-            "Create file hashes",
-            "Sort files in download folder",
-        ],
-        "group_2": ["Edit URLs.txt", "Change config", "Edit configs", "Import V4 items"],
-        "group_3": [
-            "Check for updates",
-            "View changelog",
-        ],
+        "group_1": ["Download", "Retry failed downloads", "Create file hashes", "Sort files in download folder"],
+        "group_2": ["Edit URLs.txt", "Change config", "Edit configs"],
+        "group_3": ["Check for updates", "View changelog"],
     }
 
     choices = basic_prompts.create_choices(OPTIONS, append_last=EXIT_CHOICE)
