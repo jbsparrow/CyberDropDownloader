@@ -113,13 +113,10 @@ def truncate_str(text: str, max_length: int = 0) -> str:
     return text.strip()
 
 
-def get_filename_and_ext(filename: str, forum: bool = False, *, allow_no_extension: bool = True) -> tuple[str, str]:
+def get_filename_and_ext(filename: str, forum: bool = False) -> tuple[str, str]:
     """Returns the filename and extension of a given file, throws `NoExtensionError` if there is no extension."""
     filename_as_path = Path(filename)
     if not filename_as_path.suffix:
-        if not allow_no_extension:
-            new_filename, ext = get_filename_and_ext(filename + constants.DEFAULT_FILE_EXT)
-            return Path(new_filename).stem, ext
         raise NoExtensionError
     if filename_as_path.suffix.isnumeric() and forum:
         name, ext = filename_as_path.name.rsplit("-", 1)
