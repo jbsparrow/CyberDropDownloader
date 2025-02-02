@@ -154,20 +154,18 @@ class ProgramUI:
         enter_to_continue()
 
     def _edit_auth_config(self) -> None:
-        config_file = self.manager.path_manager.config_folder / "authentication.yaml"
+        config_file = self.manager.config_manager.authentication_settings
         self._open_in_text_editor(config_file)
 
     def _edit_global_config(self) -> None:
-        config_file = self.manager.path_manager.config_folder / "global_settings.yaml"
+        config_file = self.manager.config_manager.global_settings
         self._open_in_text_editor(config_file)
 
     def _edit_config(self) -> None:
         if self.manager.multiconfig:
             self.print_error("Cannot edit 'ALL' config")
             return
-        config_file = (
-            self.manager.path_manager.config_folder / self.manager.config_manager.loaded_config / "settings.yaml"
-        )
+        config_file = self.manager.config_manager.settings
         self._open_in_text_editor(config_file)
 
     def _create_new_config(self) -> None:
@@ -177,7 +175,7 @@ class ProgramUI:
         if user_prompts.switch_default_config_to(self.manager, config_name):
             self.manager.config_manager.change_default_config(config_name)
         self.manager.config_manager.change_config(config_name)
-        config_file = self.manager.path_manager.config_folder / config_name / "settings.yaml"
+        config_file = self.manager.config_manager.settings
         self._open_in_text_editor(config_file)
 
     def _edit_urls(self) -> None:
