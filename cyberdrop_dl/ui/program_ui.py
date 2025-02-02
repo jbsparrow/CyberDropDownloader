@@ -17,8 +17,6 @@ from cyberdrop_dl.ui.prompts import user_prompts
 from cyberdrop_dl.ui.prompts.basic_prompts import ask_dir_path, enter_to_continue
 from cyberdrop_dl.ui.prompts.defaults import DONE_CHOICE, EXIT_CHOICE
 from cyberdrop_dl.utils.cookie_management import clear_cookies
-from cyberdrop_dl.utils.transfer.transfer_v4_config import transfer_v4_config
-from cyberdrop_dl.utils.transfer.transfer_v4_db import transfer_v4_db
 from cyberdrop_dl.utils.utilities import check_latest_pypi, clear_term, open_in_text_editor
 
 if TYPE_CHECKING:
@@ -71,9 +69,8 @@ class ProgramUI:
             5: self._edit_urls,
             6: self._change_config,
             7: self._manage_configs,
-            8: self._import_from_v4,
-            9: self._check_updates,
-            10: self._view_changelog,
+            8: self._check_updates,
+            9: self._view_changelog,
         }
 
         answer = user_prompts.main_prompt(self.manager)
@@ -101,39 +98,6 @@ class ProgramUI:
         """Checks Cyberdrop-DL updates."""
         check_latest_pypi(call_from_ui=True)
         enter_to_continue()
-
-    @repeat_until_done
-    def _import_from_v4(self) -> None:
-        options_map = {
-            1: self._import_v4_config,
-            2: self._import_v4_download_history,
-        }
-        answer = user_prompts.import_cyberdrop_v4_items_prompt(self.manager)
-        return self._process_answer(answer, options_map)
-
-    def _import_v4_config(self) -> None:
-        new_config = user_prompts.import_v4_config_prompt(self.manager)
-        if not new_config:
-            return
-        new_config_name, old_config_path = new_config
-        transfer_v4_config(self.manager, new_config_name, old_config_path)
-        self.manager.config_manager.change_config(new_config_name)
-        if user_prompts.switch_default_config_to(self.manager, new_config_name):
-            self.manager.config_manager.change_default_config(new_config_name)
-
-    def _import_v4_download_history(self) -> None:
-        import_download_history_path = user_prompts.import_v4_download_history_prompt()
-        if import_download_history_path.is_file():
-            transfer_v4_db(import_download_history_path, self.manager.path_manager.history_db)
-            return
-
-        for item in import_download_history_path.glob("**/*.sqlite"):
-            if str(item) == str(self.manager.path_manager.history_db):
-                continue
-            try:
-                transfer_v4_db(item, self.manager.path_manager.history_db)
-            except Exception as e:
-                self.print_error(f"Unable to import {item.name}: {e!s}")
 
     def _change_config(self) -> None:
         configs = self.manager.config_manager.get_configs()
