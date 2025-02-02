@@ -30,33 +30,33 @@ class DownloadOptions(BaseModel):
     disable_file_timestamps: bool = False
     include_album_id_in_folder_name: bool = False
     include_thread_id_in_folder_name: bool = False
+    maximum_number_of_children: ListNonNegativeInt = []
     remove_domains_from_folder_names: bool = False
     remove_generated_id_from_filenames: bool = False
     scrape_single_forum_post: bool = False
-    separate_posts: bool = False
     separate_posts_format: NonEmptyStr = "{default}"
+    separate_posts: bool = False
     skip_download_mark_completed: bool = False
     skip_referer_seen_before: bool = False
-    maximum_number_of_children: ListNonNegativeInt = []
     maximum_thread_depth: NonNegativeInt = 0
 
 
 class Files(AliasModel):
-    input_file: Path = Field(validation_alias="i", default=APP_STORAGE / "Configs" / "{config}" / "URLs.txt")
     download_folder: Path = Field(validation_alias="d", default=DOWNLOAD_STORAGE)
+    input_file: Path = Field(validation_alias="i", default=APP_STORAGE / "Configs" / "{config}" / "URLs.txt")
 
 
 class Logs(AliasModel):
-    log_folder: Path = APP_STORAGE / "Configs" / "{config}" / "Logs"
-    webhook: HttpAppriseURL | None = Field(validation_alias="webhook_url", default=None)
-    main_log: MainLogPath = Field(Path("downloader.log"), validation_alias="main_log_filename")
-    last_forum_post: LogPath = Field(Path("Last_Scraped_Forum_Posts.csv"), validation_alias="last_forum_post_filename")
-    unsupported_urls: LogPath = Field(Path("Unsupported_URLs.csv"), validation_alias="unsupported_urls_filename")
     download_error_urls: LogPath = Field(Path("Download_Error_URLs.csv"), validation_alias="download_error_urls_filename")  # fmt: skip
-    scrape_error_urls: LogPath = Field(Path("Scrape_Error_URLs.csv"), validation_alias="scrape_error_urls_filename")
-    rotate_logs: bool = False
+    last_forum_post: LogPath = Field(Path("Last_Scraped_Forum_Posts.csv"), validation_alias="last_forum_post_filename")
+    log_folder: Path = APP_STORAGE / "Configs" / "{config}" / "Logs"
     log_line_width: PositiveInt = Field(default=240, ge=50)
     logs_expire_after: timedelta | None = None
+    main_log: MainLogPath = Field(Path("downloader.log"), validation_alias="main_log_filename")
+    rotate_logs: bool = False
+    scrape_error_urls: LogPath = Field(Path("Scrape_Error_URLs.csv"), validation_alias="scrape_error_urls_filename")
+    unsupported_urls: LogPath = Field(Path("Unsupported_URLs.csv"), validation_alias="unsupported_urls_filename")
+    webhook: HttpAppriseURL | None = Field(validation_alias="webhook_url", default=None)
 
     @field_validator("webhook", mode="before")
     @classmethod
@@ -99,37 +99,37 @@ class MediaDurationLimits(BaseModel):
 
 
 class IgnoreOptions(BaseModel):
-    exclude_videos: bool = False
-    exclude_images: bool = False
     exclude_audio: bool = False
+    exclude_images: bool = False
     exclude_other: bool = False
-    ignore_coomer_ads: bool = False
-    skip_hosts: ListNonEmptyStr = []
-    only_hosts: ListNonEmptyStr = []
+    exclude_videos: bool = False
     filename_regex_filter: NonEmptyStrOrNone = None
+    ignore_coomer_ads: bool = False
+    only_hosts: ListNonEmptyStr = []
+    skip_hosts: ListNonEmptyStr = []
     exclude_files_with_no_extension: bool = True
 
 
 class RuntimeOptions(BaseModel):
-    ignore_history: bool = False
-    log_level: NonNegativeInt = DEBUG
     console_log_level: NonNegativeInt = 100
-    skip_check_for_partial_files: bool = False
-    skip_check_for_empty_folders: bool = False
-    delete_partial_files: bool = False
-    update_last_forum_post: bool = True
-    send_unsupported_to_jdownloader: bool = False
-    jdownloader_download_dir: PathOrNone = None
-    jdownloader_autostart: bool = False
-    jdownloader_whitelist: ListNonEmptyStr = []
     deep_scrape: bool = False
+    delete_partial_files: bool = False
+    ignore_history: bool = False
+    jdownloader_autostart: bool = False
+    jdownloader_download_dir: PathOrNone = None
+    jdownloader_whitelist: ListNonEmptyStr = []
+    log_level: NonNegativeInt = DEBUG
+    send_unsupported_to_jdownloader: bool = False
+    skip_check_for_empty_folders: bool = False
+    skip_check_for_partial_files: bool = False
     slow_download_speed: ByteSizeSerilized = ByteSize(0)
+    update_last_forum_post: bool = True
 
 
 class Sorting(BaseModel):
+    scan_folder: PathOrNone = None
     sort_downloads: bool = False
     sort_folder: Path = DOWNLOAD_STORAGE / "Cyberdrop-DL Sorted Downloads"
-    scan_folder: PathOrNone = None
     sort_incrementer_format: NonEmptyStr = " ({i})"
     sorted_audio: NonEmptyStrOrNone = "{sort_dir}/{base_dir}/Audio/{filename}{ext}"
     sorted_image: NonEmptyStrOrNone = "{sort_dir}/{base_dir}/Images/{filename}{ext}"
@@ -138,8 +138,8 @@ class Sorting(BaseModel):
 
 
 class BrowserCookies(BaseModel):
-    browsers: list[BROWSERS] = [BROWSERS.chrome]
     auto_import: bool = False
+    browsers: list[BROWSERS] = [BROWSERS.chrome]
     sites: list[Literal[*SUPPORTED_SITES_DOMAINS]] = SUPPORTED_SITES_DOMAINS  # type: ignore
 
     @field_validator("browsers", "sites", mode="before")
@@ -152,10 +152,10 @@ class BrowserCookies(BaseModel):
 
 
 class DupeCleanup(BaseModel):
-    hashing: Hashing = Hashing.IN_PLACE
-    auto_dedupe: bool = True
     add_md5_hash: bool = False
     add_sha256_hash: bool = False
+    auto_dedupe: bool = True
+    hashing: Hashing = Hashing.IN_PLACE
     send_deleted_to_trash: bool = True
 
 
