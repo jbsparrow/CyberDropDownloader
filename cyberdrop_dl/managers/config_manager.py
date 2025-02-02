@@ -94,11 +94,12 @@ class ConfigManager:
 
     def _load_authentication_config(self) -> None:
         """Verifies the authentication config file and creates it if it doesn't exist."""
+        needs_update = is_in_file("jdownloader_username:", self.authentication_settings)
         posible_fields = self.get_model_fields(AuthSettings(), exclude_unset=False)
         if self.authentication_settings.is_file():
             self.authentication_data = AuthSettings.model_validate(yaml.load(self.authentication_settings))
             set_fields = self.get_model_fields(self.authentication_data)
-            if posible_fields == set_fields and self.pydantic_config:
+            if posible_fields == set_fields and not needs_update and self.pydantic_config:
                 return
 
         else:
@@ -108,6 +109,7 @@ class ConfigManager:
 
     def _load_settings_config(self) -> None:
         """Verifies the settings config file and creates it if it doesn't exist."""
+        needs_update = is_in_file("download_error_urls_filename:", self.settings)
         posible_fields = self.get_model_fields(ConfigSettings(), exclude_unset=False)
         if self.manager.parsed_args.cli_only_args.config_file:
             self.settings = self.manager.parsed_args.cli_only_args.config_file
@@ -118,7 +120,7 @@ class ConfigManager:
             set_fields = self.get_model_fields(self.settings_data)
             self.deep_scrape = self.settings_data.runtime_options.deep_scrape
             self.settings_data.runtime_options.deep_scrape = False
-            if posible_fields == set_fields and self.pydantic_config and not self.deep_scrape:
+            if posible_fields == set_fields and not needs_update and self.pydantic_config:
                 return
         else:
             from cyberdrop_dl.utils import constants
@@ -133,11 +135,12 @@ class ConfigManager:
 
     def _load_global_settings_config(self) -> None:
         """Verifies the global settings config file and creates it if it doesn't exist."""
+        needs_update = is_in_file("Dupe_Cleanup_Options:", self.global_settings)
         posible_fields = self.get_model_fields(GlobalSettings(), exclude_unset=False)
         if self.global_settings.is_file():
             self.global_settings_data = GlobalSettings.model_validate(yaml.load(self.global_settings))
             set_fields = self.get_model_fields(self.global_settings_data)
-            if posible_fields == set_fields and self.pydantic_config:
+            if posible_fields == set_fields and not needs_update and self.pydantic_config:
                 return
         else:
             self.global_settings_data = GlobalSettings()
@@ -209,3 +212,9 @@ class ConfigManager:
             return
         self.manager.cache_manager.save("pydantic_config", True)
         self.pydantic_config = True
+
+
+def is_in_file(search_value: str, file: Path) -> bool:
+    if not file.is_file():
+        return False
+    return search_value.casefold() in file.read_text().casefold()
