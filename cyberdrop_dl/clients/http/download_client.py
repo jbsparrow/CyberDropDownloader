@@ -19,7 +19,7 @@ from cyberdrop_dl.clients.errors import (
     InvalidContentTypeError,
     SlowDownloadError,
 )
-from cyberdrop_dl.clients.request_client import Client, create_session
+from cyberdrop_dl.clients.http import Client, create_session
 from cyberdrop_dl.utils.constants import FILE_FORMATS
 from cyberdrop_dl.utils.logger import log
 

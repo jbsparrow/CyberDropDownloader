@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     import asyncio
     from collections.abc import Callable
 
-    from cyberdrop_dl.clients.download_client import DownloadClient
+    from cyberdrop_dl.clients.http.download_client import DownloadClient
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
