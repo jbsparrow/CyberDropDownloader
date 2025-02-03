@@ -4,21 +4,20 @@ import json
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
-import aiohttp
 from aiohttp_client_cache.response import CachedStreamReader
 from bs4 import BeautifulSoup
 
 from cyberdrop_dl.clients.errors import DDOSGuardError, InvalidContentTypeError
 from cyberdrop_dl.managers.client_manager import create_session
-from cyberdrop_dl.utils.constants import DEBUG_VAR
-from cyberdrop_dl.utils.logger import log
+
+from .request_client import Client
 
 if TYPE_CHECKING:
+    import aiohttp
     from aiohttp_client_cache.session import CachedSession
     from multidict import CIMultiDictProxy
     from yarl import URL
 
-    from cyberdrop_dl.managers.client_manager import ClientManager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
@@ -29,31 +28,10 @@ async def cache_control_manager(client_session: CachedSession, disabled: bool = 
     client_session.cache.disabled = False
 
 
-class ScraperClient:
+class ScraperClient(Client):
     """AIOHTTP operations for scraping."""
 
-    def __init__(self, client_manager: ClientManager) -> None:
-        self.client_manager = client_manager
-        self._headers = {"user-agent": client_manager.user_agent}
-        self.trace_configs = []
-        if DEBUG_VAR:
-            self.add_request_log_hooks()
-
-    def add_request_log_hooks(self) -> None:
-        async def on_request_start(*args):
-            params: aiohttp.TraceRequestStartParams = args[2]
-            log(f"Starting scrape {params.method} request to {params.url}", 10)
-
-        async def on_request_end(*args):
-            params: aiohttp.TraceRequestEndParams = args[2]
-            msg = f"Finishing scrape {params.method} request to {params.url}"
-            msg += f" -> response status: {params.response.status}"
-            log(msg, 10)
-
-        trace_config = aiohttp.TraceConfig()
-        trace_config.on_request_start.append(on_request_start)
-        trace_config.on_request_end.append(on_request_end)
-        self.trace_configs.append(trace_config)
+    request_log_hooks_name = "scrape"
 
     @create_session
     async def get_soup(

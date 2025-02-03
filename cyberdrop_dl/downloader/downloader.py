@@ -75,7 +75,6 @@ class Downloader:
         self.processed_items: set = set()
         self.waiting_items = 0
 
-        self._additional_headers = {}
         self._current_attempt_filesize = {}
         self._file_lock_vault = manager.download_manager.file_locks
         self._ignore_history = manager.config_manager.settings_data.runtime_options.ignore_history
@@ -83,7 +82,7 @@ class Downloader:
 
     def startup(self) -> None:
         """Starts the downloader."""
-        self.client = self.manager.client_manager.downloader_session
+        self.client = self.manager.client_manager.downloader_client
         self.semaphore = self.manager.download_manager.get_download_semaphore(self.domain)
 
         self.manager.path_manager.download_folder.mkdir(parents=True, exist_ok=True)

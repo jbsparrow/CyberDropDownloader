@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from functools import wraps
 from http import HTTPStatus
 from http.cookiejar import MozillaCookieJar
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import aiohttp
 import certifi
@@ -38,6 +38,9 @@ DOWNLOAD_ERROR_ETAGS = {
     "5c4fb843-ece": "PixHost Removed Image",
 }
 
+
+CLOUDFLARE_CHALLENGE_TITLES = ["Simpcity Cuck Detection", "Attention Required! | Cloudflare"]
+CLOUDFLARE_CHALLENGE_SELECTORS = ["captchawrapper", "cf-turnstile"]
 DDOS_GUARD_CHALLENGE_TITLES = ["Just a moment...", "DDoS-Guard"]
 DDOS_GUARD_CHALLENGE_SELECTORS = [
     "#cf-challenge-running",
@@ -50,9 +53,6 @@ DDOS_GUARD_CHALLENGE_SELECTORS = [
     ".lds-ring",
 ]
 
-CLOUDFLARE_CHALLENGE_TITLES = ["Simpcity Cuck Detection", "Attention Required! | Cloudflare"]
-CLOUDFLARE_CHALLENGE_SELECTORS = ["captchawrapper", "cf-turnstile"]
-
 
 class ClientManager:
     """Creates a 'client' that can be referenced by scraping or download sessions."""
@@ -61,21 +61,17 @@ class ClientManager:
         self.manager = manager
         global_settings_data = manager.config_manager.global_settings_data
         rate_limiting_options = global_settings_data.rate_limiting_options
-
-        self.rate_limit = rate_limiting_options.rate_limit
-        self.auto_import_cookies = self.manager.config_manager.settings_data.browser_cookies.auto_import
-
-        self.user_agent = global_settings_data.general.user_agent
-        self.verify_ssl = not global_settings_data.general.allow_insecure_connections
-
-        self.ssl_context = ssl.create_default_context(cafile=certifi.where()) if self.verify_ssl else False
-        self.cookies = aiohttp.CookieJar(quote_cookie=False)
-        self.proxy: URL | None = global_settings_data.general.proxy  # type: ignore
-
+        verify_ssl = not global_settings_data.general.allow_insecure_connections
         read_timeout = rate_limiting_options.read_timeout
         connection_timeout = rate_limiting_options.connection_timeout
         total_timeout = read_timeout + connection_timeout
-        self._timeout = aiohttp.ClientTimeout(total=total_timeout, connect=connection_timeout)
+
+        self.ssl_context = ssl.create_default_context(cafile=certifi.where()) if verify_ssl else False
+        self.user_agent = global_settings_data.general.user_agent
+        self.auto_import_cookies = self.manager.config_manager.settings_data.browser_cookies.auto_import
+        self.cookies = aiohttp.CookieJar(quote_cookie=False)
+        self.proxy: URL | None = global_settings_data.general.proxy  # type: ignore
+        self.timeout = aiohttp.ClientTimeout(total=total_timeout, connect=connection_timeout)
 
         self.request_limiters = {
             "bunkrr": AsyncLimiter(5, 1),
@@ -97,14 +93,14 @@ class ClientManager:
             "kemono": 0.5,
         }
 
-        self.global_request_limiter = AsyncLimiter(self.rate_limit, 1)
+        self.global_request_limiter = AsyncLimiter(rate_limiting_options.rate_limit, 1)
         self.global_request_semaphore = asyncio.Semaphore(50)
         self.global_download_semaphore = asyncio.Semaphore(rate_limiting_options.max_simultaneous_downloads)
         self.global_download_delay = rate_limiting_options.download_delay
 
-        self.scraper_session = ScraperClient(self)
-        self.downloader_session = DownloadClient(manager, self)
-        self.speed_limiter = DownloadSpeedLimiter(manager)
+        self.scraper_client = ScraperClient(manager)
+        self.downloader_client = DownloadClient(manager)
+        self.download_speed_limiter = DownloadSpeedLimiter(manager)
         self.flaresolverr = Flaresolverr(manager)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -112,6 +108,50 @@ class ClientManager:
     def register_limiter(self, domain: str, limiter: AsyncLimiter) -> None:
         assert domain not in self.request_limiters
         self.request_limiters.update({domain: limiter})
+
+    def get_download_spacer(self, key: str) -> float:
+        """Returns the download spacer for a domain."""
+        return self.download_spacer.get(key, 0.1)
+
+    def get_request_limiter(self, domain: str) -> AsyncLimiter:
+        """Get a rate limiter for a domain."""
+        default = self.request_limiters["other"]
+        return self.download_spacer.get(domain, default)
+
+    @asynccontextmanager
+    async def limiter(self, domain: str):
+        domain_request_limiter = self.get_request_limiter(domain)
+        async with (
+            self.global_request_semaphore,
+            self.global_request_limiter,
+            domain_request_limiter,
+        ):
+            yield
+
+    @asynccontextmanager
+    async def download_limiter(self, domain: str):
+        download_spacer = self.get_download_spacer(domain)
+        await asyncio.sleep(self.global_download_delay + download_spacer)
+        async with self.limiter(domain):
+            yield
+
+    async def close(self) -> None:
+        await self.flaresolverr._destroy_session()
+
+    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+    @staticmethod
+    def check_bunkr_maint(headers: dict):
+        if headers.get("Content-Length") == "322509" and headers.get("Content-Type") == "video/mp4":
+            raise DownloadError(status="Bunkr Maintenance", message="Bunkr under maintenance")
+
+    @staticmethod
+    def check_ddos_guard(soup: BeautifulSoup) -> bool:
+        return check_soup(soup, DDOS_GUARD_CHALLENGE_TITLES, DDOS_GUARD_CHALLENGE_SELECTORS)
+
+    @staticmethod
+    def check_cloudflare(soup: BeautifulSoup) -> bool:
+        return check_soup(soup, CLOUDFLARE_CHALLENGE_TITLES, CLOUDFLARE_CHALLENGE_SELECTORS)
 
     def load_cookie_files(self) -> None:
         if self.auto_import_cookies:
@@ -140,17 +180,6 @@ class ClientManager:
                 self.cookies.update_cookies({cookie.name: cookie.value}, response_url=URL(f"https://{cookie.domain}"))  # type: ignore
 
         log_spacer(20, log_to_console=False)
-
-    def get_download_spacer(self, key: str) -> float:
-        """Returns the download spacer for a domain."""
-        return self.download_spacer.get(key, 0.1)
-
-    def get_request_limiter(self, domain: str) -> AsyncLimiter:
-        """Get a rate limiter for a domain."""
-        default = self.request_limiters["other"]
-        return self.download_spacer.get(domain, default)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @classmethod
     async def check_http_status(
@@ -192,49 +221,16 @@ class ClientManager:
 
         raise DownloadError(status=status, message=message, origin=origin)
 
-    @staticmethod
-    def check_bunkr_maint(headers: dict):
-        if headers.get("Content-Length") == "322509" and headers.get("Content-Type") == "video/mp4":
-            raise DownloadError(status="Bunkr Maintenance", message="Bunkr under maintenance")
 
-    @staticmethod
-    def check_ddos_guard(soup: BeautifulSoup) -> bool:
-        return check_soup(soup, DDOS_GUARD_CHALLENGE_TITLES, DDOS_GUARD_CHALLENGE_SELECTORS)
-
-    @staticmethod
-    def check_cloudflare(soup: BeautifulSoup) -> bool:
-        return check_soup(soup, CLOUDFLARE_CHALLENGE_TITLES, CLOUDFLARE_CHALLENGE_SELECTORS)
-
-    async def close(self) -> None:
-        await self.flaresolverr._destroy_session()
-
-    @asynccontextmanager
-    async def limiter(self, domain: str):
-        domain_request_limiter = self.get_request_limiter(domain)
-        async with (
-            self.global_request_semaphore,
-            self.global_request_limiter,
-            domain_request_limiter,
-        ):
-            yield
-
-    @asynccontextmanager
-    async def download_limiter(self, domain: str):
-        download_spacer = self.get_download_spacer(domain)
-        await asyncio.sleep(self.global_download_delay + download_spacer)
-        async with self.limiter(domain):
-            yield
-
-
-def create_session(func: Callable) -> Any:
+def create_session(func: Callable) -> Callable:
     """Wrapper handles client session creation to pass cookies."""
 
     @wraps(func)
-    async def wrapper(self: DownloadClient | ScraperClient, *args, **kwargs) -> Any:
+    async def wrapper(self: DownloadClient | ScraperClient, *args, **kwargs):
         async with aiohttp.ClientSession(
             headers=self._headers,
             cookie_jar=self.client_manager.cookies,
-            timeout=self.client_manager._timeout,
+            timeout=self.client_manager.timeout,
             trace_configs=self.trace_configs,
         ) as client:
             kwargs["client_session"] = client

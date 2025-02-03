@@ -1,0 +1,43 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+import aiohttp
+
+from cyberdrop_dl.utils import constants
+from cyberdrop_dl.utils.logger import log
+
+if TYPE_CHECKING:
+    from cyberdrop_dl.managers.manager import Manager
+
+
+class Client:
+    """AIOHTTP operations."""
+
+    request_log_hooks_name = ""
+
+    def __init__(self, manager: Manager) -> None:
+        self.manager = manager
+        self.client_manager = manager.client_manager
+        self._headers = {"user-agent": self.client_manager.user_agent}
+        self.trace_configs = []
+        if constants.DEBUG_VAR:
+            self.add_request_log_hooks()
+
+    def add_request_log_hooks(self) -> None:
+        assert self.request_log_hooks_name, "Subclasses must override hooks name"
+
+        async def on_request_start(*args):
+            params: aiohttp.TraceRequestStartParams = args[2]
+            log(f"Starting {self.request_log_hooks_name} {params.method} request to {params.url}", 10)
+
+        async def on_request_end(*args):
+            params: aiohttp.TraceRequestEndParams = args[2]
+            msg = f"Finishing {self.request_log_hooks_name}  {params.method} request to {params.url}"
+            msg += f" -> response status: {params.response.status}"
+            log(msg, 10)
+
+        trace_config = aiohttp.TraceConfig()
+        trace_config.on_request_start.append(on_request_start)
+        trace_config.on_request_end.append(on_request_end)
+        self.trace_configs.append(trace_config)
