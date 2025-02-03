@@ -44,15 +44,6 @@ class DownloadManager:
         rate_limiting_options = manager.config_manager.global_settings_data.rate_limiting_options
         self.manager = manager
         self.file_locks = FileLocksVault()
-        """self.download_slots = {
-            "bunkr": 1,
-            "bunkrr": 1,
-            "cyberdrop": 1,
-            "cyberfile": 1,
-            "pixeldrain": 2,
-            "xxxbunker": 2,
-        }
-        """
 
         self.download_spacers = {}
         self.download_semaphores = {}

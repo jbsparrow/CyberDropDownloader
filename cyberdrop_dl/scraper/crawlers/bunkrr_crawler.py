@@ -93,6 +93,7 @@ class BunkrrCrawler(Crawler):
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {"bunkrr": ["bunkrr", "bunkr"]}
     primary_base_domain = URL("https://bunkr.site")
     download_spacer = 0.5
+    max_concurrent_downloads = 1
 
     def __init__(self, manager: Manager, site: str) -> None:
         super().__init__(manager, site, "Bunkrr")

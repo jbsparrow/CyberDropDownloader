@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 class PixelDrainCrawler(Crawler):
     primary_base_domain = URL("https://pixeldrain.com")
     download_spacer = 0
+    max_concurrent_downloads = 2
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "pixeldrain", "PixelDrain")

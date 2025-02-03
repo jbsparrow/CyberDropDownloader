@@ -35,6 +35,7 @@ class CyberfileCrawler(Crawler):
     update_unsupported = True
 
     download_spacer = 0
+    max_concurrent_downloads = 1
 
     def __init__(self, manager: Manager, site: str) -> None:
         super().__init__(manager, site, self.FOLDER_DOMAINS.get(site, "Cyberfile"))
