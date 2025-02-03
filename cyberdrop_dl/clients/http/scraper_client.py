@@ -8,7 +8,7 @@ from aiohttp_client_cache.response import CachedStreamReader
 from bs4 import BeautifulSoup
 
 from cyberdrop_dl.clients.errors import DDOSGuardError, InvalidContentTypeError
-from cyberdrop_dl.clients.request_client import Client, create_session
+from cyberdrop_dl.clients.http import Client, create_session
 
 if TYPE_CHECKING:
     import aiohttp

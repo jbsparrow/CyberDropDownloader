@@ -15,9 +15,9 @@ from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 from yarl import URL
 
-from cyberdrop_dl.clients.download_client import DownloadClient
 from cyberdrop_dl.clients.errors import DDOSGuardError, DownloadError, ScrapeError
-from cyberdrop_dl.clients.scraper_client import ScraperClient
+from cyberdrop_dl.clients.http.download_client import DownloadClient
+from cyberdrop_dl.clients.http.scraper_client import ScraperClient
 from cyberdrop_dl.managers.download_speed_manager import DownloadSpeedLimiter
 from cyberdrop_dl.ui.prompts.user_prompts import get_cookies_from_browsers
 from cyberdrop_dl.utils.constants import CustomHTTPStatus
@@ -95,7 +95,7 @@ class ClientManager:
         self.global_download_semaphore = asyncio.Semaphore(rate_limiting_options.max_simultaneous_downloads)
         self.global_download_delay = rate_limiting_options.download_delay
 
-        self.scraper_client = ScraperClient(manager)
+        self.http.scraper_client = ScraperClient(manager)
         self.downloader_client = DownloadClient(manager)
         self.download_speed_limiter = DownloadSpeedLimiter(manager)
         self.flaresolverr = Flaresolverr(manager)

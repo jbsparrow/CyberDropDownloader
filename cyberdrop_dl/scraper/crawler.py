@@ -21,7 +21,7 @@ from cyberdrop_dl.utils.utilities import get_download_path, remove_file_id
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from cyberdrop_dl.clients.scraper_client import ScraperClient
+    from cyberdrop_dl.clients.http.scraper_client import ScraperClient
     from cyberdrop_dl.managers.manager import Manager
 
 
@@ -61,7 +61,7 @@ class Crawler(ABC):
         async with self.startup_lock:
             if self.ready:
                 return
-            self.client = self.manager.client_manager.scraper_client
+            self.client = self.manager.client_manager.http.scraper_client
             self.downloader = Downloader(self.manager, self.domain)
             self.downloader.startup()
             await self.async_startup()
