@@ -65,7 +65,10 @@ class DownloadManager:
         domain = crawler.domain
         assert domain not in self.download_spacers, f"{domain} is already registered"
         self.download_spacers.update({domain: crawler.download_spacer})
-        self.download_semaphores.update({domain: asyncio.Semaphore(crawler.max_concurrent_downloads)})
+        semaphore = self.default_semaphore
+        if crawler.max_concurrent_downloads:
+            semaphore = asyncio.Semaphore(crawler.max_concurrent_downloads)
+        self.download_semaphores.update({domain: semaphore})
 
     def get_download_semaphore(self, domain: str) -> asyncio.Semaphore:
         """Returns the download limit for a domain."""

@@ -89,6 +89,7 @@ class Crawler(ABC):
             self.downloader.startup()
             await self.async_startup()
             self.manager.client_manager.register(self)
+            self.manager.download_manager.register(self)
             self.ready = True
 
     async def async_startup(self) -> None: ...  # noqa: B027
