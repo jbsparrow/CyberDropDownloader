@@ -28,7 +28,6 @@ if TYPE_CHECKING:
     from typing import Any
 
     import aiohttp
-    from aiohttp import ClientSession
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
@@ -112,7 +111,7 @@ class DownloadClient(Client):
         domain: str,
         media_item: MediaItem,
         save_content: Callable[[aiohttp.StreamReader], Coroutine[Any, Any, None]],
-        client_session: ClientSession,
+        client_session: aiohttp.ClientSession,
     ) -> bool:
         """Downloads a file."""
         download_headers = self.add_api_key_headers(domain, media_item.referer)
