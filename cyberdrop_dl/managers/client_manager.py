@@ -4,7 +4,6 @@ import asyncio
 import contextlib
 import ssl
 from contextlib import asynccontextmanager
-from functools import wraps
 from http import HTTPStatus
 from http.cookiejar import MozillaCookieJar
 from typing import TYPE_CHECKING
@@ -27,8 +26,6 @@ from cyberdrop_dl.utils.logger import log, log_spacer
 from .flaresolverr import Flaresolverr
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.scraper.crawler import ScrapeItem
 
@@ -58,7 +55,6 @@ class ClientManager:
     """Creates a 'client' that can be referenced by scraping or download sessions."""
 
     def __init__(self, manager: Manager) -> None:
-        self.manager = manager
         global_settings_data = manager.config_manager.global_settings_data
         rate_limiting_options = global_settings_data.rate_limiting_options
         verify_ssl = not global_settings_data.general.allow_insecure_connections
@@ -66,6 +62,7 @@ class ClientManager:
         connection_timeout = rate_limiting_options.connection_timeout
         total_timeout = read_timeout + connection_timeout
 
+        self.manager = manager
         self.ssl_context = ssl.create_default_context(cafile=certifi.where()) if verify_ssl else False
         self.user_agent = global_settings_data.general.user_agent
         self.auto_import_cookies = self.manager.config_manager.settings_data.browser_cookies.auto_import
@@ -220,23 +217,6 @@ class ClientManager:
         message = None if headers.get("Content-Type") else "No content-type in response header"
 
         raise DownloadError(status=status, message=message, origin=origin)
-
-
-def create_session(func: Callable) -> Callable:
-    """Wrapper handles client session creation to pass cookies."""
-
-    @wraps(func)
-    async def wrapper(self: DownloadClient | ScraperClient, *args, **kwargs):
-        async with aiohttp.ClientSession(
-            headers=self._headers,
-            cookie_jar=self.client_manager.cookies,
-            timeout=self.client_manager.timeout,
-            trace_configs=self.trace_configs,
-        ) as client:
-            kwargs["client_session"] = client
-            return await func(self, *args, **kwargs)
-
-    return wrapper
 
 
 def check_soup(soup: BeautifulSoup, titles: list[str], selectors: list[str]) -> bool:

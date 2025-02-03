@@ -8,9 +8,8 @@ from aiohttp_client_cache.response import CachedStreamReader
 from bs4 import BeautifulSoup
 
 from cyberdrop_dl.clients.errors import DDOSGuardError, InvalidContentTypeError
-from cyberdrop_dl.managers.client_manager import create_session
 
-from .request_client import Client
+from .request_client import Client, create_session
 
 if TYPE_CHECKING:
     import aiohttp
@@ -36,7 +35,6 @@ class ScraperClient(Client):
     @create_session
     async def get_soup(
         self,
-        domain: str,
         url: URL,
         client_session: CachedSession,
         origin: ScrapeItem | URL | None = None,
@@ -48,7 +46,7 @@ class ScraperClient(Client):
         async with (
             cache_control_manager(client_session, disabled=cache_disabled),
             client_session.get(
-                url, headers=self._headers, ssl=self.client_manager.ssl_context, proxy=self.client_manager.proxy
+                url, headers=self.headers, ssl=self.client_manager.ssl_context, proxy=self.client_manager.proxy
             ) as response,
         ):
             try:
@@ -65,7 +63,7 @@ class ScraperClient(Client):
                     if not retry:
                         raise DDOSGuardError(message="Unable to access website with flaresolverr cookies") from None
                     return await self.get_soup(
-                        domain, url, client_session, origin, with_response_url, retry=False, cache_disabled=True
+                        url, client_session, origin, with_response_url, retry=False, cache_disabled=True
                     )
                 if with_response_url:
                     return soup, response_URL
@@ -81,15 +79,14 @@ class ScraperClient(Client):
             return BeautifulSoup(text, "html.parser")
 
     async def get_soup_and_return_url(
-        self, domain: str, url: URL, origin: ScrapeItem | URL | None = None, **kwargs
+        self, url: URL, origin: ScrapeItem | URL | None = None, **kwargs
     ) -> tuple[BeautifulSoup, URL]:
         """Returns a BeautifulSoup object and response URL from the given URL."""
-        return await self.get_soup(domain, url, origin=origin, with_response_url=True, **kwargs)
+        return await self.get_soup(url, origin=origin, with_response_url=True, **kwargs)
 
     @create_session
     async def get_json(
         self,
-        domain: str,
         url: URL,
         client_session: CachedSession,
         params: dict | None = None,
@@ -98,7 +95,7 @@ class ScraperClient(Client):
         cache_disabled: bool = False,
     ) -> tuple[dict, aiohttp.ClientResponse] | dict:
         """Returns a JSON object from the given URL."""
-        headers = self._headers | headers_inc if headers_inc else self._headers
+        headers = self.headers | headers_inc if headers_inc else self.headers
         async with (
             cache_control_manager(client_session, disabled=cache_disabled),
             client_session.get(
@@ -122,7 +119,6 @@ class ScraperClient(Client):
     @create_session
     async def get_text(
         self,
-        domain: str,
         url: URL,
         client_session: CachedSession,
         origin: ScrapeItem | URL | None = None,
@@ -133,7 +129,7 @@ class ScraperClient(Client):
         async with (
             cache_control_manager(client_session, disabled=cache_disabled),
             client_session.get(
-                url, headers=self._headers, ssl=self.client_manager.ssl_context, proxy=self.client_manager.proxy
+                url, headers=self.headers, ssl=self.client_manager.ssl_context, proxy=self.client_manager.proxy
             ) as response,
         ):
             try:
@@ -144,14 +140,13 @@ class ScraperClient(Client):
                 if self.client_manager.check_ddos_guard(soup) or self.client_manager.check_cloudflare(soup):
                     if not retry:
                         raise DDOSGuardError(message="Unable to access website with flaresolverr cookies") from None
-                    return await self.get_text(domain, url, client_session, origin, retry=False, cache_disabled=True)
+                    return await self.get_text(url, client_session, origin, retry=False, cache_disabled=True)
                 return str(soup)
             return await response.text()
 
     @create_session
     async def post_data(
         self,
-        domain: str,
         url: URL,
         client_session: CachedSession,
         data: dict,
@@ -162,7 +157,7 @@ class ScraperClient(Client):
         headers_inc: dict | None = None,
     ) -> dict | bytes:
         """Returns a JSON object from the given URL when posting data. If raw == True, returns raw binary data of response."""
-        headers = self._headers | headers_inc if headers_inc else self._headers
+        headers = self.headers | headers_inc if headers_inc else self.headers
         async with (
             cache_control_manager(client_session, disabled=cache_disabled),
             client_session.post(
@@ -183,12 +178,12 @@ class ScraperClient(Client):
 
     @create_session
     async def get_head(
-        self, domain: str, url: URL, client_session: CachedSession, *, origin: ScrapeItem | URL | None = None
+        self, url: URL, client_session: CachedSession, *, origin: ScrapeItem | URL | None = None
     ) -> CIMultiDictProxy[str]:
         """Returns the headers from the given URL."""
         async with client_session.head(
             url,
-            headers=self._headers,
+            headers=self.headers,
             ssl=self.client_manager.ssl_context,
             proxy=self.client_manager.proxy,
         ) as response:

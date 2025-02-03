@@ -19,11 +19,9 @@ from cyberdrop_dl.clients.errors import (
     InvalidContentTypeError,
     SlowDownloadError,
 )
-from cyberdrop_dl.managers.client_manager import create_session
+from cyberdrop_dl.clients.request_client import Client, create_session
 from cyberdrop_dl.utils.constants import FILE_FORMATS
 from cyberdrop_dl.utils.logger import log
-
-from .request_client import Client
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
@@ -94,7 +92,7 @@ class DownloadClient(Client):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     def add_api_key_headers(self, domain: str, referer: URL) -> dict:
-        download_headers = copy.deepcopy(self._headers)
+        download_headers = copy.deepcopy(self.headers)
         download_headers["Referer"] = str(referer)
         auth_data = self.manager.config_manager.authentication_data
         if domain == "pixeldrain" and auth_data.pixeldrain.api_key:
@@ -109,17 +107,15 @@ class DownloadClient(Client):
         return download_headers
 
     @create_session
-    async def _download(
+    async def download(
         self,
         domain: str,
-        manager: Manager,
         media_item: MediaItem,
         save_content: Callable[[aiohttp.StreamReader], Coroutine[Any, Any, None]],
         client_session: ClientSession,
     ) -> bool:
         """Downloads a file."""
         download_headers = self.add_api_key_headers(domain, media_item.referer)
-
         downloaded_filename = await self.manager.db_manager.history_table.get_downloaded_filename(domain, media_item)
         download_dir = self.get_download_dir(media_item)
         media_item.partial_file = download_dir / f"{downloaded_filename}.part"
@@ -188,7 +184,7 @@ class DownloadClient(Client):
             await save_content(resp.content)
             return True
 
-    async def _append_content(
+    async def append_content(
         self,
         media_item: MediaItem,
         content: aiohttp.StreamReader,
@@ -241,13 +237,13 @@ class DownloadClient(Client):
 
         async def save_content(content: aiohttp.StreamReader) -> None:
             assert media_item.task_id is not None
-            await self._append_content(
+            await self.append_content(
                 media_item,
                 content,
                 partial(manager.progress_manager.file_progress.advance_file, media_item.task_id),
             )
 
-        downloaded = await self._download(domain, manager, media_item, save_content)
+        downloaded = await self.download(domain, media_item, save_content)
         if downloaded:
             assert media_item.partial_file
             assert media_item.complete_file

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from functools import wraps
 from typing import TYPE_CHECKING
 
 import aiohttp
@@ -8,6 +9,8 @@ from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from cyberdrop_dl.managers.manager import Manager
 
 
@@ -19,8 +22,8 @@ class Client:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
         self.client_manager = manager.client_manager
-        self._headers = {"user-agent": self.client_manager.user_agent}
-        self.trace_configs = []
+        self.headers = {"user-agent": self.client_manager.user_agent}
+        self.trace_configs: list[aiohttp.TraceConfig] = []
         if constants.DEBUG_VAR:
             self.add_request_log_hooks()
 
@@ -41,3 +44,20 @@ class Client:
         trace_config.on_request_start.append(on_request_start)
         trace_config.on_request_end.append(on_request_end)
         self.trace_configs.append(trace_config)
+
+
+def create_session(func: Callable) -> Callable:
+    """Wrapper handles client session creation to pass cookies."""
+
+    @wraps(func)
+    async def wrapper(self: Client, *args, **kwargs):
+        async with aiohttp.ClientSession(
+            headers=self.headers,
+            cookie_jar=self.client_manager.cookies,
+            timeout=self.client_manager.timeout,
+            trace_configs=self.trace_configs,
+        ) as client:
+            kwargs["client_session"] = client
+            return await func(self, *args, **kwargs)
+
+    return wrapper
