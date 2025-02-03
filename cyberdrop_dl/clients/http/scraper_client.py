@@ -32,7 +32,7 @@ class ScraperClient(Client):
     request_log_hooks_name = "scrape"
 
     @create_session
-    async def get_soup(
+    async def get_soup_and_return_url(
         self,
         url: URL,
         client_session: CachedSession,
@@ -40,7 +40,7 @@ class ScraperClient(Client):
         *,
         cache_disabled: bool = False,
         retry: bool = True,
-    ) -> tuple[BeautifulSoup, URL] | BeautifulSoup:
+    ) -> tuple[BeautifulSoup, URL]:
         """Returns a BeautifulSoup object from the given URL."""
         async with (
             cache_control(client_session, disabled=cache_disabled),
@@ -54,7 +54,9 @@ class ScraperClient(Client):
                 if self.client_manager.check_ddos_guard(soup) or self.client_manager.check_cloudflare(soup):
                     if not retry:
                         raise DDOSGuardError(message="Unable to access website with flaresolverr cookies") from None
-                    return await self.get_soup(url, client_session, origin, retry=False, cache_disabled=True)
+                    return await self.get_soup_and_return_url(
+                        url, client_session, origin, retry=False, cache_disabled=True
+                    )
 
                 return soup, response_url
 
@@ -64,6 +66,12 @@ class ScraperClient(Client):
                 raise InvalidContentTypeError(message=f"Received {content_type}, was expecting text", origin=origin)
             text = await CachedStreamReader(await response.read()).read()
             return BeautifulSoup(text, "html.parser"), response.url
+
+    async def get_soup(
+        self, url: URL, origin: ScrapeItem | URL | None = None, *, cache_disabled: bool = False, retry: bool = True
+    ) -> BeautifulSoup:
+        soup, _ = await self.get_soup_and_return_url(url, origin, cache_disabled=cache_disabled, retry=retry)
+        return soup
 
     @create_session
     async def get_json(

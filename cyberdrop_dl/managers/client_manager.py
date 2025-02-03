@@ -95,7 +95,7 @@ class ClientManager:
         self.global_download_semaphore = asyncio.Semaphore(rate_limiting_options.max_simultaneous_downloads)
         self.global_download_delay = rate_limiting_options.download_delay
 
-        self.http.scraper_client = ScraperClient(manager)
+        self.scraper_client = ScraperClient(manager)
         self.downloader_client = DownloadClient(manager)
         self.download_speed_limiter = DownloadSpeedLimiter(manager)
         self.flaresolverr = Flaresolverr(manager)
