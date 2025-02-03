@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+import typing
 from functools import wraps
-from typing import TYPE_CHECKING
 
 import aiohttp
 from aiohttp_client_cache.session import CachedSession
@@ -9,10 +9,34 @@ from aiohttp_client_cache.session import CachedSession
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.logger import log
 
-if TYPE_CHECKING:
+if typing.TYPE_CHECKING:
     from collections.abc import Callable
 
+    from multidict import CIMultiDictProxy
+    from yarl import URL
+
     from cyberdrop_dl.managers.manager import Manager
+
+
+def create_session(_, arg: Callable = str) -> Callable:
+    """Wrapper handles client session creation to pass cookies."""
+    func = _
+    if typing.TYPE_CHECKING:
+        func = arg
+
+    @wraps(func)
+    async def wrapper(self: Client, *args, **kwargs):
+        async with CachedSession(
+            headers=self.headers,
+            cookie_jar=self.client_manager.cookies,
+            timeout=self.client_manager.timeout,
+            trace_configs=self.trace_configs,
+            cache=self.client_manager.manager.cache_manager.request_cache,
+        ) as client:
+            kwargs["client_session"] = client
+            return await func(self, *args, **kwargs)
+
+    return wrapper
 
 
 class Client:
@@ -23,7 +47,7 @@ class Client:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
         self.client_manager = manager.client_manager
-        self.headers = {"user-agent": self.client_manager.user_agent}
+        self.headers: dict = {"user-agent": self.client_manager.user_agent}
         self.trace_configs: list[aiohttp.TraceConfig] = []
         if constants.DEBUG_VAR:
             self.add_request_log_hooks()
@@ -51,20 +75,8 @@ class Client:
         params = {"headers": self.headers, "ssl": self.client_manager.ssl_context, "proxy": self.client_manager.proxy}
         return params
 
-
-def create_session(func: Callable) -> Callable:
-    """Wrapper handles client session creation to pass cookies."""
-
-    @wraps(func)
-    async def wrapper(self: Client, *args, **kwargs):
-        async with CachedSession(
-            headers=self.headers,
-            cookie_jar=self.client_manager.cookies,
-            timeout=self.client_manager.timeout,
-            trace_configs=self.trace_configs,
-            cache=self.client_manager.manager.cache_manager.request_cache,
-        ) as client:
-            kwargs["client_session"] = client
-            return await func(self, *args, **kwargs)
-
-    return wrapper
+    @create_session
+    async def get_head(self, url: URL, client_session: CachedSession) -> CIMultiDictProxy[str]:
+        """Returns the headers from the given URL."""
+        async with client_session.head(url, **self.request_params) as response:
+            return response.headers

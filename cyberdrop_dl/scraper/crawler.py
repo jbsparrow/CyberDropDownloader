@@ -40,6 +40,7 @@ class Crawler(ABC):
     domain: str = None  # type: ignore
     primary_base_domain: URL = None  # type: ignore
     DEFAULT_POST_TITLE_FORMAT = "{date} - {number} - {title}"
+    request_limiter: AsyncLimiter = None  # type: ignore
     update_unsupported = False
 
     def __init__(self, manager: Manager, domain: str, folder_domain: str | None = None) -> None:
@@ -78,13 +79,15 @@ class Crawler(ABC):
 
     async def startup(self) -> None:
         """Starts the crawler."""
+        assert self.request_limiter
         async with self.startup_lock:
             if self.ready:
                 return
-            self.client = self.manager.client_manager.http.scraper_client
+            self.client = self.manager.client_manager.scraper_client
             self.downloader = Downloader(self.manager, self.domain)
             self.downloader.startup()
             await self.async_startup()
+            self.manager.client_manager.register_limiter(self.domain, self.request_limiter)
             self.ready = True
 
     async def async_startup(self) -> None: ...  # noqa: B027
@@ -182,6 +185,12 @@ class Crawler(ABC):
         if reset:
             scrape_item.reset()
         self.manager.task_group.create_task(self.manager.scrape_mapper.filter_and_send_to_crawler(scrape_item))
+
+    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+    async def limiter(self, func, *args, **kwargs):
+        async with self.manager.client_manager.limiter(self.domain):
+            return func(*args, **kwargs)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
