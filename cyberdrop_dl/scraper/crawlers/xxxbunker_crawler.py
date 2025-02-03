@@ -29,6 +29,7 @@ MAX_RETRIES = 3
 
 class XXXBunkerCrawler(Crawler):
     primary_base_domain = URL("https://xxxbunker.com")
+    max_concurrent_downloads = 2
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "xxxbunker", "XXXBunker")
