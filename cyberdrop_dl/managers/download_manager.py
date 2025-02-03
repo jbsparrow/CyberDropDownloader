@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.scraper.crawler import Crawler
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
 
@@ -40,9 +41,10 @@ class FileLocksVault:
 
 class DownloadManager:
     def __init__(self, manager: Manager) -> None:
+        rate_limiting_options = manager.config_manager.global_settings_data.rate_limiting_options
         self.manager = manager
         self.file_locks = FileLocksVault()
-        self.download_limits_overrides = {
+        """self.download_slots = {
             "bunkr": 1,
             "bunkrr": 1,
             "cyberdrop": 1,
@@ -50,16 +52,31 @@ class DownloadManager:
             "pixeldrain": 2,
             "xxxbunker": 2,
         }
-        self.max_limit = (
-            manager.config_manager.global_settings_data.rate_limiting_options.max_simultaneous_downloads_per_domain
-        )
+        """
+
+        self.download_spacers = {}
+        self.download_semaphores = {}
+        self.max_slots_per_domain = rate_limiting_options.max_simultaneous_downloads_per_domain
+        self.global_download_semaphore = asyncio.Semaphore(rate_limiting_options.max_simultaneous_downloads)
+        self.global_download_delay = rate_limiting_options.download_delay
+        self.default_semaphore = asyncio.Semaphore(self.max_slots_per_domain)
+
+    def register(self, crawler: Crawler) -> None:
+        domain = crawler.domain
+        assert domain not in self.download_spacers, f"{domain} is already registered"
+        self.download_spacers.update({domain: crawler.download_spacer})
+        self.download_semaphores.update({domain: asyncio.Semaphore(crawler.max_concurrent_downloads)})
 
     def get_download_semaphore(self, domain: str) -> asyncio.Semaphore:
         """Returns the download limit for a domain."""
-        limit_override = self.download_limits_overrides.get(domain)
-        if limit_override:
-            return asyncio.Semaphore(limit_override)
-        return asyncio.Semaphore(self.max_limit)
+        return self.download_semaphores.get(domain, self.default_semaphore)
+
+    @asynccontextmanager
+    async def limiter(self, domain: str):
+        download_spacer = self.download_spacers.get(domain, 0.1)
+        await asyncio.sleep(self.global_download_delay + download_spacer)
+        async with self.limiter(domain):
+            yield
 
     @staticmethod
     def basic_auth(username: str, password: str) -> str:

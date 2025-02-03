@@ -126,23 +126,17 @@ class DownloadClient(Client):
             download_headers["Range"] = f"bytes={resume_point}-"
 
         download_url = media_item.debrid_link or media_item.url
+        download_params = self.client_manager.downloader_client.request_params | {"headers": download_headers}
         async with (
-            self.client_manager.download_limiter(domain),
-            client_session.get(
-                download_url,
-                headers=download_headers,
-                ssl=self.client_manager.ssl_context,
-                proxy=self.client_manager.proxy,
-            ) as resp,
+            self.manager.download_manager.limiter(domain),
+            client_session.get(download_url, **download_params) as resp,
         ):
             if resp.status == HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE:
                 media_item.partial_file.unlink()
 
             await self.client_manager.check_http_status(resp, download=True, origin=media_item.url)
             content_type = resp.headers.get("Content-Type", "")
-            override = next(
-                (override for type, override in CONTENT_TYPES_OVERRIDES.items() if type in content_type), None
-            )
+            override = next((new for old, new in CONTENT_TYPES_OVERRIDES.items() if old in content_type), None)
             content_type = override or content_type
 
             media_item.filesize = int(resp.headers.get("Content-Length", "0"))
