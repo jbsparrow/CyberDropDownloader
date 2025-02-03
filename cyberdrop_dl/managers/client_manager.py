@@ -97,8 +97,6 @@ class ClientManager:
 
         self.global_request_limiter = AsyncLimiter(rate_limiting_options.rate_limit, 1)
         self.global_request_semaphore = asyncio.Semaphore(50)
-        self.global_download_semaphore = asyncio.Semaphore(rate_limiting_options.max_simultaneous_downloads)
-        self.global_download_delay = rate_limiting_options.download_delay
 
         self.scraper_client = ScraperClient(self)
         self.downloader_client = DownloadClient(self)
@@ -122,13 +120,6 @@ class ClientManager:
             self.global_request_limiter,
             domain_request_limiter,
         ):
-            yield
-
-    @asynccontextmanager
-    async def download_limiter(self, domain: str):
-        download_spacer = self.download_spacers.get(domain, 0.1)
-        await asyncio.sleep(self.global_download_delay + download_spacer)
-        async with self.limiter(domain):
             yield
 
     async def close(self) -> None:

@@ -97,12 +97,11 @@ class Downloader:
         self.waiting_items += 1
         media_item.current_attempt = 0
         await self.client.mark_incomplete(media_item, self.domain)
-        async with self.semaphore:
+        async with self.manager.download_manager.global_download_semaphore, self.semaphore:
             self.waiting_items -= 1
             self.processed_items.add(media_item.url.path)
             self.manager.progress_manager.download_progress.update_total()
-            async with self.manager.client_manager.global_download_semaphore:
-                await self.start_download(media_item)
+            await self.start_download(media_item)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
