@@ -72,8 +72,6 @@ class ClientManager:
 
         self.DEFAULT_LIMITER = AsyncLimiter(25, 1)
         self.request_limiters = {}
-        self.download_spacers = {}
-        self.download_slots = {}
 
         self.global_request_limiter = AsyncLimiter(rate_limiting_options.rate_limit, 1)
         self.global_request_semaphore = asyncio.Semaphore(50)
@@ -89,8 +87,6 @@ class ClientManager:
         domain = crawler.domain
         assert domain not in self.request_limiters, f"{domain} is already registered"
         self.request_limiters.update({domain: crawler.request_limiter})
-        self.download_spacers.update({domain: crawler.download_spacer})
-        self.download_slots.update({domain: crawler.max_concurrent_downloads})
 
     @asynccontextmanager
     async def limiter(self, domain: str):
