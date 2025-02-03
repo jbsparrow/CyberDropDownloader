@@ -80,16 +80,6 @@ class ClientManager:
             "other": AsyncLimiter(25, 1),
         }"""
 
-        """self.download_spacer = {
-            "bunkr": 0.5,
-            "bunkrr": 0.5,
-            "cyberdrop": 0,
-            "cyberfile": 0,
-            "pixeldrain": 0,
-            "coomer": 0.5,
-            "kemono": 0.5,
-        }"""
-
         self.DEFAULT_LIMITER = AsyncLimiter(25, 1)
         self.request_limiters = {}
         self.download_spacers = {}
