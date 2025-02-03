@@ -188,8 +188,12 @@ class Crawler(ABC):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def limiter(self, func, *args, **kwargs):
-        async with self.manager.client_manager.limiter(self.domain):
+    @property
+    def limiter(self):
+        return self.manager.client_manager.limiter(self.domain)
+
+    async def with_limiter(self, func: Callable, *args, **kwargs):
+        async with self.limiter:
             return func(*args, **kwargs)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
