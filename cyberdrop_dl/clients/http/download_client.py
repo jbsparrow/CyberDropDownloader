@@ -19,7 +19,7 @@ from cyberdrop_dl.clients.errors import (
     InvalidContentTypeError,
     SlowDownloadError,
 )
-from cyberdrop_dl.clients.http import Client, create_session
+from cyberdrop_dl.clients.http import Client, check, create_session
 from cyberdrop_dl.utils.constants import FILE_FORMATS
 from cyberdrop_dl.utils.logger import log
 
@@ -134,7 +134,7 @@ class DownloadClient(Client):
             if resp.status == HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE:
                 media_item.partial_file.unlink()
 
-            await self.client_manager.check_http_status(resp, download=True, origin=media_item.url)
+            await check.raise_for_http_status(resp, download=True, origin=media_item.url)
             content_type = resp.headers.get("Content-Type", "")
             override = next((new for old, new in CONTENT_TYPES_OVERRIDES.items() if old in content_type), None)
             content_type = override or content_type
@@ -142,7 +142,8 @@ class DownloadClient(Client):
             media_item.filesize = int(resp.headers.get("Content-Length", "0"))
             if not media_item.complete_file:
                 proceed, skip = await self.get_final_file_info(media_item, domain)
-                self.client_manager.check_bunkr_maint(resp.headers)  # type: ignore
+                if check.is_bunkr_maintenance(resp.headers):  # type: ignore
+                    raise DownloadError(status="Bunkr Maintenance", message="Bunkr under maintenance")
                 if skip:
                     self.manager.progress_manager.download_progress.add_skipped()
                     return False
