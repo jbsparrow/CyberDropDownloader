@@ -95,15 +95,15 @@ class ClientManager:
         self.global_download_semaphore = asyncio.Semaphore(rate_limiting_options.max_simultaneous_downloads)
         self.global_download_delay = rate_limiting_options.download_delay
 
-        self.scraper_client = ScraperClient(manager)
-        self.downloader_client = DownloadClient(manager)
+        self.scraper_client = ScraperClient(self)
+        self.downloader_client = DownloadClient(self)
         self.download_speed_limiter = DownloadSpeedLimiter(manager)
         self.flaresolverr = Flaresolverr(manager)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     def register_limiter(self, domain: str, limiter: AsyncLimiter) -> None:
-        assert domain not in self.request_limiters
+        assert domain not in self.request_limiters, f"{domain} is already registered"
         self.request_limiters.update({domain: limiter})
 
     def get_download_spacer(self, key: str) -> float:

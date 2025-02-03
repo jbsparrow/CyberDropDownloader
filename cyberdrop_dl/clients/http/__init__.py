@@ -15,7 +15,7 @@ if typing.TYPE_CHECKING:
     from multidict import CIMultiDictProxy
     from yarl import URL
 
-    from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.managers.client_manager import ClientManager
 
 
 def create_session(_, arg: Callable = str) -> Callable:
@@ -44,9 +44,9 @@ class Client:
 
     request_log_hooks_name = ""
 
-    def __init__(self, manager: Manager) -> None:
-        self.manager = manager
-        self.client_manager = manager.client_manager
+    def __init__(self, client_manager: ClientManager) -> None:
+        self.manager = client_manager.manager
+        self.client_manager = client_manager
         self.headers: dict = {"user-agent": self.client_manager.user_agent}
         self.trace_configs: list[aiohttp.TraceConfig] = []
         if constants.DEBUG_VAR:
