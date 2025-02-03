@@ -69,7 +69,7 @@ class DownloadManager:
     async def limiter(self, domain: str):
         download_spacer = self.download_spacers.get(domain, 0.1)
         await asyncio.sleep(self.global_download_delay + download_spacer)
-        async with self.limiter(domain):
+        async with self.manager.client_manager.limiter(domain):
             yield
 
     @staticmethod

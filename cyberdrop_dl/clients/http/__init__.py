@@ -12,9 +12,6 @@ from cyberdrop_dl.utils.logger import log
 if typing.TYPE_CHECKING:
     from collections.abc import Callable
 
-    from multidict import CIMultiDictProxy
-    from yarl import URL
-
     from cyberdrop_dl.managers.client_manager import ClientManager
 
 
@@ -74,9 +71,3 @@ class Client:
     def request_params(self) -> dict:
         params = {"headers": self.headers, "ssl": self.client_manager.ssl_context, "proxy": self.client_manager.proxy}
         return params
-
-    @create_session
-    async def get_head(self, url: URL, client_session: CachedSession) -> CIMultiDictProxy[str]:
-        """Returns the headers from the given URL."""
-        async with client_session.head(url, **self.request_params) as response:
-            return response.headers
