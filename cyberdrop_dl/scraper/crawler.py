@@ -40,6 +40,8 @@ class Crawler(ABC):
     domain: str = None  # type: ignore
     primary_base_domain: URL = None  # type: ignore
     DEFAULT_POST_TITLE_FORMAT = "{date} - {number} - {title}"
+    download_spacer = 0.1
+    max_concurrent_downloads = 0  # Use config `max_concurrent_download` by default
     update_unsupported = False
 
     def __init__(self, manager: Manager, domain: str, folder_domain: str | None = None) -> None:
@@ -86,7 +88,7 @@ class Crawler(ABC):
             self.downloader = Downloader(self.manager, self.domain)
             self.downloader.startup()
             await self.async_startup()
-            self.manager.client_manager.register_limiter(self.domain, self.request_limiter)
+            self.manager.client_manager.register(self)
             self.ready = True
 
     async def async_startup(self) -> None: ...  # noqa: B027

@@ -29,6 +29,7 @@ if TYPE_CHECKING:
 
     import aiohttp
 
+    from cyberdrop_dl.managers.client_manager import ClientManager
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
@@ -83,8 +84,8 @@ class DownloadClient(Client):
 
     request_log_hooks_name = "download"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager)
+    def __init__(self, client_manager: ClientManager) -> None:
+        super().__init__(client_manager)
         self.slow_download_period = 10  # seconds
         self.download_speed_threshold = self.manager.config_manager.settings_data.runtime_options.slow_download_speed
 

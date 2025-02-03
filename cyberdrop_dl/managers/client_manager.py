@@ -27,7 +27,7 @@ from .flaresolverr import Flaresolverr
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.scraper.crawler import ScrapeItem
+    from cyberdrop_dl.scraper.crawler import Crawler, ScrapeItem
 
 DOWNLOAD_ERROR_ETAGS = {
     "d835884373f4d6c8f24742ceabe74946": "Imgur image has been removed",
@@ -77,12 +77,10 @@ class ClientManager:
             "kemono": AsyncLimiter(1, 1),
             "pixeldrain": AsyncLimiter(10, 1),
             "gofile": AsyncLimiter(100, 60),
-        }"""
-        self.request_limiters = {
             "other": AsyncLimiter(25, 1),
-        }
+        }"""
 
-        self.download_spacer = {
+        """self.download_spacer = {
             "bunkr": 0.5,
             "bunkrr": 0.5,
             "cyberdrop": 0,
@@ -90,7 +88,12 @@ class ClientManager:
             "pixeldrain": 0,
             "coomer": 0.5,
             "kemono": 0.5,
-        }
+        }"""
+
+        self.DEFAULT_LIMITER = AsyncLimiter(25, 1)
+        self.request_limiters = {}
+        self.download_spacers = {}
+        self.download_slots = {}
 
         self.global_request_limiter = AsyncLimiter(rate_limiting_options.rate_limit, 1)
         self.global_request_semaphore = asyncio.Semaphore(50)
@@ -104,22 +107,16 @@ class ClientManager:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    def register_limiter(self, domain: str, limiter: AsyncLimiter) -> None:
+    def register(self, crawler: Crawler) -> None:
+        domain = crawler.domain
         assert domain not in self.request_limiters, f"{domain} is already registered"
-        self.request_limiters.update({domain: limiter})
-
-    def get_download_spacer(self, key: str) -> float:
-        """Returns the download spacer for a domain."""
-        return self.download_spacer.get(key, 0.1)
-
-    def get_request_limiter(self, domain: str) -> AsyncLimiter:
-        """Get a rate limiter for a domain."""
-        default = self.request_limiters["other"]
-        return self.download_spacer.get(domain, default)
+        self.request_limiters.update({domain: crawler.request_limiter})
+        self.download_spacers.update({domain: crawler.download_spacer})
+        self.download_slots.update({domain: crawler.max_concurrent_downloads})
 
     @asynccontextmanager
     async def limiter(self, domain: str):
-        domain_request_limiter = self.get_request_limiter(domain)
+        domain_request_limiter = self.request_limiters.get(domain, self.DEFAULT_LIMITER)
         async with (
             self.global_request_semaphore,
             self.global_request_limiter,
@@ -129,7 +126,7 @@ class ClientManager:
 
     @asynccontextmanager
     async def download_limiter(self, domain: str):
-        download_spacer = self.get_download_spacer(domain)
+        download_spacer = self.download_spacers.get(domain, 0.1)
         await asyncio.sleep(self.global_download_delay + download_spacer)
         async with self.limiter(domain):
             yield
