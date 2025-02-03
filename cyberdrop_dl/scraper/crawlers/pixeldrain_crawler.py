@@ -5,6 +5,7 @@ import datetime
 import json
 from typing import TYPE_CHECKING
 
+from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import DownloadError, NoExtensionError, ScrapeError
@@ -25,6 +26,7 @@ class PixelDrainCrawler(Crawler):
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "pixeldrain", "PixelDrain")
         self.api_address = URL("https://pixeldrain.com/api/")
+        self.request_limiter = AsyncLimiter(10, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 

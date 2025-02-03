@@ -70,16 +70,6 @@ class ClientManager:
         self.proxy: URL | None = global_settings_data.general.proxy  # type: ignore
         self.timeout = aiohttp.ClientTimeout(total=total_timeout, connect=connection_timeout)
 
-        """old_request_limiters = {
-            "bunkrr": AsyncLimiter(5, 1),
-            "cyberdrop": AsyncLimiter(5, 1),
-            "coomer": AsyncLimiter(1, 1),
-            "kemono": AsyncLimiter(1, 1),
-            "pixeldrain": AsyncLimiter(10, 1),
-            "gofile": AsyncLimiter(100, 60),
-            "other": AsyncLimiter(25, 1),
-        }"""
-
         self.DEFAULT_LIMITER = AsyncLimiter(25, 1)
         self.request_limiters = {}
         self.download_spacers = {}
