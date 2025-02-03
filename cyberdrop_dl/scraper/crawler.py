@@ -40,7 +40,6 @@ class Crawler(ABC):
     domain: str = None  # type: ignore
     primary_base_domain: URL = None  # type: ignore
     DEFAULT_POST_TITLE_FORMAT = "{date} - {number} - {title}"
-    request_limiter: AsyncLimiter = None  # type: ignore
     update_unsupported = False
 
     def __init__(self, manager: Manager, domain: str, folder_domain: str | None = None) -> None:

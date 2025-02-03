@@ -90,7 +90,7 @@ class LusciousCrawler(Crawler):
                     self.domain,
                     self.graphql_url.with_query({"operationName": query_name}),
                     data=query,
-                    headers_inc={"Content-Type": "application/json"},
+                    with_headers={"Content-Type": "application/json"},
                     origin=scrape_item,
                 )
             has_next_page = json_data["data"][data_name]["list"]["info"]["has_next_page"]
@@ -116,7 +116,7 @@ class LusciousCrawler(Crawler):
                 self.domain,
                 self.graphql_url.with_query({"operationName": "AlbumGet"}),
                 data=query,
-                headers_inc={"Content-Type": "application/json"},
+                with_headers={"Content-Type": "application/json"},
                 origin=scrape_item,
             )
 
