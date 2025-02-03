@@ -70,13 +70,15 @@ class ClientManager:
         self.proxy: URL | None = global_settings_data.general.proxy  # type: ignore
         self.timeout = aiohttp.ClientTimeout(total=total_timeout, connect=connection_timeout)
 
-        self.request_limiters = {
+        """old_request_limiters = {
             "bunkrr": AsyncLimiter(5, 1),
             "cyberdrop": AsyncLimiter(5, 1),
             "coomer": AsyncLimiter(1, 1),
             "kemono": AsyncLimiter(1, 1),
             "pixeldrain": AsyncLimiter(10, 1),
             "gofile": AsyncLimiter(100, 60),
+        }"""
+        self.request_limiters = {
             "other": AsyncLimiter(25, 1),
         }
 
