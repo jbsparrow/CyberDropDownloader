@@ -24,6 +24,7 @@ CDN_POSSIBILITIES = re.compile(r"^(?:(?:k1)[0-9]{0,2})(?:redir)?\.cyberdrop?\.[a
 
 class CyberdropCrawler(Crawler):
     primary_base_domain = URL("https://cyberdrop.me/")
+    download_spacer = 0
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "cyberdrop", "Cyberdrop")

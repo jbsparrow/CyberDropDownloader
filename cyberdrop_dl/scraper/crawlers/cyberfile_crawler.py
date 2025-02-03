@@ -34,6 +34,8 @@ class CyberfileCrawler(Crawler):
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {"cyberfile": ["cyberfile"], "iceyfile": ["iceyfile"]}
     update_unsupported = True
 
+    download_spacer = 0
+
     def __init__(self, manager: Manager, site: str) -> None:
         super().__init__(manager, site, self.FOLDER_DOMAINS.get(site, "Cyberfile"))
         self.primary_base_domain = self.PRIMARY_BASE_DOMAINS.get(site, URL(f"https://{site}"))
