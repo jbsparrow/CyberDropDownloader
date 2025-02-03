@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import DDOSGuardError
+from cyberdrop_dl.clients.http import check
 from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
@@ -103,7 +104,7 @@ class Flaresolverr:
         flaresolverr_user_agent = solution["userAgent"].strip()
         mismatch_msg = f"Config user_agent and flaresolverr user_agent do not match:\n  Cyberdrop-DL: {user_agent}\n  Flaresolverr: {flaresolverr_user_agent}"
 
-        if self.client_manager.check_ddos_guard(response) or self.client_manager.check_cloudflare(response):
+        if check.is_ddos_guard(response):
             if not self.update_cookies:
                 raise DDOSGuardError(message=INVALID_RESPONSE_MSG, origin=origin)
             if flaresolverr_user_agent != user_agent:

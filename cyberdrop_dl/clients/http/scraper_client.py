@@ -8,7 +8,7 @@ from aiohttp_client_cache.response import CachedStreamReader
 from bs4 import BeautifulSoup
 
 from cyberdrop_dl.clients.errors import DDOSGuardError, InvalidContentTypeError
-from cyberdrop_dl.clients.http import Client, create_session
+from cyberdrop_dl.clients.http import Client, check, create_session
 
 if TYPE_CHECKING:
     import aiohttp
@@ -47,11 +47,11 @@ class ScraperClient(Client):
             client_session.get(url, **self.request_params) as response,
         ):
             try:
-                await self.client_manager.check_http_status(response, origin=origin)
+                await check.raise_for_http_status(response, origin=origin)
             except DDOSGuardError:
                 await self.client_manager.manager.cache_manager.request_cache.delete_url(url)
                 soup, response_url = await self.client_manager.flaresolverr.get(url, client_session, origin)
-                if self.client_manager.check_ddos_guard(soup) or self.client_manager.check_cloudflare(soup):
+                if check.is_ddos_guard(soup):
                     if not retry:
                         raise DDOSGuardError(message="Unable to access website with flaresolverr cookies") from None
                     return await self.get_soup_and_return_url(
@@ -90,7 +90,7 @@ class ScraperClient(Client):
             cache_control(client_session, disabled=cache_disabled),
             client_session.get(url, **session_params) as response,
         ):
-            await self.client_manager.check_http_status(response, origin=origin)
+            await check.raise_for_http_status(response, origin=origin)
             content_type = response.headers.get("Content-Type")
             assert content_type is not None
             if "json" not in content_type.lower():
@@ -116,11 +116,11 @@ class ScraperClient(Client):
             client_session.get(url, **self.request_params) as response,
         ):
             try:
-                await self.client_manager.check_http_status(response, origin=origin)
+                await check.raise_for_http_status(response, origin=origin)
             except DDOSGuardError:
                 await self.client_manager.manager.cache_manager.request_cache.delete_url(url)
                 soup, _ = await self.client_manager.flaresolverr.get(url, client_session, origin)
-                if self.client_manager.check_ddos_guard(soup) or self.client_manager.check_cloudflare(soup):
+                if check.is_ddos_guard(soup):
                     if not retry:
                         raise DDOSGuardError(message="Unable to access website with flaresolverr cookies") from None
                     return await self.get_text(url, client_session, origin, retry=False, cache_disabled=True)
@@ -147,7 +147,7 @@ class ScraperClient(Client):
             cache_control(client_session, disabled=cache_disabled),
             client_session.post(url, **session_params, data=data) as response,
         ):
-            await self.client_manager.check_http_status(response, origin=origin)
+            await check.raise_for_http_status(response, origin=origin)
             if not req_resp:
                 return {}
             content = await response.content.read()
