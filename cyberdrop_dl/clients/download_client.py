@@ -4,7 +4,7 @@ import asyncio
 import copy
 import itertools
 import time
-from functools import partial, wraps
+from functools import partial
 from http import HTTPStatus
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -35,18 +35,6 @@ if TYPE_CHECKING:
 
 
 CONTENT_TYPES_OVERRIDES = {"text/vnd.trolltech.linguist": "video/MP2T"}
-
-
-def limiter(func: Callable) -> Any:
-    """Wrapper handles limits for download session."""
-
-    @wraps(func)
-    async def wrapper(self: DownloadClient, *args, **kwargs) -> Any:
-        domain = args[0]
-        async with self.client_manager.limiter(domain, download=True):
-            return await func(self, *args, **kwargs)
-
-    return wrapper
 
 
 def check_file_duration(media_item: MediaItem, manager: Manager) -> bool:
@@ -99,12 +87,7 @@ class DownloadClient:
         self.client_manager = client_manager
 
         self._headers = {"user-agent": client_manager.user_agent}
-        self._timeout = aiohttp.ClientTimeout(
-            total=client_manager.read_timeout + client_manager.connection_timeout,
-            connect=client_manager.connection_timeout,
-        )
         self.trace_configs = []
-        self._file_path = None
         self.slow_download_period = 10  # seconds
         self.download_speed_threshold = self.manager.config_manager.settings_data.runtime_options.slow_download_speed
         if DEBUG_VAR:
@@ -133,14 +116,14 @@ class DownloadClient:
         download_headers["Referer"] = str(referer)
         auth_data = self.manager.config_manager.authentication_data
         if domain == "pixeldrain" and auth_data.pixeldrain.api_key:
-            download_headers["Authorization"] = self.manager.download_manager.basic_auth(
-                "Cyberdrop-DL", auth_data.pixeldrain.api_key
-            )
+            auth_data = self.manager.download_manager.basic_auth("Cyberdrop-DL", auth_data.pixeldrain.api_key)
+            download_headers["Authorization"] = auth_data
+
         elif domain == "gofile":
             gofile_cookies = self.client_manager.cookies.filter_cookies(URL("https://gofile.io"))
             api_key = gofile_cookies.get("accountToken", "")
             if api_key:
-                download_headers["Authorization"] = f"Bearer {api_key.value}"
+                download_headers["Authorization"] = f"Bearer {api_key.value}"  # type: ignore
         return download_headers
 
     @create_session
@@ -160,19 +143,20 @@ class DownloadClient:
         media_item.partial_file = download_dir / f"{downloaded_filename}.part"
 
         resume_point = 0
-        if media_item.partial_file and media_item.partial_file.exists():
+        if media_item.partial_file and media_item.partial_file.is_file():
             resume_point = media_item.partial_file.stat().st_size if media_item.partial_file.exists() else 0
             download_headers["Range"] = f"bytes={resume_point}-"
 
-        await asyncio.sleep(self.client_manager.global_download_delay)
-
         download_url = media_item.debrid_link or media_item.url
-        async with client_session.get(
-            download_url,
-            headers=download_headers,
-            ssl=self.client_manager.ssl_context,
-            proxy=self.client_manager.proxy,
-        ) as resp:
+        async with (
+            self.client_manager.download_limiter(domain),
+            client_session.get(
+                download_url,
+                headers=download_headers,
+                ssl=self.client_manager.ssl_context,
+                proxy=self.client_manager.proxy,
+            ) as resp,
+        ):
             if resp.status == HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE:
                 media_item.partial_file.unlink()
 
@@ -186,7 +170,7 @@ class DownloadClient:
             media_item.filesize = int(resp.headers.get("Content-Length", "0"))
             if not media_item.complete_file:
                 proceed, skip = await self.get_final_file_info(media_item, domain)
-                self.client_manager.check_bunkr_maint(resp.headers)
+                self.client_manager.check_bunkr_maint(resp.headers)  # type: ignore
                 if skip:
                     self.manager.progress_manager.download_progress.add_skipped()
                     return False
@@ -229,9 +213,10 @@ class DownloadClient:
         update_progress: partial,
     ) -> None:
         """Appends content to a file."""
-        if not self.client_manager.manager.download_manager.check_free_space(media_item.download_folder):
+        if not self.manager.download_manager.check_free_space(media_item.download_folder):
             raise InsufficientFreeSpaceError(origin=media_item)
 
+        assert media_item.partial_file
         media_item.partial_file.parent.mkdir(parents=True, exist_ok=True)
         if not media_item.partial_file.is_file():
             media_item.partial_file.touch()
@@ -240,6 +225,7 @@ class DownloadClient:
 
         def check_download_speed():
             nonlocal last_slow_speed_read
+            assert media_item.task_id is not None
             speed = self.manager.progress_manager.file_progress.get_speed(media_item.task_id)
             if speed > self.download_speed_threshold:
                 last_slow_speed_read = None
@@ -272,6 +258,7 @@ class DownloadClient:
             return False
 
         async def save_content(content: aiohttp.StreamReader) -> None:
+            assert media_item.task_id is not None
             await self._append_content(
                 media_item,
                 content,
@@ -280,6 +267,8 @@ class DownloadClient:
 
         downloaded = await self._download(domain, manager, media_item, save_content)
         if downloaded:
+            assert media_item.partial_file
+            assert media_item.complete_file
             media_item.partial_file.rename(media_item.complete_file)
             proceed = check_file_duration(media_item, self.manager)
             await self.manager.db_manager.history_table.add_duration(domain, media_item)
@@ -376,14 +365,17 @@ class DownloadClient:
                 )
                 break
 
+            assert media_item.partial_file
+            assert media_item.filesize is not None
             if media_item.filename == downloaded_filename:
-                if media_item.partial_file.exists():
+                if media_item.partial_file.is_file():
                     log(f"Found {downloaded_filename} locally, trying to resume")
-                    if media_item.partial_file.stat().st_size >= media_item.filesize != 0:
+                    part_size = media_item.partial_file.stat().st_size
+                    if part_size >= media_item.filesize != 0:
                         log(f"Deleting partial file {media_item.partial_file}")
                         media_item.partial_file.unlink()
-                    if media_item.partial_file.stat().st_size == media_item.filesize:
-                        if media_item.complete_file.exists():
+                    if part_size == media_item.filesize:
+                        if media_item.complete_file.is_file():
                             log(
                                 f"Found conflicting complete file {media_item.complete_file} locally, iterating filename",
                                 30,
@@ -441,6 +433,7 @@ class DownloadClient:
 
     def check_filesize_limits(self, media: MediaItem) -> bool:
         """Checks if the file size is within the limits."""
+        assert media.filesize is not None
         file_size_limits = self.manager.config_manager.settings_data.file_size_limits
         max_video_filesize = file_size_limits.maximum_video_size or float("inf")
         min_video_filesize = file_size_limits.minimum_video_size
@@ -457,11 +450,3 @@ class DownloadClient:
             proceed = min_other_filesize < media.filesize < max_other_filesize
 
         return proceed
-
-    @property
-    def file_path(self) -> str | None:
-        return self._file_path
-
-    @file_path.setter
-    def file_path(self, media_item: MediaItem):
-        self._file_path = media_item.filename

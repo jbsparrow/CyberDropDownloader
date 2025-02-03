@@ -3,7 +3,6 @@ from __future__ import annotations
 import contextlib
 from dataclasses import field
 from functools import wraps
-from http import HTTPStatus
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -17,7 +16,6 @@ from cyberdrop_dl.clients.errors import (
     RestrictedFiletypeError,
     create_error_msg,
 )
-from cyberdrop_dl.utils.constants import CustomHTTPStatus
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -86,7 +84,7 @@ class Downloader:
     def startup(self) -> None:
         """Starts the downloader."""
         self.client = self.manager.client_manager.downloader_session
-        self.semaphore = self.manager.download_manager.get_download_limit(self.domain)
+        self.semaphore = self.manager.download_manager.get_download_semaphore(self.domain)
 
         self.manager.path_manager.download_folder.mkdir(parents=True, exist_ok=True)
         if self.manager.config_manager.settings_data.sorting.sort_downloads:
@@ -116,39 +114,6 @@ class Downloader:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    def check_file_can_download(self, media_item: MediaItem) -> None:
-        """Checks if the file can be downloaded."""
-        if not self.manager.download_manager.check_free_space(media_item.download_folder):
-            raise InsufficientFreeSpaceError(origin=media_item)
-        if not self.manager.download_manager.check_allowed_filetype(media_item):
-            raise RestrictedFiletypeError(origin=media_item)
-        if not self.manager.download_manager.pre_check_duration(media_item):
-            raise DurationError(origin=media_item)
-
-    def set_file_datetime(self, media_item: MediaItem, complete_file: Path) -> None:
-        """Sets the file's datetime."""
-        if self.manager.config_manager.settings_data.download_options.disable_file_timestamps:
-            return
-        if not media_item.datetime:
-            log(f"Unable to parse upload date for {media_item.url}, using current datetime as file datetime", 30)
-            return
-
-        file = File(str(complete_file))
-        file.set(
-            created=media_item.datetime,
-            modified=media_item.datetime,
-            accessed=media_item.datetime,
-        )
-
-    def attempt_task_removal(self, media_item: MediaItem) -> None:
-        """Attempts to remove the task from the progress bar."""
-        if media_item.task_id is not None:
-            with contextlib.suppress(ValueError):
-                self.manager.progress_manager.file_progress.remove_task(media_item.task_id)
-        media_item.task_id = None
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
     async def start_download(self, media_item: MediaItem) -> None:
         log(f"{self.log_prefix} starting: {media_item.url}", 20)
         if not media_item.file_lock_reference_name:
@@ -168,6 +133,7 @@ class Downloader:
             self.check_file_can_download(media_item)
             downloaded = await self.client.download_file(self.manager, self.domain, media_item)
             if downloaded:
+                assert media_item.complete_file
                 Path.chmod(media_item.complete_file, 0o666)
                 self.set_file_datetime(media_item, media_item.complete_file)
                 self.attempt_task_removal(media_item)
@@ -213,15 +179,29 @@ class Downloader:
             message = str(e)
             raise DownloadError(ui_message, message) from e
 
-    @staticmethod
-    def is_failed(status: int):
-        """NO USED"""
-        SERVER_ERRORS = (HTTPStatus.SERVICE_UNAVAILABLE, HTTPStatus.BAD_GATEWAY, CustomHTTPStatus.WEB_SERVER_IS_DOWN)
-        return any(
-            (is_4xx_client_error(status) and status != HTTPStatus.TOO_MANY_REQUESTS, status in SERVER_ERRORS),
-        )
+    def check_file_can_download(self, media_item: MediaItem) -> None:
+        """Checks if the file can be downloaded."""
+        if not self.manager.download_manager.check_free_space(media_item.download_folder):
+            raise InsufficientFreeSpaceError(origin=media_item)
+        if not self.manager.download_manager.check_allowed_filetype(media_item):
+            raise RestrictedFiletypeError(origin=media_item)
+        if not self.manager.download_manager.pre_check_duration(media_item):
+            raise DurationError(origin=media_item)
 
+    def set_file_datetime(self, media_item: MediaItem, complete_file: Path) -> None:
+        """Sets the file's datetime."""
+        if self.manager.config_manager.settings_data.download_options.disable_file_timestamps:
+            return
+        if not media_item.datetime:
+            log(f"Unable to parse upload date for {media_item.url}, using current datetime as file datetime", 30)
+            return
 
-def is_4xx_client_error(status_code: int) -> bool:
-    """Checks whether the HTTP status code is 4xx client error."""
-    return isinstance(status_code, str) or (HTTPStatus.BAD_REQUEST <= status_code < HTTPStatus.INTERNAL_SERVER_ERROR)
+        file = File(str(complete_file))
+        file.set(created=media_item.datetime, modified=media_item.datetime, accessed=media_item.datetime)  # type: ignore
+
+    def attempt_task_removal(self, media_item: MediaItem) -> None:
+        """Attempts to remove the task from the progress bar."""
+        if media_item.task_id is not None:
+            with contextlib.suppress(ValueError):
+                self.manager.progress_manager.file_progress.remove_task(media_item.task_id)
+        media_item.task_id = None

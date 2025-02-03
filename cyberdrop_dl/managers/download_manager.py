@@ -54,7 +54,7 @@ class DownloadManager:
             manager.config_manager.global_settings_data.rate_limiting_options.max_simultaneous_downloads_per_domain
         )
 
-    def get_download_limit(self, domain: str) -> asyncio.Semaphore:
+    def get_download_semaphore(self, domain: str) -> asyncio.Semaphore:
         """Returns the download limit for a domain."""
         limit_override = self.download_limits_overrides.get(domain)
         if limit_override:

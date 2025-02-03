@@ -137,51 +137,47 @@ class ClientManager:
                     if simplified_domain in domains_seen:
                         log(f"Previous cookies for domain {simplified_domain} detected. They will be overwritten", 30)
                 domains_seen.add(simplified_domain)
-                self.cookies.update_cookies({cookie.name: cookie.value}, response_url=URL(f"https://{cookie.domain}"))
+                self.cookies.update_cookies({cookie.name: cookie.value}, response_url=URL(f"https://{cookie.domain}"))  # type: ignore
 
         log_spacer(20, log_to_console=False)
 
-    def get_downloader_spacer(self, key: str) -> float:
+    def get_download_spacer(self, key: str) -> float:
         """Returns the download spacer for a domain."""
-        if key in self.download_spacer:
-            return self.download_spacer[key]
-        return 0.1
+        return self.download_spacer.get(key, 0.1)
 
     def get_request_limiter(self, domain: str) -> AsyncLimiter:
         """Get a rate limiter for a domain."""
-        if domain in self.request_limiters:
-            return self.request_limiters[domain]
-        return self.request_limiters["other"]
+        default = self.request_limiters["other"]
+        return self.download_spacer.get(domain, default)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @classmethod
     async def check_http_status(
-        cls,
-        response: ClientResponse,
-        download: bool = False,
-        origin: ScrapeItem | URL | None = None,
+        cls, response: ClientResponse, download: bool = False, origin: ScrapeItem | URL | None = None
     ) -> None:
         """Checks the HTTP status code and raises an exception if it's not acceptable."""
         status = response.status
         headers = response.headers
 
-        if download and headers.get("ETag") in DOWNLOAD_ERROR_ETAGS:
-            message = DOWNLOAD_ERROR_ETAGS.get(headers.get("ETag"))
+        e_tag = headers.get("ETag")
+        if download and e_tag and e_tag in DOWNLOAD_ERROR_ETAGS:
+            message = DOWNLOAD_ERROR_ETAGS.get(e_tag)
             raise DownloadError(HTTPStatus.NOT_FOUND, message=message, origin=origin)
 
         if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
             return
 
+        assert response.url.host
         if any(domain in response.url.host for domain in ("gofile", "imgur")):
             with contextlib.suppress(ContentTypeError):
                 JSON_Resp: dict = await response.json()
-                status = JSON_Resp.get("status")
-                if status and isinstance(status, str) and "notFound" in status:
+                status_str: str = JSON_Resp.get("status")  # type: ignore
+                if status_str and isinstance(status, str) and "notFound" in status_str:
                     raise ScrapeError(404, origin=origin)
                 data = JSON_Resp.get("data")
                 if data and isinstance(data, dict) and "error" in data:
-                    raise ScrapeError(status, data["error"], origin=origin)
+                    raise ScrapeError(status_str, data["error"], origin=origin)
 
         response_text = None
         with contextlib.suppress(UnicodeDecodeError):
@@ -191,7 +187,7 @@ class ClientManager:
             soup = BeautifulSoup(response_text, "html.parser")
             if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
                 raise DDOSGuardError(origin=origin)
-        status = status if headers.get("Content-Type") else CustomHTTPStatus.IM_A_TEAPOT
+        status: str | int = status if headers.get("Content-Type") else CustomHTTPStatus.IM_A_TEAPOT
         message = None if headers.get("Content-Type") else "No content-type in response header"
 
         raise DownloadError(status=status, message=message, origin=origin)
@@ -203,48 +199,30 @@ class ClientManager:
 
     @staticmethod
     def check_ddos_guard(soup: BeautifulSoup) -> bool:
-        if soup.title:
-            for title in DDOS_GUARD_CHALLENGE_TITLES:
-                challenge_found = title.casefold() == soup.title.string.casefold()
-                if challenge_found:
-                    return True
-
-        for selector in DDOS_GUARD_CHALLENGE_SELECTORS:
-            challenge_found = soup.find(selector)
-            if challenge_found:
-                return True
-
-        return False
+        return check_soup(soup, DDOS_GUARD_CHALLENGE_TITLES, DDOS_GUARD_CHALLENGE_SELECTORS)
 
     @staticmethod
     def check_cloudflare(soup: BeautifulSoup) -> bool:
-        if soup.title:
-            for title in CLOUDFLARE_CHALLENGE_TITLES:
-                challenge_found = title.casefold() == soup.title.string.casefold()
-                if challenge_found:
-                    return True
-
-        for selector in CLOUDFLARE_CHALLENGE_SELECTORS:
-            challenge_found = soup.find(selector)
-            if challenge_found:
-                return True
-
-        return False
+        return check_soup(soup, CLOUDFLARE_CHALLENGE_TITLES, CLOUDFLARE_CHALLENGE_SELECTORS)
 
     async def close(self) -> None:
         await self.flaresolverr._destroy_session()
 
     @asynccontextmanager
-    async def limiter(self, domain: str, download: bool = False):
-        request_limiter = self.get_request_limiter(domain)
-        download_spacer = self.get_downloader_spacer(domain)
+    async def limiter(self, domain: str):
+        domain_request_limiter = self.get_request_limiter(domain)
         async with (
             self.global_request_semaphore,
             self.global_request_limiter,
-            request_limiter,
+            domain_request_limiter,
         ):
-            if download:
-                await asyncio.sleep(download_spacer)
+            yield
+
+    @asynccontextmanager
+    async def download_limiter(self, domain: str):
+        download_spacer = self.get_download_spacer(domain)
+        await asyncio.sleep(self.global_download_delay + download_spacer)
+        async with self.limiter(domain):
             yield
 
 
@@ -263,3 +241,18 @@ def create_session(func: Callable) -> Any:
             return await func(self, *args, **kwargs)
 
     return wrapper
+
+
+def check_soup(soup: BeautifulSoup, titles: list[str], selectors: list[str]) -> bool:
+    if soup.title:
+        for title in titles:
+            challenge_found = title.casefold() == soup.title.text.casefold()
+            if challenge_found:
+                return True
+
+    for selector in selectors:
+        challenge_found = soup.find(selector)
+        if challenge_found:
+            return True
+
+    return False
