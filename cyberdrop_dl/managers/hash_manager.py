@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import aiofiles
 
-from cyberdrop_dl.clients.hash_client import HashClient
+from cyberdrop_dl.utils.hasher import Hasher
 
 try:
     from xxhash import xxh128 as xxhasher
@@ -23,7 +23,7 @@ class HashManager:
         self.xx_hasher = xxhasher
         self.md5_hasher = md5hasher
         self.sha_256_hasher = sha256hasher
-        self.hash_client = HashClient(manager)  # Initialize hash client in constructor
+        self.hash_client = Hasher(manager)  # Initialize hash client in constructor
         self.manager = manager
 
     async def startup(self) -> None:
