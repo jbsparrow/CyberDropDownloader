@@ -12,14 +12,7 @@ from yarl import URL
 
 from cyberdrop_dl.clients.http.downloader import Downloader
 from cyberdrop_dl.errors import JDownloaderError
-from cyberdrop_dl.scraper import CRAWLERS
-from cyberdrop_dl.scraper.filters import (
-    has_valid_extension,
-    is_in_domain_list,
-    is_outside_date_range,
-    is_valid_url,
-    remove_trailing_slash,
-)
+from cyberdrop_dl.scraper import CRAWLERS, filters
 from cyberdrop_dl.scraper.jdownloader import JDownloader
 from cyberdrop_dl.utils.constants import BLOCKED_DOMAINS, REGEX_LINKS
 from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
@@ -242,7 +235,7 @@ class ScrapeMapper:
 
     async def send_to_crawler(self, scrape_item: ScrapeItem) -> None:
         """Maps URLs to their respective handlers."""
-        scrape_item.url = remove_trailing_slash(scrape_item.url)
+        scrape_item.url = filters.remove_trailing_slash(scrape_item.url)
         supported_domain = [key for key in self.existing_crawlers if key in scrape_item.url.host]
         jdownloader_whitelisted = True
         if self.jdownloader_whitelist:
@@ -264,7 +257,7 @@ class ScrapeMapper:
             self.manager.task_group.create_task(self.existing_crawlers["real-debrid"].run(scrape_item))
             return
 
-        if has_valid_extension(scrape_item.url):
+        if filters.has_valid_extension(scrape_item.url):
             if await self.skip_no_crawler_by_config(scrape_item):
                 return
 
@@ -306,27 +299,31 @@ class ScrapeMapper:
 
     def filter_items(self, scrape_item: ScrapeItem) -> bool:
         """Pre-filter scrape items base on URL."""
+<<<<<<< HEAD:cyberdrop_dl/scraper/scraper.py
         self.count += 1
         if not is_valid_url(scrape_item):
+=======
+        if not filters.is_valid_url(scrape_item):
+>>>>>>> 299b9098 (refactor: rename `scrape` to `scrape_mapper`):cyberdrop_dl/scraper/scrape_mapper.py
             return False
 
-        if is_in_domain_list(scrape_item, BLOCKED_DOMAINS):
+        if filters.is_in_domain_list(scrape_item, BLOCKED_DOMAINS):
             log(f"Skipping {scrape_item.url} as it is a blocked domain", 10)
             return False
 
         before = self.manager.parsed_args.cli_only_args.completed_before
         after = self.manager.parsed_args.cli_only_args.completed_after
-        if is_outside_date_range(scrape_item, before, after):
+        if filters.is_outside_date_range(scrape_item, before, after):
             log(f"Skipping {scrape_item.url} as it is outside of the desired date range", 10)
             return False
 
         skip_hosts = self.manager.config_manager.settings_data.ignore_options.skip_hosts
-        if skip_hosts and is_in_domain_list(scrape_item, skip_hosts):
+        if skip_hosts and filters.is_in_domain_list(scrape_item, skip_hosts):
             log(f"Skipping URL by skip_hosts config: {scrape_item.url}", 10)
             return False
 
         only_hosts = self.manager.config_manager.settings_data.ignore_options.only_hosts
-        if only_hosts and not is_in_domain_list(scrape_item, only_hosts):
+        if only_hosts and not filters.is_in_domain_list(scrape_item, only_hosts):
             log(f"Skipping URL by only_hosts config: {scrape_item.url}", 10)
             return False
 
