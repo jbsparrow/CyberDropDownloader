@@ -25,7 +25,7 @@ from cyberdrop_dl.utils.logger import log, log_debug, log_spacer, log_with_color
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from cyberdrop_dl.downloader.downloader import Downloader
+    from cyberdrop_dl.clients.http.downloader import Downloader
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.scraper.crawler import Crawler
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem

@@ -11,7 +11,7 @@ import arrow
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import JDownloaderError
-from cyberdrop_dl.downloader.downloader import Downloader
+from cyberdrop_dl.clients.http.downloader import Downloader
 from cyberdrop_dl.scraper import CRAWLERS
 from cyberdrop_dl.scraper.filters import (
     has_valid_extension,
