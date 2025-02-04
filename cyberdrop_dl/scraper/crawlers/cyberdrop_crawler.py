@@ -9,7 +9,7 @@ from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import ScrapeError
+from cyberdrop_dl.errors import ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
@@ -24,6 +24,8 @@ CDN_POSSIBILITIES = re.compile(r"^(?:(?:k1)[0-9]{0,2})(?:redir)?\.cyberdrop?\.[a
 
 class CyberdropCrawler(Crawler):
     primary_base_domain = URL("https://cyberdrop.me/")
+    download_spacer = 0
+    max_concurrent_downloads = 1
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "cyberdrop", "Cyberdrop")

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import ScrapeError
+from cyberdrop_dl.errors import ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.logger import log
@@ -92,7 +92,7 @@ class LusciousCrawler(Crawler):
                     self.domain,
                     self.graphql_url.with_query({"operationName": query_name}),
                     data=query,
-                    headers_inc={"Content-Type": "application/json"},
+                    with_headers={"Content-Type": "application/json"},
                     origin=scrape_item,
                 )
             has_next_page = json_data["data"][data_name]["list"]["info"]["has_next_page"]
@@ -118,7 +118,7 @@ class LusciousCrawler(Crawler):
                 self.domain,
                 self.graphql_url.with_query({"operationName": "AlbumGet"}),
                 data=query,
-                headers_inc={"Content-Type": "application/json"},
+                with_headers={"Content-Type": "application/json"},
                 origin=scrape_item,
             )
 

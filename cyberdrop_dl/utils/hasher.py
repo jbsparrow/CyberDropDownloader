@@ -32,7 +32,7 @@ async def _hash_directory_scanner_helper(manager: Manager, path: Path):
     await manager.async_db_close()
 
 
-class HashClient:
+class Hasher:
     """Manage hashes and db insertion."""
 
     def __init__(self, manager: Manager) -> None:
