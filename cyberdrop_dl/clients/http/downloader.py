@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from aiohttp import ClientError, ClientResponseError
 from filedate import File
 
-from cyberdrop_dl.clients.errors import (
+from cyberdrop_dl.errors import (
     DownloadError,
     DurationError,
     InsufficientFreeSpaceError,

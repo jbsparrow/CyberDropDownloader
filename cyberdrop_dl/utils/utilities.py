@@ -18,7 +18,7 @@ from rich.text import Text
 from yarl import URL
 
 from cyberdrop_dl import __version__ as current_version
-from cyberdrop_dl.clients.errors import CDLBaseError, InvalidExtensionError, NoExtensionError
+from cyberdrop_dl.errors import CDLBaseError, InvalidExtensionError, NoExtensionError
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.logger import log, log_debug, log_spacer, log_with_color
 

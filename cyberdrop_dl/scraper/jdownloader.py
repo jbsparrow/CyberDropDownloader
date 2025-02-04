@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from myjdapi import myjdapi
 
-from cyberdrop_dl.clients.errors import JDownloaderError
+from cyberdrop_dl.errors import JDownloaderError
 from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:

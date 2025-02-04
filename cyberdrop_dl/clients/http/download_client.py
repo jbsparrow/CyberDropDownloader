@@ -13,13 +13,13 @@ import aiofiles
 from videoprops import get_audio_properties, get_video_properties
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import (
+from cyberdrop_dl.clients.http import Client, check, create_session
+from cyberdrop_dl.errors import (
     DownloadError,
     InsufficientFreeSpaceError,
     InvalidContentTypeError,
     SlowDownloadError,
 )
-from cyberdrop_dl.clients.http import Client, check, create_session
 from cyberdrop_dl.utils.constants import FILE_FORMATS
 from cyberdrop_dl.utils.logger import log
 
