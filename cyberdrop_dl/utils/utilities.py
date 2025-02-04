@@ -16,7 +16,7 @@ from aiohttp import ClientConnectorError, ClientSession, FormData
 from rich.text import Text
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import CDLBaseError, NoExtensionError
+from cyberdrop_dl.errors import CDLBaseError, NoExtensionError
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.logger import log, log_debug, log_spacer, log_with_color
 

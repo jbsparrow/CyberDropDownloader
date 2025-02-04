@@ -7,7 +7,7 @@ import arrow
 from bs4 import BeautifulSoup
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import NoExtensionError
+from cyberdrop_dl.errors import NoExtensionError
 from cyberdrop_dl.utils.constants import FILE_FORMATS
 from cyberdrop_dl.utils.utilities import get_filename_and_ext
 

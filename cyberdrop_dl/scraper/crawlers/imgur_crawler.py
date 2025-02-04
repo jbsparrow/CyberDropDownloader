@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import LoginError, ScrapeError
+from cyberdrop_dl.errors import LoginError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext

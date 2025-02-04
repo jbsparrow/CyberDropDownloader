@@ -6,8 +6,8 @@ from aiohttp import ClientSession
 from bs4 import BeautifulSoup
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import DDOSGuardError
 from cyberdrop_dl.clients.http import check
+from cyberdrop_dl.errors import DDOSGuardError
 from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:

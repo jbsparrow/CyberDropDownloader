@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from aiohttp import ClientResponse, ContentTypeError
 from bs4 import BeautifulSoup
 
-from cyberdrop_dl.clients.errors import DDOSGuardError, DownloadError, ScrapeError
+from cyberdrop_dl.errors import DDOSGuardError, DownloadError, ScrapeError
 from cyberdrop_dl.utils.constants import CustomHTTPStatus
 
 if TYPE_CHECKING:

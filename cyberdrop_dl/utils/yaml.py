@@ -11,7 +11,7 @@ from pydantic import BaseModel, ValidationError
 from yaml.error import YAMLError
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import InvalidYamlError
+from cyberdrop_dl.errors import InvalidYamlError
 from cyberdrop_dl.utils.constants import VALIDATION_ERROR_FOOTER
 
 
