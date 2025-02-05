@@ -25,6 +25,7 @@ class NudoStarTVCrawler(Crawler):
         super().__init__(manager, "nudostar.tv", "NudoStarTV")
         self.next_page_selector = "li[class=next] a"
         self.next_page_attribute = "href"
+        self.content_selector = "div[id=list_videos_common_videos_list_items] div a"
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -35,13 +36,13 @@ class NudoStarTVCrawler(Crawler):
             raise ValueError
         if scrape_item.url.name:
             scrape_item.url = scrape_item.url / ""
-        if len(scrape_item.url.parts) > 3:
+        if len(scrape_item.url.parts) > 4:
             return await self.image(scrape_item)
         await self.model(scrape_item)
 
     @error_handling_wrapper
     async def model(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a profile."""
+        """Scrapes a model page."""
 
         scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
         scrape_item.part_of_album = True
@@ -50,7 +51,7 @@ class NudoStarTVCrawler(Crawler):
         async for soup in self.web_pager(scrape_item):
             if not title:
                 title = self.create_title(soup.title.text.split("/")[0])  # type: ignore
-            content = soup.select("div[id=list_videos_common_videos_list_items] div a")
+            content = soup.select(self.content_selector)
             if "Last OnlyFans Updates" in title or not content:
                 raise ScrapeError(404, origin=scrape_item)
             for page in content:
@@ -62,7 +63,10 @@ class NudoStarTVCrawler(Crawler):
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album."""
+        """Scrapes an image."""
+        if await self.check_complete_from_referer(scrape_item):
+            return
+
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
         image = soup.select_one("div[class=block-video] a img")
