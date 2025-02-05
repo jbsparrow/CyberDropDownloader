@@ -9,6 +9,8 @@ from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.managers.manager import Manager
@@ -20,6 +22,8 @@ class NudoStarTVCrawler(Crawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "nudostar.tv", "NudoStarTV")
+        self.next_page_selector = "li[class=next] a"
+        self.next_page_attribute = "href"
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -32,26 +36,21 @@ class NudoStarTVCrawler(Crawler):
     @error_handling_wrapper
     async def model(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile."""
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
         scrape_item.part_of_album = True
-        title = self.create_title(soup.select_one("title").get_text().split("/")[0])  # type: ignore
-        content = soup.select("div[id=list_videos_common_videos_list_items] div a")
-        for page in content:
-            link_str: str = page.get("href")  # type: ignore
-            link = self.parse_url(link_str)
-            new_scrape_item = self.create_scrape_item(scrape_item, link, title, add_parent=scrape_item.url)
-            self.manager.task_group.create_task(self.image(new_scrape_item))
-            scrape_item.add_children()
+        title = ""
 
-        next_page = soup.select_one("li[class=next] a")
-        if next_page:
-            link_str: str = next_page.get("href")  # type: ignore
-            link = self.parse_url(link_str)
-            new_scrape_item = self.create_scrape_item(scrape_item, link)
-            self.manager.task_group.create_task(self.run(new_scrape_item))
+        async for soup in self.web_pager(scrape_item):
+            if not title:
+                title = self.create_title(soup.select_one("title").get_text().split("/")[0])  # type: ignore
+            content = soup.select("div[id=list_videos_common_videos_list_items] div a")
+            for page in content:
+                link_str: str = page.get("href")  # type: ignore
+                link = self.parse_url(link_str)
+                new_scrape_item = self.create_scrape_item(scrape_item, link, title, add_parent=scrape_item.url)
+                self.manager.task_group.create_task(self.image(new_scrape_item))
+                scrape_item.add_children()
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
@@ -63,3 +62,16 @@ class NudoStarTVCrawler(Crawler):
         link = self.parse_url(link_str)
         filename, ext = get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
+
+    async def web_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
+        """Generator of website pages."""
+        page_url = scrape_item.url
+        while True:
+            async with self.request_limiter:
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url, origin=scrape_item)
+            next_page = soup.select_one(self.next_page_selector)
+            yield soup
+            if not next_page:
+                break
+            page_url_str: str = next_page.get(self.next_page_attribute)  # type: ignore
+            page_url = self.parse_url(page_url_str)
