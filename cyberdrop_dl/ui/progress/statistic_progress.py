@@ -12,7 +12,22 @@ FAILURE_OVERRIDES = {
     "ClientConnectorCertificateError": "Client Connector Certificate Error",
     "ClientConnectorDNSError": "Client Connector DNS Error",
     "ClientConnectorError": "Client Connector Error",
-    "ConnectionTimeoutError": "Connection Timeout Error",
+    "ClientConnectorSSLError": "Client Connector SSL Error",
+    "ClientHttpProxyError": "Client HTTP Proxy Error",
+    "ClientPayloadError": "Client Payload Error",
+    "ClientProxyConnectionError": "Client Proxy Connection Error",
+    "ConnectionTimeoutError": "Connection Timeout",
+    "ContentTypeError": "Content Type Error",
+    "InvalidURL": "Invalid URL",
+    "InvalidUrlClientError": "Invalid URL Client Error",
+    "InvalidUrlRedirectClientError": "Invalid URL Redirect",
+    "NonHttpUrlRedirectClientError": "Non HTTP URL Redirect",
+    "RedirectClientError": "Redirect Error",
+    "ServerConnectionError": "Server Connection Error",
+    "ServerDisconnectedError": "Server Disconnected",
+    "ServerFingerprintMismatch": "Server Fingerprint Mismatch",
+    "ServerTimeoutError": "Server Timeout Error",
+    "SocketTimeoutError": "Socket Timeout Error",
 }
 
 
