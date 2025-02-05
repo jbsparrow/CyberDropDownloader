@@ -30,6 +30,8 @@ class NudoStarTVCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
+        if "models" not in scrape_item.url.parts:
+            raise ValueError
         scrape_item.url = URL(str(scrape_item.url) + "/")
         await self.model(scrape_item)
 
