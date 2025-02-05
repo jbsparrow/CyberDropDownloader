@@ -65,6 +65,13 @@ class NoExtensionError(CDLBaseError):
         super().__init__(ui_message, message=message, origin=origin)
 
 
+class InvalidExtensionError(NoExtensionError):
+    def __init__(self, *, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
+        """This error will be thrown when no extension is given for a file."""
+        super().__init__(message=message, origin=origin)
+        self.ui_message = "Invalid File Extension"
+
+
 class PasswordProtectedError(CDLBaseError):
     def __init__(self, message: str | None = None, *, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
         """This error will be thrown when a file is password protected."""

@@ -32,6 +32,18 @@ When this is set to `true`, the program will skip downloading audio files.
 
 When this is set to `true`, the program will skip downloading non media files files.
 
+## `exclude_files_with_no_extension`
+
+| Type                | Default  |
+|---------------------|----------|
+| `bool`              | `true`   |
+
+When this is set to `true`, the program will skip downloading files without an extension.
+
+{% hint style="info" %}
+CDL internally assumes any file without an extension is an `.mp4` file. That means any option that applies to videos like `--exclude-videos` and `--minimum-video-size` will apply to them. The actual file will still be downloaded without an extension
+{% endhint %}
+
 ## `ignore_coomer_ads`
 
 | Type  | Default |

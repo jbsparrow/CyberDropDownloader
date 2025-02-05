@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Iceyfile.com support
 - Support cookie extraction from Arc Browser, Lynx and W3M
+- `--exclude-files-with-no-extension` option: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/ignore_options#exclude_files_with_no_extension
 
 ### Removed
 
