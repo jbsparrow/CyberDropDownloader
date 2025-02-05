@@ -43,7 +43,7 @@ class NudoStarTVCrawler(Crawler):
             link_str: str = page.get("href")  # type: ignore
             link = self.parse_url(link_str)
             new_scrape_item = self.create_scrape_item(scrape_item, link, title, add_parent=scrape_item.url)
-            await self.image(new_scrape_item)
+            self.manager.task_group.create_task(self.image(new_scrape_item))
             scrape_item.add_children()
 
         next_page = soup.select_one("li[class=next] a")
