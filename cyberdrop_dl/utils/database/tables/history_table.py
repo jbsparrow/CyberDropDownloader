@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     import aiosqlite
     from yarl import URL
 
+    from cyberdrop_dl.scraper.crawler import Crawler
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
 
@@ -43,6 +44,19 @@ class HistoryTable:
         await self.add_columns_media()
         await self.fix_bunkr_v4_entries()
         await self.fix_chevereto_domains()
+
+    async def update_previously_unsupported(self, crawlers: dict[str, Crawler]) -> None:
+        """Update old `no_crawler` entries that are now supported."""
+        domains_to_update = [(c.domain, f"{c.primary_base_domain}%") for c in crawlers.values() if c.update_unsupported]
+        if not domains_to_update:
+            return
+        referers = [(d[1],) for d in domains_to_update]
+        cursor = await self.db_conn.cursor()
+        query = "UPDATE OR IGNORE media SET domain = ? WHERE domain = 'no_crawler' AND referer LIKE ?"
+        await cursor.executemany(query, domains_to_update)
+        query = "DELETE FROM media WHERE domain = 'no_crawler' AND referer LIKE ?"
+        await cursor.executemany(query, referers)
+        await self.db_conn.commit()
 
     async def fix_chevereto_domains(self) -> None:
         query = """UPDATE OR REPLACE media SET domain = 'jpg5.su' WHERE domain = 'sharex'"""
