@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from yarl import URL
 
+from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
@@ -32,7 +33,10 @@ class NudoStarTVCrawler(Crawler):
         """Determines where to send the scrape item based on the url."""
         if "models" not in scrape_item.url.parts:
             raise ValueError
-        scrape_item.url = URL(str(scrape_item.url) + "/")
+        if scrape_item.url.name:
+            scrape_item.url = scrape_item.url / ""
+        if len(scrape_item.url.parts) > 3:
+            return await self.image(scrape_item)
         await self.model(scrape_item)
 
     @error_handling_wrapper
@@ -45,8 +49,10 @@ class NudoStarTVCrawler(Crawler):
 
         async for soup in self.web_pager(scrape_item):
             if not title:
-                title = self.create_title(soup.select_one("title").get_text().split("/")[0])  # type: ignore
+                title = self.create_title(soup.title.text.split("/")[0])  # type: ignore
             content = soup.select("div[id=list_videos_common_videos_list_items] div a")
+            if "Last OnlyFans Updates" in title or not content:
+                raise ScrapeError(404, origin=scrape_item)
             for page in content:
                 link_str: str = page.get("href")  # type: ignore
                 link = self.parse_url(link_str)
