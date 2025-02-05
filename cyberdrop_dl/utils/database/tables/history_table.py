@@ -42,11 +42,13 @@ class HistoryTable:
         await self.fix_primary_keys()
         await self.add_columns_media()
         await self.fix_bunkr_v4_entries()
-        await self.fix_chevereto_domains()
+        await self.run_updates()
 
-    async def fix_chevereto_domains(self) -> None:
-        query = """UPDATE OR REPLACE media SET domain = 'jpg5.su' WHERE domain = 'sharex'"""
+    async def run_updates(self) -> None:
         cursor = await self.db_conn.cursor()
+        query = """UPDATE OR REPLACE media SET domain = 'jpg5.su' WHERE domain = 'sharex'"""
+        await cursor.execute(query)
+        query = """UPDATE OR REPLACE media SET domain = 'nudostar.tv' WHERE domain = 'nudostartv'"""
         await cursor.execute(query)
         await self.db_conn.commit()
 
