@@ -61,6 +61,7 @@ class MediaItem:
         self.original_filename = self.original_filename or self.filename
         self.parents = origin.parents.copy()
         self.datetime = origin.possible_datetime
+        self.parents_thread = origin.parent_threads.copy()
 
 
 @dataclass(kw_only=True, slots=True)
@@ -74,6 +75,7 @@ class ScrapeItem:
     retry_path: Path | None = None
 
     parents: list[URL] = field(default_factory=list, init=False)
+    parent_threads: set[URL] = field(default_factory=set, init=False)
     children: int = field(default=0, init=False)
     children_limit: int = field(default=0, init=False)
     type: ScrapeItemType | None = field(default=None, init=False)
@@ -114,16 +116,6 @@ class ScrapeItem:
         self.reset_childen()
         if reset_parents:
             self.parents = []
+            self.parent_threads = set()
         if reset_parent_title:
             self.parent_title = ""
-
-    @property
-    def parent_threads(self):
-        if not isinstance(self.parents, list):
-            return []
-        return list(
-            filter(
-                lambda x: (any(y in str(x) for y in {"threads"}) and all(y not in str(x) for y in {"post"})),
-                self.parents,
-            )
-        )

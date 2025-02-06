@@ -160,6 +160,7 @@ class XenforoCrawler(Crawler):
         """Scrapes a forum thread."""
         scrape_item.set_type(FORUM, self.manager)
         thread = self.get_thread_info(scrape_item.url)
+        scrape_item.parent_threads.add(thread.url)
         title = None
         last_post_url = thread.url
         async for soup in self.thread_pager(scrape_item):
