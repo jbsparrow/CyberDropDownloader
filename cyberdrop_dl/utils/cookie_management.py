@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
 console = Console()
 COOKIE_ERROR_FOOTER = "\n\nNothing has been saved."
+CHROMIUM_BROWSERS = ["chrome", "chromium", "opera", "opera_gx", "brave", "edge", "vivaldi", "arc"]
 
 
 class UnsupportedBrowserError(browser_cookie3.BrowserCookieError):
@@ -114,8 +115,8 @@ def clear_cookies(manager: Manager, domains: list[str] | None = None) -> None:
 
 def check_unsupported_browser(error: browser_cookie3.BrowserCookieError, extractor_name: str) -> None:
     msg = str(error)
-    if is_decrypt_error(msg) and extractor_name == "chrome" and os.name == "nt":
-        msg = f"Cookie extraction from Chrome is not supported on Windows - {msg}"
+    if is_decrypt_error(msg) and extractor_name in CHROMIUM_BROWSERS and os.name == "nt":
+        msg = f"Cookie extraction from {extractor_name.capitalize()} is not supported on Windows - {msg}"
         raise UnsupportedBrowserError(msg)
 
 
