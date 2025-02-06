@@ -186,6 +186,7 @@ download_options:
   --skip-download-mark-completed, --no-skip-download-mark-completed
   --skip-referer-seen-before, --no-skip-referer-seen-before
   --maximum-number-of-children [MAXIMUM_NUMBER_OF_CHILDREN ...]
+  --maximum-thread-depth MAX_THREAD_NESTING
 
 dupe_cleanup_options:
   --hashing HASHING

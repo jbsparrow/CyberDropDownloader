@@ -125,6 +125,7 @@ class XenforoCrawler(Crawler):
         self.attachment_url_parts = ["attachments", "data"]
         self.attachment_url_hosts = ["smgmedia", "attachments.f95zone"]
         self.logged_in = False
+        self.scraped_threads = set()
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -162,6 +163,10 @@ class XenforoCrawler(Crawler):
         thread = self.get_thread_info(scrape_item.url)
         title = None
         last_post_url = thread.url
+        if thread.url in self.scraped_threads:
+            return
+        scrape_item.parent_threads.add(thread.url)
+        self.scraped_threads.add(thread.url)
         async for soup in self.thread_pager(scrape_item):
             if not title:
                 title_block = soup.select_one(self.selectors.title.element)
@@ -344,6 +349,14 @@ class XenforoCrawler(Crawler):
         link_str = link_str.split('" class="link link--internal', 1)[0]
         new_link = self.parse_url(link_str)
         return await self.get_absolute_link(new_link)
+
+    def stop_thread_recursion(self, scrape_item: ScrapeItem) -> bool:
+        max_thread_depth = self.manager.config_manager.settings_data.download_options.maximum_thread_depth
+        if not max_thread_depth:
+            return True
+        if len(scrape_item.parent_threads) > max_thread_depth:
+            return True
+        return False
 
     def check_post_number(self, post_number: int, current_post_number: int) -> tuple[bool, bool]:
         """Checks if the program should scrape the current post.
