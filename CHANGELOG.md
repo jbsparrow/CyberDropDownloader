@@ -5,11 +5,7 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [UNRELEASED]
-- Add new CLI argument '--maximum-thread-depth' to restricting the depth of nesting when scraping threads
-
-
-## [UNRELEASED]
+## [6.4.0] - 2025-01-31
 
 ### Added
 
@@ -18,13 +14,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add support for https://www.imagebam.com
 - Add support for https://comics.8muses.com
 - Pornpics.com support
+- Twitter images (twimg) support
+- Members.luscious.net search support
+- Skip slow downloads with `--slow-download-speed`: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/runtime_options#slow_download_speed
+- Support for forums redirect URLs (`/goto/...`, `/posts/...`)
+
+### Changed
+
+- Files in the download queue are saved to the database and can be retried with `--retry-failed`
+- CLI `--skip-hosts` and `--only-hosts` values will be added to / removed from config values when passing `+` or `-` as the first argument, respectively. See: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/special_setting_types#AdditiveArgs
+- CLI arguments that accept multiple values can now be used multiple times in the same command
+- Forum posts are now processed asynchronously instead of sequentially
+- Prettify failures messages
+- Stats format
 
 ### Removed
 
-- Remove support for ImageBan as the website no longer exists
+- Support for ImageBan (website no longer exists)
+
+### Fixed
+
+- ImgBB crawler
+- Download path structure (Tokyomotion)
+- Empty `download_filename` on database
+- Missing tread id on `Last_Scraped_Forum_Post.csv` URLs
+- Nudostar Crawler
+- Invalid URL parsing (imgur)
+- Invalid link confirmation URL parsing (forums)
 
 
-## [6.3.0] - 2025-01-24
+## [6.3.0] - 2025-01-23
 
 ### Added
 
