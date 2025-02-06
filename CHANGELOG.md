@@ -12,10 +12,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Iceyfile.com support
 - Support cookie extraction from Arc Browser, Lynx and W3M
 - `--exclude-files-with-no-extension` option: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/ignore_options#exclude_files_with_no_extension
+- `--print-stats` CLI only option
 
 ### Removed
 
 - Cookie extraction support from Chrome on Windows
+
+### Fixed
+
+- Delete old database entries of previously unsupported URLs
+- Nudostar.tv crawler
 
 ## [6.4.0] - 2025-01-31
 
