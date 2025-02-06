@@ -86,7 +86,7 @@ class DownloadClient:
         async def on_request_end(*args):
             params: aiohttp.TraceRequestEndParams = args[2]
             msg = f"Finishing download {params.method} request to {params.url}"
-            msg += f"-> response status: {params.response.status}"
+            msg += f" -> response status: {params.response.status}"
             log(msg, 10)
 
         trace_config = aiohttp.TraceConfig()

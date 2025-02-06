@@ -275,7 +275,7 @@ class ScrapeMapper:
             return
 
         if self.jdownloader.enabled and jdownloader_whitelisted:
-            log(f"Sending unsupported URL to JDownloader: {scrape_item.url}", 10)
+            log(f"Sending unsupported URL to JDownloader: {scrape_item.url}", 20)
             success = False
             try:
                 download_folder = get_download_path(self.manager, scrape_item, "jdownloader")
