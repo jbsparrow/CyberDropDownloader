@@ -14,6 +14,10 @@ from cyberdrop_dl.utils.transfer.transfer_v4_db import transfer_v4_db
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
+CACHE_FILE = constants.APP_STORAGE / "Cache" / "cache.yaml"
+OLD_DB_FILE = constants.APP_STORAGE / "download_history.sqlite"
+NEW_DB_FILE = constants.APP_STORAGE / "Cache" / "cyberdrop.db"
+
 
 class TransitionManager:
     def __init__(self, manager: Manager) -> None:
@@ -23,22 +27,21 @@ class TransitionManager:
         """
         transfers from old v5 hash table to new v5 hash table, that supports multiple hash types per file
         """
-        db_path = constants.APP_STORAGE / "Cache" / "cyberdrop.db"
-        if db_path.exists():
-            transfer_from_old_hash_table(db_path)
+        if NEW_DB_FILE.exists():
+            transfer_from_old_hash_table(NEW_DB_FILE)
 
-    def transfer_v4_to_v5(self):
+    def transfer_v4_to_v6(self):
         """
         Makes some changes for transfer from v4 to v5
 
         """
         OLD_APP_STORAGE = Path(platformdirs.user_config_dir("Cyberdrop-DL"))
         OLD_DOWNLOAD_STORAGE = Path(platformdirs.user_downloads_path()) / "Cyberdrop-DL Downloads"
+        OLD_DB_STORAGE = Path(platformdirs.user_data_dir("Cyberdrop-DL"))
 
-        if constants.APP_STORAGE.exists():
-            cache_file = constants.APP_STORAGE / "Cache" / "cache.yaml"
-            if cache_file.is_file() and self.check_cache_for_moved(cache_file):
-                return
+        self.manager.config_manager.settings.parent.mkdir(parents=True, exist_ok=True)
+        if self.check_cache_for_moved():
+            return
 
         OLD_FILES = Path("./Old Files")
         OLD_FILES.mkdir(parents=True, exist_ok=True)
@@ -56,20 +59,28 @@ class TransitionManager:
             shutil.rmtree(OLD_DOWNLOAD_STORAGE)
 
         if Path("./download_history.sqlite").is_file():
-            transfer_v4_db(Path("./download_history.sqlite"), constants.APP_STORAGE / "Cache" / "cyberdrop.db")
+            transfer_v4_db(Path("./download_history.sqlite"), NEW_DB_FILE)
             Path("./download_history.sqlite").rename(OLD_FILES / "download_history1.sqlite")
 
-        if (constants.APP_STORAGE / "download_history.sqlite").is_file():
+        if (OLD_DB_FILE).is_file():
             transfer_v4_db(
-                constants.APP_STORAGE / "download_history.sqlite",
+                OLD_DB_FILE,
+                NEW_DB_FILE,
+            )
+            (OLD_DB_FILE).rename(OLD_FILES / "download_history2.sqlite")
+
+        if (OLD_DB_STORAGE / "download_history.sqlite").is_file():
+            transfer_v4_db(
+                OLD_DB_STORAGE / "download_history.sqlite",
                 constants.APP_STORAGE / "Cache" / "cyberdrop.db",
             )
-            (constants.APP_STORAGE / "download_history.sqlite").rename(OLD_FILES / "download_history2.sqlite")
+            (OLD_DB_STORAGE / "download_history.sqlite").rename(OLD_FILES / "download_history3.sqlite")
 
         if Path("./config.yaml").is_file():
             try:
                 transfer_v4_config(self.manager, "Imported V4", Path("./config.yaml"))
-                self.update_default_config(constants.APP_STORAGE / "Cache" / "cache.yaml", "Imported V4")
+                self.manager.config_manager.change_default_config("Imported V4")
+                self.manager.config_manager.change_config("Imported V4")
             except OSError:
                 pass
             Path("./config.yaml").rename(OLD_FILES / "config.yaml")
@@ -81,29 +92,18 @@ class TransitionManager:
         if Path("./Unsupported_URLs.csv").is_file():
             Path("./Unsupported_URLs.csv").rename(OLD_FILES / "Unsupported_URLs.csv")
 
-        self.set_first_startup_completed(constants.APP_STORAGE / "Cache" / "cache.yaml")
+        self.set_first_startup_completed()
 
-    @staticmethod
-    def check_cache_for_moved(cache_file: Path) -> bool:
+    def check_cache_for_moved(self) -> bool:
         """Checks the cache for moved files."""
-        cache = yaml.load(cache_file, create=True)
+        cache = yaml.load(CACHE_FILE, create=True)
         if not cache:
             cache = {"first_startup_completed": False}
-            yaml.save(cache_file, cache)
+            self.manager.cache_manager.dump(cache)
         return bool(cache.get("first_startup_completed", False))
 
-    @staticmethod
-    def set_first_startup_completed(cache_file: Path) -> None:
+    def set_first_startup_completed(self) -> None:
         """Updates the cache to reflect the new location."""
-        cache = yaml.load(cache_file, create=True)
+        cache = yaml.load(CACHE_FILE, create=True)
         cache["first_startup_completed"] = True
-        yaml.save(cache_file, cache)
-
-    @staticmethod
-    def update_default_config(cache_file: Path, config_name: str) -> None:
-        """Updates the default config in the cache."""
-        cache = yaml.load(cache_file, create=True)
-        if not cache:
-            cache = {"first_startup_completed": False}
-        cache["default_config"] = config_name
-        yaml.save(cache_file, cache)
+        self.manager.cache_manager.dump(cache)

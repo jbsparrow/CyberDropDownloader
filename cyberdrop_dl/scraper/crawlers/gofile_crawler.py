@@ -12,7 +12,7 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import DownloadError, PasswordProtectedError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -118,7 +118,7 @@ class GoFileCrawler(Crawler):
 
             link = self.parse_url(link_str)
             date = child["createTime"]
-            filename, ext = get_filename_and_ext(link.name)
+            filename, ext = self.get_filename_and_ext(link.name, assume_ext=".mp4")
             new_scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, possible_datetime=date)
             await self.handle_file(link, new_scrape_item, filename, ext)
             scrape_item.add_children()

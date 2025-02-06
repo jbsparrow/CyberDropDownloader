@@ -6,13 +6,13 @@ from functools import wraps
 from textwrap import dedent
 from typing import TYPE_CHECKING, Any
 
+import browser_cookie3
 from requests import request
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.text import Text
 
 from cyberdrop_dl.clients.hash_client import hash_directory_scanner
-from cyberdrop_dl.dependencies import browser_cookie3
 from cyberdrop_dl.ui.prompts import user_prompts
 from cyberdrop_dl.ui.prompts.basic_prompts import ask_dir_path, enter_to_continue
 from cyberdrop_dl.ui.prompts.defaults import DONE_CHOICE, EXIT_CHOICE
@@ -115,7 +115,11 @@ class ProgramUI:
         new_config = user_prompts.import_v4_config_prompt(self.manager)
         if not new_config:
             return
-        transfer_v4_config(self.manager, *new_config)
+        new_config_name, old_config_path = new_config
+        transfer_v4_config(self.manager, new_config_name, old_config_path)
+        self.manager.config_manager.change_config(new_config_name)
+        if user_prompts.switch_default_config_to(self.manager, new_config_name):
+            self.manager.config_manager.change_default_config(new_config_name)
 
     def _import_v4_download_history(self) -> None:
         import_download_history_path = user_prompts.import_v4_download_history_prompt()
@@ -137,6 +141,9 @@ class ProgramUI:
         if selected_config.casefold() == "all":
             self.manager.multiconfig = True
             return
+        self.manager.config_manager.change_config(selected_config)
+        if user_prompts.switch_default_config_to(self.manager, selected_config):
+            self.manager.config_manager.change_default_config(selected_config)
         self.manager.config_manager.change_config(selected_config)
 
     def _view_changelog(self) -> None:
@@ -203,6 +210,8 @@ class ProgramUI:
         config_name = user_prompts.create_new_config(self.manager)
         if not config_name:
             return
+        if user_prompts.switch_default_config_to(self.manager, config_name):
+            self.manager.config_manager.change_default_config(config_name)
         self.manager.config_manager.change_config(config_name)
         config_file = self.manager.path_manager.config_folder / config_name / "settings.yaml"
         self._open_in_text_editor(config_file)
@@ -214,6 +223,8 @@ class ProgramUI:
         configs = self.manager.config_manager.get_configs()
         selected_config = user_prompts.select_config(configs)
         self.manager.config_manager.change_default_config(selected_config)
+        if user_prompts.activate_config(self.manager, selected_config) is not None:
+            self.manager.config_manager.change_config(selected_config)
 
     def _delete_config(self) -> None:
         configs = self.manager.config_manager.get_configs()
@@ -231,6 +242,8 @@ class ProgramUI:
             return
 
         self.manager.config_manager.delete_config(selected_config)
+        if user_prompts.switch_default_config():
+            self._change_default_config()
 
     def _edit_auto_cookies_extration(self) -> None:
         user_prompts.auto_cookie_extraction(self.manager)

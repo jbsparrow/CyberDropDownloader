@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 class PixHostCrawler(Crawler):
     primary_base_domain = URL("https://pixhost.to/")
+    update_unsupported = True
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "pixhost", "PixHost")

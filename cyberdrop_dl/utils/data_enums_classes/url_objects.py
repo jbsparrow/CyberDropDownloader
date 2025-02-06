@@ -38,6 +38,7 @@ class MediaItem:
     original_filename: str | None = None
     debrid_link: URL | None = field(default=None, hash=False, compare=False)
     duration: float | None = field(default=None, hash=False, compare=False)
+    ext: str = ""
 
     # exclude from __init__
     file_lock_reference_name: str | None = field(default=None, init=False)
@@ -51,14 +52,13 @@ class MediaItem:
     # slots for __post_init__
     referer: URL = field(init=False)
     album_id: str | None = field(init=False)
-    ext: str = field(init=False)
     datetime: int | None = field(init=False, hash=False, compare=False)
     parents: list[URL] = field(init=False, hash=False, compare=False)
 
     def __post_init__(self, origin: ScrapeItem) -> None:
         self.referer = origin.url
         self.album_id = origin.album_id
-        self.ext = Path(self.filename).suffix
+        self.ext = self.ext or Path(self.filename).suffix
         self.original_filename = self.original_filename or self.filename
         self.parents = origin.parents.copy()
         self.datetime = origin.possible_datetime

@@ -319,7 +319,7 @@ class DownloadClient:
     async def add_file_size(self, domain: str, media_item: MediaItem) -> None:
         if not media_item.complete_file:
             media_item.complete_file = self.get_file_location(media_item)
-        if media_item.complete_file.exists():
+        if media_item.complete_file.is_file():
             await self.manager.db_manager.history_table.add_filesize(domain, media_item)
 
     async def handle_media_item_completion(self, media_item: MediaItem, downloaded: bool = False) -> None:
@@ -421,7 +421,7 @@ class DownloadClient:
         """Iterates the filename until it is unique."""
         partial_file = None
         for iteration in itertools.count(1):
-            filename = f"{complete_file.stem} ({iteration}){media_item.ext}"
+            filename = f"{complete_file.stem} ({iteration}){complete_file.suffix}"
             temp_complete_file = media_item.download_folder / filename
             if (
                 not temp_complete_file.exists()

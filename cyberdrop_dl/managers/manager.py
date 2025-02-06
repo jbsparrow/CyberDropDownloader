@@ -67,17 +67,12 @@ class Manager:
         if isinstance(self.parsed_args, Field):
             self.parsed_args = ParsedArgs.parse_args()
 
-        if not self.parsed_args.cli_only_args.appdata_folder:
-            self.first_time_setup.transfer_v4_to_v5()
-
         self.path_manager = PathManager(self)
         self.path_manager.pre_startup()
-        # need pathmanager to get proper appdata location
-        self.first_time_setup.transfer_v5_to_new_hashtable()
-
         self.cache_manager.startup(self.path_manager.cache_folder / "cache.yaml")
         self.config_manager = ConfigManager(self)
         self.config_manager.startup()
+
         self.args_consolidation()
         self.cache_manager.load_request_cache()
         self.vi_mode = self.config_manager.global_settings_data.ui_options.vi_mode
@@ -128,13 +123,15 @@ class Manager:
         if not isinstance(self.db_manager, DBManager):
             self.db_manager = DBManager(self, self.path_manager.history_db)
             await self.db_manager.startup()
+        self.first_time_setup.transfer_v5_to_new_hashtable()
         if not isinstance(self.hash_manager, HashManager):
             self.hash_manager = HashManager(self)
             await self.hash_manager.startup()
         if not isinstance(self.live_manager, LiveManager):
             self.live_manager = LiveManager(self)
-        self.progress_manager = ProgressManager(self)
-        self.progress_manager.startup()
+        if not isinstance(self.progress_manager, ProgressManager):
+            self.progress_manager = ProgressManager(self)
+            self.progress_manager.startup()
 
     def process_additive_args(self) -> None:
         cli_ignore_options = self.parsed_args.config_settings.ignore_options
@@ -234,21 +231,27 @@ class Manager:
         log(f"Using Authentication: \n{json.dumps(auth_provided, indent=4, sort_keys=True)}", 10)
         log(f"Using Settings: \n{config_settings}", 10)
         log(f"Using Global Settings: \n{global_settings}", 10)
-
         if (
             self.config_manager.settings_data.ignore_options.filename_regex_filter
             and not self.config_manager.valid_filename_filter_regex
         ):
             log("Regex pattern of filename filter is invalid. Regex check has been disabled", 40)
 
+    async def async_db_close(self) -> None:
+        "Partial shutdown for managers used for hash directory scanner"
+        if not isinstance(self.db_manager, Field):
+            await self.db_manager.close()
+        self.db_manager: DBManager = field(init=False)
+        self.hash_manager: HashManager = field(init=False)
+        self.progress_manager.hash_progress.reset()
+
     async def close(self) -> None:
         """Closes the manager."""
-        await self.db_manager.close()
         if not isinstance(self.client_manager, Field):
             await self.client_manager.close()
+        await self.async_db_close()
         await self.cache_manager.close()
         self.cache_manager.close_sync()
-        self.db_manager: DBManager = field(init=False)
         self.cache_manager: CacheManager = field(init=False)
         self.hash_manager: HashManager = field(init=False)
 

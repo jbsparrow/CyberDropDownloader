@@ -32,6 +32,18 @@ When this is set to `true`, the program will skip downloading audio files.
 
 When this is set to `true`, the program will skip downloading non media files files.
 
+## `exclude_files_with_no_extension`
+
+| Type                | Default  |
+|---------------------|----------|
+| `bool`              | `true`   |
+
+When this is set to `true`, the program will skip downloading files without an extension.
+
+{% hint style="info" %}
+CDL internally assumes any file without an extension is an `.mp4` file. That means any option that applies to videos like `--exclude-videos` and `--minimum-video-size` will apply to them. The actual file will still be downloaded without an extension
+{% endhint %}
+
 ## `ignore_coomer_ads`
 
 | Type  | Default |
@@ -42,19 +54,19 @@ When this is set to `true`, the program will skip post marked as ads by models i
 
 ## `skip_hosts`
 
-| Type  | Default |
-|----------------|----------|
-| `list[NonEmptyStr]` | `[]` |
+| Type                | Default  | Additional Info |
+|---------------------|----------| --------------- |
+| `list[NonEmptyStr]` | `[]`     | This is an [`AdditiveArg`](../special_setting_types.md#additiveargs)
 
-You can supply hosts that you'd like the program to skip, to not scrape/download from them. This setting accepts any domain, even if they are no supported. When passing hosts as CLI arguments, if the first host is `+`, any hosts after it will be added to the lists of hosts specified in the config file instead of overriding it. Similarly, if the first hosts is `-`, any hosts after it will be removed from the lists of hosts specified in the config
+You can supply hosts that you'd like the program to skip, to not scrape/download from them. This setting accepts any domain, even if they are no supported.
 
 ## `only_hosts`
 
-| Type  | Default |
-|----------------|----------|
-| `list[NonEmptyStr]` | `[]` |
+| Type                | Default  | Additional Info |
+|---------------------|----------| --------------- |
+| `list[NonEmptyStr]` | `[]`     | This is an [`AdditiveArg`](../special_setting_types.md#additiveargs
 
-You can supply hosts that you'd like the program to exclusively scrape/download from. This setting accepts any domain, even if they are no supported. When passing hosts as CLI arguments, if the first host is `+`, any hosts after it will be added to the lists of hosts specified in the config file instead of overriding it. Similarly, if the first hosts is `-`, any hosts after it will be removed from the lists of hosts specified in the config
+You can supply hosts that you'd like the program to exclusively scrape/download from. This setting accepts any domain, even if they are no supported.
 
 ## `filename_regex_filter`
 

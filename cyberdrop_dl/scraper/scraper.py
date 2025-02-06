@@ -80,6 +80,7 @@ class ScrapeMapper:
         self.manager.scrape_mapper = self
         self.manager.client_manager.load_cookie_files()
         self.start_scrapers()
+        await self.manager.db_manager.history_table.update_previously_unsupported(self.existing_crawlers)
         self.start_jdownloader()
         await self.start_real_debrid()
         self.no_crawler_downloader.startup()

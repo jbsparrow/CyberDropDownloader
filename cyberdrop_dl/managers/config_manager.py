@@ -40,9 +40,7 @@ class ConfigManager:
 
     def startup(self) -> None:
         """Startup process for the config manager."""
-        self.loaded_config = self.loaded_config or self.manager.cache_manager.get("default_config")
-        if not self.loaded_config or self.loaded_config.casefold() == "all":
-            self.loaded_config = "Default"
+        self.loaded_config = self.get_loaded_config()
         cli_config = self.manager.parsed_args.cli_only_args.config
         if cli_config and cli_config.casefold() != "all":
             self.loaded_config = self.manager.parsed_args.cli_only_args.config
@@ -58,6 +56,17 @@ class ConfigManager:
         self.settings.parent.mkdir(parents=True, exist_ok=True)
         self.pydantic_config = self.manager.cache_manager.get("pydantic_config")
         self.load_configs()
+        if not self.manager.parsed_args.cli_only_args.appdata_folder:
+            self.manager.first_time_setup.transfer_v4_to_v6()
+
+    def get_loaded_config(self):
+        loaded_config = self.loaded_config or self.get_default_config()
+        if not loaded_config or loaded_config.casefold() == "all":
+            loaded_config = "Default"
+        return loaded_config
+
+    def get_default_config(self):
+        return self.manager.cache_manager.get("default_config")
 
     def load_configs(self) -> None:
         """Loads all the configs."""

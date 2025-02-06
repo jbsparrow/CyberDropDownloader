@@ -9,19 +9,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Iceyfile.com support
+- Support cookie extraction from Arc Browser, Lynx and W3M
+- `--exclude-files-with-no-extension` option: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/ignore_options#exclude_files_with_no_extension
+- `--print-stats` CLI only option
+- Add minimum/maximum audio and video duration config options and CLI arguments
+
+### Removed
+
+- Cookie extraction support from Chrome on Windows
+
+### Fixed
+
+- Delete old database entries of previously unsupported URLs
+- Nudostar.tv crawler
+
+## [6.4.0] - 2025-01-31
+
+### Added
+
 - Add support for TikTok profiles, videos, and photos
 - Add new CLI argument `--download-tiktok-audios` to download audio files from TikTok posts
 - Add support for https://www.imagebam.com
 - Add support for https://comics.8muses.com
 - Pornpics.com support
-- Add minimum/maximum audio and video duration config options and CLI arguments
+- Twitter images (twimg) support
+- Members.luscious.net search support
+- Skip slow downloads with `--slow-download-speed`: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/runtime_options#slow_download_speed
+- Support for forums redirect URLs (`/goto/...`, `/posts/...`)
+
+### Changed
+
+- Files in the download queue are saved to the database and can be retried with `--retry-failed`
+- CLI `--skip-hosts` and `--only-hosts` values will be added to / removed from config values when passing `+` or `-` as the first argument, respectively. See: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/special_setting_types#AdditiveArgs
+- CLI arguments that accept multiple values can now be used multiple times in the same command
+- Forum posts are now processed asynchronously instead of sequentially
+- Prettify failures messages
+- Stats format
 
 ### Removed
 
-- Remove support for ImageBan as the website no longer exists
+- Support for ImageBan (website no longer exists)
+
+### Fixed
+
+- ImgBB crawler
+- Download path structure (Tokyomotion)
+- Empty `download_filename` on database
+- Missing tread id on `Last_Scraped_Forum_Post.csv` URLs
+- Nudostar Crawler
+- Invalid URL parsing (imgur)
+- Invalid link confirmation URL parsing (forums)
 
 
-## [6.3.0] - 2025-01-24
+## [6.3.0] - 2025-01-23
 
 ### Added
 
