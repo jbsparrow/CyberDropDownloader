@@ -321,6 +321,7 @@ class DownloadClient:
                 break
 
             if media_item.complete_file.exists() and media_item.complete_file.stat().st_size == media_item.filesize:
+                log(f"Found {media_item.complete_file.name} locally, skipping download")
                 proceed = False
                 break
 
@@ -337,10 +338,16 @@ class DownloadClient:
 
             if media_item.filename == downloaded_filename:
                 if media_item.partial_file.exists():
+                    log(f"Found {downloaded_filename} locally, trying to resume")
                     if media_item.partial_file.stat().st_size >= media_item.filesize != 0:
+                        log(f"Deleting partial file {media_item.partial_file}")
                         media_item.partial_file.unlink()
                     if media_item.partial_file.stat().st_size == media_item.filesize:
                         if media_item.complete_file.exists():
+                            log(
+                                f"Found conflicting complete file {media_item.complete_file} locally, iterating filename",
+                                30,
+                            )
                             new_complete_filename, new_partial_file = await self.iterate_filename(
                                 media_item.complete_file,
                                 media_item,
@@ -353,10 +360,18 @@ class DownloadClient:
                         else:
                             proceed = False
                             media_item.partial_file.rename(media_item.complete_file)
+                        log(
+                            f"Renaming found partial file {media_item.partial_file} to complete file {media_item.complete_file}"
+                        )
                 elif media_item.complete_file.exists():
                     if media_item.complete_file.stat().st_size == media_item.filesize:
+                        log(f"Found complete file {media_item.complete_file} locally, skipping download")
                         proceed = False
                     else:
+                        log(
+                            f"Found conflicting complete file {media_item.complete_file} locally, iterating filename",
+                            30,
+                        )
                         media_item.complete_file, media_item.partial_file = await self.iterate_filename(
                             media_item.complete_file,
                             media_item,
