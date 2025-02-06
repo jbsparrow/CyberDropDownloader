@@ -10,6 +10,7 @@ from pathlib import Path
 from time import perf_counter
 from typing import TYPE_CHECKING
 
+import browser_cookie3
 from pydantic import ValidationError
 from rich.console import Console
 from rich.logging import RichHandler
@@ -66,6 +67,10 @@ def startup() -> Manager | None:
         startup_logger.info("Exiting...")
         sys.exit(0)
 
+    except browser_cookie3.BrowserCookieError:
+        startup_logger.exception("")
+        sys.exit(1)
+
     except Exception:
         msg = "An error occurred, please report this to the developer with your logs file:"
         startup_logger.exception(msg)
@@ -102,7 +107,7 @@ async def post_runtime(manager: Manager) -> None:
         sorter = Sorter(manager)
         await sorter.run()
 
-    await check_partials_and_empty_folders(manager)
+    check_partials_and_empty_folders(manager)
 
     if manager.config_manager.settings_data.runtime_options.update_last_forum_post:
         await manager.log_manager.update_last_forum_post()
@@ -199,8 +204,9 @@ def ui_error_handling_wrapper(func: Callable) -> Callable:
             exceptions = [e]
             if isinstance(e, ExceptionGroup):
                 exceptions = e.exceptions
-            msg = "An error occurred, please report this to the developer with your logs file:"
-            log_with_color(msg, "bold red", 50, show_in_stats=False)
+            if not isinstance(exceptions[0], browser_cookie3.BrowserCookieError):
+                msg = "An error occurred, please report this to the developer with your logs file:"
+                log_with_color(msg, "bold red", 50, show_in_stats=False)
             for exc in exceptions:
                 log_with_color(f"  {exc}", "bold red", 50, show_in_stats=False, exc_info=exc)
 
@@ -237,7 +243,6 @@ async def director(manager: Manager) -> None:
         await runtime(manager)
         await post_runtime(manager)
 
-        log_spacer(20)
         manager.progress_manager.print_stats(start_time)
 
         if not configs_to_run:

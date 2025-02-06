@@ -11,8 +11,7 @@ from cyberdrop_dl.clients.errors import NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.constants import FILE_FORMATS
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.logger import log
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup, Tag
@@ -58,8 +57,7 @@ class BunkrrCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
         if scrape_item.url.path == "/":
-            log(f"Scrape Failed: Unknown URL path: {scrape_item.url}", 40)
-            return
+            raise ValueError
 
         if self.is_reinforced_link(scrape_item.url):
             scrape_item.url = await self.handle_reinforced_link(scrape_item.url, scrape_item)
@@ -78,6 +76,7 @@ class BunkrrCrawler(Crawler):
         """Scrapes an album."""
         if not scrape_item.url:
             return
+
         scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path)
         album_id = scrape_item.url.parts[2]
         scrape_item.album_id = album_id
@@ -122,8 +121,8 @@ class BunkrrCrawler(Crawler):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
             else:
-                src_filename, ext = get_filename_and_ext(src.name)
-                filename, _ = get_filename_and_ext(filename)
+                src_filename, ext = self.get_filename_and_ext(src.name, assume_ext=".mp4")
+                filename, _ = self.get_filename_and_ext(filename, assume_ext=".mp4")
                 if not self.check_album_results(src, results):
                     await self.handle_file(src, new_scrape_item, src_filename, ext, custom_filename=filename)
 
@@ -188,9 +187,9 @@ class BunkrrCrawler(Crawler):
         if not link:
             return
         try:
-            src_filename, ext = get_filename_and_ext(link.name)
+            src_filename, ext = self.get_filename_and_ext(link.name)
         except NoExtensionError:
-            src_filename, ext = get_filename_and_ext(scrape_item.url.name)
+            src_filename, ext = self.get_filename_and_ext(scrape_item.url.name, assume_ext=".mp4")
         filename = link.query.get("n") or fallback_filename
         if not url:
             scrape_item = self.create_scrape_item(scrape_item, URL("https://get.bunkrr.su/"))

@@ -79,10 +79,13 @@ class ProgressManager:
 
     def print_stats(self, start_time: float) -> None:
         """Prints the stats of the program."""
+        if not self.manager.parsed_args.cli_only_args.print_stats:
+            return
         end_time = time.perf_counter()
         runtime = timedelta(seconds=int(end_time - start_time))
         data_size = ByteSize(self.file_progress.downloaded_data).human_readable(decimal=True)
 
+        log_spacer(20)
         log("Printing Stats...\n", 20)
         log_cyan(f"Run Stats (config: {self.manager.config_manager.loaded_config}):")
         log_yellow(f"  Total Runtime: {runtime}")

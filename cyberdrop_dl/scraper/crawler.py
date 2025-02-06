@@ -7,6 +7,7 @@ from abc import ABC, abstractmethod
 from dataclasses import field
 from datetime import datetime
 from functools import wraps
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol
 
 from aiolimiter import AsyncLimiter
@@ -16,7 +17,7 @@ from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.logger import log
-from cyberdrop_dl.utils.utilities import get_download_path, remove_file_id
+from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext, remove_file_id
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -37,6 +38,7 @@ class Crawler(ABC):
     domain: str = None  # type: ignore
     primary_base_domain: URL = None  # type: ignore
     DEFAULT_POST_TITLE_FORMAT = "{date} - {number} - {title}"
+    update_unsupported = False
 
     def __init__(self, manager: Manager, domain: str, folder_domain: str | None = None) -> None:
         self.manager = manager
@@ -55,6 +57,22 @@ class Crawler(ABC):
 
         self.scraped_items: list = []
         self.waiting_items = 0
+
+    @property
+    def allow_no_extension(self) -> bool:
+        return not self.manager.config_manager.settings_data.ignore_options.exclude_files_with_no_extension
+
+    def get_filename_and_ext(self, filename: str, *args, assume_ext: str | None = None, **kwargs):
+        """Wrapper around `utils.get_filename_and_ext` to suppress `NoExtensionError` if `asumme_ext` is supplied.
+
+        Does nothing unless `ignore_options.exclude_files_with_no_extension` is `False`
+        """
+        filename_as_path = Path(filename)
+        if assume_ext and self.allow_no_extension and not filename_as_path.suffix:
+            filename_as_path = filename_as_path.with_suffix(assume_ext)
+            new_filename, ext = get_filename_and_ext(filename_as_path.name, *args, *kwargs)
+            return Path(new_filename).stem, ext
+        return get_filename_and_ext(filename, *args, *kwargs)
 
     async def startup(self) -> None:
         """Starts the crawler."""
@@ -110,14 +128,7 @@ class Crawler(ABC):
             original_filename = filename
 
         download_folder = get_download_path(self.manager, scrape_item, self.folder_domain)
-        media_item = MediaItem(
-            url,
-            scrape_item,
-            download_folder,
-            filename,
-            original_filename,
-            debrid_link,
-        )
+        media_item = MediaItem(url, scrape_item, download_folder, filename, original_filename, debrid_link, ext)
 
         check_complete = await self.manager.db_manager.history_table.check_complete(self.domain, url, scrape_item.url)
         if check_complete:
@@ -284,6 +295,7 @@ def create_task_id(func: Callable) -> Callable:
             return await func(self, *args, **kwargs)
         except ValueError:
             log(f"Scrape Failed: Unknown URL path: {scrape_item.url}", 40)
+            self.manager.progress_manager.scrape_stats_progress.add_failure("Unsupported URL path")
         finally:
             self.scraping_progress.remove_task(task_id)
 

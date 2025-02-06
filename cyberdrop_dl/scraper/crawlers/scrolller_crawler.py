@@ -7,7 +7,6 @@ from yarl import URL
 
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
@@ -27,10 +26,9 @@ class ScrolllerCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        if "r" in scrape_item.url.parts:
-            await self.subreddit(scrape_item)
-        else:
-            log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
+        if "r" not in scrape_item.url.parts:
+            raise ValueError
+        await self.subreddit(scrape_item)
 
     @error_handling_wrapper
     async def subreddit(self, scrape_item: ScrapeItem) -> None:

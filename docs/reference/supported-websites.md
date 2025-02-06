@@ -20,6 +20,7 @@ icon: globe-pointer
 | HotPic          | Album: `/album/...` <br> Image: `/i/...`|
 | ImageBam        | Album: `/view/...` <br> Image: `/view/...` <br> Direct links |
 | ibb imgbb       | Album: `/album/...` <br> Image: `/...`|
+| Iceyfile.com    | Files: `/...` <br> Folders: `/folder/...` <br> Shared: `/shared/...` |
 | ImgBox          | Album: `/g/...` <br> Images: `/...` <br> Direct links |
 | Img.kiwi        | Album: `/album/...` <br> Image: `/image/...` <br> Direct links  |
 | Imgur           | Album: `/a/...` <br> Gallery: `/gallery/...` <br> Image: `/...` <br> Direct links |
@@ -62,6 +63,7 @@ Example: `https://cyberfile.me/folder/xUGg?password=1234`
 | GoFile |
 | Cyberfile                                   |
 | Chevereto Sites (`jpg5`, `imagepond` or `img.kiwi`) |
+| Iceyfile.com   |
 
 ### Additional Content Hosts with Real-Debrid
 

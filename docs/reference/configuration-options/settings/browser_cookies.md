@@ -25,17 +25,20 @@ List of browsers to use for extraction. Each item must be a supported browser's 
 ### Supported Browsers
 
 | Browser   | Windows            | Linux              | MacOS              |
-|-----------|--------------------|--------------------|--------------------|
-| Brave     | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| Chrome    | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| Chromium  | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| Edge      | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| --------- | ------------------ | ------------------ | ------------------ |
+| Arc       | :x:                | :x:                | :white_check_mark: |
+| Brave     | :x:                | :white_check_mark: | :white_check_mark: |
+| Chrome    | :x:                | :white_check_mark: | :white_check_mark: |
+| Chromium  | :x:                | :white_check_mark: | :white_check_mark: |
+| Edge      | :x:                | :white_check_mark: | :white_check_mark: |
 | Firefox   | :white_check_mark: | :white_check_mark: | :white_check_mark: |
 | LibreWolf | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| Opera     | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| Opera_GX  | :white_check_mark: | :x:                | :white_check_mark: |
+| Lynx      | :x:                | :white_check_mark: | :x:                |
+| Opera     | :x:                | :white_check_mark: | :white_check_mark: |
+| Opera_GX  | :x:                | :x:                | :white_check_mark: |
 | Safari    | :x:                | :x:                | :white_check_mark: |
-| Vivaldi   | :white_check_mark: | :white_check_mark: | :white_check_mark: |
+| Vivaldi   | :x:                | :white_check_mark: | :white_check_mark: |
+| W3M       | :x:                | :white_check_mark: | :x:                |
 
 
 {% hint style="info" %}
