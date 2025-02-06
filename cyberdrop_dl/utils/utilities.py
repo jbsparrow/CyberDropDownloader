@@ -264,9 +264,9 @@ def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -
     return current_version, latest_version
 
 
-def check_prelease_version(current_version: str, releases: list[str]) -> tuple[bool, str, Text]:
+def check_prelease_version(current_version: str, releases: list[str]) -> tuple[bool, str, Text | str]:
     match = re.match(constants.PRELEASE_VERSION_PATTERN, current_version)
-    latest_testing_version = ""
+    latest_testing_version = message = ""
 
     if constants.RUNNING_PRERELEASE and match:
         major_version, minor_version, patch_version, dot_tag, no_dot_tag = match.groups()
