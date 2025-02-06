@@ -125,6 +125,7 @@ class XenforoCrawler(Crawler):
         self.attachment_url_parts = ["attachments", "data"]
         self.attachment_url_hosts = ["smgmedia", "attachments.f95zone"]
         self.logged_in = False
+        self.scraped_threads = set()
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -160,9 +161,12 @@ class XenforoCrawler(Crawler):
         """Scrapes a forum thread."""
         scrape_item.set_type(FORUM, self.manager)
         thread = self.get_thread_info(scrape_item.url)
-        scrape_item.parent_threads.add(thread.url)
         title = None
         last_post_url = thread.url
+        if thread.url in self.scraped_threads:
+            return
+        scrape_item.parent_threads.add(thread.url)
+        self.scraped_threads.add(thread.url)
         async for soup in self.thread_pager(scrape_item):
             if not title:
                 title_block = soup.select_one(self.selectors.title.element)
