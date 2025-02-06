@@ -92,7 +92,7 @@ With `rotate_logs` enabled, this setting specifies the retention period for log 
 
 - A `timedelta` input is expected to be a valid ISO 8601 timespan, ex: `P10DT2H30M10S`
 - An `int` input is assumed to be the number of days
-- A  `str` input is expected to be in the format; `<value> <unit>`, ex: `10 days`.
+- A `str` input is expected to be in the format; `<value> <unit>`, ex: `10 days`.
 - A `null` value will disable automatic delection of logs
 
 

@@ -184,6 +184,29 @@ class HistoryTable:
         )
         await self.db_conn.commit()
 
+    async def add_duration(self, domain: str, media_item: MediaItem) -> None:
+        """Add the file size to the db."""
+
+        url_path = get_db_path(media_item.url, str(media_item.referer))
+        duration = media_item.duration
+        await self.db_conn.execute(
+            """UPDATE media SET duration=? WHERE domain = ? and url_path = ?""",
+            (duration, domain, url_path),
+        )
+        await self.db_conn.commit()
+
+    async def get_duration(self, domain: str, media_item: MediaItem) -> float:
+        """Returns the duration from the database."""
+
+        url_path = get_db_path(media_item.url, str(media_item.referer))
+        cursor = await self.db_conn.cursor()
+        result = await cursor.execute(
+            """SELECT duration FROM media WHERE domain = ? and url_path = ?""",
+            (domain, url_path),
+        )
+        sql_duration = await result.fetchone()
+        return sql_duration[0] if sql_duration else None
+
     async def add_download_filename(self, domain: str, media_item: MediaItem) -> None:
         """Add the download_filename to the db."""
         url_path = get_db_path(media_item.url, str(media_item.referer))
@@ -333,4 +356,8 @@ class HistoryTable:
 
         if "file_size" not in current_cols:
             await self.db_conn.execute("""ALTER TABLE media ADD COLUMN file_size INT""")
+            await self.db_conn.commit()
+
+        if "duration" not in current_cols:
+            await self.db_conn.execute("""ALTER TABLE media ADD COLUMN duration FLOAT""")
             await self.db_conn.commit()
