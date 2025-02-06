@@ -283,7 +283,7 @@ class XenforoCrawler(Crawler):
     def is_attachment(self, link: URL) -> bool:
         if not link:
             return False
-        assert link.host
+        assert link.host, f"{link} has no host"
         parts = self.attachment_url_parts
         hosts = self.attachment_url_hosts
         return any(p in link.parts for p in parts) or any(h in link.host for h in hosts)
@@ -314,7 +314,7 @@ class XenforoCrawler(Crawler):
     async def handle_link(self, scrape_item: ScrapeItem, link: URL) -> None:
         if not link or link == self.primary_base_domain:
             return
-        assert link.host
+        assert link.host, f"{link} has no host"
         new_scrape_item = self.create_scrape_item(scrape_item, link)
         if self.is_attachment(link):
             return await self.handle_internal_link(new_scrape_item)
