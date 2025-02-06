@@ -354,6 +354,8 @@ class XenforoCrawler(Crawler):
             return True
         if len(scrape_item.parent_threads) > max_thread_depth:
             return True
+        if scrape_item.url in scrape_item.parents:
+            return True
         return False
 
     def check_post_number(self, post_number: int, current_post_number: int) -> tuple[bool, bool]:
