@@ -83,7 +83,7 @@ class Sorter:
             for folder in subfolders:
                 files_to_sort[folder.name] = self._get_files(folder)
             await self._sort_files(files_to_sort)
-            log_with_color("DONE!", "green", 40)
+            log_with_color("DONE!", "green", 20)
         purge_dir_tree(self.download_folder)
 
     async def _sort_files(self, files_to_sort: dict[str, list[Path]]) -> None:

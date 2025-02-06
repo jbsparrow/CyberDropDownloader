@@ -11,7 +11,6 @@ from cyberdrop_dl.clients.errors import NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.constants import FILE_FORMATS
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -58,8 +57,7 @@ class BunkrrCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
         if scrape_item.url.path == "/":
-            log(f"Scrape Failed: Unknown URL path: {scrape_item.url}", 40)
-            return
+            raise ValueError
 
         if self.is_reinforced_link(scrape_item.url):
             scrape_item.url = await self.handle_reinforced_link(scrape_item.url, scrape_item)

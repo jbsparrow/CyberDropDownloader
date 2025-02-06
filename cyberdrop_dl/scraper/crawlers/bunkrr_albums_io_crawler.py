@@ -6,7 +6,6 @@ from yarl import URL
 
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_PROFILE
-from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -32,8 +31,7 @@ class BunkrAlbumsIOCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
         if not scrape_item.url.query.get("search"):  # Trying to scrape the root page is a bad idea
-            log(f"Scrape Failed: Unknown URL path: {scrape_item.url}", 40)
-            return
+            raise ValueError
 
         await self.search(scrape_item)
 

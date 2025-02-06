@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING
 from yarl import URL
 
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import get_filename_and_ext
 
 if TYPE_CHECKING:
@@ -25,10 +24,9 @@ class TwimgCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        if "media" in scrape_item.url.parts:
-            await self.photo(scrape_item)
-        else:
-            log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
+        if "media" not in scrape_item.url.parts:
+            raise ValueError
+        await self.photo(scrape_item)
 
     async def photo(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a photo.
