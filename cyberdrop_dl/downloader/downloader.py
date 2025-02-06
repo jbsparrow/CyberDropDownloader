@@ -116,7 +116,9 @@ class Downloader:
             raise InsufficientFreeSpaceError(origin=media_item)
         if not self.manager.download_manager.check_allowed_filetype(media_item):
             raise RestrictedFiletypeError(origin=media_item)
-        if not self.manager.download_manager.check_runtime(media_item):
+        if not self.manager.download_manager.pre_check_duration(
+            media_item, self.manager.config_manager.settings_data.media_duration_limits
+        ):
             raise DurationError(origin=media_item)
 
     def set_file_datetime(self, media_item: MediaItem, complete_file: Path) -> None:

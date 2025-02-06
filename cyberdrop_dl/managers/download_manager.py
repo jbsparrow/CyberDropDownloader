@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from shutil import disk_usage
 from typing import TYPE_CHECKING
 
+from cyberdrop_dl.clients.download_client import check_file_duration
 from cyberdrop_dl.utils.constants import FILE_FORMATS
 from cyberdrop_dl.utils.logger import log_debug
 
@@ -96,19 +97,9 @@ class DownloadManager:
             return False
         return not (ignore_options.exclude_other and media_item.ext.lower() not in valid_extensions)
 
-    def check_runtime(self, media_item: MediaItem) -> bool:
+    def pre_check_duration(self, media_item: MediaItem) -> bool:
         """Checks if the download is above the maximum runtime."""
         if not media_item.duration:
             return True
 
-        duration_limits = self.manager.config_manager.settings_data.media_duration
-        min_audio_duration = duration_limits.minimum_audio_runtime.total_seconds()
-        max_audio_duration = duration_limits.minimum_video_runtime.total_seconds()
-        min_video_duration = duration_limits.maximum_audio_runtime.total_seconds()
-        max_video_duration = duration_limits.maximum_video_runtime.total_seconds()
-
-        if media_item.ext.lower() in FILE_FORMATS["Audio"]:
-            return min_audio_duration <= media_item.duration <= max_audio_duration
-        if media_item.ext.lower() in FILE_FORMATS["Videos"]:
-            return min_video_duration <= media_item.duration <= max_video_duration
-        return True
+        return check_file_duration(media_item, self.manager.config_manager.settings_data.media_duration_limits)

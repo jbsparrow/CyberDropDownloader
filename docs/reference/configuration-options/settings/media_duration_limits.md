@@ -12,7 +12,7 @@ You can provide the maximum and minimum duration for audio and video files.
 
 Setting any of these options to `0` means that limit is `disabled`
 
-- `minimum_audio_runtime`
-- `maximum_audio_runtime`
-- `minimum_video_runtime`
-- `maximum_video_runtime`
+- `minimum_audio_duration`
+- `maximum_audio_duration`
+- `minimum_video_duration`
+- `maximum_video_duration`

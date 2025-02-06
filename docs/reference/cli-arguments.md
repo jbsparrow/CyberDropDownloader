@@ -202,11 +202,11 @@ file_size_limits:
   --minimum-other-size MINIMUM_OTHER_SIZE
   --minimum-video-size MINIMUM_VIDEO_SIZE
 
-media_duration:
-  --maximum-video-runtime MAXIMUM_VIDEO_RUNTIME
-  --maximum-audio-runtime MAXIMUM_AUDIO_RUNTIME
-  --minimum-video-runtime MINIMUM_VIDEO_RUNTIME
-  --minimum-audio-runtime MINIMUM_AUDIO_RUNTIME
+media_duration_limits:
+  --maximum-video-duration MAXIMUM_VIDEO_DURATION
+  --maximum-audio-duration MAXIMUM_AUDIO_DURATION
+  --minimum-video-duration MINIMUM_VIDEO_DURATION
+  --minimum-audio-duration MINIMUM_AUDIO_DURATION
 
 files:
   -i INPUT_FILE, --input-file INPUT_FILE

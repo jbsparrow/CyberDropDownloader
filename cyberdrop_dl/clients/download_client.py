@@ -59,6 +59,46 @@ def limiter(func: Callable) -> Any:
     return wrapper
 
 
+def check_file_duration(media_item: MediaItem, file_duration_limits: dict) -> bool:
+    """Checks the file runtime against the config runtime limits."""
+
+    is_video = media_item.ext.lower() in FILE_FORMATS["Videos"]
+    is_audio = media_item.ext.lower() in FILE_FORMATS["Audio"]
+    if not (is_video or is_audio):
+        return True
+
+    def get_duration() -> float | None:
+        if media_item.duration:
+            return media_item.duration
+        props: dict = {}
+        if is_video:
+            props: dict = get_video_properties(str(media_item.complete_file))
+        elif is_audio:
+            props: dict = get_audio_properties(str(media_item.complete_file))
+        return float(props.get("duration", 0)) or None
+
+    duration_limits = file_duration_limits
+    min_video_duration: float = duration_limits.minimum_video_duration.total_seconds()
+    max_video_duration: float = duration_limits.maximum_video_duration.total_seconds()
+    min_audio_duration: float = duration_limits.minimum_audio_duration.total_seconds()
+    max_audio_duration: float = duration_limits.maximum_audio_duration.total_seconds()
+    video_duration_limits = min_video_duration, max_video_duration
+    audio_duration_limits = min_audio_duration, max_audio_duration
+    if is_video and not any(video_duration_limits):
+        return True
+    if is_audio and not any(audio_duration_limits):
+        return True
+
+    duration: float = get_duration(media_item)
+    media_item.duration = duration
+    if duration is None:
+        return True
+
+    if media_item.ext.lower() in FILE_FORMATS["Videos"]:
+        return min_video_duration <= media_item.duration <= max_video_duration
+    return min_audio_duration <= media_item.duration <= max_audio_duration
+
+
 class DownloadClient:
     """AIOHTTP operations for downloading."""
 
@@ -250,7 +290,7 @@ class DownloadClient:
         downloaded = await self._download(domain, manager, media_item, save_content)
         if downloaded:
             media_item.partial_file.rename(media_item.complete_file)
-            proceed = self.check_file_runtime(media_item)
+            proceed = check_file_duration(media_item, self.manager.config_manager.settings_data.media_duration_limits)
             await self.manager.db_manager.history_table.add_duration(domain, media_item)
             if not proceed:
                 log(f"Download Skip {media_item.url} due to runtime restrictions", 10)
@@ -411,48 +451,6 @@ class DownloadClient:
             proceed = min_other_filesize < media.filesize < max_other_filesize
 
         return proceed
-
-    def check_file_runtime(self, media_item: MediaItem) -> bool:
-        """Checks the file runtime against the config runtime limits."""
-
-        is_video = media_item.ext.lower() in FILE_FORMATS["Videos"]
-        is_audio = media_item.ext.lower() in FILE_FORMATS["Audio"]
-        if not (is_video or is_audio):
-            return True
-        def get_duration() -> float | None:
-            if media_item.duration:
-                return media_item.duration
-            props: dict = {}
-            if is_video:
-                props: dict = get_video_properties(str(media_item.complete_file))
-            elif is_audio:
-            	props: dict = get_audio_properties(str(media_item.complete_file))
-            return float(props.get("duration", 0)) or None
-
-        runtime_limits = self.manager.config_manager.settings_data.media_duration
-        min_video_runtime: float = runtime_limits.minimum_video_runtime.total_seconds()
-        max_video_runtime: float = runtime_limits.maximum_video_runtime.total_seconds()
-        min_audio_runtime: float = runtime_limits.minimum_audio_runtime.total_seconds()
-        max_audio_runtime: float = runtime_limits.maximum_audio_runtime.total_seconds()
-        if media_item.ext.lower() in FILE_FORMATS["Videos"] and all(
-            runtime == 0 for runtime in (min_video_runtime, max_video_runtime)
-        ):
-            return True
-        if media_item.ext.lower() in FILE_FORMATS["Audio"] and all(
-            runtime == 0 for runtime in (min_audio_runtime, max_audio_runtime)
-        ):
-            return True
-
-        duration: float = get_duration(media_item)
-        media_item.duration = duration
-        if duration is None:
-            return True
-
-        if media_item.ext.lower() in FILE_FORMATS["Videos"]:
-            return min_video_runtime <= media_item.duration <= max_video_runtime
-        elif media_item.ext.lower() in FILE_FORMATS["Audio"]:
-            return min_audio_runtime <= media_item.duration <= max_audio_runtime
-        return True
 
     @property
     def file_path(self) -> str | None:

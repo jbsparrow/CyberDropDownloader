@@ -102,11 +102,11 @@ class FileSizeLimits(BaseModel):
         return value.human_readable(decimal=True)
 
 
-class MediaDuration(BaseModel):
-    maximum_video_runtime: timedelta = timedelta(seconds=0)
-    maximum_audio_runtime: timedelta = timedelta(seconds=0)
-    minimum_video_runtime: timedelta = timedelta(seconds=0)
-    minimum_audio_runtime: timedelta = timedelta(seconds=0)
+class MediaDurationLimits(BaseModel):
+    maximum_video_duration: timedelta = timedelta(seconds=0)
+    maximum_audio_duration: timedelta = timedelta(seconds=0)
+    minimum_video_duration: timedelta = timedelta(seconds=0)
+    minimum_audio_duration: timedelta = timedelta(seconds=0)
 
     @field_validator("*", mode="before")
     @staticmethod
@@ -118,7 +118,7 @@ class MediaDuration(BaseModel):
         for `int`, value is assumed as `days`
         """
         if input_date is None:
-            return None
+            return timedelta(seconds=0)
         return parse_duration_to_timedelta(input_date)
 
 
@@ -225,7 +225,9 @@ class ConfigSettings(AliasModel):
         validation_alias="Dupe_Cleanup_Options", default=DupeCleanupOptions()
     )
     file_size_limits: FileSizeLimits = Field(validation_alias="File_Size_Limits", default=FileSizeLimits())
-    media_duration: MediaDuration = Field(validation_alias="Media_Duration", default=MediaDuration())
+    media_duration_limits: MediaDurationLimits = Field(
+        validation_alias="Media_Duration_Limits", default=MediaDurationLimits()
+    )
     files: Files = Field(validation_alias="Files", default=Files())
     ignore_options: IgnoreOptions = Field(validation_alias="Ignore_Options", default=IgnoreOptions())
     logs: Logs = Field(validation_alias="Logs", default=Logs())
