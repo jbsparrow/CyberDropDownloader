@@ -415,16 +415,19 @@ class DownloadClient:
     def check_file_runtime(self, media_item: MediaItem) -> bool:
         """Checks the file runtime against the config runtime limits."""
 
-        def get_duration(media_item: MediaItem) -> float:
+        is_video = media_item.ext.lower() in FILE_FORMATS["Videos"]
+        is_audio = media_item.ext.lower() in FILE_FORMATS["Audio"]
+        if not (is_video or is_audio):
+            return True
+        def get_duration() -> float | None:
             if media_item.duration:
                 return media_item.duration
-            if media_item.ext.lower() in FILE_FORMATS["Videos"]:
+            props: dict = {}
+            if is_video:
                 props: dict = get_video_properties(str(media_item.complete_file))
-                return float(props.get("duration", 0)) or None
-            if media_item.ext.lower() in FILE_FORMATS["Audio"]:
-                props: dict = get_audio_properties(str(media_item.complete_file))
-                return float(props.get("duration", 0)) or None
-            return None
+            elif is_audio:
+            	props: dict = get_audio_properties(str(media_item.complete_file))
+            return float(props.get("duration", 0)) or None
 
         runtime_limits = self.manager.config_manager.settings_data.media_duration
         min_video_runtime: float = runtime_limits.minimum_video_runtime.total_seconds()
