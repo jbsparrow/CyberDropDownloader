@@ -59,7 +59,7 @@ def limiter(func: Callable) -> Any:
     return wrapper
 
 
-def check_file_duration(media_item: MediaItem, file_duration_limits: dict) -> bool:
+def check_file_duration(media_item: MediaItem, manager: Manager) -> bool:
     """Checks the file runtime against the config runtime limits."""
 
     is_video = media_item.ext.lower() in FILE_FORMATS["Videos"]
@@ -77,7 +77,7 @@ def check_file_duration(media_item: MediaItem, file_duration_limits: dict) -> bo
             props: dict = get_audio_properties(str(media_item.complete_file))
         return float(props.get("duration", 0)) or None
 
-    duration_limits = file_duration_limits
+    duration_limits = manager.config_manager.settings_data.media_duration_limits
     min_video_duration: float = duration_limits.minimum_video_duration.total_seconds()
     max_video_duration: float = duration_limits.maximum_video_duration.total_seconds()
     min_audio_duration: float = duration_limits.minimum_audio_duration.total_seconds()
@@ -89,7 +89,7 @@ def check_file_duration(media_item: MediaItem, file_duration_limits: dict) -> bo
     if is_audio and not any(audio_duration_limits):
         return True
 
-    duration: float = get_duration(media_item)
+    duration: float = get_duration()  # type: ignore
     media_item.duration = duration
     if duration is None:
         return True
@@ -292,7 +292,7 @@ class DownloadClient:
         downloaded = await self._download(domain, manager, media_item, save_content)
         if downloaded:
             media_item.partial_file.rename(media_item.complete_file)
-            proceed = check_file_duration(media_item, self.manager.config_manager.settings_data.media_duration_limits)
+            proceed = check_file_duration(media_item, self.manager)
             await self.manager.db_manager.history_table.add_duration(domain, media_item)
             if not proceed:
                 log(f"Download Skip {media_item.url} due to runtime restrictions", 10)
