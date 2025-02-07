@@ -278,7 +278,7 @@ class HistoryTable:
             all_files = await result.fetchall()
             return list(all_files)
         except Exception as e:
-            log(f"Error getting bunkr failed via size: {e}", 20)
+            log(f"Error getting bunkr failed via size: {e}", 40, exc_info=e)
             return []
 
     async def get_all_bunkr_failed_via_hash(self) -> list:
@@ -294,7 +294,7 @@ class HistoryTable:
             all_files = await result.fetchall()
             return list(all_files)
         except Exception as e:
-            log(f"Error getting bunkr failed via hash: {e}", 20)
+            log(f"Error getting bunkr failed via hash: {e}", 40, exc_info=e)
             return []
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

@@ -54,6 +54,7 @@ class MediaItem:
     album_id: str | None = field(init=False)
     datetime: int | None = field(init=False, hash=False, compare=False)
     parents: list[URL] = field(init=False, hash=False, compare=False)
+    parent_threads: set[URL] = field(init=False, hash=False, compare=False)
 
     def __post_init__(self, origin: ScrapeItem) -> None:
         self.referer = origin.url
@@ -62,6 +63,7 @@ class MediaItem:
         self.original_filename = self.original_filename or self.filename
         self.parents = origin.parents.copy()
         self.datetime = origin.possible_datetime
+        self.parent_threads = origin.parent_threads.copy()
 
 
 @dataclass(kw_only=True, slots=True)
@@ -75,6 +77,7 @@ class ScrapeItem:
     retry_path: Path | None = None
 
     parents: list[URL] = field(default_factory=list, init=False)
+    parent_threads: set[URL] = field(default_factory=set, init=False)
     children: int = field(default=0, init=False)
     children_limit: int = field(default=0, init=False)
     type: ScrapeItemType | None = field(default=None, init=False)
@@ -115,5 +118,6 @@ class ScrapeItem:
         self.reset_childen()
         if reset_parents:
             self.parents = []
+            self.parent_threads = set()
         if reset_parent_title:
             self.parent_title = ""

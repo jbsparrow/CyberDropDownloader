@@ -7,7 +7,6 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
@@ -31,15 +30,13 @@ class ImageBamCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
         if any(part in scrape_item.url.parts for part in ("gallery", "image")):
-            await self.view(scrape_item)
-            return
+            return await self.view(scrape_item)
 
         if self.is_cdn(scrape_item.url):
             scrape_item.url = self.get_view_url(scrape_item.url)
 
         if "view" not in scrape_item.url.parts:
-            log(f"Scrape Failed: Unknown URL path: {scrape_item.url}", 40)
-            return
+            raise ValueError
 
         await self.view(scrape_item)
 
