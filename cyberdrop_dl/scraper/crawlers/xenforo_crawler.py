@@ -13,7 +13,7 @@ from bs4 import BeautifulSoup
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import LoginError
-from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
+from cyberdrop_dl.scraper.crawler import Crawler, create_task_id, remove_trailing_slash
 from cyberdrop_dl.scraper.filters import set_return_value
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FORUM, FORUM_POST, ScrapeItem
 from cyberdrop_dl.utils.logger import log
@@ -332,14 +332,16 @@ class XenforoCrawler(Crawler):
     @error_handling_wrapper
     async def handle_internal_link(self, scrape_item: ScrapeItem) -> None:
         """Handles internal links."""
-        link = scrape_item.url
-        if not link.name:
-            link = link.parent.with_fragment(link.fragment).with_query(link.query)
-            scrape_item.url = link
-        filename, ext = get_filename_and_ext(link.name, forum=True)
+        scrape_item.url = remove_trailing_slash(scrape_item.url)
+
+        if scrape_item.url.name.isdigit():
+            head = await self.client.get_head(self.domain, scrape_item.url)  # type: ignore
+            scrape_item.url = self.parse_url(head["location"])
+
+        filename, ext = get_filename_and_ext(scrape_item.url.name, forum=True)
         scrape_item.add_to_parent_title("Attachments")
         scrape_item.part_of_album = True
-        await self.handle_file(link, scrape_item, filename, ext)
+        await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
     @error_handling_wrapper
     async def handle_confirmation_link(self, link: URL, *, origin: ScrapeItem | None = None) -> URL | None:
