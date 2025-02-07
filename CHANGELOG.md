@@ -5,6 +5,12 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [UNRELEASED]
+
+### Removed
+
+- v4 option names and v4 files import support
+
 ## [6.5.0] - 2025-02-14
 
 ### Added
@@ -18,7 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - Cookie extraction support from Chrome and Chromium based browsers on Windows
-- v4 option names and v4 files import support
 
 ### Changed
 
