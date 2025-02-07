@@ -182,3 +182,43 @@ No **FORUM** limit, no **FORUM_POST** limit, no **FILE_HOST_PROFILE** limit, max
 ```
 {% endtab %}
 {% endtabs %}
+
+
+## `maximum_thread_depth`
+
+| Type           | Default  |
+|----------------|----------|
+| `NonNegativeInt` | 0 |
+
+{% hint style="warning" %}
+It is not recommended to set this above the default value of 0, as there is a high chance of infinite nesting in certain cases.
+
+For example, when dealing with Megathreads, if a Megathread is linked to another Megathread, you could end up scraping an undesirable amount of data.
+{% endhint %}
+
+Restricts how many levels deep the scraper is allowed to go while scraping a thread
+
+Values
+0: No nesting allowed, only the top level thread is allowed
+None: unlimited parents
+1>: limits to the value given
+
+### Example
+Consider CDL finds the following sub-threads while scraping an input URL:
+\```
+└── thread_01
+    ├── thread_02
+    ├── thread_03
+    │   ├── thread_09
+    │   ├── thread_10
+    │   └── thread_11
+    ├── thread_04
+    ├── thread_05
+    ├── thread_06
+    ├── thread_07
+    │   └── thread_12
+    └── thread_08
+\```
+- With `maximum_thread_depth` = 0, CDL will only download files in `thread_01`, all the other threads will be ignored
+- With `maximum_thread_depth` = 1, CDL will only download files in `thread_01` to `thread_08`. `thread_09` to `thread_12` will be ignored
+- With `maximum_thread_depth` >= 2, CDL will download files from all the threads in this case
