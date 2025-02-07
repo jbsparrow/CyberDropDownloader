@@ -94,7 +94,9 @@ def check_file_duration(media_item: MediaItem, file_duration_limits: dict) -> bo
     if duration is None:
         return True
 
-    if media_item.ext.lower() in FILE_FORMATS["Videos"]:
+    max_video_duration = max_video_duration or float("inf")
+    max_audio_duration = max_audio_duration or float("inf")
+    if is_video:
         return min_video_duration <= media_item.duration <= max_video_duration
     return min_audio_duration <= media_item.duration <= max_audio_duration
 
