@@ -53,6 +53,7 @@ class MediaItem:
     album_id: str | None = field(init=False)
     datetime: int | None = field(init=False, hash=False, compare=False)
     parents: list[URL] = field(init=False, hash=False, compare=False)
+    parent_threads: set[URL] = field(init=False, hash=False, compare=False)
 
     def __post_init__(self, origin: ScrapeItem) -> None:
         self.referer = origin.url
@@ -61,7 +62,7 @@ class MediaItem:
         self.original_filename = self.original_filename or self.filename
         self.parents = origin.parents.copy()
         self.datetime = origin.possible_datetime
-        self.parents_thread = origin.parent_threads.copy()
+        self.parent_threads = origin.parent_threads.copy()
 
 
 @dataclass(kw_only=True, slots=True)
