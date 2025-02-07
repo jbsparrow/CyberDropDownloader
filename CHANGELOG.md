@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-- Cookie extraction support from Chrome on Windows
+- Cookie extraction support from Chrome and Chromium based browsers on Windows
 
 ### Changed
 
