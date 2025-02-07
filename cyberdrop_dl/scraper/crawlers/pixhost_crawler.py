@@ -43,7 +43,7 @@ class PixHostCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         album_id = scrape_item.url.name
-        title = soup.select_one("a[class=link] h2").text
+        title = soup.select_one("a[class=link] h2").text  # type: ignore
         title = self.create_title(title, album_id)
         scrape_item.add_to_parent_title(title)
         scrape_item.part_of_album = True
@@ -52,8 +52,8 @@ class PixHostCrawler(Crawler):
 
         images = soup.select("div[class=images] a")
         for image in images:
-            link_str: str = image.get("href")
-            thumb_link_str: str = image.select_one("img").get("src")
+            link_str: str = image.get("href")  # type: ignore
+            thumb_link_str: str = image.select_one("img").get("src")  # type: ignore
             if not (thumb_link_str and link_str):
                 continue
             link = self.parse_url(link_str)
@@ -72,7 +72,7 @@ class PixHostCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        link_str: str = soup.select_one("img[class=image-img]").get("src")
+        link_str: str = soup.select_one("img[class=image-img]").get("src")  # type: ignore
         link = self.parse_url(link_str)
         await self.handle_direct_link(scrape_item, link)
 
