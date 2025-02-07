@@ -44,15 +44,18 @@ class PixHostCrawler(Crawler):
 
         title = soup.select_one("a[class=link] h2").text
         scrape_item.add_to_parent_title(f"{title} (PixHost)")
+        scrape_item.part_of_album = True
 
-        images = soup.select("div[class=images] a img")
+        images = soup.select("div[class=images] a")
         for image in images:
-            link_str: str = image.get("src")
-            if not link_str:
+            link_str: str = image.get("href")
+            thumb_link_str: str = image.select_one("img").get("src")
+            if not (thumb_link_str and link_str):
                 continue
-            link_str = link_str
             link = self.parse_url(link_str)
-            await self.handle_direct_link(scrape_item, link)
+            thumb_link = self.parse_url(thumb_link_str)
+            new_scrape_item = self.create_scrape_item(scrape_item, link, add_parent=scrape_item.url)
+            await self.handle_direct_link(new_scrape_item, thumb_link)
             scrape_item.add_children()
 
     @error_handling_wrapper
