@@ -332,10 +332,14 @@ class XenforoCrawler(Crawler):
     @error_handling_wrapper
     async def handle_internal_link(self, scrape_item: ScrapeItem) -> None:
         """Handles internal links."""
-        filename, ext = get_filename_and_ext(scrape_item.url.name, forum=True)
+        link = scrape_item.url
+        if not link.name:
+            link = link.parent.with_fragment(link.fragment).with_query(link.query)
+            scrape_item.url = link
+        filename, ext = get_filename_and_ext(link.name, forum=True)
         scrape_item.add_to_parent_title("Attachments")
         scrape_item.part_of_album = True
-        await self.handle_file(scrape_item.url, scrape_item, filename, ext)
+        await self.handle_file(link, scrape_item, filename, ext)
 
     @error_handling_wrapper
     async def handle_confirmation_link(self, link: URL, *, origin: ScrapeItem | None = None) -> URL | None:
