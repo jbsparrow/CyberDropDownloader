@@ -26,6 +26,7 @@
     * [Files](reference/configuration-options/settings/files.md)
     * [Ignore Options](reference/configuration-options/settings/ignore_options.md)
     * [Logs](reference/configuration-options/settings/logs.md)
+    * [Media Duration Limits](reference/configuration-options/settings/media_duration_limits.md)
     * [Runtime Options](reference/configuration-options/settings/runtime_options.md)
     * [Sorting](reference/configuration-options/settings/sorting.md)
   * [Global Settings](reference/configuration-options/global-settings/README.md)
