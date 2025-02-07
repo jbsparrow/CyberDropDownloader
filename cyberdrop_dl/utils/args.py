@@ -1,7 +1,7 @@
 import sys
 import time
 import warnings
-from argparse import SUPPRESS, ArgumentDefaultsHelpFormatter, ArgumentParser, BooleanOptionalAction
+from argparse import SUPPRESS, ArgumentParser, BooleanOptionalAction, RawDescriptionHelpFormatter
 from argparse import _ArgumentGroup as ArgGroup
 from datetime import date
 from pathlib import Path
@@ -163,13 +163,23 @@ def _create_groups_from_nested_models(parser: ArgumentParser, model: type[BaseMo
     return groups
 
 
+class CustomHelpFormatter(RawDescriptionHelpFormatter):
+    def __init__(self, prog):
+        super().__init__(prog, max_help_position=50)
+
+    def _get_help_string(self, action):
+        if action.help:
+            return action.help.replace("program's", "CDL")  ## The ' messes up the markdown formatting
+        return action.help
+
+
 def parse_args() -> ParsedArgs:
     """Parses the command line arguments passed into the program."""
     parser = ArgumentParser(
         description="Bulk asynchronous downloader for multiple file hosts",
         usage="cyberdrop-dl [OPTIONS] URL [URL...]",
         epilog="Visit the wiki for additional details: https://script-ware.gitbook.io/cyberdrop-dl",
-        formatter_class=ArgumentDefaultsHelpFormatter,
+        formatter_class=CustomHelpFormatter,
     )
     parser.add_argument("-V", "--version", action="version", version=f"%(prog)s {__version__}")
 
