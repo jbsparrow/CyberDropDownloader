@@ -13,7 +13,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support cookie extraction from Arc Browser, Lynx and W3M
 - `--exclude-files-with-no-extension` option: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/ignore_options#exclude_files_with_no_extension
 - `--print-stats` CLI only option
-- Add minimum/maximum audio and video duration config options and CLI arguments
 - Scrape nested threads with  `--maximum-thread-depth`: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/download_options#maximum-thread-depth
 
 ### Removed
