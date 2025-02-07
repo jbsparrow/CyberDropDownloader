@@ -58,8 +58,8 @@ class PixHostCrawler(Crawler):
                 continue
             link = self.parse_url(link_str)
             thumb_link = self.parse_url(thumb_link_str)
-            new_scrape_item = self.create_scrape_item(scrape_item, link, add_parent=scrape_item.url)
             if not self.check_album_results(link, results):
+                new_scrape_item = self.create_scrape_item(scrape_item, link, add_parent=scrape_item.url)
                 await self.handle_direct_link(new_scrape_item, thumb_link)
             scrape_item.add_children()
 
