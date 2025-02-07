@@ -49,11 +49,11 @@ class LiveManager:
 
     @contextmanager
     def live_context_manager(self, layout: RenderableType, stop: bool = False) -> Generator[Live | None]:
-        live = self.live if not (10 <= constants.CONSOLE_LEVEL <= 50) else None
         try:
             self.live.start()
-            self.live.update(layout, refresh=True)
-            yield live
+            if not (10 <= constants.CONSOLE_LEVEL <= 50):
+                self.live.update(layout, refresh=True)
+            yield self.live
         finally:
             if stop:
                 self.live.stop()
