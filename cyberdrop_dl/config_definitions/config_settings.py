@@ -95,7 +95,7 @@ class MediaDurationLimits(BaseModel):
         """
         if input_date is None:
             return timedelta(seconds=0)
-        return parse_duration_to_timedelta(input_date)
+        return parse_duration_as_timedelta(input_date)
 
 
 class IgnoreOptions(BaseModel):
