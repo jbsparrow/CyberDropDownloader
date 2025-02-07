@@ -337,6 +337,8 @@ class XenforoCrawler(Crawler):
         if scrape_item.url.name.isdigit():
             head = await self.client.get_head(self.domain, scrape_item.url)  # type: ignore
             scrape_item.url = self.parse_url(head["location"])
+            self.manager.task_group.create_task(self.run(scrape_item))
+            return
 
         filename, ext = get_filename_and_ext(scrape_item.url.name, forum=True)
         scrape_item.add_to_parent_title("Attachments")
