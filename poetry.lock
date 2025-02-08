@@ -1602,6 +1602,21 @@ files = [
 windows-terminal = ["colorama (>=0.4.6)"]
 
 [[package]]
+name = "pyrd"
+version = "2.0.0"
+description = "Real-Debrid API bindings for Python"
+optional = false
+python-versions = "<4.0,>=3.11"
+groups = ["main"]
+files = [
+    {file = "pyrd-2.0.0-py3-none-any.whl", hash = "sha256:7591b33bb7baefba52aad41783a7221517d7db45a521ba73fe5a7ab7f84f07ec"},
+    {file = "pyrd-2.0.0.tar.gz", hash = "sha256:ab9783ab114eb939253bf50a76d789cd7849b8004755996ae0f99061dfe698f8"},
+]
+
+[package.dependencies]
+aiohttp = ">=3.9.5,<4.0.0"
+
+[[package]]
 name = "pytest"
 version = "8.3.4"
 description = "pytest: simple powerful testing with Python"
@@ -2347,4 +2362,4 @@ propcache = ">=0.2.0"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4"
-content-hash = "d761837b3dcd11b0218e1f4553e623e9127057a4a2a419aaa341a4415401d153"
+content-hash = "7f702c4b0506fb2975614754eb7c53f9b64d1128759b76c47ac8dc77e1b45130"
