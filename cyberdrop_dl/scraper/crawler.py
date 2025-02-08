@@ -25,6 +25,8 @@ if TYPE_CHECKING:
     from cyberdrop_dl.clients.scraper_client import ScraperClient
     from cyberdrop_dl.managers.manager import Manager
 
+UNKNOWN_URL_PATH_MSG = "Unknown URL path"
+
 
 class Post(Protocol):
     number: int
@@ -294,8 +296,9 @@ def create_task_id(func: Callable) -> Callable:
         try:
             return await func(self, *args, **kwargs)
         except ValueError:
-            log(f"Scrape Failed: Unknown URL path: {scrape_item.url}", 40)
-            self.manager.progress_manager.scrape_stats_progress.add_failure("Unsupported URL path")
+            log(f"Scrape Failed: {UNKNOWN_URL_PATH_MSG}: {scrape_item.url}", 40)
+            self.manager.progress_manager.scrape_stats_progress.add_failure(UNKNOWN_URL_PATH_MSG)
+            await self.manager.log_manager.write_scrape_error_log(scrape_item.url, UNKNOWN_URL_PATH_MSG)
         finally:
             self.scraping_progress.remove_task(task_id)
 
