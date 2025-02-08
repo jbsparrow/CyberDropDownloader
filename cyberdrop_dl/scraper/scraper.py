@@ -67,7 +67,7 @@ class ScrapeMapper:
     async def start_real_debrid(self) -> None:
         """Starts RealDebrid."""
         if isinstance(self.manager.real_debrid_manager.api, Field):
-            self.manager.real_debrid_manager.startup()
+            await self.manager.real_debrid_manager.startup()
 
         if self.manager.real_debrid_manager.enabled:
             from cyberdrop_dl.scraper.crawlers.realdebrid_crawler import RealDebridCrawler
