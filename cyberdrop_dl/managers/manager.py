@@ -220,6 +220,7 @@ class Manager:
         config_settings.runtime_options.deep_scrape = self.config_manager.deep_scrape
         config_settings = config_settings.model_dump_json(indent=4)
         global_settings = self.config_manager.global_settings_data.model_dump_json(indent=4)
+        cli_only_args = self.parsed_args.cli_only_args.model_dump_json(indent=4)
 
         log("Starting Cyberdrop-DL Process", 10)
         log(f"Running Version: {__version__}", 10)
@@ -228,6 +229,7 @@ class Manager:
         log(f"Using Input File: {self.path_manager.input_file.resolve()}", 10)
         log(f"Using Download Folder: {self.path_manager.download_folder.resolve()}", 10)
         log(f"Using Database File: {self.path_manager.history_db.resolve()}", 10)
+        log(f"Using CLI only options: {cli_only_args}", 10)
         log(f"Using Authentication: \n{json.dumps(auth_provided, indent=4, sort_keys=True)}", 10)
         log(f"Using Settings: \n{config_settings}", 10)
         log(f"Using Global Settings: \n{global_settings}", 10)
