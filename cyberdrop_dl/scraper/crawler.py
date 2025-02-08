@@ -294,6 +294,7 @@ def create_task_id(func: Callable) -> Callable:
         scrape_item: ScrapeItem = args[0]
         task_id = self.scraping_progress.add_task(scrape_item.url)
         try:
+            pre_check_scrape_item(scrape_item)
             return await func(self, *args, **kwargs)
         except ValueError:
             log(f"Scrape Failed: {UNKNOWN_URL_PATH_MSG}: {scrape_item.url}", 40)
@@ -303,3 +304,8 @@ def create_task_id(func: Callable) -> Callable:
             self.scraping_progress.remove_task(task_id)
 
     return wrapper
+
+
+def pre_check_scrape_item(scrape_item: ScrapeItem) -> None:
+    if scrape_item.url.path == "/":
+        raise ValueError

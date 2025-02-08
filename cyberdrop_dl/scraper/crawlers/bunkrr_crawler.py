@@ -50,23 +50,22 @@ class BunkrrCrawler(Crawler):
 
     def __init__(self, manager: Manager, site: str) -> None:
         super().__init__(manager, site, "Bunkrr")
+        self.album_item_selector = "div[class*='relative group/item theItem']"
+        self.item_name_selector = "p[class*='theName']"
+        self.item_date_selector = 'span[class*="theDate"]'
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        if scrape_item.url.path == "/":
-            raise ValueError
-
-        if self.is_reinforced_link(scrape_item.url):
-            scrape_item.url = await self.handle_reinforced_link(scrape_item.url, scrape_item)
-            if not scrape_item.url:
-                return
+        scrape_item.url = await self.get_final_url(scrape_item)
+        if not scrape_item.url:
+            return
 
         if "a" in scrape_item.url.parts:
             await self.album(scrape_item)
-        elif self.is_cdn(scrape_item.url) and not self.is_stream_redirect(scrape_item.url):
+        elif is_cdn(scrape_item.url) and not is_stream_redirect(scrape_item.url):
             await self.handle_direct_link(scrape_item)
         else:
             await self.file(scrape_item)
@@ -74,31 +73,28 @@ class BunkrrCrawler(Crawler):
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
-        if not scrape_item.url:
-            return
-
         scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path)
-        album_id = scrape_item.url.parts[2]
-        scrape_item.album_id = album_id
-        scrape_item.part_of_album = True
-        results = await self.get_album_results(album_id)
-        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
 
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        title = soup.select_one("title").text.rsplit(" | Bunkr")[0].strip()
+        album_id = scrape_item.url.parts[2]
+        scrape_item.album_id = album_id
+        scrape_item.part_of_album = True
+        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
+        title = soup.select_one("title").text.rsplit(" | Bunkr")[0].strip()  # type: ignore
         title = self.create_title(title, album_id)
         scrape_item.add_to_parent_title(title)
+        results = await self.get_album_results(album_id)
 
-        card_listings: list[Tag] = soup.select('div[class*="relative group/item theItem"]')
-        for card_listing in card_listings:
-            filename = card_listing.select_one('p[class*="theName"]').text
+        items: list[Tag] = soup.select(self.album_item_selector)
+        for item in items:
+            filename = item.select_one(self.item_name_selector).text  # type: ignore
             file_ext = "." + filename.split(".")[-1]
-            thumbnail: str = card_listing.select_one("img").get("src")
-            date_str = card_listing.select_one('span[class*="theDate"]').text.strip()
-            date = self.parse_datetime(date_str)
-            link_str: str = card_listing.find("a").get("href")
+            thumbnail: str = item.select_one("img").get("src")  # type: ignore
+            date_str = item.select_one(self.item_date_selector).text.strip()  # type: ignore
+            date = parse_datetime(date_str)
+            link_str: str = item.find("a").get("href")
             link = self.parse_url(link_str, scrape_item.url.with_path("/"))
             new_scrape_item = self.create_scrape_item(
                 scrape_item,
@@ -115,7 +111,7 @@ class BunkrrCrawler(Crawler):
             if file_ext.lower() not in FILE_FORMATS["Images"]:
                 src = src.with_host(src.host.replace("i-", ""))
 
-            src = self.override_cdn(src)
+            src = override_cdn(src)
             # Scrape new URL if unable to get final URL from thumbnail
             if file_ext.lower() not in valid_extensions or "no-image" in src.name or self.deep_scrape(src):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
@@ -135,7 +131,7 @@ class BunkrrCrawler(Crawler):
             return
         soup = link_container = None
         src_selector = "src"
-        if self.is_stream_redirect(scrape_item.url):
+        if is_stream_redirect(scrape_item.url):
             soup, scrape_item.url = await self.client.get_soup_and_return_url(self.domain, scrape_item.url)
 
         scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path)
@@ -167,7 +163,7 @@ class BunkrrCrawler(Crawler):
         date = None
         date_str = soup.select_one('span[class*="theDate"]')
         if date_str:
-            date = self.parse_datetime(date_str.text.strip())
+            date = parse_datetime(date_str.text.strip())
 
         new_scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, possible_datetime=date)
         await self.handle_direct_link(new_scrape_item, link, fallback_filename=soup.select_one("h1").text)
@@ -180,8 +176,9 @@ class BunkrrCrawler(Crawler):
         If `link` is not supplied, `scrape_item.url` will be used by default
 
         `fallback_filename` will only be used if the link has not `n` query parameter"""
+
         link = url or scrape_item.url
-        if self.is_reinforced_link(link):
+        if is_reinforced_link(link):
             link: URL = await self.handle_reinforced_link(link, scrape_item)
 
         if not link:
@@ -197,8 +194,7 @@ class BunkrrCrawler(Crawler):
 
     @error_handling_wrapper
     async def handle_reinforced_link(self, url: URL, scrape_item: ScrapeItem) -> URL | None:
-        """Gets the download link for a given reinforced URL."""
-        """get.bunkr.su"""
+        """Gets the download link for a given reinforced URL (get.bunkr.su)."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, url, origin=scrape_item)
 
@@ -206,36 +202,45 @@ class BunkrrCrawler(Crawler):
             link_container = soup.select('a[download*=""]')[-1]
         except IndexError:
             link_container = soup.select("a[class*=download]")[-1]
-        link_str: str = link_container.get("href")
+        link_str: str = link_container.get("href")  # type: ignore
         return self.parse_url(link_str)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     def deep_scrape(self, url: URL) -> bool:
+        assert url.host
         return any(part in url.host.split(".") for part in ("burger",)) or self.manager.config_manager.deep_scrape
 
-    @staticmethod
-    def is_reinforced_link(url: URL) -> bool:
-        return any(part in url.host.split(".") for part in ("get",))
+    async def get_final_url(self, scrape_item: ScrapeItem) -> URL:
+        if not is_reinforced_link(scrape_item.url):
+            return scrape_item.url
+        return await self.handle_reinforced_link(scrape_item.url, scrape_item)
 
-    @staticmethod
-    def is_stream_redirect(url: URL) -> bool:
-        return any(part in url.host for part in ("cdn12", "cdn-")) or url.host == "cdn.bunkr.ru"
 
-    @staticmethod
-    def is_cdn(url: URL) -> bool:
-        """Checks if a given URL is from a CDN."""
-        return bool(CDN_POSSIBILITIES.match(url.host))
+def is_stream_redirect(url: URL) -> bool:
+    assert url.host
+    return any(part in url.host for part in ("cdn12", "cdn-")) or url.host == "cdn.bunkr.ru"
 
-    @staticmethod
-    def parse_datetime(date: str) -> int:
-        """Parses a datetime string into a unix timestamp."""
-        parsed_date = datetime.datetime.strptime(date, "%H:%M:%S %d/%m/%Y")
-        return calendar.timegm(parsed_date.timetuple())
 
-    @staticmethod
-    def override_cdn(link: URL) -> URL:
-        new_link = link
-        if "milkshake" in link.host:
-            new_link = link.with_host("mlk-bk.cdn.gigachad-cdn.ru")
-        return new_link
+def is_cdn(url: URL) -> bool:
+    """Checks if a given URL is from a CDN."""
+    assert url.host
+    return bool(CDN_POSSIBILITIES.match(url.host))
+
+
+def override_cdn(url: URL) -> URL:
+    assert url.host
+    if "milkshake" not in url.host:
+        return url.with_host("mlk-bk.cdn.gigachad-cdn.ru")
+    return url
+
+
+def is_reinforced_link(url: URL) -> bool:
+    assert url.host
+    return any(part in url.host.split(".") for part in ("get",))
+
+
+def parse_datetime(date: str) -> int:
+    """Parses a datetime string into a unix timestamp."""
+    parsed_date = datetime.datetime.strptime(date, "%H:%M:%S %d/%m/%Y")
+    return calendar.timegm(parsed_date.timetuple())
