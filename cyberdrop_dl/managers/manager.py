@@ -17,7 +17,7 @@ from cyberdrop_dl.managers.live_manager import LiveManager
 from cyberdrop_dl.managers.log_manager import LogManager
 from cyberdrop_dl.managers.path_manager import PathManager
 from cyberdrop_dl.managers.progress_manager import ProgressManager
-from cyberdrop_dl.managers.realdebrid_manager import RealDebridManager
+from cyberdrop_dl.managers.realdebrid_manager import DebridManager
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.args import ParsedArgs
 from cyberdrop_dl.utils.data_enums_classes.supported_domains import SUPPORTED_FORUMS
@@ -37,7 +37,7 @@ class Manager:
         self.path_manager: PathManager = field(init=False)
         self.config_manager: ConfigManager = field(init=False)
         self.hash_manager: HashManager = field(init=False)
-        self.real_debrid_manager: RealDebridManager = field(init=False)
+        self.real_debrid_manager: DebridManager = field(init=False)
 
         self.log_manager: LogManager = field(init=False)
         self.db_manager: DBManager = field(init=False)
@@ -112,8 +112,8 @@ class Manager:
             self.client_manager = ClientManager(self)
         if not isinstance(self.download_manager, DownloadManager):
             self.download_manager = DownloadManager(self)
-        if not isinstance(self.real_debrid_manager, RealDebridManager):
-            self.real_debrid_manager = RealDebridManager(self)
+        if not isinstance(self.real_debrid_manager, DebridManager):
+            self.real_debrid_manager = DebridManager(self)
         await self.async_db_hash_startup()
 
         constants.MAX_NAME_LENGTHS["FILE"] = self.config_manager.global_settings_data.general.max_file_name_length
