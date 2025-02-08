@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import platform
 from dataclasses import Field, field
 from time import perf_counter
 from typing import TYPE_CHECKING
@@ -221,9 +222,11 @@ class Manager:
         config_settings = config_settings.model_dump_json(indent=4)
         global_settings = self.config_manager.global_settings_data.model_dump_json(indent=4)
         cli_only_args = self.parsed_args.cli_only_args.model_dump_json(indent=4)
+        system_info = get_system_information()
 
         log("Starting Cyberdrop-DL Process", 10)
         log(f"Running Version: {__version__}", 10)
+        log(f"System Info:{system_info}")
         log(f"Using Config: {self.config_manager.loaded_config}", 10)
         log(f"Using Config File: {self.config_manager.settings.resolve()}", 10)
         log(f"Using Input File: {self.path_manager.input_file.resolve()}", 10)
@@ -264,3 +267,16 @@ class Manager:
             return
         for config in all_configs:
             self.config_manager.change_config(config)
+
+
+def get_system_information() -> str:
+    system_info = {
+        "OS": platform.system(),
+        "release": platform.release(),
+        "version": platform.version(),
+        "machine": platform.machine(),
+        "architecture": str(platform.architecture()),
+        "python": platform.python_version(),
+    }
+
+    return json.dumps(system_info, indent=4)
