@@ -5,7 +5,6 @@ from functools import partialmethod
 from typing import TYPE_CHECKING
 
 from rich.live import Live
-from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.logger import console
@@ -24,9 +23,6 @@ class LiveManager:
         self.no_ui = self.manager.parsed_args.cli_only_args.no_ui
         refresh_rate = self.manager.config_manager.global_settings_data.ui_options.refresh_rate
         self.live = Live(refresh_per_second=refresh_rate, console=console, transient=True, screen=not self.no_ui)
-        spinner = SpinnerColumn(style="green", spinner_name="dots"), TextColumn("Running Cyberdrop-DL")
-        self.placeholder = Progress(*spinner)
-        self.placeholder.add_task("running with no UI", total=100, completed=0)
 
     @contextmanager
     def get_live(self, name: str, stop: bool = False) -> Generator[Live | None]:
@@ -42,10 +38,16 @@ class LiveManager:
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ #
 
     def get_layout(self, name: str) -> RenderableType:
+        if self.no_ui:
+            if name == "main_runtime_layout":
+                name = "simple_runtime_layout"
+            else:
+                name = "no_ui_layout"
         layout = getattr(self.manager.progress_manager, name, None)
         if not layout:
             raise ValueError
-        return self.placeholder if self.no_ui else layout
+
+        return layout
 
     @contextmanager
     def live_context_manager(self, layout: RenderableType, stop: bool = False) -> Generator[Live | None]:

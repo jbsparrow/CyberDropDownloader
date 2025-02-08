@@ -42,6 +42,18 @@ class DownloadsProgress:
             padding=(1, 1),
             subtitle=f"Total Files: [white]{self.total_files:,}",
         )
+        self.simple_progress = Progress(
+            "[progress.description]{task.description}",
+            BarColumn(bar_width=None),
+            "[progress.percentage]{task.percentage:>6.2f}%",
+            "━",
+            "{task.completed:,}",
+        )
+        self.simple_progress_task_id = self.simple_progress.add_task("Completed", total=0)
+
+    @property
+    def simple_completed(self):
+        return self.total_files - self.queued_files
 
     def get_progress(self) -> Panel:
         """Returns the progress bar."""
@@ -56,6 +68,9 @@ class DownloadsProgress:
         self.progress.update(self.skipped_files_task_id, total=self.total_files)
         self.progress.update(self.failed_files_task_id, total=self.total_files)
         self.progress.update(self.queued_files_task_id, total=self.total_files)
+        self.simple_progress.update(
+            self.simple_progress_task_id, total=self.total_files, completed=self.simple_completed
+        )
         self.panel.subtitle = f"Total Files: [white]{self.total_files:,}"
 
     def add_completed(self) -> None:

@@ -7,7 +7,9 @@ from functools import partial
 from typing import TYPE_CHECKING
 
 from pydantic import ByteSize
+from rich.console import Group
 from rich.layout import Layout
+from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from cyberdrop_dl.ui.progress.downloads_progress import DownloadsProgress
 from cyberdrop_dl.ui.progress.file_progress import FileProgress
@@ -74,6 +76,14 @@ class ProgressManager:
             Layout(renderable=self.download_stats_progress.get_progress(), name="Download Failures", ratio=1),
         )
 
+        spinner = SpinnerColumn(style="green", spinner_name="dots"), TextColumn("Running Cyberdrop-DL")
+        no_ui_placeholder = Progress(*spinner)
+        no_ui_placeholder.add_task("running with no UI", total=100, completed=0)
+
+        simple_layout = Group(no_ui_placeholder, self.download_progress.simple_progress)
+
+        self.no_ui_layout = no_ui_placeholder
+        self.simple_runtime_layout = simple_layout
         self.main_runtime_layout = progress_layout
         self.hash_remove_layout = self.hash_progress.get_removed_progress()
         self.hash_layout = self.hash_progress.get_renderable()
