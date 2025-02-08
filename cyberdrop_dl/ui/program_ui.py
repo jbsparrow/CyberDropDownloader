@@ -17,6 +17,7 @@ from cyberdrop_dl.ui.prompts import user_prompts
 from cyberdrop_dl.ui.prompts.basic_prompts import ask_dir_path, enter_to_continue
 from cyberdrop_dl.ui.prompts.defaults import DONE_CHOICE, EXIT_CHOICE
 from cyberdrop_dl.utils.cookie_management import clear_cookies
+from cyberdrop_dl.utils.sorting import Sorter
 from cyberdrop_dl.utils.transfer.transfer_v4_config import transfer_v4_config
 from cyberdrop_dl.utils.transfer.transfer_v4_db import transfer_v4_db
 from cyberdrop_dl.utils.utilities import check_latest_pypi, clear_term, open_in_text_editor
@@ -67,7 +68,7 @@ class ProgramUI:
             1: self._download,
             2: self._retry_failed_download,
             3: self._scan_and_create_hashes,
-            4: self._place_holder,
+            4: self._sort_files,
             5: self._edit_urls,
             6: self._change_config,
             7: self._manage_configs,
@@ -96,6 +97,11 @@ class ProgramUI:
         """Scans a folder and creates hashes for all of its files."""
         path = ask_dir_path("Select the directory to scan")
         hash_directory_scanner(self.manager, path)
+
+    def _sort_files(self) -> None:
+        """Sort files in download folder"""
+        sorter = Sorter(self.manager)
+        asyncio.run(sorter.run())
 
     def _check_updates(self) -> None:
         """Checks Cyberdrop-DL updates."""
