@@ -52,6 +52,8 @@ CDN_POSSIBILITIES = re.compile(CDN_REGEX_STR)
 album_item_selector = "div[class*='relative group/item theItem']"
 item_name_selector = "p[class*='theName']"
 item_date_selector = 'span[class*="theDate"]'
+download_button_selector = "a.btn.ic-download-01"
+image_preview_selector = "img.max-h-full.w-auto.object-cover.relative"
 
 valid_extensions = FILE_FORMATS["Images"] | FILE_FORMATS["Videos"]
 
@@ -92,9 +94,6 @@ class BunkrrCrawler(Crawler):
 
     def __init__(self, manager: Manager, site: str) -> None:
         super().__init__(manager, site, "Bunkrr")
-        self.album_item_selector = "div[class*='relative group/item theItem']"
-        self.item_name_selector = "p[class*='theName']"
-        self.item_date_selector = 'span[class*="theDate"]'
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -129,33 +128,32 @@ class BunkrrCrawler(Crawler):
         scrape_item.add_to_parent_title(title)
         results = await self.get_album_results(album_id)
 
-        item_tags: list[Tag] = soup.select(self.album_item_selector)
+        item_tags: list[Tag] = soup.select(album_item_selector)
         parse_url = partial(self.parse_url, relative_to=scrape_item.url.with_path("/"))
         create = partial(self.create_scrape_item, scrape_item, add_parent=scrape_item.url)
 
-        for item_tag in item_tags:
-            item = AlbumItem.from_tag(item_tag, parse_url)
+        for tag in item_tags:
+            item = AlbumItem.from_tag(tag, parse_url)
             new_scrape_item = create(item.url, possible_datetime=item.date)
-            src = item.get_src(self.parse_url)
-
-            # Scrape new URL if unable to get final URL from thumbnail
-            if src.suffix.lower() not in valid_extensions or "no-image" in src.name or self.deep_scrape(src):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
-
-            else:
-                src_filename, ext = self.get_filename_and_ext(src.name, assume_ext=".mp4")
-                filename, _ = self.get_filename_and_ext(item.name, assume_ext=".mp4")
-                if not self.check_album_results(src, results):
-                    await self.handle_file(src, new_scrape_item, src_filename, ext, custom_filename=filename)
-
+            await self.process_album_item(new_scrape_item, item, results)
             scrape_item.add_children()
+
+    async def process_album_item(self, scrape_item: ScrapeItem, item: AlbumItem, results: dict):
+        src_url = item.get_src(self.parse_url)
+        if src_url.suffix.lower() not in valid_extensions or "no-image" in src_url.name or self.deep_scrape(src_url):
+            return self.manager.task_group.create_task(self.run(scrape_item))
+
+        filename, ext = self.get_filename_and_ext(src_url.name, assume_ext=".mp4")
+        custom_name, _ = self.get_filename_and_ext(item.name, assume_ext=".mp4")
+        if not self.check_album_results(src_url, results):
+            await self.handle_file(src_url, scrape_item, filename, ext, custom_filename=custom_name)
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a file."""
         if not scrape_item.url:
             return
-        soup = link_container = None
+        soup = link_container = date = None  # type: ignore
         src_selector = "src"
         if is_stream_redirect(scrape_item.url):
             soup, scrape_item.url = await self.client.get_soup_and_return_url(self.domain, scrape_item.url)
@@ -174,25 +172,24 @@ class BunkrrCrawler(Crawler):
 
         # try image
         if not (link_container or self.manager.config_manager.deep_scrape):
-            link_container = soup.select_one("img.max-h-full.w-auto.object-cover.relative")
+            link_container = soup.select_one(image_preview_selector)
 
         # fallback for everything else
         if not link_container:
-            link_container = soup.select_one("a.btn.ic-download-01")
+            link_container = soup.select_one(download_button_selector)
             src_selector = "href"
 
-        link_str: str = link_container.get(src_selector) if link_container else None
+        link_str: str = link_container.get(src_selector) if link_container else None  # type: ignore
         if not link_str:
             raise ScrapeError(422, "Couldn't find source", origin=scrape_item)
 
         link = self.parse_url(link_str)
-        date = None
-        date_str = soup.select_one('span[class*="theDate"]')
+        date_str = soup.select_one(item_date_selector)
         if date_str:
             date = parse_datetime(date_str.text.strip())
 
         new_scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, possible_datetime=date)
-        await self.handle_direct_link(new_scrape_item, link, fallback_filename=soup.select_one("h1").text)
+        await self.handle_direct_link(new_scrape_item, link, fallback_filename=soup.select_one("h1").text)  # type: ignore
 
     async def handle_direct_link(
         self, scrape_item: ScrapeItem, url: URL | None = None, fallback_filename: str | None = None
