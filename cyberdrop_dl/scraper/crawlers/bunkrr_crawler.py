@@ -78,7 +78,7 @@ class AlbumItem:
     def get_src(self, parse_url: Callable[..., URL]) -> URL:
         src_str = self.thumbnail.replace("/thumbs/", "/")
         src = parse_url(src_str)
-        src = src.with_suffix(self.suffix).with_query(None)
+        src = with_suffix_encoded(src, self.suffix).with_query(None)
         if src.suffix.lower() not in FILE_FORMATS["Images"]:
             src = src.with_host(src.host.replace("i-", ""))  # type: ignore
         return override_cdn(src)
@@ -119,14 +119,13 @@ class BunkrrCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        album_id = scrape_item.url.parts[2]
-        scrape_item.album_id = album_id
+        scrape_item.album_id = scrape_item.url.parts[2]
         scrape_item.part_of_album = True
         scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
         title = soup.select_one("title").text.rsplit(" | Bunkr")[0].strip()  # type: ignore
-        title = self.create_title(title, album_id)
+        title = self.create_title(title, scrape_item.album_id)
         scrape_item.add_to_parent_title(title)
-        results = await self.get_album_results(album_id)
+        results = await self.get_album_results(scrape_item.album_id)
 
         item_tags: list[Tag] = soup.select(ALBUM_ITEM_SELECTOR)
         parse_url = partial(self.parse_url, relative_to=scrape_item.url.with_path("/"))
@@ -151,8 +150,6 @@ class BunkrrCrawler(Crawler):
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a file."""
-        if not scrape_item.url:
-            return
         soup = link_container = date = None  # type: ignore
         src_selector = "src"
         if is_stream_redirect(scrape_item.url):
@@ -253,7 +250,7 @@ def is_cdn(url: URL) -> bool:
 
 def override_cdn(url: URL) -> URL:
     assert url.host
-    if "milkshake" not in url.host:
+    if "milkshake" in url.host:
         return url.with_host("mlk-bk.cdn.gigachad-cdn.ru")
     return url
 
@@ -267,3 +264,8 @@ def parse_datetime(date: str) -> int:
     """Parses a datetime string into a unix timestamp."""
     parsed_date = datetime.datetime.strptime(date, "%H:%M:%S %d/%m/%Y")
     return calendar.timegm(parsed_date.timetuple())
+
+
+def with_suffix_encoded(url: URL, suffix: str) -> URL:
+    name = Path(url.raw_name).with_suffix(suffix)
+    return url.parent.joinpath(str(name), encoded=True).with_query(url.query).with_fragment(url.fragment)
