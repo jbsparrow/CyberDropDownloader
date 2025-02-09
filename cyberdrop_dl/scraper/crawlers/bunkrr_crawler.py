@@ -48,14 +48,12 @@ CDNS = BASE_CDNS + EXTENDED_CDNS + IMAGE_CDNS
 CDN_REGEX_STR = r"^(?:(?:(" + "|".join(CDNS) + r")[0-9]{0,2}(?:redir)?))\.bunkr?\.[a-z]{2,3}$"
 CDN_POSSIBILITIES = re.compile(CDN_REGEX_STR)
 
-
-album_item_selector = "div[class*='relative group/item theItem']"
-item_name_selector = "p[class*='theName']"
-item_date_selector = 'span[class*="theDate"]'
-download_button_selector = "a.btn.ic-download-01"
-image_preview_selector = "img.max-h-full.w-auto.object-cover.relative"
-
-valid_extensions = FILE_FORMATS["Images"] | FILE_FORMATS["Videos"]
+ALBUM_ITEM_SELECTOR = "div[class*='relative group/item theItem']"
+ITEM_NAME_SELECTOR = "p[class*='theName']"
+ITEM_DATE_SELECTOR = 'span[class*="theDate"]'
+DOWNLOAD_BUTTON_SELECTOR = "a.btn.ic-download-01"
+IMAGE_PREVIEW_SELECTOR = "img.max-h-full.w-auto.object-cover.relative"
+VIDEO_AND_IMAGE_EXTS = FILE_FORMATS["Images"] | FILE_FORMATS["Videos"]
 
 
 @dataclass(frozen=True)
@@ -67,9 +65,9 @@ class AlbumItem:
 
     @classmethod
     def from_tag(cls, tag: Tag, parse_url: Callable[..., URL]) -> AlbumItem:
-        name = tag.select_one(item_name_selector).text  # type: ignore
+        name = tag.select_one(ITEM_NAME_SELECTOR).text  # type: ignore
         thumbnail: str = tag.select_one("img").get("src")  # type: ignore
-        date_str = tag.select_one(item_date_selector).text.strip()  # type: ignore
+        date_str = tag.select_one(ITEM_DATE_SELECTOR).text.strip()  # type: ignore
         date = parse_datetime(date_str)
         link_str: str = tag.find("a").get("href")  # type: ignore
         link = parse_url(link_str)
@@ -128,7 +126,7 @@ class BunkrrCrawler(Crawler):
         scrape_item.add_to_parent_title(title)
         results = await self.get_album_results(album_id)
 
-        item_tags: list[Tag] = soup.select(album_item_selector)
+        item_tags: list[Tag] = soup.select(ALBUM_ITEM_SELECTOR)
         parse_url = partial(self.parse_url, relative_to=scrape_item.url.with_path("/"))
         create = partial(self.create_scrape_item, scrape_item, add_parent=scrape_item.url)
 
@@ -139,14 +137,14 @@ class BunkrrCrawler(Crawler):
             scrape_item.add_children()
 
     async def process_album_item(self, scrape_item: ScrapeItem, item: AlbumItem, results: dict):
-        src_url = item.get_src(self.parse_url)
-        if src_url.suffix.lower() not in valid_extensions or "no-image" in src_url.name or self.deep_scrape(src_url):
+        src = item.get_src(self.parse_url)
+        if src.suffix.lower() not in VIDEO_AND_IMAGE_EXTS or "no-image" in src.name or self.deep_scrape(src):
             return self.manager.task_group.create_task(self.run(scrape_item))
 
-        filename, ext = self.get_filename_and_ext(src_url.name, assume_ext=".mp4")
+        filename, ext = self.get_filename_and_ext(src.name, assume_ext=".mp4")
         custom_name, _ = self.get_filename_and_ext(item.name, assume_ext=".mp4")
-        if not self.check_album_results(src_url, results):
-            await self.handle_file(src_url, scrape_item, filename, ext, custom_filename=custom_name)
+        if not self.check_album_results(src, results):
+            await self.handle_file(src, scrape_item, filename, ext, custom_filename=custom_name)
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
@@ -172,11 +170,11 @@ class BunkrrCrawler(Crawler):
 
         # try image
         if not (link_container or self.manager.config_manager.deep_scrape):
-            link_container = soup.select_one(image_preview_selector)
+            link_container = soup.select_one(IMAGE_PREVIEW_SELECTOR)
 
         # fallback for everything else
         if not link_container:
-            link_container = soup.select_one(download_button_selector)
+            link_container = soup.select_one(DOWNLOAD_BUTTON_SELECTOR)
             src_selector = "href"
 
         link_str: str = link_container.get(src_selector) if link_container else None  # type: ignore
@@ -184,7 +182,7 @@ class BunkrrCrawler(Crawler):
             raise ScrapeError(422, "Couldn't find source", origin=scrape_item)
 
         link = self.parse_url(link_str)
-        date_str = soup.select_one(item_date_selector)
+        date_str = soup.select_one(ITEM_DATE_SELECTOR)
         if date_str:
             date = parse_datetime(date_str.text.strip())
 
