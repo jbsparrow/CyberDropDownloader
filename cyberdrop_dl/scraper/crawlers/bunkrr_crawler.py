@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 BASE_CDNS = [
+    "bacon",
     "big-taco",
     "burger",
     "c",
@@ -39,6 +40,7 @@ BASE_CDNS = [
     "soup",
     "taquito",
     "wiener",
+    "wings",
     r"mlk-bk\.cdn\.gigachad-cdn",
 ]
 
