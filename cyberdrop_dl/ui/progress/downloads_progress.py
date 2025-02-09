@@ -31,6 +31,8 @@ class DownloadsProgress:
         self.previously_completed_files = 0
         self.skipped_files_task_id = self.progress.add_task("[yellow]Skipped By Configuration", total=0)
         self.skipped_files = 0
+        self.queued_files_task_id = self.progress.add_task("[cyan]Queued", total=0)
+        self.queued_files = 0
         self.failed_files_task_id = self.progress.add_task("[red]Failed", total=0)
         self.failed_files = 0
         self.panel = Panel(
@@ -45,13 +47,15 @@ class DownloadsProgress:
         """Returns the progress bar."""
         return self.panel
 
-    def update_total(self) -> None:
+    def update_total(self, increase_total: bool = True) -> None:
         """Updates the total number of files to be downloaded."""
-        self.total_files = self.total_files + 1
+        if increase_total:
+            self.total_files = self.total_files + 1
         self.progress.update(self.completed_files_task_id, total=self.total_files)
         self.progress.update(self.previously_completed_files_task_id, total=self.total_files)
         self.progress.update(self.skipped_files_task_id, total=self.total_files)
         self.progress.update(self.failed_files_task_id, total=self.total_files)
+        self.progress.update(self.queued_files_task_id, total=self.total_files)
         self.panel.subtitle = f"Total Files: [white]{self.total_files:,}"
 
     def add_completed(self) -> None:
@@ -75,3 +79,8 @@ class DownloadsProgress:
         """Adds a failed file to the progress bar."""
         self.progress.advance(self.failed_files_task_id, 1)
         self.failed_files += 1
+
+    def update_queued(self, number: int) -> None:
+        """Adds a queed file to the progress bar."""
+        self.queued_files = number
+        self.progress.update(self.queued_files_task_id, completed=self.queued_files)
