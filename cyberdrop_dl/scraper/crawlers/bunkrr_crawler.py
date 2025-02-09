@@ -3,6 +3,9 @@ from __future__ import annotations
 import calendar
 import datetime
 import re
+from dataclasses import dataclass
+from functools import partial
+from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from yarl import URL
@@ -14,6 +17,8 @@ from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, S
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from bs4 import BeautifulSoup, Tag
 
     from cyberdrop_dl.managers.manager import Manager
@@ -42,6 +47,43 @@ IMAGE_CDNS = [f"i-{cdn}" for cdn in BASE_CDNS]
 CDNS = BASE_CDNS + EXTENDED_CDNS + IMAGE_CDNS
 CDN_REGEX_STR = r"^(?:(?:(" + "|".join(CDNS) + r")[0-9]{0,2}(?:redir)?))\.bunkr?\.[a-z]{2,3}$"
 CDN_POSSIBILITIES = re.compile(CDN_REGEX_STR)
+
+
+album_item_selector = "div[class*='relative group/item theItem']"
+item_name_selector = "p[class*='theName']"
+item_date_selector = 'span[class*="theDate"]'
+
+valid_extensions = FILE_FORMATS["Images"] | FILE_FORMATS["Videos"]
+
+
+@dataclass(frozen=True)
+class AlbumItem:
+    name: str
+    thumbnail: str
+    date: int
+    url: URL
+
+    @classmethod
+    def from_tag(cls, tag: Tag, parse_url: Callable[..., URL]) -> AlbumItem:
+        name = tag.select_one(item_name_selector).text  # type: ignore
+        thumbnail: str = tag.select_one("img").get("src")  # type: ignore
+        date_str = tag.select_one(item_date_selector).text.strip()  # type: ignore
+        date = parse_datetime(date_str)
+        link_str: str = tag.find("a").get("href")  # type: ignore
+        link = parse_url(link_str)
+        return cls(name, thumbnail, date, link)
+
+    def get_src(self, parse_url: Callable[..., URL]) -> URL:
+        src_str = self.thumbnail.replace("/thumbs/", "/")
+        src = parse_url(src_str)
+        src = src.with_suffix(self.suffix).with_query(None)
+        if src.suffix.lower() not in FILE_FORMATS["Images"]:
+            src = src.with_host(src.host.replace("i-", ""))  # type: ignore
+        return override_cdn(src)
+
+    @property
+    def suffix(self) -> str:
+        return Path(self.name).suffix
 
 
 class BunkrrCrawler(Crawler):
@@ -87,38 +129,22 @@ class BunkrrCrawler(Crawler):
         scrape_item.add_to_parent_title(title)
         results = await self.get_album_results(album_id)
 
-        items: list[Tag] = soup.select(self.album_item_selector)
-        for item in items:
-            filename = item.select_one(self.item_name_selector).text  # type: ignore
-            file_ext = "." + filename.split(".")[-1]
-            thumbnail: str = item.select_one("img").get("src")  # type: ignore
-            date_str = item.select_one(self.item_date_selector).text.strip()  # type: ignore
-            date = parse_datetime(date_str)
-            link_str: str = item.find("a").get("href")
-            link = self.parse_url(link_str, scrape_item.url.with_path("/"))
-            new_scrape_item = self.create_scrape_item(
-                scrape_item,
-                link,
-                album_id=album_id,
-                possible_datetime=date,
-                add_parent=scrape_item.url,
-            )
+        item_tags: list[Tag] = soup.select(self.album_item_selector)
+        parse_url = partial(self.parse_url, relative_to=scrape_item.url.with_path("/"))
+        create = partial(self.create_scrape_item, scrape_item, add_parent=scrape_item.url)
 
-            valid_extensions = FILE_FORMATS["Images"] | FILE_FORMATS["Videos"]
-            src_str = thumbnail.replace("/thumbs/", "/")
-            src = self.parse_url(src_str)
-            src = src.with_suffix(file_ext).with_query(None)
-            if file_ext.lower() not in FILE_FORMATS["Images"]:
-                src = src.with_host(src.host.replace("i-", ""))
+        for item_tag in item_tags:
+            item = AlbumItem.from_tag(item_tag, parse_url)
+            new_scrape_item = create(item.url, possible_datetime=item.date)
+            src = item.get_src(self.parse_url)
 
-            src = override_cdn(src)
             # Scrape new URL if unable to get final URL from thumbnail
-            if file_ext.lower() not in valid_extensions or "no-image" in src.name or self.deep_scrape(src):
+            if src.suffix.lower() not in valid_extensions or "no-image" in src.name or self.deep_scrape(src):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
             else:
                 src_filename, ext = self.get_filename_and_ext(src.name, assume_ext=".mp4")
-                filename, _ = self.get_filename_and_ext(filename, assume_ext=".mp4")
+                filename, _ = self.get_filename_and_ext(item.name, assume_ext=".mp4")
                 if not self.check_album_results(src, results):
                     await self.handle_file(src, new_scrape_item, src_filename, ext, custom_filename=filename)
 
