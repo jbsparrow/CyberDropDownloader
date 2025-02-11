@@ -268,6 +268,7 @@ class Crawler(ABC):
     def parse_url(self, link_str: str, relative_to: URL | None = None) -> URL:
         assert link_str
         assert isinstance(link_str, str)
+        link_str = clean_link_str(link_str)
         encoded = "%" in link_str
         base = relative_to or self.primary_base_domain
         new_url = URL(link_str, encoded=encoded)
@@ -309,3 +310,11 @@ def create_task_id(func: Callable) -> Callable:
 def pre_check_scrape_item(scrape_item: ScrapeItem) -> None:
     if scrape_item.url.path == "/":
         raise ValueError
+
+
+def clean_link_str(link_str: str) -> str:
+    if "?" in link_str:
+        parts, query = link_str.split("?", 1)
+        query = query.replace("+", "%20")
+        return f"{parts}?{query}"
+    return link_str

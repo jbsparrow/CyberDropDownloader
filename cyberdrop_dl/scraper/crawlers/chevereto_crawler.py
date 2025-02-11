@@ -271,9 +271,9 @@ class CheveretoCrawler(Crawler):
                 soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url, origin=scrape_item)
             next_page = soup.select_one(self.next_page_selector)
             yield soup
-            if not next_page:
+            page_url_str: str = next_page.get("href") if next_page else None  # type: ignore
+            if not page_url_str:
                 break
-            page_url_str: str = next_page.get("href")
             page_url = self.parse_url(page_url_str)
 
     @staticmethod
