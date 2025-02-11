@@ -273,6 +273,7 @@ class Crawler(ABC):
         assert link_str
         assert isinstance(link_str, str)
         link_str = clean_link_str(link_str)
+        link_str = clean_link_str(link_str)
         encoded = "%" in link_str
         base = relative_to or self.primary_base_domain
         new_url = URL(link_str, encoded=encoded)
