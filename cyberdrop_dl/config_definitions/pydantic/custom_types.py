@@ -8,6 +8,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     HttpUrl,
+    PlainSerializer,
     Secret,
     SerializationInfo,
     StringConstraints,
@@ -21,9 +22,11 @@ def convert_to_yarl(value: AnyUrl) -> URL:
     return URL(str(value))
 
 
-HttpURL = Annotated[HttpUrl, AfterValidator(convert_to_yarl)]
+StrSerializer = PlainSerializer(str, return_type=str, when_used="json-unless-none")
+
+HttpURL = Annotated[HttpUrl, AfterValidator(convert_to_yarl), StrSerializer]
 NonEmptyStr = Annotated[str, StringConstraints(min_length=1, strip_whitespace=True)]
-AnyURL = Annotated[AnyUrl, AfterValidator(convert_to_yarl)]
+AnyURL = Annotated[AnyUrl, AfterValidator(convert_to_yarl), StrSerializer]
 SecretAnyURL = Secret[AnyURL]
 SecretHttpURL = Secret[HttpURL]
 
