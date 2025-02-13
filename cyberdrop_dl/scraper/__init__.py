@@ -57,6 +57,7 @@ from cyberdrop_dl.scraper.crawlers.twitter_images_crawler import TwimgCrawler
 from cyberdrop_dl.scraper.crawlers.xbunker_crawler import XBunkerCrawler
 from cyberdrop_dl.scraper.crawlers.xbunkr_crawler import XBunkrCrawler
 from cyberdrop_dl.scraper.crawlers.xxxbunker_crawler import XXXBunkerCrawler
+from cyberdrop_dl.scraper.crawlers.youjizz_crawler import YouJizzCrawler
 from cyberdrop_dl.utils import constants
 
 if TYPE_CHECKING:
