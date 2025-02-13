@@ -39,27 +39,39 @@ class SpankBangCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        if any(p in scrape_item.url.parts for p in ("video", "play", "embed")):
+        if is_playlist(scrape_item.url):
+            return await self.playlist(scrape_item)
+        if any(p in scrape_item.url.parts for p in ("video", "play", "embed", "playlist")):
             return await self.video(scrape_item)
         raise ValueError
 
     @error_handling_wrapper
+    async def playlist(self, scrape_item: ScrapeItem) -> None:
+        raise NotImplementedError
+
+    @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a video."""
-        video_id = scrape_item.url.parts[1]
-        canonical_url = self.primary_base_domain / video_id / "video"
-        if await self.check_complete_from_referer(canonical_url):
-            return
+
+        if "playlist" not in scrape_item.url.parts:
+            video_id = scrape_item.url.parts[1]
+            canonical_url = self.primary_base_domain / video_id / "video"
+            if await self.check_complete_from_referer(canonical_url):
+                return
 
         async with self.request_limiter:
             soup = get_test_soup()
 
-        scrape_item.url = canonical_url
         video_removed = soup.select_one(VIDEO_REMOVED_SELECTOR)
         if video_removed:
             raise ScrapeError(410, origin=scrape_item)
 
         info_dict = get_info_dict(soup)
+        canonical_url = self.primary_base_domain / info_dict["video_id"] / "video"
+        if await self.check_complete_from_referer(canonical_url):
+            return
+        scrape_item.url = canonical_url
+
         resolution, link_str = get_best_quality(info_dict)
         date = parse_datetime(info_dict["uploadDate"])
         link = self.parse_url(link_str)
@@ -93,16 +105,22 @@ def get_info_dict(soup: BeautifulSoup) -> dict:
         info_dict[name] = value
         if value.startswith("{"):
             info_dict[name] = json.loads(value.replace("'", '"'))
-    extended_info_dict = json.loads(extended_info_js_script.text.replace("'", '"'))
+    extended_info_dict = json.loads(extended_info_js_script.text.replace("'", '"'))  # type: ignore
     info_dict = info_dict | extended_info_dict
+    embed_url = URL(info_dict["embedUrl"])  # type: ignore
+    info_dict["video_id"] = embed_url.parts[1]
     clean_info_dict(info_dict)
     return info_dict
 
 
 def clean_info_dict(info_dict: dict) -> None:
     """Modifies dict in place"""
+
+    def is_valid_key(key: str) -> bool:
+        return not any(p in key for p in ("@", "m3u8"))
+
     if "stream_data" in info_dict:
-        info_dict["stream_data"] = {k: v for k, v in info_dict["stream_data"].items() if "m3u8" not in k}
+        info_dict["stream_data"] = {k: v for k, v in info_dict["stream_data"].items() if is_valid_key(k)}
 
     for k, v in info_dict.items():
         if isinstance(v, dict):
@@ -143,3 +161,7 @@ def parse_datetime(date: str) -> int:
 def get_test_soup() -> BeautifulSoup:
     file_html = Path("spankbang.htm").read_bytes()
     return BeautifulSoup(file_html, "html.parser")
+
+
+def is_playlist(url: URL) -> bool:
+    return "playlist" in url.parts and "-" in url.parts[1]
