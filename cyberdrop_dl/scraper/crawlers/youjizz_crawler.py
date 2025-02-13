@@ -52,7 +52,7 @@ class YouJizzCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup = self.client.get_soup_from_file("youjizz.htm")
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         scrape_item.url = canonical_url
         info_dict = get_info_dict(soup)
