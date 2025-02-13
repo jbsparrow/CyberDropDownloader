@@ -230,6 +230,7 @@ class Flaresolverr:
         self.flaresolverr_host = client_manager.manager.config_manager.global_settings_data.general.flaresolverr
         self.enabled = bool(self.flaresolverr_host)
         self.session_id = None
+        self.timeout = aiohttp.ClientTimeout(total=120000, connect=60000)
 
     async def _request(
         self,
@@ -259,6 +260,7 @@ class Flaresolverr:
             ssl=self.client_manager.ssl_context,
             proxy=self.client_manager.proxy,
             json=data,
+            timeout=self.timeout,
         ) as response:
             json_obj: dict = await response.json()  # type: ignore
 
