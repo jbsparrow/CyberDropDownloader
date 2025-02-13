@@ -4,10 +4,8 @@ import calendar
 import datetime
 import json
 from dataclasses import dataclass
-from pathlib import Path
 from typing import TYPE_CHECKING
 
-from bs4 import BeautifulSoup, ResultSet, Tag
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
@@ -18,6 +16,8 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
+
+    from bs4 import BeautifulSoup, ResultSet, Tag
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
@@ -104,9 +104,6 @@ class SpankBangCrawler(Crawler):
                 return
 
         async with self.request_limiter:
-            soup = get_test_soup()
-
-        async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         video_removed = soup.select_one(VIDEO_REMOVED_SELECTOR)
@@ -133,7 +130,6 @@ class SpankBangCrawler(Crawler):
     async def web_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[tuple[str, int, ResultSet[Tag]]]:
         """Generator of website pages."""
         page_url = scrape_item.url
-        playlist = PlaylistInfo.from_url(page_url)
         current_page = 1
         while True:
             async with self.request_limiter:
@@ -220,11 +216,6 @@ def parse_datetime(date: str) -> int:
     """Parses a datetime string into a unix timestamp."""
     parsed_date = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
     return calendar.timegm(parsed_date.timetuple())
-
-
-def get_test_soup() -> BeautifulSoup:
-    file_html = Path("spankbang_playlist.htm").read_bytes()
-    return BeautifulSoup(file_html, "html.parser")
 
 
 def is_playlist(url: URL) -> bool:
