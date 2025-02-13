@@ -42,6 +42,7 @@ from cyberdrop_dl.scraper.crawlers.realbooru_crawler import RealBooruCrawler
 from cyberdrop_dl.scraper.crawlers.reddit_crawler import RedditCrawler
 from cyberdrop_dl.scraper.crawlers.redgifs_crawler import RedGifsCrawler
 from cyberdrop_dl.scraper.crawlers.rule34vault_crawler import Rule34VaultCrawler
+from cyberdrop_dl.scraper.crawlers.rule34video_crawler import Rule34VideoCrawler
 from cyberdrop_dl.scraper.crawlers.rule34xxx_crawler import Rule34XXXCrawler
 from cyberdrop_dl.scraper.crawlers.rule34xyz_crawler import Rule34XYZCrawler
 from cyberdrop_dl.scraper.crawlers.saint_crawler import SaintCrawler
