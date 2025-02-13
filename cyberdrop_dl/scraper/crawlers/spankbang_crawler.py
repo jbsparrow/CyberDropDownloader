@@ -19,9 +19,10 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
-STREAM_URL_PREFIX = "stream_url_"
 DEFAULT_QUALITY = "main"
 RESOLUTIONS = ["4k", "1080p", "720p", "480p", "320p", "240p"]  # best to worst
+
+VIDEO_REMOVED_SELECTOR = "[id='video_removed'], [class*='video_removed']"
 
 
 class SpankBangCrawler(Crawler):
@@ -45,9 +46,6 @@ class SpankBangCrawler(Crawler):
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a video."""
-        if await self.check_complete_from_referer(scrape_item):
-            return
-
         video_id = scrape_item.url.parts[1]
         canonical_url = self.primary_base_domain / video_id / "video"
         if await self.check_complete_from_referer(canonical_url):
@@ -57,14 +55,16 @@ class SpankBangCrawler(Crawler):
             soup = get_test_soup()
 
         scrape_item.url = canonical_url
-        video_removed = soup.select_one('[id="video_removed"], [class*="video_removed"]')
+        video_removed = soup.select_one(VIDEO_REMOVED_SELECTOR)
         if video_removed:
             raise ScrapeError(410, origin=scrape_item)
 
         info_dict = get_info_dict(soup)
         resolution, link_str = get_best_quality(info_dict)
+        date = parse_datetime(info_dict["uploadDate"])
         link = self.parse_url(link_str)
         log_debug(json.dumps(info_dict, indent=4))
+        scrape_item.possible_datetime = date
 
         filename, ext = self.get_filename_and_ext(link.name)
         custom_filename = f"{info_dict["title"]} [{resolution}]{ext}"
@@ -78,6 +78,7 @@ class SpankBangCrawler(Crawler):
 
 def get_info_dict(soup: BeautifulSoup) -> dict:
     info_js_script = soup.select_one("main.main-container > script:contains('var stream_data')")
+    extended_info_js_script = soup.select_one("main.main-container > script:contains('uploadDate')")
     title = soup.select_one("div#video h1")
     title = title.get("title") or title.text.replace("\n", "")  # type: ignore
     info_dict: dict[str, str | dict] = {"title": title.strip()}  # type: ignore
@@ -92,6 +93,8 @@ def get_info_dict(soup: BeautifulSoup) -> dict:
         info_dict[name] = value
         if value.startswith("{"):
             info_dict[name] = json.loads(value.replace("'", '"'))
+    extended_info_dict = json.loads(extended_info_js_script.text.replace("'", '"'))
+    info_dict = info_dict | extended_info_dict
     clean_info_dict(info_dict)
     return info_dict
 
@@ -122,7 +125,7 @@ def clean_value(value: list | str | int) -> list | str | int | None:
 def get_best_quality(info_dict: dict) -> tuple[str, str]:
     """Returns name and URL of the best available quality.
 
-    URL is returned as `str`"""
+    Returns URL as `str`"""
     qualities: dict = info_dict["stream_data"]
     for res in RESOLUTIONS:
         value = qualities.get(res)
@@ -133,7 +136,7 @@ def get_best_quality(info_dict: dict) -> tuple[str, str]:
 
 def parse_datetime(date: str) -> int:
     """Parses a datetime string into a unix timestamp."""
-    parsed_date = datetime.datetime.strptime(date, "%H:%M:%S %d/%m/%Y")
+    parsed_date = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
     return calendar.timegm(parsed_date.timetuple())
 
 
