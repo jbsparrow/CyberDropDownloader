@@ -10,6 +10,7 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
+from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -25,10 +26,13 @@ if TYPE_CHECKING:
 
 DEFAULT_QUALITY = "main"
 PRIMARY_BASE_DOMAIN = URL("https://spankbang.com/")
-RESOLUTIONS = ["4k", "1080p", "720p", "480p", "320p", "240p"]  # best to worst
+RESOLUTIONS = ["4k", "2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"]  # best to worst
 
 VIDEO_REMOVED_SELECTOR = "[id='video_removed'], [class*='video_removed']"
 PLAYLIST_ITEM_SELECTOR = "div.video-list > div.video-item > a"
+
+JS_SELECTOR = "main.main-container > script:contains('var stream_data')"
+EXTENDED_JS_SELECTOR = "main.main-container > script:contains('uploadDate')"
 
 
 @dataclass(frozen=True)
@@ -119,7 +123,6 @@ class SpankBangCrawler(Crawler):
         resolution, link_str = get_best_quality(info_dict)
         date = parse_datetime(info_dict["uploadDate"])
         link = self.parse_url(link_str)
-        log_debug(json.dumps(info_dict, indent=4))
         scrape_item.possible_datetime = date
 
         filename, ext = self.get_filename_and_ext(link.name)
@@ -149,55 +152,21 @@ class SpankBangCrawler(Crawler):
 
 
 def get_info_dict(soup: BeautifulSoup) -> dict:
-    info_js_script = soup.select_one("main.main-container > script:contains('var stream_data')")
-    extended_info_js_script = soup.select_one("main.main-container > script:contains('uploadDate')")
-    title = soup.select_one("div#video h1")
-    title = title.get("title") or title.text.replace("\n", "")  # type: ignore
-    info_dict: dict[str, str | dict] = {"title": title.strip()}  # type: ignore
-    lines = [_.strip() for _ in info_js_script.text.split(";")]  # type: ignore
-    for line in lines:
-        if not line.startswith("var "):
-            continue
-        data = line.removeprefix("var ")
-        name, value = data.split("=", 1)
-        name = name.strip()
-        value = value.strip()
-        info_dict[name] = value
-        if value.startswith("{"):
-            info_dict[name] = json.loads(value.replace("'", '"'))
-    extended_info_dict = json.loads(extended_info_js_script.text.replace("'", '"'))  # type: ignore
-    info_dict = info_dict | extended_info_dict
-    embed_url = URL(info_dict["embedUrl"])  # type: ignore
-    info_dict["video_id"] = embed_url.parts[1]
-    clean_info_dict(info_dict)
-    return info_dict
+    info_js_script = soup.select_one(JS_SELECTOR)
+    extended_info_js_script = soup.select_one(EXTENDED_JS_SELECTOR)
 
+    title_tag = soup.select_one("div#video h1")
+    title: str = title_tag.get("title") or title_tag.text.replace("\n", "")  # type: ignore
+    info: dict[str, str | dict] = javascript.parse_js_vars(info_js_script.text)  # type: ignore
+    extended_info_dict = javascript.parse_json_to_dict(extended_info_js_script.text)  # type: ignore
+    embed_url = URL(info["embedUrl"])  # type: ignore
 
-def clean_info_dict(info_dict: dict) -> None:
-    """Modifies dict in place"""
-
-    def is_valid_key(key: str) -> bool:
-        return not any(p in key for p in ("@", "m3u8"))
-
-    if "stream_data" in info_dict:
-        info_dict["stream_data"] = {k: v for k, v in info_dict["stream_data"].items() if is_valid_key(k)}
-
-    for k, v in info_dict.items():
-        if isinstance(v, dict):
-            continue
-        info_dict[k] = clean_value(v)
-
-
-def clean_value(value: list | str | int) -> list | str | int | None:
-    if isinstance(value, str):
-        value = value.removesuffix("'").removeprefix("'")
-        if value.isdigit():
-            return int(value)
-        return value
-
-    if isinstance(value, list):
-        return [clean_value(v) for v in value]
-    return value
+    info["title"] = title.strip()
+    info = info | extended_info_dict
+    info["video_id"] = embed_url.parts[1]
+    javascript.clean_dict(info, "stream_data")
+    log_debug(json.dumps(info, indent=4))
+    return info
 
 
 def get_best_quality(info_dict: dict) -> tuple[str, str]:
