@@ -4,7 +4,7 @@ import json
 import re
 from calendar import timegm
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from yarl import URL
 
@@ -26,6 +26,19 @@ RESOLUTIONS = ["4k", "2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"] 
 DATE_PATTERN = re.compile(r"(\d+)\s*(weeks?|days?|hours?|minutes?|seconds?)", re.IGNORECASE)
 
 
+JS_SELECTOR = "div#content > script:contains('var dataEncodings')"
+DATE_SELECTOR = "span.pretty-date"
+
+
+class Format(NamedTuple):
+    resolution: str
+    link_str: str
+
+
+## TODO: convert to global dataclass with constructor from dict to use in multiple crawlers
+class VideoInfo(dict): ...
+
+
 class YouJizzCrawler(Crawler):
     primary_base_domain = URL("https://www.youjizz.com/")
 
@@ -37,8 +50,6 @@ class YouJizzCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-
-        ## TODO: add tag support
         if any(p in scrape_item.url.parts for p in ("videos", "embed")):
             return await self.video(scrape_item)
         raise ValueError
@@ -56,19 +67,20 @@ class YouJizzCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         scrape_item.url = canonical_url
-        info_dict = get_info_dict(soup)
-        log_debug(json.dumps(info_dict, indent=4))
-        resolution, link_str = get_best_quality(info_dict)
-        if not link_str:
+        info = get_info(soup)
+        v_format = get_best_quality(info)
+        if not v_format:
             raise ScrapeError(422, origin=scrape_item)
 
+        resolution, link_str = v_format
+
         link = self.parse_url(link_str)
-        date = parse_relative_date(info_dict["date"])
+        date = parse_relative_date(info["date"])
         scrape_item.possible_datetime = date
         filename, ext = self.get_filename_and_ext(link.name)
         if ext == ".m3u8":
             raise ScrapeError(422, origin=scrape_item)
-        custom_filename = f"{info_dict["title"]} [{video_id}][{resolution}]{ext}"
+        custom_filename = f"{info["title"]} [{video_id}][{resolution}]{ext}"
         custom_filename, _ = self.get_filename_and_ext(custom_filename)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
@@ -82,33 +94,31 @@ def get_video_id(url: URL) -> str:
     return video_id.removesuffix(".html")
 
 
-def get_info_dict(soup: BeautifulSoup) -> dict:
-    info_js_script = soup.select_one("div#content > script:contains('var dataEncodings')")
-    title = soup.title.text.replace("\n", "").strip()  # type: ignore
-    date_str = soup.select_one("span.pretty-date").text.replace("(s)", "s").strip()  # type: ignore
-    info_dict: dict[str, str | dict] = javascript.parse_json_to_dict(info_js_script.text)  # type: ignore
-    info_dict["title"] = title
-    info_dict["date"] = date_str
-    javascript.clean_dict(info_dict, "stream_data")
-    return info_dict
+def get_info(soup: BeautifulSoup) -> VideoInfo:
+    info_js_script = soup.select_one(JS_SELECTOR)
+    info: dict[str, str | dict] = javascript.parse_json_to_dict(info_js_script.text)  # type: ignore
+    info["title"] = soup.title.text.replace("\n", "").strip()  # type: ignore
+    info["date"] = soup.select_one(DATE_SELECTOR).text.replace("(s)", "s").strip()  # type: ignore
+    javascript.clean_dict(info, "stream_data")
+    log_debug(json.dumps(info, indent=4))
+    return VideoInfo(**info)
 
 
-def get_best_quality(info_dict: dict) -> tuple[str, str]:
-    """Returns name and URL of the best available quality.
-
-    Returns URL as `str`"""
+def get_best_quality(info_dict: dict) -> Format | None:
     qualities: dict = info_dict["dataEncodings"]
     for res in RESOLUTIONS:
         avaliable_formats = [f for f in qualities if f["name"] == res]
         for format_info in avaliable_formats:
             link_str = format_info["filename"]
             if "/_hls/" not in link_str:
-                return res, link_str
+                return Format(res, link_str)
     default_quality: dict = next((f for f in qualities if f["name"] == DEFAULT_QUALITY), {})
-    default_link_str = default_quality.get("filename") or ""
-    return DEFAULT_QUALITY, default_link_str
+    if default_quality:
+        default_link_str = default_quality.get("filename") or ""
+        return Format(DEFAULT_QUALITY, default_link_str)
 
 
+## TODO: move to utils. multiple crawler use the same function
 def parse_relative_date(relative_date: timedelta | str) -> int:
     """Parses `datetime.timedelta` or `string` in a timedelta format. Returns `now() - parsed_timedelta` as an unix timestamp."""
     if isinstance(relative_date, str):
