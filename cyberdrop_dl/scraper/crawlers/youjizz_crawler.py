@@ -10,6 +10,7 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
+from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -21,7 +22,7 @@ if TYPE_CHECKING:
 
 
 DEFAULT_QUALITY = "Auto"
-RESOLUTIONS = ["4k", "1080p", "720p", "480p", "320p", "240p"]  # best to worst
+RESOLUTIONS = ["4k", "2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"]  # best to worst
 DATE_PATTERN = re.compile(r"(\d+)\s*(weeks?|days?|hours?|minutes?|seconds?)", re.IGNORECASE)
 
 
@@ -83,63 +84,13 @@ def get_video_id(url: URL) -> str:
 
 def get_info_dict(soup: BeautifulSoup) -> dict:
     info_js_script = soup.select_one("div#content > script:contains('var dataEncodings')")
-    title = soup.title.text.replace("\n", "")  # type: ignore
+    title = soup.title.text.replace("\n", "").strip()  # type: ignore
     date_str = soup.select_one("span.pretty-date").text.replace("(s)", "s").strip()  # type: ignore
-    info_dict: dict[str, str | dict] = {"title": title.strip(), "date": date_str}  # type: ignore
-    return info_dict | parse_js_vars(info_js_script.text)  # type: ignore
-
-
-def parse_js_vars(text: str) -> dict:
-    info_dict = {}
-    lines = [_.strip() for _ in text.split(";")]
-    for line in lines:
-        if not line.startswith("var "):
-            continue
-        data = line.removeprefix("var ")
-        name, value = data.split("=", 1)
-        name = name.strip()
-        value = value.strip()
-        info_dict[name] = value
-        if value.startswith("{") or value.startswith("["):
-            info_dict[name] = js_json_to_dict(value)
-    clean_info_dict(info_dict)
+    info_dict: dict[str, str | dict] = javascript.parse_json_to_dict(info_js_script.text)  # type: ignore
+    info_dict["title"] = title
+    info_dict["date"] = date_str
+    javascript.clean_dict(info_dict, "stream_data")
     return info_dict
-
-
-def js_json_to_dict(text: str) -> str:
-    json_str = text.replace("'", '"')
-    # wrap keys with double quotes
-    json_str = re.sub(r"(\w+)\s?:", r'"\1":', json_str)
-    # wrap values with double quotes, skip int or bool
-    json_str = re.sub(r":\s?(?!(\d+|true|false))(\w+)", r':"\2"', json_str)
-    return json.loads(json_str)
-
-
-def clean_info_dict(info_dict: dict) -> None:
-    """Modifies dict in place"""
-
-    def is_valid_key(key: str) -> bool:
-        return not any(p in key for p in ("@", "m3u8"))
-
-    if "stream_data" in info_dict:
-        info_dict["stream_data"] = {k: v for k, v in info_dict["stream_data"].items() if is_valid_key(k)}
-
-    for k, v in info_dict.items():
-        if isinstance(v, dict):
-            continue
-        info_dict[k] = clean_value(v)
-
-
-def clean_value(value: list | str | int) -> list | str | int | None:
-    if isinstance(value, str):
-        value = value.removesuffix("'").removeprefix("'")
-        if value.isdigit():
-            return int(value)
-        return value
-
-    if isinstance(value, list):
-        return [clean_value(v) for v in value]
-    return value
 
 
 def get_best_quality(info_dict: dict) -> tuple[str, str]:
