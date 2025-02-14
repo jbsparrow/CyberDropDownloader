@@ -12,6 +12,7 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils import javascript
+from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -21,8 +22,12 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
-RESOLUTIONS = ["4k", "1080p", "720p", "480p", "360p", "240p"]  # best to worst
+RESOLUTIONS = ["4k", "2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"]  # best to worst
 ALLOW_AV1 = True
+
+
+DOWNLOADS_SELECTOR = "div#hd-porn-dload > div.dloaddivcol"
+PLAYLIST_ITEM_SELECTOR = "div[id^='vidresults'] div[id^='vf'] div.mb-content a"
 
 
 class VideoInfo(NamedTuple):
@@ -59,7 +64,29 @@ class EpornerCrawler(Crawler):
         """Determines where to send the scrape item based on the url."""
         if get_video_id(scrape_item.url):
             return await self.video(scrape_item)
+        if any(p in scrape_item.url.parts for p in ("cat", "channel", "search", "pornstar")):
+            return await self.playlist(scrape_item)
         raise ValueError
+
+    @error_handling_wrapper
+    async def playlist(self, scrape_item: ScrapeItem) -> None:
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+
+        scrape_item.part_of_album = True
+        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
+        title = soup.title.text.rsplit("Porn Star Videos")[0].rsplit("Porn Videos")[0].rsplit("Videos -")[0].strip()  # type: ignore
+        title = self.create_title(title)
+        scrape_item.add_to_parent_title(title)
+
+        item_tags: list[Tag] = soup.select(PLAYLIST_ITEM_SELECTOR)
+
+        for item in item_tags:
+            link_str: str = item.get("href")  # type: ignore
+            link = self.parse_url(link_str)
+            new_scrape_item = self.create_scrape_item(scrape_item, link, add_parent=scrape_item.url)
+            self.manager.task_group.create_task(self.run(new_scrape_item))
+            scrape_item.add_children()
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
@@ -93,7 +120,7 @@ class EpornerCrawler(Crawler):
 
 
 def get_available_resolutions(soup: BeautifulSoup) -> list[VideoInfo]:
-    downloads = soup.select_one("div#hd-porn-dload > div.dloaddivcol")
+    downloads = soup.select_one(DOWNLOADS_SELECTOR)
     assert downloads
     formats = downloads.select("span.download-h264 > a")
     if ALLOW_AV1:
