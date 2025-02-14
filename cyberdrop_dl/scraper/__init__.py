@@ -16,6 +16,7 @@ from cyberdrop_dl.scraper.crawlers.cyberdrop_crawler import CyberdropCrawler
 from cyberdrop_dl.scraper.crawlers.cyberfile_crawler import CyberfileCrawler
 from cyberdrop_dl.scraper.crawlers.ehentai_crawler import EHentaiCrawler
 from cyberdrop_dl.scraper.crawlers.eightmuses_crawler import EightMusesCrawler
+from cyberdrop_dl.scraper.crawlers.eporner_crawler import EpornerCrawler
 from cyberdrop_dl.scraper.crawlers.erome_crawler import EromeCrawler
 from cyberdrop_dl.scraper.crawlers.f95zone_crawler import F95ZoneCrawler
 from cyberdrop_dl.scraper.crawlers.fapello_crawler import FapelloCrawler
