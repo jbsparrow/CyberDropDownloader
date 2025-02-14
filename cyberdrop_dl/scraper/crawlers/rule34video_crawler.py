@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, NamedTuple
 
 from yarl import URL
 
+from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
@@ -14,7 +15,7 @@ from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
+    from collections.abc import AsyncGenerator, Generator
 
     from bs4 import BeautifulSoup, Tag
 
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
-RESOLUTIONS = ["4k", "1080p", "720p", "480p", "360p", "240p"]  # best to worst
+RESOLUTIONS = ["4k", "2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"]  # best to worst
 DOWNLOADS_SELECTOR = "div#tab_video_info div.row_spacer div.wrap > a.tag_item"
 JS_SELECTOR = "head > script:contains('uploadDate')"
 VIDEO_TITLE_SELECTOR = "h1.title_video"
@@ -40,10 +41,14 @@ PLAYLIST_TITLE_SELECTORS = {
 PLAYLIST_TITLE_SELECTORS["categories"] = PLAYLIST_TITLE_SELECTORS["models"]
 
 
-class VideoInfo(NamedTuple):
+class Format(NamedTuple):
     ext: str
     resolution: str
     link_str: str
+
+
+## TODO: convert to global dataclass with constructor from dict to use in multiple crawlers
+class VideoInfo(dict): ...
 
 
 class Rule34VideoCrawler(Crawler):
@@ -103,17 +108,17 @@ class Rule34VideoCrawler(Crawler):
             # soup = get_test_soup()
 
         scrape_item.url = canonical_url
-        info_dict = get_info_dict(soup)
-        resolution, link_str = get_best_quality(soup)
-        log_debug(json.dumps(info_dict, indent=4))
-
+        info = get_video_info(soup)
+        v_format = get_best_quality(soup)
+        if not v_format:
+            raise ScrapeError(422, origin=scrape_item)
+        ext, resolution, link_str = v_format
         link = self.parse_url(link_str)
-        log_debug(str(link))
+        scrape_item.possible_datetime = parse_datetime(info["uploadDate"])
 
-        scrape_item.possible_datetime = parse_datetime(info_dict["uploadDate"])
         name = link.name or link.parent.name
         filename, ext = self.get_filename_and_ext(name)
-        custom_filename = link.query.get("download_filename") or info_dict["title"]
+        custom_filename = link.query.get("download_filename") or info["title"]
         custom_filename = f"{custom_filename} [{video_id}][{resolution}]{ext}"
         custom_filename, _ = self.get_filename_and_ext(custom_filename)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
@@ -137,18 +142,18 @@ class Rule34VideoCrawler(Crawler):
         self.update_cookies(cookies)
 
 
-def get_info_dict(soup: BeautifulSoup) -> dict:
+def get_video_info(soup: BeautifulSoup) -> VideoInfo:
     title = soup.select_one(VIDEO_TITLE_SELECTOR).text.strip()  # type: ignore
     info_js_script = soup.select_one(JS_SELECTOR)
-    info_dict: dict[str, str | dict] = {"title": title.strip()}  # type: ignore
-    info_dict = info_dict | javascript.parse_json_to_dict(info_js_script.text)  # type: ignore
-    javascript.clean_dict(info_dict)
-    return info_dict
+    info: dict[str, str | dict] = javascript.parse_json_to_dict(info_js_script.text)  # type: ignore
+    info["title"] = title
+    javascript.clean_dict(info)
+    log_debug(json.dumps(info, indent=4))
+    return VideoInfo(**info)
 
 
-def get_available_formats(soup: BeautifulSoup) -> list[VideoInfo]:
+def get_available_formats(soup: BeautifulSoup) -> Generator[Format]:
     downloads = soup.select(DOWNLOADS_SELECTOR)
-    formats = []
     for download in downloads:
         link_str: str = download.get("href")  # type: ignore
         if "/tags/" in link_str or not all(p in link_str for p in REQUIRED_FORMAT_STRINGS):
@@ -157,28 +162,19 @@ def get_available_formats(soup: BeautifulSoup) -> list[VideoInfo]:
         ext = ext.lower()
         if ext not in ("mov", "mp4"):
             continue
-        formats.append(VideoInfo(ext, res, link_str))
-    return formats
+        yield Format(ext, res, link_str)
 
 
-def get_best_quality(soup: BeautifulSoup) -> tuple[str, str]:
-    """Returns extension and URL of the best available quality.
+def get_best_quality(soup: BeautifulSoup) -> Format | None:
+    formats_dict = {}
+    for v_format in get_available_formats(soup):
+        formats_dict[v_format.resolution] = v_format
 
-    Returns URL as `str`"""
-    formats = get_available_formats(soup)
-    default = "<UNKNOWN>", ""
-    qualities = {}
-    for download in formats:
-        qualities[download.resolution] = download
-        if not default[1]:
-            default = download.resolution, download.link_str
-
+    log_debug(json.dumps(formats_dict, indent=4))
     for res in RESOLUTIONS:
-        download = qualities.get(res)
-        if download:
-            return res, download.link_str
-
-    return default
+        v_format = formats_dict.get(res)
+        if v_format:
+            return v_format
 
 
 def parse_datetime(date: str) -> int:
