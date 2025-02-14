@@ -4,7 +4,7 @@ import calendar
 import datetime
 import json
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from yarl import URL
 
@@ -24,8 +24,8 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
-DEFAULT_QUALITY = "main"
 PRIMARY_BASE_DOMAIN = URL("https://spankbang.com/")
+DEFAULT_QUALITY = "main"
 RESOLUTIONS = ["4k", "2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"]  # best to worst
 
 VIDEO_REMOVED_SELECTOR = "[id='video_removed'], [class*='video_removed']"
@@ -51,6 +51,15 @@ class PlaylistInfo:
 
     def get_page_url(self, page: int = 1) -> URL:
         return self.url / f"{page}"
+
+
+class Format(NamedTuple):
+    resolution: str
+    link_str: str
+
+
+## TODO: convert to global dataclass with constructor from dict to use in multiple crawlers
+class VideoInfo(dict): ...
 
 
 class SpankBangCrawler(Crawler):
@@ -114,19 +123,22 @@ class SpankBangCrawler(Crawler):
         if video_removed:
             raise ScrapeError(410, origin=scrape_item)
 
-        info_dict = get_info_dict(soup)
-        canonical_url = self.primary_base_domain / info_dict["video_id"] / "video"
+        info = get_info_dict(soup)
+        canonical_url = self.primary_base_domain / info["video_id"] / "video"
         if await self.check_complete_from_referer(canonical_url):
             return
         scrape_item.url = canonical_url
 
-        resolution, link_str = get_best_quality(info_dict)
-        date = parse_datetime(info_dict["uploadDate"])
+        v_format = get_best_quality(info)
+        if not v_format:
+            raise ScrapeError(422, origin=scrape_item)
+        resolution, link_str = v_format
+        date = parse_datetime(info["uploadDate"])
         link = self.parse_url(link_str)
         scrape_item.possible_datetime = date
 
         filename, ext = self.get_filename_and_ext(link.name)
-        custom_filename = f"{info_dict["title"]} [{resolution}]{ext}"
+        custom_filename = f"{info["title"]} [{resolution}]{ext}"
         custom_filename, _ = self.get_filename_and_ext(custom_filename)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
@@ -151,7 +163,7 @@ class SpankBangCrawler(Crawler):
         self.update_cookies(cookies)
 
 
-def get_info_dict(soup: BeautifulSoup) -> dict:
+def get_info_dict(soup: BeautifulSoup) -> VideoInfo:
     info_js_script = soup.select_one(JS_SELECTOR)
     extended_info_js_script = soup.select_one(EXTENDED_JS_SELECTOR)
 
@@ -166,10 +178,10 @@ def get_info_dict(soup: BeautifulSoup) -> dict:
     info["video_id"] = embed_url.parts[1]
     javascript.clean_dict(info, "stream_data")
     log_debug(json.dumps(info, indent=4))
-    return info
+    return VideoInfo(**info)
 
 
-def get_best_quality(info_dict: dict) -> tuple[str, str]:
+def get_best_quality(info_dict: dict) -> Format:
     """Returns name and URL of the best available quality.
 
     Returns URL as `str`"""
@@ -177,8 +189,8 @@ def get_best_quality(info_dict: dict) -> tuple[str, str]:
     for res in RESOLUTIONS:
         value = qualities.get(res)
         if value:
-            return res, value[-1]
-    return DEFAULT_QUALITY, qualities[DEFAULT_QUALITY]
+            return Format(res, value[-1])
+    return Format(DEFAULT_QUALITY, qualities[DEFAULT_QUALITY])
 
 
 def parse_datetime(date: str) -> int:
