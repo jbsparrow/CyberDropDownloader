@@ -31,6 +31,9 @@ class Rule34VideoCrawler(Crawler):
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "rule34video", "Rule34Video")
 
+    async def async_startup(self) -> None:
+        self.set_cookies()
+
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @create_task_id
@@ -69,6 +72,10 @@ class Rule34VideoCrawler(Crawler):
         custom_filename = f"{custom_filename} [{video_id}]{ext}"
         custom_filename, _ = self.get_filename_and_ext(custom_filename)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
+
+    def set_cookies(self) -> None:
+        cookies = {"kt_rt_popAccess": 1, "kt_tcookie": 1}
+        self.update_cookies(cookies)
 
 
 def get_info_dict(soup: BeautifulSoup) -> dict:
