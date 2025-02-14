@@ -35,13 +35,18 @@ def parse_js_vars(js_text: str) -> dict:
 
 
 def parse_json_to_dict(js_text: str, use_regex: bool = True) -> dict:
-    json_str = js_text.replace("\t", "").replace("\n", "").replace("'", '"').strip()
+    json_str = js_text.replace("\t", "").replace("\n", "").strip()
+    json_str = replace_quotes(json_str)
     if use_regex:
         json_str = scape_urls(json_str)
         json_str = re.sub(*QUOTE_KEYS_REGEX, json_str)
         json_str = re.sub(*QUOTE_VALUES_REGEX, json_str)
         json_str = recover_urls(json_str)
     return json.loads(json_str)
+
+
+def replace_quotes(js_text: str) -> str:
+    return js_text.replace(",'", ',"').replace("':", '":').replace(", '", ', "').replace("' :", '" :')
 
 
 def is_valid_key(key: str) -> bool:
