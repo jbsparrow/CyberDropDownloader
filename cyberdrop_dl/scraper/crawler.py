@@ -246,6 +246,10 @@ class Crawler(ABC):
         if not download_options.remove_domains_from_folder_names:
             title = f"{title} ({self.folder_domain})"
 
+        while True:
+            title = title.replace("  ", " ")
+            if "  " not in title:
+                break
         return title
 
     def add_separate_post_title(self, scrape_item: ScrapeItem, post: Post) -> None:
