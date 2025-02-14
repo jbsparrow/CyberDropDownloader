@@ -17,17 +17,21 @@ from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from bs4 import BeautifulSoup, Tag
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
+
 
 RESOLUTIONS = ["4k", "2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"]  # best to worst
 ALLOW_AV1 = True
 
 
 DOWNLOADS_SELECTOR = "div#hd-porn-dload > div.dloaddivcol"
-PLAYLIST_ITEM_SELECTOR = "div[id^='vidresults'] div[id^='vf'] div.mb-content a"
+PLAYLIST_ITEM_SELECTOR = "div[id^='vidresults'] > div[id^='vf'] div.mbcontent a"
+PLAYLIST_NEXT_PAGE_SELECTOR = "div.numlist2 a.nmnext"
 
 
 class VideoInfo(NamedTuple):
@@ -70,23 +74,28 @@ class EpornerCrawler(Crawler):
 
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+        added_title = False
 
-        scrape_item.part_of_album = True
-        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
-        title = soup.title.text.rsplit("Porn Star Videos")[0].rsplit("Porn Videos")[0].rsplit("Videos -")[0].strip()  # type: ignore
-        title = self.create_title(title)
-        scrape_item.add_to_parent_title(title)
+        async for soup in self.web_pager(scrape_item):
+            if not added_title:
+                scrape_item.part_of_album = True
+                scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
+                title = soup.title.text  # type: ignore
+                title_trash = "Porn Star Videos", "Porn Videos", "Videos -", "EPORNER"
+                for trash in title_trash:
+                    title = title.rsplit(trash)[0].strip()
+                title = self.create_title(title)
+                scrape_item.add_to_parent_title(title)
+                added_title = True
 
-        item_tags: list[Tag] = soup.select(PLAYLIST_ITEM_SELECTOR)
+            item_tags: list[Tag] = soup.select(PLAYLIST_ITEM_SELECTOR)
 
-        for item in item_tags:
-            link_str: str = item.get("href")  # type: ignore
-            link = self.parse_url(link_str)
-            new_scrape_item = self.create_scrape_item(scrape_item, link, add_parent=scrape_item.url)
-            self.manager.task_group.create_task(self.run(new_scrape_item))
-            scrape_item.add_children()
+            for item in item_tags:
+                link_str: str = item.get("href")  # type: ignore
+                link = self.parse_url(link_str)
+                new_scrape_item = self.create_scrape_item(scrape_item, link, add_parent=scrape_item.url)
+                self.manager.task_group.create_task(self.run(new_scrape_item))
+                scrape_item.add_children()
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
@@ -117,6 +126,19 @@ class EpornerCrawler(Crawler):
         custom_filename = f"{info_dict["name"]} [{video_id}][{resolution}]{ext}"
         custom_filename, _ = self.get_filename_and_ext(custom_filename)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
+
+    async def web_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
+        """Generator of website pages."""
+        page_url = scrape_item.url
+        while True:
+            async with self.request_limiter:
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url, origin=scrape_item)
+            next_page = soup.select_one(PLAYLIST_NEXT_PAGE_SELECTOR)
+            yield soup
+            page_url_str: str = next_page.get("href") if next_page else None  # type: ignore
+            if not page_url_str:
+                break
+            page_url = self.parse_url(page_url_str)
 
 
 def get_available_resolutions(soup: BeautifulSoup) -> list[VideoInfo]:
