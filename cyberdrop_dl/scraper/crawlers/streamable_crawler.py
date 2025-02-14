@@ -44,7 +44,7 @@ class StreamableCrawler(Crawler):
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a video."""
-        video_id = scrape_item.url.name
+        video_id = scrape_item.url.name or scrape_item.url.parent.name
         canonical_url = self.primary_base_domain / video_id
         scrape_item.url = canonical_url
 
@@ -61,17 +61,14 @@ class StreamableCrawler(Crawler):
 
         title = json_resp.get("reddit_title") or json_resp["title"]
         date: int = json_resp.get("date_added")  # type: ignore
-        log_debug(json.dumps(json_resp, indent=4))
+        scrape_item.possible_datetime = date
 
+        log_debug(json.dumps(json_resp, indent=4))
         link_str = get_best_quality(json_resp["files"])  # type: ignore
         if not link_str:
             raise ScrapeError(422, origin=scrape_item)
 
         link = self.parse_url(link_str)
-        log_debug(str(title))
-        log_debug(str(link))
-
-        scrape_item.possible_datetime = date
         filename, ext = self.get_filename_and_ext(link.name)
         custom_filename = f"{title} [{video_id}]{ext}"
         custom_filename, _ = self.get_filename_and_ext(custom_filename)
@@ -79,7 +76,7 @@ class StreamableCrawler(Crawler):
 
 
 def get_best_quality(info_dict: dict) -> str:
-    """Returns name and URL of the best available quality.
+    """Returns URL of the best available quality.
 
     Returns URL as `str`"""
     default = ""
