@@ -3,7 +3,7 @@ from __future__ import annotations
 import calendar
 import json
 from datetime import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from yarl import URL
 
@@ -38,6 +38,12 @@ PLAYLIST_TITLE_SELECTORS = {
 }
 
 PLAYLIST_TITLE_SELECTORS["categories"] = PLAYLIST_TITLE_SELECTORS["models"]
+
+
+class VideoInfo(NamedTuple):
+    ext: str
+    resolution: str
+    link_str: str
 
 
 class Rule34VideoCrawler(Crawler):
@@ -140,28 +146,37 @@ def get_info_dict(soup: BeautifulSoup) -> dict:
     return info_dict
 
 
-def get_best_quality(soup: BeautifulSoup) -> tuple[str, str]:
-    """Returns extension and URL of the best available quality.
-
-    Returns URL as `str`"""
+def get_available_formats(soup: BeautifulSoup) -> list[VideoInfo]:
     downloads = soup.select(DOWNLOADS_SELECTOR)
-    default = "<UNKNOWN>", ""
-    qualities = {}
+    formats = []
     for download in downloads:
         link_str: str = download.get("href")  # type: ignore
         if "/tags/" in link_str or not all(p in link_str for p in REQUIRED_FORMAT_STRINGS):
             continue
         ext, res = download.text.rsplit(" ", 1)
-        if ext.lower() not in ("mov", "mp4"):
+        ext = ext.lower()
+        if ext not in ("mov", "mp4"):
             continue
-        qualities[res] = link_str
+        formats.append(VideoInfo(ext, res, link_str))
+    return formats
+
+
+def get_best_quality(soup: BeautifulSoup) -> tuple[str, str]:
+    """Returns extension and URL of the best available quality.
+
+    Returns URL as `str`"""
+    formats = get_available_formats(soup)
+    default = "<UNKNOWN>", ""
+    qualities = {}
+    for download in formats:
+        qualities[download.resolution] = download
         if not default[1]:
-            default = res, link_str
+            default = download.resolution, download.link_str
 
     for res in RESOLUTIONS:
-        value = qualities.get(res)
-        if value:
-            return res, value
+        download = qualities.get(res)
+        if download:
+            return res, download.link_str
 
     return default
 
