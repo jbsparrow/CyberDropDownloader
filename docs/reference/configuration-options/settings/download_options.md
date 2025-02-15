@@ -2,8 +2,8 @@
 
 ## `block_download_sub_folders`
 
-| Type           | Default  |
-|----------------|----------|
+| Type   | Default |
+| ------ | ------- |
 | `bool` | `false` |
 
 When this is set to `true`, downloads that would be in a folder structure like:
@@ -16,8 +16,8 @@ will be changed to:
 
 ## `disable_download_attempts`
 
-| Type           | Default  |
-|----------------|----------|
+| Type   | Default |
+| ------ | ------- |
 | `bool` | `false` |
 
 By default the program will retry a download 10 times. You can set this to `true` to disable it and always retry until the download completes.
@@ -26,8 +26,8 @@ However, to make sure the program will not run endlessly, there are certain situ
 
 ## `disable_file_timestamps`
 
-| Type           | Default  |
-|----------------|----------|
+| Type   | Default |
+| ------ | ------- |
 | `bool` | `false` |
 
 By default the program will do it's absolute best to try and find when a file was uploaded. It'll then set the `last modified`, `last accessed` and `created` dates on the file to match.
@@ -36,107 +36,25 @@ Setting this to `true` will disable this function, and the dates for those metad
 
 ## `include_album_id_in_folder_name`
 
-| Type           | Default  |
-|----------------|----------|
+| Type   | Default |
+| ------ | ------- |
 | `bool` | `false` |
 
 Setting this to `true` will include the album ID (random alphanumeric string) of the album in the download folder name.
 
 ## `include_thread_id_in_folder_name`
 
-| Type           | Default  |
-|----------------|----------|
+| Type   | Default |
+| ------ | ------- |
 | `bool` | `false` |
 
 Setting this to `true` will include the thread ID (random alphanumeric string) of the forum thread in the download folder name.
 
-## `remove_domains_from_folder_names`
-
-| Type           | Default  |
-|----------------|----------|
-| `bool` | `false` |
-
-Setting this to `true` will remove the "(DOMAIN)" portion of folder names on new downloads.
-
-## `remove_generated_id_from_filenames`
-
-| Type           | Default  |
-|----------------|----------|
-| `bool` | `false` |
-
-Setting this to `true` will remove the alphanumeric ID added to the end of filenames by some websites like  `cyberdrop.me`.
-
-Multipart archive filenames will be corrected to follow the proper naming pattern for their format.
-
-Supported formats: `.rar` `.7z` `.tar` `.gz` `.bz2` `.zip`
-
-## `scrape_single_forum_post`
-
-| Type           | Default  |
-|----------------|----------|
-| `bool` | `false` |
-
-Setting this to `true` will prevent Cyberdrop-DL to scrape entire thread if an individual post link was provided as input.
-
-## `separate_posts`
-
-| Type           | Default  |
-|----------------|----------|
-| `bool` | `false` |
-
-Setting this to `true` will separate content from forum and site posts into separate folders. Only affects sites which have 'posts': `Forums`, `reddit`, `coomer`, `kemono` and `nekohouse`.
-
-## `separate_posts_format`
-
-| Type           | Default  |
-|----------------|----------|
-| `NonEmptyStr`  | `{default}`|
-
-This is the format for the directory created when using `--separate-posts`.
-
-Unique Path Flags:
-
-> `date`: date of the post
->
-> `number`: post number
->
-> `id`: same as `number`
->
-> `title`: post title
-
-{% hint style="warning" %}
-Not all sites support all possible flags. Ex: Posts from reddit only support the `title` flag
-{% endhint %}
-
-Setting it to `{default}` will use the default format, which is different for each crawler:
-
-| Site          | Default Format |
-|----------------|----------|
-| `Coomer`, `Kemono` an `Nekohouse` | `{date} - {title}`|
-| `Forums` | `post-{number}`|
-| `Reddit` | `{title}`|
-
-## `skip_download_mark_complete`
-
-| Type           | Default  |
-|----------------|----------|
-| `bool` | `false` |
-
-Setting this to `true` will skip the download process for every file and mark them as downloaded in the database.
-
-## `skip_referer_seen_before`
-
-| Type           | Default  |
-|----------------|----------|
-| `bool` | `false` |
-
-Setting this to `true` will skip downloading files from any referer that have been scraped before. The file (s) will always be skipped, regardless of whether the referer was successfully scraped or not
-
 ## `maximum_number_of_children`
 
-| Type           | Default  |
-|----------------|----------|
-| `list[NonNegativeInt]` | `[]` |
+| Type                   | Default |
+| ---------------------- | ------- |
+| `list[NonNegativeInt]` | `[]`    |
 
 Limit the number of items to scrape using a tuple of up to 4 positions. Each position defines the maximum number of sub-items (`children_limit`) an specific type of `scrape_item` will have:
 
@@ -182,6 +100,88 @@ No **FORUM** limit, no **FORUM_POST** limit, no **FILE_HOST_PROFILE** limit, max
 ```
 {% endtab %}
 {% endtabs %}
+
+## `remove_domains_from_folder_names`
+
+| Type   | Default |
+| ------ | ------- |
+| `bool` | `false` |
+
+Setting this to `true` will remove the "(DOMAIN)" portion of folder names on new downloads.
+
+## `remove_generated_id_from_filenames`
+
+| Type   | Default |
+| ------ | ------- |
+| `bool` | `false` |
+
+Setting this to `true` will remove the alphanumeric ID added to the end of filenames by some websites like  `cyberdrop.me`.
+
+Multipart archive filenames will be corrected to follow the proper naming pattern for their format.
+
+Supported formats: `.rar` `.7z` `.tar` `.gz` `.bz2` `.zip`
+
+## `scrape_single_forum_post`
+
+| Type   | Default |
+| ------ | ------- |
+| `bool` | `false` |
+
+Setting this to `true` will prevent Cyberdrop-DL to scrape entire thread if an individual post link was provided as input.
+
+## `separate_posts`
+
+| Type   | Default |
+| ------ | ------- |
+| `bool` | `false` |
+
+Setting this to `true` will separate content from forum and site posts into separate folders. Only affects sites which have 'posts': `Forums`, `reddit`, `coomer`, `kemono` and `nekohouse`.
+
+## `separate_posts_format`
+
+| Type          | Default     |
+| ------------- | ----------- |
+| `NonEmptyStr` | `{default}` |
+
+This is the format for the directory created when using `--separate-posts`.
+
+Unique Path Flags:
+
+> `date`: date of the post
+>
+> `number`: post number
+>
+> `id`: same as `number`
+>
+> `title`: post title
+
+{% hint style="warning" %}
+Not all sites support all possible flags. Ex: Posts from reddit only support the `title` flag
+{% endhint %}
+
+Setting it to `{default}` will use the default format, which is different for each crawler:
+
+| Site                              | Default Format     |
+| --------------------------------- | ------------------ |
+| `Coomer`, `Kemono` an `Nekohouse` | `{date} - {title}` |
+| `Forums`                          | `post-{number}`    |
+| `Reddit`                          | `{title}`          |
+
+## `skip_download_mark_completed`
+
+| Type   | Default |
+| ------ | ------- |
+| `bool` | `false` |
+
+Setting this to `true` will skip the download process for every file and mark them as downloaded in the database.
+
+## `skip_referer_seen_before`
+
+| Type   | Default |
+| ------ | ------- |
+| `bool` | `false` |
+
+Setting this to `true` will skip downloading files from any referer that have been scraped before. The file (s) will always be skipped, regardless of whether the referer was successfully scraped or not
 
 
 ## `maximum_thread_depth`

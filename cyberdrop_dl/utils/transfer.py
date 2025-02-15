@@ -1,18 +1,20 @@
 from __future__ import annotations
 
+import contextlib
+import sqlite3
+from datetime import datetime
 from pathlib import Path
+from shutil import copy2
 
 import arrow
 from rich.console import Console
 
 from cyberdrop_dl.utils.database.table_definitions import create_files, create_temp_hash
-from cyberdrop_dl.utils.transfer.backup import db_backup
-from cyberdrop_dl.utils.transfer.wrapper import db_transfer_context
 
 console = Console()
 
 
-def transfer_from_old_hash_table(db_path):
+def transfer_v5_db_to_v6(db_path: Path) -> None:
     """Transfers data from the old 'hash' table to new 'files' and 'temp_hash' tables, handling potential schema differences and errors.
 
     Args:
@@ -21,7 +23,8 @@ def transfer_from_old_hash_table(db_path):
     Raises:
         Exception: If a critical error
     """
-
+    if not db_path.is_file():
+        return
     with db_transfer_context(db_path) as cursor:
         # Check if the 'hash' table exists
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='hash'")
@@ -83,3 +86,23 @@ def transfer_from_old_hash_table(db_path):
 
         # Rename the 'temp_hash' table to 'hash'
         cursor.execute("ALTER TABLE temp_hash RENAME TO hash")
+
+
+def db_backup(db_file: Path) -> None:
+    new_file = Path(db_file.parent, f"cyberdrop_v5_{datetime.now().strftime('%Y%m%d_%H%M%S')}.bak.db")
+    copy2(db_file, new_file)
+
+
+@contextlib.contextmanager
+def db_transfer_context(db_file):
+    conn = sqlite3.connect(db_file)
+    cursor = conn.cursor()
+    try:
+        yield cursor
+        conn.commit()  # commit changes if no exception occurs
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        cursor.close()
+        conn.close()
