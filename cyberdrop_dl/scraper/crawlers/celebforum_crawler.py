@@ -24,8 +24,8 @@ class CelebForumCrawler(XenforoCrawler):
 
     def filter_link(self, link):
         if link.host == self.primary_base_domain.host:
-            if all(part in link.parts for part in ["data", "attachments"]): # Thumbnails
+            if all(part in link.parts for part in ["data", "attachments"]):  # Thumbnails
                 return None
-            if all(part in link.parts for part in ["data", "assets"]): # Placeholder content for insufficient rank
+            if all(part in link.parts for part in ["data", "assets"]):  # Placeholder content for insufficient rank
                 return None
         return link
