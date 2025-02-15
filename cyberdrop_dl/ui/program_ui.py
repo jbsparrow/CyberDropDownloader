@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import sqlite3
 import sys
 from functools import wraps
 from textwrap import dedent
@@ -17,6 +18,7 @@ from cyberdrop_dl.ui.prompts import user_prompts
 from cyberdrop_dl.ui.prompts.basic_prompts import ask_dir_path, enter_to_continue
 from cyberdrop_dl.ui.prompts.defaults import DONE_CHOICE, EXIT_CHOICE
 from cyberdrop_dl.utils.cookie_management import clear_cookies
+from cyberdrop_dl.utils.sorting import Sorter
 from cyberdrop_dl.utils.utilities import check_latest_pypi, clear_term, open_in_text_editor
 
 if TYPE_CHECKING:
@@ -65,7 +67,7 @@ class ProgramUI:
             1: self._download,
             2: self._retry_failed_download,
             3: self._scan_and_create_hashes,
-            4: self._place_holder,
+            4: self._sort_files,
             5: self._edit_urls,
             6: self._change_config,
             7: self._manage_configs,
@@ -93,6 +95,11 @@ class ProgramUI:
         """Scans a folder and creates hashes for all of its files."""
         path = ask_dir_path("Select the directory to scan")
         hash_directory_scanner(self.manager, path)
+
+    def _sort_files(self) -> None:
+        """Sort files in download folder"""
+        sorter = Sorter(self.manager)
+        asyncio.run(sorter.run())
 
     def _check_updates(self) -> None:
         """Checks Cyberdrop-DL updates."""
@@ -150,6 +157,12 @@ class ProgramUI:
         urls = user_prompts.filter_cache_urls(self.manager, domains)
         for url in urls:
             asyncio.run(self.manager.cache_manager.request_cache.delete_url(url))
+
+        console.print("\nExecuting database vacuum. This may take several minutes, please wait...")
+        try:
+            vacuum_database(self.manager.path_manager.cache_db)
+        except sqlite3.Error as e:
+            return self.print_error(f"Unable to clean request database. Database may be corrupted : {e!s}")
         console.print("Finished clearing the cache", style="green")
         enter_to_continue()
 
@@ -272,6 +285,19 @@ class ProgramUI:
         lines = changelog.read_text(encoding="utf8").splitlines()
         # remove keep_a_changelog disclaimer
         return "\n".join(lines[:4] + lines[6:])
+
+
+def vacuum_database(db_path: Path) -> None:
+    if not db_path.is_file():
+        return
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute("VACUUM")
+        conn.commit()
+    finally:
+        if conn:
+            conn.close()
 
 
 SIMPCITY_DISCLAIMER = """

@@ -102,4 +102,4 @@ class DownloadManager:
         if not media_item.duration:
             return True
 
-        return check_file_duration(media_item, self.manager.config_manager.settings_data.media_duration_limits)
+        return check_file_duration(media_item, self.manager)

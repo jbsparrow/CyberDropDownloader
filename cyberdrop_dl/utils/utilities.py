@@ -118,8 +118,9 @@ def get_filename_and_ext(filename: str, forum: bool = False) -> tuple[str, str]:
     filename_as_path = Path(filename)
     if not filename_as_path.suffix:
         raise NoExtensionError
-    if filename_as_path.suffix.isnumeric() and forum:
+    if filename_as_path.suffix[1:].isnumeric() and forum:
         name, ext = filename_as_path.name.rsplit("-", 1)
+        ext = ext.replace(filename_as_path.suffix, "")
         filename_as_path = Path(f"{name}.{ext}")
     if len(filename_as_path.suffix) > 5:
         raise InvalidExtensionError
