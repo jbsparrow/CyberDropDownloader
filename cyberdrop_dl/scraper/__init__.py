@@ -68,7 +68,6 @@ from cyberdrop_dl.scraper.crawlers.wetransfer_crawler import WeTransferCrawler
 from cyberdrop_dl.scraper.crawlers.xbunker_crawler import XBunkerCrawler
 from cyberdrop_dl.scraper.crawlers.xbunkr_crawler import XBunkrCrawler
 from cyberdrop_dl.scraper.crawlers.xxxbunker_crawler import XXXBunkerCrawler
-from cyberdrop_dl.scraper.crawlers.yt_dlp import YtDlpCrawler
 from cyberdrop_dl.scraper.crawlers.yandex_disk_crawler import YandexDiskCrawler
 from cyberdrop_dl.scraper.crawlers.youjizz_crawler import YouJizzCrawler
 
