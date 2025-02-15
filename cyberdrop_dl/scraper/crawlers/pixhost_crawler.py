@@ -85,7 +85,7 @@ class PixHostCrawler(Crawler):
         await self.handle_direct_link(scrape_item, link)
 
     @error_handling_wrapper
-    async def handle_direct_link(self, scrape_item: ScrapeItem, url: URL | None = None):
+    async def handle_direct_link(self, scrape_item: ScrapeItem, url: URL | None = None) -> None:
         link = url or scrape_item.url
         if is_thumbnail(link):
             link = thumbnail_to_img(link)
@@ -97,9 +97,15 @@ def thumbnail_to_img(url: URL) -> URL:
     assert url.host
     thumb_server_id: str = url.host.split(".", 1)[0].split("t")[-1]
     img_host = f"img{thumb_server_id}.{PRIMARY_BASE_DOMAIN.host}"
-    new_parts = ["images"] + [p for p in url.parts if p not in ("thumbs", "/")]
+    img_url = replace_first_part(url, "images")
+    return img_url.with_host(img_host)
+
+
+def replace_first_part(url: URL, new_part: str) -> URL:
+    new_parts = list(url.parts)[1:]
+    new_parts[0] = new_part
     new_path = "/".join(new_parts)
-    return url.with_host(img_host).with_path(new_path)
+    return url.with_path(new_path)
 
 
 def is_thumbnail(url: URL) -> bool:
@@ -109,11 +115,9 @@ def is_thumbnail(url: URL) -> bool:
 
 def is_cdn(url: URL) -> bool:
     assert url.host
-    return len(url.host.split(".")) >= 2
+    return len(url.host.split(".")) > 2
 
 
 def get_canonical_url(url: URL) -> URL:
-    new_parts = list(url.parts)[1:]
-    new_parts[0] = "show"
-    new_path = "/".join(new_parts)
-    return PRIMARY_BASE_DOMAIN / new_path
+    show_url = replace_first_part(url, "show")
+    return show_url.with_host(PRIMARY_BASE_DOMAIN.host)  # type: ignore
