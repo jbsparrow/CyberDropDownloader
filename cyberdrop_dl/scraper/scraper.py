@@ -304,6 +304,7 @@ class ScrapeMapper:
 
     def filter_items(self, scrape_item: ScrapeItem) -> bool:
         """Pre-filter scrape items base on URL."""
+        self.count += 1
         if not is_valid_url(scrape_item):
             return False
 
