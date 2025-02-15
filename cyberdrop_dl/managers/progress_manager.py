@@ -92,6 +92,7 @@ class ProgressManager:
         log_cyan(f"Run Stats (config: {self.manager.config_manager.loaded_config}):")
         log_yellow(f"  Input File: {get_input(self.manager)}")
         log_yellow(f"  Input URLs: {self.manager.scrape_mapper.count}")
+        log_yellow(f"  Input URL Groups: {self.manager.scrape_mapper.group_count}")
         log_yellow(f"  Total Runtime: {runtime}")
         log_yellow(f"  Total Downloaded Data: {data_size}")
 
