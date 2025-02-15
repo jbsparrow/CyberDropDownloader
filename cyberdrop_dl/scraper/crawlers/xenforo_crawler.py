@@ -12,8 +12,8 @@ from typing import TYPE_CHECKING
 from bs4 import BeautifulSoup
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import LoginError
-from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
+from cyberdrop_dl.clients.errors import LoginError, ScrapeError
+from cyberdrop_dl.scraper.crawler import Crawler, create_task_id, remove_trailing_slash
 from cyberdrop_dl.scraper.filters import set_return_value
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FORUM, FORUM_POST, ScrapeItem
 from cyberdrop_dl.utils.logger import log
@@ -332,6 +332,17 @@ class XenforoCrawler(Crawler):
     @error_handling_wrapper
     async def handle_internal_link(self, scrape_item: ScrapeItem) -> None:
         """Handles internal links."""
+        scrape_item.url = remove_trailing_slash(scrape_item.url)
+
+        if scrape_item.url.name.isdigit():
+            head = await self.client.get_head(self.domain, scrape_item.url, origin=scrape_item)  # type: ignore
+            redirect = head.get("location")
+            if not redirect:
+                raise ScrapeError(422, origin=scrape_item)
+            scrape_item.url = self.parse_url(redirect)
+            self.manager.task_group.create_task(self.run(scrape_item))
+            return
+
         filename, ext = get_filename_and_ext(scrape_item.url.name, forum=True)
         scrape_item.add_to_parent_title("Attachments")
         scrape_item.part_of_album = True

@@ -280,7 +280,7 @@ class Crawler(ABC):
             new_url = base.join(new_url)
         if not new_url.scheme:
             new_url = new_url.with_scheme(base.scheme or "https")
-        return new_url
+        return remove_trailing_slash(new_url)
 
     def update_cookies(self, cookies: dict, url: URL | None = None) -> None:
         """Update cookies for the provided URL
@@ -289,6 +289,12 @@ class Crawler(ABC):
         """
         response_url = url or self.primary_base_domain
         self.client.client_manager.cookies.update_cookies(cookies, response_url)
+
+
+def remove_trailing_slash(url: URL) -> URL:
+    if url.name:
+        return url
+    return url.parent.with_fragment(url.fragment).with_query(url.query)
 
 
 def create_task_id(func: Callable) -> Callable:
