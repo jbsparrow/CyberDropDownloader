@@ -7,7 +7,7 @@ from datetime import date
 from pathlib import Path
 from typing import TYPE_CHECKING, Self
 
-from pydantic import BaseModel, Field, ValidationError, computed_field, model_validator
+from pydantic import BaseModel, Field, ValidationError, computed_field, field_serializer, model_validator
 
 from cyberdrop_dl import __version__
 from cyberdrop_dl.config_definitions import ConfigSettings, GlobalSettings
@@ -64,6 +64,10 @@ class CommandLineOnlyArgs(BaseModel):
         msg2 = "'--config' and '--config-file' are mutually exclusive"
         _check_mutually_exclusive(group2, msg2)
         return self
+
+    @field_serializer("links", when_used="json")
+    def serialize_links_json(self, links: list[HttpURL]) -> list[str]:
+        return [str(link) for link in links]
 
 
 class DeprecatedArgs(BaseModel): ...
