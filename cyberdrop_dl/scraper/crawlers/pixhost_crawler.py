@@ -29,7 +29,7 @@ class PixHostCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        if is_thumbnail(scrape_item.url):
+        if is_cdn(scrape_item.url):
             link = scrape_item.url
             scrape_item.url = get_canonical_url(link)
             await self.handle_direct_link(scrape_item, link)
@@ -104,7 +104,12 @@ def thumbnail_to_img(url: URL) -> URL:
 
 def is_thumbnail(url: URL) -> bool:
     assert url.host
-    return "thumbs" in url.parts and len(url.host.split(".")) >= 2
+    return "thumbs" in url.parts and is_cdn(url)
+
+
+def is_cdn(url: URL) -> bool:
+    assert url.host
+    return len(url.host.split(".")) >= 2
 
 
 def get_canonical_url(url: URL) -> URL:
