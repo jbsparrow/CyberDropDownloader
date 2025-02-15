@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import sqlite3
 import sys
 from functools import wraps
 from textwrap import dedent
@@ -17,8 +18,7 @@ from cyberdrop_dl.ui.prompts import user_prompts
 from cyberdrop_dl.ui.prompts.basic_prompts import ask_dir_path, enter_to_continue
 from cyberdrop_dl.ui.prompts.defaults import DONE_CHOICE, EXIT_CHOICE
 from cyberdrop_dl.utils.cookie_management import clear_cookies
-from cyberdrop_dl.utils.transfer.transfer_v4_config import transfer_v4_config
-from cyberdrop_dl.utils.transfer.transfer_v4_db import transfer_v4_db
+from cyberdrop_dl.utils.sorting import Sorter
 from cyberdrop_dl.utils.utilities import check_latest_pypi, clear_term, open_in_text_editor
 
 if TYPE_CHECKING:
@@ -59,7 +59,7 @@ class ProgramUI:
         enter_to_continue()
 
     @repeat_until_done
-    def run(self) -> None:
+    def run(self) -> bool | None:
         """Program UI."""
         clear_term()
         options_map = {
@@ -67,13 +67,12 @@ class ProgramUI:
             1: self._download,
             2: self._retry_failed_download,
             3: self._scan_and_create_hashes,
-            4: self._place_holder,
+            4: self._sort_files,
             5: self._edit_urls,
             6: self._change_config,
             7: self._manage_configs,
-            8: self._import_from_v4,
-            9: self._check_updates,
-            10: self._view_changelog,
+            8: self._check_updates,
+            9: self._view_changelog,
         }
 
         answer = user_prompts.main_prompt(self.manager)
@@ -83,11 +82,11 @@ class ProgramUI:
             clear_term()
         return return_to_main
 
-    def _download(self) -> True:
+    def _download(self) -> bool:
         """Starts download process."""
         return True
 
-    def _retry_failed_download(self) -> True:
+    def _retry_failed_download(self) -> bool:
         """Sets retry failed and starts download process."""
         self.manager.parsed_args.cli_only_args.retry_failed = True
         return True
@@ -97,43 +96,15 @@ class ProgramUI:
         path = ask_dir_path("Select the directory to scan")
         hash_directory_scanner(self.manager, path)
 
+    def _sort_files(self) -> None:
+        """Sort files in download folder"""
+        sorter = Sorter(self.manager)
+        asyncio.run(sorter.run())
+
     def _check_updates(self) -> None:
         """Checks Cyberdrop-DL updates."""
         check_latest_pypi(call_from_ui=True)
         enter_to_continue()
-
-    @repeat_until_done
-    def _import_from_v4(self) -> None:
-        options_map = {
-            1: self._import_v4_config,
-            2: self._import_v4_download_history,
-        }
-        answer = user_prompts.import_cyberdrop_v4_items_prompt(self.manager)
-        return self._process_answer(answer, options_map)
-
-    def _import_v4_config(self) -> None:
-        new_config = user_prompts.import_v4_config_prompt(self.manager)
-        if not new_config:
-            return
-        new_config_name, old_config_path = new_config
-        transfer_v4_config(self.manager, new_config_name, old_config_path)
-        self.manager.config_manager.change_config(new_config_name)
-        if user_prompts.switch_default_config_to(self.manager, new_config_name):
-            self.manager.config_manager.change_default_config(new_config_name)
-
-    def _import_v4_download_history(self) -> None:
-        import_download_history_path = user_prompts.import_v4_download_history_prompt()
-        if import_download_history_path.is_file():
-            transfer_v4_db(import_download_history_path, self.manager.path_manager.history_db)
-            return
-
-        for item in import_download_history_path.glob("**/*.sqlite"):
-            if str(item) == str(self.manager.path_manager.history_db):
-                continue
-            try:
-                transfer_v4_db(item, self.manager.path_manager.history_db)
-            except Exception as e:
-                self.print_error(f"Unable to import {item.name}: {e!s}")
 
     def _change_config(self) -> None:
         configs = self.manager.config_manager.get_configs()
@@ -155,7 +126,7 @@ class ProgramUI:
             console.print(Markdown(changelog_content, justify="left"))
 
     @repeat_until_done
-    def _manage_configs(self) -> None:
+    def _manage_configs(self) -> Choice | None:
         options_map = {
             1: self._change_default_config,
             2: self._create_new_config,
@@ -178,7 +149,7 @@ class ProgramUI:
         enter_to_continue()
 
     def _clear_cache(self) -> None:
-        domains = user_prompts.domains_prompt(domain_message="Select site(s) to clear cache for:")
+        domains, _ = user_prompts.domains_prompt(domain_message="Select site(s) to clear cache for:")
         if not domains:
             console.print("No domains selected", style="red")
             enter_to_continue()
@@ -186,24 +157,28 @@ class ProgramUI:
         urls = user_prompts.filter_cache_urls(self.manager, domains)
         for url in urls:
             asyncio.run(self.manager.cache_manager.request_cache.delete_url(url))
+
+        console.print("\nExecuting database vacuum. This may take several minutes, please wait...")
+        try:
+            vacuum_database(self.manager.path_manager.cache_db)
+        except sqlite3.Error as e:
+            return self.print_error(f"Unable to clean request database. Database may be corrupted : {e!s}")
         console.print("Finished clearing the cache", style="green")
         enter_to_continue()
 
     def _edit_auth_config(self) -> None:
-        config_file = self.manager.path_manager.config_folder / "authentication.yaml"
+        config_file = self.manager.config_manager.authentication_settings
         self._open_in_text_editor(config_file)
 
     def _edit_global_config(self) -> None:
-        config_file = self.manager.path_manager.config_folder / "global_settings.yaml"
+        config_file = self.manager.config_manager.global_settings
         self._open_in_text_editor(config_file)
 
     def _edit_config(self) -> None:
         if self.manager.multiconfig:
             self.print_error("Cannot edit 'ALL' config")
             return
-        config_file = (
-            self.manager.path_manager.config_folder / self.manager.config_manager.loaded_config / "settings.yaml"
-        )
+        config_file = self.manager.config_manager.settings
         self._open_in_text_editor(config_file)
 
     def _create_new_config(self) -> None:
@@ -213,7 +188,7 @@ class ProgramUI:
         if user_prompts.switch_default_config_to(self.manager, config_name):
             self.manager.config_manager.change_default_config(config_name)
         self.manager.config_manager.change_config(config_name)
-        config_file = self.manager.path_manager.config_folder / config_name / "settings.yaml"
+        config_file = self.manager.config_manager.settings
         self._open_in_text_editor(config_file)
 
     def _edit_urls(self) -> None:
@@ -271,7 +246,7 @@ class ProgramUI:
         except ValueError:
             self.print_error("No default text editor found")
 
-    def _process_answer(self, answer: Any, options_map=dict) -> Choice | None:
+    def _process_answer(self, answer: Any, options_map: dict) -> Choice | None:
         """Checks prompt answer and executes corresponding function."""
         if answer == EXIT_CHOICE.value:
             self.manager.cache_manager.close_sync()
@@ -287,7 +262,7 @@ class ProgramUI:
 
         return function_to_call()
 
-    def _get_changelog(self) -> str:
+    def _get_changelog(self) -> str | None:
         """Get latest changelog file from github. Returns its content."""
         path = self.manager.path_manager.config_folder.parent / "CHANGELOG.md"
         url = "https://raw.githubusercontent.com/jbsparrow/CyberDropDownloader/refs/heads/master/CHANGELOG.md"
@@ -310,6 +285,19 @@ class ProgramUI:
         lines = changelog.read_text(encoding="utf8").splitlines()
         # remove keep_a_changelog disclaimer
         return "\n".join(lines[:4] + lines[6:])
+
+
+def vacuum_database(db_path: Path) -> None:
+    if not db_path.is_file():
+        return
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute("VACUUM")
+        conn.commit()
+    finally:
+        if conn:
+            conn.close()
 
 
 SIMPCITY_DISCLAIMER = """

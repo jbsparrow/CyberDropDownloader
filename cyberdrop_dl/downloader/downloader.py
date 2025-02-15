@@ -92,6 +92,11 @@ class Downloader:
         if self.manager.config_manager.settings_data.sorting.sort_downloads:
             self.manager.path_manager.sorted_folder.mkdir(parents=True, exist_ok=True)
 
+    def update_queued_files(self, increase_total: bool = True):
+        queued_files = self.manager.progress_manager.file_progress.get_queue_length()
+        self.manager.progress_manager.download_progress.update_queued(queued_files)
+        self.manager.progress_manager.download_progress.update_total(increase_total)
+
     async def run(self, media_item: MediaItem) -> None:
         """Runs the download loop."""
 
@@ -101,10 +106,11 @@ class Downloader:
         self.waiting_items += 1
         media_item.current_attempt = 0
         await self.client.mark_incomplete(media_item, self.domain)
+        self.update_queued_files()
         async with self._semaphore:
             self.waiting_items -= 1
             self.processed_items.add(media_item.url.path)
-            self.manager.progress_manager.download_progress.update_total()
+            self.update_queued_files(increase_total=False)
             async with self.manager.client_manager.download_session_limit:
                 await self.start_download(media_item)
 

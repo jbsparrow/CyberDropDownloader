@@ -2,11 +2,11 @@
 
 You can provide the maximum and minimum file size for each file "type".
 
-All options on this category take a `Bytes` input, which is an `int` representing a number of bytes with optional suffix with the unit. Ex: `6000000` and `6MB` are both valid values
+All options on this category take a `ByteSize` input ([more info here](../special_setting_types.md)).
 
-|Type|Default|
-|---|---|
-|`ByteSize`|`0`|
+| Type       | Default |
+| ---------- | ------- |
+| `ByteSize` | `0`     |
 
 Setting any of these options to `0` means that limit is `disabled`
 

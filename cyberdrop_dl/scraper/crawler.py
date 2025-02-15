@@ -25,6 +25,8 @@ if TYPE_CHECKING:
     from cyberdrop_dl.clients.scraper_client import ScraperClient
     from cyberdrop_dl.managers.manager import Manager
 
+UNKNOWN_URL_PATH_MSG = "Unknown URL path"
+
 
 class Post(Protocol):
     number: int
@@ -128,7 +130,7 @@ class Crawler(ABC):
             original_filename = filename
 
         download_folder = get_download_path(self.manager, scrape_item, self.folder_domain)
-        media_item = MediaItem(url, scrape_item, download_folder, filename, original_filename, debrid_link, ext)
+        media_item = MediaItem(url, scrape_item, download_folder, filename, original_filename, debrid_link, ext=ext)
 
         check_complete = await self.manager.db_manager.history_table.check_complete(self.domain, url, scrape_item.url)
         if check_complete:
@@ -244,6 +246,10 @@ class Crawler(ABC):
         if not download_options.remove_domains_from_folder_names:
             title = f"{title} ({self.folder_domain})"
 
+        while True:
+            title = title.replace("  ", " ")
+            if "  " not in title:
+                break
         return title
 
     def add_separate_post_title(self, scrape_item: ScrapeItem, post: Post) -> None:
@@ -266,6 +272,7 @@ class Crawler(ABC):
     def parse_url(self, link_str: str, relative_to: URL | None = None) -> URL:
         assert link_str
         assert isinstance(link_str, str)
+        link_str = clean_link_str(link_str)
         encoded = "%" in link_str
         base = relative_to or self.primary_base_domain
         new_url = URL(link_str, encoded=encoded)
@@ -298,11 +305,26 @@ def create_task_id(func: Callable) -> Callable:
         scrape_item: ScrapeItem = args[0]
         task_id = self.scraping_progress.add_task(scrape_item.url)
         try:
+            pre_check_scrape_item(scrape_item)
             return await func(self, *args, **kwargs)
         except ValueError:
-            log(f"Scrape Failed: Unknown URL path: {scrape_item.url}", 40)
-            self.manager.progress_manager.scrape_stats_progress.add_failure("Unsupported URL path")
+            log(f"Scrape Failed: {UNKNOWN_URL_PATH_MSG}: {scrape_item.url}", 40)
+            self.manager.progress_manager.scrape_stats_progress.add_failure(UNKNOWN_URL_PATH_MSG)
+            await self.manager.log_manager.write_scrape_error_log(scrape_item.url, UNKNOWN_URL_PATH_MSG)
         finally:
             self.scraping_progress.remove_task(task_id)
 
     return wrapper
+
+
+def pre_check_scrape_item(scrape_item: ScrapeItem) -> None:
+    if scrape_item.url.path == "/":
+        raise ValueError
+
+
+def clean_link_str(link_str: str) -> str:
+    if "?" in link_str:
+        parts, query = link_str.split("?", 1)
+        query = query.replace("+", "%20")
+        return f"{parts}?{query}"
+    return link_str

@@ -41,6 +41,7 @@ class ScrapeMapper:
         self.jdownloader = JDownloader(self.manager)
         self.jdownloader_whitelist = self.manager.config_manager.settings_data.runtime_options.jdownloader_whitelist
         self.count = 0
+        self.group_count = 0
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -133,6 +134,7 @@ class ScrapeMapper:
                     block_quote = not block_quote if line == "#\n" else block_quote
                     if not block_quote:
                         links[""].extend(self.regex_links(line))
+        self.group_count = len(links) - 1
         return links
 
     async def load_links(self) -> None:
@@ -304,6 +306,7 @@ class ScrapeMapper:
 
     def filter_items(self, scrape_item: ScrapeItem) -> bool:
         """Pre-filter scrape items base on URL."""
+        self.count += 1
         if not is_valid_url(scrape_item):
             return False
 
