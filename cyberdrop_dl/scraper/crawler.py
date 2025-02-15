@@ -130,7 +130,7 @@ class Crawler(ABC):
             original_filename = filename
 
         download_folder = get_download_path(self.manager, scrape_item, self.folder_domain)
-        media_item = MediaItem(url, scrape_item, download_folder, filename, original_filename, debrid_link, ext)
+        media_item = MediaItem(url, scrape_item, download_folder, filename, original_filename, debrid_link, ext=ext)
 
         check_complete = await self.manager.db_manager.history_table.check_complete(self.domain, url, scrape_item.url)
         if check_complete:
