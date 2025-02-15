@@ -18,6 +18,8 @@ from cyberdrop_dl.ui.progress.statistic_progress import DownloadStatsProgress, S
 from cyberdrop_dl.utils.logger import log, log_spacer, log_with_color
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from rich.console import RenderableType
 
     from cyberdrop_dl.managers.manager import Manager
@@ -88,6 +90,7 @@ class ProgressManager:
         log_spacer(20)
         log("Printing Stats...\n", 20)
         log_cyan(f"Run Stats (config: {self.manager.config_manager.loaded_config}):")
+        log_yellow(f"  Input File: {get_input(self.manager)}")
         log_yellow(f"  Total Runtime: {runtime}")
         log_yellow(f"  Total Downloaded Data: {data_size}")
 
@@ -134,3 +137,13 @@ def log_failures(failures: list[UiFailureTotal], title: str = "Failures:", last_
         error = f.error_code if f.error_code is not None else ""
         log_red(f"  {error:>{error_padding}}{' ' if error_padding else ''}{f.msg}: {f.count:,}")
     return error_padding
+
+
+def get_input(manager: Manager) -> Path | str:
+    if manager.parsed_args.cli_only_args.retry_all:
+        return "--retry-all"
+    if manager.parsed_args.cli_only_args.retry_failed:
+        return "--retry-failed"
+    if manager.parsed_args.cli_only_args.retry_maintenance:
+        return "--retry-maintenance"
+    return manager.config_manager.settings_data.files.input_file
