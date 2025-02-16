@@ -83,9 +83,9 @@ class E621Crawler(Crawler):
                 new_scrape_item = self.create_scrape_item(
                     scrape_item, link, title, True, add_parent=scrape_item.url, possible_datetime=timestamp
                 )
-                scrape_item.add_children()
                 filename, ext = get_filename_and_ext(link.name)
                 await self.handle_file(link, new_scrape_item, filename, ext)
+                scrape_item.add_children()
 
     @error_handling_wrapper
     async def pool(self, scrape_item: ScrapeItem) -> None:
