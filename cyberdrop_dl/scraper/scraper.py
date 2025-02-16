@@ -164,6 +164,7 @@ class ScrapeMapper:
                     item.part_of_album = True
                 if self.filter_items(item):
                     items.append(item)
+        self.count = len(items)
         for item in items:
             self.manager.task_group.create_task(self.send_to_crawler(item))
 
@@ -177,6 +178,7 @@ class ScrapeMapper:
                 items.append(item)
         if self.manager.parsed_args.cli_only_args.max_items_retry:
             items = items[: self.manager.parsed_args.cli_only_args.max_items_retry]
+        self.count = len(items)
         for item in items:
             self.manager.task_group.create_task(self.send_to_crawler(item))
 
@@ -196,6 +198,7 @@ class ScrapeMapper:
                 items.append(item)
         if self.manager.parsed_args.cli_only_args.max_items_retry:
             items = items[: self.manager.parsed_args.cli_only_args.max_items_retry]
+        self.count = len(items)
         for item in items:
             self.manager.task_group.create_task(self.send_to_crawler(item))
 
@@ -210,6 +213,7 @@ class ScrapeMapper:
                 items.append(item)
         if self.manager.parsed_args.cli_only_args.max_items_retry:
             items = items[: self.manager.parsed_args.cli_only_args.max_items_retry]
+        self.count = len(items)
         for item in items:
             self.manager.task_group.create_task(self.send_to_crawler(item))
 
@@ -306,7 +310,6 @@ class ScrapeMapper:
 
     def filter_items(self, scrape_item: ScrapeItem) -> bool:
         """Pre-filter scrape items base on URL."""
-        self.count += 1
         if not is_valid_url(scrape_item):
             return False
 
