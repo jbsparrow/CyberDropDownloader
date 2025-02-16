@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Add support for https://e621.net posts and tags.
+- Add support for https://e621.net pools, posts, and tags.
 
 ### Removed
 

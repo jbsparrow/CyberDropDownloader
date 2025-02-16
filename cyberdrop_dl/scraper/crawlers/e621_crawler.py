@@ -36,6 +36,8 @@ class E621Crawler(Crawler):
             await self.tag(scrape_item)
         elif scrape_item.url.path.startswith("/posts/"):
             await self.file(scrape_item)
+        elif scrape_item.url.path.startswith("/pools/"):
+            await self.pool(scrape_item)
         else:
             raise ValueError("Invalid e621 URL format")
 
@@ -83,6 +85,29 @@ class E621Crawler(Crawler):
                 scrape_item.add_children()
                 filename, ext = get_filename_and_ext(link.name)
                 await self.handle_file(link, new_scrape_item, filename, ext)
+
+    @error_handling_wrapper
+    async def pool(self, scrape_item: ScrapeItem) -> None:
+        """Fetches posts from an e621 pool."""
+        async with self.request_limiter:
+            pool_id = scrape_item.url.path.rsplit("/", 1)[-1]
+            response = await self.client.get_json(
+                self.domain,
+                self.primary_base_domain / f"pools/{pool_id}.json",
+                origin=scrape_item,
+                headers_inc=self.custom_headers,
+            )
+
+        posts = response.get("post_ids", [])
+        title = response.get("name", "Unknown Pool").replace("_", " ")
+        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
+        scrape_item.part_of_album = True
+
+        for post_id in posts:
+            new_scrape_item = self.create_scrape_item(
+                scrape_item, self.primary_base_domain / f"posts/{post_id}", title, True, add_parent=scrape_item.url
+            )
+            await self.file(new_scrape_item)
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
