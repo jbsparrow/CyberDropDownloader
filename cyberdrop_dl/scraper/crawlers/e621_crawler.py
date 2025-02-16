@@ -7,6 +7,7 @@ from aiolimiter import AsyncLimiter
 from dateutil import parser
 from yarl import URL
 
+from cyberdrop_dl import __version__
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
@@ -23,7 +24,7 @@ class E621Crawler(Crawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "e621.net", "E621")
-        self.custom_headers = {"User-Agent": "CyberDrop-DL (by B05FDD249DF29ED3)"}
+        self.custom_headers = {"User-Agent": f"CyberDrop-DL/{__version__} (by B05FDD249DF29ED3)"}
         self.request_limiter = AsyncLimiter(2, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
