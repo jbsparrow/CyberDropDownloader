@@ -7,7 +7,9 @@ from functools import partial
 from typing import TYPE_CHECKING
 
 from pydantic import ByteSize
+from rich.console import Group
 from rich.layout import Layout
+from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from cyberdrop_dl.ui.progress.downloads_progress import DownloadsProgress
 from cyberdrop_dl.ui.progress.file_progress import FileProgress
@@ -55,7 +57,7 @@ class ProgressManager:
 
         self.ui_refresh_rate = manager.config_manager.global_settings_data.ui_options.refresh_rate
 
-        self.main_runtime_layout: Layout = field(init=False)
+        self.fullscreen_layout: Layout = field(init=False)
         self.hash_remove_layout: RenderableType = field(init=False)
         self.hash_layout: RenderableType = field(init=False)
         self.sort_layout: RenderableType = field(init=False)
@@ -74,7 +76,15 @@ class ProgressManager:
             Layout(renderable=self.download_stats_progress.get_progress(), name="Download Failures", ratio=1),
         )
 
-        self.main_runtime_layout = progress_layout
+        spinner = SpinnerColumn(style="green", spinner_name="dots"), TextColumn("Running Cyberdrop-DL")
+        actvity_placeholder = Progress(*spinner)
+        actvity_placeholder.add_task("running with no UI", total=100, completed=0)
+
+        simple_layout = Group(actvity_placeholder, self.download_progress.simple_progress)
+
+        self.activity_layout = actvity_placeholder
+        self.simple_layout = simple_layout
+        self.fullscreen_layout = progress_layout
         self.hash_remove_layout = self.hash_progress.get_removed_progress()
         self.hash_layout = self.hash_progress.get_renderable()
         self.sort_layout = self.sort_progress.get_renderable()
