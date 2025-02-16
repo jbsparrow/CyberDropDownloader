@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 class LiveManager:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
-        self.no_ui = self.manager.parsed_args.cli_only_args.no_ui
+        self.no_ui = not self.manager.parsed_args.cli_only_args.fullscreen_ui
         refresh_rate = self.manager.config_manager.global_settings_data.ui_options.refresh_rate
         self.live = Live(refresh_per_second=refresh_rate, console=console, transient=True, screen=not self.no_ui)
 

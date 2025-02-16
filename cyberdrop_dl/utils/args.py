@@ -4,10 +4,11 @@ import warnings
 from argparse import SUPPRESS, ArgumentParser, BooleanOptionalAction, RawDescriptionHelpFormatter
 from argparse import _ArgumentGroup as ArgGroup
 from datetime import date
+from enum import StrEnum, auto
 from pathlib import Path
 from typing import TYPE_CHECKING, Self
 
-from pydantic import BaseModel, Field, ValidationError, computed_field, model_validator
+from pydantic import BaseModel, Field, ValidationError, computed_field, field_validator, model_validator
 
 from cyberdrop_dl import __version__
 from cyberdrop_dl.config_definitions import ConfigSettings, GlobalSettings
@@ -16,6 +17,13 @@ from cyberdrop_dl.utils.yaml import handle_validation_error
 
 if TYPE_CHECKING:
     from pydantic.fields import FieldInfo
+
+
+class UIOptions(StrEnum):
+    DISABLED = auto()
+    ACTIVITY = auto()
+    SIMPLE = auto()
+    FULLSCREEN = auto()
 
 
 warnings.simplefilter("always", DeprecationWarning)
@@ -36,7 +44,6 @@ class CommandLineOnlyArgs(BaseModel):
     config_file: Path | None = Field(None, description="path to the CDL settings.yaml file to load")
     download: bool = Field(False, description="skips UI, start download immediatly")
     max_items_retry: int = Field(0, description="max number of links to retry")
-    no_ui: bool = Field(False, description="disables the UI/progress view entirely")
     retry_all: bool = Field(False, description="retry all downloads")
     retry_failed: bool = Field(False, description="retry failed downloads")
     retry_maintenance: bool = Field(
@@ -44,16 +51,23 @@ class CommandLineOnlyArgs(BaseModel):
     )
     download_tiktok_audios: bool = Field(False, description="download TikTok audios")
     print_stats: bool = Field(True, description="Show stats report at the end of a run")
+    ui: UIOptions = Field(UIOptions.FULLSCREEN, description="DISABLED, ACTIVITY, SIMPLE or FULLSCREEN")
 
-    @computed_field
     @property
     def retry_any(self) -> bool:
         return any((self.retry_all, self.retry_failed, self.retry_maintenance))
 
-    @computed_field
+    @property
+    def fullscreen_ui(self) -> bool:
+        return self.ui == UIOptions.FULLSCREEN
+
     @property
     def multiconfig(self) -> bool:
         return bool(self.config) and self.config.casefold() == "all"
+
+    @computed_field
+    def __computed__(self) -> dict:
+        return {"retry_any": self.retry_any, "fullscreen_ui": self.fullscreen_ui, "multiconfig": self.multiconfig}
 
     @model_validator(mode="after")
     def mutually_exclusive(self) -> Self:
@@ -65,14 +79,24 @@ class CommandLineOnlyArgs(BaseModel):
         _check_mutually_exclusive(group2, msg2)
         return self
 
+    @field_validator("ui", mode="before")
+    @classmethod
+    def lower(cls, value: str) -> str:
+        return value.lower()
 
-class DeprecatedArgs(BaseModel): ...
+
+class DeprecatedArgs(BaseModel):
+    no_ui: bool = Field(
+        False,
+        description="disables the UI/progress view entirely",
+        deprecated="'--no-ui' is deprecated and will be removed in the future. Use '--ui DISABLED' or `--ui 0`",
+    )
 
 
 class ParsedArgs(AliasModel):
     cli_only_args: CommandLineOnlyArgs = CommandLineOnlyArgs()  # type: ignore
     config_settings: ConfigSettings = ConfigSettings()
-    deprecated_args: DeprecatedArgs = DeprecatedArgs()
+    deprecated_args: DeprecatedArgs = DeprecatedArgs()  # type: ignore
     global_settings: GlobalSettings = GlobalSettings()
 
     def model_post_init(self, _) -> None:
@@ -84,7 +108,7 @@ class ParsedArgs(AliasModel):
         warnings_to_emit = self.prepare_warnings()
 
         if (
-            self.cli_only_args.no_ui
+            not self.cli_only_args.fullscreen_ui
             or self.cli_only_args.retry_any
             or self.cli_only_args.config_file
             or self.config_settings.sorting.sort_downloads
@@ -114,7 +138,9 @@ class ParsedArgs(AliasModel):
 
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", DeprecationWarning)
-            add_warning_msg_from("")
+            if self.deprecated_args.no_ui:
+                add_warning_msg_from("no_ui")
+                self.cli_only_args.ui = UIOptions.DISABLED
 
         return warnings_to_emit
 
