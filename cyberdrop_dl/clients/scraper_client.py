@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 from contextlib import asynccontextmanager
 from functools import wraps
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import aiohttp
@@ -245,8 +244,3 @@ class ScraperClient:
             proxy=self.client_manager.proxy,
         ) as response:
             return response.headers
-
-    def get_soup_from_file(self, path_as_str: str) -> BeautifulSoup:
-        """For testing"""
-        file_html = Path(path_as_str).read_bytes()
-        return BeautifulSoup(file_html, "html.parser")
