@@ -57,7 +57,7 @@ class ProgressManager:
 
         self.ui_refresh_rate = manager.config_manager.global_settings_data.ui_options.refresh_rate
 
-        self.main_runtime_layout: Layout = field(init=False)
+        self.fullscreen_layout: Layout = field(init=False)
         self.hash_remove_layout: RenderableType = field(init=False)
         self.hash_layout: RenderableType = field(init=False)
         self.sort_layout: RenderableType = field(init=False)
@@ -77,14 +77,14 @@ class ProgressManager:
         )
 
         spinner = SpinnerColumn(style="green", spinner_name="dots"), TextColumn("Running Cyberdrop-DL")
-        no_ui_placeholder = Progress(*spinner)
-        no_ui_placeholder.add_task("running with no UI", total=100, completed=0)
+        actvity_placeholder = Progress(*spinner)
+        actvity_placeholder.add_task("running with no UI", total=100, completed=0)
 
-        simple_layout = Group(no_ui_placeholder, self.download_progress.simple_progress)
+        simple_layout = Group(actvity_placeholder, self.download_progress.simple_progress)
 
-        self.no_ui_layout = no_ui_placeholder
-        self.simple_runtime_layout = simple_layout
-        self.main_runtime_layout = progress_layout
+        self.activity_layout = actvity_placeholder
+        self.simple_layout = simple_layout
+        self.fullscreen_layout = progress_layout
         self.hash_remove_layout = self.hash_progress.get_removed_progress()
         self.hash_layout = self.hash_progress.get_renderable()
         self.sort_layout = self.sort_progress.get_renderable()
