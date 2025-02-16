@@ -292,7 +292,7 @@ class Crawler(ABC):
 
 
 def remove_trailing_slash(url: URL) -> URL:
-    if url.name:
+    if url.name or url.path == "/":
         return url
     return url.parent.with_fragment(url.fragment).with_query(url.query)
 
