@@ -109,6 +109,7 @@ class E621Crawler(Crawler):
                 scrape_item, self.primary_base_domain / f"posts/{post_id}", title, True, add_parent=scrape_item.url
             )
             await self.file(new_scrape_item)
+            scrape_item.add_children()
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
