@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [UNRELEASED]
 
+### Added
+
+- Add support for https://e621.net pools, posts, and tags.
+
 ### Removed
 
 - v4 option names and v4 files import support
