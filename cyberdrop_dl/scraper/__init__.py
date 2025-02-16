@@ -14,6 +14,7 @@ from cyberdrop_dl.scraper.crawlers.chevereto_crawler import CheveretoCrawler
 from cyberdrop_dl.scraper.crawlers.coomer_crawler import CoomerCrawler
 from cyberdrop_dl.scraper.crawlers.cyberdrop_crawler import CyberdropCrawler
 from cyberdrop_dl.scraper.crawlers.cyberfile_crawler import CyberfileCrawler
+from cyberdrop_dl.scraper.crawlers.e621_crawler import E621Crawler
 from cyberdrop_dl.scraper.crawlers.ehentai_crawler import EHentaiCrawler
 from cyberdrop_dl.scraper.crawlers.eightmuses_crawler import EightMusesCrawler
 from cyberdrop_dl.scraper.crawlers.erome_crawler import EromeCrawler
