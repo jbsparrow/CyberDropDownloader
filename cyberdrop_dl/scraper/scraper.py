@@ -27,6 +27,8 @@ from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.scraper.crawler import Crawler
 
@@ -171,41 +173,22 @@ class ScrapeMapper:
     async def load_failed_links(self) -> None:
         """Loads failed links from database."""
         entries = await self.manager.db_manager.history_table.get_failed_items()
-        items = []
-        for entry in entries:
-            item = self.create_item_from_entry(entry)
-            if self.filter_items(item):
-                items.append(item)
-        if self.manager.parsed_args.cli_only_args.max_items_retry:
-            items = items[: self.manager.parsed_args.cli_only_args.max_items_retry]
-        self.count = len(items)
-        for item in items:
-            self.manager.task_group.create_task(self.send_to_crawler(item))
+        self.process_entries(entries)
 
     async def load_all_links(self) -> None:
         """Loads all links from database."""
         after = self.manager.parsed_args.cli_only_args.completed_after or date.fromtimestamp(0)
-
         before = self.manager.parsed_args.cli_only_args.completed_before or datetime.now().date()
-        entries = await self.manager.db_manager.history_table.get_all_items(
-            after,
-            before,
-        )
-        items = []
-        for entry in entries:
-            item = self.create_item_from_entry(entry)
-            if self.filter_items(item):
-                items.append(item)
-        if self.manager.parsed_args.cli_only_args.max_items_retry:
-            items = items[: self.manager.parsed_args.cli_only_args.max_items_retry]
-        self.count = len(items)
-        for item in items:
-            self.manager.task_group.create_task(self.send_to_crawler(item))
+        entries = await self.manager.db_manager.history_table.get_all_items(after, before)
+        self.process_entries(entries)
 
     async def load_all_bunkr_failed_links_via_hash(self) -> None:
         """Loads all bunkr links with maintenance hash."""
         entries = await self.manager.db_manager.history_table.get_all_bunkr_failed()
         entries = sorted(set(entries), reverse=True, key=lambda x: arrow.get(x[-1]))
+        self.process_entries(entries)
+
+    def process_entries(self, entries: Iterable) -> None:
         items = []
         for entry in entries:
             item = self.create_item_from_entry(entry)
