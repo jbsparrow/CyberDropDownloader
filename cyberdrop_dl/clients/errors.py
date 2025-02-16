@@ -10,7 +10,6 @@ from yarl import URL
 from cyberdrop_dl.utils.constants import VALIDATION_ERROR_FOOTER
 
 if TYPE_CHECKING:
-    from requests import Response
     from yaml.constructor import ConstructorError
 
     from cyberdrop_dl.scraper.crawler import ScrapeItem
@@ -143,15 +142,12 @@ class MediaFireError(CDLBaseError):
         super().__init__(ui_message, message=message, status=status, origin=origin)
 
 
-class RealDebridError(CDLBaseError):
+class DebridError(CDLBaseError):
     """Base RealDebrid API error."""
 
-    def __init__(self, response: Response, code: int, message: str) -> None:
-        url = URL(response.url)
-        self.path = url.path
+    def __init__(self, message: str) -> None:
         msg = message.capitalize()
-        ui_message = f"{code} RealDebrid Error"
-        super().__init__(ui_message, message=msg, status=code, origin=url)
+        super().__init__(msg)
 
 
 class ScrapeError(CDLBaseError):

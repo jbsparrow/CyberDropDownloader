@@ -9,7 +9,7 @@ from requests import Session
 from requests.exceptions import RequestException
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import RealDebridError
+from cyberdrop_dl.clients.errors import DebridError
 from cyberdrop_dl.managers.real_debrid.errors import ERROR_CODES
 
 if TYPE_CHECKING:
@@ -90,7 +90,7 @@ class RealDebridApi:
                 raise
             code = 7 if code == 16 else code
             msg = ERROR_CODES.get(code, "Unknown error")
-            raise RealDebridError(response, code, msg) from None
+            raise DebridError(response, code, msg) from None
         except AttributeError:
             response.raise_for_status()
             return response.text

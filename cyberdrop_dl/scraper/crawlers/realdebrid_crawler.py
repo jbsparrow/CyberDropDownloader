@@ -48,9 +48,10 @@ class RealDebridCrawler(Crawler):
         scrape_item.add_to_parent_title(title)
 
         async with self.request_limiter:
-            links = self.manager.real_debrid_manager.unrestrict_folder(original_url)
+            links_as_strs = await self.manager.real_debrid_manager.unrestrict_folder(original_url)
 
-        for link in links:
+        for link_str in links_as_strs:
+            link = self.parse_url(link_str)
             new_scrape_item = self.create_scrape_item(
                 scrape_item,
                 link,
@@ -77,7 +78,8 @@ class RealDebridCrawler(Crawler):
             scrape_item.part_of_album = True
             scrape_item.add_to_parent_title(title)
             async with self.request_limiter:
-                debrid_url = self.manager.real_debrid_manager.unrestrict_link(original_url, password)
+                debrid_url_str = await self.manager.real_debrid_manager.unrestrict_link(original_url, password)
+            debrid_url = self.parse_url(debrid_url_str)
 
         if await self.check_complete_from_referer(debrid_url):
             return
