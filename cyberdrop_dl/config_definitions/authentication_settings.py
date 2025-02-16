@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from .pydantic.custom_types import AliasModel
+from .custom.types import AliasModel
 
 
 class ForumAuth(BaseModel):
@@ -74,10 +74,10 @@ class RealDebridAuth(AliasModel):
 class AuthSettings(AliasModel):
     coomer: CoomerAuth = Field(validation_alias="Coomer", default=CoomerAuth())
     forums: ForumAuth = Field(validation_alias="Forums", default=ForumAuth())
-    gofile: GoFileAuth = Field(validation_alias="GoFile", default=GoFileAuth())
-    imgur: ImgurAuth = Field(validation_alias="Imgur", default=ImgurAuth())
-    jdownloader: JDownloaderAuth = Field(validation_alias="JDownloader", default=JDownloaderAuth())
-    pixeldrain: PixeldrainAuth = Field(validation_alias="PixelDrain", default=PixeldrainAuth())
-    realdebrid: RealDebridAuth = Field(validation_alias="RealDebrid", default=RealDebridAuth())
-    reddit: RedditAuth = Field(validation_alias="Reddit", default=RedditAuth())
-    xxxbunker: XXXBunkerAuth = Field(validation_alias="XXXBunker", default=XXXBunkerAuth())
+    gofile: GoFileAuth = Field(validation_alias="GoFile", default=GoFileAuth())  # type: ignore
+    imgur: ImgurAuth = Field(validation_alias="Imgur", default=ImgurAuth())  # type: ignore
+    jdownloader: JDownloaderAuth = Field(validation_alias="JDownloader", default=JDownloaderAuth())  # type: ignore
+    pixeldrain: PixeldrainAuth = Field(validation_alias="PixelDrain", default=PixeldrainAuth())  # type: ignore
+    realdebrid: RealDebridAuth = Field(validation_alias="RealDebrid", default=RealDebridAuth())  # type: ignore
+    reddit: RedditAuth = Field(validation_alias="Reddit", default=RedditAuth())  # type: ignore
+    xxxbunker: XXXBunkerAuth = Field(validation_alias="XXXBunker", default=XXXBunkerAuth())  # type: ignore
