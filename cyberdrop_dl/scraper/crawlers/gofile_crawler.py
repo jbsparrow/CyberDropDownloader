@@ -118,20 +118,27 @@ class GoFileCrawler(Crawler):
                 subfolders.append(folder_url)
                 continue
 
-            link_str = child["link"]
-            if link_str == "overloaded":
-                link_str = child["directLink"]
-
-            link = self.parse_url(link_str)
-            date = child["createTime"]
-            filename, ext = self.get_filename_and_ext(link.name, assume_ext=".mp4")
-            new_scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, possible_datetime=date)
-            await self.handle_file(link, new_scrape_item, filename, ext)
-            scrape_item.add_children()
+            await self.handle_child(scrape_item, child)
 
         for folder_url in subfolders:
             subfolder = self.create_scrape_item(scrape_item, url=folder_url, add_parent=scrape_item.url)
             self.manager.task_group.create_task(self.run(subfolder))
+
+    @error_handling_wrapper
+    async def handle_child(self, scrape_item: ScrapeItem, child: dict) -> None:
+        if child.get("isFrozen", False):
+            raise ScrapeError(423, "in cold storage. Import into your account space to acess (requires premium).")
+
+        link_str = child["link"]
+        if link_str == "overloaded":
+            link_str = child["directLink"]
+
+        link = self.parse_url(link_str)
+        date = child["createTime"]
+        filename, ext = self.get_filename_and_ext(link.name, assume_ext=".mp4")
+        new_scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, possible_datetime=date)
+        await self.handle_file(link, new_scrape_item, filename, ext)
+        scrape_item.add_children()
 
     @error_handling_wrapper
     async def get_account_token(self, _) -> None:
