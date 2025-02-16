@@ -27,7 +27,7 @@ from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Sequence
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.scraper.crawler import Crawler
@@ -89,13 +89,15 @@ class ScrapeMapper:
         self.no_crawler_downloader.startup()
 
         if self.manager.parsed_args.cli_only_args.retry_failed:
-            await self.load_failed_links()
+            items = await self.load_failed_links()
         elif self.manager.parsed_args.cli_only_args.retry_all:
-            await self.load_all_links()
+            items = await self.load_all_links()
         elif self.manager.parsed_args.cli_only_args.retry_maintenance:
-            await self.load_all_bunkr_failed_links_via_hash()
+            items = await self.load_all_bunkr_failed_links_via_hash()
         else:
-            await self.load_links()
+            items = await self.load_links()
+        filtered_items = [item for item in items if self.filter_items(item)]
+        self.process_items(filtered_items)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -139,7 +141,7 @@ class ScrapeMapper:
         self.group_count = len(links) - 1
         return links
 
-    async def load_links(self) -> None:
+    async def load_links(self) -> list[ScrapeItem]:
         """Loads links from args / input file."""
         input_file = self.manager.path_manager.input_file
         # we need to touch the file just in case, purge_tree deletes it
@@ -164,37 +166,29 @@ class ScrapeMapper:
                 if title:
                     item.add_to_parent_title(title)
                     item.part_of_album = True
-                if self.filter_items(item):
-                    items.append(item)
-        self.count = len(items)
-        for item in items:
-            self.manager.task_group.create_task(self.send_to_crawler(item))
+                items.append(item)
+        return items
 
-    async def load_failed_links(self) -> None:
+    async def load_failed_links(self) -> list[ScrapeItem]:
         """Loads failed links from database."""
         entries = await self.manager.db_manager.history_table.get_failed_items()
-        self.process_entries(entries)
+        return [self.create_item_from_entry(entry) for entry in entries]
 
-    async def load_all_links(self) -> None:
+    async def load_all_links(self) -> list[ScrapeItem]:
         """Loads all links from database."""
         after = self.manager.parsed_args.cli_only_args.completed_after or date.fromtimestamp(0)
         before = self.manager.parsed_args.cli_only_args.completed_before or datetime.now().date()
         entries = await self.manager.db_manager.history_table.get_all_items(after, before)
-        self.process_entries(entries)
+        return [self.create_item_from_entry(entry) for entry in entries]
 
-    async def load_all_bunkr_failed_links_via_hash(self) -> None:
+    async def load_all_bunkr_failed_links_via_hash(self) -> list[ScrapeItem]:
         """Loads all bunkr links with maintenance hash."""
         entries = await self.manager.db_manager.history_table.get_all_bunkr_failed()
         entries = sorted(set(entries), reverse=True, key=lambda x: arrow.get(x[-1]))
-        self.process_entries(entries)
+        return [self.create_item_from_entry(entry) for entry in entries]
 
-    def process_entries(self, entries: Iterable) -> None:
-        items = []
-        for entry in entries:
-            item = self.create_item_from_entry(entry)
-            if self.filter_items(item):
-                items.append(item)
-        if self.manager.parsed_args.cli_only_args.max_items_retry:
+    def process_items(self, items: list[ScrapeItem]) -> None:
+        if self.manager.parsed_args.cli_only_args.retry_any and self.manager.parsed_args.cli_only_args.max_items_retry:
             items = items[: self.manager.parsed_args.cli_only_args.max_items_retry]
         self.count = len(items)
         for item in items:
@@ -215,7 +209,7 @@ class ScrapeMapper:
         return item
 
     @staticmethod
-    def create_item_from_entry(entry: list) -> ScrapeItem:
+    def create_item_from_entry(entry: Sequence) -> ScrapeItem:
         url = URL(entry[0])
         retry_path = Path(entry[1])
         scrape_item = ScrapeItem(url=url, part_of_album=True, retry=True, retry_path=retry_path)
