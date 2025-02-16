@@ -129,7 +129,6 @@ class Rule34VideoCrawler(Crawler):
         while True:
             async with self.request_limiter:
                 soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url, origin=scrape_item)
-                # soup = self.client.get_soup_from_file("rule34video_categories.htm")
             next_page = soup.select_one(PLAYLIST_NEXT_PAGE_SELECTOR)
             yield soup
             page_url_str: str = next_page.get("href") if next_page else None  # type: ignore
