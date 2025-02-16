@@ -5,15 +5,51 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [UNRELEASED]
+## [6.6.0] - 2025-02-21
 
 ### Added
 
-- Add support for https://e621.net pools, posts, and tags.
+- Skip download of video and audio files by duration: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/media_duration_limits
+- Show simplified progress bar with new `--ui simple` option:
+- e621.net support (pools, posts, and tags)
+- Streamable.com support
+- Youjizz.com support
+- ePorner.com support
+- SpankBang.com support
+- Rule34video.com support
+
+### Changed
+
+- Log invalid URL paths as scrape errors
+- Increase verbosity of some processes
+- Re-enable sorting option on the main UI
+- Show queued files in progress stats
+- Vacuum requests database after cleaning old request entries
+- Remove double spaces from created folders
+- Show input file path, input URLs count and input URLs group count in stats
+
+### Fixed
+
+- Forum attachments extension parsing (xenforo)
+- Download full resolution images instead of thumbnails (celebforum, pixhost)
+- Handle URLs with "%" (U+0025) in it
+- Pagination of chevereto profiles and albums (jpg5, img.kiwi and imagepond.net)
+- Duplicated entries in database for previously unsupported domains
+- `403 Forbidden` errors from some downloads (bunkr)
+- Handling of deleted videos (saint.to)
+- Handling of deleted files (cyberfile, iceyfile)
+- Loose files detection (gofile)
+- Filename not being sanitized in some cases (bunkr)
+- Handling of malformed responses from flaresolverr
+- Handling of frozen files (gofile)
+
+### Deprecated
+
+- `--no-ui` is deprecated and will be removed in a future version. Use `--ui disabled`
 
 ### Removed
 
-- v4 option names and v4 files import support
+- v4 support (config option names and UI file import options)
 
 ## [6.5.0] - 2025-02-14
 
