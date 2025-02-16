@@ -5,6 +5,12 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [UNRELEASED]
+
+### Removed
+
+- v4 option names and v4 files import support
+
 ## [6.5.0] - 2025-02-14
 
 ### Added
@@ -49,7 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Files in the download queue are saved to the database and can be retried with `--retry-failed`
-- CLI `--skip-hosts` and `--only-hosts` values will be added to / removed from config values when passing `+` or `-` as the first argument, respectively. See: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/special_setting_types#AdditiveArgs
+- CLI `--skip-hosts` and `--only-hosts` values will be added to / removed from config values when passing `+` or `-` as the first argument, respectively. See: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/special_setting_types#additiveargs
 - CLI arguments that accept multiple values can now be used multiple times in the same command
 - Forum posts are now processed asynchronously instead of sequentially
 - Prettify failures messages

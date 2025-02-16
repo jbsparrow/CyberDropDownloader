@@ -236,7 +236,9 @@ class ScraperClient:
             return {}
 
     @limiter
-    async def get_head(self, domain: str, url: URL, client_session: CachedSession) -> CIMultiDictProxy[str]:
+    async def get_head(
+        self, domain: str, url: URL, client_session: CachedSession, *, origin: ScrapeItem | URL | None = None
+    ) -> CIMultiDictProxy[str]:
         """Returns the headers from the given URL."""
         async with client_session.head(
             url,
@@ -244,6 +246,7 @@ class ScraperClient:
             ssl=self.client_manager.ssl_context,
             proxy=self.client_manager.proxy,
         ) as response:
+            await self.client_manager.check_http_status(response, origin=origin)
             return response.headers
 
     def get_soup_from_file(self, path_as_str: str) -> BeautifulSoup:
