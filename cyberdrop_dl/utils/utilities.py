@@ -6,17 +6,19 @@ import os
 import platform
 import re
 import subprocess
-from functools import wraps
+from functools import partial, wraps
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 import aiofiles
 import rich
 from aiohttp import ClientConnectorError, ClientSession, FormData
+from requests import request
 from rich.text import Text
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import CDLBaseError, NoExtensionError
+from cyberdrop_dl import __version__ as current_version
+from cyberdrop_dl.clients.errors import CDLBaseError, InvalidExtensionError, NoExtensionError
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.logger import log, log_debug, log_spacer, log_with_color
 
@@ -27,6 +29,9 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.scraper.crawler import Crawler
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
+
+
+subprocess_get_text = partial(subprocess.run, capture_output=True, text=True, check=False)
 
 
 def error_handling_wrapper(func: Callable) -> Callable:
@@ -92,32 +97,37 @@ def sanitize_folder(title: str) -> str:
     title = title.rstrip(".").strip()
 
     if all(char in title for char in ("(", ")")):
-        new_title = title.rsplit("(")[0].strip()
-        new_title = new_title[: constants.MAX_NAME_LENGTHS["FOLDER"]].strip()
-        domain_part = title.rsplit("(")[1].strip()
-        title = f"{new_title} ({domain_part}"
-    else:
-        title = title[: constants.MAX_NAME_LENGTHS["FOLDER"]].strip()
-    return title
+        new_title, domain_part = title.rsplit("(", 1)
+        new_title = truncate_str(new_title, constants.MAX_NAME_LENGTHS["FOLDER"])
+        return f"{new_title} ({domain_part.strip()}"
+    return truncate_str(title, constants.MAX_NAME_LENGTHS["FOLDER"])
+
+
+def truncate_str(text: str, max_length: int = 0) -> str:
+    """Truncates and strip strings to the desired len.
+
+    If `max_length` is 0, uses `constants.MAX_NAME_LENGTHS["FILE"]`"""
+    truncate_to = max_length or constants.MAX_NAME_LENGTHS["FILE"]
+    if len(text) > truncate_to:
+        return text[:truncate_to].strip()
+    return text.strip()
 
 
 def get_filename_and_ext(filename: str, forum: bool = False) -> tuple[str, str]:
     """Returns the filename and extension of a given file, throws `NoExtensionError` if there is no extension."""
-    filename_parts = filename.rsplit(".", 1)
-    if len(filename_parts) == 1:
+    filename_as_path = Path(filename)
+    if not filename_as_path.suffix:
         raise NoExtensionError
-    if filename_parts[-1].isnumeric() and forum:
-        filename_parts = filename_parts[0].rsplit("-", 1)
-    if len(filename_parts[-1]) > 5:
-        raise NoExtensionError
-    ext = "." + filename_parts[-1].lower()
-    filename = filename_parts[0]
-    if len(filename) > constants.MAX_NAME_LENGTHS["FILE"]:
-        filename = filename_parts[0][: constants.MAX_NAME_LENGTHS["FILE"]]
+    if filename_as_path.suffix.isnumeric() and forum:
+        name, ext = filename_as_path.name.rsplit("-", 1)
+        filename_as_path = Path(f"{name}.{ext}")
+    if len(filename_as_path.suffix) > 5:
+        raise InvalidExtensionError
 
-    filename = filename.strip().rstrip(".")
-    filename = sanitize_filename(filename + ext)
-    return filename, ext
+    filename_as_path = filename_as_path.with_suffix(filename_as_path.suffix.lower())
+    filename_as_str = truncate_str(filename_as_path.stem.removesuffix(".")) + filename_as_path.suffix
+    filename_as_path = Path(sanitize_filename(filename_as_str))
+    return filename_as_path.name, filename_as_path.suffix
 
 
 def get_download_path(manager: Manager, scrape_item: ScrapeItem, domain: str) -> Path:
@@ -167,7 +177,7 @@ def parse_rich_text_by_style(text: Text, style_map: dict, default_style_map_key:
     plain_text = ""
     for span in text.spans:
         span_text = text.plain[span.start : span.end].rstrip("\n")
-        plain_line: str = style_map.get(span.style) or style_map.get(default_style_map_key)
+        plain_line: str | None = style_map.get(span.style) or style_map.get(default_style_map_key)
         if plain_line:
             plain_text += plain_line.format(span_text) + "\n"
 
@@ -186,44 +196,50 @@ def purge_dir_tree(dirname: Path) -> None:
             dir_to_remove.rmdir()
 
 
-async def check_partials_and_empty_folders(manager: Manager) -> None:
-    """Checks for partial downloads and empty folders."""
-    if manager.config_manager.settings_data.runtime_options.delete_partial_files:
-        log_with_color("Deleting partial downloads...", "bold_red", 20)
-        partial_downloads = manager.path_manager.download_folder.rglob("*.part")
-        for file in partial_downloads:
-            file.unlink(missing_ok=True)
+def check_partials_and_empty_folders(manager: Manager) -> None:
+    """Checks for partial downloads, deletes partial files and empty folders."""
+    delete_partial_files(manager)
+    check_for_partial_files(manager)
+    delete_empty_folders(manager)
 
-    elif not manager.config_manager.settings_data.runtime_options.skip_check_for_partial_files:
-        log_with_color("Checking for partial downloads...", "yellow", 20)
-        partial_downloads = any(manager.path_manager.download_folder.rglob("*.part"))
-        if partial_downloads:
-            log_with_color("There are partial downloads in the downloads folder", "yellow", 20)
 
-    if not manager.config_manager.settings_data.runtime_options.skip_check_for_empty_folders:
-        log_with_color("Checking for empty folders...", "yellow", 20)
-        purge_dir_tree(manager.path_manager.download_folder)
-        if (
-            isinstance(manager.path_manager.sorted_folder, Path)
-            and manager.config_manager.settings_data.sorting.sort_downloads
-        ):
-            purge_dir_tree(manager.path_manager.sorted_folder)
+def delete_partial_files(manager: Manager) -> None:
+    if not manager.config_manager.settings_data.runtime_options.delete_partial_files:
+        return
+    log_red("Deleting partial downloads...")
+    partial_downloads = manager.path_manager.download_folder.rglob("*.part")
+    for file in partial_downloads:
+        file.unlink(missing_ok=True)
+
+
+def check_for_partial_files(manager: Manager):
+    if manager.config_manager.settings_data.runtime_options.skip_check_for_partial_files:
+        return
+    log_yellow("Checking for partial downloads...")
+    partial_downloads = any(manager.path_manager.download_folder.rglob("*.part"))
+    if partial_downloads:
+        log_yellow("There are partial downloads in the downloads folder")
+
+
+def delete_empty_folders(manager: Manager):
+    if manager.config_manager.settings_data.runtime_options.skip_check_for_empty_folders:
+        return
+    log_yellow("Checking for empty folders...")
+    purge_dir_tree(manager.path_manager.download_folder)
+    if manager.path_manager.sorted_folder and manager.config_manager.settings_data.sorting.sort_downloads:
+        purge_dir_tree(manager.path_manager.sorted_folder)
 
 
 def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -> tuple[str, str]:
     """Checks if the current version is the latest version."""
-
-    from requests import request
-
-    from cyberdrop_dl import __version__ as current_version
 
     with request("GET", constants.PYPI_JSON_URL, timeout=30) as response:
         contents = response.content
 
     data: dict[str, dict] = json.loads(contents)
     latest_version: str = data["info"]["version"]
-    releases = data["releases"].keys()
-    message = color = None
+    releases = list(data["releases"].keys())
+    color = ""
     level = 30
     is_prerelease, latest_testing_version, message = check_prelease_version(current_version, releases)
 
@@ -234,8 +250,8 @@ def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -
         latest_version = latest_testing_version
         color = "bold_red"
     elif current_version != latest_version:
-        message = f"A new version of Cyberdrop-DL is available: [cyan]{latest_version}[/cyan]"
-        message = Text.from_markup(message)
+        message_mkup = f"A new version of Cyberdrop-DL is available: [cyan]{latest_version}[/cyan]"
+        message = Text.from_markup(message_mkup)
     else:
         message = Text.from_markup("You are currently on the latest version of Cyberdrop-DL :white_check_mark:")
         level = 20
@@ -248,9 +264,9 @@ def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -
     return current_version, latest_version
 
 
-def check_prelease_version(current_version: str, releases: list[str]) -> tuple[str, Text]:
+def check_prelease_version(current_version: str, releases: list[str]) -> tuple[bool, str, Text | str]:
     match = re.match(constants.PRELEASE_VERSION_PATTERN, current_version)
-    latest_testing_version = message = None
+    latest_testing_version = message = ""
 
     if constants.RUNNING_PRERELEASE and match:
         major_version, minor_version, patch_version, dot_tag, no_dot_tag = match.groups()
@@ -348,31 +364,28 @@ def open_in_text_editor(file_path: Path) -> bool:
 
 
 def set_default_app_if_none(file_path: Path) -> bool:
-    mimetype = subprocess.run(
-        ["xdg-mime", "query", "filetype", str(file_path)],
-        capture_output=True,
-        text=True,
-        check=False,
-    ).stdout.strip()
+    mimetype = xdg_mime_query("filetype", str(file_path))
     if not mimetype:
         return False
 
-    default_app = subprocess.run(
-        ["xdg-mime", "query", "default", mimetype],
-        capture_output=True,
-        text=True,
-        check=False,
-    ).stdout.strip()
+    default_app = xdg_mime_query("default", mimetype)
     if default_app:
         return True
 
-    text_default = subprocess.run(
-        ["xdg-mime", "query", "default", "text/plain"],
-        capture_output=True,
-        text=True,
-        check=False,
-    ).stdout.strip()
+    text_default = xdg_mime_query("default", "text/plain")
     if text_default:
         return subprocess.call(["xdg-mime", "default", text_default, mimetype]) == 0
 
     return False
+
+
+def xdg_mime_query(*args) -> str:
+    assert args
+    arg_list = ["xdg-mime", "query", *args]
+    return subprocess_get_text(arg_list).stdout.strip()
+
+
+log_cyan = partial(log_with_color, style="cyan", level=20)
+log_yellow = partial(log_with_color, style="yellow", level=20)
+log_green = partial(log_with_color, style="green", level=20)
+log_red = partial(log_with_color, style="red", level=20)

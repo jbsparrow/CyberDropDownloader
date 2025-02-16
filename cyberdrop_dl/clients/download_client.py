@@ -86,7 +86,7 @@ class DownloadClient:
         async def on_request_end(*args):
             params: aiohttp.TraceRequestEndParams = args[2]
             msg = f"Finishing download {params.method} request to {params.url}"
-            msg += f"-> response status: {params.response.status}"
+            msg += f" -> response status: {params.response.status}"
             log(msg, 10)
 
         trace_config = aiohttp.TraceConfig()
@@ -270,7 +270,7 @@ class DownloadClient:
     async def add_file_size(self, domain: str, media_item: MediaItem) -> None:
         if not media_item.complete_file:
             media_item.complete_file = self.get_file_location(media_item)
-        if media_item.complete_file.exists():
+        if media_item.complete_file.is_file():
             await self.manager.db_manager.history_table.add_filesize(domain, media_item)
 
     async def handle_media_item_completion(self, media_item: MediaItem, downloaded: bool = False) -> None:
@@ -321,6 +321,7 @@ class DownloadClient:
                 break
 
             if media_item.complete_file.exists() and media_item.complete_file.stat().st_size == media_item.filesize:
+                log(f"Found {media_item.complete_file.name} locally, skipping download")
                 proceed = False
                 break
 
@@ -337,10 +338,16 @@ class DownloadClient:
 
             if media_item.filename == downloaded_filename:
                 if media_item.partial_file.exists():
+                    log(f"Found {downloaded_filename} locally, trying to resume")
                     if media_item.partial_file.stat().st_size >= media_item.filesize != 0:
+                        log(f"Deleting partial file {media_item.partial_file}")
                         media_item.partial_file.unlink()
                     if media_item.partial_file.stat().st_size == media_item.filesize:
                         if media_item.complete_file.exists():
+                            log(
+                                f"Found conflicting complete file {media_item.complete_file} locally, iterating filename",
+                                30,
+                            )
                             new_complete_filename, new_partial_file = await self.iterate_filename(
                                 media_item.complete_file,
                                 media_item,
@@ -353,10 +360,18 @@ class DownloadClient:
                         else:
                             proceed = False
                             media_item.partial_file.rename(media_item.complete_file)
+                        log(
+                            f"Renaming found partial file {media_item.partial_file} to complete file {media_item.complete_file}"
+                        )
                 elif media_item.complete_file.exists():
                     if media_item.complete_file.stat().st_size == media_item.filesize:
+                        log(f"Found complete file {media_item.complete_file} locally, skipping download")
                         proceed = False
                     else:
+                        log(
+                            f"Found conflicting complete file {media_item.complete_file} locally, iterating filename",
+                            30,
+                        )
                         media_item.complete_file, media_item.partial_file = await self.iterate_filename(
                             media_item.complete_file,
                             media_item,
@@ -372,7 +387,7 @@ class DownloadClient:
         """Iterates the filename until it is unique."""
         partial_file = None
         for iteration in itertools.count(1):
-            filename = f"{complete_file.stem} ({iteration}){media_item.ext}"
+            filename = f"{complete_file.stem} ({iteration}){complete_file.suffix}"
             temp_complete_file = media_item.download_folder / filename
             if (
                 not temp_complete_file.exists()

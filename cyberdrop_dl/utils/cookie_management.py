@@ -1,51 +1,55 @@
 from __future__ import annotations
 
 import contextlib
+import os
 from functools import wraps
 from http.cookiejar import MozillaCookieJar
 from textwrap import dedent
 from typing import TYPE_CHECKING
 
+import browser_cookie3
 from rich.console import Console
 
-from cyberdrop_dl.dependencies import browser_cookie3
 from cyberdrop_dl.utils.data_enums_classes.supported_domains import SUPPORTED_FORUMS
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from http.cookiejar import CookieJar
 
     from cyberdrop_dl.managers.manager import Manager
 
 console = Console()
+COOKIE_ERROR_FOOTER = "\n\nNothing has been saved."
+CHROMIUM_BROWSERS = ["chrome", "chromium", "opera", "opera_gx", "brave", "edge", "vivaldi", "arc"]
 
 
-def cookie_wrapper(func) -> None:
+class UnsupportedBrowserError(browser_cookie3.BrowserCookieError):
+    pass
+
+
+def cookie_wrapper(func: Callable) -> Callable:
     """Wrapper handles errors for cookie extraction."""
 
     @wraps(func)
-    def wrapper(self, *args, **kwargs) -> None:
+    def wrapper(*args, **kwargs) -> None:
         msg = ""
-        footer = "\n\nNothing has been saved."
         try:
-            return func(self, *args, **kwargs)
-        except PermissionError:
-            msg = """
-            We've encountered a Permissions Error. Please close all browsers and try again
-            If you are still having issues, make sure all browsers processes are closed in Task Manager.
-            """
-            msg = dedent(msg) + footer
+            return func(*args, **kwargs)
+        except PermissionError as e:
+            msg = """We've encountered a Permissions Error. Please close all browsers and try again
+                     If you are still having issues, make sure all browsers processes are closed in Task Manager"""
+            msg = dedent(msg) + f"\nERROR: {e!s}"
 
-        except ValueError as e:
-            msg = str(e) + footer
+        except (ValueError, UnsupportedBrowserError) as e:
+            msg = f"ERROR: {e!s}"
 
         except browser_cookie3.BrowserCookieError as e:
-            msg = """
-            Browser extraction ran into an error, the selected browser(s) may not be available on your system
-            If you are still having issues, make sure all browsers processes are closed in Task Manager.
-            """
-            msg = dedent(msg) + f"\nERROR: {e!s}" + footer
+            msg = """Browser extraction ran into an error, the selected browser(s) may not be available on your system
+                     If you are still having issues, make sure all browsers processes are closed in Task Manager."""
 
-        raise browser_cookie3.BrowserCookieError(msg)
+            msg = dedent(msg) + f"\nERROR: {e!s}"
+
+        raise browser_cookie3.BrowserCookieError(msg + COOKIE_ERROR_FOOTER)
 
     return wrapper
 
@@ -62,8 +66,9 @@ def get_cookies_from_browsers(
         raise ValueError(msg)
 
     browsers = browsers or manager.config_manager.settings_data.browser_cookies.browsers
+    browsers = list(map(str.lower, browsers))
     domains: list[str] = domains or manager.config_manager.settings_data.browser_cookies.sites
-    extractors = [getattr(browser_cookie3, b) for b in browsers if hasattr(browser_cookie3, b)]
+    extractors = [(str(b), getattr(browser_cookie3, b)) for b in browsers if hasattr(browser_cookie3, b)]
 
     if not extractors:
         msg = "None of the provided browsers is supported for extraction"
@@ -71,8 +76,12 @@ def get_cookies_from_browsers(
 
     for domain in domains:
         cookie_jar = MozillaCookieJar()
-        for extractor in extractors:
-            cookies = extractor(domain_name=domain)
+        for extractor_name, extractor in extractors:
+            try:
+                cookies = extractor(domain_name=domain)
+            except browser_cookie3.BrowserCookieError as e:
+                check_unsupported_browser(e, extractor_name)
+                raise
             for cookie in cookies:
                 cookie_jar.set_cookie(cookie)
             manager.path_manager.cookies_dir.mkdir(parents=True, exist_ok=True)
@@ -102,3 +111,14 @@ def clear_cookies(manager: Manager, domains: list[str] | None = None) -> None:
         manager.path_manager.cookies_dir.mkdir(parents=True, exist_ok=True)
         cookie_file_path = manager.path_manager.cookies_dir / f"{domain}.txt"
         cookie_jar.save(cookie_file_path, ignore_discard=True, ignore_expires=True)
+
+
+def check_unsupported_browser(error: browser_cookie3.BrowserCookieError, extractor_name: str) -> None:
+    msg = str(error)
+    if is_decrypt_error(msg) and extractor_name in CHROMIUM_BROWSERS and os.name == "nt":
+        msg = f"Cookie extraction from {extractor_name.capitalize()} is not supported on Windows - {msg}"
+        raise UnsupportedBrowserError(msg)
+
+
+def is_decrypt_error(error_as_str: str) -> bool:
+    return "Unable to get key for cookie decryption" in error_as_str

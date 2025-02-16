@@ -75,7 +75,7 @@ class JDownloader:
     ) -> None:
         """Sends links to JDownloader."""
         try:
-            assert url.host is not None
+            assert url.host, f"{url} has no host"
             assert self.jdownloader_agent is not None
             download_folder = self.jdownloader_download_dir
             if relative_download_path:

@@ -136,7 +136,7 @@ class PornPicsCrawler(Crawler):
         return None, [self.parse_url(g["g_url"]) for g in json_resp]
 
     def is_cdn(self, url: URL) -> bool:
-        assert url.host
+        assert url.host, f"{url} has no host"
         base_host: str = self.primary_base_domain.host.removeprefix("www.")
         url_host: str = url.host.removeprefix("www.")
         return len(url_host.split(".")) > len(base_host.split("."))

@@ -11,16 +11,15 @@ dependencies = [
     "arrow>=1.3.0,<2",
     "asyncpraw>=7.8.0,<8",
     "beautifulsoup4>=4.12.2,<5",
+    "browser-cookie3 (>=0.20.1,<0.21.0)",
     "certifi>=2024.12.14",
     "filedate~=3.0",
     "get-video-properties>=0.1.1,<0.2",
     "inquirerpy>=0.3.4,<0.4",
-    "jeepney>=0.8.0,<0.9 ; sys_platform == 'bsd' or sys_platform == 'linux'",
     "mediafire>=0.6.1,<0.7",
     "myjdapi>=1.1.7,<2",
     "pillow>=11.0.0,<12",
     "platformdirs>=4.3.6,<5",
-    "pycryptodomex>=3.21.0,<4",
     "pydantic>=2.10.4,<3",
     "pywin32>=308 ; sys_platform == 'win32'",
     "pyyaml>=6.0.2,<7",
@@ -32,7 +31,7 @@ description = "Bulk downloader for multiple file hosts"
 license = {text = "GPL-3.0-only"}
 readme = "README.md"
 requires-python = ">=3.11,<4"
-version = "6.4.0"
+version = "6.5.0"
 
 [project.scripts]
 cyberdrop-dl = "cyberdrop_dl.main:main"
@@ -66,7 +65,6 @@ minversion = "8.3"
 testpaths = ["tests"]
 
 [tool.ruff]
-exclude = ["cyberdrop_dl/dependencies/browser_cookie3/__init__.py"]
 line-length = 120
 target-version = "py311"
 

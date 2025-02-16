@@ -8,7 +8,6 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
@@ -37,8 +36,7 @@ class LusciousCrawler(Crawler):
         """Determines where to send the scrape item based on the url."""
 
         if "albums" not in scrape_item.url.parts or "read" in scrape_item.url.parts:
-            log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
-            return
+            raise ValueError
         if scrape_item.url.parts[-1] == "list":
             return await self.search(scrape_item)
         await self.album(scrape_item)

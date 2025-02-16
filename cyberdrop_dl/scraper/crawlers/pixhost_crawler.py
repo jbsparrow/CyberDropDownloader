@@ -6,7 +6,6 @@ from yarl import URL
 
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
@@ -17,6 +16,7 @@ if TYPE_CHECKING:
 
 class PixHostCrawler(Crawler):
     primary_base_domain = URL("https://pixhost.to/")
+    update_unsupported = True
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "pixhost", "PixHost")
@@ -31,7 +31,7 @@ class PixHostCrawler(Crawler):
         elif "show" in scrape_item.url.parts:
             await self.image(scrape_item)
         else:
-            log(f"Scrape Failed: Unknown URL path: {scrape_item.url}", 40)
+            raise ValueError
 
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem) -> None:

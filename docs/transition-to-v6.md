@@ -41,9 +41,6 @@ If the migration fails, the database will be rolled back to its previous state. 
 ## Import V4 config to V6
 
 {% hint style="warning" %}
-Support for v4 is deprecated and will be removed in a future release. To upgrade to the latest version, you may need to perform a sequential upgrade. First, update CDL to the last version that supported v4 and then update to the latest version.
-
-Last version with v4 support: `6.1.0`
 
 You can install an specific version with pip by running:
 

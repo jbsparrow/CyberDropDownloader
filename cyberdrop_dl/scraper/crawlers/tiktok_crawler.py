@@ -7,7 +7,6 @@ from yarl import URL
 
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_PROFILE, ScrapeItem
-from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
@@ -33,7 +32,7 @@ class TikTokCrawler(Crawler):
         elif len(scrape_item.url.parts) > 1 and "@" in scrape_item.url.parts[1]:
             await self.profile(scrape_item)
         else:
-            log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
+            raise ValueError
 
     async def profile_post_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[dict]:
         username = scrape_item.url.parts[1][1:]

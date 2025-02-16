@@ -27,6 +27,7 @@ class DownloadOptions(BaseModel):
     skip_download_mark_completed: bool = False
     skip_referer_seen_before: bool = False
     maximum_number_of_children: list[NonNegativeInt] = []
+    maximum_thread_depth: NonNegativeInt = 0
 
     @field_validator("maximum_number_of_children", mode="before")
     @classmethod
@@ -111,6 +112,7 @@ class IgnoreOptions(BaseModel):
     skip_hosts: list[NonEmptyStr] = []
     only_hosts: list[NonEmptyStr] = []
     filename_regex_filter: NonEmptyStr | None = None
+    exclude_files_with_no_extension: bool = True
 
     @field_validator("skip_hosts", "only_hosts", mode="before")
     @classmethod

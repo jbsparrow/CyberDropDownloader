@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import contextlib
 from functools import singledispatch
 from http import HTTPStatus
 from pathlib import Path
@@ -16,6 +15,18 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.scraper.crawler import ScrapeItem
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
+
+# See: https://developers.cloudflare.com/support/troubleshooting/cloudflare-errors/troubleshooting-cloudflare-5xx-errors/
+CLOUDFLARE_ERRORS = {
+    520: "Unexpected Response",
+    521: "Web Server Down",
+    522: "Connection Timeout",
+    523: "Origin Is Unreachable",
+    524: "Response Timeout",
+    525: "SSL Handshake Failed",
+    526: "Untrusted",
+    530: "IP Banned / Restricted",
+}
 
 
 class CDLBaseError(Exception):
@@ -52,6 +63,13 @@ class NoExtensionError(CDLBaseError):
         """This error will be thrown when no extension is given for a file."""
         ui_message = "No File Extension"
         super().__init__(ui_message, message=message, origin=origin)
+
+
+class InvalidExtensionError(NoExtensionError):
+    def __init__(self, *, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
+        """This error will be thrown when no extension is given for a file."""
+        super().__init__(message=message, origin=origin)
+        self.ui_message = "Invalid File Extension"
 
 
 class PasswordProtectedError(CDLBaseError):
@@ -160,9 +178,13 @@ class InvalidYamlError(CDLBaseError):
 
 @singledispatch
 def create_error_msg(error: int) -> str:
-    with contextlib.suppress(ValueError):
+    try:
         msg = HTTPStatus(error).phrase
         return f"{error} {msg}"
+    except ValueError:
+        cloudflare_error = CLOUDFLARE_ERRORS.get(error)
+        if cloudflare_error:
+            return f"{error} {cloudflare_error}"
     return f"{error} HTTP Error"
 
 

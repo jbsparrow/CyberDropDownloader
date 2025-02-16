@@ -75,6 +75,11 @@ class CacheManager:
         self._cache[key] = value
         yaml.save(self.cache_file, self._cache)
 
+    def dump(self, data: dict) -> None:
+        """dumps the dictionary into the cache"""
+        self._cache = data
+        yaml.save(self.cache_file, self._cache)
+
     def remove(self, key: str) -> None:
         """Removes a key from the cache."""
         if key in self._cache:

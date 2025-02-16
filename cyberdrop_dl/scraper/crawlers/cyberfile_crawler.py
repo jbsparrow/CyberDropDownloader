@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import calendar
+import contextlib
 import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
@@ -18,13 +19,21 @@ if TYPE_CHECKING:
 
 
 class CyberfileCrawler(Crawler):
-    primary_base_domain = URL("https://cyberfile.me/")
+    PRIMARY_BASE_DOMAINS: ClassVar[dict[str, URL]] = {
+        "cyberfile": URL("https://cyberfile.me/"),
+        "iceyfile": URL("https://iceyfile.com/"),
+    }
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "cyberfile", "Cyberfile")
-        self.api_load_files = URL("https://cyberfile.me/account/ajax/load_files")
-        self.api_details = URL("https://cyberfile.me/account/ajax/file_details")
-        self.api_password_process = URL("https://cyberfile.me/ajax/folder_password_process")
+    FOLDER_DOMAINS: ClassVar[dict[str, str]] = {"cyberfile": "Cyberfile", "iceyfile": "Iceyfile"}
+    SUPPORTED_SITES: ClassVar[dict[str, list]] = {"cyberfile": ["cyberfile"], "iceyfile": ["iceyfile"]}
+    update_unsupported = True
+
+    def __init__(self, manager: Manager, site: str) -> None:
+        super().__init__(manager, site, self.FOLDER_DOMAINS.get(site, "Cyberfile"))
+        self.primary_base_domain = self.PRIMARY_BASE_DOMAINS.get(site, URL(f"https://{site}"))
+        self.api_load_files = self.primary_base_domain / "account/ajax/load_files"
+        self.api_details = self.primary_base_domain / "account/ajax/file_details"
+        self.api_password_process = self.primary_base_domain / "ajax/folder_password_process"
         self.request_limiter = AsyncLimiter(5, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -36,8 +45,10 @@ class CyberfileCrawler(Crawler):
             await self.folder(scrape_item)
         elif "shared" in scrape_item.url.parts:
             await self.shared(scrape_item)
-        else:
+        elif scrape_item.url.path != "/":
             await self.file(scrape_item)
+        else:
+            raise ValueError
 
     @error_handling_wrapper
     async def folder(self, scrape_item: ScrapeItem) -> None:
@@ -145,6 +156,11 @@ class CyberfileCrawler(Crawler):
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a file."""
 
+        file_id = scrape_item.url.parts[1]
+        canonical_url = self.primary_base_domain / file_id
+        if await self.check_complete_from_referer(canonical_url):
+            return
+
         def get_password_info(soup: BeautifulSoup, *, raise_with_message: str | None = None) -> tuple[bool, str]:
             password = scrape_item.url.query.get("password", "")
             password_protected = False
@@ -155,6 +171,7 @@ class CyberfileCrawler(Crawler):
             return password_protected, password
 
         contentId = None
+        scrape_item.url = canonical_url
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
@@ -190,22 +207,28 @@ class CyberfileCrawler(Crawler):
     async def handle_content_id(self, scrape_item: ScrapeItem, content_id: int) -> None:
         """Scrapes a file using the content id."""
         data = {"u": content_id}
-        ajax_soup, _ = await self.get_soup_from_ajax(data, scrape_item, file=True)
+        ajax_soup, page_title = await self.get_soup_from_ajax(data, scrape_item, file=True)
         file_menu = ajax_soup.select_one('ul[class="dropdown-menu dropdown-info account-dropdown-resize-menu"] li a')
-        file_button = ajax_soup.select_one('div[class="btn-group responsiveMobileMargin"] button')
         try:
-            html_download_text = file_menu.get("onclick") if file_menu else file_button.get("onclick")
-        except AttributeError:
+            if file_menu:
+                html_download_text = file_menu.get("onclick")
+            else:
+                file_button = ajax_soup.select('div[class="btn-group responsiveMobileMargin"] button')[-1]
+                html_download_text = file_button.get("onclick")
+        except (AttributeError, IndexError):
             raise ScrapeError(422, "Couldn't find download button", origin=scrape_item) from None
 
-        link_str = html_download_text.split("'")[1]
+        link_str = html_download_text.split("'")[1].strip().removesuffix("'")
         link = self.parse_url(link_str)
         file_detail_table = ajax_soup.select('table[class="table table-bordered table-striped"]')[-1]
         uploaded_row = file_detail_table.select("tr")[-2]
         uploaded_date = uploaded_row.select_one("td[class=responsiveTable]").text.strip()
         uploaded_date = self.parse_datetime(uploaded_date)
+        ajax_title = None
+        with contextlib.suppress(AttributeError):
+            ajax_title = ajax_soup.select_one("div.image-name-title").text
         scrape_item.possible_datetime = uploaded_date
-        filename, ext = get_filename_and_ext(ajax_soup.title or link.name)
+        filename, ext = get_filename_and_ext(page_title or ajax_title or link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

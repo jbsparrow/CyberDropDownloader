@@ -25,9 +25,9 @@ class EightMusesCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        if "album" in scrape_item.url.parts:
-            return await self.album(scrape_item)
-        raise ValueError
+        if "album" not in scrape_item.url.parts:
+            raise ValueError
+        await self.album(scrape_item)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 

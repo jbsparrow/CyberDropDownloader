@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-from sqlite3 import IntegrityError
 from typing import TYPE_CHECKING
 
 from rich.console import Console
@@ -114,25 +113,10 @@ class HashTable:
             download_filename = str(full_path.name)
             folder = str(full_path.parent)
             cursor = await self.db_conn.cursor()
-
-            await cursor.execute(
-                "INSERT INTO hash (hash,hash_type,folder,download_filename) VALUES (?, ?, ?, ?)",
-                (hash_value, hash_type, folder, download_filename),
-            )
-            await self.db_conn.commit()
-        except IntegrityError as _:
-            # Handle potential duplicate key (assuming a unique constraint on (folder, download_filename, hash_type)
-            await cursor.execute(
-                """UPDATE hash
-                SET hash = ?
-                WHERE download_filename = ? AND folder = ? AND hash_type = ?;""",
-                (
-                    hash_value,
-                    download_filename,
-                    folder,
-                    hash_type,
-                ),
-            )
+            insert_query = """INSERT INTO hash (hash, hash_type, folder, download_filename)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(download_filename, folder, hash_type) DO UPDATE SET hash = ?"""
+            await cursor.execute(insert_query, (hash_value, hash_type, folder, download_filename, hash_value))
             await self.db_conn.commit()
         except Exception as e:
             console.print(f"Error inserting/updating record: {e}")
@@ -149,28 +133,27 @@ class HashTable:
             folder = str(full_path.parent)
 
             cursor = await self.db_conn.cursor()
+            insert_query = """INSERT INTO files (folder, original_filename, download_filename, file_size, referer, date)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ON CONFLICT(download_filename, folder) DO UPDATE
+            SET original_filename = ?, file_size = ?, referer = ?, date = ?
+            """
 
             await cursor.execute(
-                "INSERT INTO files (folder,original_filename,download_filename,file_size,referer,date) VALUES (?, ?, ?, ?,?,?)",
-                (folder, original_filename, download_filename, file_size, referer, file_date),
-            )
-            await self.db_conn.commit()
-        except IntegrityError as _:
-            # Handle potential duplicate key (assuming a unique constraint on  (filename, and folder)
-            await cursor.execute(
-                """UPDATE files
-    SET original_filename = ?, file_size = ?, referer = ?,date=?
-    WHERE download_filename = ? AND folder = ?;""",
+                insert_query,
                 (
+                    folder,
+                    original_filename,
+                    download_filename,
+                    file_size,
+                    referer,
+                    file_date,
                     original_filename,
                     file_size,
                     referer,
                     file_date,
-                    download_filename,
-                    folder,
                 ),
             )
-
             await self.db_conn.commit()
         except Exception as e:
             console.print(f"Error inserting/updating record: {e}")

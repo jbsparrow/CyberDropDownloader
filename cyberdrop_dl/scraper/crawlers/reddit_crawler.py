@@ -75,7 +75,7 @@ class RedditCrawler(Crawler):
             elif "redd.it" in scrape_item.url.host:
                 await self.media(scrape_item, reddit)
             else:
-                log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
+                raise ValueError
 
     @error_handling_wrapper
     async def user(self, scrape_item: ScrapeItem, reddit: asyncpraw.Reddit) -> None:

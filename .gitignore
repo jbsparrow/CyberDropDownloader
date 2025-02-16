@@ -1,12 +1,14 @@
 # Project stuff
 /Test-Download-Dir/
 /Test-AppData-Dir/
-/AppData/
+/AppData*/
 /Downloads/
 /Old Files/
 *.log
 *.profiling
 .coverage
+.config.yaml
+/build
 
 # Python cache
 __pycache__

@@ -165,7 +165,6 @@ class XXXBunkerCrawler(Crawler):
             attempt = 1
             rate_limited = True
             soup = None
-            log(f"Current page: {page_url}", 10)
             while rate_limited and attempt <= MAX_RETRIES:
                 async with self.request_limiter:
                     soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url)

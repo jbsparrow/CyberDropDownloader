@@ -40,11 +40,11 @@ Before you submit your Pull Request (PR) consider the following guidelines:
 
 - Search the [repository](https://github.com/jbsparrow/CyberDropDownloader/pulls) for an open or closed PR
   that relates to your submission. You don't want to duplicate effort.
-- Clone the repo and make your changes on a new branch in your fork
+- Clone the repo and make your changes on a new branch in your fork. The base branch should be `dev`
 - Follow [code style conventions](#code-style)
 - Commit your changes using a descriptive commit message
 - Push your fork to GitHub
-- In GitHub, create a pull request to the `master` branch of the repository.
+- In GitHub, create a pull request to the `dev` branch of the repository.
 - Add a description to your PR. If the PR is small (such as a typo fix), you can go brief.
 If it contains a lot of changes, it's better to write more details.
 If your changes are user-facing (e.g. a new feature in the UI, a change in behavior, or a bugfix)

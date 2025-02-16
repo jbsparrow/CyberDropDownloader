@@ -89,8 +89,7 @@ class CheveretoCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
         if self.check_direct_link(scrape_item.url):
-            await self.handle_direct_link(scrape_item)
-            return
+            return await self.handle_direct_link(scrape_item)
         scrape_item.url = scrape_item.url.with_host(self.primary_base_domain.host)
         if any(part in scrape_item.url.parts for part in self.album_parts):
             await self.album(scrape_item)

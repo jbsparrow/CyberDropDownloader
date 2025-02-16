@@ -7,7 +7,6 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
@@ -36,8 +35,7 @@ class Rule34XXXCrawler(Crawler):
         elif "id" in scrape_item.url.query_string:
             await self.file(scrape_item)
         else:
-            log(f"Scrape Failed: Unknown URL Path for {scrape_item.url}", 40)
-            self.manager.progress_manager.scrape_stats_progress.add_failure("Unsupported Link")
+            raise ValueError
 
     @error_handling_wrapper
     async def tag(self, scrape_item: ScrapeItem) -> None:

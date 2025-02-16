@@ -77,3 +77,12 @@ class HashProgress:
         """Adds a completed file to the progress bar."""
         self.remove_progress.advance(self.removed_files_task_id, 1)
         self.removed_files += 1
+
+    def reset(self):
+        """Resets the progress bar."""
+        self.hash_progress.reset(self.hashed_files_task_id)
+        self.hash_progress.reset(self.prev_hashed_files_task_id)
+        self.hashed_files = self.prev_hashed_files = 0
+
+        self.remove_progress.reset(self.removed_files_task_id)
+        self.removed_files = 0

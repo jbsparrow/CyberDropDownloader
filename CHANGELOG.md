@@ -5,6 +5,33 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.5.0] - 2025-02-14
+
+### Added
+
+- Iceyfile.com support
+- Support cookie extraction from Arc Browser, Lynx and W3M
+- `--exclude-files-with-no-extension` option: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/ignore_options#exclude_files_with_no_extension
+- `--print-stats` CLI only option
+- Scrape nested threads with  `--maximum-thread-depth`: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/download_options#maximum-thread-depth
+
+### Removed
+
+- Cookie extraction support from Chrome and Chromium based browsers on Windows
+
+### Changed
+
+- Improve database insertion performance
+- Improve shutdown process
+
+### Fixed
+
+- Automatic v4 to v6 transition
+- Reset hash progress on multiple directory scans
+- Delete old database entries of previously unsupported URLs
+- Nudostar.tv crawler
+- In-memory cache and first time startup cache not being in sync
+
 ## [6.4.0] - 2025-01-31
 
 ### Added
