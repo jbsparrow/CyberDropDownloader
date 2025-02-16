@@ -51,6 +51,7 @@ from cyberdrop_dl.scraper.crawlers.scrolller_crawler import ScrolllerCrawler
 from cyberdrop_dl.scraper.crawlers.sendvid_crawler import SendVidCrawler
 from cyberdrop_dl.scraper.crawlers.simpcity_crawler import SimpCityCrawler
 from cyberdrop_dl.scraper.crawlers.socialmediagirls_crawler import SocialMediaGirlsCrawler
+from cyberdrop_dl.scraper.crawlers.spankbang_crawler import SpankBangCrawler
 from cyberdrop_dl.scraper.crawlers.streamable_crawler import StreamableCrawler
 from cyberdrop_dl.scraper.crawlers.tiktok_crawler import TikTokCrawler
 from cyberdrop_dl.scraper.crawlers.titsintops_crawler import TitsInTopsCrawler
