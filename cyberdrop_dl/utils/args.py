@@ -89,7 +89,7 @@ class DeprecatedArgs(BaseModel):
     no_ui: bool = Field(
         False,
         description="disables the UI/progress view entirely",
-        deprecated="'--no-ui' is deprecated and will be removed in the future. Use '--ui DISABLED' or `--ui 0`",
+        deprecated="'--no-ui' is deprecated and will be removed in the future. Use '--ui disabled'",
     )
 
 
