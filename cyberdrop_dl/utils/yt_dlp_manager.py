@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+from functools import partialmethod
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple
 
@@ -13,7 +14,7 @@ from yt_dlp.utils import DownloadError as YtDlpDownloadError
 from yt_dlp.utils import ExtractorError, GeoRestrictedError, UnsupportedError
 
 from cyberdrop_dl.clients.errors import DownloadError
-from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.logger import log, log_with_color
 from cyberdrop_dl.utils.utilities import get_download_path
 
 if TYPE_CHECKING:
@@ -26,10 +27,28 @@ if TYPE_CHECKING:
 EXTRACT_INFO_TIMEOUT = 100  # seconds
 ALL_EXTRACTORS = gen_extractors()
 PROPER_EXTRACTORS = [ie for ie in ALL_EXTRACTORS if ie != GenericIE]
+DEBUG_PREFIX = "[debug] "
 
-DEFAULT_EXTRACT_OPTIONS = {"quiet": True, "extract_flat": False, "skip_download": True, "simulate": True}
 
-EXTRACT_INFO_OPTIONS = {"forcejson": True, "noprogress": True, "quiet": True, "simulate": True, "skip_download": True}
+class YtDlpLogger:
+    def debug(self, msg: str, level: int = 20) -> None:
+        if msg.startswith(DEBUG_PREFIX):
+            return log_with_color(msg.removeprefix(DEBUG_PREFIX), "", 10, show_in_stats=False)
+        log_with_color(msg, "", level, show_in_stats=False)
+
+    info = partialmethod(debug, level=20)
+    warning = partialmethod(debug, level=30)
+    error = partialmethod(debug, level=40)
+
+
+DEFAULT_EXTRACT_OPTIONS = {
+    "quiet": True,
+    "extract_flat": False,
+    "skip_download": True,
+    "simulate": True,
+    "logger": YtDlpLogger(),
+}
+
 FOLDER_DOMAIN = "yt-dlp"
 YT_DLP_BANNED_HOST = {}
 
@@ -172,3 +191,6 @@ if __name__ == "__main__":
     asyncio.run(instance.process_item(scrape_item))
     instance.create_run_script()
     # print(json.dumps(info))
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
