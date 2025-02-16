@@ -210,7 +210,7 @@ class BunkrrCrawler(Crawler):
             src_filename, ext = self.get_filename_and_ext(link.name)
         except NoExtensionError:
             src_filename, ext = self.get_filename_and_ext(scrape_item.url.name, assume_ext=".mp4")
-        filename = link.query.get("n") or fallback_filename
+        filename, _ = self.get_filename_and_ext(link.query.get("n") or fallback_filename)
         if not url:
             referer = referer or URL("https://get.bunkrr.su/")
             scrape_item = self.create_scrape_item(scrape_item, referer)
