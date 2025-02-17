@@ -21,8 +21,8 @@ from cyberdrop_dl.clients.errors import (
     InvalidContentTypeError,
     SlowDownloadError,
 )
-from cyberdrop_dl.utils.constants import DEBUG_VAR, FILE_FORMATS
-from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.constants import FILE_FORMATS
+from cyberdrop_dl.utils.logger import log, log_debug
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
@@ -118,19 +118,18 @@ class DownloadClient:
         self._file_path = None
         self.slow_download_period = 10  # seconds
         self.download_speed_threshold = self.manager.config_manager.settings_data.runtime_options.slow_download_speed
-        if DEBUG_VAR:
-            self.add_request_log_hooks()
+        self.add_request_log_hooks()
 
     def add_request_log_hooks(self) -> None:
         async def on_request_start(*args):
             params: aiohttp.TraceRequestStartParams = args[2]
-            log(f"Starting download {params.method} request to {params.url}", 10)
+            log_debug(f"Starting download {params.method} request to {params.url}", 10)
 
         async def on_request_end(*args):
             params: aiohttp.TraceRequestEndParams = args[2]
             msg = f"Finishing download {params.method} request to {params.url}"
             msg += f" -> response status: {params.response.status}"
-            log(msg, 10)
+            log_debug(msg, 10)
 
         trace_config = aiohttp.TraceConfig()
         trace_config.on_request_start.append(on_request_start)
