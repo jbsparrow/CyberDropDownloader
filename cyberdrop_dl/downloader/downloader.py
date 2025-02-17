@@ -60,7 +60,7 @@ def retry(func: Callable) -> Callable:
                     continue
 
                 self.manager.progress_manager.download_stats_progress.add_failure(e.ui_message)
-                await self.manager.log_manager.write_download_error_log(media_item.url, e.message, media_item.referer)
+                await self.manager.log_manager.write_download_error_log(media_item, e.message)
                 self.manager.progress_manager.download_progress.add_failed()
                 break
 
@@ -161,7 +161,6 @@ class Downloader:
     @retry
     async def download(self, media_item: MediaItem) -> None:
         """Downloads the media item."""
-        origin = media_item.referer
         try:
             media_item.current_attempt = media_item.current_attempt or 1
             media_item.duration = await self.manager.db_manager.history_table.get_duration(self.domain, media_item)
@@ -186,7 +185,7 @@ class Downloader:
                 full_message = f"{e.status} - {e.message}"
             log_message_short = log_message = full_message
             log(f"{self.log_prefix} failed: {media_item.url} with error: {log_message}", 40)
-            await self.manager.log_manager.write_download_error_log(media_item.url, log_message_short, origin)
+            await self.manager.log_manager.write_download_error_log(media_item, log_message_short)
             self.manager.progress_manager.download_stats_progress.add_failure(ui_message)
             self.manager.progress_manager.download_progress.add_failed()
             self.attempt_task_removal(media_item)

@@ -75,7 +75,7 @@ def error_handling_wrapper(func: Callable) -> Callable:
         log(f"{log_prefix or 'Scrape'} Failed: {link} ({log_message})", 40, exc_info=exc_info)
         if log_prefix:
             self.attempt_task_removal(item)
-            await self.manager.log_manager.write_download_error_log(link, log_message_short, origin or item.referer)
+            await self.manager.log_manager.write_download_error_log(item, log_message_short)  # type: ignore
             self.manager.progress_manager.download_stats_progress.add_failure(e_ui_failure)
             self.manager.progress_manager.download_progress.add_failed()
             return None
