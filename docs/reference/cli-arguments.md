@@ -98,13 +98,20 @@ Download TikTok audios from posts and save them as separate files
 
 Max number of links to retry. Using `0` means no limit
 
-### `no-ui`  
+### `ui`  
 
-| Type       | Default | Action       |
-| ---------- | ------- | ------------ |
-| `BoolFlag` | `False` | `store_true` |
+| Type       | Default |
+| ---------- | ------- |
+| `StrEnum` | `FULLSCREEN` |
 
-Disables the UI/progress view entirely
+UI can have 1 of these values:
+
+- `DISABLED` : no output at all
+- `ACTIVITY` : only shows a spinner with the text `running CDL`
+- `SIMPLE`: shows spinner + simplified progress bar
+- `FULLSCREEN`: shows the normal UI/progress view
+
+Values are case insensitive, ex: both `disabled` and `DISABLED` are valid
 
 ### `retry-all`
 
