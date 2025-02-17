@@ -79,15 +79,27 @@ Supported domains via Real-Debrid include `mega.nz`, `rapidgator`, `google drive
 
 ## Forums
 
-| Domain                      | Supported URL Paths                                                                                                                                                               |
-| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Bellazon.com                | Attachments `/main/topic/attachments/...`, `/main/topic/data/...`  <br> Threads: `/main/topic/threads/<thread_name>`, `/main/topic/posts/<post_id>`, `/main/topic/goto/<post_id>` |
-| CelebForum                  | Attachments `/attachments/...`, `/data/...`  <br> Threads: `/threads/<thread_name>`, `/posts/<post_id>`, `/goto/<post_id>`                                                        |
-| F95Zone                     | Attachments `/attachments/...`, `/data/...`  <br> Threads: `/threads/<thread_name>`, `/posts/<post_id>`, `/goto/<post_id>`                                                        |
-| Forums.AllPornComix.com     | Attachments `/attachments/...`, `/data/...`  <br> Threads: `/threads/<thread_name>`, `/posts/<post_id>`, `/goto/<post_id>`                                                        |
-| Forums.SocialMediaGirls.com | Attachments `/attachments/...`, `/data/...`  <br> Threads: `/threads/<thread_name>`, `/posts/<post_id>`, `/goto/<post_id>`                                                        |
-| LeakedModels                | Attachments `/forum/attachments/...`, `/forum/data/...`  <br> Threads: `/forum/threads/<thread_name>`, `/forum/posts/<post_id>`, `/forum/goto/<post_id>`                          |
-| Nudostar                    | Attachments `/forum/attachments/...`, `/forum/data/...`  <br> Threads: `/forum/threads/<thread_name>`, `/forum/posts/<post_id>`, `/forum/goto/<post_id>`                          |
-| Reddit                      | User: `/user/<user>`, `/user/<user>/...` , `/u/<user>` <br> Subreddit: `/r/<subreddit>` <br> Direct Links                                                                         |
-| TitsInTops.com              | Attachments `/forum/attachments/...`, `/forum/data/...`  <br> Threads: `/forum/threads/<thread_name>`, `/forum/posts/<post_id>`, `/forum/goto/<post_id>`                          |
-| XBunker                     | Attachments `/attachments/...`, `/data/...`  <br> Threads: `/threads/<thread_name>`, `/posts/<post_id>`, `/goto/<post_id>`                                                        |
+### Xenforo
+
+Supported Xenforo sites:
+
+- Bellazon.com/main
+- CelebForum.to
+- F95Zone.to
+- Forums.AllPornComix.com
+- Forums.SocialMediaGirls.com
+- LeakedModels.com/forum
+- Nudostar.com/forum
+- TitsInTops.com
+- XBunker.nu
+
+Supported on all forums:
+
+- Attachments `/attachments/...`, `/data/...`
+- Threads: `/threads/<thread_name>`, `/posts/<post_id>`, `/goto/<post_id>`
+
+### Other forums
+
+| Domain | Supported URL Paths                                                                                       |
+| ------ | --------------------------------------------------------------------------------------------------------- |
+| Reddit | User: `/user/<user>`, `/user/<user>/...` , `/u/<user>` <br> Subreddit: `/r/<subreddit>` <br> Direct Links |
