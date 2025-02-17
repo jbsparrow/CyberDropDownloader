@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Protocol
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.downloader.downloader import Downloader
+from cyberdrop_dl.clients.http.downloader import Downloader
 from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.logger import log
@@ -22,7 +22,7 @@ from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from cyberdrop_dl.clients.scraper_client import ScraperClient
+    from cyberdrop_dl.clients.http.scraper_client import ScraperClient
     from cyberdrop_dl.managers.manager import Manager
 
 UNKNOWN_URL_PATH_MSG = "Unknown URL path"
@@ -40,11 +40,13 @@ class Crawler(ABC):
     domain: str = None  # type: ignore
     primary_base_domain: URL = None  # type: ignore
     DEFAULT_POST_TITLE_FORMAT = "{date} - {number} - {title}"
+    download_spacer = 0.1
+    max_concurrent_downloads = 0  # Use config `max_concurrent_download` by default
     update_unsupported = False
 
     def __init__(self, manager: Manager, domain: str, folder_domain: str | None = None) -> None:
         self.manager = manager
-        self.downloader = field(init=False)
+        self.downloader: Downloader = field(init=False)
         self.scraping_progress = manager.progress_manager.scraping_progress
         self.client: ScraperClient = field(init=False)
         self._semaphore = asyncio.Semaphore(20)
@@ -78,13 +80,16 @@ class Crawler(ABC):
 
     async def startup(self) -> None:
         """Starts the crawler."""
+        assert self.request_limiter
         async with self.startup_lock:
             if self.ready:
                 return
-            self.client = self.manager.client_manager.scraper_session
+            self.client = self.manager.client_manager.scraper_client
             self.downloader = Downloader(self.manager, self.domain)
             self.downloader.startup()
             await self.async_startup()
+            self.manager.client_manager.register(self)
+            self.manager.download_manager.register(self)
             self.ready = True
 
     async def async_startup(self) -> None: ...  # noqa: B027
@@ -182,6 +187,16 @@ class Crawler(ABC):
         if reset:
             scrape_item.reset()
         self.manager.task_group.create_task(self.manager.scrape_mapper.filter_and_send_to_crawler(scrape_item))
+
+    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+    @property
+    def limiter(self):
+        return self.manager.client_manager.limiter(self.domain)
+
+    async def with_limiter(self, func: Callable, *args, **kwargs):
+        async with self.limiter:
+            return func(*args, **kwargs)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 

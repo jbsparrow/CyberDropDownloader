@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import ScrapeError
+from cyberdrop_dl.errors import ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
 from cyberdrop_dl.utils.logger import log
@@ -33,6 +33,7 @@ class Post:
 class CoomerCrawler(Crawler):
     primary_base_domain = URL("https://coomer.su")
     DEFAULT_POST_TITLE_FORMAT = "{date} - {title}"
+    download_spacer = 0.5
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "coomer", "Coomer")

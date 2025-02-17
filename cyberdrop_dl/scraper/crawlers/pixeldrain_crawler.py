@@ -5,9 +5,10 @@ import datetime
 import json
 from typing import TYPE_CHECKING
 
+from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import DownloadError, NoExtensionError, ScrapeError
+from cyberdrop_dl.errors import DownloadError, NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
@@ -20,10 +21,13 @@ if TYPE_CHECKING:
 
 class PixelDrainCrawler(Crawler):
     primary_base_domain = URL("https://pixeldrain.com")
+    download_spacer = 0
+    max_concurrent_downloads = 2
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "pixeldrain", "PixelDrain")
         self.api_address = URL("https://pixeldrain.com/api/")
+        self.request_limiter = AsyncLimiter(10, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 

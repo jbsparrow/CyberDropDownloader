@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import DownloadError, PasswordProtectedError, ScrapeError
+from cyberdrop_dl.errors import DownloadError, PasswordProtectedError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -61,11 +61,11 @@ class GoFileCrawler(Crawler):
 
         content_query = {"wt": self.website_token, "password": password}
         content_url = self.api.joinpath("contents", content_id).with_query(content_query)
-        api_query = {"url": content_url, "headers_inc": self.headers, "origin": scrape_item}
+        api_query = {"url": content_url, "with_headers": self.headers, "origin": scrape_item}
 
         try:
-            async with self.request_limiter:
-                json_resp = await self.client.get_json(self.domain, **api_query)
+            async with self.limiter:
+                json_resp = await self.client.get_json(**api_query)
 
         except DownloadError as e:
             if e.status != http.HTTPStatus.UNAUTHORIZED:
@@ -74,8 +74,8 @@ class GoFileCrawler(Crawler):
                 await self.get_website_token(update=True)
             content_url = content_url.update_query({"wt": self.website_token})
             api_query["url"] = content_url
-            async with self.request_limiter:
-                json_resp = await self.client.get_json(self.domain, **api_query)
+            async with self.limiter:
+                json_resp = await self.client.get_json(**api_query)
 
         self.check_json_response(json_resp, scrape_item)
         json_data: dict = json_resp["data"]
@@ -143,8 +143,8 @@ class GoFileCrawler(Crawler):
 
     async def _get_new_api_key(self) -> str:
         create_account_address = self.api / "accounts"
-        async with self.request_limiter:
-            json_resp = await self.client.post_data(self.domain, create_account_address, data={})
+        async with self.limiter:
+            json_resp = await self.client.post_data(create_account_address, data={})
         if json_resp["status"] != "ok":
             raise ScrapeError(401, "Couldn't generate GoFile API token", origin=create_account_address)
 
@@ -162,8 +162,8 @@ class GoFileCrawler(Crawler):
         await self._update_website_token()
 
     async def _update_website_token(self) -> None:
-        async with self.request_limiter:
-            text = await self.client.get_text(self.domain, self.js_address, origin=self.js_address)
+        async with self.limiter:
+            text = await self.client.get_text(self.js_address, origin=self.js_address)
         match = re.search(WT_REGEX, str(text))
         if not match:
             raise ScrapeError(401, "Couldn't generate GoFile websiteToken", origin=self.js_address)

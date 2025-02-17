@@ -42,7 +42,7 @@ class TempRefererTable:
         await self.db_conn.execute("""DROP TABLE IF EXISTS temp_referer""")
         await self.db_conn.commit()
 
-    async def check_referer(self, referer: URL) -> bool:
+    async def check_referer(self, referer: URL | str) -> bool:
         """Checks whether an individual referer url has already been recorded in the database."""
         if self.ignore_history:
             return False
@@ -58,7 +58,7 @@ class TempRefererTable:
             return False
         return not sql_referer_check_current_run
 
-    async def _check_temp_referer(self, referer: URL) -> bool:
+    async def _check_temp_referer(self, referer: URL | str) -> bool:
         """Checks whether an individual referer url has already been recorded in this session."""
         if self.ignore_history:
             return False

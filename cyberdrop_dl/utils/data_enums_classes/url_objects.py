@@ -6,7 +6,7 @@ from enum import IntEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from cyberdrop_dl.clients.errors import MaxChildrenError
+from cyberdrop_dl.errors import MaxChildrenError
 from cyberdrop_dl.utils.utilities import sanitize_folder
 
 if TYPE_CHECKING:
