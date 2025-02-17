@@ -24,9 +24,9 @@ Brand new and improved! Cyberdrop-DL now has an updated paint job, fantastic new
 See the [list of supported sites](https://script-ware.gitbook.io/cyberdrop-dl/reference/supported-websites) on the official wiki
 
 
-## Quickstart
+## Getting Started
 
-Follow the [quickstart guide](https://script-ware.gitbook.io/cyberdrop-dl/quick-start) for instructions on how to install and configure Cyberdrop-DL
+Follow the [getting-started guide](https://script-ware.gitbook.io/cyberdrop-dl/getting-started) for instructions on how to install and configure Cyberdrop-DL
 
 
 ## Contributing
