@@ -73,7 +73,7 @@ def error_handling_wrapper(func: Callable) -> Callable:
 
         log_prefix = getattr(self, "log_prefix", None)
         if log_prefix:
-            await self.write_download_error(item, log_message, e_ui_failure, exc_info)  # type: ignore
+            await self.write_download_error(item, log_message_short, e_ui_failure, exc_info)  # type: ignore
             return
 
         log(f"Scrape Failed: {link} ({log_message})", 40, exc_info=exc_info)
