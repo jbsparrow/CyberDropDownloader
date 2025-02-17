@@ -161,12 +161,12 @@ CLI-only Options:
   --config-file CONFIG_FILE                       path to the CDL settings.yaml file to load
   --download                                      skips UI, start download immediatly
   --max-items-retry MAX_ITEMS_RETRY               max number of links to retry
-  --no-ui                                         disables the UI/progress view entirely
   --retry-all                                     retry all downloads
   --retry-failed                                  retry failed downloads
   --retry-maintenance                             retry download of maintenance files (bunkr). Requires files to be hashed
   --download-tiktok-audios                        download TikTok audios
   --print-stats                                   Show stats report at the end of a run
+  --ui UI                                         DISABLED, ACTIVITY, SIMPLE or FULLSCREEN
 
 browser_cookies:
   --auto-import, --no-auto-import
@@ -288,5 +288,8 @@ ui_options:
   --refresh-rate REFRESH_RATE
   --scraping-item-limit SCRAPING_ITEM_LIMIT
   --vi-mode, --no-vi-mode
+
+Deprecated:
+  --no-ui                                         disables the UI/progress view entirely
 
 ```
