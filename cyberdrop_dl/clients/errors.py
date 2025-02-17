@@ -160,8 +160,14 @@ class ScrapeError(CDLBaseError):
     ) -> None:
         """This error will be thrown when a scrape fails."""
         ui_message = create_error_msg(status)
-        msg = message
-        super().__init__(ui_message, message=msg, status=status, origin=origin)
+        super().__init__(ui_message, message=message, status=status, origin=origin)
+
+
+class InvalidURLError(ScrapeError):
+    def __init__(self, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
+        """This error will be thrown when parsed URL is not valid."""
+        ui_message = "Invalid URL"
+        super().__init__(ui_message, message=message, origin=origin)
 
 
 class LoginError(CDLBaseError):
