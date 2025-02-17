@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Skip download of video and audio files by duration: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/media_duration_limits
-- Show simplified progress bar with new `--ui simple` option:
+- Show simplified progress bar with new `--ui simple` option: https://script-ware.gitbook.io/cyberdrop-dl/reference/cli-arguments#ui
 - e621.net support (pools, posts, and tags)
 - Streamable.com support
 - Youjizz.com support
