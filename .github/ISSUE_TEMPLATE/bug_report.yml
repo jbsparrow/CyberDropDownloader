@@ -22,6 +22,10 @@ body:
           required: true
         - label: "I’ve checked existing issues to ensure this hasn’t been reported already."
           required: true
+        - label: "I understand this is open source software provided for free and that I might not receive a timely response."
+          required: true
+        - label: "I am willing to submit a pull request with the fix. *(Assign this issue to me.)*"
+          required: false
     type: checkboxes
   - id: bug-description
     attributes:
@@ -31,13 +35,6 @@ body:
         1. Describe the bug accurately.
         2. Provide an example URL that showcases it (if applicable)
         3. Add screenshots to help explain your problem (if applicable)
-    type: textarea
-    validations:
-      required: true
-  - id: desired-result
-    attributes:
-      label: Desired result
-      placeholder: Describe the desired result.
     type: textarea
     validations:
       required: true
@@ -55,7 +52,7 @@ body:
   - id: logs
     attributes:
       description: |
-        You need to include the `downloader.log` file after the issue occurs. Majority of the time it's the only way to diagnose issues.
+        You need to include the `downloader.log` file after the issue occurs. Most of the time it's the only way to diagnose issues.
         Please do NOT copy the content into the textbox, add the file as an attachment.
 
         Bug reports without a log file will be closed
