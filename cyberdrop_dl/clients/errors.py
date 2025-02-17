@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.scraper.crawler import ScrapeItem
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
+
 # See: https://developers.cloudflare.com/support/troubleshooting/cloudflare-errors/troubleshooting-cloudflare-5xx-errors/
 CLOUDFLARE_ERRORS = {
     520: "Unexpected Response",
@@ -42,9 +43,7 @@ class CDLBaseError(Exception):
     ) -> None:
         self.ui_message = ui_message
         self.message = message or ui_message
-        self.origin = origin
-        if origin and not isinstance(origin, URL | Path):
-            self.origin = origin.parents[0] if origin.parents else None
+        self.origin = get_origin(origin)
         super().__init__(self.message)
         if status:
             self.status = status
@@ -204,3 +203,9 @@ def create_error_msg(error: int) -> str:
 @create_error_msg.register
 def _(error: str) -> str:
     return error
+
+
+def get_origin(origin: ScrapeItem | Path | MediaItem | URL | None = None) -> Path | URL | None:
+    if origin and not isinstance(origin, URL | Path):
+        return origin.parents[0] if origin.parents else None
+    return origin
