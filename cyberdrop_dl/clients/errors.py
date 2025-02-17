@@ -97,11 +97,16 @@ class DDOSGuardError(CDLBaseError):
 
 class DownloadError(CDLBaseError):
     def __init__(
-        self, status: str | int, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None
+        self,
+        status: str | int,
+        message: str | None = None,
+        origin: ScrapeItem | MediaItem | URL | None = None,
+        retry: bool = False,
     ) -> None:
         """This error will be thrown when a download fails."""
         ui_message = create_error_msg(status)
         msg = message
+        self.retry = retry
         super().__init__(ui_message, message=msg, status=status, origin=origin)
 
 
