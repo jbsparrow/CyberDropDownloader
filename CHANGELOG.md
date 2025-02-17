@@ -45,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Handling of malformed responses from flaresolverr
 - URL serialization error when passing links via CLI
 - Handling of invalid URLs
+- LeakedModels crawler
 
 ### Deprecated
 
