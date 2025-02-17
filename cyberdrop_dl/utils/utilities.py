@@ -18,7 +18,13 @@ from rich.text import Text
 from yarl import URL
 
 from cyberdrop_dl import __version__ as current_version
-from cyberdrop_dl.clients.errors import CDLBaseError, InvalidExtensionError, NoExtensionError, get_origin
+from cyberdrop_dl.clients.errors import (
+    CDLBaseError,
+    InvalidExtensionError,
+    InvalidURLError,
+    NoExtensionError,
+    get_origin,
+)
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.logger import log, log_debug, log_spacer, log_with_color
 
@@ -48,6 +54,8 @@ def error_handling_wrapper(func: Callable) -> Callable:
             log_message_short = e_ui_failure = e.ui_message
             log_message = f"{e.ui_message} - {e.message}" if e.ui_message != e.message else e.message
             origin = e.origin or get_origin(item)
+            if isinstance(e, InvalidURLError):
+                link = e.url or link
         except TimeoutError:
             log_message_short = log_message = e_ui_failure = "Timeout"
         except ClientConnectorError as e:

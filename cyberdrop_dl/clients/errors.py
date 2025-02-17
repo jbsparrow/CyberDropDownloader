@@ -163,9 +163,12 @@ class ScrapeError(CDLBaseError):
 
 
 class InvalidURLError(ScrapeError):
-    def __init__(self, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
+    def __init__(
+        self, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None, url: URL | str = ""
+    ) -> None:
         """This error will be thrown when parsed URL is not valid."""
         ui_message = "Invalid URL"
+        self.url = url
         super().__init__(ui_message, message=message, origin=origin)
 
 
