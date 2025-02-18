@@ -147,24 +147,24 @@ class RedditCrawler(Crawler):
     @error_handling_wrapper
     async def process_item(self, scrape_item: ScrapeItem, submission: Submission, reddit: asyncpraw.Reddit) -> None:
         if "redd.it" in scrape_item.url.host:
-            await self.media(scrape_item, reddit)
-        elif "gallery" in scrape_item.url.parts:
-            await self.gallery(scrape_item, submission, reddit)
-        elif "reddit.com" not in scrape_item.url.host:
-            self.handle_external_links(scrape_item)
-        else:
-            raise ScrapeError(422, origin=scrape_item)
+            return await self.media(scrape_item, reddit)
+        if "gallery" in scrape_item.url.parts:
+            return await self.gallery(scrape_item, submission, reddit)
+        if "reddit.com" not in scrape_item.url.host:
+            return self.handle_external_links(scrape_item)
+        raise ScrapeError(422, origin=scrape_item)
 
     async def gallery(self, scrape_item: ScrapeItem, submission: Submission, reddit: asyncpraw.Reddit) -> None:
         """Scrapes galleries."""
         if not hasattr(submission, "media_metadata") or submission.media_metadata is None:
             return
-        items = [item for item in submission.media_metadata.values() if item["status"] == "valid"]
-        links_strs = [item["s"]["u"] for item in items]
-        links = [self.parse_url(link_str).with_host("i.redd.it").with_query(None) for link_str in links_strs]
         scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
 
-        for link in links:
+        for item in submission.media_metadata.values():
+            if item["status"] != "valid":
+                continue
+            link_str = item["s"]["u"]
+            link = self.parse_url(link_str).with_host("i.redd.it").with_query(None)
             new_scrape_item = await self.create_new_scrape_item(
                 link,
                 scrape_item,
