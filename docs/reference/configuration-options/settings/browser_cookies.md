@@ -52,9 +52,9 @@ If the value entered is `null` or an empty list, no cookies will be extracted fr
 
 | Type            | Default         |
 | --------------- | --------------- |
-| `list[DOMAINS]` | `[<<ALL_SITES>>]` |
+| `list[DOMAINS]` | `[<<ALL_SUPPORTED_SITES>>]` |
 
-List of domains to extract cookies from. You can put any domain on the list, but only sites supported by Cyberdrop-DL will be taken into account
+List of domains to extract cookies from. You can put any domain on the list, even if they are not officially supported
 
 ## Manual Cookie Extraction
 
