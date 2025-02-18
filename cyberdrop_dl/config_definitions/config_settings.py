@@ -1,7 +1,6 @@
 from datetime import timedelta
 from logging import DEBUG
 from pathlib import Path
-from typing import Literal
 
 from pydantic import BaseModel, ByteSize, Field, NonNegativeInt, PositiveInt, field_serializer, field_validator
 
@@ -142,14 +141,14 @@ class Sorting(BaseModel):
 class BrowserCookies(BaseModel):
     auto_import: bool = False
     browsers: list[BROWSERS] = [BROWSERS.chrome]
-    sites: list[Literal[*SUPPORTED_SITES_DOMAINS]] = SUPPORTED_SITES_DOMAINS  # type: ignore
+    sites: list[NonEmptyStr] = SUPPORTED_SITES_DOMAINS
 
     @field_validator("browsers", mode="before")
     @classmethod
     def parse_browsers(cls, values: list) -> list:
         values = parse_falsy_as(values, [])
         if isinstance(values, list):
-            return [str(value).lower() for value in values]
+            return sorted(str(value).lower() for value in values)
         return values
 
     @field_validator("sites", mode="before")
@@ -159,8 +158,7 @@ class BrowserCookies(BaseModel):
         if values == ALL_SITES_PLACEHOLDER:
             return SUPPORTED_SITES_DOMAINS
         if isinstance(values, list):
-            values_set = {str(value).lower() for value in values}
-            return sorted(v for v in values_set if v in SUPPORTED_SITES_DOMAINS)
+            return sorted(str(value).lower() for value in values)
         return values
 
     @field_serializer("sites", when_used="json-unless-none")
