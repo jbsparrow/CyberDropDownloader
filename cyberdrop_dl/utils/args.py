@@ -18,6 +18,9 @@ from cyberdrop_dl.utils.yaml import handle_validation_error
 if TYPE_CHECKING:
     from pydantic.fields import FieldInfo
 
+CLI_ARGUMENTS_MD = Path("docs/reference/cli-arguments.md")
+CDL_EPILOG = "Visit the wiki for additional details: https://script-ware.gitbook.io/cyberdrop-dl"
+
 
 class UIOptions(StrEnum):
     DISABLED = auto()
@@ -189,9 +192,6 @@ def _create_groups_from_nested_models(parser: ArgumentParser, model: type[BaseMo
     return groups
 
 
-CLI_ARGUMENTS_MD = Path("docs/reference/cli-arguments.md")
-
-
 class CustomHelpFormatter(RawDescriptionHelpFormatter):
     def __init__(self, prog):
         witdh = 300 if env.RUNNING_IN_IDE else None
@@ -205,10 +205,10 @@ class CustomHelpFormatter(RawDescriptionHelpFormatter):
     def format_help(self):
         help_text = super().format_help()
         if env.RUNNING_IN_IDE:
+            cli_overview, *_ = help_text.partition(CDL_EPILOG)
             current_text = CLI_ARGUMENTS_MD.read_text(encoding="utf8")
-            cli_overview_text, *_ = help_text.partition("Visit")
             new_text, *_ = current_text.partition("```shell")
-            new_text += f"```shell\n{cli_overview_text}```\n"
+            new_text += f"```shell\n{cli_overview}```\n"
             if current_text != new_text:
                 CLI_ARGUMENTS_MD.write_text(new_text, encoding="utf8")
         return help_text
@@ -219,7 +219,7 @@ def parse_args() -> ParsedArgs:
     parser = ArgumentParser(
         description="Bulk asynchronous downloader for multiple file hosts",
         usage="cyberdrop-dl [OPTIONS] URL [URL...]",
-        epilog="Visit the wiki for additional details: https://script-ware.gitbook.io/cyberdrop-dl",
+        epilog=CDL_EPILOG,
         formatter_class=CustomHelpFormatter,
     )
     parser.add_argument("-V", "--version", action="version", version=f"%(prog)s {__version__}")
