@@ -26,9 +26,11 @@ from .validators import parse_apprise_url, parse_falsy_as_none, parse_list
 
 if TYPE_CHECKING:
     from yarl import URL
+StrSerializer = PlainSerializer(str, return_type=str, when_used="json-unless-none")
+
 
 ByteSizeSerilized = Annotated[ByteSize, PlainSerializer(convert_byte_size_to_str, return_type=str)]
-HttpURL = Annotated[HttpUrl, AfterValidator(convert_to_yarl)]
+HttpURL = Annotated[HttpUrl, AfterValidator(convert_to_yarl), StrSerializer]
 ListNonNegativeInt = Annotated[list[NonNegativeInt], BeforeValidator(parse_list)]
 
 NonEmptyStr = Annotated[str, StringConstraints(min_length=1, strip_whitespace=True)]
