@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar
 
+import aiohttp
 import asyncprawcore
 from aiohttp_client_cache import CachedSession
 from aiolimiter import AsyncLimiter
@@ -13,7 +14,7 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import LoginError, NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
-from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.logger import log, log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
@@ -46,11 +47,14 @@ class RedditCrawler(Crawler):
         self.reddit_secret = self.manager.config_manager.authentication_data.reddit.secret
         self.request_limiter = AsyncLimiter(5, 1)
         self.logged_in = False
+        self.trace_configs = []
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def async_startup(self) -> None:
         await self.check_login(self.primary_base_domain / "login")
+        if self.logged_in:
+            self.add_request_log_hooks()
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
@@ -59,7 +63,9 @@ class RedditCrawler(Crawler):
             return
 
         assert scrape_item.url.host
-        async with CachedSession(cache=self.manager.cache_manager.request_cache) as session:
+        async with CachedSession(
+            cache=self.manager.cache_manager.request_cache, trace_configs=self.trace_configs
+        ) as session:
             reddit = self.new_reddit_conn(session)
             if any(part in scrape_item.url.parts for part in ("user", "u")):
                 return await self.user(scrape_item, reddit)
@@ -164,6 +170,22 @@ class RedditCrawler(Crawler):
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+    def add_request_log_hooks(self) -> None:
+        async def on_request_start(*args):
+            params: aiohttp.TraceRequestStartParams = args[2]
+            log_debug(f"Starting reddit {params.method} request to {params.url}", 10)
+
+        async def on_request_end(*args):
+            params: aiohttp.TraceRequestEndParams = args[2]
+            msg = f"Finishing reddit {params.method} request to {params.url}"
+            msg += f" -> response status: {params.response.status}"
+            log_debug(msg, 10)
+
+        trace_config = aiohttp.TraceConfig()
+        trace_config.on_request_start.append(on_request_start)
+        trace_config.on_request_end.append(on_request_end)
+        self.trace_configs.append(trace_config)
 
     def new_reddit_conn(self, client_session):
         return Reddit(
