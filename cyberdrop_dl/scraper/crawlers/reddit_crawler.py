@@ -181,11 +181,10 @@ class RedditCrawler(Crawler):
         try:
             filename, ext = get_filename_and_ext(scrape_item.url.name)
         except NoExtensionError:
-            head = await self.client.get_head(self.domain, scrape_item.url)
-            head = await self.client.get_head(self.domain, head["location"])
+            _, url = await self.client.get_soup_and_return_url(self.domain, scrape_item.url)
 
             try:
-                post = await reddit.submission(url=head["location"])
+                post = await reddit.submission(url=str(url))
             except asyncprawcore.exceptions.Forbidden:
                 raise ScrapeError(403, origin=scrape_item) from None
             except asyncprawcore.exceptions.NotFound:
