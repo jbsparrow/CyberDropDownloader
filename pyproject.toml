@@ -49,7 +49,7 @@ requires-poetry = ">=2.0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = ">=4.0.1,<5"
-ruff = ">=0.8.0,<0.9"
+ruff = "0.9.6"
 snakeviz = "^2.2.2"
 
 [tool.poetry.group.test.dependencies]
