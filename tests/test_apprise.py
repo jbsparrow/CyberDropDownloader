@@ -87,9 +87,8 @@ async def send_notification(test_case: AppriseTestCase):
     logs_as_str = "\n".join([line.msg for line in logs])
     print(logs_as_str)
     if test_case.include:
-        assert all(
-            match.casefold() in logs_as_str.casefold() for match in test_case.include
-        ), "Logs do not match expected pattern"
+        matches = [match.casefold() in logs_as_str.casefold() for match in test_case.include]
+        assert all(matches), "Logs do not match expected pattern"
     if test_case.exclude:
         assert not any(match in logs_as_str for match in test_case.exclude), "Logs should not match exclude pattern"
 
