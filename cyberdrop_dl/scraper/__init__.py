@@ -66,7 +66,6 @@ ALL_CRAWLERS: set[type[Crawler]] = {crawler for name, crawler in globals().items
 DEBUG_CRAWLERS = {SimpCityCrawler, BunkrAlbumsIOCrawler}
 CRAWLERS = ALL_CRAWLERS - DEBUG_CRAWLERS
 
-constants.RUNNING_PRERELEASE = next((tag for tag in constants.PRERELEASE_TAGS if tag in current_version), False)
 RUNNING_IN_IDE = os.getenv("PYCHARM_HOSTED") or os.getenv("TERM_PROGRAM") == "vscode"
 if constants.RUNNING_PRERELEASE or RUNNING_IN_IDE or os.getenv("ENABLESIMPCITY"):
     CRAWLERS = ALL_CRAWLERS
