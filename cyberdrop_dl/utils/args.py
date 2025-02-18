@@ -224,7 +224,7 @@ def parse_args() -> ParsedArgs:
     )
     parser.add_argument("-V", "--version", action="version", version=f"%(prog)s {__version__}")
 
-    cli_only = parser.add_argument_group("CLI-only Options")
+    cli_only = parser.add_argument_group("CLI-only options")
     _add_args_from_model(cli_only, CommandLineOnlyArgs, cli_args=True)
 
     group_lists = {
@@ -235,7 +235,7 @@ def parse_args() -> ParsedArgs:
 
     using_deprecated_args: bool = bool(DeprecatedArgs.model_fields)
     if using_deprecated_args:
-        deprecated = parser.add_argument_group("Deprecated")
+        deprecated = parser.add_argument_group("deprecated")
         _add_args_from_model(deprecated, DeprecatedArgs, cli_args=True, deprecated=True)
         group_lists["deprecated_args"] = [deprecated]
 
@@ -253,8 +253,8 @@ def parse_args() -> ParsedArgs:
                 parsed_args[name][group.title] = group_dict
 
     if using_deprecated_args:
-        parsed_args["deprecated_args"] = parsed_args["deprecated_args"].get("Deprecated") or {}
-    parsed_args["cli_only_args"] = parsed_args["cli_only_args"]["CLI-only Options"]
+        parsed_args["deprecated_args"] = parsed_args["deprecated_args"].get("deprecated") or {}
+    parsed_args["cli_only_args"] = parsed_args["cli_only_args"]["CLI-only options"]
     try:
         parsed_args = ParsedArgs.model_validate(parsed_args)
 
