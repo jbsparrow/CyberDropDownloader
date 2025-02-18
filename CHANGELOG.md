@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - ePorner.com support
 - SpankBang.com support
 - Rule34video.com support
+- CDL will try to download files from unsupported forums
 
 ### Changed
 
@@ -29,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Show input file path, input URLs count and input URLs group count in stats
 - Download errors csv will now have a `referer` column
 - Unsupported sites in `browser_cookies.sites` will be ignored instead of raising an error
+- Download errors now have the referer information. The CSV file will also have a referer column
 
 ### Fixed
 
@@ -43,9 +45,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Loose files detection (gofile)
 - Filename not being sanitized in some cases (bunkr)
 - Handling of malformed responses from flaresolverr
-- URL serialization error when passing links via CLI
-- Handling of invalid URLs
+- URL serialization error (`yarl.URL` json) when passing links via CLI
 - LeakedModels crawler
+- Handle deleted files (mediafire)
+- Handle URLs with another URL as filename (kemono, coomer, nekohouse)
+- Handle invalid URLs and log them instead of crashing
+- Incorrect URL being logged in errors (reddit)
+- Handle redirect URLs (reddit)
+- Leakedmodels crawler
+
 
 ### Deprecated
 
