@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Protocol
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
+from cyberdrop_dl.clients.errors import InvalidURLError
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
@@ -270,12 +271,15 @@ class Crawler(ABC):
         scrape_item.add_to_parent_title(title)
 
     def parse_url(self, link_str: str, relative_to: URL | None = None) -> URL:
-        assert link_str
-        assert isinstance(link_str, str)
-        link_str = clean_link_str(link_str)
-        encoded = "%" in link_str
-        base = relative_to or self.primary_base_domain
-        new_url = URL(link_str, encoded=encoded)
+        try:
+            assert link_str
+            assert isinstance(link_str, str)
+            link_str = clean_link_str(link_str)
+            encoded = "%" in link_str
+            base = relative_to or self.primary_base_domain
+            new_url = URL(link_str, encoded=encoded)
+        except (AssertionError, AttributeError, ValueError, TypeError) as e:
+            raise InvalidURLError(str(e), url=link_str) from e
         if not new_url.absolute:
             new_url = base.join(new_url)
         if not new_url.scheme:
