@@ -1,3 +1,5 @@
+#custom version
+pyproject.toml
 # Project stuff
 /Test-Download-Dir/
 /Test-AppData-Dir/
@@ -9,6 +11,7 @@
 .coverage
 .config.yaml
 /build
+
 
 # Python cache
 __pycache__
