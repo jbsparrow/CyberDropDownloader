@@ -28,7 +28,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Vacuum requests database after cleaning old request entries
 - Remove double spaces from created folders
 - Show input file path, input URLs count and input URLs group count in stats
-- Download errors csv will now have a `referer` column
 - Unsupported sites in `browser_cookies.sites` will be ignored instead of raising an error
 - Download errors now have the referer information. The CSV file will also have a referer column
 
@@ -36,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Forum attachments extension parsing (xenforo)
 - Download full resolution images instead of thumbnails (celebforum, pixhost)
-- Handling of URLs with "%" (U+0025) in it
+- Handling of URLs with "%" (U+0025) in it (bunkr)
 - Pagination of chevereto profiles and albums (jpg5, img.kiwi and imagepond.net)
 - Duplicated entries in database for previously unsupported domains
 - `403 Forbidden` errors from some downloads (bunkr)
@@ -52,7 +51,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Handle invalid URLs and log them instead of crashing
 - Incorrect URL being logged in errors (reddit)
 - Handle redirect URLs (reddit)
-- Leakedmodels crawler
 
 
 ### Deprecated
