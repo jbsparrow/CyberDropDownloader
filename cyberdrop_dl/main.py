@@ -15,6 +15,7 @@ from pydantic import ValidationError
 from rich.console import Console
 from rich.logging import RichHandler
 
+from cyberdrop_dl import env
 from cyberdrop_dl.clients.errors import InvalidYamlError
 from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.scraper.scraper import ScrapeMapper
@@ -132,13 +133,15 @@ def setup_startup_logger() -> None:
 
 
 def setup_debug_logger(manager: Manager) -> Path | None:
-    if not constants.DEBUG_VAR:
+    if not env.DEBUG_VAR:
         return None
 
     logger_debug = logging.getLogger("cyberdrop_dl_debug")
     manager.config_manager.settings_data.runtime_options.log_level = 10
     logger_debug.setLevel(manager.config_manager.settings_data.runtime_options.log_level)
     debug_log_file_path = Path(__file__).parents[1] / "cyberdrop_dl_debug.log"
+    if env.DEBUG_LOG_FILE_FOLDER:
+        debug_log_file_path = Path(env.DEBUG_LOG_FILE_FOLDER) / "cyberdrop_dl_debug.log"
 
     rich_file_handler_debug = RichHandler(
         **constants.RICH_HANDLER_DEBUG_CONFIG,
@@ -180,7 +183,7 @@ def setup_logger(manager: Manager, config_name: str) -> None:
         level=manager.config_manager.settings_data.runtime_options.log_level,
     )
 
-    if manager.parsed_args.cli_only_args.no_ui:
+    if not manager.parsed_args.cli_only_args.fullscreen_ui:
         constants.CONSOLE_LEVEL = manager.config_manager.settings_data.runtime_options.console_log_level
 
     rich_handler = RichHandler(

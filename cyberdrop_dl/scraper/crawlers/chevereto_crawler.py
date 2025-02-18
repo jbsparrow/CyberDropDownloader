@@ -139,14 +139,14 @@ class CheveretoCrawler(Crawler):
 
         async with self.request_limiter:
             sub_albums = scrape_item.url / "sub"
-            sub_albums_soup: BeautifulSoup = await self.client.get_soup(self.domain, sub_albums, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, sub_albums, origin=scrape_item)
 
         scrape_item.url = canonical_url
 
-        if "This content is password protected" in sub_albums_soup.text and password:
+        if "This content is password protected" in soup.text and password:
             password_data = {"content-password": password}
             async with self.request_limiter:
-                sub_albums_soup = BeautifulSoup(
+                soup = BeautifulSoup(
                     await self.client.post_data(
                         self.domain,
                         scrape_item.url,
@@ -157,17 +157,12 @@ class CheveretoCrawler(Crawler):
                     "html.parser",
                 )
 
-        if "This content is password protected" in sub_albums_soup.text:
+        if "This content is password protected" in soup.text:
             raise PasswordProtectedError(message="Wrong password" if password else None, origin=scrape_item)
 
-        title = self.create_title(sub_albums_soup.select_one(self.album_title_selector).get_text(), album_id)
-
-        sub_albums = sub_albums_soup.select(self.profile_item_selector)
-        for album in sub_albums:
-            link_str: str = album.get("href")
-            link = self.parse_url(link_str)
-            new_scrape_item = self.create_scrape_item(scrape_item, link)
-            self.manager.task_group.create_task(self.run(new_scrape_item))
+        title = self.create_title(soup.select_one(self.album_title_selector).get_text(), album_id)
+        scrape_item.add_to_parent_title(title)
+        scrape_item.part_of_album = True
 
         async for soup in self.web_pager(scrape_item):
             links = soup.select(self.album_img_selector)
@@ -177,13 +172,23 @@ class CheveretoCrawler(Crawler):
                 new_scrape_item = self.create_scrape_item(
                     scrape_item,
                     link,
-                    new_title_part=title,
-                    part_of_album=True,
                     album_id=album_id,
                     add_parent=scrape_item.url,
                 )
                 if not self.check_album_results(link, results):
                     await self.handle_direct_link(new_scrape_item)
+
+        await self.process_sub_albums(scrape_item)
+
+    @error_handling_wrapper
+    async def process_sub_albums(self, scrape_item: ScrapeItem) -> None:
+        async for soup in self.web_pager(scrape_item, sub_albums=True):
+            sub_albums = soup.select(self.profile_item_selector)
+            for album in sub_albums:
+                link_str: str = album.get("href")  # type: ignore
+                link = self.parse_url(link_str)
+                new_scrape_item = self.create_scrape_item(scrape_item, link)
+                self.manager.task_group.create_task(self.run(new_scrape_item))
 
     async def video(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a video."""
@@ -263,17 +268,18 @@ class CheveretoCrawler(Crawler):
         new_path = "/" + "/".join(new_parts)
         return _id, self.parse_url(new_path, scrape_item.url.with_path("/"))
 
-    async def web_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
+    async def web_pager(self, scrape_item: ScrapeItem, sub_albums: bool = False) -> AsyncGenerator[BeautifulSoup]:
         """Generator of website pages."""
-        page_url = await self.get_sort_by_new_url(scrape_item.url)
+        url = scrape_item.url if not sub_albums else scrape_item.url / "sub"
+        page_url = await self.get_sort_by_new_url(url)
         while True:
             async with self.request_limiter:
                 soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url, origin=scrape_item)
             next_page = soup.select_one(self.next_page_selector)
             yield soup
-            if not next_page:
+            page_url_str: str = next_page.get("href") if next_page else None  # type: ignore
+            if not page_url_str:
                 break
-            page_url_str: str = next_page.get("href")
             page_url = self.parse_url(page_url_str)
 
     @staticmethod

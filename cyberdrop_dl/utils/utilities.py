@@ -18,7 +18,13 @@ from rich.text import Text
 from yarl import URL
 
 from cyberdrop_dl import __version__ as current_version
-from cyberdrop_dl.clients.errors import CDLBaseError, InvalidExtensionError, NoExtensionError
+from cyberdrop_dl.clients.errors import (
+    CDLBaseError,
+    InvalidExtensionError,
+    InvalidURLError,
+    NoExtensionError,
+    get_origin,
+)
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.logger import log, log_debug, log_spacer, log_with_color
 
@@ -47,7 +53,9 @@ def error_handling_wrapper(func: Callable) -> Callable:
         except CDLBaseError as e:
             log_message_short = e_ui_failure = e.ui_message
             log_message = f"{e.ui_message} - {e.message}" if e.ui_message != e.message else e.message
-            origin = e.origin
+            origin = e.origin or get_origin(item)
+            if isinstance(e, InvalidURLError):
+                link = e.url or link
         except TimeoutError:
             log_message_short = log_message = e_ui_failure = "Timeout"
         except ClientConnectorError as e:
@@ -64,14 +72,11 @@ def error_handling_wrapper(func: Callable) -> Callable:
                 e_ui_failure = "Unknown"
 
         log_prefix = getattr(self, "log_prefix", None)
-        log(f"{log_prefix or 'Scrape'} Failed: {link} ({log_message})", 40, exc_info=exc_info)
         if log_prefix:
-            self.attempt_task_removal(item)
-            await self.manager.log_manager.write_download_error_log(link, log_message_short, origin or item.referer)
-            self.manager.progress_manager.download_stats_progress.add_failure(e_ui_failure)
-            self.manager.progress_manager.download_progress.add_failed()
-            return None
+            await self.write_download_error(item, log_message_short, e_ui_failure, exc_info)  # type: ignore
+            return
 
+        log(f"Scrape Failed: {link} ({log_message})", 40, exc_info=exc_info)
         await self.manager.log_manager.write_scrape_error_log(link, log_message_short, origin)
         self.manager.progress_manager.scrape_stats_progress.add_failure(e_ui_failure)
         return None
@@ -118,8 +123,10 @@ def get_filename_and_ext(filename: str, forum: bool = False) -> tuple[str, str]:
     filename_as_path = Path(filename)
     if not filename_as_path.suffix:
         raise NoExtensionError
-    if filename_as_path.suffix.isnumeric() and forum:
+    ext_no_dot = filename_as_path.suffix.split(".")[1]
+    if ext_no_dot.isdigit() and forum:
         name, ext = filename_as_path.name.rsplit("-", 1)
+        ext = ext.rsplit(".")[0]
         filename_as_path = Path(f"{name}.{ext}")
     if len(filename_as_path.suffix) > 5:
         raise InvalidExtensionError

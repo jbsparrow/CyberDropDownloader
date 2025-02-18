@@ -5,6 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from cyberdrop_dl import env
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.utilities import purge_dir_tree
 
@@ -13,7 +14,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
 
-if constants.DEBUG_VAR and Path.cwd().name == "cyberdrop_dl":
+if env.RUNNING_IN_IDE and Path.cwd().name == "cyberdrop_dl":
     """This is for testing purposes only"""
     constants.APP_STORAGE = Path("../AppData")
     constants.DOWNLOAD_STORAGE = Path("../Downloads")

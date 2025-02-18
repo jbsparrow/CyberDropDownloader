@@ -95,6 +95,8 @@ class MediaFireCrawler(Crawler):
 
         link_tag = soup.select_one("a[id=downloadButton]")
         if not link_tag:
+            if "Something appears to be missing" in str(soup):
+                raise ScrapeError(410, origin=scrape_item)
             raise ScrapeError(422, origin=scrape_item)
 
         date_tag = soup.select("ul[class=details] li span")

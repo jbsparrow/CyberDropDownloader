@@ -10,7 +10,7 @@ import aiofiles
 import arrow
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import JDownloaderError
+from cyberdrop_dl.clients.errors import JDownloaderError, NoExtensionError
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.scraper import CRAWLERS
 from cyberdrop_dl.scraper.filters import (
@@ -27,6 +27,8 @@ from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.scraper.crawler import Crawler
 
@@ -41,6 +43,7 @@ class ScrapeMapper:
         self.jdownloader = JDownloader(self.manager)
         self.jdownloader_whitelist = self.manager.config_manager.settings_data.runtime_options.jdownloader_whitelist
         self.count = 0
+        self.group_count = 0
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -86,13 +89,15 @@ class ScrapeMapper:
         self.no_crawler_downloader.startup()
 
         if self.manager.parsed_args.cli_only_args.retry_failed:
-            await self.load_failed_links()
+            items = await self.load_failed_links()
         elif self.manager.parsed_args.cli_only_args.retry_all:
-            await self.load_all_links()
+            items = await self.load_all_links()
         elif self.manager.parsed_args.cli_only_args.retry_maintenance:
-            await self.load_all_bunkr_failed_links_via_hash()
+            items = await self.load_all_bunkr_failed_links_via_hash()
         else:
-            await self.load_links()
+            items = await self.load_links()
+        filtered_items = [item for item in items if self.filter_items(item)]
+        self.process_items(filtered_items)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -133,9 +138,10 @@ class ScrapeMapper:
                     block_quote = not block_quote if line == "#\n" else block_quote
                     if not block_quote:
                         links[""].extend(self.regex_links(line))
+        self.group_count = len(links) - 1
         return links
 
-    async def load_links(self) -> None:
+    async def load_links(self) -> list[ScrapeItem]:
         """Loads links from args / input file."""
         input_file = self.manager.path_manager.input_file
         # we need to touch the file just in case, purge_tree deletes it
@@ -160,54 +166,31 @@ class ScrapeMapper:
                 if title:
                     item.add_to_parent_title(title)
                     item.part_of_album = True
-                if self.filter_items(item):
-                    items.append(item)
-        for item in items:
-            self.manager.task_group.create_task(self.send_to_crawler(item))
+                items.append(item)
+        return items
 
-    async def load_failed_links(self) -> None:
+    async def load_failed_links(self) -> list[ScrapeItem]:
         """Loads failed links from database."""
         entries = await self.manager.db_manager.history_table.get_failed_items()
-        items = []
-        for entry in entries:
-            item = self.create_item_from_entry(entry)
-            if self.filter_items(item):
-                items.append(item)
-        if self.manager.parsed_args.cli_only_args.max_items_retry:
-            items = items[: self.manager.parsed_args.cli_only_args.max_items_retry]
-        for item in items:
-            self.manager.task_group.create_task(self.send_to_crawler(item))
+        return [self.create_item_from_entry(entry) for entry in entries]
 
-    async def load_all_links(self) -> None:
+    async def load_all_links(self) -> list[ScrapeItem]:
         """Loads all links from database."""
         after = self.manager.parsed_args.cli_only_args.completed_after or date.fromtimestamp(0)
-
         before = self.manager.parsed_args.cli_only_args.completed_before or datetime.now().date()
-        entries = await self.manager.db_manager.history_table.get_all_items(
-            after,
-            before,
-        )
-        items = []
-        for entry in entries:
-            item = self.create_item_from_entry(entry)
-            if self.filter_items(item):
-                items.append(item)
-        if self.manager.parsed_args.cli_only_args.max_items_retry:
-            items = items[: self.manager.parsed_args.cli_only_args.max_items_retry]
-        for item in items:
-            self.manager.task_group.create_task(self.send_to_crawler(item))
+        entries = await self.manager.db_manager.history_table.get_all_items(after, before)
+        return [self.create_item_from_entry(entry) for entry in entries]
 
-    async def load_all_bunkr_failed_links_via_hash(self) -> None:
+    async def load_all_bunkr_failed_links_via_hash(self) -> list[ScrapeItem]:
         """Loads all bunkr links with maintenance hash."""
         entries = await self.manager.db_manager.history_table.get_all_bunkr_failed()
         entries = sorted(set(entries), reverse=True, key=lambda x: arrow.get(x[-1]))
-        items = []
-        for entry in entries:
-            item = self.create_item_from_entry(entry)
-            if self.filter_items(item):
-                items.append(item)
-        if self.manager.parsed_args.cli_only_args.max_items_retry:
+        return [self.create_item_from_entry(entry) for entry in entries]
+
+    def process_items(self, items: list[ScrapeItem]) -> None:
+        if self.manager.parsed_args.cli_only_args.retry_any and self.manager.parsed_args.cli_only_args.max_items_retry:
             items = items[: self.manager.parsed_args.cli_only_args.max_items_retry]
+        self.count = len(items)
         for item in items:
             self.manager.task_group.create_task(self.send_to_crawler(item))
 
@@ -226,7 +209,7 @@ class ScrapeMapper:
         return item
 
     @staticmethod
-    def create_item_from_entry(entry: list) -> ScrapeItem:
+    def create_item_from_entry(entry: Sequence) -> ScrapeItem:
         url = URL(entry[0])
         retry_path = Path(entry[1])
         scrape_item = ScrapeItem(url=url, part_of_album=True, retry=True, retry_path=retry_path)
@@ -269,7 +252,10 @@ class ScrapeMapper:
             scrape_item.add_to_parent_title("Loose Files")
             scrape_item.part_of_album = True
             download_folder = get_download_path(self.manager, scrape_item, "no_crawler")
-            filename, _ = get_filename_and_ext(scrape_item.url.name)
+            try:
+                filename, _ = get_filename_and_ext(scrape_item.url.name)
+            except NoExtensionError:
+                filename, _ = get_filename_and_ext(scrape_item.url.name, forum=True)
             media_item = MediaItem(scrape_item.url, scrape_item, download_folder, filename)
             self.manager.task_group.create_task(self.no_crawler_downloader.run(media_item))
             return

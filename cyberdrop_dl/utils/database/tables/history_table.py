@@ -47,7 +47,9 @@ class HistoryTable:
 
     async def update_previously_unsupported(self, crawlers: dict[str, Crawler]) -> None:
         """Update old `no_crawler` entries that are now supported."""
-        domains_to_update = [(c.domain, f"{c.primary_base_domain}%") for c in crawlers.values() if c.update_unsupported]
+        domains_to_update = [
+            (c.domain, f"http%{c.primary_base_domain.host}%") for c in crawlers.values() if c.update_unsupported
+        ]
         if not domains_to_update:
             return
         referers = [(d[1],) for d in domains_to_update]
@@ -241,7 +243,7 @@ class HistoryTable:
         )
         return await result.fetchall()
 
-    async def get_all_items(self, after: datetime, before: datetime) -> Iterable[Row]:
+    async def get_all_items(self, after: datetime.date, before: datetime.date) -> Iterable[Row]:
         """Returns a list of all items."""
         cursor = await self.db_conn.cursor()
         result = await cursor.execute(
