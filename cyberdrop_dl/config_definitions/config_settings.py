@@ -22,7 +22,7 @@ from .custom.types import (
 )
 from .custom.validators import parse_duration_as_timedelta, parse_falsy_as
 
-ALL_SITES_PLACEHOLDER = ["<<ALL_SITES>>"]
+ALL_SUPPORTED_SITES = ["<<ALL_SUPPORTED_SITES>>"]
 
 
 class DownloadOptions(BaseModel):
@@ -155,7 +155,7 @@ class BrowserCookies(BaseModel):
     @classmethod
     def handle_list(cls, values: list) -> list:
         values = parse_falsy_as(values, [])
-        if values == ALL_SITES_PLACEHOLDER:
+        if values == ALL_SUPPORTED_SITES:
             return SUPPORTED_SITES_DOMAINS
         if isinstance(values, list):
             return sorted(str(value).lower() for value in values)
@@ -164,7 +164,7 @@ class BrowserCookies(BaseModel):
     @field_serializer("sites", when_used="json-unless-none")
     def use_placeholder(self, values: list) -> list:
         if set(values) == set(SUPPORTED_SITES_DOMAINS):
-            return ALL_SITES_PLACEHOLDER
+            return ALL_SUPPORTED_SITES
         return values
 
 
