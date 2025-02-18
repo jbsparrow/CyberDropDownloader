@@ -73,8 +73,6 @@ DISABLED_CRAWLERS = {SimpCityCrawler}
 DEBUG_CRAWLERS = {BunkrAlbumsIOCrawler}
 CRAWLERS = ALL_CRAWLERS - DISABLED_CRAWLERS - DEBUG_CRAWLERS
 
-constants.RUNNING_PRERELEASE = next((tag for tag in constants.PRERELEASE_TAGS if tag in current_version), False)
-
 if env.RUNNING_IN_IDE:
     CRAWLERS.update(DEBUG_CRAWLERS)
 
