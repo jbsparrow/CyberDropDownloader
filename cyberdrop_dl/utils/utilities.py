@@ -274,8 +274,9 @@ def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -
 def check_prelease_version(current_version: str, releases: list[str]) -> tuple[bool, str, Text | str]:
     match = re.match(constants.PRELEASE_VERSION_PATTERN, current_version)
     latest_testing_version = message = ""
+    running_prerelease = next((tag for tag in constants.PRERELEASE_TAGS if tag in current_version), False)
 
-    if constants.RUNNING_PRERELEASE and match:
+    if running_prerelease and match:
         major_version, minor_version, patch_version, dot_tag, no_dot_tag = match.groups()
         test_tag = dot_tag if dot_tag else no_dot_tag
         regex_str = rf"{major_version}\.{minor_version}\.{patch_version}(\.{test_tag}\d+|{test_tag}\d+)"
@@ -289,8 +290,7 @@ def check_prelease_version(current_version: str, releases: list[str]) -> tuple[b
         else:
             message = f"You are currently on the latest {ui_tag} version of [b cyan]{major_version}.{minor_version}.{patch_version}[/b cyan]"
             message = Text.from_markup(message)
-
-    return constants.RUNNING_PRERELEASE, latest_testing_version, message
+    return running_prerelease, latest_testing_version, message
 
 
 async def send_webhook_message(manager: Manager) -> None:

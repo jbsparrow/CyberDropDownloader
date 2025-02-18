@@ -8,7 +8,6 @@ from rich.text import Text
 CONSOLE_LEVEL = 100
 MAX_NAME_LENGTHS = {"FILE": 95, "FOLDER": 60}
 DEFAULT_CONSOLE_WIDTH = 240
-RUNNING_PRERELEASE = False
 CSV_DELIMITER = ","
 LOG_OUTPUT_TEXT = Text("")
 RICH_HANDLER_CONFIG = {"show_time": True, "rich_tracebacks": True, "tracebacks_show_locals": False}
