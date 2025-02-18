@@ -77,8 +77,10 @@ select = [
     "E",  # pycodestyle errors
     "F",  # pyflakes
     "FA102",  # future annotations
+    "FURB188",  # slice-to-remove-prefix-or-suffix
     "I",  # isort
     "N",  # PEP8 naming conventions
+    "PLR1716",  # boolean chained comparison
     "PTH",  # use pathlib instead of os
     "Q",  # flake8-quotes
     "RUF",  # RUF specific fixes
