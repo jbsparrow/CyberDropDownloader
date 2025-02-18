@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar
 
@@ -16,7 +17,7 @@ from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncIterator, Generator
 
     from asyncpraw.models import Redditor, Submission, Subreddit
 
@@ -108,12 +109,8 @@ class RedditCrawler(Crawler):
         submissions: AsyncIterator[Submission],
         reddit: asyncpraw.Reddit,
     ) -> None:
-        try:
+        with asyncpraw_error_handle(scrape_item):
             submissions_list: list[Subreddit] = [submission async for submission in submissions]
-        except asyncprawcore.exceptions.Forbidden:
-            raise ScrapeError(403, origin=scrape_item) from None
-        except asyncprawcore.exceptions.NotFound:
-            raise ScrapeError(404, origin=scrape_item) from None
 
         scrape_item.set_type(FILE_HOST_PROFILE, self.manager)
 
@@ -183,12 +180,8 @@ class RedditCrawler(Crawler):
         except NoExtensionError:
             _, url = await self.client.get_soup_and_return_url(self.domain, scrape_item.url)
 
-            try:
+            with asyncpraw_error_handle(scrape_item):
                 post = await reddit.submission(url=str(url))
-            except asyncprawcore.exceptions.Forbidden:
-                raise ScrapeError(403, origin=scrape_item) from None
-            except asyncprawcore.exceptions.NotFound:
-                raise ScrapeError(404, origin=scrape_item) from None
 
             return await self.post(scrape_item, post, reddit)
 
@@ -215,3 +208,13 @@ class RedditCrawler(Crawler):
         )
         self.add_separate_post_title(new_scrape_item, post)
         return new_scrape_item
+
+
+@contextmanager
+def asyncpraw_error_handle(scrape_item: ScrapeItem) -> Generator:
+    try:
+        yield
+    except asyncprawcore.exceptions.Forbidden:
+        raise ScrapeError(403, origin=scrape_item) from None
+    except asyncprawcore.exceptions.NotFound:
+        raise ScrapeError(404, origin=scrape_item) from None
