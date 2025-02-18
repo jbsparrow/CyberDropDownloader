@@ -6,6 +6,7 @@ from pathlib import Path
 from rich.console import Console
 from rich.text import Text
 
+from cyberdrop_dl import env
 from cyberdrop_dl.utils import constants
 
 logger = logging.getLogger("cyberdrop_dl")
@@ -30,7 +31,7 @@ def log(message: Exception | str, level: int = 10, *, sleep: int | None = None, 
 
 def log_debug(message: Exception | str, level: int = 10, **kwargs) -> None:
     """Simple logging function."""
-    if constants.DEBUG_VAR:
+    if env.DEBUG_VAR:
         message = str(message)
         logger_debug.log(level, message.encode("ascii", "ignore").decode("ascii"), **kwargs)
 
