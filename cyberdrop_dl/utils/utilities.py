@@ -72,14 +72,11 @@ def error_handling_wrapper(func: Callable) -> Callable:
                 e_ui_failure = "Unknown"
 
         log_prefix = getattr(self, "log_prefix", None)
-        log(f"{log_prefix or 'Scrape'} Failed: {link} ({log_message})", 40, exc_info=exc_info)
         if log_prefix:
-            self.attempt_task_removal(item)
-            await self.manager.log_manager.write_download_error_log(link, log_message_short, origin or item.referer)
-            self.manager.progress_manager.download_stats_progress.add_failure(e_ui_failure)
-            self.manager.progress_manager.download_progress.add_failed()
-            return None
+            await self.write_download_error(item, log_message_short, e_ui_failure, exc_info)  # type: ignore
+            return
 
+        log(f"Scrape Failed: {link} ({log_message})", 40, exc_info=exc_info)
         await self.manager.log_manager.write_scrape_error_log(link, log_message_short, origin)
         self.manager.progress_manager.scrape_stats_progress.add_failure(e_ui_failure)
         return None

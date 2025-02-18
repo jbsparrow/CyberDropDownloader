@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 import aiofiles
 
+from cyberdrop_dl.clients.errors import get_origin
 from cyberdrop_dl.utils.constants import CSV_DELIMITER
 from cyberdrop_dl.utils.logger import log, log_spacer
 
@@ -14,6 +15,7 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
 
 class LogManager:
@@ -53,9 +55,12 @@ class LogManager:
         """Writes to the unsupported urls log."""
         await self.write_to_csv(self.unsupported_urls_log, url=url, origin=origin)
 
-    async def write_download_error_log(self, url: URL, error_message: str, origin: URL | None = None) -> None:
+    async def write_download_error_log(self, media_item: MediaItem, error_message: str) -> None:
         """Writes to the download error log."""
-        await self.write_to_csv(self.download_error_log, url=url, error=error_message, origin=origin)
+        origin = get_origin(media_item)
+        await self.write_to_csv(
+            self.download_error_log, url=media_item.url, error=error_message, referer=media_item.referer, origin=origin
+        )
 
     async def write_scrape_error_log(self, url: URL, error_message: str, origin: URL | None = None) -> None:
         """Writes to the scrape error log."""
