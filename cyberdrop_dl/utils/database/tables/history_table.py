@@ -243,7 +243,7 @@ class HistoryTable:
         )
         return await result.fetchall()
 
-    async def get_all_items(self, after: datetime, before: datetime) -> Iterable[Row]:
+    async def get_all_items(self, after: datetime.date, before: datetime.date) -> Iterable[Row]:
         """Returns a list of all items."""
         cursor = await self.db_conn.cursor()
         result = await cursor.execute(
