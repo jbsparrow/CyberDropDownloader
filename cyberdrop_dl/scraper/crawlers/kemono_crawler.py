@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import ScrapeError
+from cyberdrop_dl.clients.errors import NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
 from cyberdrop_dl.utils.logger import log
@@ -241,7 +241,11 @@ class KemonoCrawler(Crawler):
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:
         """Handles a direct link."""
-        filename, ext = get_filename_and_ext(scrape_item.url.query.get("f") or scrape_item.url.name)
+        try:
+            filename, ext = get_filename_and_ext(scrape_item.url.query.get("f") or scrape_item.url.name)
+        except NoExtensionError:
+            # Some patreon URLs have another URL as the filename: https://kemono.su/data/7a...27ad7e40bd.jpg?f=https://www.patreon.com/media-u/Z0F..00672794_
+            filename, ext = get_filename_and_ext(scrape_item.url.name)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

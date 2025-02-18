@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import ScrapeError
+from cyberdrop_dl.clients.errors import NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
 from cyberdrop_dl.utils.logger import log
@@ -215,7 +215,11 @@ class CoomerCrawler(Crawler):
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:
         """Handles a direct link."""
-        filename, ext = get_filename_and_ext(scrape_item.url.query.get("f") or scrape_item.url.name)
+        try:
+            filename, ext = get_filename_and_ext(scrape_item.url.query.get("f") or scrape_item.url.name)
+        except NoExtensionError:
+            # Not sure if this is necessary, is mostly just to keep it similar to kemono
+            filename, ext = get_filename_and_ext(scrape_item.url.name)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
