@@ -142,12 +142,16 @@ class RedditCrawler(Crawler):
             add_parent=scrape_item.url,
         )
 
-        if "redd.it" in media_url.host:
-            await self.media(new_scrape_item, reddit)
-        elif "gallery" in media_url.parts:
-            await self.gallery(new_scrape_item, submission, reddit)
-        elif "reddit.com" not in media_url.host:
-            self.handle_external_links(new_scrape_item)
+        await self.process_item(new_scrape_item, submission, reddit)
+
+    @error_handling_wrapper
+    async def process_item(self, scrape_item: ScrapeItem, submission: Submission, reddit: asyncpraw.Reddit) -> None:
+        if "redd.it" in scrape_item.url.host:
+            await self.media(scrape_item, reddit)
+        elif "gallery" in scrape_item.url.parts:
+            await self.gallery(scrape_item, submission, reddit)
+        elif "reddit.com" not in scrape_item.url.host:
+            self.handle_external_links(scrape_item)
         else:
             raise ScrapeError(422, origin=scrape_item)
 
