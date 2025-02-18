@@ -31,7 +31,7 @@ class GoFileCrawler(Crawler):
         self.api_key = manager.config_manager.authentication_data.gofile.api_key
         self.website_token = manager.cache_manager.get("gofile_website_token")
         self.headers = {}
-        self.request_limiter = AsyncLimiter(100, 60)
+        self.request_limiter = AsyncLimiter(4, 6)
         self._website_token_date = datetime.now(UTC) - timedelta(days=7)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
