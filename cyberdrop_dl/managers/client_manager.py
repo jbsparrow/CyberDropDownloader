@@ -118,7 +118,7 @@ class ClientManager:
                 continue
             current_cookie_file_domains = set()
             for cookie in cookie_jar:
-                simplified_domain = cookie.domain[1:] if cookie.domain.startswith(".") else cookie.domain
+                simplified_domain = cookie.domain.removeprefix(".")
                 if simplified_domain not in current_cookie_file_domains:
                     log(f"Found cookies for {simplified_domain} in file '{file.name}'", 20)
                     current_cookie_file_domains.add(simplified_domain)

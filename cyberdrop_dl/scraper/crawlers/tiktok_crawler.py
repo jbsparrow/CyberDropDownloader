@@ -86,7 +86,7 @@ class TikTokCrawler(Crawler):
                 if item.get("images"):
                     await self.handle_image_post(scrape_item, item)
                 elif not post_url.path.endswith("mp3"):
-                    filename, ext = f'{item["video_id"]}.mp4', "mp4"
+                    filename, ext = f"{item['video_id']}.mp4", "mp4"
                     new_scrape_item = self.create_scrape_item(
                         scrape_item, canonical_url, "", True, scrape_item.album_id, item["create_time"]
                     )
@@ -116,7 +116,7 @@ class TikTokCrawler(Crawler):
                 return
 
             video_url = self.parse_url(json_data["data"]["play"])
-            filename, ext = f'{json_data["data"]["video_id"]}.mp4', "mp4"
+            filename, ext = f"{json_data['data']['video_id']}.mp4", "mp4"
             new_scrape_item = self.create_scrape_item(
                 scrape_item, canonical_url, "", True, scrape_item.album_id, json_data["data"]["create_time"]
             )
@@ -135,7 +135,7 @@ class TikTokCrawler(Crawler):
             return
 
         audio_url = self.parse_url(data["music_info"]["play"])
-        filename = f'{data["music_info"]["title"]}.mp3'
+        filename = f"{data['music_info']['title']}.mp3"
         filename, ext = get_filename_and_ext(filename)
         new_scrape_item = self.create_scrape_item(
             scrape_item,

@@ -138,7 +138,7 @@ class SpankBangCrawler(Crawler):
         scrape_item.possible_datetime = date
 
         filename, ext = self.get_filename_and_ext(link.name)
-        custom_filename = f"{info["title"]} [{resolution}]{ext}"
+        custom_filename = f"{info['title']} [{resolution}]{ext}"
         custom_filename, _ = self.get_filename_and_ext(custom_filename)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 

@@ -70,7 +70,7 @@ def handle_validation_error(e: ValidationError, *, title: str | None = None, sou
     source = sources.get(e.title) if sources else None
     title = title or e.title
     source = f"from {source.resolve()}" if source else ""
-    msg = f"Found {error_count} error{'s' if error_count>1 else ''} parsing {title} {source}"
+    msg = f"Found {error_count} error{'s' if error_count > 1 else ''} parsing {title} {source}"
     startup_logger.error(msg)
     for error in e.errors(include_url=False):
         loc = ".".join(map(str, error["loc"]))
