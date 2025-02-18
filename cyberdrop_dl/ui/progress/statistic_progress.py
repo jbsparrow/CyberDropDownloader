@@ -97,7 +97,7 @@ class StatsProgress:
 
     @property
     def subtitle(self) -> str:
-        return f"Total {self.title}: [white]{self.failed_files}"
+        return f"Total {self.title}: [white]{self.failed_files:,}"
 
     def get_progress(self) -> Panel:
         """Returns the progress bar."""
