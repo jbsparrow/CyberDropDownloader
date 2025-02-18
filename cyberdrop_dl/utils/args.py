@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Self
 
 from pydantic import BaseModel, Field, ValidationError, computed_field, field_validator, model_validator
 
-from cyberdrop_dl import __version__
+from cyberdrop_dl import __version__, env
 from cyberdrop_dl.config_definitions import ConfigSettings, GlobalSettings
 from cyberdrop_dl.config_definitions.custom.types import AliasModel, HttpURL
 from cyberdrop_dl.utils.yaml import handle_validation_error
@@ -189,14 +189,29 @@ def _create_groups_from_nested_models(parser: ArgumentParser, model: type[BaseMo
     return groups
 
 
+CLI_ARGUMENTS_MD = Path("docs/reference/cli-arguments.md")
+
+
 class CustomHelpFormatter(RawDescriptionHelpFormatter):
     def __init__(self, prog):
-        super().__init__(prog, max_help_position=50)
+        witdh = 300 if env.RUNNING_IN_IDE else None
+        super().__init__(prog, max_help_position=80, width=witdh)
 
     def _get_help_string(self, action):
         if action.help:
             return action.help.replace("program's", "CDL")  ## The ' messes up the markdown formatting
         return action.help
+
+    def format_help(self):
+        help_text = super().format_help()
+        if env.RUNNING_IN_IDE:
+            current_text = CLI_ARGUMENTS_MD.read_text(encoding="utf8")
+            cli_overview_text, *_ = help_text.partition("Visit")
+            new_text, *_ = current_text.partition("```shell")
+            new_text += f"```shell\n{cli_overview_text}```\n"
+            if current_text != new_text:
+                CLI_ARGUMENTS_MD.write_text(new_text, encoding="utf8")
+        return help_text
 
 
 def parse_args() -> ParsedArgs:
