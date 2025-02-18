@@ -107,7 +107,7 @@ class BunkrrCrawler(Crawler):
         if "a" in scrape_item.url.parts:
             await self.album(scrape_item)
         elif is_cdn(scrape_item.url) and not is_stream_redirect(scrape_item.url):
-            await self.handle_direct_link(scrape_item)
+            await self.handle_direct_link(scrape_item, fallback_filename=scrape_item.url.name)
         else:
             await self.file(scrape_item)
 
