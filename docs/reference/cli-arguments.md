@@ -149,24 +149,24 @@ usage: cyberdrop-dl [OPTIONS] URL [URL...]
 Bulk asynchronous downloader for multiple file hosts
 
 options:
-  -h, --help                                      show this help message and exit
-  -V, --version                                   show CDL version number and exit
+  -h, --help                                                                    show this help message and exit
+  -V, --version                                                                 show CDL version number and exit
 
-CLI-only Options:
-  LINK(S)                                         link(s) to content to download (passing multiple links is supported)
-  --appdata-folder APPDATA_FOLDER                 AppData folder path
-  --completed-after COMPLETED_AFTER               only download completed downloads at or after this date
-  --completed-before COMPLETED_BEFORE             only download completed downloads at or before this date
-  --config CONFIG                                 name of config to load
-  --config-file CONFIG_FILE                       path to the CDL settings.yaml file to load
-  --download                                      skips UI, start download immediatly
-  --max-items-retry MAX_ITEMS_RETRY               max number of links to retry
-  --retry-all                                     retry all downloads
-  --retry-failed                                  retry failed downloads
-  --retry-maintenance                             retry download of maintenance files (bunkr). Requires files to be hashed
-  --download-tiktok-audios                        download TikTok audios
-  --print-stats                                   Show stats report at the end of a run
-  --ui UI                                         DISABLED, ACTIVITY, SIMPLE or FULLSCREEN
+CLI-only options:
+  LINK(S)                                                                       link(s) to content to download (passing multiple links is supported)
+  --appdata-folder APPDATA_FOLDER                                               AppData folder path
+  --completed-after COMPLETED_AFTER                                             only download completed downloads at or after this date
+  --completed-before COMPLETED_BEFORE                                           only download completed downloads at or before this date
+  --config CONFIG                                                               name of config to load
+  --config-file CONFIG_FILE                                                     path to the CDL settings.yaml file to load
+  --download                                                                    skips UI, start download immediatly
+  --max-items-retry MAX_ITEMS_RETRY                                             max number of links to retry
+  --retry-all                                                                   retry all downloads
+  --retry-failed                                                                retry failed downloads
+  --retry-maintenance                                                           retry download of maintenance files (bunkr). Requires files to be hashed
+  --download-tiktok-audios                                                      download TikTok audios
+  --print-stats                                                                 Show stats report at the end of a run
+  --ui UI                                                                       DISABLED, ACTIVITY, SIMPLE or FULLSCREEN
 
 browser_cookies:
   --auto-import, --no-auto-import
@@ -289,7 +289,7 @@ ui_options:
   --scraping-item-limit SCRAPING_ITEM_LIMIT
   --vi-mode, --no-vi-mode
 
-Deprecated:
-  --no-ui                                         disables the UI/progress view entirely
+deprecated:
+  --no-ui                                                                       disables the UI/progress view entirely
 
 ```
