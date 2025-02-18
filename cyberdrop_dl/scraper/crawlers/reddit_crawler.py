@@ -152,7 +152,7 @@ class RedditCrawler(Crawler):
             return await self.gallery(scrape_item, submission, reddit)
         if "reddit.com" not in scrape_item.url.host:
             return self.handle_external_links(scrape_item)
-        raise ScrapeError(422, origin=scrape_item)
+        log(f"Skipping nested thread URL {scrape_item.url} found on {scrape_item.parents[0]}", 10)
 
     async def gallery(self, scrape_item: ScrapeItem, submission: Submission, reddit: asyncpraw.Reddit) -> None:
         """Scrapes galleries."""
