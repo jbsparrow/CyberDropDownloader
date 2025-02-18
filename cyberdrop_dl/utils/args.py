@@ -10,13 +10,16 @@ from typing import TYPE_CHECKING, Self
 
 from pydantic import BaseModel, Field, ValidationError, computed_field, field_validator, model_validator
 
-from cyberdrop_dl import __version__
+from cyberdrop_dl import __version__, env
 from cyberdrop_dl.config_definitions import ConfigSettings, GlobalSettings
 from cyberdrop_dl.config_definitions.custom.types import AliasModel, HttpURL
 from cyberdrop_dl.utils.yaml import handle_validation_error
 
 if TYPE_CHECKING:
     from pydantic.fields import FieldInfo
+
+CLI_ARGUMENTS_MD = Path("docs/reference/cli-arguments.md")
+CDL_EPILOG = "Visit the wiki for additional details: https://script-ware.gitbook.io/cyberdrop-dl"
 
 
 class UIOptions(StrEnum):
@@ -191,12 +194,24 @@ def _create_groups_from_nested_models(parser: ArgumentParser, model: type[BaseMo
 
 class CustomHelpFormatter(RawDescriptionHelpFormatter):
     def __init__(self, prog):
-        super().__init__(prog, max_help_position=50)
+        witdh = 300 if env.RUNNING_IN_IDE else None
+        super().__init__(prog, max_help_position=80, width=witdh)
 
     def _get_help_string(self, action):
         if action.help:
             return action.help.replace("program's", "CDL")  ## The ' messes up the markdown formatting
         return action.help
+
+    def format_help(self):
+        help_text = super().format_help()
+        if env.RUNNING_IN_IDE:
+            cli_overview, *_ = help_text.partition(CDL_EPILOG)
+            current_text = CLI_ARGUMENTS_MD.read_text(encoding="utf8")
+            new_text, *_ = current_text.partition("```shell")
+            new_text += f"```shell\n{cli_overview}```\n"
+            if current_text != new_text:
+                CLI_ARGUMENTS_MD.write_text(new_text, encoding="utf8")
+        return help_text
 
 
 def parse_args() -> ParsedArgs:
@@ -204,12 +219,12 @@ def parse_args() -> ParsedArgs:
     parser = ArgumentParser(
         description="Bulk asynchronous downloader for multiple file hosts",
         usage="cyberdrop-dl [OPTIONS] URL [URL...]",
-        epilog="Visit the wiki for additional details: https://script-ware.gitbook.io/cyberdrop-dl",
+        epilog=CDL_EPILOG,
         formatter_class=CustomHelpFormatter,
     )
     parser.add_argument("-V", "--version", action="version", version=f"%(prog)s {__version__}")
 
-    cli_only = parser.add_argument_group("CLI-only Options")
+    cli_only = parser.add_argument_group("CLI-only options")
     _add_args_from_model(cli_only, CommandLineOnlyArgs, cli_args=True)
 
     group_lists = {
@@ -220,7 +235,7 @@ def parse_args() -> ParsedArgs:
 
     using_deprecated_args: bool = bool(DeprecatedArgs.model_fields)
     if using_deprecated_args:
-        deprecated = parser.add_argument_group("Deprecated")
+        deprecated = parser.add_argument_group("deprecated")
         _add_args_from_model(deprecated, DeprecatedArgs, cli_args=True, deprecated=True)
         group_lists["deprecated_args"] = [deprecated]
 
@@ -238,8 +253,8 @@ def parse_args() -> ParsedArgs:
                 parsed_args[name][group.title] = group_dict
 
     if using_deprecated_args:
-        parsed_args["deprecated_args"] = parsed_args["deprecated_args"].get("Deprecated") or {}
-    parsed_args["cli_only_args"] = parsed_args["cli_only_args"]["CLI-only Options"]
+        parsed_args["deprecated_args"] = parsed_args["deprecated_args"].get("deprecated") or {}
+    parsed_args["cli_only_args"] = parsed_args["cli_only_args"]["CLI-only options"]
     try:
         parsed_args = ParsedArgs.model_validate(parsed_args)
 
