@@ -22,7 +22,7 @@ body:
           required: true
         - label: "I understand this is open source software provided for free and that I might not receive a timely response."
           required: true
-        - label: "I’ve checked existing issues to avoid creating a duplicates."
+        - label: "I’ve checked existing issues to avoid creating a duplicate."
           required: true
         - label: "A similar issue was previously marked as `completed` and the [changelog](https://github.com/jbsparrow/CyberDropDownloader/blob/dev/CHANGELOG.md) says it was implemented, but I'm confident the bug still exists"
           required: false
