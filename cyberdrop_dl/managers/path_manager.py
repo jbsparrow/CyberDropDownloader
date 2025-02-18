@@ -117,7 +117,7 @@ class PathManager:
         log_settings_config = log_settings_config.model_copy(update=log_files)
 
         for model_name in self._logs_model_names:
-            internal_name = f"{model_name.replace('_log','')}_log"
+            internal_name = f"{model_name.replace('_log', '')}_log"
             setattr(self, internal_name, self.log_folder / getattr(log_settings_config, model_name))
 
     def _delete_logs_and_folders(self, now):
@@ -131,7 +131,7 @@ class PathManager:
 
     def _create_output_folders(self):
         for model_name in self._logs_model_names:
-            internal_name = f"{model_name.replace('_log','')}_log"
+            internal_name = f"{model_name.replace('_log', '')}_log"
             path: Path = getattr(self, internal_name)
             path.parent.mkdir(parents=True, exist_ok=True)
 
