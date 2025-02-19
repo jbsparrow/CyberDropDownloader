@@ -308,6 +308,7 @@ def profile(func: Callable) -> None:
             os.chdir(temp_dir_path)
             log_file = temp_dir_path / "cyberdrop_dl_debug.log"
             print(f"Using {temp_dir_path} as temp AppData dir")  # noqa: T201
+            env.DEBUG_LOG_FILE_FOLDER = temp_dir_path
             try:
                 yield
             finally:
@@ -316,14 +317,18 @@ def profile(func: Callable) -> None:
                 date = ""
                 new_path = Path(f"cyberdrop_dl_debug_{date}.log")
                 shutil.move(log_file, new_path)
+                print(f"Profiling folder: {temp_dir_path}")  # noqa: T201
+                input("Press any key to finish and delete the profiling folder: ")
 
     with temp_dir_context(), cProfile.Profile() as cdl_profile:
         with contextlib.suppress(SystemExit):
             func()
 
+    print("Generating profile report..")  # noqa: T201
     results = pstats.Stats(cdl_profile)
     results.sort_stats(pstats.SortKey.TIME)
     results.dump_stats(filename="cyberdrop_dl.profiling")
+    print("DONE!")  # noqa: T201
 
 
 if __name__ == "__main__":
