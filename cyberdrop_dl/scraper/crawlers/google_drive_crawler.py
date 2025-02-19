@@ -33,7 +33,7 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
@@ -58,10 +58,11 @@ VALID_FILE_URL_PARTS = "file", "document", "presentation", "spreadsheets"
 
 
 class GoogleDriveCrawler(Crawler):
+    SUPPORTED_SITES: ClassVar[dict[str, list]] = {"drive.google": ["drive.google", "docs.google"]}
     primary_base_domain = URL("https://drive.google.com")
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "drive.google", "gDrive")
+    def __init__(self, manager: Manager, site: str) -> None:
+        super().__init__(manager, site, "gDrive")
         self.request_limiter = AsyncLimiter(1, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
