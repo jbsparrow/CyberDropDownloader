@@ -29,13 +29,13 @@ def profile(func: Callable) -> None:
             finally:
                 os.chdir(old_cwd)
                 suffix = "profiling"
-                log_file = temp_dir_path / "cyberdrop_dl_debug.log"
+                old_log_file = temp_dir_path / "cyberdrop_dl_debug.log"
                 if env.PROFILING == "use_date":
                     suffix = f"{suffix}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-                new_path = Path(f"cyberdrop_dl_debug_{suffix}.log").resolve()
-                shutil.move(log_file, new_path)
+                new_log_file = Path(f"cyberdrop_dl_debug_{suffix}.log").resolve()
+                shutil.move(old_log_file, new_log_file)
                 print(f"Profile AppData folder: {temp_dir_path}")
-                print(f"Debug log file: {new_path}")
+                print(f"Debug log file: {new_log_file}")
                 input("Press any key to finish and delete the profile folder: ")
 
     with temp_dir_context(), cProfile.Profile() as cdl_profile:
