@@ -263,7 +263,7 @@ async def director(manager: Manager) -> None:
 
 def main():
     profiling: bool = False
-    if not (profiling or os.getenv("CDL_PROFILING")):
+    if not (profiling or env.PROFILING):
         return actual_main()
     profile(actual_main)
 
@@ -306,13 +306,15 @@ def profile(func: Callable) -> None:
                     shutil.copy(cookie_file, temp_cookies_dir)
 
             os.chdir(temp_dir_path)
-            log_file = old_cwd / "cyberdrop_dl_debug.log"
+            log_file = temp_dir_path / "cyberdrop_dl_debug.log"
             print(f"Using {temp_dir_path} as temp AppData dir")  # noqa: T201
             try:
                 yield
             finally:
                 os.chdir(old_cwd)
-                new_path = Path(f"cyberdrop_dl_debug_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
+                date = datetime.now().strftime("%Y%m%d_%H%M%S")
+                date = ""
+                new_path = Path(f"cyberdrop_dl_debug_{date}.log")
                 shutil.move(log_file, new_path)
 
     with temp_dir_context(), cProfile.Profile() as cdl_profile:
