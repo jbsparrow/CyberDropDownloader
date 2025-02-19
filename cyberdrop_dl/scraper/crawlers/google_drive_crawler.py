@@ -81,7 +81,8 @@ class GoogleDriveCrawler(Crawler):
         if await self.check_complete_from_referer(canonical_url):
             return
 
-        link, headers = await self.get_file_url_and_headers(scrape_item.url, file_id)
+        download_url = get_download_url(file_id)
+        link, headers = await self.get_file_url_and_headers(download_url, file_id)
         scrape_item.url = canonical_url
 
         filename = get_filename_from_headers(headers) or link.name
@@ -199,6 +200,12 @@ def get_canonical_url(id_: str, folder: bool = False) -> URL:
     if folder:
         return URL(f"https://drive.google.com/drive/folders/{id_}")
     return URL(f"https://drive.google.com/file/d/{id_}")
+
+
+def get_download_url(id_: str, folder: bool = False) -> URL:
+    if folder:
+        raise NotImplementedError
+    return URL(f"https://drive.google.com/uc?id={id_}")
 
 
 def get_url_from_download_button(soup: BeautifulSoup, url_parser: Callable[..., URL]) -> URL | None:
