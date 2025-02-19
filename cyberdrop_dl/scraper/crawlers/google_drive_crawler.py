@@ -96,10 +96,12 @@ class GoogleDriveCrawler(Crawler):
         folder = await self.get_folder_details(scrape_item)
         title = self.create_title(folder.title, folder.id_)
         scrape_item.add_to_parent_title(title)
+        scrape_item.album_id = folder.id_
         # Do not reset children inside nested folders
         if scrape_item.type != FILE_HOST_ALBUM:
             scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
 
+        results = await self.get_album_results(scrape_item.album_id)
         create = partial(self.create_scrape_item, scrape_item, add_parent=scrape_item.url)
 
         subfolders = []
@@ -108,8 +110,9 @@ class GoogleDriveCrawler(Crawler):
             if is_folder(link):
                 subfolders.append(link)
                 continue
-            new_scrape_item = create(link)
-            self.manager.task_group.create_task(self.run(new_scrape_item))
+            if not self.check_album_results(link, results):
+                new_scrape_item = create(link)
+                self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.add_children()
 
         for folder in subfolders:
