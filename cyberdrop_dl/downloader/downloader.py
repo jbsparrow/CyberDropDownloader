@@ -29,6 +29,16 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
 
+KNOWN_BAD_URLS = {
+    "https://i.imgur.com/removed.png": 404,
+    "https://saint2.su/assets/notfound.gif": 404,
+    "https://bnkr.b-cdn.net/maintenance-vid.mp4": 503,
+    "https://bnkr.b-cdn.net/maintenance.mp4": 503,
+    "https://c.bunkr-cache.se/maintenance-vid.mp4": 503,
+    "https://c.bunkr-cache.se/maintenance.jpg": 503,
+}
+
+
 def retry(func: Callable) -> Callable:
     """This function is a wrapper that handles retrying for failed downloads."""
 
@@ -159,6 +169,9 @@ class Downloader:
     @retry
     async def download(self, media_item: MediaItem) -> None:
         """Downloads the media item."""
+        url_as_str = str(media_item.url)
+        if url_as_str in KNOWN_BAD_URLS:
+            raise DownloadError(KNOWN_BAD_URLS[url_as_str])
         try:
             media_item.current_attempt = media_item.current_attempt or 1
             media_item.duration = await self.manager.db_manager.history_table.get_duration(self.domain, media_item)
