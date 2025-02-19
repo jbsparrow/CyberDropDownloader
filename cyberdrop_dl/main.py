@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
-import os
 import sys
 from functools import wraps
 from pathlib import Path
@@ -18,6 +17,7 @@ from rich.logging import RichHandler
 from cyberdrop_dl import env
 from cyberdrop_dl.clients.errors import InvalidYamlError
 from cyberdrop_dl.managers.manager import Manager
+from cyberdrop_dl.profiling import profile
 from cyberdrop_dl.scraper.scraper import ScrapeMapper
 from cyberdrop_dl.ui.program_ui import ProgramUI
 from cyberdrop_dl.utils import constants
@@ -283,52 +283,6 @@ def actual_main() -> None:
             asyncio.run(manager.close())
     loop.close()
     sys.exit(exit_code)
-
-
-def profile(func: Callable) -> None:
-    import cProfile
-    import pstats
-    import shutil
-    from contextlib import contextmanager
-    from datetime import datetime
-    from tempfile import TemporaryDirectory
-
-    @contextmanager
-    def temp_dir_context():
-        with TemporaryDirectory() as temp_dir:
-            old_cwd = Path.cwd()
-            temp_dir_path = Path(temp_dir).resolve()
-            cookies_dir = old_cwd / "AppData/Cookies"
-            if cookies_dir.is_dir():
-                temp_cookies_dir = temp_dir_path / "AppData/Cookies"
-                temp_cookies_dir.mkdir(parents=True, exist_ok=True)
-                for cookie_file in cookies_dir.glob("*.txt"):
-                    shutil.copy(cookie_file, temp_cookies_dir)
-
-            os.chdir(temp_dir_path)
-            log_file = temp_dir_path / "cyberdrop_dl_debug.log"
-            print(f"Using {temp_dir_path} as temp AppData dir")  # noqa: T201
-            env.DEBUG_LOG_FILE_FOLDER = temp_dir_path
-            try:
-                yield
-            finally:
-                os.chdir(old_cwd)
-                date = datetime.now().strftime("%Y%m%d_%H%M%S")
-                date = ""
-                new_path = Path(f"cyberdrop_dl_debug_{date}.log")
-                shutil.move(log_file, new_path)
-                print(f"Profiling folder: {temp_dir_path}")  # noqa: T201
-                input("Press any key to finish and delete the profiling folder: ")
-
-    with temp_dir_context(), cProfile.Profile() as cdl_profile:
-        with contextlib.suppress(SystemExit):
-            func()
-
-    print("Generating profile report..")  # noqa: T201
-    results = pstats.Stats(cdl_profile)
-    results.sort_stats(pstats.SortKey.TIME)
-    results.dump_stats(filename="cyberdrop_dl.profiling")
-    print("DONE!")  # noqa: T201
 
 
 if __name__ == "__main__":
