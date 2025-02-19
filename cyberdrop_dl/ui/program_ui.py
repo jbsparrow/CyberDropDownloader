@@ -267,6 +267,8 @@ class ProgramUI:
         path = self.manager.path_manager.config_folder.parent / "CHANGELOG.md"
         url = "https://raw.githubusercontent.com/jbsparrow/CyberDropDownloader/refs/heads/master/CHANGELOG.md"
         _, latest_version = check_latest_pypi(log_to_console=False)
+        if not latest_version:
+            return
         name = f"{path.stem}_{latest_version}{path.suffix}"
         changelog = path.with_name(name)
         if not changelog.is_file():

@@ -240,15 +240,24 @@ def delete_empty_folders(manager: Manager):
 def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -> tuple[str, str]:
     """Checks if the current version is the latest version."""
 
-    with request("GET", constants.PYPI_JSON_URL, timeout=30) as response:
-        contents = response.content
+    try:
+        with request("GET", constants.PYPI_JSON_URL, timeout=30) as response:
+            contents = response.content
+    except Exception:
+        color = "bold_red"
+        message = Text("Unable to get latest version information", style=color)
+        if call_from_ui:
+            rich.print(message)
+        elif log_to_console:
+            log_with_color(message.plain, color, 40, show_in_stats=False)
+        return "", ""
 
     data: dict[str, dict] = json.loads(contents)
     latest_version: str = data["info"]["version"]
     releases = list(data["releases"].keys())
     color = ""
     level = 30
-    is_prerelease, latest_testing_version, message = check_prelease_version(current_version, releases)
+    is_prerelease, latest_testing_version, message = check_prelease_version(releases)
 
     if current_version not in releases:
         message = Text("You are on an unreleased version, skipping version check")
@@ -271,9 +280,10 @@ def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -
     return current_version, latest_version
 
 
-def check_prelease_version(current_version: str, releases: list[str]) -> tuple[bool, str, Text | str]:
+def check_prelease_version(releases: list[str]) -> tuple[bool, str, Text]:
     match = re.match(constants.PRELEASE_VERSION_PATTERN, current_version)
-    latest_testing_version = message = ""
+    latest_testing_version = ""
+    message = Text("")
     running_prerelease = next((tag for tag in constants.PRERELEASE_TAGS if tag in current_version), False)
 
     if running_prerelease and match:
@@ -290,7 +300,7 @@ def check_prelease_version(current_version: str, releases: list[str]) -> tuple[b
         else:
             message = f"You are currently on the latest {ui_tag} version of [b cyan]{major_version}.{minor_version}.{patch_version}[/b cyan]"
             message = Text.from_markup(message)
-    return running_prerelease, latest_testing_version, message
+    return bool(running_prerelease), latest_testing_version, message
 
 
 async def send_webhook_message(manager: Manager) -> None:
