@@ -118,7 +118,14 @@ class ScraperClient:
                     if not retry:
                         raise DDOSGuardError(message="Unable to access website with flaresolverr cookies") from None
                     return await self.get_soup(
-                        domain, url, client_session, origin, with_response_url, retry=False, cache_disabled=True
+                        domain,
+                        url,
+                        client_session,
+                        origin,
+                        with_response_url,
+                        retry=False,
+                        cache_disabled=True,
+                        with_response_headers=with_response_headers,
                     )
                 if with_response_url:
                     return soup, response_URL
@@ -131,9 +138,12 @@ class ScraperClient:
             if not any(s in content_type.lower() for s in ("html", "text")):
                 raise InvalidContentTypeError(message=f"Received {content_type}, was expecting text", origin=origin)
             text = await CachedStreamReader(await response.read()).read()
+            soup = BeautifulSoup(text, "html.parser")
             if with_response_url:
-                return BeautifulSoup(text, "html.parser"), response.url
-            return BeautifulSoup(text, "html.parser")
+                return soup, response.url
+            if with_response_headers:
+                return soup, response.headers
+            return soup
 
     async def get_soup_and_return_url(
         self, domain: str, url: URL, origin: ScrapeItem | URL | None = None, **kwargs
