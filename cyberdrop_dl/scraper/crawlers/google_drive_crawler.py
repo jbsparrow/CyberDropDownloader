@@ -89,7 +89,7 @@ class GoogleDriveCrawler(Crawler):
         filename = get_filename_from_headers(headers) or link.name
         scrape_item.possible_datetime = get_datetime_from_headers(headers)
         filename, ext = self.get_filename_and_ext(filename)
-        await self.handle_file(link, scrape_item, filename, ext)
+        await self.handle_file(canonical_url, scrape_item, filename, ext, debrid_link=link)
 
     async def get_file_url_and_headers(self, url: URL, file_id: str) -> tuple[URL, dict]:
         soup: BeautifulSoup | None = None
