@@ -17,17 +17,26 @@ PYPI_JSON_URL = "https://pypi.org/pypi/cyberdrop-dl-patched/json"
 current_version = Version(__version__)
 
 
+class LogInfo(NamedTuple):
+    level: int
+    style: str
+
+
 class UpdateLogLevel(StrEnum):
     OFF = "OFF"
     CONSOLE = "CONSOLE"
     ON = "ON"
 
 
-class UpdateDetails(NamedTuple):
+class UpdateInfo(NamedTuple):
     message: Text
-    log_level: int
-    color: str
+    log_info: LogInfo
     version: Version | None
+
+
+INFO = LogInfo(20, "")
+WARNING = LogInfo(30, "bold_yellow")
+ERROR = LogInfo(40, "bold_red")
 
 
 def check_latest_pypi(logging: Literal["OFF", "CONSOLE", "ON"] = UpdateLogLevel.ON) -> tuple[str, Version | None]:
@@ -40,7 +49,7 @@ def check_latest_pypi(logging: Literal["OFF", "CONSOLE", "ON"] = UpdateLogLevel.
             - ON: Log version information to both the console and the main log file.
 
     Returns:
-        tuple[str, str | None]: current_version, latest_version. Returns None for latest_version if any error occurs
+        tuple[str, Version | None]: current_version, latest_version. Returns None for latest_version if any error occurs
     """
 
     try:
@@ -51,37 +60,60 @@ def check_latest_pypi(logging: Literal["OFF", "CONSOLE", "ON"] = UpdateLogLevel.
     except Exception:
         contents = ""
 
-    update_info = process_pypi_response(contents)
+    update = process_pypi_response(contents)
 
     if logging == UpdateLogLevel.ON:
-        log_with_color(update_info.message.plain, update_info.color, update_info.log_level, show_in_stats=False)
+        log_with_color(update.message.plain, update.log_info.style, update.log_info.level, show_in_stats=False)
     elif logging == UpdateLogLevel.CONSOLE:
-        rich.print(update_info.message)
+        rich.print(update.message)
 
-    return __version__, update_info.version
+    return __version__, update.version
 
 
-def process_pypi_response(response: bytes | str) -> UpdateDetails:
+def process_pypi_response(response: bytes | str) -> UpdateInfo:
     if not response:
         color = "bold_red"
-        prerelease_message = Text("Unable to get latest version information", style=color)
-        level = 40
-        return UpdateDetails(prerelease_message, level, color, None)
+        error_message = Text("Unable to get latest version information", style=color)
+        return UpdateInfo(error_message, ERROR, None)
 
     data: dict[str, dict] = json.loads(response)
-
     releases = list(data["releases"].keys())
-    color = ""
-    level = 30
     package_info = PackageDetails.create(releases)
-    prerelease_msg, level = get_prerelease_message(package_info)
-    latest_version = package_info.latest_version
-    message = prerelease_msg
-    if not message:
-        latest_version = package_info.latest_stable_release
-        message, level = get_stable_release_message(package_info)
+    return get_update_message(package_info)
 
-    return UpdateDetails(message, level, color, latest_version)
+
+def get_update_message(package_info: PackageDetails) -> UpdateInfo:
+    latest_version = package_info.latest_stable_release
+    pre_tag = None
+
+    if package_info.is_prerelease:
+        latest_version = package_info.latest_prerelease_match
+        pre_tag = package_info.prerelease_tag
+
+    if package_info.is_from_the_future or package_info.is_unreleased or not latest_version:
+        msg = Text("You are on an unreleased version, skipping version check", style=WARNING.style)
+        UpdateInfo(msg, WARNING, latest_version)
+
+    version_text = Text(str(latest_version), style="cyan")
+
+    if package_info.current_version == latest_version:
+        msg_mkp = "You are currently on the latest version of Cyberdrop-DL :white_check_mark:"
+        if pre_tag:
+            msg_mkp = f"You are currently on the latest {pre_tag} version:"
+        msg = Text.from_markup(msg_mkp, style=INFO.style).append_text(version_text)
+        UpdateInfo(msg, INFO, latest_version)
+
+    spacer = f"{pre_tag} " if pre_tag else ""
+    msg_str = f"A new {spacer}version of Cyberdrop-DL is available: "
+    msg = Text(msg_str, style=WARNING.style).append_text(version_text)
+    return UpdateInfo(msg, WARNING, latest_version)
+
+
+def get_prerelease_tag(version: Version) -> str | None:
+    if version.is_prerelease:
+        return version.pre[0]  # type: ignore
+    if version.is_devrelease:
+        return "dev"
 
 
 class PackageDetails(NamedTuple):
@@ -139,44 +171,3 @@ class PackageDetails(NamedTuple):
     def create(cls, releases: list[str]) -> Self:
         all_releases = [Version(release) for release in releases]
         return cls(current_version, all_releases)
-
-
-def get_stable_release_message(package_info: PackageDetails) -> tuple[Text, int]:
-    assert not package_info.is_prerelease
-
-    if package_info.is_unreleased:
-        color = "bold_yellow"
-        return Text("You are on an unreleased version, skipping version check", style=color), 30
-
-    info = Text(str(package_info.latest_stable_release), style="cyan")
-
-    if package_info.current_version == package_info.latest_stable_release:
-        message_mkp = "You are currently on the latest version of Cyberdrop-DL :white_check_mark:"
-        return Text.from_markup(message_mkp).append_text(info), 20
-
-    message_str = "A new version of Cyberdrop-DL is available: "
-    return Text(message_str).append_text(info), 30
-
-
-def get_prerelease_message(package_info: PackageDetails) -> tuple[Text | None, int]:
-    if not package_info.is_prerelease:
-        return None, 10
-
-    if package_info.is_from_the_future or package_info.is_unreleased or not package_info.latest_prerelease_match:
-        return Text("You are on an unreleased version, skipping version check", style="bold_yellow"), 30
-
-    info = Text(str(package_info.latest_prerelease_match), style="cyan")
-
-    if package_info.current_version == package_info.latest_prerelease_match:
-        message_mkp = f"You are currently on the latest {package_info.prerelease_tag} version:"
-        return Text.from_markup(message_mkp).append_text(info), 20
-
-    message_str = f"A new {package_info.prerelease_tag} version of Cyberdrop-DL is available: "
-    return Text(message_str).append_text(info), 30
-
-
-def get_prerelease_tag(version: Version) -> str | None:
-    if version.is_prerelease:
-        return version.pre[0]  # type: ignore
-    if version.is_devrelease:
-        return "dev"
