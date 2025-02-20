@@ -282,7 +282,7 @@ async def send_webhook_message(manager: Manager) -> None:
         logger(f"Webhook Notifications Results: {result_to_log}")
 
 
-def open_in_text_editor(file_path: Path) -> bool:
+def open_in_text_editor(file_path: Path) -> bool | None:
     """Opens file in OS text editor."""
     using_desktop_enviroment = (
         any(var in os.environ for var in ("DISPLAY", "WAYLAND_DISPLAY")) and "SSH_CONNECTION" not in os.environ

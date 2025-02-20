@@ -17,9 +17,9 @@ from cyberdrop_dl.clients.hash_client import hash_directory_scanner
 from cyberdrop_dl.ui.prompts import user_prompts
 from cyberdrop_dl.ui.prompts.basic_prompts import ask_dir_path, enter_to_continue
 from cyberdrop_dl.ui.prompts.defaults import DONE_CHOICE, EXIT_CHOICE
-from cyberdrop_dl.utils.check_updates import check_latest_pypi
 from cyberdrop_dl.utils.cookie_management import clear_cookies
 from cyberdrop_dl.utils.sorting import Sorter
+from cyberdrop_dl.utils.updates import check_latest_pypi
 from cyberdrop_dl.utils.utilities import clear_term, open_in_text_editor
 
 if TYPE_CHECKING:

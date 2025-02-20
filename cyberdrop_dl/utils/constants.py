@@ -71,16 +71,7 @@ class NotificationResult(Enum):
 
 
 # Pypi
-PRERELEASE_TAGS = {
-    "dev": "Development",
-    "pre": "Pre-Release",
-    "rc": "Release Candidate",
-    "a": "Alpha",
-    "b": "Beta",
-}
 
-PRELEASE_VERSION_PATTERN = r"(\d+)\.(\d+)\.(\d+)(?:\.([a-z]+)\d+|([a-z]+)\d+)"
-PYPI_JSON_URL = "https://pypi.org/pypi/cyberdrop-dl-patched/json"
 
 # file formats
 FILE_FORMATS = {
