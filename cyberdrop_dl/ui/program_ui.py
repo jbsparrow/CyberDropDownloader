@@ -104,7 +104,7 @@ class ProgramUI:
 
     def _check_updates(self) -> None:
         """Checks Cyberdrop-DL updates."""
-        check_latest_pypi(call_from_ui=True)
+        check_latest_pypi(logging="CONSOLE")
         enter_to_continue()
 
     def _change_config(self) -> None:
@@ -267,7 +267,7 @@ class ProgramUI:
         """Get latest changelog file from github. Returns its content."""
         path = self.manager.path_manager.config_folder.parent / "CHANGELOG.md"
         url = "https://raw.githubusercontent.com/jbsparrow/CyberDropDownloader/refs/heads/master/CHANGELOG.md"
-        _, latest_version = check_latest_pypi(log_to_console=False)
+        _, latest_version = check_latest_pypi(logging="OFF")
         if not latest_version:
             return
         name = f"{path.stem}_{latest_version}{path.suffix}"

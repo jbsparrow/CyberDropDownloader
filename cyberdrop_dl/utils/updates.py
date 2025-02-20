@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import re
+from enum import StrEnum
+from typing import Literal
 
 import rich
 from requests import request
@@ -21,15 +23,24 @@ PRERELEASE_TAGS = {
 }
 
 
-def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -> tuple[str, str]:
+class UpdatesLogLevel(StrEnum):
+    OFF = "OFF"
+    CONSOLE = "CONSOLE"
+    ON = "ON"
+
+
+def check_latest_pypi(logging: Literal["OFF", "CONSOLE", "ON"] = UpdatesLogLevel.ON) -> tuple[str, str]:
     """Checks if the current version is the latest version.
 
     Args:
-        log_to_console (bool, optional): Log message to file and shows in console.
-        call_from_ui (bool, optional): Only shows message in console. Ignores `log_to_console`.
+        log_to (str, optional): Controls where version information is logged.
+            - OFF: Do not log version information.
+            - CONSOLE: Log version information to the console.
+            - ON: Log version information to both the console and the main log file.
 
     Returns:
-        tuple[str, str]: current_version, latest_version
+        tuple[str, str]: A tuple containing the current version and the latest
+        available version.
     """
 
     try:
@@ -38,9 +49,9 @@ def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -
     except Exception:
         color = "bold_red"
         message = Text("Unable to get latest version information", style=color)
-        if call_from_ui:
+        if logging == UpdatesLogLevel.CONSOLE:
             rich.print(message)
-        elif log_to_console:
+        elif logging == UpdatesLogLevel.ON:
             log_with_color(message.plain, color, 40, show_in_stats=False)
         return "", ""
 
@@ -49,7 +60,7 @@ def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -
     releases = list(data["releases"].keys())
     color = ""
     level = 30
-    is_prerelease, latest_testing_version, message = check_prelease_version(releases)
+    is_prerelease, latest_testing_version, message = check_prerelease_version(releases)
 
     if current_version not in releases:
         message = Text("You are on an unreleased version, skipping version check")
@@ -64,22 +75,22 @@ def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -
         message = Text.from_markup("You are currently on the latest version of Cyberdrop-DL :white_check_mark:")
         level = 20
 
-    if call_from_ui:
+    if logging == UpdatesLogLevel.CONSOLE:
         rich.print(message)
-    elif log_to_console:
+    elif logging == UpdatesLogLevel.ON:
         log_with_color(message.plain, color, level, show_in_stats=False)
 
     return current_version, latest_version
 
 
-def check_prelease_version(releases: list[str]) -> tuple[bool, str, Text]:
+def check_prerelease_version(releases: list[str]) -> tuple[bool, str, Text]:
     """Checks if the current version is a prerelease
 
     Args:
-        releases (list[str]): List of releases form pypi
+        releases (list[str]): List of releases from pypi
 
     Returns:
-        tuple[bool, str, Text]: running_prerelease, latest_prerelease_version, message
+        tuple[bool, str, Text]: running_prerelease, latest_prerelease_version, release_info_message
     """
     match = re.match(PRELEASE_VERSION_PATTERN, current_version)
     latest_testing_version = ""
