@@ -64,6 +64,9 @@ class NoPaddingLogRender(LogRender):
             output.append(level)
             output.pad_right(1)
 
+        if not self.cdl_padding:
+            self.cdl_padding = get_renderable_length(output)
+
         if self.show_path and path and "logger.py" not in path:
             path_text = Text(style="log.path")
             path_text.append(path, style=f"link file://{link_path}" if link_path else "")
@@ -77,14 +80,12 @@ class NoPaddingLogRender(LogRender):
             output.pad_right(1)
 
         padded_lines: list[ConsoleRenderable] = []
-        if not self.cdl_padding:
-            self.cdl_padding = get_renderable_length(output)
+
         for renderable in Renderables(renderables):  # type: ignore
             if isinstance(renderable, Text):
-                renderable = indent_text(renderable)
+                renderable = indent_text(renderable, self.cdl_padding)
                 renderable.stylize("log.message")
                 output.append(renderable)
-                output.pad_right(1)
                 continue
             padded_lines.append(Padding(renderable, (0, 0, 0, self.cdl_padding), expand=False))
 
