@@ -18,6 +18,12 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
+SOUP_ERRORS = {
+    410: ["File has been removed"],
+    401: ["File is not publicly available"],
+}
+
+
 class CyberfileCrawler(Crawler):
     PRIMARY_BASE_DOMAINS: ClassVar[dict[str, URL]] = {
         "cyberfile": URL("https://cyberfile.me/"),
@@ -200,6 +206,7 @@ class CyberfileCrawler(Crawler):
                 break
 
         if not contentId:
+            check_soup_error(scrape_item, soup)
             raise ScrapeError(422, message="contentId not found", origin=scrape_item)
         await self.handle_content_id(scrape_item, contentId)
 
@@ -216,6 +223,7 @@ class CyberfileCrawler(Crawler):
                 file_button = ajax_soup.select('div[class="btn-group responsiveMobileMargin"] button')[-1]
                 html_download_text = file_button.get("onclick")
         except (AttributeError, IndexError):
+            check_soup_error(scrape_item, ajax_soup)
             raise ScrapeError(422, "Couldn't find download button", origin=scrape_item) from None
 
         link_str = html_download_text.split("'")[1].strip().removesuffix("'")
@@ -257,6 +265,7 @@ class CyberfileCrawler(Crawler):
             # override if data has it
             nodeId = data.get("nodeId", soup_nodeId.get("value"))
             if not nodeId:
+                check_soup_error(scrape_item, ajax_soup)
                 raise ScrapeError(422, message="nodeId not found", origin=scrape_item) from None
 
             async with self.request_limiter:
@@ -279,3 +288,11 @@ class CyberfileCrawler(Crawler):
                 ajax_soup = BeautifulSoup(ajax_dict["html"].replace("\\", ""), "html.parser")
 
         return ajax_soup, ajax_dict["page_title"]
+
+
+def check_soup_error(scrape_item: ScrapeItem, soup: BeautifulSoup) -> None:
+    soup_text = str(soup)
+    for code, errors in SOUP_ERRORS.items():
+        for text in errors:
+            if text in soup_text:
+                raise ScrapeError(code, origin=scrape_item)

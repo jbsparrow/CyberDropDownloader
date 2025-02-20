@@ -63,7 +63,7 @@ class EightMusesCrawler(Crawler):
                 tile_link,
                 tile_title,
                 part_of_album=part_of_album,
-                album_id=f'{scrape_item.album_id}/{tile_title.replace(" ", "-")}',
+                album_id=f"{scrape_item.album_id}/{tile_title.replace(' ', '-')}",
                 add_parent=scrape_item.url,
             )
             if part_of_album:

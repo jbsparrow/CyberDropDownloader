@@ -107,7 +107,7 @@ class BunkrrCrawler(Crawler):
         if "a" in scrape_item.url.parts:
             await self.album(scrape_item)
         elif is_cdn(scrape_item.url) and not is_stream_redirect(scrape_item.url):
-            await self.handle_direct_link(scrape_item)
+            await self.handle_direct_link(scrape_item, fallback_filename=scrape_item.url.name)
         else:
             await self.file(scrape_item)
 
@@ -198,18 +198,22 @@ class BunkrrCrawler(Crawler):
         `fallback_filename` will only be used if the link has not `n` query parameter"""
 
         link = url or scrape_item.url
+        referer = ""
         if is_reinforced_link(link):
+            referer = link
             link: URL = await self.handle_reinforced_link(link, scrape_item)
 
         if not link:
             return
+        link = override_cdn(link)
         try:
             src_filename, ext = self.get_filename_and_ext(link.name)
         except NoExtensionError:
             src_filename, ext = self.get_filename_and_ext(scrape_item.url.name, assume_ext=".mp4")
-        filename = link.query.get("n") or fallback_filename
+        filename, _ = self.get_filename_and_ext(link.query.get("n") or fallback_filename)
         if not url:
-            scrape_item = self.create_scrape_item(scrape_item, URL("https://get.bunkrr.su/"))
+            referer = referer or URL("https://get.bunkrr.su/")
+            scrape_item = self.create_scrape_item(scrape_item, referer)
         await self.handle_file(link, scrape_item, src_filename, ext, custom_filename=filename)
 
     @error_handling_wrapper
@@ -252,6 +256,8 @@ def override_cdn(url: URL) -> URL:
     assert url.host
     if "milkshake" in url.host:
         return url.with_host("mlk-bk.cdn.gigachad-cdn.ru")
+    if "brg-bk.cdn" in url.host:
+        return url.with_host("i-burger.bunkr.ru")
     return url
 
 

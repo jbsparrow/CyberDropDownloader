@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.scraper.crawler import ScrapeItem
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
+
 # See: https://developers.cloudflare.com/support/troubleshooting/cloudflare-errors/troubleshooting-cloudflare-5xx-errors/
 CLOUDFLARE_ERRORS = {
     520: "Unexpected Response",
@@ -42,9 +43,7 @@ class CDLBaseError(Exception):
     ) -> None:
         self.ui_message = ui_message
         self.message = message or ui_message
-        self.origin = origin
-        if origin and not isinstance(origin, URL | Path):
-            self.origin = origin.parents[0] if origin.parents else None
+        self.origin = get_origin(origin)
         super().__init__(self.message)
         if status:
             self.status = status
@@ -98,11 +97,16 @@ class DDOSGuardError(CDLBaseError):
 
 class DownloadError(CDLBaseError):
     def __init__(
-        self, status: str | int, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None
+        self,
+        status: str | int,
+        message: str | None = None,
+        origin: ScrapeItem | MediaItem | URL | None = None,
+        retry: bool = False,
     ) -> None:
         """This error will be thrown when a download fails."""
         ui_message = create_error_msg(status)
         msg = message
+        self.retry = retry
         super().__init__(ui_message, message=msg, status=status, origin=origin)
 
 
@@ -160,8 +164,17 @@ class ScrapeError(CDLBaseError):
     ) -> None:
         """This error will be thrown when a scrape fails."""
         ui_message = create_error_msg(status)
-        msg = message
-        super().__init__(ui_message, message=msg, status=status, origin=origin)
+        super().__init__(ui_message, message=message, status=status, origin=origin)
+
+
+class InvalidURLError(ScrapeError):
+    def __init__(
+        self, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None, url: URL | str = ""
+    ) -> None:
+        """This error will be thrown when parsed URL is not valid."""
+        ui_message = "Invalid URL"
+        self.url = url
+        super().__init__(ui_message, message=message, origin=origin)
 
 
 class LoginError(CDLBaseError):
@@ -179,7 +192,7 @@ class InvalidYamlError(CDLBaseError):
     def __init__(self, file: Path, e: ConstructorError) -> None:
         """This error will be thrown when a yaml config file has invalid values."""
         mark = e.problem_mark if hasattr(e, "problem_mark") else e
-        message = f"File '{file.resolve()}' has an invalid config. Please verify and edit it manually\n {mark}\n\n{VALIDATION_ERROR_FOOTER}"
+        message = f"File '{file.resolve()}' has an invalid config. \n Please verify and edit it manually\n {mark}\n\n{VALIDATION_ERROR_FOOTER}"
         super().__init__("Invalid YAML", message=message, origin=file)
 
 
@@ -198,3 +211,9 @@ def create_error_msg(error: int) -> str:
 @create_error_msg.register
 def _(error: str) -> str:
     return error
+
+
+def get_origin(origin: ScrapeItem | Path | MediaItem | URL | None = None) -> Path | URL | None:
+    if origin and not isinstance(origin, URL | Path):
+        return origin.parents[0] if origin.parents else None
+    return origin

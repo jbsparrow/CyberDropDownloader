@@ -16,7 +16,6 @@ from cyberdrop_dl.clients.errors import (
     DurationError,
     InsufficientFreeSpaceError,
     RestrictedFiletypeError,
-    create_error_msg,
 )
 from cyberdrop_dl.utils.constants import CustomHTTPStatus
 from cyberdrop_dl.utils.logger import log
@@ -30,6 +29,16 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
 
+KNOWN_BAD_URLS = {
+    "https://i.imgur.com/removed.png": 404,
+    "https://saint2.su/assets/notfound.gif": 404,
+    "https://bnkr.b-cdn.net/maintenance-vid.mp4": 503,
+    "https://bnkr.b-cdn.net/maintenance.mp4": 503,
+    "https://c.bunkr-cache.se/maintenance-vid.mp4": 503,
+    "https://c.bunkr-cache.se/maintenance.jpg": 503,
+}
+
+
 def retry(func: Callable) -> Callable:
     """This function is a wrapper that handles retrying for failed downloads."""
 
@@ -40,6 +49,8 @@ def retry(func: Callable) -> Callable:
             try:
                 return await func(self, *args, **kwargs)
             except DownloadError as e:
+                if not e.retry:
+                    raise
                 self.attempt_task_removal(media_item)
                 max_attempts = self.manager.config_manager.global_settings_data.rate_limiting_options.download_attempts
                 if self.manager.config_manager.settings_data.download_options.disable_download_attempt_limit:
@@ -59,10 +70,7 @@ def retry(func: Callable) -> Callable:
                     log(retry_msg, 20)
                     continue
 
-                self.manager.progress_manager.download_stats_progress.add_failure(e.ui_message)
-                await self.manager.log_manager.write_download_error_log(media_item.url, e.message, media_item.referer)
-                self.manager.progress_manager.download_progress.add_failed()
-                break
+                raise
 
     return wrapper
 
@@ -161,7 +169,9 @@ class Downloader:
     @retry
     async def download(self, media_item: MediaItem) -> None:
         """Downloads the media item."""
-        origin = media_item.referer
+        url_as_str = str(media_item.url)
+        if url_as_str in KNOWN_BAD_URLS:
+            raise DownloadError(KNOWN_BAD_URLS[url_as_str])
         try:
             media_item.current_attempt = media_item.current_attempt or 1
             media_item.duration = await self.manager.db_manager.history_table.get_duration(self.domain, media_item)
@@ -179,17 +189,8 @@ class Downloader:
             self.manager.progress_manager.download_progress.add_skipped()
             self.attempt_task_removal(media_item)
 
-        except (DownloadError, ClientResponseError) as e:
-            ui_message = create_error_msg(getattr(e, "ui_message", e.status))
-            full_message = e.message
-            if e.message != ui_message:
-                full_message = f"{e.status} - {e.message}"
-            log_message_short = log_message = full_message
-            log(f"{self.log_prefix} failed: {media_item.url} with error: {log_message}", 40)
-            await self.manager.log_manager.write_download_error_log(media_item.url, log_message_short, origin)
-            self.manager.progress_manager.download_stats_progress.add_failure(ui_message)
-            self.manager.progress_manager.download_progress.add_failed()
-            self.attempt_task_removal(media_item)
+        except (DownloadError, ClientResponseError):
+            raise
 
         except (
             ConnectionResetError,
@@ -205,13 +206,21 @@ class Downloader:
                     media_item.filename in self._current_attempt_filesize
                     and self._current_attempt_filesize[media_item.filename] >= size
                 ):
-                    raise DownloadError(ui_message, message=f"{self.log_prefix} failed") from None
+                    raise DownloadError(ui_message, message=f"{self.log_prefix} failed", retry=True) from None
                 self._current_attempt_filesize[media_item.filename] = size
                 media_item.current_attempt = 0
-                raise DownloadError(status=999, message="Download timeout reached, retrying") from None
+                raise DownloadError(status=999, message="Download timeout reached, retrying", retry=True) from None
 
             message = str(e)
-            raise DownloadError(ui_message, message) from e
+            raise DownloadError(ui_message, message, retry=True) from e
+
+    async def write_download_error(self, media_item: MediaItem, log_msg: str, ui_msg: str, exc_info=None) -> None:
+        self.attempt_task_removal(media_item)
+        full_message = f"{self.log_prefix} Failed: {media_item.url} ({log_msg} \n -> Referer: {media_item.referer})"
+        log(full_message, 40, exc_info=exc_info)  # type: ignore
+        await self.manager.log_manager.write_download_error_log(media_item, log_msg)  # type: ignore
+        self.manager.progress_manager.download_stats_progress.add_failure(ui_msg)
+        self.manager.progress_manager.download_progress.add_failed()
 
     @staticmethod
     def is_failed(status: int):

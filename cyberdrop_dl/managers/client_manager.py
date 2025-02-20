@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import ssl
+from dataclasses import dataclass
 from http import HTTPStatus
 from http.cookiejar import MozillaCookieJar
 from typing import TYPE_CHECKING
@@ -117,7 +118,7 @@ class ClientManager:
                 continue
             current_cookie_file_domains = set()
             for cookie in cookie_jar:
-                simplified_domain = cookie.domain[1:] if cookie.domain.startswith(".") else cookie.domain
+                simplified_domain = cookie.domain.removeprefix(".")
                 if simplified_domain not in current_cookie_file_domains:
                     log(f"Found cookies for {simplified_domain} in file '{file.name}'", 20)
                     current_cookie_file_domains.add(simplified_domain)
@@ -222,6 +223,27 @@ class ClientManager:
         await self.flaresolverr._destroy_session()
 
 
+@dataclass(frozen=True, slots=True)
+class FlaresolverrResponse:
+    status: str
+    cookies: dict
+    user_agent: str
+    soup: BeautifulSoup
+    url: URL
+
+    @classmethod
+    def from_dict(cls, flaresolverr_resp: dict) -> FlaresolverrResponse:
+        status = flaresolverr_resp["status"]
+        solution: dict = flaresolverr_resp["solution"]
+        response = solution["response"]
+        user_agent = solution["userAgent"].strip()
+        url_str: str = solution["url"]
+        cookies: dict = solution.get("cookies") or {}
+        soup = BeautifulSoup(response, "html.parser")
+        url = URL(url_str)
+        return cls(status, cookies, user_agent, soup, url)
+
+
 class Flaresolverr:
     """Class that handles communication with flaresolverr."""
 
@@ -230,6 +252,7 @@ class Flaresolverr:
         self.flaresolverr_host = client_manager.manager.config_manager.global_settings_data.general.flaresolverr
         self.enabled = bool(self.flaresolverr_host)
         self.session_id = None
+        self.timeout = aiohttp.ClientTimeout(total=120000, connect=60000)
 
     async def _request(
         self,
@@ -259,6 +282,7 @@ class Flaresolverr:
             ssl=self.client_manager.ssl_context,
             proxy=self.client_manager.proxy,
             json=data,
+            timeout=self.timeout,
         ) as response:
             json_obj: dict = await response.json()  # type: ignore
 
@@ -287,35 +311,32 @@ class Flaresolverr:
         update_cookies: bool = True,
     ) -> tuple[BeautifulSoup, URL]:
         """Returns the resolved URL from the given URL."""
-        flaresolverr_resp: dict = await self._request("request.get", client_session, origin, url=url)
+        json_resp: dict = await self._request("request.get", client_session, origin, url=url)
 
-        status = flaresolverr_resp.get("status")
-        if status != "ok":
+        try:
+            fs_resp = FlaresolverrResponse.from_dict(json_resp)
+        except (AttributeError, KeyError):
+            raise DDOSGuardError(message="Invalid response from flaresolverr", origin=origin) from None
+
+        if fs_resp.status != "ok":
             raise DDOSGuardError(message="Failed to resolve URL with flaresolverr", origin=origin)
 
-        solution: dict = flaresolverr_resp.get("solution")
-        if not solution:
-            raise DDOSGuardError(message="Invalid response from flaresolverr", origin=origin)
-        response = BeautifulSoup(solution.get("response"), "html.parser")
-        response_url = URL(solution.get("url"))
-        cookies: list[dict] = solution.get("cookies")
-        user_agent = client_session.headers.get("User-Agent").strip()
-        flaresolverr_user_agent = solution.get("userAgent").strip()
-        mismatch_msg = f"Config user_agent and flaresolverr user_agent do not match:\n  Cyberdrop-DL: {user_agent}\n  Flaresolverr: {flaresolverr_user_agent}"
+        mismatch_msg = f"Config user_agent and flaresolverr user_agent do not match: \n  Cyberdrop-DL: {fs_resp.user_agent}\n  Flaresolverr: {fs_resp.user_agent}"
 
-        if self.client_manager.check_ddos_guard(response) or self.client_manager.check_cloudflare(response):
+        user_agent = client_session.headers["User-Agent"].strip()
+        if self.client_manager.check_ddos_guard(fs_resp.soup) or self.client_manager.check_cloudflare(fs_resp.soup):
             if not update_cookies:
                 raise DDOSGuardError(message="Invalid response from flaresolverr", origin=origin)
-            if flaresolverr_user_agent != user_agent:
+            if fs_resp.user_agent != user_agent:
                 raise DDOSGuardError(message=mismatch_msg, origin=origin)
 
         if update_cookies:
-            if flaresolverr_user_agent != user_agent:
+            if fs_resp.user_agent != user_agent:
                 log(f"{mismatch_msg}\nResponse was successful but cookies will not be valid", 30)
 
-            for cookie in cookies:
+            for cookie in fs_resp.cookies:
                 self.client_manager.cookies.update_cookies(
                     {cookie["name"]: cookie["value"]}, URL(f"https://{cookie['domain']}")
                 )
 
-        return response, response_url
+        return fs_resp.soup, fs_resp.url

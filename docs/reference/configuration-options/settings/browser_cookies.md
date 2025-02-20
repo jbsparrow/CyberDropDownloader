@@ -8,16 +8,16 @@ The `user-agent` config value **MUST** match the `user-agent` of the browser fro
 
 ## `auto_import`
 
-| Type           | Default  |
-|----------------|----------|
-| `bool` | `false`|
+| Type   | Default |
+| ------ | ------- |
+| `bool` | `false` |
 
 Toggles automatic import of cookies at the start of each run
 
 ## `browsers`
 
-| Type           | Default  |
-|----------------|----------|
+| Type             | Default    |
+| ---------------- | ---------- |
 | `list[BROWSERS]` | `[chrome]` |
 
 List of browsers to use for extraction. Each item must be a supported browser's name, separated by commas
@@ -40,7 +40,6 @@ List of browsers to use for extraction. Each item must be a supported browser's 
 | Vivaldi   | :x:                | :white_check_mark: | :white_check_mark: |
 | W3M       | :x:                | :white_check_mark: | :x:                |
 
-
 {% hint style="info" %}
 If cookies exists on multiple selected browsers, the cookies from the last browser in the list will have priority
 {% endhint %}
@@ -51,11 +50,11 @@ If the value entered is `null` or an empty list, no cookies will be extracted fr
 
 ## `sites`
 
-| Type           | Default  |
-|----------------|----------|
-| `list[DOMAINS]` | `[<ALL_SITES>]` |
+| Type            | Default         |
+| --------------- | --------------- |
+| `list[DOMAINS]` | `[<<ALL_SUPPORTED_SITES>>]` |
 
-List of domains to extract cookies from. You can put any domain on the list, but only sites supported by Cyberdrop-DL will be taken into account
+List of domains to extract cookies from. You can put any domain on the list, even if they are not officially supported
 
 ## Manual Cookie Extraction
 

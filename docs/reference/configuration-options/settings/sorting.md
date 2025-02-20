@@ -18,9 +18,9 @@ Shared path flags:
 
 ## `scan_folder`
 
-| Type           | Default  |
-|----------------|----------|
-| `Path` or `null` | `null`|
+| Type             | Default |
+| ---------------- | ------- |
+| `Path` or `null` | `null`  |
 
 Sets the starting point for the file scan
 
@@ -30,20 +30,19 @@ If this is set to `null` (the default), `download_dir` is used instead
 
 ## `sort_downloads`
 
-| Type           | Default  |
-|----------------|----------|
-| `bool` | `false`|
+| Type   | Default |
+| ------ | ------- |
+| `bool` | `false` |
 
 Setting this to `true` will allow Cyberdrop-DL to sort downloads after a run is complete.
 
 ## `sort_folder`
 
-| Type           | Default  |
-|----------------|----------|
-| `Path` | `Downloads/Cyberdrop-DL Sorted Downloads`|
+| Type   | Default                                   |
+| ------ | ----------------------------------------- |
+| `Path` | `Downloads/Cyberdrop-DL Sorted Downloads` |
 
 This is the path to the folder you'd like sorted downloads to be stored in.
-
 
 {% hint style="warning" %}
 Setting `sort_folder` to the same value as `scan_folder` is not officiality supported and will lead to undefined results
@@ -51,9 +50,9 @@ Setting `sort_folder` to the same value as `scan_folder` is not officiality supp
 
 ## `sort_incrementer_format`
 
-| Type           | Default  |
-|----------------|----------|
-| `NonEmptyStr` | ` ({i})`|
+| Type          | Default |
+| ------------- | ------- |
+| `NonEmptyStr` | `({i})` |
 
 When naming collisions happen, Cyberdrop-DL will rename files automatically
 
@@ -63,9 +62,9 @@ You can modify the format as needed, but it must include `{i}` to specify where 
 
 ## `sorted_audio`
 
-| Type           | Default  |
-|----------------|----------|
-| `NonEmptyStr` or `null` | `{sort_dir}/{base_dir}/Audio/{filename}{ext}`|
+| Type                    | Default                                       |
+| ----------------------- | --------------------------------------------- |
+| `NonEmptyStr` or `null` | `{sort_dir}/{base_dir}/Audio/{filename}{ext}` |
 
 This is the format for the directory structure and naming scheme for audio files. Set to `null` skip sorting audio files
 
@@ -81,9 +80,9 @@ Unique Path Flags:
 
 ## `sorted_image`
 
-| Type           | Default  |
-|----------------|----------|
-| `NonEmptyStr` or `null` | `{sort_dir}/{base_dir}/Images/{filename}{ext}`|
+| Type                    | Default                                        |
+| ----------------------- | ---------------------------------------------- |
+| `NonEmptyStr` or `null` | `{sort_dir}/{base_dir}/Images/{filename}{ext}` |
 
 This is the format for the directory structure and naming scheme for image files. Set to `null` skip sorting image files
 
@@ -97,9 +96,9 @@ Unique Path Flags:
 
 ## `sorted_video`
 
-| Type           | Default  |
-|----------------|----------|
-| `NonEmptyStr` or `null`| `{sort_dir}/{base_dir}/Video/{filename}{ext}`|
+| Type                    | Default                                       |
+| ----------------------- | --------------------------------------------- |
+| `NonEmptyStr` or `null` | `{sort_dir}/{base_dir}/Video/{filename}{ext}` |
 
 This is the format for the directory structure and naming scheme for video files. Set to `null` skip sorting video files
 
@@ -119,12 +118,11 @@ Unique Path Flags:
 >
 > `resolution`: `width`x`height` ex. 1080x1920
 
-
 ## `sorted_other`
 
-| Type           | Default  |
-|----------------|----------|
-| `NonEmptyStr` or `null` | `{sort_dir}/{base_dir}/Other/{filename}{ext}`|
+| Type                    | Default                                       |
+| ----------------------- | --------------------------------------------- |
+| `NonEmptyStr` or `null` | `{sort_dir}/{base_dir}/Other/{filename}{ext}` |
 
 This is the format for the directory structure and naming scheme for other files. Set to `null` skip sorting other files
 
@@ -138,7 +136,7 @@ To define the end of a group, insert an group with no name. (`---` or `===`)
 
 Here is an example URL file with two groups:
 
-```
+```text
 https://example.com/file1.jpg
 === Group 1
 https://example.com/file2.jpg
@@ -155,7 +153,7 @@ https://example.com/file7.jpg
 Those downloads would be sorted as follows:
 
 | Loose Files | Group 1   | Group 2   |
-|-------------|-----------|-----------|
+| ----------- | --------- | --------- |
 | file1.jpg   | file2.jpg | file5.jpg |
 | file4.jpg   | file3.jpg | file6.jpg |
 | file7.jpg   |           |           |
