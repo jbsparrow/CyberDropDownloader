@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from enum import StrEnum
 from functools import cached_property
 from typing import TYPE_CHECKING, Literal, NamedTuple, Self
 
@@ -26,12 +25,6 @@ class LogInfo(NamedTuple):
     style: str
 
 
-class UpdateLogLevel(StrEnum):
-    OFF = "OFF"
-    CONSOLE = "CONSOLE"
-    ON = "ON"
-
-
 class UpdateInfo(NamedTuple):
     message: Text
     log_info: LogInfo
@@ -48,7 +41,7 @@ ERROR_UPDATE_INFO = UpdateInfo(ERROR_TEXT, ERROR, None)
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-@dataclass
+@dataclass(order=True)
 class PackageInfo:
     current_version: Version
     releases: tuple[Version, ...]
@@ -93,7 +86,7 @@ class PackageInfo:
 
     @cached_property
     def is_from_the_future(self) -> bool:
-        # Faster to compute than is_unreleased
+        # Faster to compute than is_unreleased if self.latest is already cached
         return self.current_version > self.latest
 
     @classmethod
@@ -105,7 +98,7 @@ class PackageInfo:
 #  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-def check_latest_pypi(logging: Literal["OFF", "CONSOLE", "ON"] = UpdateLogLevel.ON) -> tuple[Version, Version | None]:
+def check_latest_pypi(logging: Literal["OFF", "CONSOLE", "ON"] = "ON") -> tuple[Version, Version | None]:
     """Get latest version from Pypi.
 
     Args:
@@ -128,9 +121,9 @@ def check_latest_pypi(logging: Literal["OFF", "CONSOLE", "ON"] = UpdateLogLevel.
 
     update = process_pypi_response(contents)
 
-    if logging == UpdateLogLevel.ON:
+    if logging == "ON":
         log_with_color(update.message.plain, update.log_info.style, update.log_info.level, show_in_stats=False)
-    elif logging == UpdateLogLevel.CONSOLE:
+    elif logging == "CONSOLE":
         rich.print(update.message)
 
     return current_version, update.version
