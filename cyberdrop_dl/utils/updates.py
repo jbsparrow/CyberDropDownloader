@@ -144,7 +144,7 @@ def get_prerelease_tag(version: Version) -> str | None:
 @dataclass
 class PackageInfo:
     current_version: Version
-    releases: list[Version]
+    releases: tuple[Version, ...]
 
     @cached_property
     def latest(self) -> Version:
@@ -167,12 +167,12 @@ class PackageInfo:
         return bool(self.prerelease_tag)
 
     @cached_property
-    def prereleases(self) -> list[Version]:
-        return [r for r in self.releases if get_prerelease_tag(r)]
+    def prereleases(self) -> tuple[Version, ...]:
+        return tuple([r for r in self.releases if get_prerelease_tag(r)])
 
     @cached_property
-    def stable_releases(self) -> list[Version]:
-        return [r for r in self.releases if not get_prerelease_tag(r)]
+    def stable_releases(self) -> tuple[Version, ...]:
+        return tuple([r for r in self.releases if not get_prerelease_tag(r)])
 
     @cached_property
     def latest_stable(self) -> Version:
@@ -195,5 +195,5 @@ class PackageInfo:
 
     @classmethod
     def create(cls, releases: list[str]) -> Self:
-        all_releases = [Version(release) for release in releases]
+        all_releases = tuple([Version(release) for release in releases])
         return cls(current_version, all_releases)
