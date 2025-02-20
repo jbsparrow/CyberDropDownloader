@@ -86,8 +86,6 @@ def process_pypi_response(response: bytes | str) -> UpdateDetails:
         message = Text("You are on an unreleased version, skipping version check", style=color)
     elif is_prerelease:
         latest_version = latest_prerelease_version
-        color = "bold_red"
-        message.stylize(color)
     elif current_version != latest_version:
         message_mkup = f"A new version of Cyberdrop-DL is available: [cyan]{latest_version}[/cyan]"
         message = Text.from_markup(message_mkup)
