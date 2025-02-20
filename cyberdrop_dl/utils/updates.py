@@ -49,10 +49,10 @@ def check_latest_pypi(logging: Literal["OFF", "CONSOLE", "ON"] = UpdatesLogLevel
     except Exception:
         color = "bold_red"
         message = Text("Unable to get latest version information", style=color)
-        if logging == UpdatesLogLevel.CONSOLE:
-            rich.print(message)
-        elif logging == UpdatesLogLevel.ON:
+        if logging == UpdatesLogLevel.ON:
             log_with_color(message.plain, color, 40, show_in_stats=False)
+        elif logging == UpdatesLogLevel.CONSOLE:
+            rich.print(message)
         return "", ""
 
     data: dict[str, dict] = json.loads(contents)
@@ -63,11 +63,12 @@ def check_latest_pypi(logging: Literal["OFF", "CONSOLE", "ON"] = UpdatesLogLevel
     is_prerelease, latest_testing_version, message = check_prerelease_version(releases)
 
     if current_version not in releases:
-        message = Text("You are on an unreleased version, skipping version check")
         color = "bold_yellow"
+        message = Text("You are on an unreleased version, skipping version check", style=color)
     elif is_prerelease:
         latest_version = latest_testing_version
         color = "bold_red"
+        message.stylize(color)
     elif current_version != latest_version:
         message_mkup = f"A new version of Cyberdrop-DL is available: [cyan]{latest_version}[/cyan]"
         message = Text.from_markup(message_mkup)
@@ -75,10 +76,10 @@ def check_latest_pypi(logging: Literal["OFF", "CONSOLE", "ON"] = UpdatesLogLevel
         message = Text.from_markup("You are currently on the latest version of Cyberdrop-DL :white_check_mark:")
         level = 20
 
-    if logging == UpdatesLogLevel.CONSOLE:
-        rich.print(message)
-    elif logging == UpdatesLogLevel.ON:
+    if logging == UpdatesLogLevel.ON:
         log_with_color(message.plain, color, level, show_in_stats=False)
+    elif logging == UpdatesLogLevel.CONSOLE:
+        rich.print(message)
 
     return current_version, latest_version
 
