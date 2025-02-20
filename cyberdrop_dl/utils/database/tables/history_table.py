@@ -159,10 +159,11 @@ class HistoryTable:
                 0,
             ),
         )
-        await self.db_conn.execute(
-            """UPDATE media SET download_filename = ? WHERE domain = ? and url_path = ?""",
-            (download_filename, domain, url_path),
-        )
+        if download_filename:
+            await self.db_conn.execute(
+                """UPDATE media SET download_filename = ? WHERE domain = ? and url_path = ?""",
+                (download_filename, domain, url_path),
+            )
         await self.db_conn.commit()
 
     async def mark_complete(self, domain: str, media_item: MediaItem) -> None:
