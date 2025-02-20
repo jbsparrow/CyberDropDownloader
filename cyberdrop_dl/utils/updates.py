@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 from enum import StrEnum
-from typing import Literal
+from typing import Literal, NamedTuple
 
 import rich
 from requests import request
@@ -23,13 +23,20 @@ PRERELEASE_TAGS = {
 }
 
 
-class UpdatesLogLevel(StrEnum):
+class UpdateLogLevel(StrEnum):
     OFF = "OFF"
     CONSOLE = "CONSOLE"
     ON = "ON"
 
 
-def check_latest_pypi(logging: Literal["OFF", "CONSOLE", "ON"] = UpdatesLogLevel.ON) -> tuple[str, str]:
+class UpdateDetails(NamedTuple):
+    message: Text
+    log_level: int
+    color: str
+    version: str
+
+
+def check_latest_pypi(logging: Literal["OFF", "CONSOLE", "ON"] = UpdateLogLevel.ON) -> tuple[str, str]:
     """Checks if the current version is the latest version.
 
     Args:
@@ -46,16 +53,29 @@ def check_latest_pypi(logging: Literal["OFF", "CONSOLE", "ON"] = UpdatesLogLevel
     try:
         with request("GET", PYPI_JSON_URL, timeout=30) as response:
             contents = response.content
+    except KeyboardInterrupt:
+        raise
     except Exception:
+        contents = ""
+
+    update_info = process_pypi_response(contents)
+
+    if logging == UpdateLogLevel.ON:
+        log_with_color(update_info.message.plain, update_info.color, update_info.log_level, show_in_stats=False)
+    elif logging == UpdateLogLevel.CONSOLE:
+        rich.print(update_info.message)
+
+    return current_version, update_info.version
+
+
+def process_pypi_response(response: bytes | str) -> UpdateDetails:
+    if not response:
         color = "bold_red"
         message = Text("Unable to get latest version information", style=color)
-        if logging == UpdatesLogLevel.ON:
-            log_with_color(message.plain, color, 40, show_in_stats=False)
-        elif logging == UpdatesLogLevel.CONSOLE:
-            rich.print(message)
-        return "", ""
+        level = 40
+        return UpdateDetails(message, level, color, "")
 
-    data: dict[str, dict] = json.loads(contents)
+    data: dict[str, dict] = json.loads(response)
     latest_version: str = data["info"]["version"]
     releases = list(data["releases"].keys())
     color = ""
@@ -76,12 +96,7 @@ def check_latest_pypi(logging: Literal["OFF", "CONSOLE", "ON"] = UpdatesLogLevel
         message = Text.from_markup("You are currently on the latest version of Cyberdrop-DL :white_check_mark:")
         level = 20
 
-    if logging == UpdatesLogLevel.ON:
-        log_with_color(message.plain, color, level, show_in_stats=False)
-    elif logging == UpdatesLogLevel.CONSOLE:
-        rich.print(message)
-
-    return current_version, latest_version
+    return UpdateDetails(message, level, color, latest_version)
 
 
 def check_prerelease_version(releases: list[str]) -> tuple[bool, str, Text]:
