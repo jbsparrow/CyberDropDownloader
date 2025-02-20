@@ -36,7 +36,7 @@ class UpdateInfo(NamedTuple):
 
 
 INFO = LogInfo(20, "")
-WARNING = LogInfo(30, "bold_yellow")
+WARNING = LogInfo(30, "yellow")
 ERROR = LogInfo(40, "bold_red")
 
 
@@ -92,16 +92,16 @@ def get_update_info(package_info: PackageInfo) -> UpdateInfo:
 
     if package_info.is_from_the_future or package_info.is_unreleased or not latest_version:
         msg = Text("You are on an unreleased version, skipping version check", style=WARNING.style)
-        UpdateInfo(msg, WARNING, latest_version)
+        return UpdateInfo(msg, WARNING, latest_version)
 
     version_text = Text(str(latest_version), style="cyan")
 
-    if package_info.current_version == latest_version:
+    if package_info.current_version >= latest_version:
         msg_mkp = "You are currently on the latest version of Cyberdrop-DL :white_check_mark:"
         if pre_tag:
-            msg_mkp = f"You are currently on the latest {pre_tag} version:"
+            msg_mkp = f"You are currently on the latest {pre_tag} version: "
         msg = Text.from_markup(msg_mkp, style=INFO.style).append_text(version_text)
-        UpdateInfo(msg, INFO, latest_version)
+        return UpdateInfo(msg, INFO, latest_version)
 
     spacer = f"{pre_tag} " if pre_tag else ""
     msg_str = f"A new {spacer}version of Cyberdrop-DL is available: "
