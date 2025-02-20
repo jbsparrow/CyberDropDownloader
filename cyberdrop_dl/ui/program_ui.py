@@ -269,7 +269,9 @@ class ProgramUI:
         url = "https://raw.githubusercontent.com/jbsparrow/CyberDropDownloader/refs/heads/master/CHANGELOG.md"
         _, latest_version = check_latest_pypi(logging="OFF")
         if not latest_version:
-            return
+            self.print_error("UNABLE TO GET LATEST VERSION INFORMATION")
+            return None
+
         name = f"{path.stem}_{latest_version}{path.suffix}"
         changelog = path.with_name(name)
         if not changelog.is_file():
