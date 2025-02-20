@@ -22,7 +22,15 @@ PRERELEASE_TAGS = {
 
 
 def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -> tuple[str, str]:
-    """Checks if the current version is the latest version."""
+    """Checks if the current version is the latest version.
+
+    Args:
+        log_to_console (bool, optional): Log message to file and shows in console.
+        call_from_ui (bool, optional): Only shows message in console. Ignores `log_to_console`.
+
+    Returns:
+        tuple[str, str]: current_version, latest_version
+    """
 
     try:
         with request("GET", PYPI_JSON_URL, timeout=30) as response:
@@ -65,6 +73,14 @@ def check_latest_pypi(log_to_console: bool = True, call_from_ui: bool = False) -
 
 
 def check_prelease_version(releases: list[str]) -> tuple[bool, str, Text]:
+    """Checks if the current version is a prerelease
+
+    Args:
+        releases (list[str]): List of releases form pypi
+
+    Returns:
+        tuple[bool, str, Text]: running_prerelease, latest_prerelease_version, message
+    """
     match = re.match(PRELEASE_VERSION_PATTERN, current_version)
     latest_testing_version = ""
     message = Text("")

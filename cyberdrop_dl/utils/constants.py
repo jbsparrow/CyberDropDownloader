@@ -70,9 +70,6 @@ class NotificationResult(Enum):
     NONE = Text("No Notifications Sent", "yellow")
 
 
-# Pypi
-
-
 # file formats
 FILE_FORMATS = {
     "Images": {
