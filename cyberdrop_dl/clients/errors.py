@@ -192,7 +192,7 @@ class InvalidYamlError(CDLBaseError):
     def __init__(self, file: Path, e: ConstructorError) -> None:
         """This error will be thrown when a yaml config file has invalid values."""
         mark = e.problem_mark if hasattr(e, "problem_mark") else e
-        message = f"File '{file.resolve()}' has an invalid config. Please verify and edit it manually\n {mark}\n\n{VALIDATION_ERROR_FOOTER}"
+        message = f"File '{file.resolve()}' has an invalid config. \n Please verify and edit it manually\n {mark}\n\n{VALIDATION_ERROR_FOOTER}"
         super().__init__("Invalid YAML", message=message, origin=file)
 
 
