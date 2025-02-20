@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass
 from enum import StrEnum
 from functools import cached_property
-from typing import Literal, NamedTuple, Self
+from typing import TYPE_CHECKING, Literal, NamedTuple, Self
 
 import rich
 from packaging.version import Version
@@ -13,6 +13,9 @@ from rich.text import Text
 
 from cyberdrop_dl import __version__
 from cyberdrop_dl.utils.logger import log_with_color
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 PYPI_JSON_URL = "https://pypi.org/pypi/cyberdrop-dl-patched/json"
 current_version = Version(__version__)
@@ -77,7 +80,7 @@ def process_pypi_response(response: bytes | str) -> UpdateInfo:
         return UpdateInfo(error_message, ERROR, None)
 
     data: dict[str, dict] = json.loads(response)
-    releases = list(data["releases"].keys())
+    releases = data["releases"].keys()
     package_info = PackageInfo.create(releases)
     return get_update_info(package_info)
 
@@ -190,6 +193,6 @@ class PackageInfo:
         return self.current_version > self.latest
 
     @classmethod
-    def create(cls, releases: list[str]) -> Self:
+    def create(cls, releases: Iterable[str]) -> Self:
         all_releases = tuple([Version(release) for release in releases])
         return cls(current_version, all_releases)
