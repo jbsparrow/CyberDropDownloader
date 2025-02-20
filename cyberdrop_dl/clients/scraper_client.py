@@ -248,7 +248,7 @@ class ScraperClient:
         """Returns the headers from the given URL."""
         async with client_session.head(
             url,
-            headers=self._headers,
+            headers=self._headers | {"Accept-Encoding": "identity"},
             ssl=self.client_manager.ssl_context,
             proxy=self.client_manager.proxy,
         ) as response:
