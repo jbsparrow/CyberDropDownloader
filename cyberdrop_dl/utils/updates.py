@@ -151,10 +151,6 @@ class PackageInfo:
         return max(self.releases)
 
     @cached_property
-    def latest_non_prerelease(self) -> Version:
-        return max(self.releases)
-
-    @cached_property
     def latest_prerelease(self) -> Version:
         return max(self.prereleases)
 
