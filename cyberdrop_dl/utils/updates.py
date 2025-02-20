@@ -83,7 +83,7 @@ def process_pypi_response(response: bytes | str) -> UpdateInfo:
 
 
 def get_update_info(package_info: PackageInfo) -> UpdateInfo:
-    latest_version = package_info.latest_stable_release
+    latest_version = package_info.latest_stable
     pre_tag = None
 
     if package_info.is_prerelease:
@@ -99,10 +99,10 @@ def get_update_info(package_info: PackageInfo) -> UpdateInfo:
     if package_info.current_version >= latest_version:
         log_level = INFO
         msg_mkp, log_level = get_using_latest_mkp(package_info, latest_version)
-        if pre_tag and package_info.latest_prerelease_version > package_info.current_version:
-            version_text = Text(str(package_info.latest_prerelease_version), style="cyan")
+        if pre_tag and package_info.latest_prerelease > package_info.current_version:
+            version_text = Text(str(package_info.latest_prerelease), style="cyan")
         msg = Text.from_markup(msg_mkp, style=log_level.style).append_text(version_text)
-        if package_info.latest_version > package_info.current_version:
+        if pre_tag and package_info.latest > package_info.current_version:
             msg = msg.append_text(get_latest_stable_msg(package_info))
         return UpdateInfo(msg, log_level, latest_version)
 
@@ -114,7 +114,7 @@ def get_update_info(package_info: PackageInfo) -> UpdateInfo:
 
 def get_latest_stable_msg(package_info: PackageInfo) -> Text:
     msg_mkp = "\n\nLatest stable version of Cyberdrop-DL: "
-    version_text = Text(str(package_info.latest_stable_release), style="cyan")
+    version_text = Text(str(package_info.latest_stable), style="cyan")
     return Text.from_markup(msg_mkp).append_text(version_text)
 
 
@@ -125,10 +125,10 @@ def get_using_latest_mkp(package_info: PackageInfo, latest_version: Version) -> 
         return msg_mkp, INFO
 
     msg_mkp = f"You are currently on the latest {package_info.prerelease_tag} version: "
-    if package_info.latest_prerelease_version <= package_info.current_version:
+    if package_info.latest_prerelease <= package_info.current_version:
         return msg_mkp, INFO
 
-    new_tag = get_prerelease_tag(package_info.latest_prerelease_version)
+    new_tag = get_prerelease_tag(package_info.latest_prerelease)
     msg_mkp += f"{latest_version}, but a newer prerelease version of type {new_tag} is available: "
     return msg_mkp, WARNING
 
@@ -146,15 +146,15 @@ class PackageInfo:
     releases: list[Version]
 
     @cached_property
-    def latest_version(self) -> Version:
+    def latest(self) -> Version:
         return max(self.releases)
 
     @cached_property
-    def latest_non_prerelease_version(self) -> Version:
+    def latest_non_prerelease(self) -> Version:
         return max(self.releases)
 
     @cached_property
-    def latest_prerelease_version(self) -> Version:
+    def latest_prerelease(self) -> Version:
         return max(self.prereleases)
 
     @cached_property
@@ -174,7 +174,7 @@ class PackageInfo:
         return [r for r in self.releases if not get_prerelease_tag(r)]
 
     @cached_property
-    def latest_stable_release(self) -> Version:
+    def latest_stable(self) -> Version:
         return max(self.stable_releases)
 
     @cached_property
@@ -190,7 +190,7 @@ class PackageInfo:
     @cached_property
     def is_from_the_future(self) -> bool:
         # Faster to compute than is_unreleased
-        return self.current_version > self.latest_version
+        return self.current_version > self.latest
 
     @classmethod
     def create(cls, releases: list[str]) -> Self:
