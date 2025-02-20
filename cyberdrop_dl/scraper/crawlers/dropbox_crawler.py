@@ -125,7 +125,7 @@ def get_item_info(url: URL) -> DropboxItem:
     """
     filename = url.query.get("preview") or ""
     if not filename and "/scl/fi/" in url.path:
-        filename_index = url.parts.index("fi") + 1
+        filename_index = url.parts.index("fi") + 2
         filename = url.parts[filename_index]
 
     from_folder = "/scl/fo/" in url.path
