@@ -43,6 +43,68 @@ WARNING = LogInfo(30, "yellow")
 ERROR = LogInfo(40, "bold_red")
 
 
+ERROR_TEXT = Text("Unable to get latest version information", style=ERROR.style)
+ERROR_UPDATE_INFO = UpdateInfo(ERROR_TEXT, ERROR, None)
+
+
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+@dataclass
+class PackageInfo:
+    current_version: Version
+    releases: tuple[Version, ...]
+
+    @cached_property
+    def latest(self) -> Version:
+        return max(self.releases)
+
+    @cached_property
+    def latest_prerelease(self) -> Version:
+        return max(self.prereleases)
+
+    @cached_property
+    def prerelease_tag(self) -> str | None:
+        return get_prerelease_tag(self.current_version)
+
+    @cached_property
+    def is_prerelease(self) -> bool:
+        return bool(self.prerelease_tag)
+
+    @cached_property
+    def prereleases(self) -> tuple[Version, ...]:
+        return tuple([r for r in self.releases if get_prerelease_tag(r)])
+
+    @cached_property
+    def stable_releases(self) -> tuple[Version, ...]:
+        return tuple([r for r in self.releases if not get_prerelease_tag(r)])
+
+    @cached_property
+    def latest_stable(self) -> Version:
+        return max(self.stable_releases)
+
+    @cached_property
+    def latest_prerelease_match(self) -> Version | None:
+        matches = [r for r in self.prereleases if get_prerelease_tag(r) == self.prerelease_tag]
+        if matches:
+            return max(matches)
+
+    @cached_property
+    def is_unreleased(self) -> bool:
+        return self.current_version not in self.releases
+
+    @cached_property
+    def is_from_the_future(self) -> bool:
+        # Faster to compute than is_unreleased
+        return self.current_version > self.latest
+
+    @classmethod
+    def create(cls, releases: Iterable[str]) -> Self:
+        all_releases = tuple([Version(r) for r in releases])
+        return cls(current_version, all_releases)
+
+
+#  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
 def check_latest_pypi(logging: Literal["OFF", "CONSOLE", "ON"] = UpdateLogLevel.ON) -> tuple[Version, Version | None]:
     """Get latest version from Pypi.
 
@@ -74,14 +136,19 @@ def check_latest_pypi(logging: Literal["OFF", "CONSOLE", "ON"] = UpdateLogLevel.
     return current_version, update.version
 
 
+# ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
 def process_pypi_response(response: bytes | str) -> UpdateInfo:
     if not response:
-        error_message = Text("Unable to get latest version information", style=ERROR.style)
-        return UpdateInfo(error_message, ERROR, None)
+        return ERROR_UPDATE_INFO
 
-    data: dict[str, dict] = json.loads(response)
-    releases = data["releases"].keys()
-    package_info = PackageInfo.create(releases)
+    try:
+        data: dict[str, dict] = json.loads(response)
+        releases = data["releases"].keys()
+        package_info = PackageInfo.create(releases)
+    except Exception:
+        return ERROR_UPDATE_INFO
     return get_update_info(package_info)
 
 
@@ -142,57 +209,3 @@ def get_prerelease_tag(version: Version) -> str | None:
         return "dev"
     if version.is_prerelease:
         return version.pre[0]  # type: ignore
-
-
-@dataclass
-class PackageInfo:
-    current_version: Version
-    releases: tuple[Version, ...]
-
-    @cached_property
-    def latest(self) -> Version:
-        return max(self.releases)
-
-    @cached_property
-    def latest_prerelease(self) -> Version:
-        return max(self.prereleases)
-
-    @cached_property
-    def prerelease_tag(self) -> str | None:
-        return get_prerelease_tag(self.current_version)
-
-    @cached_property
-    def is_prerelease(self) -> bool:
-        return bool(self.prerelease_tag)
-
-    @cached_property
-    def prereleases(self) -> tuple[Version, ...]:
-        return tuple([r for r in self.releases if get_prerelease_tag(r)])
-
-    @cached_property
-    def stable_releases(self) -> tuple[Version, ...]:
-        return tuple([r for r in self.releases if not get_prerelease_tag(r)])
-
-    @cached_property
-    def latest_stable(self) -> Version:
-        return max(self.stable_releases)
-
-    @cached_property
-    def latest_prerelease_match(self) -> Version | None:
-        matches = [r for r in self.prereleases if get_prerelease_tag(r) == self.prerelease_tag]
-        if matches:
-            return max(matches)
-
-    @cached_property
-    def is_unreleased(self) -> bool:
-        return self.current_version not in self.releases
-
-    @cached_property
-    def is_from_the_future(self) -> bool:
-        # Faster to compute than is_unreleased
-        return self.current_version > self.latest
-
-    @classmethod
-    def create(cls, releases: Iterable[str]) -> Self:
-        all_releases = tuple([Version(release) for release in releases])
-        return cls(current_version, all_releases)
