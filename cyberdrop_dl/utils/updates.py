@@ -79,13 +79,13 @@ def process_pypi_response(response: bytes | str) -> UpdateDetails:
     releases = list(data["releases"].keys())
     color = ""
     level = 30
-    is_prerelease, latest_testing_version, message = check_prerelease_version(releases)
+    is_prerelease, latest_prerelease_version, message = check_prerelease_version(releases)
 
     if current_version not in releases:
         color = "bold_yellow"
         message = Text("You are on an unreleased version, skipping version check", style=color)
     elif is_prerelease:
-        latest_version = latest_testing_version
+        latest_version = latest_prerelease_version
         color = "bold_red"
         message.stylize(color)
     elif current_version != latest_version:
@@ -108,7 +108,7 @@ def check_prerelease_version(releases: list[str]) -> tuple[bool, str, Text]:
         tuple[bool, str, Text]: running_prerelease, latest_prerelease_version, release_info_message
     """
     match = re.match(PRELEASE_VERSION_PATTERN, current_version)
-    latest_testing_version = ""
+    latest_prerelease_version = ""
     message = Text("")
     running_prerelease = next((tag for tag in PRERELEASE_TAGS if tag in current_version), False)
 
@@ -117,14 +117,14 @@ def check_prerelease_version(releases: list[str]) -> tuple[bool, str, Text]:
         test_tag = dot_tag if dot_tag else no_dot_tag
         regex_str = rf"{major_version}\.{minor_version}\.{patch_version}(\.{test_tag}\d+|{test_tag}\d+)"
         rough_matches = [release for release in releases if re.match(regex_str, release)]
-        latest_testing_version = max(rough_matches, key=lambda x: int(re.search(r"(\d+)$", x).group()))  # type: ignore
+        latest_prerelease_version = max(rough_matches, key=lambda x: int(re.search(r"(\d+)$", x).group()))  # type: ignore
         ui_tag = PRERELEASE_TAGS.get(test_tag, "Testing").lower()
 
-        if current_version != latest_testing_version:
+        if current_version != latest_prerelease_version:
             message = f"A new {ui_tag} version of Cyberdrop-DL is available: "
-            message = Text(message).append_text(Text(latest_testing_version, style="cyan"))
+            message = Text(message).append_text(Text(latest_prerelease_version, style="cyan"))
         else:
             message = f"You are currently on the latest {ui_tag} version of [b cyan]{major_version}.{minor_version}.{patch_version}[/b cyan]"
             message = Text.from_markup(message)
 
-    return bool(running_prerelease), latest_testing_version, message
+    return bool(running_prerelease), latest_prerelease_version, message
