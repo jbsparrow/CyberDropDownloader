@@ -97,11 +97,17 @@ def get_update_info(package_info: PackageInfo) -> UpdateInfo:
     version_text = Text(str(latest_version), style="cyan")
 
     if package_info.current_version >= latest_version:
+        log_level = INFO
         msg_mkp = "You are currently on the latest version of Cyberdrop-DL :white_check_mark:"
         if pre_tag:
             msg_mkp = f"You are currently on the latest {pre_tag} version: "
-        msg = Text.from_markup(msg_mkp, style=INFO.style).append_text(version_text)
-        return UpdateInfo(msg, INFO, latest_version)
+            if package_info.latest_prerelease_version > package_info.current_version:
+                version_text = Text(str(package_info.latest_prerelease_version), style="cyan")
+                new_tag = get_prerelease_tag(package_info.latest_prerelease_version)
+                msg_mkp += f" {latest_version} , but a newer prerelease version of type {new_tag} is available: "
+                log_level = WARNING
+        msg = Text.from_markup(msg_mkp, style=log_level.style).append_text(version_text)
+        return UpdateInfo(msg, log_level, latest_version)
 
     spacer = f"{pre_tag} " if pre_tag else ""
     msg_str = f"A new {spacer}version of Cyberdrop-DL is available: "
