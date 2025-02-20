@@ -1,26 +1,20 @@
 from __future__ import annotations
 
 import json
-import re
 from enum import StrEnum
-from typing import Literal, NamedTuple
+from functools import cached_property
+from typing import Literal, NamedTuple, Self
 
 import rich
+from packaging.version import Version
 from requests import request
 from rich.text import Text
 
-from cyberdrop_dl import __version__ as current_version
+from cyberdrop_dl import __version__
 from cyberdrop_dl.utils.logger import log_with_color
 
 PYPI_JSON_URL = "https://pypi.org/pypi/cyberdrop-dl-patched/json"
-PRELEASE_VERSION_PATTERN = r"(\d+)\.(\d+)\.(\d+)(?:\.([a-z]+)\d+|([a-z]+)\d+)"
-PRERELEASE_TAGS = {
-    "dev": "Development",
-    "pre": "Pre-Release",
-    "rc": "Release Candidate",
-    "a": "Alpha",
-    "b": "Beta",
-}
+current_version = Version(__version__)
 
 
 class UpdateLogLevel(StrEnum):
@@ -33,10 +27,10 @@ class UpdateDetails(NamedTuple):
     message: Text
     log_level: int
     color: str
-    version: str | None
+    version: Version | None
 
 
-def check_latest_pypi(logging: Literal["OFF", "CONSOLE", "ON"] = UpdateLogLevel.ON) -> tuple[str, str | None]:
+def check_latest_pypi(logging: Literal["OFF", "CONSOLE", "ON"] = UpdateLogLevel.ON) -> tuple[str, Version | None]:
     """Checks if the current version is the latest version.
 
     Args:
@@ -64,65 +58,125 @@ def check_latest_pypi(logging: Literal["OFF", "CONSOLE", "ON"] = UpdateLogLevel.
     elif logging == UpdateLogLevel.CONSOLE:
         rich.print(update_info.message)
 
-    return current_version, update_info.version
+    return __version__, update_info.version
 
 
 def process_pypi_response(response: bytes | str) -> UpdateDetails:
     if not response:
         color = "bold_red"
-        message = Text("Unable to get latest version information", style=color)
+        prerelease_message = Text("Unable to get latest version information", style=color)
         level = 40
-        return UpdateDetails(message, level, color, None)
+        return UpdateDetails(prerelease_message, level, color, None)
 
     data: dict[str, dict] = json.loads(response)
-    latest_version: str = data["info"]["version"]
+
     releases = list(data["releases"].keys())
     color = ""
     level = 30
-    is_prerelease, latest_prerelease_version, message = check_prerelease_version(releases)
-
-    if current_version not in releases:
-        color = "bold_yellow"
-        message = Text("You are on an unreleased version, skipping version check", style=color)
-    elif is_prerelease:
-        latest_version = latest_prerelease_version
-    elif current_version != latest_version:
-        message_mkup = f"A new version of Cyberdrop-DL is available: [cyan]{latest_version}[/cyan]"
-        message = Text.from_markup(message_mkup)
-    else:
-        message = Text.from_markup("You are currently on the latest version of Cyberdrop-DL :white_check_mark:")
-        level = 20
+    package_info = PackageDetails.create(releases)
+    prerelease_msg, level = get_prerelease_message(package_info)
+    latest_version = package_info.latest_version
+    message = prerelease_msg
+    if not message:
+        latest_version = package_info.latest_stable_release
+        message, level = get_stable_release_message(package_info)
 
     return UpdateDetails(message, level, color, latest_version)
 
 
-def check_prerelease_version(releases: list[str]) -> tuple[bool, str, Text]:
-    """Checks if the current version is a prerelease
+class PackageDetails(NamedTuple):
+    current_version: Version
+    releases: list[Version]
 
-    Args:
-        releases (list[str]): List of releases from pypi
+    @cached_property
+    def latest_version(self) -> Version:
+        return max(self.releases)
 
-    Returns:
-        tuple[bool, str, Text]: running_prerelease, latest_prerelease_version, release_info_message
-    """
-    match = re.match(PRELEASE_VERSION_PATTERN, current_version)
-    latest_prerelease_version = ""
-    message = Text("")
-    running_prerelease = next((tag for tag in PRERELEASE_TAGS if tag in current_version), False)
+    @cached_property
+    def latest_non_prerelease_version(self) -> Version:
+        return max(self.releases)
 
-    if running_prerelease and match:
-        major_version, minor_version, patch_version, dot_tag, no_dot_tag = match.groups()
-        test_tag = dot_tag if dot_tag else no_dot_tag
-        regex_str = rf"{major_version}\.{minor_version}\.{patch_version}(\.{test_tag}\d+|{test_tag}\d+)"
-        rough_matches = [release for release in releases if re.match(regex_str, release)]
-        latest_prerelease_version = max(rough_matches, key=lambda x: int(re.search(r"(\d+)$", x).group()))  # type: ignore
-        ui_tag = PRERELEASE_TAGS.get(test_tag, "Testing").lower()
+    @cached_property
+    def latest_prerelease_version(self) -> Version:
+        return max(self.prereleases)
 
-        if current_version != latest_prerelease_version:
-            message = f"A new {ui_tag} version of Cyberdrop-DL is available: "
-            message = Text(message).append_text(Text(latest_prerelease_version, style="cyan"))
-        else:
-            message = f"You are currently on the latest {ui_tag} version of [b cyan]{major_version}.{minor_version}.{patch_version}[/b cyan]"
-            message = Text.from_markup(message)
+    @cached_property
+    def prerelease_tag(self) -> str | None:
+        return get_prerelease_tag(self.current_version)
 
-    return bool(running_prerelease), latest_prerelease_version, message
+    @cached_property
+    def is_prerelease(self) -> bool:
+        return bool(self.prerelease_tag)
+
+    @cached_property
+    def prereleases(self) -> list[Version]:
+        return [r for r in self.releases if get_prerelease_tag(r)]
+
+    @cached_property
+    def stable_releases(self) -> list[Version]:
+        return [r for r in self.releases if not get_prerelease_tag(r)]
+
+    @cached_property
+    def latest_stable_release(self) -> Version:
+        return max(self.stable_releases)
+
+    @cached_property
+    def latest_prerelease_match(self) -> Version | None:
+        matches = [r for r in self.prereleases if get_prerelease_tag(r) == self.prerelease_tag]
+        if matches:
+            return max(matches)
+
+    @cached_property
+    def is_unreleased(self) -> bool:
+        return self.current_version not in self.releases
+
+    @cached_property
+    def is_from_the_future(self) -> bool:
+        # Faster to compute than is_unreleased
+        return self.current_version > self.latest_version
+
+    @classmethod
+    def create(cls, releases: list[str]) -> Self:
+        all_releases = [Version(release) for release in releases]
+        return cls(current_version, all_releases)
+
+
+def get_stable_release_message(package_info: PackageDetails) -> tuple[Text, int]:
+    assert not package_info.is_prerelease
+
+    if package_info.is_unreleased:
+        color = "bold_yellow"
+        return Text("You are on an unreleased version, skipping version check", style=color), 30
+
+    info = Text(str(package_info.latest_stable_release), style="cyan")
+
+    if package_info.current_version == package_info.latest_stable_release:
+        message_mkp = "You are currently on the latest version of Cyberdrop-DL :white_check_mark:"
+        return Text.from_markup(message_mkp).append_text(info), 20
+
+    message_str = "A new version of Cyberdrop-DL is available: "
+    return Text(message_str).append_text(info), 30
+
+
+def get_prerelease_message(package_info: PackageDetails) -> tuple[Text | None, int]:
+    if not package_info.is_prerelease:
+        return None, 10
+
+    if package_info.is_from_the_future or package_info.is_unreleased or not package_info.latest_prerelease_match:
+        return Text("You are on an unreleased version, skipping version check", style="bold_yellow"), 30
+
+    info = Text(str(package_info.latest_prerelease_match), style="cyan")
+
+    if package_info.current_version == package_info.latest_prerelease_match:
+        message_mkp = f"You are currently on the latest {package_info.prerelease_tag} version:"
+        return Text.from_markup(message_mkp).append_text(info), 20
+
+    message_str = f"A new {package_info.prerelease_tag} version of Cyberdrop-DL is available: "
+    return Text(message_str).append_text(info), 30
+
+
+def get_prerelease_tag(version: Version) -> str | None:
+    if version.is_prerelease:
+        return version.pre[0]  # type: ignore
+    if version.is_devrelease:
+        return "dev"
