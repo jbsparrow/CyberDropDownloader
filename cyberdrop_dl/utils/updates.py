@@ -92,20 +92,17 @@ def get_update_info(package_info: PackageInfo) -> UpdateInfo:
 
     if package_info.is_from_the_future or package_info.is_unreleased or not latest_version:
         msg = Text("You are on an unreleased version, skipping version check", style=WARNING.style)
+        if pre_tag:
+            msg = msg.append_text(get_latest_stable_msg(package_info))
         return UpdateInfo(msg, WARNING, latest_version)
 
-    version_text = Text(str(latest_version), style="cyan")
-
     if package_info.current_version >= latest_version:
-        log_level = INFO
-        msg_mkp, log_level = get_using_latest_mkp(package_info, latest_version)
-        if pre_tag and package_info.latest_prerelease > package_info.current_version:
-            version_text = Text(str(package_info.latest_prerelease), style="cyan")
-        msg = Text.from_markup(msg_mkp, style=log_level.style).append_text(version_text)
+        msg, log_level = get_using_latest_msg(package_info, latest_version)
         if pre_tag and package_info.latest > package_info.current_version:
             msg = msg.append_text(get_latest_stable_msg(package_info))
         return UpdateInfo(msg, log_level, latest_version)
 
+    version_text = Text(str(latest_version), style="cyan")
     spacer = f"{pre_tag} " if pre_tag else ""
     msg_str = f"A new {spacer}version of Cyberdrop-DL is available: "
     msg = Text(msg_str, style=WARNING.style).append_text(version_text)
@@ -118,19 +115,23 @@ def get_latest_stable_msg(package_info: PackageInfo) -> Text:
     return Text.from_markup(msg_mkp).append_text(version_text)
 
 
-def get_using_latest_mkp(package_info: PackageInfo, latest_version: Version) -> tuple[str, LogInfo]:
+def get_using_latest_msg(package_info: PackageInfo, latest_version: Version) -> tuple[Text, LogInfo]:
     msg_mkp = "You are currently on the latest version of Cyberdrop-DL :white_check_mark:"
 
     if not package_info.prerelease_tag:
-        return msg_mkp, INFO
+        return Text.from_markup(msg_mkp, style=INFO.style), INFO
 
+    latest_text = Text(str(latest_version), style="cyan")
     msg_mkp = f"You are currently on the latest {package_info.prerelease_tag} version: "
     if package_info.latest_prerelease <= package_info.current_version:
-        return msg_mkp, INFO
+        return Text.from_markup(msg_mkp, style=INFO.style).append_text(latest_text), INFO
 
     new_tag = get_prerelease_tag(package_info.latest_prerelease)
-    msg_mkp += f"{latest_version}, but a newer prerelease version of type {new_tag} is available: "
-    return msg_mkp, WARNING
+    msg1 = Text.from_markup(msg_mkp, style=WARNING.style).append_text(latest_text)
+    msg_mkp2 = f" but a newer prerelease version of type {new_tag} is available: "
+    latest_prerelease_text = Text(str(package_info.latest_prerelease), style="cyan")
+    msg2 = Text.from_markup(msg_mkp2, style=WARNING.style).append_text(latest_prerelease_text)
+    return msg1.append_text(msg2), WARNING
 
 
 def get_prerelease_tag(version: Version) -> str | None:
