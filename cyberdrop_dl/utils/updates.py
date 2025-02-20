@@ -33,21 +33,20 @@ class UpdateDetails(NamedTuple):
     message: Text
     log_level: int
     color: str
-    version: str
+    version: str | None
 
 
-def check_latest_pypi(logging: Literal["OFF", "CONSOLE", "ON"] = UpdateLogLevel.ON) -> tuple[str, str]:
+def check_latest_pypi(logging: Literal["OFF", "CONSOLE", "ON"] = UpdateLogLevel.ON) -> tuple[str, str | None]:
     """Checks if the current version is the latest version.
 
     Args:
-        log_to (str, optional): Controls where version information is logged.
+        logging (str, optional): Controls where version information is logged.
             - OFF: Do not log version information.
             - CONSOLE: Log version information to the console.
             - ON: Log version information to both the console and the main log file.
 
     Returns:
-        tuple[str, str]: A tuple containing the current version and the latest
-        available version.
+        tuple[str, str | None]: current_version, latest_version. Returns None for latest_version if any error occurs
     """
 
     try:
@@ -73,7 +72,7 @@ def process_pypi_response(response: bytes | str) -> UpdateDetails:
         color = "bold_red"
         message = Text("Unable to get latest version information", style=color)
         level = 40
-        return UpdateDetails(message, level, color, "")
+        return UpdateDetails(message, level, color, None)
 
     data: dict[str, dict] = json.loads(response)
     latest_version: str = data["info"]["version"]
@@ -127,4 +126,5 @@ def check_prerelease_version(releases: list[str]) -> tuple[bool, str, Text]:
         else:
             message = f"You are currently on the latest {ui_tag} version of [b cyan]{major_version}.{minor_version}.{patch_version}[/b cyan]"
             message = Text.from_markup(message)
+
     return bool(running_prerelease), latest_testing_version, message
