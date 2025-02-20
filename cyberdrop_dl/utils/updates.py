@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from enum import StrEnum
 from functools import cached_property
 from typing import Literal, NamedTuple, Self
@@ -39,8 +40,8 @@ WARNING = LogInfo(30, "bold_yellow")
 ERROR = LogInfo(40, "bold_red")
 
 
-def check_latest_pypi(logging: Literal["OFF", "CONSOLE", "ON"] = UpdateLogLevel.ON) -> tuple[str, Version | None]:
-    """Checks if the current version is the latest version.
+def check_latest_pypi(logging: Literal["OFF", "CONSOLE", "ON"] = UpdateLogLevel.ON) -> tuple[Version, Version | None]:
+    """Get latest version from Pypi.
 
     Args:
         logging (str, optional): Controls where version information is logged.
@@ -49,7 +50,7 @@ def check_latest_pypi(logging: Literal["OFF", "CONSOLE", "ON"] = UpdateLogLevel.
             - ON: Log version information to both the console and the main log file.
 
     Returns:
-        tuple[str, Version | None]: current_version, latest_version. Returns None for latest_version if any error occurs
+        tuple[Version, Version | None]: current_version, latest_version. Returns None for latest_version if any error occurs
     """
 
     try:
@@ -67,22 +68,21 @@ def check_latest_pypi(logging: Literal["OFF", "CONSOLE", "ON"] = UpdateLogLevel.
     elif logging == UpdateLogLevel.CONSOLE:
         rich.print(update.message)
 
-    return __version__, update.version
+    return current_version, update.version
 
 
 def process_pypi_response(response: bytes | str) -> UpdateInfo:
     if not response:
-        color = "bold_red"
-        error_message = Text("Unable to get latest version information", style=color)
+        error_message = Text("Unable to get latest version information", style=ERROR.style)
         return UpdateInfo(error_message, ERROR, None)
 
     data: dict[str, dict] = json.loads(response)
     releases = list(data["releases"].keys())
-    package_info = PackageDetails.create(releases)
-    return get_update_message(package_info)
+    package_info = PackageInfo.create(releases)
+    return get_update_info(package_info)
 
 
-def get_update_message(package_info: PackageDetails) -> UpdateInfo:
+def get_update_info(package_info: PackageInfo) -> UpdateInfo:
     latest_version = package_info.latest_stable_release
     pre_tag = None
 
@@ -110,13 +110,14 @@ def get_update_message(package_info: PackageDetails) -> UpdateInfo:
 
 
 def get_prerelease_tag(version: Version) -> str | None:
-    if version.is_prerelease:
-        return version.pre[0]  # type: ignore
     if version.is_devrelease:
         return "dev"
+    if version.is_prerelease:
+        return version.pre[0]  # type: ignore
 
 
-class PackageDetails(NamedTuple):
+@dataclass
+class PackageInfo:
     current_version: Version
     releases: list[Version]
 
