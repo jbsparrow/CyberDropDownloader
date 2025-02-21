@@ -5,6 +5,7 @@ import sys
 from datetime import date, timedelta
 from enum import Enum
 from pathlib import Path, PurePath
+from typing import TYPE_CHECKING
 
 import yaml
 from pydantic import BaseModel, ValidationError
@@ -12,6 +13,9 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import InvalidYamlError
 from cyberdrop_dl.utils.constants import CLI_VALIDATION_ERROR_FOOTER, VALIDATION_ERROR_FOOTER
+
+if TYPE_CHECKING:
+    from pydantic_core import ErrorDetails
 
 
 class TimedeltaSerializer(BaseModel):
@@ -66,27 +70,36 @@ def load(file: Path, *, create: bool = False) -> dict:
 
 
 def handle_validation_error(e: ValidationError, *, title: str = "", file: Path | None = None):
+    """Logs the validation error details and exits the program."""
+
     startup_logger = logging.getLogger("cyberdrop_dl_startup")
     error_count = e.error_count()
     msg = ""
-    footer = VALIDATION_ERROR_FOOTER
     if file:
         msg += f"File '{file.resolve()}' has an invalid config\n\n"
+
     show_title = title or e.title
     msg += f"Found {error_count} error{'s' if error_count > 1 else ''} [{show_title}]:"
-    # startup_logger.error(msg)
+    from_cli = title == "CLI arguments"
+    footer = CLI_VALIDATION_ERROR_FOOTER if from_cli else VALIDATION_ERROR_FOOTER
     for error in e.errors(include_url=False):
-        option_name = ".".join(map(str, error["loc"]))
-        if title == "CLI arguments":
-            footer = CLI_VALIDATION_ERROR_FOOTER
-            option_name: str | int = error["loc"][-1]
-            if isinstance(option_name, int):
-                option_name = ".".join(map(str, error["loc"][-2:]))
-            option_name = option_name.replace("_", "-")
-            option_name = f"--{option_name}"
+        option_name = get_field_name(error, from_cli)
         msg += f"\n\nOption '{option_name}' with value '{error['input']}' is invalid:\n"
         msg += f"  {error['msg']}"
 
     msg += "\n\n" + footer
     startup_logger.error(msg)
     sys.exit(1)
+
+
+def get_field_name(error: ErrorDetails, from_cli: bool = False) -> str:
+    """Get a human readable representation of the field that raised this error"""
+
+    if not from_cli:
+        return ".".join(map(str, error["loc"]))
+
+    option_name: str | int = error["loc"][-1]
+    if isinstance(option_name, int):
+        option_name = ".".join(map(str, error["loc"][-2:]))
+    option_name = option_name.replace("_", "-")
+    return f"--{option_name}"
