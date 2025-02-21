@@ -64,23 +64,24 @@ def load(file: Path, *, create: bool = False) -> dict:
         raise InvalidYamlError(file, e) from None
 
 
-def handle_validation_error(e: ValidationError, *, title: str | None = None, sources: dict[str, Path] | None = None):
+def handle_validation_error(e: ValidationError, *, title: str = "", file: Path | None = None):
     startup_logger = logging.getLogger("cyberdrop_dl_startup")
     error_count = e.error_count()
-    source = sources.get(e.title) if sources else None
-    title = title or e.title
-    source = f"from {source.resolve()}" if source else ""
-    msg = f"Found {error_count} error{'s' if error_count > 1 else ''} parsing {title} {source}"
-    startup_logger.error(msg)
+    msg = ""
+    if file:
+        msg += f"File '{file.resolve()}' has an invalid config\n\n"
+    show_title = title or e.title
+    msg += f"Found {error_count} error{'s' if error_count > 1 else ''} [{show_title}]:\n"
+    # startup_logger.error(msg)
     for error in e.errors(include_url=False):
-        loc = ".".join(map(str, error["loc"]))
+        option_name = ".".join(map(str, error["loc"]))
         if title == "CLI arguments":
-            loc = error["loc"][-1]
+            option_name = error["loc"][-1]
             if isinstance(error["loc"][-1], int):
-                loc = ".".join(map(str, error["loc"][-2:]))
-            loc = f"--{loc}"
-        msg = f"Value of '{loc}' is invalid:\n"
-        msg += f"  {error['msg']} (input_value='{error['input']}', input_type='{error['type']}')\n"
-        startup_logger.error(msg)
-    startup_logger.error(VALIDATION_ERROR_FOOTER)
+                option_name = ".".join(map(str, error["loc"][-2:]))
+            option_name = f"--{option_name}"
+        msg += f"\nOption '{option_name}' with value '{error['input']}' is invalid:\n"
+        msg += f"  {error['msg']}"
+    msg += "\n\n" + VALIDATION_ERROR_FOOTER
+    startup_logger.error(msg)
     sys.exit(1)

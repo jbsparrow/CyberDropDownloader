@@ -62,7 +62,9 @@ def startup() -> Manager | None:
             "ConfigSettings": manager.config_manager.settings,
             "AuthSettings": manager.config_manager.authentication_settings,
         }
-        handle_validation_error(e, sources=sources)
+
+        file = sources.get(e.title)
+        handle_validation_error(e, file=file)
 
     except KeyboardInterrupt:
         startup_logger.info("Exiting...")
