@@ -356,7 +356,7 @@ class DownloadClient:
         proceed = True
         skip = False
 
-        if not await self.check_filesize_limits(media_item):
+        if not self.check_filesize_limits(media_item):
             log(f"Download Skip {media_item.url} due to filesize restrictions", 10)
             proceed = False
             skip = True
