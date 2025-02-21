@@ -34,7 +34,7 @@ STARTUP_LOGGER_FILE = Path().cwd().joinpath("startup.log")
 STARTUP_LOGGER_CONSOLE = None
 
 
-def startup() -> Manager | None:
+def startup() -> Manager:
     """Starts the program and returns the manager.
 
     This will also run the UI for the program
@@ -62,6 +62,7 @@ def startup() -> Manager | None:
             "AuthSettings": manager.config_manager.authentication_settings,
         }
         handle_validation_error(e, sources=sources)
+        sys.exit(1)
 
     except KeyboardInterrupt:
         startup_logger.info("Exiting...")
