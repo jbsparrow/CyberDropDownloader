@@ -196,7 +196,9 @@ class InvalidYamlError(CDLBaseError):
         message = f"Unable to read file {file_path}: \n {e}"
         if isinstance(e, ConstructorError):
             mark = e.problem_mark if hasattr(e, "problem_mark") else e
-            message = f"File '{file_path}' has an invalid config. \n Please verify and edit it manually\n {mark}\n\n{VALIDATION_ERROR_FOOTER}"
+            message = f"File '{file_path}' has an invalid config. \n Please verify and edit it manually\n {mark}"
+
+        message += f"\n\n{VALIDATION_ERROR_FOOTER}"
         super().__init__("Invalid YAML", message=message, origin=file)
 
 
