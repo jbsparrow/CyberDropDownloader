@@ -45,6 +45,7 @@ class DownloadOptions(BaseModel):
 class Files(AliasModel):
     download_folder: Path = Field(validation_alias="d", default=DOWNLOAD_STORAGE)
     input_file: Path = Field(validation_alias="i", default=APP_STORAGE / "Configs" / "{config}" / "URLs.txt")
+    dump_json: bool = Field(False, validation_alias="j")
 
 
 class Logs(AliasModel):

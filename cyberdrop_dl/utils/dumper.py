@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from dataclasses import asdict
 from typing import TYPE_CHECKING
@@ -22,12 +23,13 @@ class Dumper:
         for item in self.manager.path_manager.completed_downloads:
             yield asdict(item)
 
-    def run(self):
-        dump_jsonl(self.get_media_items_as_dict(), self.jsonl_file)
+    async def run(self) -> None:
+        await dump_jsonl(self.get_media_items_as_dict(), self.jsonl_file)
 
 
-def dump_jsonl(data: Generator[dict], file: Path) -> None:
+async def dump_jsonl(data: Generator[dict], file: Path) -> None:
     with file.open("w", encoding="utf8") as f:
         for item in data:
             json.dump(item, f)
-        f.write("\n")
+            f.write("\n")
+            await asyncio.sleep(0)  # required to update the UI, but there's no UI at the moment
