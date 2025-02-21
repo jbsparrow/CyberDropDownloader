@@ -73,7 +73,7 @@ def handle_validation_error(e: ValidationError, *, title: str = "", file: Path |
     if file:
         msg += f"File '{file.resolve()}' has an invalid config\n\n"
     show_title = title or e.title
-    msg += f"Found {error_count} error{'s' if error_count > 1 else ''} [{show_title}]:\n"
+    msg += f"Found {error_count} error{'s' if error_count > 1 else ''} [{show_title}]:"
     # startup_logger.error(msg)
     for error in e.errors(include_url=False):
         option_name = ".".join(map(str, error["loc"]))
@@ -84,7 +84,7 @@ def handle_validation_error(e: ValidationError, *, title: str = "", file: Path |
                 option_name = ".".join(map(str, error["loc"][-2:]))
             option_name = option_name.replace("_", "-")
             option_name = f"--{option_name}"
-        msg += f"\nOption '{option_name}' with value '{error['input']}' is invalid:\n"
+        msg += f"\n\nOption '{option_name}' with value '{error['input']}' is invalid:\n"
         msg += f"  {error['msg']}"
 
     msg += "\n\n" + footer
