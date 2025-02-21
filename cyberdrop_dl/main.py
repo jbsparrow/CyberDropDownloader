@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
-import os
 import sys
 from functools import wraps
 from pathlib import Path
@@ -266,8 +265,10 @@ async def director(manager: Manager) -> None:
 
 def main():
     profiling: bool = False
-    if not (profiling or os.getenv("CDL_PROFILING")):
+    if not (profiling or env.PROFILING):
         return actual_main()
+    from cyberdrop_dl.profiling import profile
+
     profile(actual_main)
 
 
@@ -286,45 +287,6 @@ def actual_main() -> None:
             asyncio.run(manager.close())
     loop.close()
     sys.exit(exit_code)
-
-
-def profile(func: Callable) -> None:
-    import cProfile
-    import pstats
-    import shutil
-    from contextlib import contextmanager
-    from datetime import datetime
-    from tempfile import TemporaryDirectory
-
-    @contextmanager
-    def temp_dir_context():
-        with TemporaryDirectory() as temp_dir:
-            old_cwd = Path.cwd()
-            temp_dir_path = Path(temp_dir).resolve()
-            cookies_dir = old_cwd / "AppData/Cookies"
-            if cookies_dir.is_dir():
-                temp_cookies_dir = temp_dir_path / "AppData/Cookies"
-                temp_cookies_dir.mkdir(parents=True, exist_ok=True)
-                for cookie_file in cookies_dir.glob("*.txt"):
-                    shutil.copy(cookie_file, temp_cookies_dir)
-
-            os.chdir(temp_dir_path)
-            log_file = old_cwd / "cyberdrop_dl_debug.log"
-            print(f"Using {temp_dir_path} as temp AppData dir")  # noqa: T201
-            try:
-                yield
-            finally:
-                os.chdir(old_cwd)
-                new_path = Path(f"cyberdrop_dl_debug_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
-                shutil.move(log_file, new_path)
-
-    with temp_dir_context(), cProfile.Profile() as cdl_profile:
-        with contextlib.suppress(SystemExit):
-            func()
-
-    results = pstats.Stats(cdl_profile)
-    results.sort_stats(pstats.SortKey.TIME)
-    results.dump_stats(filename="cyberdrop_dl.profiling")
 
 
 if __name__ == "__main__":
