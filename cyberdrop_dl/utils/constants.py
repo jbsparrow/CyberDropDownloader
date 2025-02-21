@@ -19,7 +19,7 @@ RICH_HANDLER_DEBUG_CONFIG = {
     "tracebacks_extra_lines": 2,
     "locals_max_length": 20,
 }
-VALIDATION_ERROR_FOOTER = """Please read the documentation for guidance on how to resolve this error: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options
+VALIDATION_ERROR_FOOTER = """Please delete the file or read the documentation for guidance on how to resolve this error: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options
 This is not a bug. Do not open issues related to this"""
 
 
