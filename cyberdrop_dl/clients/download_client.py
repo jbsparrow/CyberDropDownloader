@@ -356,21 +356,19 @@ class DownloadClient:
         proceed = True
         skip = False
 
-        while True:
-            if not await self.check_filesize_limits(media_item):
-                log(f"Download Skip {media_item.url} due to filesize restrictions", 10)
-                proceed = False
-                skip = True
-                break
+        if not await self.check_filesize_limits(media_item):
+            log(f"Download Skip {media_item.url} due to filesize restrictions", 10)
+            proceed = False
+            skip = True
 
-            if not media_item.complete_file.exists() and not media_item.partial_file.exists():
-                break
+        elif not media_item.complete_file.exists() and not media_item.partial_file.exists():
+            pass
 
-            if media_item.complete_file.exists() and media_item.complete_file.stat().st_size == media_item.filesize:
-                log(f"Found {media_item.complete_file.name} locally, skipping download")
-                proceed = False
-                break
-
+        elif media_item.complete_file.exists() and media_item.complete_file.stat().st_size == media_item.filesize:
+            log(f"Found {media_item.complete_file.name} locally, skipping download")
+            proceed = False
+            pass
+        else:
             downloaded_filename = await self.manager.db_manager.history_table.get_downloaded_filename(
                 domain, media_item
             )
@@ -378,11 +376,9 @@ class DownloadClient:
                 media_item.complete_file, media_item.partial_file = await self.iterate_filename(
                     media_item.complete_file, media_item
                 )
-                break
 
-            if media_item.filename == downloaded_filename:
+            else:
                 proceed, skip = await self.handle_existing_files(media_item)
-                break
         media_item.filename = downloaded_filename
         media_item.download_filename = media_item.complete_file.name
         await self.manager.db_manager.history_table.add_download_filename(domain, media_item)
@@ -404,16 +400,13 @@ class DownloadClient:
         if media_item.partial_file.stat().st_size == media_item.filesize:
             if media_item.complete_file.exists():
                 log(f"Found conflicting complete file {media_item.complete_file} locally, iterating filename", 30)
-                new_complete_filename, new_partial_file = await self.iterate_filename(
-                    media_item.complete_file, media_item
-                )
+                new_complete_filename, _ = await self.iterate_filename(media_item.complete_file, media_item)
                 media_item.complete_file = new_complete_filename
-                media_item.partial_file = new_partial_file
                 media_item.partial_file.rename(new_complete_filename)
-                return False, False
             else:
                 media_item.partial_file.rename(media_item.complete_file)
-                return False, False
+            log(f"Renaming found partial file {media_item.partial_file} to complete file {media_item.complete_file}")
+            return False, False
         return True, False
 
     async def handle_complete_file(self, media_item: MediaItem) -> tuple[bool, bool]:
