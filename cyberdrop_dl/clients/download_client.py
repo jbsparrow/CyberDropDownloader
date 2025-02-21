@@ -195,17 +195,18 @@ class DownloadClient:
 
             media_item.filesize = int(resp.headers.get("Content-Length", "0"))
             if not media_item.complete_file:
-                proceed, skip = await self.get_final_file_info(media_item, domain)
                 self.client_manager.check_bunkr_maint(resp.headers)
-                if skip:
+                if self.skip_by_config(media_item):
                     self.manager.progress_manager.download_progress.add_skipped()
                     return False
-                if not proceed:
+                downloaded = await self.previously_downloaded(media_item, domain)
+                media_item.download_filename = media_item.complete_file.name
+                await self.manager.db_manager.history_table.add_download_filename(domain, media_item)
+                if downloaded:
                     log(f"Skipping {media_item.url} as it has already been downloaded", 10)
                     self.manager.progress_manager.download_progress.add_previously_completed(False)
                     await self.process_completed(media_item, domain)
                     await self.handle_media_item_completion(media_item, downloaded=False)
-
                     return False
 
             ext = Path(media_item.filename).suffix.lower()
@@ -349,25 +350,23 @@ class DownloadClient:
         download_dir = self.get_download_dir(media_item)
         return download_dir / media_item.filename
 
-    async def get_final_file_info(self, media_item: MediaItem, domain: str) -> tuple[bool, bool]:
-        """Simplified checker for if a file already exists, and was already downloaded."""
-        media_item.complete_file = self.get_file_location(media_item)
-        media_item.partial_file = media_item.complete_file.with_suffix(media_item.complete_file.suffix + ".part")
-        proceed = True
-        skip = False
-
+    def skip_by_config(self, media_item: MediaItem):
+        """checks if media item should be skipped based on config"""
         if not self.check_filesize_limits(media_item):
             log(f"Download Skip {media_item.url} due to filesize restrictions", 10)
-            proceed = False
-            skip = True
+            return True
 
-        elif not media_item.complete_file.exists() and not media_item.partial_file.exists():
-            pass
+    async def previously_downloaded(self, media_item: MediaItem, domain: str) -> tuple[bool, bool]:
+        """checker for if a file already exists, and was already downloaded."""
+        media_item.complete_file = self.get_file_location(media_item)
+        media_item.partial_file = media_item.complete_file.with_suffix(media_item.complete_file.suffix + ".part")
+
+        if not media_item.complete_file.exists() and not media_item.partial_file.exists():
+            return False
 
         elif media_item.complete_file.exists() and media_item.complete_file.stat().st_size == media_item.filesize:
             log(f"Found {media_item.complete_file.name} locally, skipping download")
-            proceed = False
-            pass
+            return True
         else:
             downloaded_filename = await self.manager.db_manager.history_table.get_downloaded_filename(
                 domain, media_item
@@ -378,11 +377,7 @@ class DownloadClient:
                 )
 
             else:
-                proceed, skip = await self.handle_existing_files(media_item)
-        media_item.filename = downloaded_filename
-        media_item.download_filename = media_item.complete_file.name
-        await self.manager.db_manager.history_table.add_download_filename(domain, media_item)
-        return proceed, skip
+                return await self.handle_existing_files(media_item)
 
     async def handle_existing_files(self, media_item: MediaItem) -> tuple[bool, bool]:
         """Handles cases where the file or partial file already exists."""
@@ -390,14 +385,14 @@ class DownloadClient:
             return await self.handle_partial_file(media_item)
         elif media_item.complete_file.exists():
             return await self.handle_complete_file(media_item)
-        return True, False
+        return False
 
     async def handle_partial_file(self, media_item: MediaItem) -> tuple[bool, bool]:
         """Handles the case where a partial file exists."""
         if media_item.partial_file.stat().st_size >= media_item.filesize != 0:
             log(f"Deleting partial file {media_item.partial_file}")
             media_item.partial_file.unlink()
-        if media_item.partial_file.stat().st_size == media_item.filesize:
+        elif media_item.partial_file.stat().st_size == media_item.filesize:
             if media_item.complete_file.exists():
                 log(f"Found conflicting complete file {media_item.complete_file} locally, iterating filename", 30)
                 new_complete_filename, _ = await self.iterate_filename(media_item.complete_file, media_item)
@@ -406,20 +401,19 @@ class DownloadClient:
             else:
                 media_item.partial_file.rename(media_item.complete_file)
             log(f"Renaming found partial file {media_item.partial_file} to complete file {media_item.complete_file}")
-            return False, False
-        return True, False
+            return True
+        return False
 
     async def handle_complete_file(self, media_item: MediaItem) -> tuple[bool, bool]:
         """Handles the case where a complete file exists."""
         if media_item.complete_file.stat().st_size == media_item.filesize:
             log(f"Found complete file {media_item.complete_file} locally, skipping download")
-            return False, False
         else:
             log(f"Found conflicting complete file {media_item.complete_file} locally, iterating filename", 30)
             media_item.complete_file, media_item.partial_file = await self.iterate_filename(
                 media_item.complete_file, media_item
             )
-            return True, False
+        return True
 
     async def iterate_filename(self, complete_file: Path, media_item: MediaItem) -> tuple[Path, Path | None]:
         """Iterates the filename until it is unique."""
