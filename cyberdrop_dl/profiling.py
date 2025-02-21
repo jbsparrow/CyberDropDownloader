@@ -23,19 +23,11 @@ def profile(func: Callable) -> None:
     @contextmanager
     def temp_dir_context():
         with TemporaryDirectory() as temp_dir:
-            old_cwd, temp_dir_path = setup_profile(temp_dir)
+            profile = setup_profile(temp_dir)
             try:
                 yield
             finally:
-                os.chdir(old_cwd)
-                suffix = "profiling"
-                old_log_file = temp_dir_path / "cyberdrop_dl_debug.log"
-                if env.PROFILING == "use_date":
-                    suffix += f"_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-                new_log_file = Path(f"cyberdrop_dl_debug_{suffix}.log").resolve()
-                shutil.move(old_log_file, new_log_file)
-                print(f"Profile AppData folder: {temp_dir_path}")
-                print(f"Debug log file: {new_log_file}")
+                destroy_profile(*profile)
                 input("Press any key to finish and delete the profile folder: ")
 
     with temp_dir_context(), cProfile.Profile() as cdl_profile:
@@ -49,7 +41,7 @@ def profile(func: Callable) -> None:
     print("DONE!")
 
 
-def setup_profile(temp_dir) -> tuple[Path, Path]:
+def setup_profile(temp_dir: Path | str) -> tuple[Path, Path]:
     old_cwd = Path.cwd()
     temp_dir_path = Path(temp_dir).resolve()
     cookies_dir = old_cwd / "AppData/Cookies"
@@ -63,3 +55,15 @@ def setup_profile(temp_dir) -> tuple[Path, Path]:
     print(f"Using {temp_dir_path} as temp AppData dir")
     env.DEBUG_LOG_FILE_FOLDER = temp_dir_path
     return old_cwd, temp_dir_path
+
+
+def destroy_profile(old_cwd: Path, temp_dir_path: Path) -> None:
+    os.chdir(old_cwd)
+    suffix = "profiling"
+    old_log_file = temp_dir_path / "cyberdrop_dl_debug.log"
+    if env.PROFILING == "use_date":
+        suffix += f"_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    new_log_file = Path(f"cyberdrop_dl_debug_{suffix}.log").resolve()
+    shutil.move(old_log_file, new_log_file)
+    print(f"Profile AppData folder: {temp_dir_path}")
+    print(f"Debug log file: {new_log_file}")
