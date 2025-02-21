@@ -360,12 +360,7 @@ class DownloadClient:
         """checker for if a file already exists, and was already downloaded."""
         media_item.complete_file = self.get_file_location(media_item)
         media_item.partial_file = media_item.complete_file.with_suffix(media_item.complete_file.suffix + ".part")
-
-        if not media_item.complete_file.exists() and not media_item.partial_file.exists():
-            return False
-
-        elif media_item.complete_file.exists() and media_item.complete_file.stat().st_size == media_item.filesize:
-            log(f"Found {media_item.complete_file.name} locally, skipping download")
+        if await self.check_file_completed(media_item):
             return True
         else:
             downloaded_filename = await self.manager.db_manager.history_table.get_downloaded_filename(
@@ -377,15 +372,7 @@ class DownloadClient:
                 )
 
             else:
-                return await self.handle_existing_files(media_item)
-
-    async def handle_existing_files(self, media_item: MediaItem) -> tuple[bool, bool]:
-        """Handles cases where the file or partial file already exists."""
-        if media_item.partial_file.exists():
-            return await self.handle_partial_file(media_item)
-        elif media_item.complete_file.exists():
-            return await self.handle_complete_file(media_item)
-        return False
+                return await self.handle_partial_file(media_item)
 
     async def handle_partial_file(self, media_item: MediaItem) -> tuple[bool, bool]:
         """Handles the case where a partial file exists."""
@@ -402,18 +389,23 @@ class DownloadClient:
                 media_item.partial_file.rename(media_item.complete_file)
             log(f"Renaming found partial file {media_item.partial_file} to complete file {media_item.complete_file}")
             return True
-        return False
-
-    async def handle_complete_file(self, media_item: MediaItem) -> tuple[bool, bool]:
-        """Handles the case where a complete file exists."""
-        if media_item.complete_file.stat().st_size == media_item.filesize:
-            log(f"Found complete file {media_item.complete_file} locally, skipping download")
-        else:
+        elif media_item.complete_file.exists():
             log(f"Found conflicting complete file {media_item.complete_file} locally, iterating filename", 30)
             media_item.complete_file, media_item.partial_file = await self.iterate_filename(
                 media_item.complete_file, media_item
             )
-        return True
+        return False
+
+    async def check_file_completed(self, media_item: MediaItem) -> tuple[bool, bool]:
+        """check if file is completed"""
+        if not media_item.complete_file.exists() and not media_item.partial_file.exists():
+            return False
+        elif media_item.partial_file.exists():
+            return False
+        elif media_item.complete_file.exists() and media_item.complete_file.stat().st_size == media_item.filesize:
+            log(f"Found {media_item.complete_file.name} locally, skipping download")
+            return True
+        return False
 
     async def iterate_filename(self, complete_file: Path, media_item: MediaItem) -> tuple[Path, Path | None]:
         """Iterates the filename until it is unique."""
