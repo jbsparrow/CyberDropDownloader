@@ -23,6 +23,9 @@ VALIDATION_ERROR_FOOTER = """Please delete the file or fix the errors. Read the 
 \nThis is not a bug. Do not open issues related to this"""
 
 
+CLI_VALIDATION_ERROR_FOOTER = """Please read the documentation to learn about the expected values: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options
+\nThis is not a bug. Do not open issues related to this"""
+
 # regex
 RAR_MULTIPART_PATTERN = re.compile(r"^part\d+")
 SANITIZE_FILENAME_PATTERN = re.compile(r'[<>:"/\\|?*\']')

@@ -5,6 +5,7 @@ from http import HTTPStatus
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from yaml import YAMLError
 from yarl import URL
 
 from cyberdrop_dl.utils.constants import VALIDATION_ERROR_FOOTER
@@ -191,7 +192,9 @@ class InvalidYamlError(CDLBaseError):
     def __init__(self, file: Path, e: Exception) -> None:
         """This error will be thrown when a yaml config file has invalid values."""
         file_path = file.resolve()
-        msg = f"File '{file_path}' is not a valid YAML file"
+        msg = f"Unable to read file '{file_path}'"
+        if isinstance(e, YAMLError):
+            msg = f"File '{file_path}' is not a valid YAML file"
         mark = getattr(e, "problem_mark", None)
         if mark:
             msg += f"\n\nThe error was found in this line: \n {mark}"

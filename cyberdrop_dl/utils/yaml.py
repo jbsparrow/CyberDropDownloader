@@ -8,11 +8,10 @@ from pathlib import Path, PurePath
 
 import yaml
 from pydantic import BaseModel, ValidationError
-from yaml.error import YAMLError
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import InvalidYamlError
-from cyberdrop_dl.utils.constants import VALIDATION_ERROR_FOOTER
+from cyberdrop_dl.utils.constants import CLI_VALIDATION_ERROR_FOOTER, VALIDATION_ERROR_FOOTER
 
 
 class TimedeltaSerializer(BaseModel):
@@ -60,7 +59,9 @@ def load(file: Path, *, create: bool = False) -> dict:
         with file.open(encoding="utf8") as yaml_file:
             yaml_values = yaml.safe_load(yaml_file.read())
             return yaml_values if yaml_values else {}
-    except YAMLError as e:
+    except KeyboardInterrupt:
+        raise
+    except Exception as e:
         raise InvalidYamlError(file, e) from None
 
 
@@ -68,6 +69,7 @@ def handle_validation_error(e: ValidationError, *, title: str = "", file: Path |
     startup_logger = logging.getLogger("cyberdrop_dl_startup")
     error_count = e.error_count()
     msg = ""
+    footer = VALIDATION_ERROR_FOOTER
     if file:
         msg += f"File '{file.resolve()}' has an invalid config\n\n"
     show_title = title or e.title
@@ -76,12 +78,15 @@ def handle_validation_error(e: ValidationError, *, title: str = "", file: Path |
     for error in e.errors(include_url=False):
         option_name = ".".join(map(str, error["loc"]))
         if title == "CLI arguments":
-            option_name = error["loc"][-1]
-            if isinstance(error["loc"][-1], int):
+            footer = CLI_VALIDATION_ERROR_FOOTER
+            option_name: str | int = error["loc"][-1]
+            if isinstance(option_name, int):
                 option_name = ".".join(map(str, error["loc"][-2:]))
+            option_name = option_name.replace("_", "-")
             option_name = f"--{option_name}"
         msg += f"\nOption '{option_name}' with value '{error['input']}' is invalid:\n"
         msg += f"  {error['msg']}"
-    msg += "\n\n" + VALIDATION_ERROR_FOOTER
+
+    msg += "\n\n" + footer
     startup_logger.error(msg)
     sys.exit(1)
