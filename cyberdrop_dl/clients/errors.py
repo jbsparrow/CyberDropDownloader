@@ -11,7 +11,6 @@ from cyberdrop_dl.utils.constants import VALIDATION_ERROR_FOOTER
 
 if TYPE_CHECKING:
     from requests import Response
-    from yaml.error import YAMLError
 
     from cyberdrop_dl.scraper.crawler import ScrapeItem
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
@@ -189,7 +188,7 @@ class JDownloaderError(CDLBaseError):
 
 
 class InvalidYamlError(CDLBaseError):
-    def __init__(self, file: Path, e: YAMLError) -> None:
+    def __init__(self, file: Path, e: Exception) -> None:
         """This error will be thrown when a yaml config file has invalid values."""
         file_path = file.resolve()
         msg = f"File '{file_path}' is not a valid YAML file"
