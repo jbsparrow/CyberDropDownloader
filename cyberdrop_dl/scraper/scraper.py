@@ -203,23 +203,23 @@ class ScrapeMapper:
         if self.filter_items(scrape_item):
             await self.send_to_crawler(scrape_item)
 
-    @staticmethod
-    def create_item_from_link(link: URL) -> ScrapeItem:
+    def create_item_from_link(self, link: URL) -> ScrapeItem:
         item = ScrapeItem(url=link)
+        item.children_limits = self.manager.config_manager.settings_data.download_options.maximum_number_of_children
         return item
 
-    @staticmethod
-    def create_item_from_entry(entry: Sequence) -> ScrapeItem:
+    def create_item_from_entry(self, entry: Sequence) -> ScrapeItem:
         url = URL(entry[0])
         retry_path = Path(entry[1])
-        scrape_item = ScrapeItem(url=url, part_of_album=True, retry=True, retry_path=retry_path)
+        item = ScrapeItem(url=url, part_of_album=True, retry=True, retry_path=retry_path)
         completed_at = entry[2]
         created_at = entry[3]
-        if not isinstance(scrape_item.url, URL):
-            scrape_item.url = URL(scrape_item.url)
-        scrape_item.completed_at = completed_at
-        scrape_item.created_at = created_at
-        return scrape_item
+        if not isinstance(item.url, URL):
+            item.url = URL(item.url)
+        item.completed_at = completed_at
+        item.created_at = created_at
+        item.children_limits = self.manager.config_manager.settings_data.download_options.maximum_number_of_children
+        return item
 
     async def send_to_crawler(self, scrape_item: ScrapeItem) -> None:
         """Maps URLs to their respective handlers."""
