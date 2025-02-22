@@ -23,6 +23,7 @@ ALBUM_ITEM_SELECTOR = "a[class*=spotlight]"
 class HotPicCrawler(Crawler):
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {"hotpic": ["hotpic", "2385290.xyz"]}
     primary_base_domain = URL("https://hotpic.cc")
+    update_unsupported = True
 
     def __init__(self, manager: Manager, site: str) -> None:
         super().__init__(manager, site, "HotPic")
