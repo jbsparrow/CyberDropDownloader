@@ -112,6 +112,8 @@ def is_not_found(soup: BeautifulSoup) -> bool:
     image = soup.select_one("video#video-container img")
     if image and image.get("src") == "https://saint2.su/assets/notfound.gif":
         return True
+    if "File not found in the database" in str(soup):
+        return True
     return False
 
 
