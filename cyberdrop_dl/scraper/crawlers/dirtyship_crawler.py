@@ -49,7 +49,7 @@ class DirtyShipCrawler(Crawler):
                 title: str = soup.select_one("title").text  # type: ignore
                 title = title.split("Archives - DirtyShip")[0]
                 title = self.create_title(title)
-                scrape_item.setup_as_album(title, self.manager)
+                scrape_item.setup_as_album(title)
                 add_title = False
 
             for video in soup.select(PLAYLIST_ITEM_SELECTOR):

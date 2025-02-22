@@ -95,9 +95,8 @@ class ScrapeItem:
         title = sanitize_folder(title)
         self.parent_title = (self.parent_title + "/" + title) if self.parent_title else title
 
-    def set_type(self, scrape_item_type: ScrapeItemType | None, manager: Manager) -> None:
+    def set_type(self, scrape_item_type: ScrapeItemType | None, _: Manager | None = None) -> None:
         self.type = scrape_item_type
-        self.children_limits = manager.config_manager.settings_data.download_options.maximum_number_of_children
         self.reset_childen()
 
     def reset_childen(self) -> None:
@@ -125,9 +124,9 @@ class ScrapeItem:
         if reset_parent_title:
             self.parent_title = ""
 
-    def setup_as_album(self, title, manager: Manager, type: ScrapeItemType = FILE_HOST_ALBUM):
+    def setup_as_album(self, title: str, type: ScrapeItemType = FILE_HOST_ALBUM):
         self.part_of_album = True
-        self.set_type(type, manager)
+        self.set_type(type)
         self.add_to_parent_title(title)
 
     def create_new(
