@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from yarl import URL
 
@@ -16,10 +16,11 @@ if TYPE_CHECKING:
 
 
 class HotPicCrawler(Crawler):
+    SUPPORTED_SITES: ClassVar[dict[str, list]] = {"hotpic": ["hotpic", "2385290.xyz"]}
     primary_base_domain = URL("https://hotpic.cc")
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "hotpic", "HotPic")
+    def __init__(self, manager: Manager, site: str) -> None:
+        super().__init__(manager, site, "HotPic")
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -30,7 +31,7 @@ class HotPicCrawler(Crawler):
             return await self.album(scrape_item)
         elif "i" in scrape_item.url.parts:
             return await self.image(scrape_item)
-        elif "uploads" in scrape_item.url.parts:
+        elif any(p in scrape_item.url.parts for p in ("uploads", "reddit")):
             return await self.handle_direct_link(scrape_item)
         else:
             raise ValueError
