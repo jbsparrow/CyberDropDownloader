@@ -30,8 +30,8 @@ def log_unsupported_wrapper(func: Callable) -> Callable:
     async def wrapper(self: GenericCrawler, item: ScrapeItem, *args, **kwargs):
         try:
             return await func(self, *args, **kwargs)
-        except (InvalidContentTypeError, ScrapeError):
-            return await self.log_unsupported(item)
+        except (InvalidContentTypeError, ScrapeError) as e:
+            await self.log_unsupported(item, str(e))
         except Exception:
             raise
 
@@ -53,7 +53,7 @@ class GenericCrawler(Crawler):
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a file trying to guess the ext from the headers"""
         content_type = await self.get_content_type(scrape_item.url)
-        if any(s in content_type.lower() for s in ("html", "text")):
+        if "html" in content_type:
             return await self.try_video_from_soup(scrape_item)
 
         filename, ext = guess_filename_and_ext(scrape_item.url, content_type)
@@ -91,8 +91,8 @@ class GenericCrawler(Crawler):
             filename, ext = get_filename_and_ext(link.name + ".mp4")
         await self.handle_file(link, scrape_item, filename, ext)
 
-    async def log_unsupported(self, scrape_item: ScrapeItem) -> None:
-        log(f"Unsupported URL: {scrape_item.url}", 30)
+    async def log_unsupported(self, scrape_item: ScrapeItem, msg: str = "") -> None:
+        log(f"Unsupported URL: {scrape_item.url} {msg}", 30)
         await self.manager.log_manager.write_unsupported_urls_log(
             scrape_item.url,
             scrape_item.parents[0] if scrape_item.parents else None,
