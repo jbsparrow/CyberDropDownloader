@@ -43,6 +43,7 @@ class Crawler(ABC):
     DEFAULT_POST_TITLE_FORMAT = "{date} - {number} - {title}"
     update_unsupported = False
     scrape_prefix = "Scraping:"
+    scrape_mapper_domain = ""
 
     def __init__(self, manager: Manager, domain: str, folder_domain: str | None = None) -> None:
         self.manager = manager

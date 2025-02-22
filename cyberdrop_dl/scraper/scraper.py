@@ -53,7 +53,8 @@ class ScrapeMapper:
             if not crawler.SUPPORTED_SITES:
                 site_crawler = crawler(self.manager)
                 assert site_crawler.domain not in self.existing_crawlers
-                self.existing_crawlers[site_crawler.domain] = site_crawler
+                key = site_crawler.scrape_mapper_domain or site_crawler.domain
+                self.existing_crawlers[key] = site_crawler
                 continue
 
             for site, domains in crawler.SUPPORTED_SITES.items():
