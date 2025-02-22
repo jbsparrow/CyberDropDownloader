@@ -1,17 +1,20 @@
 from __future__ import annotations
 
 import contextlib
+import copy
 from dataclasses import InitVar, dataclass, field
 from enum import IntEnum
+from functools import partialmethod
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+from yarl import URL
 
 from cyberdrop_dl.clients.errors import MaxChildrenError
 from cyberdrop_dl.utils.utilities import sanitize_folder
 
 if TYPE_CHECKING:
     from rich.progress import TaskID
-    from yarl import URL
 
     from cyberdrop_dl.managers.manager import Manager
 
@@ -121,3 +124,33 @@ class ScrapeItem:
             self.parent_threads = set()
         if reset_parent_title:
             self.parent_title = ""
+
+    def setup_as_album(self, title, manager: Manager, type: ScrapeItemType = FILE_HOST_ALBUM):
+        self.part_of_album = True
+        self.set_type(type, manager)
+        self.add_to_parent_title(title)
+
+    def create_new(
+        self,
+        url: URL,
+        *,
+        new_title_part: str = "",
+        part_of_album: bool = False,
+        album_id: str | None = None,
+        possible_datetime: int | None = None,
+        add_parent: URL | bool | None = None,
+    ) -> ScrapeItem:
+        """Creates a scrape item."""
+        scrape_item = copy.deepcopy(self)
+        scrape_item.url = url
+        if add_parent:
+            new_parent = add_parent if isinstance(add_parent, URL) else self.url
+            scrape_item.parents.append(new_parent)
+        if new_title_part:
+            scrape_item.add_to_parent_title(new_title_part)
+        scrape_item.part_of_album = part_of_album or scrape_item.part_of_album
+        scrape_item.possible_datetime = possible_datetime or scrape_item.possible_datetime
+        scrape_item.album_id = album_id or scrape_item.album_id
+        return scrape_item
+
+    create_child = partialmethod(create_new, part_of_album=True, add_parent=True)
