@@ -51,7 +51,8 @@ class WeTransferCrawler(Crawler):
 
         link_str: str = json_resp.get("direct_link")  # type: ignore
         if not link_str:
-            raise ScrapeError(422)
+            code, msg = parse_error(json_resp)
+            raise ScrapeError(code, message=msg)
 
         link = self.parse_url(link_str)
         await self.direct_link(scrape_item, link)
@@ -93,3 +94,17 @@ def get_file_info(url: URL) -> FileInfo:
     if len(parts) >= 3:
         return FileInfo(id=parts[0], recipient_id=parts[0], security_hash=parts[2])
     return FileInfo(id=parts[0], security_hash=parts[1])
+
+
+def parse_error(json_resp: dict) -> tuple[int, str | None]:
+    msg = json_resp.get("message") or ""
+    code = get_error_code(msg)
+    return code, msg or None
+
+
+def get_error_code(msg: str) -> int:
+    if msg == "No download access to this Transfer":
+        return 401
+    if "Couldn't find Transfer" in msg:
+        return 410
+    return 422
