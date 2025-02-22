@@ -43,6 +43,7 @@ class Crawler(ABC):
     DEFAULT_POST_TITLE_FORMAT = "{date} - {number} - {title}"
     update_unsupported = False
     skip_pre_check = False
+    scrape_prefix = "Scraping:"
 
     def __init__(self, manager: Manager, domain: str, folder_domain: str | None = None) -> None:
         self.manager = manager
@@ -99,7 +100,7 @@ class Crawler(ABC):
         async with self._semaphore:
             self.waiting_items -= 1
             if item.url.path_qs not in self.scraped_items:
-                log(f"Scraping: {item.url}", 20)
+                log(f"{self.scrape_prefix} {item.url}", 20)
                 self.scraped_items.append(item.url.path_qs)
                 await self.fetch(item)
             else:
