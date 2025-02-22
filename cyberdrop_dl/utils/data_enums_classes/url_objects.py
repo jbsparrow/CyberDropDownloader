@@ -124,7 +124,7 @@ class ScrapeItem:
         if reset_parent_title:
             self.parent_title = ""
 
-    def setup_as_album(self, title: str, type: ScrapeItemType = FILE_HOST_ALBUM):
+    def setup_as(self, title: str, type: ScrapeItemType) -> None:
         self.part_of_album = True
         self.set_type(type)
         self.add_to_parent_title(title)
@@ -153,3 +153,7 @@ class ScrapeItem:
         return scrape_item
 
     create_child = partialmethod(create_new, part_of_album=True, add_parent=True)
+    setup_as_album = partialmethod(setup_as, type=FILE_HOST_ALBUM)
+    setup_as_profile = partialmethod(setup_as, type=FILE_HOST_PROFILE)
+    setup_as_forum = partialmethod(setup_as, type=FORUM)
+    setup_as_post = partialmethod(setup_as, type=FORUM_POST)
