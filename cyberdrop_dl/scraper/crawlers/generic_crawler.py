@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import mimetypes
+from dataclasses import dataclass
 from functools import wraps
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -24,23 +25,36 @@ if TYPE_CHECKING:
 VIDEO_SELECTOR = "video > source"
 
 
-@error_handling_wrapper
 def log_unsupported_wrapper(func: Callable) -> Callable:
     @wraps(func)
     async def wrapper(self: GenericCrawler, item: ScrapeItem, *args, **kwargs):
         try:
-            return await func(self, *args, **kwargs)
+            return await func(self, item, *args, **kwargs)
         except (InvalidContentTypeError, ScrapeError) as e:
-            await self.log_unsupported(item, str(e))
+            await self.log_unsupported(item, f"({e})")
         except Exception:
             raise
 
     return wrapper
 
 
+@dataclass(frozen=True, slots=True)
+class FakeURL:
+    host: str
+    scheme: str = "https"
+    path: str = "/"
+    query: str = ""
+    fragment: str = ""
+
+
 class GenericCrawler(Crawler):
+    primary_base_domain = FakeURL(host=".")  # type: ignore
+    domain = "."  # for scrape mapper matching
+    scrape_prefix = "Scraping (unsupported domain):"
+
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, ".", "Generic")
+        self.domain = "generic"  # For UI and database
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -49,6 +63,7 @@ class GenericCrawler(Crawler):
         """Determines where to send the scrape item based on the url."""
         await self.file(scrape_item)
 
+    @error_handling_wrapper
     @log_unsupported_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a file trying to guess the ext from the headers"""
@@ -67,7 +82,7 @@ class GenericCrawler(Crawler):
     async def get_content_type(self, url: URL) -> str:
         async with self.request_limiter:
             headers: dict = await self.client.get_head(self.domain, url)
-        content_type: str = headers.get("Content-Length", "")
+        content_type: str = headers.get("Content-Type", "")
         if not content_type:
             raise ScrapeError(422)
         return content_type.lower()
@@ -83,8 +98,8 @@ class GenericCrawler(Crawler):
         if not video:
             raise ScrapeError(422)
 
-        link_str: str = video.get("href")  # type: ignore
-        link = self.parse_url(link_str)
+        link_str: str = video.get("src")  # type: ignore
+        link = self.parse_url(link_str, scrape_item.url.with_path("/"))
         try:
             filename, ext = get_filename_and_ext(link.name)
         except NoExtensionError:
