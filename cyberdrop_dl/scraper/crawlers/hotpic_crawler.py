@@ -15,6 +15,10 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.managers.manager import Manager
 
+IMAGE_SELECTOR = "img[id*=main-image]"
+VIDEO_SELECTOR = "video > source"
+ALBUM_ITEM_SELECTOR = "a[class*=spotlight]"
+
 
 class HotPicCrawler(Crawler):
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {"hotpic": ["hotpic", "2385290.xyz"]}
@@ -49,12 +53,13 @@ class HotPicCrawler(Crawler):
         scrape_item.part_of_album = True
         scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
 
-        files = soup.select("a[class*=spotlight]")
+        files = soup.select(ALBUM_ITEM_SELECTOR)
         for file in files:
             link_str: str = file.get("href")  # type: ignore
             link = self.parse_url(link_str)
+            canonical_url = get_canonical_url(link)
             filename, ext = get_filename_and_ext(link.name)
-            await self.handle_file(link, scrape_item, filename, ext)
+            await self.handle_file(canonical_url, scrape_item, filename, ext, debrid_link=link)
             scrape_item.add_children()
 
     @error_handling_wrapper
@@ -66,19 +71,21 @@ class HotPicCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        file = soup.select_one("video > source") or soup.select_one("img[id*=main-image]")
+        file = soup.select_one(VIDEO_SELECTOR) or soup.select_one(IMAGE_SELECTOR)
         if not file:
             raise ScrapeError(422)
         link_str: str = file.get("src")  # type: ignore
         link = self.parse_url(link_str)
+        canonical_url = get_canonical_url(link)
         filename, ext = get_filename_and_ext(link.name)
-        await self.handle_file(link, scrape_item, filename, ext)
+        await self.handle_file(canonical_url, scrape_item, filename, ext, debrid_link=link)
 
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:
         link = thumbnail_to_img(scrape_item.url)
-        filename, ext = get_filename_and_ext(link.name)
-        await self.handle_file(link, scrape_item, filename, ext)
+        canonical_url = get_canonical_url(link)
+        filename, ext = get_filename_and_ext(canonical_url.name)
+        await self.handle_file(canonical_url, scrape_item, filename, ext, debrid_link=link)
 
 
 def thumbnail_to_img(url: URL) -> URL:
@@ -95,3 +102,7 @@ def thumbnail_to_img(url: URL) -> URL:
 def with_suffix_encoded(url: URL, suffix: str) -> URL:
     name = Path(url.raw_name).with_suffix(suffix)
     return url.parent.joinpath(str(name), encoded=True).with_query(url.query).with_fragment(url.fragment)
+
+
+def get_canonical_url(url: URL) -> URL:
+    return url.with_host("hotpic.cc")
