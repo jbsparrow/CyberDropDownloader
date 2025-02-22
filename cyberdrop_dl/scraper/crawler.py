@@ -44,6 +44,7 @@ class Crawler(ABC):
     update_unsupported = False
     skip_pre_check = False
     scrape_prefix = "Scraping:"
+    scrape_mapper_domain = ""
 
     def __init__(self, manager: Manager, domain: str, folder_domain: str | None = None) -> None:
         self.manager = manager

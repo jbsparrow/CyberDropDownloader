@@ -49,12 +49,11 @@ class FakeURL:
 
 class GenericCrawler(Crawler):
     primary_base_domain = FakeURL(host=".")  # type: ignore
-    domain = "."  # for scrape mapper matching
     scrape_prefix = "Scraping (unsupported domain):"
+    scrape_mapper_domain = "."
 
     def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, ".", "Generic")
-        self.domain = "generic"  # For UI and database
+        super().__init__(manager, "generic", "Generic")
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
