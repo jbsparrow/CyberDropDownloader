@@ -253,6 +253,7 @@ class Flaresolverr:
         self.timeout = aiohttp.ClientTimeout(total=120000, connect=60000)
         self.session_lock = asyncio.Lock()
         self.request_lock = asyncio.Lock()
+        self.request_count = 0
 
     async def _request(
         self,
@@ -277,7 +278,8 @@ class Flaresolverr:
 
         data = {"cmd": command, "maxTimeout": 60000, "session": self.session_id} | kwargs
 
-        msg = "Creating Flaresolverr Session"
+        self.request_count += 1
+        msg = f"Waiting For Flaresolverr Response [{self.request_count}]"
         async with (
             self.request_lock,
             self.client_manager.manager.progress_manager.show_status_msg(msg),
