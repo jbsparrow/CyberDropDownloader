@@ -66,7 +66,6 @@ def startup() -> Manager:
         handle_validation_error(e, file=file)
         sys.exit(1)
 
-
     except KeyboardInterrupt:
         startup_logger.info("Exiting...")
         sys.exit(0)
