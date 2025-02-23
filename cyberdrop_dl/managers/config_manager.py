@@ -8,6 +8,7 @@ from dataclasses import field
 from time import sleep
 from typing import TYPE_CHECKING
 
+from cyberdrop_dl.clients.errors import InvalidYamlError
 from cyberdrop_dl.config_definitions import AuthSettings, ConfigSettings, GlobalSettings
 from cyberdrop_dl.managers.log_manager import LogManager
 from cyberdrop_dl.utils import yaml
@@ -217,4 +218,7 @@ class ConfigManager:
 def is_in_file(search_value: str, file: Path) -> bool:
     if not file.is_file():
         return False
-    return search_value.casefold() in file.read_text().casefold()
+    try:
+        return search_value.casefold() in file.read_text().casefold()
+    except Exception as e:
+        raise InvalidYamlError(file, e) from e

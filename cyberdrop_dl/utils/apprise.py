@@ -88,8 +88,7 @@ def get_apprise_urls(*, file: Path | None = None, urls: list[str] | None = None)
         return _simplify_urls([AppriseURLModel(url=url) for url in set(urls)])
 
     except ValidationError as e:
-        sources = {"AppriseURLModel": file} if file else None
-        handle_validation_error(e, sources=sources)
+        handle_validation_error(e, title="Apprise", file=file)
 
 
 def _simplify_urls(apprise_urls: list[AppriseURLModel]) -> list[AppriseURL]:
