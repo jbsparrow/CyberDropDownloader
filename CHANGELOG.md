@@ -5,7 +5,7 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [6.6.0] - 2025-02-21
+## [6.6.0] - 2025-02-23
 
 ### Added
 
@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SpankBang.com support
 - Rule34video.com support
 - CDL will try to download files from unsupported forums
+- Support for direct URLs as input (hotpic)
+- Support for 2385290.xyz as an alternative domain (hotpic)
+- Support for videos (hotpic)
 
 ### Changed
 
@@ -30,11 +33,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Show input file path, input URLs count and input URLs group count in stats
 - Unsupported sites in `browser_cookies.sites` will be ignored instead of raising an error
 - Download errors now have the referer information. The CSV file will also have a referer column
+- Log files will no longer be padded with white space to the right
+- Better error messages for invalid configs
+- `--filename-regex-filter` will be validated at startup instead of being silently disabled (if invalid)
+- Use canonical URL for database (hotpic)
 
 ### Fixed
 
 - Forum attachments extension parsing (xenforo)
-- Download full resolution images instead of thumbnails (celebforum, pixhost)
+- Download full resolution images instead of thumbnails (celebforum, pixhost, hotpic)
 - Handling of URLs with "%" (U+0025) in it (bunkr)
 - Pagination of chevereto profiles and albums (jpg5, img.kiwi and imagepond.net)
 - Duplicated entries in database for previously unsupported domains
@@ -51,7 +58,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Handle invalid URLs and log them instead of crashing
 - Incorrect URL being logged in errors (reddit)
 - Handle redirect URLs (reddit)
-
+- Empty download_filename in database
+- Handling of streaming URLs (bunkr)
 
 ### Deprecated
 
