@@ -277,8 +277,10 @@ class Flaresolverr:
 
         data = {"cmd": command, "maxTimeout": 60000, "session": self.session_id} | kwargs
 
+        msg = "Creating Flaresolverr Session"
         async with (
             self.request_lock,
+            self.client_manager.manager.progress_manager.show_status_msg(msg),
             client_session.post(
                 self.flaresolverr_host / "v1",
                 headers=headers,

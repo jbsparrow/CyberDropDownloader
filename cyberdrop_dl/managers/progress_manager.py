@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from contextlib import contextmanager
+from contextlib import asynccontextmanager
 from dataclasses import field
 from datetime import timedelta
 from functools import partial
@@ -22,7 +22,7 @@ from cyberdrop_dl.ui.progress.statistic_progress import DownloadStatsProgress, S
 from cyberdrop_dl.utils.logger import log, log_spacer, log_with_color
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import AsyncGenerator
     from pathlib import Path
 
     from rich.console import RenderableType
@@ -67,8 +67,8 @@ class ProgressManager:
         self.status_message: Progress = field(init=False)
         self.status_message_task_id: TaskID = field(init=False)
 
-    @contextmanager
-    def show_status_msg(self, msg: str | None) -> Generator:
+    @asynccontextmanager
+    async def show_status_msg(self, msg: str | None) -> AsyncGenerator:
         try:
             self.status_message.update(self.status_message_task_id, description=msg, visible=bool(msg))
             yield

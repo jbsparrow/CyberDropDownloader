@@ -88,7 +88,7 @@ class ScrapeMapper:
         await self.start_real_debrid()
         self.no_crawler_downloader.startup()
 
-        with self.manager.progress_manager.show_status_msg("Reading input URLs"):
+        async with self.manager.progress_manager.show_status_msg("Reading input URLs"):
             if self.manager.parsed_args.cli_only_args.retry_failed:
                 items = await self.load_failed_links()
             elif self.manager.parsed_args.cli_only_args.retry_all:
