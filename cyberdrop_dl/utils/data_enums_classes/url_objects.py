@@ -121,3 +121,11 @@ class ScrapeItem:
             self.parent_threads = set()
         if reset_parent_title:
             self.parent_title = ""
+
+    def origin(self) -> URL | None:
+        if self.parents:
+            return self.parents[0]
+
+    def parent(self) -> URL | None:
+        if self.parents:
+            return self.parents[-1]

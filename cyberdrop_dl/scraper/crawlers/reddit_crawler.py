@@ -105,7 +105,8 @@ class RedditCrawler(Crawler):
 
         with asyncpraw_error_handle(scrape_item):
             async for submission in submissions:
-                await self.post(scrape_item, submission, reddit)
+                new_scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, add_parent=scrape_item.url)
+                await self.post(new_scrape_item, submission, reddit)
                 scrape_item.add_children()
 
     @error_handling_wrapper
@@ -120,21 +121,28 @@ class RedditCrawler(Crawler):
             link_str = submission.url
 
         link = self.parse_url(link_str)
-        new_scrape_item = self.create_scrape_item(scrape_item, link, possible_datetime=date, add_parent=scrape_item.url)
+        scrape_item.possible_datetime = date
         post = Post(title=title, date=date)
-        self.add_separate_post_title(new_scrape_item, post)  # type: ignore
-        await self.process_item(new_scrape_item, submission, reddit)
+        self.add_separate_post_title(scrape_item, post)  # type: ignore
+        await self.process_item(scrape_item, submission, reddit, link)
 
     @error_handling_wrapper
-    async def process_item(self, scrape_item: ScrapeItem, submission: Submission, reddit: Reddit) -> None:
-        assert scrape_item.url.host
-        if "redd.it" in scrape_item.url.host:
-            return await self.media(scrape_item, reddit)
-        if "gallery" in scrape_item.url.parts:
-            return await self.gallery(scrape_item, submission, reddit)
-        if "reddit.com" not in scrape_item.url.host:
-            return self.handle_external_links(scrape_item)
-        log(f"Skipping nested thread URL {scrape_item.url} found on {scrape_item.parents[0]}", 10)
+    async def process_item(self, scrape_item: ScrapeItem, submission: Submission, reddit: Reddit, link: URL) -> None:
+        assert link.host
+        if "redd.it" in link.host:
+            return await self.media(scrape_item, reddit, link)
+
+        new_scrape_item = self.create_scrape_item(scrape_item, link)
+        if "gallery" in link.parts:
+            return await self.gallery(new_scrape_item, submission, reddit)
+        if "reddit.com" not in link.host:
+            return self.handle_external_links(new_scrape_item)
+        origin = scrape_item.origin()
+        parent = scrape_item.parent()
+        msg = f"found on {parent}"
+        if parent != origin:
+            msg += f" from {origin}"
+        log(f"Skipping nested thread URL {link} {msg}", 10)
 
     async def gallery(self, scrape_item: ScrapeItem, submission: Submission, reddit: Reddit) -> None:
         """Scrapes galleries."""
@@ -148,26 +156,35 @@ class RedditCrawler(Crawler):
                 continue
             link_str = item["s"]["u"]
             link = self.parse_url(link_str).with_host("i.redd.it").with_query(None)
-            new_scrape_item = self.create_scrape_item(scrape_item, link, add_parent=scrape_item.url)
-            post = Post(title=scrape_item.parent_title, date=scrape_item.possible_datetime)  # type: ignore
-            self.add_separate_post_title(new_scrape_item, post)  # type: ignore
-            await self.media(new_scrape_item, reddit)
+            await self.media(scrape_item, reddit, link)
             scrape_item.add_children()
 
     @error_handling_wrapper
-    async def media(self, scrape_item: ScrapeItem, reddit: Reddit) -> None:
+    async def media(self, scrape_item: ScrapeItem, reddit: Reddit, link: URL | None = None) -> None:
         """Handles media links."""
+        url = link or scrape_item.url
         try:
-            filename, ext = get_filename_and_ext(scrape_item.url.name)
+            filename, ext = get_filename_and_ext(url.name)
         except NoExtensionError:
-            _, url = await self.client.get_soup_and_return_url(self.domain, scrape_item.url)
-
+            url = await self.get_final_location(url)
+            scrape_item.url = url
             with asyncpraw_error_handle(scrape_item):
                 post = await reddit.submission(url=str(url))
 
             return await self.post(scrape_item, post, reddit)
 
-        await self.handle_file(scrape_item.url, scrape_item, filename, ext)
+        await self.handle_file(url, scrape_item, filename, ext)
+
+    async def get_final_location(self, url) -> URL:
+        headers = await self.client.get_head(self.domain, url)
+        content_type = headers.get("Content-Type", "")
+        if any(s in content_type.lower() for s in ("html", "text")):
+            _, url = await self.client.get_soup_and_return_url(self.domain, url)
+            return url
+        location = headers.get("location")
+        if not location:
+            raise ScrapeError(422)
+        return self.parse_url(location)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 

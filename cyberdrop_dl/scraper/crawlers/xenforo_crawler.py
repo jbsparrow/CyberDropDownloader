@@ -118,6 +118,7 @@ class XenforoCrawler(Crawler):
     POST_NAME = "post-"
     PAGE_NAME = "page-"
     thread_url_part = "threads"
+    session_cookie_name = "xf_user"
 
     def __init__(self, manager: Manager, site: str, folder_domain: str | None = None) -> None:
         super().__init__(manager, site, folder_domain)
@@ -418,7 +419,7 @@ class XenforoCrawler(Crawler):
     @error_handling_wrapper
     async def login_setup(self, login_url: URL) -> None:
         host_cookies: dict = self.client.client_manager.cookies.filter_cookies(self.primary_base_domain)
-        session_cookie = host_cookies.get("xf_user")
+        session_cookie = host_cookies.get(self.session_cookie_name)
         session_cookie = session_cookie.value if session_cookie else None
         if session_cookie:
             self.logged_in = True

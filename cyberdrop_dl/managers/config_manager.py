@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import contextlib
 import os
-import re
 import shutil
 from dataclasses import field
 from time import sleep
 from typing import TYPE_CHECKING
 
+from cyberdrop_dl.clients.errors import InvalidYamlError
 from cyberdrop_dl.config_definitions import AuthSettings, ConfigSettings, GlobalSettings
 from cyberdrop_dl.managers.log_manager import LogManager
 from cyberdrop_dl.utils import yaml
@@ -36,7 +35,6 @@ class ConfigManager:
         self.authentication_data: AuthSettings = field(init=False)
         self.settings_data: ConfigSettings = field(init=False)
         self.global_settings_data: GlobalSettings = field(init=False)
-        self.valid_filename_filter_regex = False
 
     def startup(self) -> None:
         """Startup process for the config manager."""
@@ -75,13 +73,6 @@ class ConfigManager:
         self.apprise_urls = get_apprise_urls(file=self.apprise_file)
         self._set_apprise_fixed()
         self._set_pydantic_config()
-
-    def post_config_load_validation(self) -> None:
-        if not self.settings_data.ignore_options.filename_regex_filter:
-            return
-        with contextlib.suppress(re.error):
-            re.compile(self.settings_data.ignore_options.filename_regex_filter)
-            self.valid_filename_filter_regex = True
 
     @staticmethod
     def get_model_fields(model: BaseModel, *, exclude_unset: bool = True) -> set[str]:
@@ -217,4 +208,7 @@ class ConfigManager:
 def is_in_file(search_value: str, file: Path) -> bool:
     if not file.is_file():
         return False
-    return search_value.casefold() in file.read_text().casefold()
+    try:
+        return search_value.casefold() in file.read_text().casefold()
+    except Exception as e:
+        raise InvalidYamlError(file, e) from e
