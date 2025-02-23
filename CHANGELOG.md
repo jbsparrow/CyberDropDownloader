@@ -5,15 +5,69 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [UNRELEASED]
+## [6.6.0] - 2025-02-23
 
 ### Added
 
-- Add support for https://e621.net pools, posts, and tags.
+- Skip download of video and audio files by duration: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/media_duration_limits
+- Show simplified progress bar with new `--ui simple` option: https://script-ware.gitbook.io/cyberdrop-dl/reference/cli-arguments#ui
+- e621.net support (pools, posts, and tags)
+- Streamable.com support
+- Youjizz.com support
+- ePorner.com support
+- SpankBang.com support
+- Rule34video.com support
+- CDL will try to download files from unsupported forums
+- Support for direct URLs as input (hotpic)
+- Support for 2385290.xyz as an alternative domain (hotpic)
+- Support for videos (hotpic)
+
+### Changed
+
+- Log invalid URL paths as scrape errors
+- Increase verbosity of some processes
+- Re-enable sorting option on the main UI
+- Show queued files in progress stats
+- Vacuum requests database after cleaning old request entries
+- Remove double spaces from created folders
+- Show input file path, input URLs count and input URLs group count in stats
+- Unsupported sites in `browser_cookies.sites` will be ignored instead of raising an error
+- Download errors now have the referer information. The CSV file will also have a referer column
+- Log files will no longer be padded with white space to the right
+- Better error messages for invalid configs
+- `--filename-regex-filter` will be validated at startup instead of being silently disabled (if invalid)
+- Use canonical URL for database (hotpic)
+
+### Fixed
+
+- Forum attachments extension parsing (xenforo)
+- Download full resolution images instead of thumbnails (celebforum, pixhost, hotpic)
+- Handling of URLs with "%" (U+0025) in it (bunkr)
+- Pagination of chevereto profiles and albums (jpg5, img.kiwi and imagepond.net)
+- Duplicated entries in database for previously unsupported domains
+- `403 Forbidden` errors from some downloads (bunkr)
+- Handling of deleted videos (saint.to)
+- Handling of deleted files (cyberfile, iceyfile)
+- Loose files detection (gofile)
+- Filename not being sanitized in some cases (bunkr)
+- Handling of malformed responses from flaresolverr
+- URL serialization error (`yarl.URL` json) when passing links via CLI
+- LeakedModels crawler
+- Handle deleted files (mediafire)
+- Handle URLs with another URL as filename (kemono, coomer, nekohouse)
+- Handle invalid URLs and log them instead of crashing
+- Incorrect URL being logged in errors (reddit)
+- Handle redirect URLs (reddit)
+- Empty download_filename in database
+- Handling of streaming URLs (bunkr)
+
+### Deprecated
+
+- `--no-ui` is deprecated and will be removed in a future version. Use `--ui disabled`
 
 ### Removed
 
-- v4 option names and v4 files import support
+- v4 support (config option names and UI file import options)
 
 ## [6.5.0] - 2025-02-14
 
