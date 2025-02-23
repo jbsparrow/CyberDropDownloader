@@ -104,7 +104,6 @@ class Manager:
 
     async def async_startup(self) -> None:
         """Async startup process for the manager."""
-        self.config_manager.post_config_load_validation()
         self.args_logging()
 
         if not isinstance(self.client_manager, ClientManager):
@@ -234,11 +233,6 @@ class Manager:
         log(f"Using Authentication: \n{json.dumps(auth_provided, indent=4, sort_keys=True)}", 10)
         log(f"Using Settings: \n{config_settings}", 10)
         log(f"Using Global Settings: \n{global_settings}", 10)
-        if (
-            self.config_manager.settings_data.ignore_options.filename_regex_filter
-            and not self.config_manager.valid_filename_filter_regex
-        ):
-            log("Regex pattern of filename filter is invalid. Regex check has been disabled", 40)
 
     async def async_db_close(self) -> None:
         "Partial shutdown for managers used for hash directory scanner"
