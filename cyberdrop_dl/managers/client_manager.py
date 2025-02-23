@@ -228,7 +228,7 @@ class FlaresolverrResponse:
     status: str
     cookies: dict
     user_agent: str
-    soup: BeautifulSoup
+    soup: BeautifulSoup | None
     url: URL
 
     @classmethod
@@ -239,7 +239,7 @@ class FlaresolverrResponse:
         user_agent = solution["userAgent"].strip()
         url_str: str = solution["url"]
         cookies: dict = solution.get("cookies") or {}
-        soup = BeautifulSoup(response, "html.parser")
+        soup = BeautifulSoup(response, "html.parser") if response else None
         url = URL(url_str)
         return cls(status, cookies, user_agent, soup, url)
 
@@ -309,7 +309,7 @@ class Flaresolverr:
         client_session: ClientSession,
         origin: ScrapeItem | URL | None = None,
         update_cookies: bool = True,
-    ) -> tuple[BeautifulSoup, URL]:
+    ) -> tuple[BeautifulSoup | None, URL]:
         """Returns the resolved URL from the given URL."""
         json_resp: dict = await self._request("request.get", client_session, origin, url=url)
 
@@ -324,7 +324,9 @@ class Flaresolverr:
         mismatch_msg = f"Config user_agent and flaresolverr user_agent do not match: \n  Cyberdrop-DL: {fs_resp.user_agent}\n  Flaresolverr: {fs_resp.user_agent}"
 
         user_agent = client_session.headers["User-Agent"].strip()
-        if self.client_manager.check_ddos_guard(fs_resp.soup) or self.client_manager.check_cloudflare(fs_resp.soup):
+        if fs_resp.soup and (
+            self.client_manager.check_ddos_guard(fs_resp.soup) or self.client_manager.check_cloudflare(fs_resp.soup)
+        ):
             if not update_cookies:
                 raise DDOSGuardError(message="Invalid response from flaresolverr", origin=origin)
             if fs_resp.user_agent != user_agent:

@@ -112,11 +112,18 @@ class ScraperClient:
                     origin,
                 )
                 # retry request with flaresolverr cookies
-                if self.client_manager.check_ddos_guard(soup) or self.client_manager.check_cloudflare(soup):
+                if not soup or (
+                    self.client_manager.check_ddos_guard(soup) or self.client_manager.check_cloudflare(soup)
+                ):
                     if not retry:
                         raise DDOSGuardError(message="Unable to access website with flaresolverr cookies") from None
                     return await self.get_soup(
-                        domain, url, client_session, origin, with_response_url, retry=False, cache_disabled=True
+                        domain,
+                        url,
+                        origin=origin,
+                        with_response_url=with_response_url,
+                        retry=False,
+                        cache_disabled=True,
                     )
                 if with_response_url:
                     return soup, response_URL
@@ -192,10 +199,12 @@ class ScraperClient:
             except DDOSGuardError:
                 await self.client_manager.manager.cache_manager.request_cache.delete_url(url)
                 soup, _ = await self.client_manager.flaresolverr.get(url, client_session, origin)
-                if self.client_manager.check_ddos_guard(soup) or self.client_manager.check_cloudflare(soup):
+                if not soup or (
+                    self.client_manager.check_ddos_guard(soup) or self.client_manager.check_cloudflare(soup)
+                ):
                     if not retry:
                         raise DDOSGuardError(message="Unable to access website with flaresolverr cookies") from None
-                    return await self.get_text(domain, url, client_session, origin, retry=False, cache_disabled=True)
+                    return await self.get_text(domain, url, origin=origin, retry=False, cache_disabled=True)
                 return str(soup)
             return await response.text()
 
