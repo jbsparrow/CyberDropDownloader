@@ -5,6 +5,7 @@ import contextlib
 import logging
 import os
 import sys
+from datetime import datetime
 from functools import wraps
 from pathlib import Path
 from time import perf_counter
@@ -141,8 +142,9 @@ def setup_debug_logger(manager: Manager) -> Path | None:
     manager.config_manager.settings_data.runtime_options.log_level = 10
     logger_debug.setLevel(manager.config_manager.settings_data.runtime_options.log_level)
     debug_log_file_path = Path(__file__).parents[1] / "cyberdrop_dl_debug.log"
-    if env.DEBUG_LOG_FILE_FOLDER:
-        debug_log_file_path = Path(env.DEBUG_LOG_FILE_FOLDER) / "cyberdrop_dl_debug.log"
+    if env.DEBUG_LOG_FOLDER:
+        date = datetime.now().strftime("%Y%m%d_%H%M%S")
+        debug_log_file_path = Path(env.DEBUG_LOG_FOLDER) / f"cyberdrop_dl_debug_{date}.log"
 
     rich_file_handler_debug = RichHandler(
         **constants.RICH_HANDLER_DEBUG_CONFIG,
