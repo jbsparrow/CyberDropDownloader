@@ -14,6 +14,7 @@ class SimpCityCrawler(XenforoCrawler):
     primary_base_domain = URL("https://simpcity.su")
     login_required = False
     domain = "simpcity"
+    session_cookie_name = "dontlikebots_user"
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, self.domain, "SimpCity")
