@@ -243,6 +243,10 @@ class BunkrrCrawler(Crawler):
 
 def is_stream_redirect(url: URL) -> bool:
     assert url.host
+    first_subdomain = url.host.split(".")[0]
+    _, _, number = first_subdomain.partition("cdn")
+    if number.isdigit():
+        return True
     return any(part in url.host for part in ("cdn12", "cdn-")) or url.host == "cdn.bunkr.ru"
 
 
