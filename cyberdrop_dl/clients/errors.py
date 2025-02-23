@@ -5,13 +5,13 @@ from http import HTTPStatus
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from yaml import YAMLError
 from yarl import URL
 
 from cyberdrop_dl.utils.constants import VALIDATION_ERROR_FOOTER
 
 if TYPE_CHECKING:
     from requests import Response
-    from yaml.constructor import ConstructorError
 
     from cyberdrop_dl.scraper.crawler import ScrapeItem
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
@@ -189,11 +189,20 @@ class JDownloaderError(CDLBaseError):
 
 
 class InvalidYamlError(CDLBaseError):
-    def __init__(self, file: Path, e: ConstructorError) -> None:
+    def __init__(self, file: Path, e: Exception) -> None:
         """This error will be thrown when a yaml config file has invalid values."""
-        mark = e.problem_mark if hasattr(e, "problem_mark") else e
-        message = f"File '{file.resolve()}' has an invalid config. \n Please verify and edit it manually\n {mark}\n\n{VALIDATION_ERROR_FOOTER}"
-        super().__init__("Invalid YAML", message=message, origin=file)
+        file_path = file.resolve()
+        msg = f"Unable to read file '{file_path}'"
+        if isinstance(e, YAMLError):
+            msg = f"File '{file_path}' is not a valid YAML file"
+        mark = getattr(e, "problem_mark", None)
+        if mark:
+            msg += f"\n\nThe error was found in this line: \n {mark}"
+
+        problem = getattr(e, "problem", str(e))
+        msg += f"\n\n{problem.capitalize()}"
+        msg += f"\n\n{VALIDATION_ERROR_FOOTER}"
+        super().__init__("Invalid YAML", message=msg, origin=file)
 
 
 @singledispatch
