@@ -16,7 +16,7 @@ from cyberdrop_dl.clients.errors import InvalidURLError, LoginError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id, remove_trailing_slash
 from cyberdrop_dl.scraper.filters import set_return_value
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FORUM, FORUM_POST, ScrapeItem
-from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.logger import log, log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
@@ -74,22 +74,25 @@ class ForumPost:
 
     @cached_property
     def content(self) -> Tag:
-        return self.soup.select_one(self.selectors.content.element)
+        return self.soup.select_one(self.selectors.content.element)  # type: ignore
 
     @cached_property
     def date(self) -> int | None:
-        date = None
-        with contextlib.suppress(AttributeError):
-            date = int(self.content.select_one(self.selectors.date.element).get(self.selectors.date.attribute))
-        return date
+        date_tag = self.content.select_one(self.selectors.date.element)
+        date_str: str | None = date_tag.get(self.selectors.date.attribute) if date_tag else None  # type: ignore
+        if not date_str:
+            return
+        return int(date_str)
 
     @cached_property
     def number(self) -> int:
         if self.selectors.number.element == self.selectors.number.attribute:
-            number = int(self.soup.get(self.selectors.number.element))
-            return number
-        number = self.soup.select_one(self.selectors.number.element)
-        return int(number.get(self.selectors.number.attribute).split("/")[-1].split(self.post_name)[-1])
+            number_str: str = self.soup.get(self.selectors.number.element)  # type: ignore
+            return int(number_str)
+
+        number_tag = self.soup.select_one(self.selectors.number.element)
+        number_str: str = number_tag.get(self.selectors.number.attribute)  # type: ignore
+        return int(number_str.split("/")[-1].split(self.post_name)[-1])
 
     @cached_property
     def id(self) -> int:
@@ -171,11 +174,16 @@ class XenforoCrawler(Crawler):
         async for soup in self.thread_pager(scrape_item):
             if not title:
                 title_block = soup.select_one(self.selectors.title.element)
-                trash: list[Tag] = title_block.find_all(self.selectors.title_trash.element)
+                try:
+                    trash: list[Tag] = title_block.find_all(self.selectors.title_trash.element)  # type: ignore
+                except AttributeError as e:
+                    log_debug("Got an unprocessable soup", 40, exc_info=e)
+                    raise ScrapeError(429, message="Invalid response from forum. You may have been rate limited") from e
+
                 for element in trash:
                     element.decompose()
 
-                title = self.create_title(title_block.text.replace("\n", ""), thread_id=thread.id_)
+                title = self.create_title(title_block.text.replace("\n", ""), thread_id=thread.id_)  # type: ignore
                 scrape_item.add_to_parent_title(title)
 
             posts = soup.select(self.selectors.posts.element)
@@ -208,7 +216,7 @@ class XenforoCrawler(Crawler):
 
     async def post(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         """Scrapes a post."""
-        self.add_separate_post_title(scrape_item, post)
+        self.add_separate_post_title(scrape_item, post)  # type: ignore
         scrape_item.set_type(FORUM_POST, self.manager)
         posts_scrapers = [self.attachments, self.embeds, self.images, self.links, self.videos]
         for scraper in posts_scrapers:
@@ -259,21 +267,21 @@ class XenforoCrawler(Crawler):
             yield soup
             if not next_page:
                 break
-            page_url_str: str = next_page.get(self.selectors.next_page.attribute)
+            page_url_str: str = next_page.get(self.selectors.next_page.attribute)  # type: ignore
             page_url = self.parse_url(page_url_str)
             page_url = self.pre_filter_link(page_url)
 
     async def process_children(self, scrape_item: ScrapeItem, links: list[Tag], selector: str | None) -> None:
         for link_obj in links:
-            link_tag: Tag | str = link_obj.get(selector)
+            link_tag: Tag | str = link_obj.get(selector)  # type: ignore
             if link_tag and not isinstance(link_tag, str):
                 parent_simp_check = link_tag.parent.get("data-simp")
                 if parent_simp_check and "init" in parent_simp_check:
                     continue
 
-            link_str: str = link_tag or link_obj.get("href")
+            link_str: str | None = link_tag or link_obj.get("href")  # type: ignore
             if selector == self.selectors.posts.embeds.attribute:
-                link_str: str = self.process_embed(link_tag)
+                link_str = self.process_embed(link_tag)
 
             if not link_str or link_str.startswith("data:image/svg"):
                 continue
@@ -358,7 +366,7 @@ class XenforoCrawler(Crawler):
         confirm_button = soup.select_one("a[class*=button--cta]")
         if not confirm_button:
             return
-        link_str: str = confirm_button.get("href")
+        link_str: str = confirm_button.get("href")  # type: ignore
         link_str = link_str.split('" class="link link--internal', 1)[0]
         new_link = self.parse_url(link_str)
         return await self.get_absolute_link(new_link)
@@ -395,7 +403,7 @@ class XenforoCrawler(Crawler):
 
     def is_valid_post_link(self, link_obj: Tag) -> bool:
         is_image = link_obj.select_one("img")
-        link_str: str = link_obj.get(self.selectors.posts.links.element)
+        link_str: str = link_obj.get(self.selectors.posts.links.element)  # type: ignore
         return not (is_image or self.is_attachment(link_str))
 
     def is_confirmation_link(self, link: URL) -> bool:
