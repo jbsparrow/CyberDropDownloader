@@ -421,16 +421,16 @@ class XenforoCrawler(Crawler):
         host_cookies: dict = self.client.client_manager.cookies.filter_cookies(self.primary_base_domain)
         session_cookie = host_cookies.get(self.session_cookie_name)
         session_cookie = session_cookie.value if session_cookie else None
+        msg = f"No cookies found for {self.folder_domain}"
         if not session_cookie and self.login_required:
-            msg = f"No cookies found for {self.folder_domain}"
             raise LoginError(message=msg)
 
         _, self.logged_in = await self.check_login_with_request(login_url)
 
         if self.logged_in:
             return
-
-        msg = f"Cookies for {self.folder_domain} are not valid."
+        if session_cookie:
+            msg = f"Cookies for {self.folder_domain} are not valid."
         if self.login_required:
             raise LoginError(message=msg)
 
