@@ -165,4 +165,3 @@ class ScrapeItem:
     def parent(self) -> URL | None:
         if self.parents:
             return self.parents[-1]
-
