@@ -65,7 +65,7 @@ This is the minimum amount of free space require to start new downloads.
 | ------------- | ---------------------------------------------------------------------------------- |
 | `NonEmptyStr` | `Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0` |
 
-The user agent is the signature of your browser, it's how it is represented to websites you connect to. You can google "what is my user agent" to see what yours may be.
+The user agent is the signature of your browser, determining how it is presented to the websites you visit.. You can google "what is my user agent" to see what yours may be.
 
 {% hint style="info" %}
 If you use flaresolverr, this value must match with flaresolverr user agent for its cookies to work
