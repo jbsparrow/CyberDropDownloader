@@ -41,11 +41,12 @@ If the migration fails, the database will be rolled back to its previous state. 
 ## Import V4 config to V6
 
 {% hint style="warning" %}
+V4 import is no longer supported. Last version with v4 support was `6.5.0`. To upgrade to the latest version, you need to perform a sequential upgrade. First, update CDL to `6.5.0`, import your v4 files, and then update to the latest version.
 
-You can install an specific version with pip by running:
+You can install `6.5.0` with pip by running:
 
 ```shell
-pip install cyberdrop-dl-patched==VERSION
+pip install cyberdrop-dl-patched==6.5.0
 ```
 
 {% endhint %}

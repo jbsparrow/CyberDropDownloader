@@ -19,6 +19,8 @@ if TYPE_CHECKING:
 
 return_values = {}
 
+MEDIA_EXTENSIONS = FILE_FORMATS["Images"] | FILE_FORMATS["Videos"] | FILE_FORMATS["Audio"]
+
 
 def is_valid_url(scrape_item: ScrapeItem) -> bool:
     if not scrape_item.url:
@@ -64,15 +66,16 @@ def remove_trailing_slash(url: URL) -> URL:
     return url_trimmed
 
 
-def has_valid_extension(url: URL) -> bool:
+def has_valid_extension(url: URL, forum: bool = False) -> bool:
     """Checks if the URL has a valid extension."""
     try:
-        _, ext = get_filename_and_ext(url.name)
-        valid_exts = FILE_FORMATS["Images"] | FILE_FORMATS["Videos"] | FILE_FORMATS["Audio"]
+        _, ext = get_filename_and_ext(url.name, forum=forum)
     except NoExtensionError:
+        if not forum:
+            return has_valid_extension(url, forum=True)
         return False
     else:
-        return ext in valid_exts
+        return ext in MEDIA_EXTENSIONS
 
 
 async def set_return_value(url: str, value: bool, pop: bool | None = True) -> None:

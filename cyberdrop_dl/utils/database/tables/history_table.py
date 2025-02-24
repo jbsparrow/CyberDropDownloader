@@ -47,7 +47,9 @@ class HistoryTable:
 
     async def update_previously_unsupported(self, crawlers: dict[str, Crawler]) -> None:
         """Update old `no_crawler` entries that are now supported."""
-        domains_to_update = [(c.domain, f"{c.primary_base_domain}%") for c in crawlers.values() if c.update_unsupported]
+        domains_to_update = [
+            (c.domain, f"http%{c.primary_base_domain.host}%") for c in crawlers.values() if c.update_unsupported
+        ]
         if not domains_to_update:
             return
         referers = [(d[1],) for d in domains_to_update]
@@ -157,10 +159,11 @@ class HistoryTable:
                 0,
             ),
         )
-        await self.db_conn.execute(
-            """UPDATE media SET download_filename = ? WHERE domain = ? and url_path = ?""",
-            (download_filename, domain, url_path),
-        )
+        if download_filename:
+            await self.db_conn.execute(
+                """UPDATE media SET download_filename = ? WHERE domain = ? and url_path = ?""",
+                (download_filename, domain, url_path),
+            )
         await self.db_conn.commit()
 
     async def mark_complete(self, domain: str, media_item: MediaItem) -> None:
@@ -183,6 +186,29 @@ class HistoryTable:
             (file_size, domain, url_path),
         )
         await self.db_conn.commit()
+
+    async def add_duration(self, domain: str, media_item: MediaItem) -> None:
+        """Add the file size to the db."""
+
+        url_path = get_db_path(media_item.url, str(media_item.referer))
+        duration = media_item.duration
+        await self.db_conn.execute(
+            """UPDATE media SET duration=? WHERE domain = ? and url_path = ?""",
+            (duration, domain, url_path),
+        )
+        await self.db_conn.commit()
+
+    async def get_duration(self, domain: str, media_item: MediaItem) -> float:
+        """Returns the duration from the database."""
+
+        url_path = get_db_path(media_item.url, str(media_item.referer))
+        cursor = await self.db_conn.cursor()
+        result = await cursor.execute(
+            """SELECT duration FROM media WHERE domain = ? and url_path = ?""",
+            (domain, url_path),
+        )
+        sql_duration = await result.fetchone()
+        return sql_duration[0] if sql_duration else None
 
     async def add_download_filename(self, domain: str, media_item: MediaItem) -> None:
         """Add the download_filename to the db."""
@@ -218,7 +244,7 @@ class HistoryTable:
         )
         return await result.fetchall()
 
-    async def get_all_items(self, after: datetime, before: datetime) -> Iterable[Row]:
+    async def get_all_items(self, after: datetime.date, before: datetime.date) -> Iterable[Row]:
         """Returns a list of all items."""
         cursor = await self.db_conn.cursor()
         result = await cursor.execute(
@@ -333,4 +359,8 @@ class HistoryTable:
 
         if "file_size" not in current_cols:
             await self.db_conn.execute("""ALTER TABLE media ADD COLUMN file_size INT""")
+            await self.db_conn.commit()
+
+        if "duration" not in current_cols:
+            await self.db_conn.execute("""ALTER TABLE media ADD COLUMN duration FLOAT""")
             await self.db_conn.commit()

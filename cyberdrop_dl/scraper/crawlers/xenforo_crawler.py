@@ -12,8 +12,8 @@ from typing import TYPE_CHECKING
 from bs4 import BeautifulSoup
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import LoginError
-from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
+from cyberdrop_dl.clients.errors import InvalidURLError, LoginError, ScrapeError
+from cyberdrop_dl.scraper.crawler import Crawler, create_task_id, remove_trailing_slash
 from cyberdrop_dl.scraper.filters import set_return_value
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FORUM, FORUM_POST, ScrapeItem
 from cyberdrop_dl.utils.logger import log
@@ -118,6 +118,7 @@ class XenforoCrawler(Crawler):
     POST_NAME = "post-"
     PAGE_NAME = "page-"
     thread_url_part = "threads"
+    session_cookie_name = "xf_user"
 
     def __init__(self, manager: Manager, site: str, folder_domain: str | None = None) -> None:
         super().__init__(manager, site, folder_domain)
@@ -281,17 +282,17 @@ class XenforoCrawler(Crawler):
             link = self.filter_link(link)
             if not link:
                 continue
-            await self.handle_link(scrape_item, link)
+            new_scrape_item = self.create_scrape_item(scrape_item, link)
+            await self.handle_link(new_scrape_item)
             scrape_item.add_children()
 
     @singledispatchmethod
     def is_attachment(self, link: URL) -> bool:
         if not link:
             return False
-        assert link.host, f"{link} has no host"
         parts = self.attachment_url_parts
         hosts = self.attachment_url_hosts
-        return any(p in link.parts for p in parts) or any(h in link.host for h in hosts)
+        return any(p in link.parts for p in parts) or (link.host and any(h in link.host for h in hosts))  # type: ignore
 
     @is_attachment.register
     def _(self, link_str: str) -> bool:
@@ -316,22 +317,34 @@ class XenforoCrawler(Crawler):
         parsed_link = self.parse_url(link_str)
         return await self.get_absolute_link(parsed_link)
 
-    async def handle_link(self, scrape_item: ScrapeItem, link: URL) -> None:
-        if not link or link == self.primary_base_domain:
+    @error_handling_wrapper
+    async def handle_link(self, scrape_item: ScrapeItem) -> None:
+        if not scrape_item.url or scrape_item.url == self.primary_base_domain:
             return
-        assert link.host, f"{link} has no host"
-        new_scrape_item = self.create_scrape_item(scrape_item, link)
-        if self.is_attachment(link):
-            return await self.handle_internal_link(new_scrape_item)
-        if self.primary_base_domain.host in link.host and self.stop_thread_recursion(new_scrape_item):  # type: ignore
+        if not scrape_item.url.host:
+            raise InvalidURLError("url has no host", origin=scrape_item)
+        if self.is_attachment(scrape_item.url):
+            return await self.handle_internal_link(scrape_item)
+        if self.primary_base_domain.host in scrape_item.url.host and self.stop_thread_recursion(scrape_item):  # type: ignore
             origin = scrape_item.parents[0]
-            return log(f"Skipping nested thread URL {link} found on {origin}", 10)
-        new_scrape_item.set_type(None, self.manager)
-        self.handle_external_links(new_scrape_item)
+            return log(f"Skipping nested thread URL {scrape_item.url} found on {origin}", 10)
+        scrape_item.set_type(None, self.manager)
+        self.handle_external_links(scrape_item)
 
     @error_handling_wrapper
     async def handle_internal_link(self, scrape_item: ScrapeItem) -> None:
         """Handles internal links."""
+        scrape_item.url = remove_trailing_slash(scrape_item.url)
+
+        if scrape_item.url.name.isdigit():
+            head = await self.client.get_head(self.domain, scrape_item.url, origin=scrape_item)  # type: ignore
+            redirect = head.get("location")
+            if not redirect:
+                raise ScrapeError(422, origin=scrape_item)
+            scrape_item.url = self.parse_url(redirect)
+            self.manager.task_group.create_task(self.run(scrape_item))
+            return
+
         filename, ext = get_filename_and_ext(scrape_item.url.name, forum=True)
         scrape_item.add_to_parent_title("Attachments")
         scrape_item.part_of_album = True
@@ -406,7 +419,7 @@ class XenforoCrawler(Crawler):
     @error_handling_wrapper
     async def login_setup(self, login_url: URL) -> None:
         host_cookies: dict = self.client.client_manager.cookies.filter_cookies(self.primary_base_domain)
-        session_cookie = host_cookies.get("xf_user")
+        session_cookie = host_cookies.get(self.session_cookie_name)
         session_cookie = session_cookie.value if session_cookie else None
         if session_cookie:
             self.logged_in = True

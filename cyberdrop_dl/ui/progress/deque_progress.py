@@ -15,12 +15,12 @@ if TYPE_CHECKING:
 
 def adjust_title(s: str, length: int = 40, placeholder: str = "...") -> str:
     """Collapse and truncate or pad the given string to fit in the given length."""
-    return f"{s[:length - len(placeholder)]}{placeholder}" if len(s) >= length else s.ljust(length)
+    return f"{s[: length - len(placeholder)]}{placeholder}" if len(s) >= length else s.ljust(length)
 
 
 class DequeProgress(ABC):
     _progress: Progress
-    type_str: str = "Files"
+    type_str: str = "files"
     color = "plum3"
     progress_str = "[{color}]{description}"
     overflow_str = "[{color}]... and {number:,} other {type_str}"
@@ -28,6 +28,7 @@ class DequeProgress(ABC):
 
     def __init__(self, title: str, visible_tasks_limit: int) -> None:
         self.title = title
+        self.title_lower = title.lower()
         self._overflow = Progress("[progress.description]{task.description}")
         self._queue = Progress("[progress.description]{task.description}")
         self._progress_group = Group(self._progress, self._overflow, self._queue)
@@ -37,7 +38,7 @@ class DequeProgress(ABC):
             visible=False,
         )
         self._queue_task_id = self._queue.add_task(
-            self.queue_str.format(color=self.color, number=0, type_str=self.type_str, title=self.title),
+            self.queue_str.format(color=self.color, number=0, type_str=self.type_str, title=self.title_lower),
             visible=False,
         )
         self._tasks: deque[TaskID] = deque([])
@@ -111,7 +112,7 @@ class DequeProgress(ABC):
         self._queue.update(
             self._queue_task_id,
             description=self.queue_str.format(
-                color=self.color, number=queue_length, type_str=self.type_str, title=self.title
+                color=self.color, number=queue_length, type_str=self.type_str, title=self.title_lower
             ),
             visible=queue_length > 0,
         )

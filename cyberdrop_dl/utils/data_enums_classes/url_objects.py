@@ -37,6 +37,7 @@ class MediaItem:
     filename: str
     original_filename: str | None = None
     debrid_link: URL | None = field(default=None, hash=False, compare=False)
+    duration: float | None = field(default=None, hash=False, compare=False)
     ext: str = ""
 
     # exclude from __init__
@@ -120,3 +121,11 @@ class ScrapeItem:
             self.parent_threads = set()
         if reset_parent_title:
             self.parent_title = ""
+
+    def origin(self) -> URL | None:
+        if self.parents:
+            return self.parents[0]
+
+    def parent(self) -> URL | None:
+        if self.parents:
+            return self.parents[-1]

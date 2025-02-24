@@ -1,21 +1,32 @@
 import sys
 import time
 import warnings
-from argparse import SUPPRESS, ArgumentDefaultsHelpFormatter, ArgumentParser, BooleanOptionalAction
+from argparse import SUPPRESS, ArgumentParser, BooleanOptionalAction, RawDescriptionHelpFormatter
 from argparse import _ArgumentGroup as ArgGroup
 from datetime import date
+from enum import StrEnum, auto
 from pathlib import Path
 from typing import TYPE_CHECKING, Self
 
 from pydantic import BaseModel, Field, ValidationError, computed_field, field_validator, model_validator
 
-from cyberdrop_dl import __version__
+from cyberdrop_dl import __version__, env
 from cyberdrop_dl.config_definitions import ConfigSettings, GlobalSettings
-from cyberdrop_dl.config_definitions.pydantic.custom_types import AliasModel, HttpURL
+from cyberdrop_dl.config_definitions.custom.types import AliasModel, HttpURL
 from cyberdrop_dl.utils.yaml import handle_validation_error
 
 if TYPE_CHECKING:
     from pydantic.fields import FieldInfo
+
+CLI_ARGUMENTS_MD = Path("docs/reference/cli-arguments.md")
+CDL_EPILOG = "Visit the wiki for additional details: https://script-ware.gitbook.io/cyberdrop-dl"
+
+
+class UIOptions(StrEnum):
+    DISABLED = auto()
+    ACTIVITY = auto()
+    SIMPLE = auto()
+    FULLSCREEN = auto()
 
 
 warnings.simplefilter("always", DeprecationWarning)
@@ -36,7 +47,6 @@ class CommandLineOnlyArgs(BaseModel):
     config_file: Path | None = Field(None, description="path to the CDL settings.yaml file to load")
     download: bool = Field(False, description="skips UI, start download immediatly")
     max_items_retry: int = Field(0, description="max number of links to retry")
-    no_ui: bool = Field(False, description="disables the UI/progress view entirely")
     retry_all: bool = Field(False, description="retry all downloads")
     retry_failed: bool = Field(False, description="retry failed downloads")
     retry_maintenance: bool = Field(
@@ -44,16 +54,23 @@ class CommandLineOnlyArgs(BaseModel):
     )
     download_tiktok_audios: bool = Field(False, description="download TikTok audios")
     print_stats: bool = Field(True, description="Show stats report at the end of a run")
+    ui: UIOptions = Field(UIOptions.FULLSCREEN, description="DISABLED, ACTIVITY, SIMPLE or FULLSCREEN")
 
-    @computed_field
     @property
     def retry_any(self) -> bool:
         return any((self.retry_all, self.retry_failed, self.retry_maintenance))
 
-    @computed_field
+    @property
+    def fullscreen_ui(self) -> bool:
+        return self.ui == UIOptions.FULLSCREEN
+
     @property
     def multiconfig(self) -> bool:
-        return self.config and self.config.casefold() == "all"
+        return bool(self.config) and self.config.casefold() == "all"
+
+    @computed_field
+    def __computed__(self) -> dict:
+        return {"retry_any": self.retry_any, "fullscreen_ui": self.fullscreen_ui, "multiconfig": self.multiconfig}
 
     @model_validator(mode="after")
     def mutually_exclusive(self) -> Self:
@@ -65,130 +82,36 @@ class CommandLineOnlyArgs(BaseModel):
         _check_mutually_exclusive(group2, msg2)
         return self
 
+    @field_validator("ui", mode="before")
+    @classmethod
+    def lower(cls, value: str) -> str:
+        return value.lower()
+
 
 class DeprecatedArgs(BaseModel):
-    output_folder: Path | None = Field(
-        None,
-        deprecated="'--output-folder' is deprecated and will be removed in the future. Use '--download-folder'",
-    )
-    download_all_configs: bool = Field(
+    no_ui: bool = Field(
         False,
-        description="Skip the UI and go straight to downloading (runs all configs sequentially)",
-        deprecated="'--download-all-configs' is deprecated and will be removed in the future. Use '--download --config all'",
+        description="disables the UI/progress view entirely",
+        deprecated="'--no-ui' is deprecated and will be removed in the future. Use '--ui disabled'",
     )
-    sort_all_configs: bool = Field(
-        False,
-        description="Sort all configs sequentially",
-        deprecated="'--sort-all-configs' is deprecated and will be removed in the future. Use '--sort-downloads --config all'",
-    )
-    sort_all_downloads: bool = Field(
-        False,
-        description="sort all downloads, not just those downloaded by Cyberdrop-DL",
-        deprecated="'--sort-all-downloads' is deprecated.",
-    )
-
-    sort_cdl_only: bool = Field(
-        False,
-        description="only sort files downloaded by Cyberdrop-DL",
-        deprecated="'--sort-cdl-only' is deprecated.",
-    )
-
-    main_log_filename: Path | None = Field(
-        None,
-        deprecated="'--main-log-filename' is deprecated and will be removed in the future. Use '--main-log'",
-    )
-    last_forum_post_filename: Path | None = Field(
-        None,
-        deprecated="'--last-forum-post-filename' is deprecated and will be removed in the future. Use '--last-forum-post'",
-    )
-    unsupported_urls_filename: Path | None = Field(
-        None,
-        deprecated="'--unsupported-urls-filename' is deprecated and will be removed in the future. Use '--unsupported-urls'",
-    )
-    download_error_urls_filename: Path | None = Field(
-        None,
-        deprecated="'--download-error-urls-filename' is deprecated and will be removed in the future. Use '--download-error-urls'",
-    )
-    scrape_error_urls_filename: Path | None = Field(
-        None,
-        deprecated="'--scrape-error-urls-filename' is deprecated and will be removed in the future. Use '--scrape-error-urls'",
-    )
-
-    @field_validator("main_log_filename", mode="after")
-    @classmethod
-    def fix_main_log_extension(cls, value: Path) -> Path:
-        return value.with_suffix(".log")
-
-    @field_validator(
-        "last_forum_post_filename",
-        "unsupported_urls_filename",
-        "download_error_urls_filename",
-        "scrape_error_urls_filename",
-        mode="after",
-    )
-    @classmethod
-    def fix_other_logs_extensions(cls, value: Path) -> Path:
-        return value.with_suffix(".csv")
 
 
 class ParsedArgs(AliasModel):
-    cli_only_args: CommandLineOnlyArgs = CommandLineOnlyArgs()
+    cli_only_args: CommandLineOnlyArgs = CommandLineOnlyArgs()  # type: ignore
     config_settings: ConfigSettings = ConfigSettings()
-    deprecated_args: DeprecatedArgs = DeprecatedArgs()
+    deprecated_args: DeprecatedArgs = DeprecatedArgs()  # type: ignore
     global_settings: GlobalSettings = GlobalSettings()
 
     def model_post_init(self, _) -> None:
         exit_on_warning = False
-        logs_deprecated_names = [
-            "main_log_filename",
-            "last_forum_post_filename",
-            "unsupported_urls_filename",
-            "download_error_urls_filename",
-            "scrape_error_urls_filename",
-        ]
 
         if self.cli_only_args.retry_all or self.cli_only_args.retry_maintenance:
             self.config_settings.runtime_options.ignore_history = True
 
-        warnings_to_emit = set()
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-
-            def add_warning_msg_from(field_name: str) -> None:
-                field_info: FieldInfo = self.deprecated_args.model_fields[field_name]
-                warnings_to_emit.add(field_info.deprecated)
-
-            if self.deprecated_args.sort_all_configs:
-                add_warning_msg_from("sort_all_configs")
-                self.config_settings.sorting.sort_downloads = True
-                self.cli_only_args.config = "ALL"
-
-            if self.deprecated_args.output_folder:
-                add_warning_msg_from("output_folder")
-                self.config_settings.files.download_folder = self.deprecated_args.output_folder
-
-            if self.deprecated_args.download_all_configs:
-                add_warning_msg_from("download_all_configs")
-                self.cli_only_args.download = True
-                self.cli_only_args.config = "ALL"
-
-            if self.deprecated_args.sort_all_downloads:
-                add_warning_msg_from("sort_all_downloads")
-                exit_on_warning = True
-
-            if self.deprecated_args.sort_cdl_only:
-                add_warning_msg_from("sort_cdl_only")
-                exit_on_warning = True
-
-            for deprecated_name in logs_deprecated_names:
-                cli_value = getattr(self.deprecated_args, deprecated_name, None)
-                if cli_value:
-                    add_warning_msg_from(deprecated_name)
-                    model_name = deprecated_name.replace("_filename", "")
-                    setattr(self.config_settings.logs, model_name, cli_value)
+        warnings_to_emit = self.prepare_warnings()
 
         if (
-            self.cli_only_args.no_ui
+            not self.cli_only_args.fullscreen_ui
             or self.cli_only_args.retry_any
             or self.cli_only_args.config_file
             or self.config_settings.sorting.sort_downloads
@@ -203,13 +126,30 @@ class ParsedArgs(AliasModel):
             time.sleep(WARNING_TIMEOUT)
 
     @staticmethod
-    def parse_args() -> Self:
+    def parse_args():
         """Parses the command line arguments passed into the program. Returns an instance of `ParsedArgs`"""
         return parse_args()
 
+    def prepare_warnings(self) -> set:
+        warnings_to_emit = set()
+
+        def add_warning_msg_from(field_name: str) -> None:
+            if not field_name:
+                return
+            field_info: FieldInfo = self.deprecated_args.model_fields[field_name]
+            warnings_to_emit.add(field_info.deprecated)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            if self.deprecated_args.no_ui:
+                add_warning_msg_from("no_ui")
+                self.cli_only_args.ui = UIOptions.DISABLED
+
+        return warnings_to_emit
+
 
 def _add_args_from_model(
-    parser: ArgumentParser, model: type[BaseModel], *, cli_args: bool = False, deprecated: bool = False
+    parser: ArgumentParser | ArgGroup, model: type[BaseModel], *, cli_args: bool = False, deprecated: bool = False
 ) -> None:
     for name, field in model.model_fields.items():
         cli_name = name.replace("_", "-")
@@ -220,7 +160,7 @@ def _add_args_from_model(
         default = field.default if cli_args else SUPPRESS
         default_options = {"default": default, "dest": name, "help": help_text}
         name_or_flags = [f"--{cli_name}"]
-        alias = field.alias or field.validation_alias or field.serialization_alias
+        alias: str = field.alias or field.validation_alias or field.serialization_alias  # type: ignore
         if alias and len(alias) == 1:
             name_or_flags.insert(0, f"-{alias}")
         if arg_type is bool:
@@ -245,11 +185,33 @@ def _add_args_from_model(
 def _create_groups_from_nested_models(parser: ArgumentParser, model: type[BaseModel]) -> list[ArgGroup]:
     groups: list[ArgGroup] = []
     for name, field in model.model_fields.items():
-        submodel = field.annotation
+        submodel: type[BaseModel] = field.annotation  # type: ignore
         submodel_group = parser.add_argument_group(name)
         _add_args_from_model(submodel_group, submodel)
         groups.append(submodel_group)
     return groups
+
+
+class CustomHelpFormatter(RawDescriptionHelpFormatter):
+    def __init__(self, prog):
+        witdh = 300 if env.RUNNING_IN_IDE else None
+        super().__init__(prog, max_help_position=80, width=witdh)
+
+    def _get_help_string(self, action):
+        if action.help:
+            return action.help.replace("program's", "CDL")  ## The ' messes up the markdown formatting
+        return action.help
+
+    def format_help(self):
+        help_text = super().format_help()
+        if env.RUNNING_IN_IDE:
+            cli_overview, *_ = help_text.partition(CDL_EPILOG)
+            current_text = CLI_ARGUMENTS_MD.read_text(encoding="utf8")
+            new_text, *_ = current_text.partition("```shell")
+            new_text += f"```shell\n{cli_overview}```\n"
+            if current_text != new_text:
+                CLI_ARGUMENTS_MD.write_text(new_text, encoding="utf8")
+        return help_text
 
 
 def parse_args() -> ParsedArgs:
@@ -257,12 +219,12 @@ def parse_args() -> ParsedArgs:
     parser = ArgumentParser(
         description="Bulk asynchronous downloader for multiple file hosts",
         usage="cyberdrop-dl [OPTIONS] URL [URL...]",
-        epilog="Visit the wiki for additional details: https://script-ware.gitbook.io/cyberdrop-dl",
-        formatter_class=ArgumentDefaultsHelpFormatter,
+        epilog=CDL_EPILOG,
+        formatter_class=CustomHelpFormatter,
     )
     parser.add_argument("-V", "--version", action="version", version=f"%(prog)s {__version__}")
 
-    cli_only = parser.add_argument_group("CLI-only Options")
+    cli_only = parser.add_argument_group("CLI-only options")
     _add_args_from_model(cli_only, CommandLineOnlyArgs, cli_args=True)
 
     group_lists = {
@@ -271,9 +233,11 @@ def parse_args() -> ParsedArgs:
         "cli_only_args": [cli_only],
     }
 
-    deprecated = parser.add_argument_group("Deprecated")
-    _add_args_from_model(deprecated, DeprecatedArgs, cli_args=True, deprecated=True)
-    group_lists["deprecated_args"] = [deprecated]
+    using_deprecated_args: bool = bool(DeprecatedArgs.model_fields)
+    if using_deprecated_args:
+        deprecated = parser.add_argument_group("deprecated")
+        _add_args_from_model(deprecated, DeprecatedArgs, cli_args=True, deprecated=True)
+        group_lists["deprecated_args"] = [deprecated]
 
     args = parser.parse_intermixed_args()
     parsed_args = {}
@@ -288,8 +252,9 @@ def parse_args() -> ParsedArgs:
             if group_dict:
                 parsed_args[name][group.title] = group_dict
 
-    parsed_args["deprecated_args"] = parsed_args["deprecated_args"].get("Deprecated") or {}
-    parsed_args["cli_only_args"] = parsed_args["cli_only_args"]["CLI-only Options"]
+    if using_deprecated_args:
+        parsed_args["deprecated_args"] = parsed_args["deprecated_args"].get("deprecated") or {}
+    parsed_args["cli_only_args"] = parsed_args["cli_only_args"]["CLI-only options"]
     try:
         parsed_args = ParsedArgs.model_validate(parsed_args)
 

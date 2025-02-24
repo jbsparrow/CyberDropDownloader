@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Protocol
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
+from cyberdrop_dl.clients.errors import InvalidURLError
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
@@ -24,6 +25,8 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.clients.scraper_client import ScraperClient
     from cyberdrop_dl.managers.manager import Manager
+
+UNKNOWN_URL_PATH_MSG = "Unknown URL path"
 
 
 class Post(Protocol):
@@ -128,7 +131,7 @@ class Crawler(ABC):
             original_filename = filename
 
         download_folder = get_download_path(self.manager, scrape_item, self.folder_domain)
-        media_item = MediaItem(url, scrape_item, download_folder, filename, original_filename, debrid_link, ext)
+        media_item = MediaItem(url, scrape_item, download_folder, filename, original_filename, debrid_link, ext=ext)
 
         check_complete = await self.manager.db_manager.history_table.check_complete(self.domain, url, scrape_item.url)
         if check_complete:
@@ -166,10 +169,8 @@ class Crawler(ABC):
             log(f"Download skip {media_item.url} due to only_hosts config", 10)
             return True
 
-        valid_regex_filter = self.manager.config_manager.valid_filename_filter_regex
         regex_filter = self.manager.config_manager.settings_data.ignore_options.filename_regex_filter
-
-        if valid_regex_filter and regex_filter and re.search(regex_filter, media_item.filename):
+        if regex_filter and re.search(regex_filter, media_item.filename):
             log(f"Download skip {media_item.url} due to filename regex filter config", 10)
             return True
 
@@ -244,6 +245,10 @@ class Crawler(ABC):
         if not download_options.remove_domains_from_folder_names:
             title = f"{title} ({self.folder_domain})"
 
+        while True:
+            title = title.replace("  ", " ")
+            if "  " not in title:
+                break
         return title
 
     def add_separate_post_title(self, scrape_item: ScrapeItem, post: Post) -> None:
@@ -264,16 +269,20 @@ class Crawler(ABC):
         scrape_item.add_to_parent_title(title)
 
     def parse_url(self, link_str: str, relative_to: URL | None = None) -> URL:
-        assert link_str
-        assert isinstance(link_str, str)
-        encoded = "%" in link_str
-        base = relative_to or self.primary_base_domain
-        new_url = URL(link_str, encoded=encoded)
+        try:
+            assert link_str
+            assert isinstance(link_str, str)
+            link_str = clean_link_str(link_str)
+            encoded = "%" in link_str
+            base = relative_to or self.primary_base_domain
+            new_url = URL(link_str, encoded=encoded)
+        except (AssertionError, AttributeError, ValueError, TypeError) as e:
+            raise InvalidURLError(str(e), url=link_str) from e
         if not new_url.absolute:
             new_url = base.join(new_url)
         if not new_url.scheme:
             new_url = new_url.with_scheme(base.scheme or "https")
-        return new_url
+        return remove_trailing_slash(new_url)
 
     def update_cookies(self, cookies: dict, url: URL | None = None) -> None:
         """Update cookies for the provided URL
@@ -284,6 +293,12 @@ class Crawler(ABC):
         self.client.client_manager.cookies.update_cookies(cookies, response_url)
 
 
+def remove_trailing_slash(url: URL) -> URL:
+    if url.name or url.path == "/":
+        return url
+    return url.parent.with_fragment(url.fragment).with_query(url.query)
+
+
 def create_task_id(func: Callable) -> Callable:
     """Wrapper handles task_id creation and removal for ScrapeItems"""
 
@@ -292,11 +307,26 @@ def create_task_id(func: Callable) -> Callable:
         scrape_item: ScrapeItem = args[0]
         task_id = self.scraping_progress.add_task(scrape_item.url)
         try:
+            pre_check_scrape_item(scrape_item)
             return await func(self, *args, **kwargs)
         except ValueError:
-            log(f"Scrape Failed: Unknown URL path: {scrape_item.url}", 40)
-            self.manager.progress_manager.scrape_stats_progress.add_failure("Unsupported URL path")
+            log(f"Scrape Failed: {UNKNOWN_URL_PATH_MSG}: {scrape_item.url}", 40)
+            self.manager.progress_manager.scrape_stats_progress.add_failure(UNKNOWN_URL_PATH_MSG)
+            await self.manager.log_manager.write_scrape_error_log(scrape_item.url, UNKNOWN_URL_PATH_MSG)
         finally:
             self.scraping_progress.remove_task(task_id)
 
     return wrapper
+
+
+def pre_check_scrape_item(scrape_item: ScrapeItem) -> None:
+    if scrape_item.url.path == "/":
+        raise ValueError
+
+
+def clean_link_str(link_str: str) -> str:
+    if "?" in link_str:
+        parts, query = link_str.split("?", 1)
+        query = query.replace("+", "%20")
+        return f"{parts}?{query}"
+    return link_str

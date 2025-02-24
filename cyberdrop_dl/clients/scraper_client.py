@@ -11,8 +11,7 @@ from aiohttp_client_cache.response import CachedStreamReader
 from bs4 import BeautifulSoup
 
 from cyberdrop_dl.clients.errors import DDOSGuardError, InvalidContentTypeError
-from cyberdrop_dl.utils.constants import DEBUG_VAR
-from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.logger import log_debug
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -67,19 +66,18 @@ class ScraperClient:
         )
         self._global_limiter = self.client_manager.global_rate_limiter
         self.trace_configs = []
-        if DEBUG_VAR:
-            self.add_request_log_hooks()
+        self.add_request_log_hooks()
 
     def add_request_log_hooks(self) -> None:
         async def on_request_start(*args):
             params: aiohttp.TraceRequestStartParams = args[2]
-            log(f"Starting scrape {params.method} request to {params.url}", 10)
+            log_debug(f"Starting scrape {params.method} request to {params.url}", 10)
 
         async def on_request_end(*args):
             params: aiohttp.TraceRequestEndParams = args[2]
             msg = f"Finishing scrape {params.method} request to {params.url}"
             msg += f" -> response status: {params.response.status}"
-            log(msg, 10)
+            log_debug(msg, 10)
 
         trace_config = aiohttp.TraceConfig()
         trace_config.on_request_start.append(on_request_start)
@@ -114,11 +112,18 @@ class ScraperClient:
                     origin,
                 )
                 # retry request with flaresolverr cookies
-                if self.client_manager.check_ddos_guard(soup) or self.client_manager.check_cloudflare(soup):
+                if not soup or (
+                    self.client_manager.check_ddos_guard(soup) or self.client_manager.check_cloudflare(soup)
+                ):
                     if not retry:
                         raise DDOSGuardError(message="Unable to access website with flaresolverr cookies") from None
                     return await self.get_soup(
-                        domain, url, client_session, origin, with_response_url, retry=False, cache_disabled=True
+                        domain,
+                        url,
+                        origin=origin,
+                        with_response_url=with_response_url,
+                        retry=False,
+                        cache_disabled=True,
                     )
                 if with_response_url:
                     return soup, response_URL
@@ -194,10 +199,12 @@ class ScraperClient:
             except DDOSGuardError:
                 await self.client_manager.manager.cache_manager.request_cache.delete_url(url)
                 soup, _ = await self.client_manager.flaresolverr.get(url, client_session, origin)
-                if self.client_manager.check_ddos_guard(soup) or self.client_manager.check_cloudflare(soup):
+                if not soup or (
+                    self.client_manager.check_ddos_guard(soup) or self.client_manager.check_cloudflare(soup)
+                ):
                     if not retry:
                         raise DDOSGuardError(message="Unable to access website with flaresolverr cookies") from None
-                    return await self.get_text(domain, url, client_session, origin, retry=False, cache_disabled=True)
+                    return await self.get_text(domain, url, origin=origin, retry=False, cache_disabled=True)
                 return str(soup)
             return await response.text()
 
@@ -235,7 +242,9 @@ class ScraperClient:
             return {}
 
     @limiter
-    async def get_head(self, domain: str, url: URL, client_session: CachedSession) -> CIMultiDictProxy[str]:
+    async def get_head(
+        self, domain: str, url: URL, client_session: CachedSession, *, origin: ScrapeItem | URL | None = None
+    ) -> CIMultiDictProxy[str]:
         """Returns the headers from the given URL."""
         async with client_session.head(
             url,
@@ -243,4 +252,5 @@ class ScraperClient:
             ssl=self.client_manager.ssl_context,
             proxy=self.client_manager.proxy,
         ) as response:
+            await self.client_manager.check_http_status(response, origin=origin)
             return response.headers

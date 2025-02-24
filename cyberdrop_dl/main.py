@@ -3,8 +3,8 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
-import os
 import sys
+from datetime import datetime
 from functools import wraps
 from pathlib import Path
 from time import perf_counter
@@ -15,13 +15,14 @@ from pydantic import ValidationError
 from rich.console import Console
 from rich.logging import RichHandler
 
+from cyberdrop_dl import env
 from cyberdrop_dl.clients.errors import InvalidYamlError
 from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.scraper.scraper import ScrapeMapper
 from cyberdrop_dl.ui.program_ui import ProgramUI
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.apprise import send_apprise_notifications
-from cyberdrop_dl.utils.logger import RedactedConsole, log, log_spacer, log_with_color
+from cyberdrop_dl.utils.logger import RedactedConsole, add_custom_log_render, log, log_spacer, log_with_color
 from cyberdrop_dl.utils.sorting import Sorter
 from cyberdrop_dl.utils.utilities import check_latest_pypi, check_partials_and_empty_folders, send_webhook_message
 from cyberdrop_dl.utils.yaml import handle_validation_error
@@ -34,7 +35,7 @@ STARTUP_LOGGER_FILE = Path().cwd().joinpath("startup.log")
 STARTUP_LOGGER_CONSOLE = None
 
 
-def startup() -> Manager | None:
+def startup() -> Manager:
     """Starts the program and returns the manager.
 
     This will also run the UI for the program
@@ -61,7 +62,10 @@ def startup() -> Manager | None:
             "ConfigSettings": manager.config_manager.settings,
             "AuthSettings": manager.config_manager.authentication_settings,
         }
-        handle_validation_error(e, sources=sources)
+
+        file = sources.get(e.title)
+        handle_validation_error(e, file=file)
+        sys.exit(1)
 
     except KeyboardInterrupt:
         startup_logger.info("Exiting...")
@@ -126,19 +130,23 @@ def setup_startup_logger() -> None:
         console=STARTUP_LOGGER_CONSOLE,
         level=10,
     )
+    add_custom_log_render(rich_file_handler)
     rich_handler = RichHandler(**(constants.RICH_HANDLER_CONFIG | {"show_time": False}), level=10)
     startup_logger.addHandler(rich_file_handler)
     startup_logger.addHandler(rich_handler)
 
 
 def setup_debug_logger(manager: Manager) -> Path | None:
-    if not constants.DEBUG_VAR:
+    if not env.DEBUG_VAR:
         return None
 
     logger_debug = logging.getLogger("cyberdrop_dl_debug")
     manager.config_manager.settings_data.runtime_options.log_level = 10
     logger_debug.setLevel(manager.config_manager.settings_data.runtime_options.log_level)
     debug_log_file_path = Path(__file__).parents[1] / "cyberdrop_dl_debug.log"
+    if env.DEBUG_LOG_FOLDER:
+        date = datetime.now().strftime("%Y%m%d_%H%M%S")
+        debug_log_file_path = Path(env.DEBUG_LOG_FOLDER) / f"cyberdrop_dl_debug_{date}.log"
 
     rich_file_handler_debug = RichHandler(
         **constants.RICH_HANDLER_DEBUG_CONFIG,
@@ -149,7 +157,9 @@ def setup_debug_logger(manager: Manager) -> Path | None:
         level=manager.config_manager.settings_data.runtime_options.log_level,
     )
 
+    add_custom_log_render(rich_file_handler_debug)
     logger_debug.addHandler(rich_file_handler_debug)
+
     # aiosqlite_log = logging.getLogger("aiosqlite")
     # aiosqlite_log.setLevel(manager.config_manager.settings_data.runtime_options.log_level)
     # aiosqlite_log.addHandler(file_handler_debug)
@@ -179,8 +189,8 @@ def setup_logger(manager: Manager, config_name: str) -> None:
         ),
         level=manager.config_manager.settings_data.runtime_options.log_level,
     )
-
-    if manager.parsed_args.cli_only_args.no_ui:
+    add_custom_log_render(rich_file_handler)
+    if not manager.parsed_args.cli_only_args.fullscreen_ui:
         constants.CONSOLE_LEVEL = manager.config_manager.settings_data.runtime_options.console_log_level
 
     rich_handler = RichHandler(
@@ -260,8 +270,10 @@ async def director(manager: Manager) -> None:
 
 def main():
     profiling: bool = False
-    if not (profiling or os.getenv("CDL_PROFILING")):
+    if not (profiling or env.PROFILING):
         return actual_main()
+    from cyberdrop_dl.profiling import profile
+
     profile(actual_main)
 
 
@@ -280,45 +292,6 @@ def actual_main() -> None:
             asyncio.run(manager.close())
     loop.close()
     sys.exit(exit_code)
-
-
-def profile(func: Callable) -> None:
-    import cProfile
-    import pstats
-    import shutil
-    from contextlib import contextmanager
-    from datetime import datetime
-    from tempfile import TemporaryDirectory
-
-    @contextmanager
-    def temp_dir_context():
-        with TemporaryDirectory() as temp_dir:
-            old_cwd = Path.cwd()
-            temp_dir_path = Path(temp_dir).resolve()
-            cookies_dir = old_cwd / "AppData/Cookies"
-            if cookies_dir.is_dir():
-                temp_cookies_dir = temp_dir_path / "AppData/Cookies"
-                temp_cookies_dir.mkdir(parents=True, exist_ok=True)
-                for cookie_file in cookies_dir.glob("*.txt"):
-                    shutil.copy(cookie_file, temp_cookies_dir)
-
-            os.chdir(temp_dir_path)
-            log_file = old_cwd / "cyberdrop_dl_debug.log"
-            print(f"Using {temp_dir_path} as temp AppData dir")  # noqa: T201
-            try:
-                yield
-            finally:
-                os.chdir(old_cwd)
-                new_path = Path(f"cyberdrop_dl_debug_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
-                shutil.move(log_file, new_path)
-
-    with temp_dir_context(), cProfile.Profile() as cdl_profile:
-        with contextlib.suppress(SystemExit):
-            func()
-
-    results = pstats.Stats(cdl_profile)
-    results.sort_stats(pstats.SortKey.TIME)
-    results.dump_stats(filename="cyberdrop_dl.profiling")
 
 
 if __name__ == "__main__":

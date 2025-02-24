@@ -7,7 +7,9 @@ from functools import partial
 from typing import TYPE_CHECKING
 
 from pydantic import ByteSize
+from rich.console import Group
 from rich.layout import Layout
+from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from cyberdrop_dl.ui.progress.downloads_progress import DownloadsProgress
 from cyberdrop_dl.ui.progress.file_progress import FileProgress
@@ -18,6 +20,8 @@ from cyberdrop_dl.ui.progress.statistic_progress import DownloadStatsProgress, S
 from cyberdrop_dl.utils.logger import log, log_spacer, log_with_color
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from rich.console import RenderableType
 
     from cyberdrop_dl.managers.manager import Manager
@@ -53,7 +57,7 @@ class ProgressManager:
 
         self.ui_refresh_rate = manager.config_manager.global_settings_data.ui_options.refresh_rate
 
-        self.main_runtime_layout: Layout = field(init=False)
+        self.fullscreen_layout: Layout = field(init=False)
         self.hash_remove_layout: RenderableType = field(init=False)
         self.hash_layout: RenderableType = field(init=False)
         self.sort_layout: RenderableType = field(init=False)
@@ -72,7 +76,15 @@ class ProgressManager:
             Layout(renderable=self.download_stats_progress.get_progress(), name="Download Failures", ratio=1),
         )
 
-        self.main_runtime_layout = progress_layout
+        spinner = SpinnerColumn(style="green", spinner_name="dots"), TextColumn("Running Cyberdrop-DL")
+        actvity_placeholder = Progress(*spinner)
+        actvity_placeholder.add_task("running with no UI", total=100, completed=0)
+
+        simple_layout = Group(actvity_placeholder, self.download_progress.simple_progress)
+
+        self.activity_layout = actvity_placeholder
+        self.simple_layout = simple_layout
+        self.fullscreen_layout = progress_layout
         self.hash_remove_layout = self.hash_progress.get_removed_progress()
         self.hash_layout = self.hash_progress.get_renderable()
         self.sort_layout = self.sort_progress.get_renderable()
@@ -88,6 +100,9 @@ class ProgressManager:
         log_spacer(20)
         log("Printing Stats...\n", 20)
         log_cyan(f"Run Stats (config: {self.manager.config_manager.loaded_config}):")
+        log_yellow(f"  Input File: {get_input(self.manager)}")
+        log_yellow(f"  Input URLs: {self.manager.scrape_mapper.count:,}")
+        log_yellow(f"  Input URL Groups: {self.manager.scrape_mapper.group_count:,}")
         log_yellow(f"  Total Runtime: {runtime}")
         log_yellow(f"  Total Downloaded Data: {data_size}")
 
@@ -134,3 +149,13 @@ def log_failures(failures: list[UiFailureTotal], title: str = "Failures:", last_
         error = f.error_code if f.error_code is not None else ""
         log_red(f"  {error:>{error_padding}}{' ' if error_padding else ''}{f.msg}: {f.count:,}")
     return error_padding
+
+
+def get_input(manager: Manager) -> Path | str:
+    if manager.parsed_args.cli_only_args.retry_all:
+        return "--retry-all"
+    if manager.parsed_args.cli_only_args.retry_failed:
+        return "--retry-failed"
+    if manager.parsed_args.cli_only_args.retry_maintenance:
+        return "--retry-maintenance"
+    return manager.config_manager.settings_data.files.input_file

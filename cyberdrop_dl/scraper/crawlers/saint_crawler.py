@@ -82,6 +82,8 @@ class SaintCrawler(Crawler):
             link_str: str = soup.select_one("video[id=main-video] source").get("src")
             link = self.parse_url(link_str)
         except AttributeError:
+            if is_not_found(soup):
+                raise ScrapeError(404, origin=scrape_item) from None
             raise ScrapeError(422, "Couldn't find video source", origin=scrape_item) from None
         filename, ext = get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
@@ -96,9 +98,23 @@ class SaintCrawler(Crawler):
             link = self.parse_url(link_str)
             link = get_url_from_base64(link)
         except AttributeError:
+            if is_not_found(soup):
+                raise ScrapeError(404, origin=scrape_item) from None
             raise ScrapeError(422, "Couldn't find video source", origin=scrape_item) from None
         filename, ext = get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
+
+
+def is_not_found(soup: BeautifulSoup) -> bool:
+    title = soup.title
+    if title and title.text == "Video not found":
+        return True
+    image = soup.select_one("video#video-container img")
+    if image and image.get("src") == "https://saint2.su/assets/notfound.gif":
+        return True
+    if "File not found in the database" in str(soup):
+        return True
+    return False
 
 
 def get_url_from_base64(link: URL) -> URL:

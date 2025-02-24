@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 class LeakedModelsCrawler(XenforoCrawler):
-    primary_base_domain = URL("https://LeakedModels.com")
+    primary_base_domain = URL("https://leakedmodels.com/forum/")
     post_selectors = PostSelectors(
         date=Selector("time", "data-time"),
     )

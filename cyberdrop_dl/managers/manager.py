@@ -23,7 +23,7 @@ from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.args import ParsedArgs
 from cyberdrop_dl.utils.data_enums_classes.supported_domains import SUPPORTED_FORUMS
 from cyberdrop_dl.utils.logger import log
-from cyberdrop_dl.utils.transfer.db_setup import TransitionManager
+from cyberdrop_dl.utils.transfer import transfer_v5_db_to_v6
 
 if TYPE_CHECKING:
     from asyncio import TaskGroup
@@ -47,8 +47,6 @@ class Manager:
         self.download_manager: DownloadManager = field(init=False)
         self.progress_manager: ProgressManager = field(init=False)
         self.live_manager: LiveManager = field(init=False)
-
-        self.first_time_setup: TransitionManager = TransitionManager(self)
 
         self._loaded_args_config: bool = False
         self._made_portable: bool = False
@@ -106,7 +104,6 @@ class Manager:
 
     async def async_startup(self) -> None:
         """Async startup process for the manager."""
-        self.config_manager.post_config_load_validation()
         self.args_logging()
 
         if not isinstance(self.client_manager, ClientManager):
@@ -124,7 +121,7 @@ class Manager:
         if not isinstance(self.db_manager, DBManager):
             self.db_manager = DBManager(self, self.path_manager.history_db)
             await self.db_manager.startup()
-        self.first_time_setup.transfer_v5_to_new_hashtable()
+        transfer_v5_db_to_v6(self.path_manager.history_db)
         if not isinstance(self.hash_manager, HashManager):
             self.hash_manager = HashManager(self)
             await self.hash_manager.startup()
@@ -236,11 +233,6 @@ class Manager:
         log(f"Using Authentication: \n{json.dumps(auth_provided, indent=4, sort_keys=True)}", 10)
         log(f"Using Settings: \n{config_settings}", 10)
         log(f"Using Global Settings: \n{global_settings}", 10)
-        if (
-            self.config_manager.settings_data.ignore_options.filename_regex_filter
-            and not self.config_manager.valid_filename_filter_regex
-        ):
-            log("Regex pattern of filename filter is invalid. Regex check has been disabled", 40)
 
     async def async_db_close(self) -> None:
         "Partial shutdown for managers used for hash directory scanner"

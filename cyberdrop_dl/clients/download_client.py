@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 import aiofiles
 import aiohttp
 from aiohttp import ClientSession
+from videoprops import get_audio_properties, get_video_properties
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import (
@@ -20,8 +21,8 @@ from cyberdrop_dl.clients.errors import (
     InvalidContentTypeError,
     SlowDownloadError,
 )
-from cyberdrop_dl.utils.constants import DEBUG_VAR, FILE_FORMATS
-from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.constants import FILE_FORMATS
+from cyberdrop_dl.utils.logger import log, log_debug
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
@@ -58,6 +59,48 @@ def limiter(func: Callable) -> Any:
     return wrapper
 
 
+def check_file_duration(media_item: MediaItem, manager: Manager) -> bool:
+    """Checks the file runtime against the config runtime limits."""
+
+    is_video = media_item.ext.lower() in FILE_FORMATS["Videos"]
+    is_audio = media_item.ext.lower() in FILE_FORMATS["Audio"]
+    if not (is_video or is_audio):
+        return True
+
+    def get_duration() -> float | None:
+        if media_item.duration:
+            return media_item.duration
+        props: dict = {}
+        if is_video:
+            props: dict = get_video_properties(str(media_item.complete_file))
+        elif is_audio:
+            props: dict = get_audio_properties(str(media_item.complete_file))
+        return float(props.get("duration", 0)) or None
+
+    duration_limits = manager.config_manager.settings_data.media_duration_limits
+    min_video_duration: float = duration_limits.minimum_video_duration.total_seconds()
+    max_video_duration: float = duration_limits.maximum_video_duration.total_seconds()
+    min_audio_duration: float = duration_limits.minimum_audio_duration.total_seconds()
+    max_audio_duration: float = duration_limits.maximum_audio_duration.total_seconds()
+    video_duration_limits = min_video_duration, max_video_duration
+    audio_duration_limits = min_audio_duration, max_audio_duration
+    if is_video and not any(video_duration_limits):
+        return True
+    if is_audio and not any(audio_duration_limits):
+        return True
+
+    duration: float = get_duration()  # type: ignore
+    media_item.duration = duration
+    if duration is None:
+        return True
+
+    max_video_duration = max_video_duration or float("inf")
+    max_audio_duration = max_audio_duration or float("inf")
+    if is_video:
+        return min_video_duration <= media_item.duration <= max_video_duration
+    return min_audio_duration <= media_item.duration <= max_audio_duration
+
+
 class DownloadClient:
     """AIOHTTP operations for downloading."""
 
@@ -75,19 +118,18 @@ class DownloadClient:
         self._file_path = None
         self.slow_download_period = 10  # seconds
         self.download_speed_threshold = self.manager.config_manager.settings_data.runtime_options.slow_download_speed
-        if DEBUG_VAR:
-            self.add_request_log_hooks()
+        self.add_request_log_hooks()
 
     def add_request_log_hooks(self) -> None:
         async def on_request_start(*args):
             params: aiohttp.TraceRequestStartParams = args[2]
-            log(f"Starting download {params.method} request to {params.url}", 10)
+            log_debug(f"Starting download {params.method} request to {params.url}", 10)
 
         async def on_request_end(*args):
             params: aiohttp.TraceRequestEndParams = args[2]
             msg = f"Finishing download {params.method} request to {params.url}"
             msg += f" -> response status: {params.response.status}"
-            log(msg, 10)
+            log_debug(msg, 10)
 
         trace_config = aiohttp.TraceConfig()
         trace_config.on_request_start.append(on_request_start)
@@ -233,7 +275,7 @@ class DownloadClient:
     async def download_file(self, manager: Manager, domain: str, media_item: MediaItem) -> bool:
         """Starts a file."""
         if self.manager.config_manager.settings_data.download_options.skip_download_mark_completed:
-            log(f"Download Skip {media_item.url} due to mark completed option", 10)
+            log(f"Download Removed {media_item.url} due to mark completed option", 10)
             self.manager.progress_manager.download_progress.add_skipped()
             # set completed path
             await self.process_completed(media_item, domain)
@@ -249,6 +291,14 @@ class DownloadClient:
         downloaded = await self._download(domain, manager, media_item, save_content)
         if downloaded:
             media_item.partial_file.rename(media_item.complete_file)
+            proceed = check_file_duration(media_item, self.manager)
+            await self.manager.db_manager.history_table.add_duration(domain, media_item)
+            if not proceed:
+                log(f"Download Skip {media_item.url} due to runtime restrictions", 10)
+                media_item.complete_file.unlink()
+                await self.mark_incomplete(media_item, domain)
+                self.manager.progress_manager.download_progress.add_skipped()
+                return False
             await self.process_completed(media_item, domain)
             await self.handle_media_item_completion(media_item, downloaded=True)
         return downloaded

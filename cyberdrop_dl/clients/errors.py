@@ -5,16 +5,17 @@ from http import HTTPStatus
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from yaml import YAMLError
 from yarl import URL
 
 from cyberdrop_dl.utils.constants import VALIDATION_ERROR_FOOTER
 
 if TYPE_CHECKING:
     from requests import Response
-    from yaml.constructor import ConstructorError
 
     from cyberdrop_dl.scraper.crawler import ScrapeItem
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
+
 
 # See: https://developers.cloudflare.com/support/troubleshooting/cloudflare-errors/troubleshooting-cloudflare-5xx-errors/
 CLOUDFLARE_ERRORS = {
@@ -42,9 +43,7 @@ class CDLBaseError(Exception):
     ) -> None:
         self.ui_message = ui_message
         self.message = message or ui_message
-        self.origin = origin
-        if origin and not isinstance(origin, URL | Path):
-            self.origin = origin.parents[0] if origin.parents else None
+        self.origin = get_origin(origin)
         super().__init__(self.message)
         if status:
             self.status = status
@@ -98,11 +97,16 @@ class DDOSGuardError(CDLBaseError):
 
 class DownloadError(CDLBaseError):
     def __init__(
-        self, status: str | int, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None
+        self,
+        status: str | int,
+        message: str | None = None,
+        origin: ScrapeItem | MediaItem | URL | None = None,
+        retry: bool = False,
     ) -> None:
         """This error will be thrown when a download fails."""
         ui_message = create_error_msg(status)
         msg = message
+        self.retry = retry
         super().__init__(ui_message, message=msg, status=status, origin=origin)
 
 
@@ -124,6 +128,13 @@ class RestrictedFiletypeError(CDLBaseError):
     def __init__(self, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
         """This error will be thrown when has a filytpe not allowed by config."""
         ui_message = "Restricted Filetype"
+        super().__init__(ui_message, origin=origin)
+
+
+class DurationError(CDLBaseError):
+    def __init__(self, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
+        """THis error will be thrown when the file duration is not allowed by the config."""
+        ui_message = "Duration Not Allowed"
         super().__init__(ui_message, origin=origin)
 
 
@@ -153,8 +164,17 @@ class ScrapeError(CDLBaseError):
     ) -> None:
         """This error will be thrown when a scrape fails."""
         ui_message = create_error_msg(status)
-        msg = message
-        super().__init__(ui_message, message=msg, status=status, origin=origin)
+        super().__init__(ui_message, message=message, status=status, origin=origin)
+
+
+class InvalidURLError(ScrapeError):
+    def __init__(
+        self, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None, url: URL | str = ""
+    ) -> None:
+        """This error will be thrown when parsed URL is not valid."""
+        ui_message = "Invalid URL"
+        self.url = url
+        super().__init__(ui_message, message=message, origin=origin)
 
 
 class LoginError(CDLBaseError):
@@ -169,11 +189,20 @@ class JDownloaderError(CDLBaseError):
 
 
 class InvalidYamlError(CDLBaseError):
-    def __init__(self, file: Path, e: ConstructorError) -> None:
+    def __init__(self, file: Path, e: Exception) -> None:
         """This error will be thrown when a yaml config file has invalid values."""
-        mark = e.problem_mark if hasattr(e, "problem_mark") else e
-        message = f"File '{file.resolve()}' has an invalid config. Please verify and edit it manually\n {mark}\n\n{VALIDATION_ERROR_FOOTER}"
-        super().__init__("Invalid YAML", message=message, origin=file)
+        file_path = file.resolve()
+        msg = f"Unable to read file '{file_path}'"
+        if isinstance(e, YAMLError):
+            msg = f"File '{file_path}' is not a valid YAML file"
+        mark = getattr(e, "problem_mark", None)
+        if mark:
+            msg += f"\n\nThe error was found in this line: \n {mark}"
+
+        problem = getattr(e, "problem", str(e))
+        msg += f"\n\n{problem.capitalize()}"
+        msg += f"\n\n{VALIDATION_ERROR_FOOTER}"
+        super().__init__("Invalid YAML", message=msg, origin=file)
 
 
 @singledispatch
@@ -191,3 +220,9 @@ def create_error_msg(error: int) -> str:
 @create_error_msg.register
 def _(error: str) -> str:
     return error
+
+
+def get_origin(origin: ScrapeItem | Path | MediaItem | URL | None = None) -> Path | URL | None:
+    if origin and not isinstance(origin, URL | Path):
+        return origin.parents[0] if origin.parents else None
+    return origin

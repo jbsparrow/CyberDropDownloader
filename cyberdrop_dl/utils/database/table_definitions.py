@@ -21,6 +21,7 @@ create_fixed_history = """CREATE TABLE IF NOT EXISTS media_copy (
   download_filename TEXT,
   original_filename TEXT,
   file_size INT,
+  duration FLOAT,
   completed INTEGER NOT NULL,
   PRIMARY KEY (domain, url_path, original_filename)
 );"""
