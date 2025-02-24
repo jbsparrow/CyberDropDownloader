@@ -178,7 +178,7 @@ class XenforoCrawler(Crawler):
                     trash: list[Tag] = title_block.find_all(self.selectors.title_trash.element)  # type: ignore
                 except AttributeError as e:
                     log_debug("Got an unprocessable soup", 40, exc_info=e)
-                    raise ScrapeError(422) from e
+                    raise ScrapeError(429, message="Invalid response from forum. You may have been rate limited") from e
 
                 for element in trash:
                     element.decompose()
