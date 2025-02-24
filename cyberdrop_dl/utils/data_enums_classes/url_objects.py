@@ -157,3 +157,12 @@ class ScrapeItem:
     setup_as_profile = partialmethod(setup_as, type=FILE_HOST_PROFILE)
     setup_as_forum = partialmethod(setup_as, type=FORUM)
     setup_as_post = partialmethod(setup_as, type=FORUM_POST)
+
+    def origin(self) -> URL | None:
+        if self.parents:
+            return self.parents[0]
+
+    def parent(self) -> URL | None:
+        if self.parents:
+            return self.parents[-1]
+

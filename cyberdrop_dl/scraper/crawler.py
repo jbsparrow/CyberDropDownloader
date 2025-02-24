@@ -169,10 +169,8 @@ class Crawler(ABC):
             log(f"Download skip {media_item.url} due to only_hosts config", 10)
             return True
 
-        valid_regex_filter = self.manager.config_manager.valid_filename_filter_regex
         regex_filter = self.manager.config_manager.settings_data.ignore_options.filename_regex_filter
-
-        if valid_regex_filter and regex_filter and re.search(regex_filter, media_item.filename):
+        if regex_filter and re.search(regex_filter, media_item.filename):
             log(f"Download skip {media_item.url} due to filename regex filter config", 10)
             return True
 

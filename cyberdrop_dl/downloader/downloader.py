@@ -216,7 +216,7 @@ class Downloader:
 
     async def write_download_error(self, media_item: MediaItem, log_msg: str, ui_msg: str, exc_info=None) -> None:
         self.attempt_task_removal(media_item)
-        full_message = f"{self.log_prefix} Failed: {media_item.url} ({log_msg} \n -> Referer: {media_item.referer})"
+        full_message = f"{self.log_prefix} Failed: {media_item.url} ({log_msg}) \n -> Referer: {media_item.referer}"
         log(full_message, 40, exc_info=exc_info)  # type: ignore
         await self.manager.log_manager.write_download_error_log(media_item, log_msg)  # type: ignore
         self.manager.progress_manager.download_stats_progress.add_failure(ui_msg)

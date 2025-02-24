@@ -3,8 +3,8 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
-import os
 import sys
+from datetime import datetime
 from functools import wraps
 from pathlib import Path
 from time import perf_counter
@@ -35,7 +35,7 @@ STARTUP_LOGGER_FILE = Path().cwd().joinpath("startup.log")
 STARTUP_LOGGER_CONSOLE = None
 
 
-def startup() -> Manager | None:
+def startup() -> Manager:
     """Starts the program and returns the manager.
 
     This will also run the UI for the program
@@ -62,7 +62,10 @@ def startup() -> Manager | None:
             "ConfigSettings": manager.config_manager.settings,
             "AuthSettings": manager.config_manager.authentication_settings,
         }
-        handle_validation_error(e, sources=sources)
+
+        file = sources.get(e.title)
+        handle_validation_error(e, file=file)
+        sys.exit(1)
 
     except KeyboardInterrupt:
         startup_logger.info("Exiting...")
@@ -141,8 +144,9 @@ def setup_debug_logger(manager: Manager) -> Path | None:
     manager.config_manager.settings_data.runtime_options.log_level = 10
     logger_debug.setLevel(manager.config_manager.settings_data.runtime_options.log_level)
     debug_log_file_path = Path(__file__).parents[1] / "cyberdrop_dl_debug.log"
-    if env.DEBUG_LOG_FILE_FOLDER:
-        debug_log_file_path = Path(env.DEBUG_LOG_FILE_FOLDER) / "cyberdrop_dl_debug.log"
+    if env.DEBUG_LOG_FOLDER:
+        date = datetime.now().strftime("%Y%m%d_%H%M%S")
+        debug_log_file_path = Path(env.DEBUG_LOG_FOLDER) / f"cyberdrop_dl_debug_{date}.log"
 
     rich_file_handler_debug = RichHandler(
         **constants.RICH_HANDLER_DEBUG_CONFIG,
@@ -266,8 +270,10 @@ async def director(manager: Manager) -> None:
 
 def main():
     profiling: bool = False
-    if not (profiling or os.getenv("CDL_PROFILING")):
+    if not (profiling or env.PROFILING):
         return actual_main()
+    from cyberdrop_dl.profiling import profile
+
     profile(actual_main)
 
 
@@ -286,45 +292,6 @@ def actual_main() -> None:
             asyncio.run(manager.close())
     loop.close()
     sys.exit(exit_code)
-
-
-def profile(func: Callable) -> None:
-    import cProfile
-    import pstats
-    import shutil
-    from contextlib import contextmanager
-    from datetime import datetime
-    from tempfile import TemporaryDirectory
-
-    @contextmanager
-    def temp_dir_context():
-        with TemporaryDirectory() as temp_dir:
-            old_cwd = Path.cwd()
-            temp_dir_path = Path(temp_dir).resolve()
-            cookies_dir = old_cwd / "AppData/Cookies"
-            if cookies_dir.is_dir():
-                temp_cookies_dir = temp_dir_path / "AppData/Cookies"
-                temp_cookies_dir.mkdir(parents=True, exist_ok=True)
-                for cookie_file in cookies_dir.glob("*.txt"):
-                    shutil.copy(cookie_file, temp_cookies_dir)
-
-            os.chdir(temp_dir_path)
-            log_file = old_cwd / "cyberdrop_dl_debug.log"
-            print(f"Using {temp_dir_path} as temp AppData dir")  # noqa: T201
-            try:
-                yield
-            finally:
-                os.chdir(old_cwd)
-                new_path = Path(f"cyberdrop_dl_debug_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log")
-                shutil.move(log_file, new_path)
-
-    with temp_dir_context(), cProfile.Profile() as cdl_profile:
-        with contextlib.suppress(SystemExit):
-            func()
-
-    results = pstats.Stats(cdl_profile)
-    results.sort_stats(pstats.SortKey.TIME)
-    results.dump_stats(filename="cyberdrop_dl.profiling")
 
 
 if __name__ == "__main__":

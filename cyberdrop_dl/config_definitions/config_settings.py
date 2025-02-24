@@ -1,3 +1,4 @@
+import re
 from datetime import timedelta
 from logging import DEBUG
 from pathlib import Path
@@ -109,6 +110,17 @@ class IgnoreOptions(BaseModel):
     only_hosts: ListNonEmptyStr = []
     skip_hosts: ListNonEmptyStr = []
     exclude_files_with_no_extension: bool = True
+
+    @field_validator("filename_regex_filter")
+    @classmethod
+    def is_valid_regex(cls, value: str | None) -> str | None:
+        if not value:
+            return None
+        try:
+            value = re.compile(value)  # type: ignore
+        except re.error as e:
+            raise ValueError("input is not a valid regex") from e
+        return value
 
 
 class RuntimeOptions(BaseModel):
