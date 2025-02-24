@@ -56,7 +56,7 @@ Setting this to `true` will include the thread ID (random alphanumeric string) o
 | ---------------------- | ------- |
 | `list[NonNegativeInt]` | `[]`    |
 
-Limit the number of items to scrape using a tuple of up to 4 positions. Each position defines the maximum number of sub-items (`children_limit`) an specific type of `scrape_item` will have:
+Limit the number of items to scrape using a tuple of up to 4 positions. Each position defines the maximum number of sub-items (`children_limit`) a specific type of `scrape_item` will have:
 
 1. Max number of children from a **FORUM URL**
 2. Max number of children from a **FORUM POST**
