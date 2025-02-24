@@ -54,7 +54,7 @@ If the value entered is `null` or an empty list, no cookies will be extracted fr
 | --------------- | --------------- |
 | `list[DOMAINS]` | `[<<ALL_SUPPORTED_SITES>>]` |
 
-List of domains to extract cookies from. You can put any domain on the list, even if they are not officially supported
+List of domains to extract cookies from. You can put any domain on the list, even if they are not officially supported.
 
 ## Manual Cookie Extraction
 
