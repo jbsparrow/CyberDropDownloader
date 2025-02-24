@@ -29,11 +29,10 @@ from cyberdrop_dl.utils.utilities import check_partials_and_empty_folders, send_
 from cyberdrop_dl.utils.yaml import handle_validation_error
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Generator
 
 startup_logger = logging.getLogger("cyberdrop_dl_startup")
-STARTUP_LOGGER_FILE = Path().cwd().joinpath("startup.log")
-STARTUP_LOGGER_CONSOLE = None
+STARTUP_LOGGER_FILE = Path.cwd().joinpath("startup.log")
 
 
 def startup() -> Manager:
@@ -42,7 +41,7 @@ def startup() -> Manager:
     This will also run the UI for the program
     After this function returns, the manager will be ready to use and scraping / downloading can begin.
     """
-    setup_startup_logger()
+
     try:
         manager = Manager()
         manager.startup()
@@ -100,11 +99,8 @@ async def runtime(manager: Manager) -> None:
 async def post_runtime(manager: Manager) -> None:
     """Actions to complete after main runtime, and before ui shutdown."""
     log_spacer(20, log_to_console=False)
-    log_with_color(
-        f"Running Post-Download Processes For Config: {manager.config_manager.loaded_config}",
-        "green",
-        20,
-    )
+    msg = f"Running Post-Download Processes For Config: {manager.config_manager.loaded_config}"
+    log_with_color(msg, "green", 20)
     # checking and removing dupes
     if not (manager.multiconfig and manager.config_manager.settings_data.sorting.sort_downloads):
         await manager.hash_manager.hash_client.cleanup_dupes_after_download()
@@ -118,51 +114,65 @@ async def post_runtime(manager: Manager) -> None:
         await manager.log_manager.update_last_forum_post()
 
 
-def setup_startup_logger() -> None:
-    global STARTUP_LOGGER_CONSOLE
+def setup_startup_logger(*, first_time_setup: bool = False) -> None:
+    if first_time_setup:
+        STARTUP_LOGGER_FILE.unlink(missing_ok=True)  # Only delete file once. Subsequent calls will append to file
+    destroy_startup_logger()
     startup_logger.setLevel(10)
+    file_io = STARTUP_LOGGER_FILE.open("a", encoding="utf8")
+    file_console = RedactedConsole(file=file_io, width=constants.DEFAULT_CONSOLE_WIDTH)
+    file_handler = RichHandler(**constants.RICH_HANDLER_CONFIG, console=file_console, level=10)
+    console_handler = RichHandler(**(constants.RICH_HANDLER_CONFIG | {"show_time": False}), level=10)
+    add_custom_log_render(file_handler)
+    startup_logger.addHandler(file_handler)
+    startup_logger.addHandler(console_handler)
+
+
+def destroy_startup_logger(remove_all_handlers: bool = True) -> None:
+    handlers: list[RichHandler] = startup_logger.handlers  # type: ignore
+    for handler in handlers:
+        if not (handler.console._file or remove_all_handlers):
+            continue
+        if handler.console._file:
+            handler.console._file.close()
+        startup_logger.removeHandler(handler)
+        handler.close()
+
+    if STARTUP_LOGGER_FILE.is_file() and STARTUP_LOGGER_FILE.stat().st_size > 0:
+        return
     STARTUP_LOGGER_FILE.unlink(missing_ok=True)
-    STARTUP_LOGGER_CONSOLE = RedactedConsole(
-        file=STARTUP_LOGGER_FILE.open("w", encoding="utf8"),
-        width=constants.DEFAULT_CONSOLE_WIDTH,
-    )
-    rich_file_handler = RichHandler(
-        **constants.RICH_HANDLER_CONFIG,
-        console=STARTUP_LOGGER_CONSOLE,
-        level=10,
-    )
-    add_custom_log_render(rich_file_handler)
-    rich_handler = RichHandler(**(constants.RICH_HANDLER_CONFIG | {"show_time": False}), level=10)
-    startup_logger.addHandler(rich_file_handler)
-    startup_logger.addHandler(rich_handler)
+
+
+@contextlib.contextmanager
+def startup_logging(*, first_time_setup: bool = False) -> Generator:
+    try:
+        setup_startup_logger(first_time_setup=first_time_setup)
+        yield
+    finally:
+        destroy_startup_logger()
 
 
 def setup_debug_logger(manager: Manager) -> Path | None:
     if not env.DEBUG_VAR:
-        return None
+        return
 
     logger_debug = logging.getLogger("cyberdrop_dl_debug")
-    manager.config_manager.settings_data.runtime_options.log_level = 10
-    logger_debug.setLevel(manager.config_manager.settings_data.runtime_options.log_level)
+    log_level = 10
+    manager.config_manager.settings_data.runtime_options.log_level = log_level
+    logger_debug.setLevel(log_level)
     debug_log_file_path = Path(__file__).parents[1] / "cyberdrop_dl_debug.log"
     if env.DEBUG_LOG_FOLDER:
         date = datetime.now().strftime("%Y%m%d_%H%M%S")
         debug_log_file_path = Path(env.DEBUG_LOG_FOLDER) / f"cyberdrop_dl_debug_{date}.log"
 
-    rich_file_handler_debug = RichHandler(
-        **constants.RICH_HANDLER_DEBUG_CONFIG,
-        console=Console(
-            file=debug_log_file_path.open("w", encoding="utf8"),
-            width=manager.config_manager.settings_data.logs.log_line_width,
-        ),
-        level=manager.config_manager.settings_data.runtime_options.log_level,
-    )
-
-    add_custom_log_render(rich_file_handler_debug)
-    logger_debug.addHandler(rich_file_handler_debug)
+    file_io = debug_log_file_path.open("w", encoding="utf8")
+    file_console = Console(file=file_io, width=manager.config_manager.settings_data.logs.log_line_width)
+    file_handler_debug = RichHandler(**constants.RICH_HANDLER_DEBUG_CONFIG, console=file_console, level=log_level)
+    add_custom_log_render(file_handler_debug)
+    logger_debug.addHandler(file_handler_debug)
 
     # aiosqlite_log = logging.getLogger("aiosqlite")
-    # aiosqlite_log.setLevel(manager.config_manager.settings_data.runtime_options.log_level)
+    # aiosqlite_log.setLevel(log_level)
     # aiosqlite_log.addHandler(file_handler_debug)
 
     return debug_log_file_path.resolve()
@@ -170,38 +180,31 @@ def setup_debug_logger(manager: Manager) -> Path | None:
 
 def setup_logger(manager: Manager, config_name: str) -> None:
     logger = logging.getLogger("cyberdrop_dl")
-    if manager.multiconfig:
-        if len(logger.handlers) > 0:
-            log("Picking new config...", 20)
-        manager.config_manager.change_config(config_name)
-        if len(logger.handlers) > 0:
-            log(f"Changing config to {config_name}...", 20)
-            old_file_handler = logger.handlers[0]
-            logger.removeHandler(logger.handlers[0])
-            old_file_handler.close()
+    with startup_logging():
+        if manager.multiconfig:
+            if len(logger.handlers) > 0:
+                log("Picking new config...", 20)
+            manager.config_manager.change_config(config_name)
+            if len(logger.handlers) > 0:
+                log(f"Changing config to {config_name}...", 20)
+                old_file_handler = logger.handlers[0]
+                logger.removeHandler(logger.handlers[0])
+                old_file_handler.close()
 
-    logger.setLevel(manager.config_manager.settings_data.runtime_options.log_level)
+    log_level = manager.config_manager.settings_data.runtime_options.log_level
+    console_log_level = manager.config_manager.settings_data.runtime_options.console_log_level
+    logger.setLevel(log_level)
 
-    rich_file_handler = RichHandler(
-        **constants.RICH_HANDLER_CONFIG,
-        console=RedactedConsole(
-            file=manager.path_manager.main_log.open("w", encoding="utf8"),
-            width=manager.config_manager.settings_data.logs.log_line_width,
-        ),
-        level=manager.config_manager.settings_data.runtime_options.log_level,
-    )
-    add_custom_log_render(rich_file_handler)
     if not manager.parsed_args.cli_only_args.fullscreen_ui:
-        constants.CONSOLE_LEVEL = manager.config_manager.settings_data.runtime_options.console_log_level
+        constants.CONSOLE_LEVEL = console_log_level
 
-    rich_handler = RichHandler(
-        **(constants.RICH_HANDLER_CONFIG | {"show_time": False}),
-        console=Console(),
-        level=constants.CONSOLE_LEVEL,
-    )
-
-    logger.addHandler(rich_file_handler)
-    logger.addHandler(rich_handler)
+    file_io = manager.path_manager.main_log.open("w", encoding="utf8")
+    file_console = RedactedConsole(file=file_io, width=manager.config_manager.settings_data.logs.log_line_width)
+    file_handler = RichHandler(**constants.RICH_HANDLER_CONFIG, console=file_console, level=log_level)
+    console_handler = RichHandler(**(constants.RICH_HANDLER_CONFIG | {"show_time": False}), level=console_log_level)
+    add_custom_log_render(file_handler)
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
 
 
 def ui_error_handling_wrapper(func: Callable) -> Callable:
@@ -234,10 +237,6 @@ async def director(manager: Manager) -> None:
     configs_to_run = [manager.config_manager.loaded_config]
     if manager.multiconfig:
         configs_to_run = manager.config_manager.get_configs()
-
-    if STARTUP_LOGGER_FILE.is_file() and STARTUP_LOGGER_FILE.stat().st_size == 0:
-        STARTUP_LOGGER_CONSOLE.file.close()
-        STARTUP_LOGGER_FILE.unlink()
 
     start_time = manager.start_time
     while configs_to_run:
@@ -282,7 +281,8 @@ def actual_main() -> None:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     exit_code = 1
-    manager = startup()
+    with startup_logging(first_time_setup=True):
+        manager = startup()
     with contextlib.suppress(Exception):
         try:
             asyncio.run(director(manager))
