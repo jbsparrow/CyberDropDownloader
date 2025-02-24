@@ -119,13 +119,14 @@ def setup_startup_logger(*, first_time_setup: bool = False) -> None:
         STARTUP_LOGGER_FILE.unlink(missing_ok=True)  # Only delete file once. Subsequent calls will append to file
     destroy_startup_logger()
     startup_logger.setLevel(10)
+    console_handler = RichHandler(**(constants.RICH_HANDLER_CONFIG | {"show_time": False}), level=10)
+    startup_logger.addHandler(console_handler)
+
     file_io = STARTUP_LOGGER_FILE.open("a", encoding="utf8")
     file_console = RedactedConsole(file=file_io, width=constants.DEFAULT_CONSOLE_WIDTH)
     file_handler = RichHandler(**constants.RICH_HANDLER_CONFIG, console=file_console, level=10)
-    console_handler = RichHandler(**(constants.RICH_HANDLER_CONFIG | {"show_time": False}), level=10)
     add_custom_log_render(file_handler)
     startup_logger.addHandler(file_handler)
-    startup_logger.addHandler(console_handler)
 
 
 def destroy_startup_logger(remove_all_handlers: bool = True) -> None:
