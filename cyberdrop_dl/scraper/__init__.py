@@ -58,6 +58,7 @@ from cyberdrop_dl.scraper.crawlers.titsintops_crawler import TitsInTopsCrawler
 from cyberdrop_dl.scraper.crawlers.tokyomotion_crawler import TokioMotionCrawler
 from cyberdrop_dl.scraper.crawlers.toonily_crawler import ToonilyCrawler
 from cyberdrop_dl.scraper.crawlers.twitter_images_crawler import TwimgCrawler
+from cyberdrop_dl.scraper.crawlers.wetransfer_crawler import WeTransferCrawler
 from cyberdrop_dl.scraper.crawlers.xbunker_crawler import XBunkerCrawler
 from cyberdrop_dl.scraper.crawlers.xbunkr_crawler import XBunkrCrawler
 from cyberdrop_dl.scraper.crawlers.xxxbunker_crawler import XXXBunkerCrawler
