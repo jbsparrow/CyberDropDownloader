@@ -171,7 +171,11 @@ def setup_debug_logger(manager: Manager) -> Path | None:
                 sys.exit(1)
             date = datetime.now().strftime("%Y%m%d_%H%M%S")
             debug_log_file_path = debug_log_folder / f"cyberdrop_dl_debug_{date}.log"
-        file_io = debug_log_file_path.open("w", encoding="utf8")
+        try:
+            file_io = debug_log_file_path.open("w", encoding="utf8")
+        except OSError as e:
+            startup_logger.exception(str(e))
+            sys.exit(1)
 
     file_console = Console(file=file_io, width=manager.config_manager.settings_data.logs.log_line_width)
     file_handler_debug = RichHandler(**constants.RICH_HANDLER_DEBUG_CONFIG, console=file_console, level=log_level)
@@ -198,7 +202,11 @@ def setup_logger(manager: Manager, config_name: str) -> None:
                 logger.removeHandler(logger.handlers[0])
                 old_file_handler.close()
 
-        file_io = manager.path_manager.main_log.open("w", encoding="utf8")
+        try:
+            file_io = manager.path_manager.main_log.open("w", encoding="utf8")
+        except OSError as e:
+            startup_logger.exception(str(e))
+            sys.exit(1)
 
     log_level = manager.config_manager.settings_data.runtime_options.log_level
     console_log_level = manager.config_manager.settings_data.runtime_options.console_log_level
