@@ -41,7 +41,7 @@ class HashClient:
         self.md5 = "md5"
         self.sha256 = "sha256"
         self.hashed_media_items: set[MediaItem] = set()
-        self.hashes_dict: defaultdict[str, defaultdict[str, set[Path]]] = defaultdict(lambda: defaultdict(set))
+        self.hashes_dict: defaultdict[str, defaultdict[int, set[Path]]] = defaultdict(lambda: defaultdict(set))
 
     async def startup(self) -> None:
         pass
@@ -122,10 +122,12 @@ class HashClient:
             log(f"Error hashing {file} : {e}", 40, exc_info=True)
         return hash
 
-    def save_hash_data(self, media_item, hash):
+    def save_hash_data(self, media_item: MediaItem, hash: str):
         absolute_path = media_item.complete_file.resolve()
         size = media_item.complete_file.stat().st_size
         self.hashed_media_items.add(media_item)
+        if hash:
+            media_item.hash = hash
         self.hashes_dict[hash][size].add(absolute_path)
 
     async def cleanup_dupes_after_download(self) -> None:
