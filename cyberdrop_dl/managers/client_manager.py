@@ -253,6 +253,8 @@ class Flaresolverr:
         self.enabled = bool(self.flaresolverr_host)
         self.session_id = None
         self.timeout = aiohttp.ClientTimeout(total=120000, connect=60000)
+        self.session_lock = asyncio.Lock()
+        self.request_lock = asyncio.Lock()
 
     async def _request(
         self,
@@ -265,8 +267,9 @@ class Flaresolverr:
         if not self.enabled:
             raise DDOSGuardError(message="FlareSolverr is not configured", origin=origin)
 
-        if not (self.session_id or kwargs.get("session")):
-            await self._create_session()
+        async with self.session_lock:
+            if not (self.session_id or kwargs.get("session")):
+                await self._create_session()
 
         headers = client_session.headers.copy()
         headers.update({"Content-Type": "application/json"})
@@ -276,14 +279,17 @@ class Flaresolverr:
 
         data = {"cmd": command, "maxTimeout": 60000, "session": self.session_id} | kwargs
 
-        async with client_session.post(
-            self.flaresolverr_host / "v1",
-            headers=headers,
-            ssl=self.client_manager.ssl_context,
-            proxy=self.client_manager.proxy,
-            json=data,
-            timeout=self.timeout,
-        ) as response:
+        async with (
+            self.request_lock,
+            client_session.post(
+                self.flaresolverr_host / "v1",
+                headers=headers,
+                ssl=self.client_manager.ssl_context,
+                proxy=self.client_manager.proxy,
+                json=data,
+                timeout=self.timeout,
+            ) as response,
+        ):
             json_obj: dict = await response.json()  # type: ignore
 
         return json_obj
