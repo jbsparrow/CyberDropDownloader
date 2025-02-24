@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Detect and ignore invalid responses from forums
 - `File is being used by another process` error when running multiple configs
 - Handle or ignore any errors when checking for updates
+- [regression] Do not remove trailing slash from URLs (jpg5, img.kiwi and imagepond.net)
+
 
 ### Changed
 
