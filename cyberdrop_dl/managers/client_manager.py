@@ -20,7 +20,6 @@ from cyberdrop_dl.clients.errors import DDOSGuardError, DownloadError, ScrapeErr
 from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.managers.download_speed_manager import DownloadSpeedLimiter
 from cyberdrop_dl.ui.prompts.user_prompts import get_cookies_from_browsers
-from cyberdrop_dl.utils.constants import CustomHTTPStatus
 from cyberdrop_dl.utils.logger import log, log_spacer
 
 if TYPE_CHECKING:
@@ -153,6 +152,7 @@ class ClientManager:
         """Checks the HTTP status code and raises an exception if it's not acceptable."""
         status = response.status
         headers = response.headers
+        message = None
 
         if download and headers.get("ETag") in DOWNLOAD_ERROR_ETAGS:
             message = DOWNLOAD_ERROR_ETAGS.get(headers.get("ETag"))
@@ -161,10 +161,10 @@ class ClientManager:
         if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
             return
 
-        if any(domain in response.url.host for domain in ("gofile", "imgur")):
+        if any(domain in response.url.host for domain in ("gofile", "imgur")):  # type: ignore
             with contextlib.suppress(ContentTypeError):
                 JSON_Resp: dict = await response.json()
-                status = JSON_Resp.get("status")
+                status: str | int = JSON_Resp.get("status")  # type: ignore
                 if status and isinstance(status, str) and "notFound" in status:
                     raise ScrapeError(404, origin=origin)
                 data = JSON_Resp.get("data")
@@ -179,8 +179,6 @@ class ClientManager:
             soup = BeautifulSoup(response_text, "html.parser")
             if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
                 raise DDOSGuardError(origin=origin)
-        status = status if headers.get("Content-Type") else CustomHTTPStatus.IM_A_TEAPOT
-        message = None if headers.get("Content-Type") else "No content-type in response header"
 
         raise DownloadError(status=status, message=message, origin=origin)
 
