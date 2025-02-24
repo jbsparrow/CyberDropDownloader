@@ -3,39 +3,6 @@ from pydantic import BaseModel, Field
 from .custom.types import AliasModel
 
 
-class ForumAuth(BaseModel):
-    allporncomix_xf_user_cookie: str = ""
-    allporncomix_username: str = ""
-    allporncomix_password: str = ""
-    bellazon_xf_user_cookie: str = ""
-    bellazon_username: str = ""
-    bellazon_password: str = ""
-    celebforum_xf_user_cookie: str = ""
-    celebforum_username: str = ""
-    celebforum_password: str = ""
-    f95zone_xf_user_cookie: str = ""
-    f95zone_username: str = ""
-    f95zone_password: str = ""
-    leakedmodels_xf_user_cookie: str = ""
-    leakedmodels_username: str = ""
-    leakedmodels_password: str = ""
-    nudostar_xf_user_cookie: str = ""
-    nudostar_username: str = ""
-    nudostar_password: str = ""
-    simpcity_xf_user_cookie: str = ""
-    simpcity_username: str = ""
-    simpcity_password: str = ""
-    socialmediagirls_xf_user_cookie: str = ""
-    socialmediagirls_username: str = ""
-    socialmediagirls_password: str = ""
-    titsintops_xf_user_cookie: str = ""
-    titsintops_username: str = ""
-    titsintops_password: str = ""
-    xbunker_xf_user_cookie: str = ""
-    xbunker_username: str = ""
-    xbunker_password: str = ""
-
-
 class CoomerAuth(BaseModel):
     session: str = ""
 
@@ -73,7 +40,6 @@ class RealDebridAuth(AliasModel):
 
 class AuthSettings(AliasModel):
     coomer: CoomerAuth = Field(validation_alias="Coomer", default=CoomerAuth())
-    forums: ForumAuth = Field(validation_alias="Forums", default=ForumAuth())
     gofile: GoFileAuth = Field(validation_alias="GoFile", default=GoFileAuth())  # type: ignore
     imgur: ImgurAuth = Field(validation_alias="Imgur", default=ImgurAuth())  # type: ignore
     jdownloader: JDownloaderAuth = Field(validation_alias="JDownloader", default=JDownloaderAuth())  # type: ignore
