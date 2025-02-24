@@ -1,6 +1,7 @@
 import re
 from enum import Enum, IntEnum, StrEnum, auto
 from pathlib import Path
+from typing import Any
 
 from rich.text import Text
 
@@ -10,7 +11,7 @@ MAX_NAME_LENGTHS = {"FILE": 95, "FOLDER": 60}
 DEFAULT_CONSOLE_WIDTH = 240
 CSV_DELIMITER = ","
 LOG_OUTPUT_TEXT = Text("")
-RICH_HANDLER_CONFIG = {"show_time": True, "rich_tracebacks": True, "tracebacks_show_locals": False}
+RICH_HANDLER_CONFIG: dict[str, Any] = {"show_time": True, "rich_tracebacks": True, "tracebacks_show_locals": False}
 RICH_HANDLER_DEBUG_CONFIG = {
     "show_time": True,
     "rich_tracebacks": True,
