@@ -5,6 +5,21 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.6.1] - 2025-02-24
+
+### Fixed
+
+- Parse videos with no date (YouJizz)
+- Detect and ignore invalid responses from forums
+- `File is being used by another process` error when running multiple configs
+- Handle or ignore any errors when checking for updates
+
+### Changed
+
+- Log downloads with no content type as `InvalidContentType` instead of `418 IM_A_TEAPOT`
+- Only make 1 request at a time to Flaresolverr
+
+
 ## [6.6.0] - 2025-02-23
 
 ### Added
