@@ -2,9 +2,9 @@ import os
 from hashlib import sha256
 
 RUNNING_IN_IDE = os.getenv("PYCHARM_HOSTED") or os.getenv("TERM_PROGRAM") == "vscode"
-KEY = os.getenv("ENABLESIMPCITY")
-if KEY:
-    KEY = sha256(KEY.encode("utf-8")).hexdigest()
+ENABLE_DEBUG_CRAWLERS = os.getenv("CDL_ENABLE_DEBUG_CRAWLERS")
+if ENABLE_DEBUG_CRAWLERS:
+    ENABLE_DEBUG_CRAWLERS = sha256(ENABLE_DEBUG_CRAWLERS.encode("utf-8")).hexdigest()
 
 DEBUG_LOG_FOLDER = os.getenv("CDL_DEBUG_LOG_FOLDER")
 PROFILING = os.getenv("CDL_PROFILING")
