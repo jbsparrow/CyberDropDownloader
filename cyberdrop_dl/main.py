@@ -290,13 +290,12 @@ async def director(manager: Manager) -> None:
         start_time = perf_counter()
 
 
-def main():
-    profiling: bool = False
+def main(*, profiling: bool = False, ask: bool = True):
     if not (profiling or env.PROFILING):
         return actual_main()
     from cyberdrop_dl.profiling import profile
 
-    profile(actual_main)
+    profile(actual_main, ask)
 
 
 def actual_main() -> None:

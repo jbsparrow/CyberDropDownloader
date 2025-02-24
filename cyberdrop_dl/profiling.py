@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
-def profile(func: Callable) -> None:
+def profile(func: Callable, ask: bool) -> None:
     @contextmanager
     def temp_dir_context():
         with TemporaryDirectory() as temp_dir:
@@ -28,7 +28,8 @@ def profile(func: Callable) -> None:
                 yield
             finally:
                 destroy_profile(*profile)
-                input("Press any key to finish and delete the profile folder: ")
+                if ask:
+                    input("Press any key to finish and delete the profile folder: ")
 
     with temp_dir_context(), cProfile.Profile() as cdl_profile:
         with contextlib.suppress(SystemExit):
@@ -64,6 +65,7 @@ def destroy_profile(old_cwd: Path, temp_dir_path: Path) -> None:
     if env.PROFILING == "use_date":
         suffix += f"_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     new_log_file = Path(f"cyberdrop_dl_debug_{suffix}.log").resolve()
-    shutil.move(old_log_file, new_log_file)
+    if old_log_file.is_file():
+        shutil.move(old_log_file, new_log_file)
     print(f"Profile AppData folder: {temp_dir_path}")
     print(f"Debug log file: {new_log_file}")
