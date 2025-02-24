@@ -130,7 +130,7 @@ def setup_startup_logger(*, first_time_setup: bool = False) -> None:
 
 def destroy_startup_logger(remove_all_handlers: bool = True) -> None:
     handlers: list[RichHandler] = startup_logger.handlers  # type: ignore
-    for handler in handlers:
+    for handler in handlers[:]:  # create copy
         if not (handler.console._file or remove_all_handlers):
             continue
         if handler.console._file:
@@ -192,12 +192,12 @@ def setup_logger(manager: Manager, config_name: str) -> None:
                 old_file_handler.close()
 
     log_level = manager.config_manager.settings_data.runtime_options.log_level
-    console_log_level = manager.config_manager.settings_data.runtime_options.console_log_level
     logger.setLevel(log_level)
 
     if not manager.parsed_args.cli_only_args.fullscreen_ui:
-        constants.CONSOLE_LEVEL = console_log_level
+        constants.CONSOLE_LEVEL = manager.config_manager.settings_data.runtime_options.console_log_level
 
+    console_log_level = constants.CONSOLE_LEVEL
     file_io = manager.path_manager.main_log.open("w", encoding="utf8")
     file_console = RedactedConsole(file=file_io, width=manager.config_manager.settings_data.logs.log_line_width)
     file_handler = RichHandler(**constants.RICH_HANDLER_CONFIG, console=file_console, level=log_level)
