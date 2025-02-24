@@ -75,8 +75,10 @@ class YouJizzCrawler(Crawler):
         resolution, link_str = v_format
 
         link = self.parse_url(link_str)
-        date = parse_relative_date(info["date"])
-        scrape_item.possible_datetime = date
+        date_str: str | None = info["date"]
+        if date_str:
+            date = parse_relative_date(date_str)
+            scrape_item.possible_datetime = date
         filename, ext = self.get_filename_and_ext(link.name)
         if ext == ".m3u8":
             raise ScrapeError(422, origin=scrape_item)
@@ -96,9 +98,12 @@ def get_video_id(url: URL) -> str:
 
 def get_info(soup: BeautifulSoup) -> VideoInfo:
     info_js_script = soup.select_one(JS_SELECTOR)
-    info: dict[str, str | dict] = javascript.parse_json_to_dict(info_js_script.text)  # type: ignore
+    info_js_script_text: str = info_js_script.text  # type: ignore
+    info: dict[str, str | None | dict] = javascript.parse_js_vars(info_js_script_text)  # type: ignore
     info["title"] = soup.title.text.replace("\n", "").strip()  # type: ignore
-    info["date"] = soup.select_one(DATE_SELECTOR).text.replace("(s)", "s").strip()  # type: ignore
+    date_tag = soup.select_one(DATE_SELECTOR)  # type: ignore
+    date_str: str | None = date_tag.text if date_tag else None
+    info["date"] = date_str.replace("(s)", "s").strip() if date_str else None
     javascript.clean_dict(info, "stream_data")
     log_debug(json.dumps(info, indent=4))
     return VideoInfo(**info)
