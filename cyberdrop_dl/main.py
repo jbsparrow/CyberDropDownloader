@@ -28,7 +28,7 @@ from cyberdrop_dl.utils.utilities import check_latest_pypi, check_partials_and_e
 from cyberdrop_dl.utils.yaml import handle_validation_error
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Generator
 
 startup_logger = logging.getLogger("cyberdrop_dl_startup")
 STARTUP_LOGGER_FILE = Path.cwd().joinpath("startup.log")
@@ -41,7 +41,6 @@ def startup() -> Manager:
     After this function returns, the manager will be ready to use and scraping / downloading can begin.
     """
 
-    setup_startup_logger(first_time_setup=True)
     try:
         manager = Manager()
         manager.startup()
@@ -128,6 +127,30 @@ def setup_startup_logger(*, first_time_setup: bool = False) -> None:
     startup_logger.addHandler(console_handler)
 
 
+def destroy_startup_logger(remove_all_handlers: bool = True) -> None:
+    handlers: list[RichHandler] = startup_logger.handlers  # type: ignore
+    for handler in handlers:
+        if not (handler.console._file or remove_all_handlers):
+            continue
+        if handler.console._file:
+            handler.console._file.close()
+        startup_logger.removeHandler(handler)
+        handler.close()
+
+    if STARTUP_LOGGER_FILE.is_file() and STARTUP_LOGGER_FILE.stat().st_size > 0:
+        return
+    STARTUP_LOGGER_FILE.unlink(missing_ok=True)
+
+
+@contextlib.contextmanager
+def startup_logging(*, first_time_setup: bool = False) -> Generator:
+    try:
+        setup_startup_logger(first_time_setup=first_time_setup)
+        yield
+    finally:
+        destroy_startup_logger()
+
+
 def setup_debug_logger(manager: Manager) -> Path | None:
     if not env.DEBUG_VAR:
         return
@@ -156,18 +179,17 @@ def setup_debug_logger(manager: Manager) -> Path | None:
 
 def setup_logger(manager: Manager, config_name: str) -> None:
     logger = logging.getLogger("cyberdrop_dl")
-    setup_startup_logger()  # To log any possible errors while changing configs ex: validation errors
-    if manager.multiconfig:
-        if len(logger.handlers) > 0:
-            log("Picking new config...", 20)
-        manager.config_manager.change_config(config_name)
-        if len(logger.handlers) > 0:
-            log(f"Changing config to {config_name}...", 20)
-            old_file_handler = logger.handlers[0]
-            logger.removeHandler(logger.handlers[0])
-            old_file_handler.close()
+    with startup_logging():
+        if manager.multiconfig:
+            if len(logger.handlers) > 0:
+                log("Picking new config...", 20)
+            manager.config_manager.change_config(config_name)
+            if len(logger.handlers) > 0:
+                log(f"Changing config to {config_name}...", 20)
+                old_file_handler = logger.handlers[0]
+                logger.removeHandler(logger.handlers[0])
+                old_file_handler.close()
 
-    destroy_startup_logger()  # Delete startup file if empty
     log_level = manager.config_manager.settings_data.runtime_options.log_level
     console_log_level = manager.config_manager.settings_data.runtime_options.console_log_level
     logger.setLevel(log_level)
@@ -182,21 +204,6 @@ def setup_logger(manager: Manager, config_name: str) -> None:
     add_custom_log_render(file_handler)
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
-
-
-def destroy_startup_logger(remove_all_handlers: bool = True) -> None:
-    handlers: list[RichHandler] = startup_logger.handlers  # type: ignore
-    for handler in handlers:
-        if not (handler.console._file or remove_all_handlers):
-            continue
-        if handler.console._file:
-            handler.console._file.close()
-        startup_logger.removeHandler(handler)
-        handler.close()
-
-    if STARTUP_LOGGER_FILE.is_file() and STARTUP_LOGGER_FILE.stat().st_size >= 0:
-        return
-    STARTUP_LOGGER_FILE.unlink(missing_ok=True)
 
 
 def ui_error_handling_wrapper(func: Callable) -> Callable:
@@ -229,8 +236,6 @@ async def director(manager: Manager) -> None:
     configs_to_run = [manager.config_manager.loaded_config]
     if manager.multiconfig:
         configs_to_run = manager.config_manager.get_configs()
-
-    destroy_startup_logger()  # Delete startup file created while initializing the manager (if empty)
 
     start_time = manager.start_time
     while configs_to_run:
@@ -275,7 +280,8 @@ def actual_main() -> None:
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     exit_code = 1
-    manager = startup()
+    with startup_logging(first_time_setup=True):
+        manager = startup()
     with contextlib.suppress(Exception):
         try:
             asyncio.run(director(manager))
