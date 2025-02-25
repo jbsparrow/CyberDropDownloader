@@ -104,6 +104,7 @@ class YandexDiskCrawler(Crawler):
             # We can log them to the main file
             raise ScrapeError(422, message=json.dumps(json_resp))
 
+        log_debug(json.dumps(json_resp, indent=4))
         scrape_item.possible_datetime = file.modified
         link_str: str = json_resp["data"]["url"]  # type: ignore
         link = self.parse_url(link_str)
