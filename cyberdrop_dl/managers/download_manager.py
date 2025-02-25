@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.scraper.crawler import Crawler
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
 
@@ -40,19 +41,36 @@ class FileLocksVault:
 
 class DownloadManager:
     def __init__(self, manager: Manager) -> None:
+        rate_limiting_options = manager.config_manager.global_settings_data.rate_limiting_options
         self.manager = manager
-        self._download_instances: dict = {}
-
         self.file_locks = FileLocksVault()
 
-        self.download_limits = {
-            "bunkr": 1,
-            "bunkrr": 1,
-            "cyberdrop": 1,
-            "cyberfile": 1,
-            "pixeldrain": 2,
-            "xxxbunker": 2,
-        }
+        self.download_spacers = {}
+        self.download_semaphores = {}
+        self.max_slots_per_domain = rate_limiting_options.max_simultaneous_downloads_per_domain
+        self.global_download_semaphore = asyncio.Semaphore(rate_limiting_options.max_simultaneous_downloads)
+        self.global_download_delay = rate_limiting_options.download_delay
+        self.default_semaphore = asyncio.Semaphore(self.max_slots_per_domain)
+
+    def register(self, crawler: Crawler) -> None:
+        domain = crawler.domain
+        assert domain not in self.download_spacers, f"{domain} is already registered"
+        self.download_spacers.update({domain: crawler.download_spacer})
+        semaphore = self.default_semaphore
+        if crawler.max_concurrent_downloads:
+            semaphore = asyncio.Semaphore(crawler.max_concurrent_downloads)
+        self.download_semaphores.update({domain: semaphore})
+
+    def get_download_semaphore(self, domain: str) -> asyncio.Semaphore:
+        """Returns the download limit for a domain."""
+        return self.download_semaphores.get(domain, self.default_semaphore)
+
+    @asynccontextmanager
+    async def limiter(self, domain: str):
+        download_spacer = self.download_spacers.get(domain, 0.1)
+        await asyncio.sleep(self.global_download_delay + download_spacer)
+        async with self.manager.client_manager.limiter(domain):
+            yield
 
     def get_download_limit(self, key: str) -> int:
         """Returns the download limit for a domain."""
