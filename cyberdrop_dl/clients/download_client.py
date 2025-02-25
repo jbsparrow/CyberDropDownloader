@@ -14,6 +14,8 @@ from aiohttp import ClientSession
 from videoprops import get_audio_properties, get_video_properties
 from yarl import URL
 
+from cyberdrop_dl.clients import check
+from cyberdrop_dl.clients.client import Client, create_session
 from cyberdrop_dl.clients.errors import (
     DownloadError,
     InsufficientFreeSpaceError,
@@ -21,7 +23,7 @@ from cyberdrop_dl.clients.errors import (
     SlowDownloadError,
 )
 from cyberdrop_dl.utils.constants import FILE_FORMATS
-from cyberdrop_dl.utils.logger import log, log_debug
+from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
@@ -30,7 +32,6 @@ if TYPE_CHECKING:
 
     from multidict import CIMultiDictProxy
 
-    from cyberdrop_dl.managers.client_manager import ClientManager
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
@@ -103,59 +104,32 @@ def check_file_duration(media_item: MediaItem, manager: Manager) -> bool:
     return min_audio_duration <= media_item.duration <= max_audio_duration
 
 
-class DownloadClient:
+class DownloadClient(Client):
     """AIOHTTP operations for downloading."""
 
-    def __init__(self, manager: Manager, client_manager: ClientManager) -> None:
-        self.manager = manager
-        self.client_manager = client_manager
+    request_log_hooks_name = "download"
 
-        self._headers = {"user-agent": client_manager.user_agent}
-        self._timeouts = aiohttp.ClientTimeout(
-            total=client_manager.read_timeout + client_manager.connection_timeout,
-            connect=client_manager.connection_timeout,
-        )
-        self._global_limiter = self.client_manager.global_rate_limiter
-        self.trace_configs = []
-        self._file_path = None
+    def __post_init__(self) -> None:
         self.slow_download_period = 10  # seconds
         self.download_speed_threshold = self.manager.config_manager.settings_data.runtime_options.slow_download_speed
-        self.add_request_log_hooks()
-
-    def add_request_log_hooks(self) -> None:
-        async def on_request_start(*args):
-            params: aiohttp.TraceRequestStartParams = args[2]
-            log_debug(f"Starting download {params.method} request to {params.url}", 10)
-
-        async def on_request_end(*args):
-            params: aiohttp.TraceRequestEndParams = args[2]
-            msg = f"Finishing download {params.method} request to {params.url}"
-            msg += f" -> response status: {params.response.status}"
-            log_debug(msg, 10)
-
-        trace_config = aiohttp.TraceConfig()
-        trace_config.on_request_start.append(on_request_start)
-        trace_config.on_request_end.append(on_request_end)
-        self.trace_configs.append(trace_config)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     def add_api_key_headers(self, domain: str, referer: URL) -> dict:
-        download_headers = copy.deepcopy(self._headers)
+        download_headers = copy.deepcopy(self.headers)
         download_headers["Referer"] = str(referer)
         auth_data = self.manager.config_manager.authentication_data
         if domain == "pixeldrain" and auth_data.pixeldrain.api_key:
-            download_headers["Authorization"] = self.manager.download_manager.basic_auth(
-                "Cyberdrop-DL", auth_data.pixeldrain.api_key
-            )
+            auth_data = self.manager.download_manager.basic_auth("Cyberdrop-DL", auth_data.pixeldrain.api_key)
+            download_headers["Authorization"] = auth_data
         elif domain == "gofile":
             gofile_cookies = self.client_manager.cookies.filter_cookies(URL("https://gofile.io"))
             api_key = gofile_cookies.get("accountToken", "")
             if api_key:
-                download_headers["Authorization"] = f"Bearer {api_key.value}"
+                download_headers["Authorization"] = f"Bearer {api_key.value}"  # type: ignore
         return download_headers
 
-    @limiter
+    @create_session
     async def _download(
         self,
         domain: str,
@@ -179,22 +153,22 @@ class DownloadClient:
         await asyncio.sleep(self.client_manager.download_delay)
 
         download_url = media_item.debrid_link or media_item.url
-        async with client_session.get(
-            download_url,
-            headers=download_headers,
-            ssl=self.client_manager.ssl_context,
-            proxy=self.client_manager.proxy,
-        ) as resp:
+        download_params = self.client_manager.downloader_client.request_params | {"headers": download_headers}
+        async with (
+            self.manager.download_manager.limiter(domain),
+            client_session.get(download_url, **download_params) as resp,
+        ):
             if resp.status == HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE:
                 media_item.partial_file.unlink()
 
-            await self.client_manager.check_http_status(resp, download=True, origin=media_item.url)
+            await check.raise_for_http_status(resp, download=True, origin=media_item.url)
             _ = get_content_type(media_item.ext, resp.headers)
 
             media_item.filesize = int(resp.headers.get("Content-Length", "0"))
             if not media_item.complete_file:
                 proceed, skip = await self.get_final_file_info(media_item, domain)
-                self.client_manager.check_bunkr_maint(resp.headers)
+                if check.is_bunkr_maintenance(resp.headers):  # type: ignore
+                    raise DownloadError(status="Bunkr Maintenance", message="Bunkr under maintenance")
                 if skip:
                     self.manager.progress_manager.download_progress.add_skipped()
                     return False
@@ -228,7 +202,7 @@ class DownloadClient:
         update_progress: partial,
     ) -> None:
         """Appends content to a file."""
-        if not self.client_manager.manager.download_manager.check_free_space(media_item.download_folder):
+        if not self.manager.download_manager.check_free_space(media_item.download_folder):
             raise InsufficientFreeSpaceError(origin=media_item)
 
         media_item.partial_file.parent.mkdir(parents=True, exist_ok=True)
@@ -238,6 +212,7 @@ class DownloadClient:
         last_slow_speed_read = None
 
         def check_download_speed():
+            assert media_item.task_id is not None
             nonlocal last_slow_speed_read
             speed = self.manager.progress_manager.file_progress.get_speed(media_item.task_id)
             if speed > self.download_speed_threshold:

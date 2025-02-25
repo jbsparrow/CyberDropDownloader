@@ -82,11 +82,23 @@ class Crawler(ABC):
         async with self.startup_lock:
             if self.ready:
                 return
-            self.client = self.manager.client_manager.scraper_session
+            self.client = self.manager.client_manager.scraper_client
             self.downloader = Downloader(self.manager, self.domain)
             self.downloader.startup()
             await self.async_startup()
+            self.manager.client_manager.register(self)
+            self.manager.download_manager.register(self)
             self.ready = True
+
+    @property
+    def limiter(self):
+        return self.manager.client_manager.limiter(self.domain)
+
+    async def with_limiter(self, func: Callable, *args, **kwargs):
+        async with self.limiter:
+            return func(*args, **kwargs)
+
+    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def async_startup(self) -> None: ...  # noqa: B027
 
