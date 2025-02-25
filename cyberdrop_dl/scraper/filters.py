@@ -12,12 +12,15 @@ from cyberdrop_dl.utils.constants import FILE_FORMATS
 from cyberdrop_dl.utils.utilities import get_filename_and_ext
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+    from datetime import date
+
     from aiohttp import ClientResponse
 
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
-return_values = {}
+return_values: dict[URL | str, tuple] = {}
 
 MEDIA_EXTENSIONS = FILE_FORMATS["Images"] | FILE_FORMATS["Videos"] | FILE_FORMATS["Audio"]
 
@@ -39,7 +42,7 @@ def is_valid_url(scrape_item: ScrapeItem) -> bool:
     return True
 
 
-def is_outside_date_range(scrape_item: ScrapeItem, before: arrow, after: arrow) -> bool:
+def is_outside_date_range(scrape_item: ScrapeItem, before: date | None, after: date | None) -> bool:
     skip = False
     item_date = scrape_item.completed_at or scrape_item.created_at
     if not item_date:
@@ -50,8 +53,8 @@ def is_outside_date_range(scrape_item: ScrapeItem, before: arrow, after: arrow) 
     return skip
 
 
-def is_in_domain_list(scrape_item: ScrapeItem, domain_list: list[str]) -> bool:
-    return any(domain in scrape_item.url.host for domain in domain_list)
+def is_in_domain_list(scrape_item: ScrapeItem, domain_list: Sequence[str]) -> bool:
+    return any(domain in scrape_item.url.host for domain in domain_list)  # type: ignore
 
 
 def remove_trailing_slash(url: URL) -> URL:
@@ -84,7 +87,7 @@ async def set_return_value(url: str, value: bool, pop: bool | None = True) -> No
     return_values[url] = (value, pop)
 
 
-async def get_return_value(url: str) -> bool | None:
+async def get_return_value(url: URL | str) -> bool | None:
     """Gets a return value for a url"""
     global return_values
     value, pop = return_values.get(url, (None, None))
@@ -112,7 +115,7 @@ async def filter_fn(response: ClientResponse) -> bool:
         soup = BeautifulSoup(await response.text(), "html.parser")
         try:
             last_page = int(soup.select(final_page_selector)[-1].text.split("page-")[-1])
-            current_page = int(soup.select_one(current_page_selector).text.split("page-")[-1])
+            current_page = int(soup.select_one(current_page_selector).text.split("page-")[-1])  # type: ignore
         except (AttributeError, IndexError):
             return False, "Last page not found, assuming only one page"
         return current_page != last_page, "Last page not reached" if current_page != last_page else "Last page reached"
@@ -156,7 +159,7 @@ async def filter_fn(response: ClientResponse) -> bool:
         "kemono.su": check_kemono_page,
     }
 
-    filter_fn = filter_dict.get(response.url.host)
+    filter_fn = filter_dict.get(response.url.host)  # type: ignore
     cache_response, reason = await filter_fn(response) if filter_fn else False, "No caching manager for host"
     del reason
     return cache_response
