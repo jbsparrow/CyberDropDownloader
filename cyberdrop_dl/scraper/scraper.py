@@ -191,6 +191,10 @@ class ScrapeMapper:
         if self.manager.parsed_args.cli_only_args.retry_any and self.manager.parsed_args.cli_only_args.max_items_retry:
             items = items[: self.manager.parsed_args.cli_only_args.max_items_retry]
         self.count = len(items)
+        msg = f"Processing {self.count} URLs"
+        if self.group_count:
+            msg += f" from {self.group_count} groups"
+        log(msg)
         for item in items:
             self.manager.task_group.create_task(self.send_to_crawler(item))
 
