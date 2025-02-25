@@ -20,6 +20,11 @@ class RequestResponse:
 
 
 @dataclass(slots=True, frozen=True)
+class HeadRequestResponse(RequestResponse):
+    response: None = None
+
+
+@dataclass(slots=True, frozen=True)
 class GetRequestResponse(RequestResponse):
     soup: BeautifulSoup
 
