@@ -123,7 +123,7 @@ def get_filename_and_ext(filename: str, forum: bool = False) -> tuple[str, str]:
     if not filename_as_path.suffix:
         raise NoExtensionError
     ext_no_dot = filename_as_path.suffix.split(".")[1]
-    if ext_no_dot.isdigit() and forum:
+    if ext_no_dot.isdigit() and forum and "-" in filename:
         name, ext = filename_as_path.name.rsplit("-", 1)
         ext = ext.rsplit(".")[0]
         filename_as_path = Path(f"{name}.{ext}")
