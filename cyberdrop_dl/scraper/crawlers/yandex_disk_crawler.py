@@ -121,7 +121,7 @@ def get_folder_info(soup: BeautifulSoup) -> YandexFolder:
     javascript.clean_dict(info_json)
     info_json = {k: v for k, v in info_json.items() if k in KEYS_TO_KEEP}
     env: dict[str, str] = info_json["environment"]
-    info_json["environment"] = {k: v for k, v in env.items() if k == "sk"}
+    info_json["environment"] = {"sk": env["sk"]}  # We don't need any other info from env
     log_debug(json.dumps(info_json, indent=4))
     return YandexFolder.from_json(info_json)
 
