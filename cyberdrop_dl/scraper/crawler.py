@@ -90,6 +90,16 @@ class Crawler(ABC):
             self.manager.download_manager.register(self)
             self.ready = True
 
+    @property
+    def limiter(self):
+        return self.manager.client_manager.limiter(self.domain)
+
+    async def with_limiter(self, func: Callable, *args, **kwargs):
+        async with self.limiter:
+            return func(*args, **kwargs)
+
+    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
     async def async_startup(self) -> None: ...  # noqa: B027
 
     async def run(self, item: ScrapeItem) -> None:
