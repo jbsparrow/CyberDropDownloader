@@ -18,6 +18,7 @@ from cyberdrop_dl.ui.progress.scraping_progress import ScrapingProgress
 from cyberdrop_dl.ui.progress.sort_progress import SortProgress
 from cyberdrop_dl.ui.progress.statistic_progress import DownloadStatsProgress, ScrapeStatsProgress
 from cyberdrop_dl.utils.logger import log, log_spacer, log_with_color
+from pathlib import Path
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -99,8 +100,15 @@ class ProgressManager:
 
         log_spacer(20)
         log("Printing Stats...\n", 20)
-        log_cyan(f"Run Stats (config: {self.manager.config_manager.loaded_config}):")
-        log_yellow(f"  Input File: {get_input(self.manager)}")
+        config_path = self.manager.path_manager.replace_config_in_path(self.manager.path_manager.config_folder / "{config}").absolute()
+        input_file = get_input(self.manager)
+        if isinstance(input_file, Path):
+            input_file_text = f"[link=file://{input_file.absolute()}]{input_file}[/link]"
+        else:
+            input_file_text = input_file
+        log_cyan(f"Run Stats (config: [link=file://{config_path}]{self.manager.config_manager.loaded_config}[/link]):", markup=True)
+        log_yellow(f"  Log Folder: [link=file://{self.manager.path_manager.log_folder.absolute()}]{self.manager.path_manager.log_folder}[/link]", markup=True)
+        log_yellow(f"  Input File: {input_file_text}", markup=True)
         log_yellow(f"  Input URLs: {self.manager.scrape_mapper.count:,}")
         log_yellow(f"  Input URL Groups: {self.manager.scrape_mapper.group_count:,}")
         log_yellow(f"  Total Runtime: {runtime}")
@@ -158,4 +166,4 @@ def get_input(manager: Manager) -> Path | str:
         return "--retry-failed"
     if manager.parsed_args.cli_only_args.retry_maintenance:
         return "--retry-maintenance"
-    return manager.config_manager.settings_data.files.input_file
+    return manager.path_manager.input_file
