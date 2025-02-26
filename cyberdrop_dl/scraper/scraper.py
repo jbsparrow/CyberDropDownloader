@@ -42,8 +42,9 @@ class ScrapeMapper:
         self.no_crawler_downloader = Downloader(self.manager, "no_crawler")
         self.jdownloader = JDownloader(self.manager)
         self.jdownloader_whitelist = self.manager.config_manager.settings_data.runtime_options.jdownloader_whitelist
-        self.count = 0
+        self.using_input_file = True
         self.group_count = 0
+        self.count = 0
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -153,6 +154,7 @@ class ScrapeMapper:
             links = await self.parse_input_file_groups()
 
         else:
+            self.using_input_file = False
             links[""].extend(self.manager.parsed_args.cli_only_args.links)
 
         links = {k: list(filter(None, v)) for k, v in links.items()}

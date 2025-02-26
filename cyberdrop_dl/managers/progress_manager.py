@@ -114,9 +114,10 @@ class ProgressManager:
             f"  Log Folder: [link=file://{self.manager.path_manager.log_folder.absolute()}]{self.manager.path_manager.log_folder}[/link]",
             markup=True,
         )
-        log_yellow(f"  Input File: {input_file_text}", markup=True)
+        if self.manager.scrape_mapper.using_input_file:
+            log_yellow(f"  Input File: {input_file_text}", markup=True)
+            log_yellow(f"  Input URL Groups: {self.manager.scrape_mapper.group_count:,}")
         log_yellow(f"  Input URLs: {self.manager.scrape_mapper.count:,}")
-        log_yellow(f"  Input URL Groups: {self.manager.scrape_mapper.group_count:,}")
         log_yellow(f"  Total Runtime: {runtime}")
         log_yellow(f"  Total Downloaded Data: {data_size}")
 
