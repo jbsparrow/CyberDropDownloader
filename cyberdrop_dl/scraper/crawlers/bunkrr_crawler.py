@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import base64
 import calendar
 import datetime
+import json
+import math
 import re
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from yarl import URL
 
@@ -44,6 +47,8 @@ BASE_CDNS = [
     r"mlk-bk\.cdn\.gigachad-cdn",
 ]
 
+API_ENTRYPOINT = URL("https://get.bunkrr.su/api/vs")
+
 EXTENDED_CDNS = [f"cdn-{cdn}" for cdn in BASE_CDNS]
 IMAGE_CDNS = [f"i-{cdn}" for cdn in BASE_CDNS]
 CDNS = BASE_CDNS + EXTENDED_CDNS + IMAGE_CDNS
@@ -56,6 +61,12 @@ ITEM_DATE_SELECTOR = 'span[class*="theDate"]'
 DOWNLOAD_BUTTON_SELECTOR = "a.btn.ic-download-01"
 IMAGE_PREVIEW_SELECTOR = "img.max-h-full.w-auto.object-cover.relative"
 VIDEO_AND_IMAGE_EXTS = FILE_FORMATS["Images"] | FILE_FORMATS["Videos"]
+
+
+class ApiResponse(NamedTuple):
+    encrypted: bool
+    timestamp: int
+    url: str
 
 
 @dataclass(frozen=True)
@@ -210,24 +221,33 @@ class BunkrrCrawler(Crawler):
             src_filename, ext = self.get_filename_and_ext(link.name)
         except NoExtensionError:
             src_filename, ext = self.get_filename_and_ext(scrape_item.url.name, assume_ext=".mp4")
-        filename, _ = self.get_filename_and_ext(link.query.get("n") or fallback_filename)
+        filename, _ = self.get_filename_and_ext(link.query.get("n") or fallback_filename)  # type: ignore
         if not url:
             referer = referer or URL("https://get.bunkrr.su/")
             scrape_item = self.create_scrape_item(scrape_item, referer)
         await self.handle_file(link, scrape_item, src_filename, ext, custom_filename=filename)
 
     @error_handling_wrapper
-    async def handle_reinforced_link(self, url: URL, scrape_item: ScrapeItem) -> URL | None:
+    async def handle_reinforced_link(self, scrape_item: ScrapeItem, url: URL | None = None) -> URL | None:
         """Gets the download link for a given reinforced URL (get.bunkr.su)."""
+        url = url or scrape_item.url
+        file_id_index = url.parts.index("file") + 1
+        file_id = url.parts[file_id_index]
+        data = json.dumps({"id": file_id})
+        headers = {
+            "Referer": str(url),
+            "Content-Type": "application/json",
+            "Origin": "https://get.bunkrr.su",
+        }
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, url, origin=scrape_item)
+            json_resp: dict = await self.client.post_data(
+                self.domain, API_ENTRYPOINT, data=data, headers_inc=headers, cache_disabled=True
+            )
 
-        try:
-            link_container = soup.select('a[download*=""]')[-1]
-        except IndexError:
-            link_container = soup.select("a[class*=download]")[-1]
-        link_str: str = link_container.get("href")  # type: ignore
-        return self.parse_url(link_str)
+        api_response = ApiResponse(**json_resp)
+        link_str = decrypt_api_response(api_response)
+        link = self.parse_url(link_str)
+        return link
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -238,7 +258,7 @@ class BunkrrCrawler(Crawler):
     async def get_final_url(self, scrape_item: ScrapeItem) -> URL:
         if not is_reinforced_link(scrape_item.url):
             return scrape_item.url
-        return await self.handle_reinforced_link(scrape_item.url, scrape_item)
+        return await self.handle_reinforced_link(scrape_item, scrape_item.url)
 
 
 def is_stream_redirect(url: URL) -> bool:
@@ -279,3 +299,28 @@ def parse_datetime(date: str) -> int:
 def with_suffix_encoded(url: URL, suffix: str) -> URL:
     name = Path(url.raw_name).with_suffix(suffix)
     return url.parent.joinpath(str(name), encoded=True).with_query(url.query).with_fragment(url.fragment)
+
+
+def decrypt_api_response(api_response: ApiResponse) -> str:
+    if not api_response.encrypted:
+        return api_response.url
+
+    time_key = math.floor(api_response.timestamp / 0xE10)
+    secret_key = f"SECRET_KEY_{time_key}"
+    byte_array = decode_base64_to_byte_array(api_response.url)
+    return xor_decrypt(byte_array, secret_key)
+
+
+def decode_base64_to_byte_array(url_base64_encrypted: str) -> bytearray:
+    binary_data = base64.b64decode(url_base64_encrypted)
+    byte_array = bytearray(binary_data)
+    return byte_array
+
+
+def xor_decrypt(data: bytearray, key: str) -> str:
+    key_bytes = key.encode("utf-8")
+    decrypted_data = bytearray(len(data))
+    for i in range(len(data)):
+        decrypted_data[i] = data[i] ^ key_bytes[i % len(key_bytes)]  # XOR over each byte
+
+    return decrypted_data.decode("utf-8", errors="ignore")
