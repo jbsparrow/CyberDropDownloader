@@ -141,7 +141,9 @@ def log_debug(message: Exception | str, level: int = 10, **kwargs) -> None:
         logger_debug.log(level, message.encode("ascii", "ignore").decode("ascii"), **kwargs)
 
 
-def log_with_color(message: str, style: str, level: int, show_in_stats: bool = True, markup: bool = False, **kwargs) -> None:
+def log_with_color(
+    message: str, style: str, level: int, show_in_stats: bool = True, markup: bool = False, **kwargs
+) -> None:
     """Simple logging function with color."""
     log(message, level, **kwargs)
     text = Text(message, style=style)

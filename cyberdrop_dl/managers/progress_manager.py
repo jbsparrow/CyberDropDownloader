@@ -4,6 +4,7 @@ import time
 from dataclasses import field
 from datetime import timedelta
 from functools import partial
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from pydantic import ByteSize
@@ -18,11 +19,8 @@ from cyberdrop_dl.ui.progress.scraping_progress import ScrapingProgress
 from cyberdrop_dl.ui.progress.sort_progress import SortProgress
 from cyberdrop_dl.ui.progress.statistic_progress import DownloadStatsProgress, ScrapeStatsProgress
 from cyberdrop_dl.utils.logger import log, log_spacer, log_with_color
-from pathlib import Path
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from rich.console import RenderableType
 
     from cyberdrop_dl.managers.manager import Manager
@@ -100,14 +98,22 @@ class ProgressManager:
 
         log_spacer(20)
         log("Printing Stats...\n", 20)
-        config_path = self.manager.path_manager.replace_config_in_path(self.manager.path_manager.config_folder / "{config}").absolute()
+        config_path = self.manager.path_manager.replace_config_in_path(
+            self.manager.path_manager.config_folder / "{config}"
+        ).absolute()
         input_file = get_input(self.manager)
         if isinstance(input_file, Path):
             input_file_text = f"[link=file://{input_file.absolute()}]{input_file}[/link]"
         else:
             input_file_text = input_file
-        log_cyan(f"Run Stats (config: [link=file://{config_path}]{self.manager.config_manager.loaded_config}[/link]):", markup=True)
-        log_yellow(f"  Log Folder: [link=file://{self.manager.path_manager.log_folder.absolute()}]{self.manager.path_manager.log_folder}[/link]", markup=True)
+        log_cyan(
+            f"Run Stats (config: [link=file://{config_path}]{self.manager.config_manager.loaded_config}[/link]):",
+            markup=True,
+        )
+        log_yellow(
+            f"  Log Folder: [link=file://{self.manager.path_manager.log_folder.absolute()}]{self.manager.path_manager.log_folder}[/link]",
+            markup=True,
+        )
         log_yellow(f"  Input File: {input_file_text}", markup=True)
         log_yellow(f"  Input URLs: {self.manager.scrape_mapper.count:,}")
         log_yellow(f"  Input URL Groups: {self.manager.scrape_mapper.group_count:,}")
