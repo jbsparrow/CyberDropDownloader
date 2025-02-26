@@ -16,7 +16,6 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.constants import FILE_FORMATS
-from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -25,6 +24,7 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup, Tag
 
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 BASE_CDNS = [
     "bacon",
@@ -86,14 +86,6 @@ class AlbumItem:
         link = parse_url(link_str)
         return cls(name, thumbnail, date, link)
 
-    def get_src(self, parse_url: Callable[..., URL]) -> URL:
-        src_str = self.thumbnail.replace("/thumbs/", "/")
-        src = parse_url(src_str)
-        src = with_suffix_encoded(src, self.suffix).with_query(None)
-        if src.suffix.lower() not in FILE_FORMATS["Images"]:
-            src = src.with_host(src.host.replace("i-", ""))  # type: ignore
-        return override_cdn(src)
-
     @property
     def suffix(self) -> str:
         return Path(self.name).suffix
@@ -130,33 +122,19 @@ class BunkrrCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        scrape_item.album_id = scrape_item.url.parts[2]
-        scrape_item.part_of_album = True
-        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
+        album_id = scrape_item.url.parts[2]
         title = soup.select_one("title").text.rsplit(" | Bunkr")[0].strip()  # type: ignore
-        title = self.create_title(title, scrape_item.album_id)
-        scrape_item.add_to_parent_title(title)
-        results = await self.get_album_results(scrape_item.album_id)
+        title = self.create_title(title, album_id)
+        scrape_item.setup_as_album(title, album_id=album_id)
 
         item_tags: list[Tag] = soup.select(ALBUM_ITEM_SELECTOR)
         parse_url = partial(self.parse_url, relative_to=scrape_item.url.with_path("/"))
-        create = partial(self.create_scrape_item, scrape_item, add_parent=scrape_item.url)
 
         for tag in item_tags:
             item = AlbumItem.from_tag(tag, parse_url)
-            new_scrape_item = create(item.url, possible_datetime=item.date)
-            await self.process_album_item(new_scrape_item, item, results)
+            new_scrape_item = scrape_item.create_child(item.url, possible_datetime=item.date)
+            self.manager.task_group.create_task(self.file(new_scrape_item))
             scrape_item.add_children()
-
-    async def process_album_item(self, scrape_item: ScrapeItem, item: AlbumItem, results: dict):
-        src = item.get_src(self.parse_url)
-        if src.suffix.lower() not in VIDEO_AND_IMAGE_EXTS or "no-image" in src.name or self.deep_scrape(src):
-            return self.manager.task_group.create_task(self.run(scrape_item))
-
-        filename, ext = self.get_filename_and_ext(src.name, assume_ext=".mp4")
-        custom_name, _ = self.get_filename_and_ext(item.name, assume_ext=".mp4")
-        if not self.check_album_results(src, results):
-            await self.handle_file(src, scrape_item, filename, ext, custom_filename=custom_name)
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
@@ -192,12 +170,15 @@ class BunkrrCrawler(Crawler):
             raise ScrapeError(422, "Couldn't find source", origin=scrape_item)
 
         link = self.parse_url(link_str)
-        date_str = soup.select_one(ITEM_DATE_SELECTOR)
-        if date_str:
-            date = parse_datetime(date_str.text.strip())
+        if not scrape_item.possible_datetime:
+            date_str = soup.select_one(ITEM_DATE_SELECTOR)
+            if date_str:
+                date = parse_datetime(date_str.text.strip())
 
-        new_scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, possible_datetime=date)
-        await self.handle_direct_link(new_scrape_item, link, fallback_filename=soup.select_one("h1").text)  # type: ignore
+            scrape_item.possible_datetime = date
+
+        title: str = soup.select_one("h1").text  # type: ignore
+        await self.handle_direct_link(scrape_item, link, fallback_filename=title)
 
     async def handle_direct_link(
         self, scrape_item: ScrapeItem, url: URL | None = None, fallback_filename: str | None = None
@@ -210,25 +191,29 @@ class BunkrrCrawler(Crawler):
 
         link = url or scrape_item.url
         referer = ""
+
         if is_reinforced_link(link):
             referer = link
-            link: URL = await self.handle_reinforced_link(link, scrape_item)
+            link: URL = await self.handle_reinforced_link(scrape_item, link)
+            if not link:
+                return
 
-        if not link:
-            return
-        link = override_cdn(link)
+        else:
+            link = override_cdn(link)
+
         try:
             src_filename, ext = self.get_filename_and_ext(link.name)
         except NoExtensionError:
             src_filename, ext = self.get_filename_and_ext(scrape_item.url.name, assume_ext=".mp4")
+
         filename, _ = self.get_filename_and_ext(link.query.get("n") or fallback_filename)  # type: ignore
         if not url:
             referer = referer or URL("https://get.bunkrr.su/")
-            scrape_item = self.create_scrape_item(scrape_item, referer)
+            scrape_item.url = referer
         await self.handle_file(link, scrape_item, src_filename, ext, custom_filename=filename)
 
     @error_handling_wrapper
-    async def handle_reinforced_link(self, scrape_item: ScrapeItem, url: URL | None = None) -> URL | None:
+    async def handle_reinforced_link(self, scrape_item: ScrapeItem, url: URL | None = None) -> URL:
         """Gets the download link for a given reinforced URL (get.bunkr.su)."""
         url = url or scrape_item.url
         file_id_index = url.parts.index("file") + 1
@@ -240,20 +225,13 @@ class BunkrrCrawler(Crawler):
             "Origin": "https://get.bunkrr.su",
         }
         async with self.request_limiter:
-            json_resp: dict = await self.client.post_data(
-                self.domain, API_ENTRYPOINT, data=data, headers_inc=headers, cache_disabled=True
-            )
+            json_resp: dict = await self.client.post_data(self.domain, API_ENTRYPOINT, data=data, headers_inc=headers)
 
         api_response = ApiResponse(**json_resp)
         link_str = decrypt_api_response(api_response)
-        link = self.parse_url(link_str)
-        return link
+        return self.parse_url(link_str)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    def deep_scrape(self, url: URL) -> bool:
-        assert url.host
-        return any(part in url.host.split(".") for part in ("burger",)) or self.manager.config_manager.deep_scrape
 
     async def get_final_url(self, scrape_item: ScrapeItem) -> URL:
         if not is_reinforced_link(scrape_item.url):
@@ -294,11 +272,6 @@ def parse_datetime(date: str) -> int:
     """Parses a datetime string into a unix timestamp."""
     parsed_date = datetime.datetime.strptime(date, "%H:%M:%S %d/%m/%Y")
     return calendar.timegm(parsed_date.timetuple())
-
-
-def with_suffix_encoded(url: URL, suffix: str) -> URL:
-    name = Path(url.raw_name).with_suffix(suffix)
-    return url.parent.joinpath(str(name), encoded=True).with_query(url.query).with_fragment(url.fragment)
 
 
 def decrypt_api_response(api_response: ApiResponse) -> str:
