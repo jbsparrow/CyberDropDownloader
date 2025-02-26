@@ -86,6 +86,14 @@ class AlbumItem:
         link = parse_url(link_str)
         return cls(name, thumbnail, date, link)
 
+    def get_src(self, parse_url: Callable[..., URL]) -> URL:
+        src_str = self.thumbnail.replace("/thumbs/", "/")
+        src = parse_url(src_str)
+        src = with_suffix_encoded(src, self.suffix).with_query(None)
+        if src.suffix.lower() not in FILE_FORMATS["Images"]:
+            src = src.with_host(src.host.replace("i-", ""))  # type: ignore
+        return override_cdn(src)
+
     @property
     def suffix(self) -> str:
         return Path(self.name).suffix
@@ -126,6 +134,7 @@ class BunkrrCrawler(Crawler):
         title = soup.select_one("title").text.rsplit(" | Bunkr")[0].strip()  # type: ignore
         title = self.create_title(title, album_id)
         scrape_item.setup_as_album(title, album_id=album_id)
+        results = await self.get_album_results(album_id)
 
         item_tags: list[Tag] = soup.select(ALBUM_ITEM_SELECTOR)
         parse_url = partial(self.parse_url, relative_to=scrape_item.url.with_path("/"))
@@ -133,8 +142,22 @@ class BunkrrCrawler(Crawler):
         for tag in item_tags:
             item = AlbumItem.from_tag(tag, parse_url)
             new_scrape_item = scrape_item.create_child(item.url, possible_datetime=item.date)
-            self.manager.task_group.create_task(self.file(new_scrape_item))
+            await self.process_album_item(new_scrape_item, item, results)
             scrape_item.add_children()
+
+    async def process_album_item(self, scrape_item: ScrapeItem, item: AlbumItem, results: dict):
+        link = item.get_src(self.parse_url)
+        if link.suffix.lower() not in VIDEO_AND_IMAGE_EXTS or "no-image" in link.name or self.deep_scrape(link):
+            return self.manager.task_group.create_task(self.file(scrape_item))
+
+        filename, ext = self.get_filename_and_ext(link.name, assume_ext=".mp4")
+        custom_name, _ = self.get_filename_and_ext(item.name, assume_ext=".mp4")
+        if not self.check_album_results(link, results):
+            await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_name)
+
+    def deep_scrape(self, url: URL) -> bool:
+        assert url.host
+        return any(part in url.host.split(".") for part in ("burger",)) or self.manager.config_manager.deep_scrape
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
@@ -272,6 +295,11 @@ def parse_datetime(date: str) -> int:
     """Parses a datetime string into a unix timestamp."""
     parsed_date = datetime.datetime.strptime(date, "%H:%M:%S %d/%m/%Y")
     return calendar.timegm(parsed_date.timetuple())
+
+
+def with_suffix_encoded(url: URL, suffix: str) -> URL:
+    name = Path(url.raw_name).with_suffix(suffix)
+    return url.parent.joinpath(str(name), encoded=True).with_query(url.query).with_fragment(url.fragment)
 
 
 def decrypt_api_response(api_response: ApiResponse) -> str:
