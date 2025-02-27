@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 import time
+from contextlib import asynccontextmanager
 from dataclasses import field
 from datetime import timedelta
 from functools import partial
 from typing import TYPE_CHECKING
 
 from pydantic import ByteSize
+from rich.columns import Columns
 from rich.console import Group
 from rich.layout import Layout
-from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.progress import Progress, SpinnerColumn, TaskID, TextColumn
 
 from cyberdrop_dl.ui.progress.downloads_progress import DownloadsProgress
 from cyberdrop_dl.ui.progress.file_progress import FileProgress
@@ -20,6 +22,7 @@ from cyberdrop_dl.ui.progress.statistic_progress import DownloadStatsProgress, S
 from cyberdrop_dl.utils.logger import log, log_spacer, log_with_color
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
     from pathlib import Path
 
     from rich.console import RenderableType
@@ -61,28 +64,49 @@ class ProgressManager:
         self.hash_remove_layout: RenderableType = field(init=False)
         self.hash_layout: RenderableType = field(init=False)
         self.sort_layout: RenderableType = field(init=False)
+        self.status_message: Progress = field(init=False)
+        self.status_message_task_id: TaskID = field(init=False)
+
+    @asynccontextmanager
+    async def show_status_msg(self, msg: str | None) -> AsyncGenerator:
+        try:
+            self.status_message.update(self.status_message_task_id, description=msg, visible=bool(msg))
+            yield
+        finally:
+            self.status_message.update(self.status_message_task_id, visible=False)
 
     def startup(self) -> None:
         """Startup process for the progress manager."""
+
+        spinner = SpinnerColumn(style="green", spinner_name="dots"), TextColumn("Running Cyberdrop-DL")
+        activity_placeholder = Progress(*spinner)
+        activity_placeholder.add_task("running with no UI", total=100, completed=0)
+
+        self.status_message = Progress(
+            SpinnerColumn(style="green", spinner_name="dots"), "[progress.description]{task.description}"
+        )
+
+        self.status_message_task_id = self.status_message.add_task("", total=100, completed=0, visible=False)
+
+        simple_layout = Group(activity_placeholder, self.download_progress.simple_progress)
+
+        status_message_columns = Columns([activity_placeholder, self.status_message], expand=False)
+
         progress_layout = Layout()
         progress_layout.split_column(
-            Layout(name="upper", ratio=2, minimum_size=8),
-            Layout(renderable=self.scraping_progress.get_renderable(), name="Scraping", ratio=2),
-            Layout(renderable=self.file_progress.get_renderable(), name="Downloads", ratio=2),
+            Layout(name="upper", ratio=20, minimum_size=8),
+            Layout(renderable=self.scraping_progress.get_renderable(), name="Scraping", ratio=20),
+            Layout(renderable=self.file_progress.get_renderable(), name="Downloads", ratio=20),
+            Layout(renderable=status_message_columns, name="status_message", ratio=2),
         )
+
         progress_layout["upper"].split_row(
             Layout(renderable=self.download_progress.get_progress(), name="Files", ratio=1),
             Layout(renderable=self.scrape_stats_progress.get_progress(), name="Scrape Failures", ratio=1),
             Layout(renderable=self.download_stats_progress.get_progress(), name="Download Failures", ratio=1),
         )
 
-        spinner = SpinnerColumn(style="green", spinner_name="dots"), TextColumn("Running Cyberdrop-DL")
-        actvity_placeholder = Progress(*spinner)
-        actvity_placeholder.add_task("running with no UI", total=100, completed=0)
-
-        simple_layout = Group(actvity_placeholder, self.download_progress.simple_progress)
-
-        self.activity_layout = actvity_placeholder
+        self.activity_layout = activity_placeholder
         self.simple_layout = simple_layout
         self.fullscreen_layout = progress_layout
         self.hash_remove_layout = self.hash_progress.get_removed_progress()
