@@ -89,15 +89,16 @@ class ScrapeMapper:
         await self.start_real_debrid()
         self.no_crawler_downloader.startup()
 
-        if self.manager.parsed_args.cli_only_args.retry_failed:
-            items = await self.load_failed_links()
-        elif self.manager.parsed_args.cli_only_args.retry_all:
-            items = await self.load_all_links()
-        elif self.manager.parsed_args.cli_only_args.retry_maintenance:
-            items = await self.load_all_bunkr_failed_links_via_hash()
-        else:
-            items = await self.load_links()
-        filtered_items = [item for item in items if self.filter_items(item)]
+        async with self.manager.progress_manager.show_status_msg("Reading input URLs"):
+            if self.manager.parsed_args.cli_only_args.retry_failed:
+                items = await self.load_failed_links()
+            elif self.manager.parsed_args.cli_only_args.retry_all:
+                items = await self.load_all_links()
+            elif self.manager.parsed_args.cli_only_args.retry_maintenance:
+                items = await self.load_all_bunkr_failed_links_via_hash()
+            else:
+                items = await self.load_links()
+            filtered_items = [item for item in items if self.filter_items(item)]
         self.process_items(filtered_items)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
