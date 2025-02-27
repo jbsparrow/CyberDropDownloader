@@ -265,7 +265,6 @@ class Flaresolverr:
         """Base request function to call flaresolverr."""
         if not self.enabled:
             raise DDOSGuardError(message="FlareSolverr is not configured", origin=origin)
-
         async with self.session_lock:
             if not (self.session_id or kwargs.get("session")):
                 await self._create_session()
@@ -278,7 +277,6 @@ class Flaresolverr:
         for key, value in kwargs.items():
             if isinstance(value, URL):
                 kwargs[key] = str(value)
-
         data = {"cmd": command, "maxTimeout": 60000, "session": self.session_id} | kwargs
 
         self.request_count += 1
@@ -312,7 +310,7 @@ class Flaresolverr:
     async def _destroy_session(self):
         if self.session_id:
             async with ClientSession() as client_session:
-                await self._request("sessions.destroy", client_session, session=self.session_id)
+                await self._request("sessions.destroy", client_session)
 
     async def get(
         self,
