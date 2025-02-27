@@ -52,7 +52,7 @@ class ScrapeMapper:
         """Starts all scrapers."""
         for crawler in CRAWLERS:
             if not crawler.SUPPORTED_SITES:
-                site_crawler = crawler(self.manager)
+                site_crawler = crawler(self.manager)  # type: ignore
                 assert site_crawler.domain not in self.existing_crawlers
                 self.existing_crawlers[site_crawler.domain] = site_crawler
                 continue
@@ -118,29 +118,30 @@ class ScrapeMapper:
             yarl_links.append(URL(link, encoded=encoded))
         return yarl_links
 
-    async def parse_input_file_groups(self) -> dict[str, URL]:
+    async def parse_input_file_groups(self) -> dict[str, list[URL]]:
         """Split URLs from input file by their groups."""
         input_file = self.manager.path_manager.input_file
-        links = {"": []}
+        link_groups: dict[str, list[URL]] = {"": []}
         block_quote = False
-        thread_title = ""
+        current_group_name = ""
         async with aiofiles.open(input_file, encoding="utf8") as f:
             async for line in f:
                 assert isinstance(line, str)
 
                 if line.startswith(("---", "===")):
-                    thread_title = line.replace("---", "").replace("===", "").strip()
-                    if thread_title and thread_title not in links:
-                        links[thread_title] = []
+                    current_group_name = line.replace("---", "").replace("===", "").strip()
+                    if current_group_name and current_group_name not in link_groups:
+                        link_groups[current_group_name] = []
 
-                if thread_title:
-                    links[thread_title].extend(self.regex_links(line))
-                else:
-                    block_quote = not block_quote if line == "#\n" else block_quote
-                    if not block_quote:
-                        links[""].extend(self.regex_links(line))
-        self.group_count = len(links) - 1
-        return links
+                if current_group_name:
+                    link_groups[current_group_name].extend(self.regex_links(line))
+                    continue
+
+                block_quote = not block_quote if line == "#\n" else block_quote
+                if not block_quote:
+                    link_groups[""].extend(self.regex_links(line))
+        self.group_count = len(link_groups) - 1
+        return link_groups
 
     async def load_links(self) -> list[ScrapeItem]:
         """Loads links from args / input file."""
@@ -149,21 +150,21 @@ class ScrapeMapper:
         if not input_file.is_file():
             input_file.touch(exist_ok=True)
 
-        links = {"": []}
+        link_groups: dict[str, list[URL]] = {"": []}
         if not self.manager.parsed_args.cli_only_args.links:
             self.using_input_file = True
-            links = await self.parse_input_file_groups()
+            link_groups = await self.parse_input_file_groups()
 
         else:
-            links[""].extend(self.manager.parsed_args.cli_only_args.links)
+            link_groups[""].extend(self.manager.parsed_args.cli_only_args.links)  # type: ignore
 
-        links = {k: list(filter(None, v)) for k, v in links.items()}
+        link_groups = {k: list(filter(None, v)) for k, v in link_groups.items()}
         items = []
 
-        if not links:
+        if not link_groups:
             log("No valid links found.", 30)
-        for title in links:
-            for url in links[title]:
+        for title in link_groups:
+            for url in link_groups[title]:
                 item = self.create_item_from_link(url)
                 if title:
                     item.add_to_parent_title(title)
@@ -193,6 +194,10 @@ class ScrapeMapper:
         if self.manager.parsed_args.cli_only_args.retry_any and self.manager.parsed_args.cli_only_args.max_items_retry:
             items = items[: self.manager.parsed_args.cli_only_args.max_items_retry]
         self.count = len(items)
+        msg = f"Processing {self.count} URLs"
+        if self.group_count:
+            msg += f" from {self.group_count} groups"
+        log(msg)
         for item in items:
             self.manager.task_group.create_task(self.send_to_crawler(item))
 
@@ -226,10 +231,10 @@ class ScrapeMapper:
     async def send_to_crawler(self, scrape_item: ScrapeItem) -> None:
         """Maps URLs to their respective handlers."""
         scrape_item.url = remove_trailing_slash(scrape_item.url)
-        supported_domain = [key for key in self.existing_crawlers if key in scrape_item.url.host]
+        supported_domain = [key for key in self.existing_crawlers if key in scrape_item.url.host]  # type: ignore
         jdownloader_whitelisted = True
         if self.jdownloader_whitelist:
-            jdownloader_whitelisted = any(domain in scrape_item.url.host for domain in self.jdownloader_whitelist)
+            jdownloader_whitelisted = any(domain in scrape_item.url.host for domain in self.jdownloader_whitelist)  # type: ignore
 
         if supported_domain:
             # get most restrictive domain if multiple domain matches
