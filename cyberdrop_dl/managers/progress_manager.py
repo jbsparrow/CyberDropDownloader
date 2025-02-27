@@ -99,8 +99,13 @@ class ProgressManager:
 
         log_spacer(20)
         log("Printing Stats...\n", 20)
-        log_cyan(f"Run Stats (config: {self.manager.config_manager.loaded_config}):")
-        log_yellow(f"  Input File: {get_input(self.manager)}")
+        config_path = self.manager.path_manager.config_folder / self.manager.config_manager.loaded_config
+        config_path_text = get_console_hyperlink(config_path, text=self.manager.config_manager.loaded_config)
+        input_file_text = get_input(self.manager)
+        log_folder_text = get_console_hyperlink(self.manager.path_manager.log_folder)
+        log_cyan(f"Run Stats (config: {config_path_text}):", markup=True)
+        log_yellow(f"  Log Folder: {log_folder_text}", markup=True)
+        log_yellow(f"  Input File: {input_file_text}", markup=True)
         log_yellow(f"  Input URLs: {self.manager.scrape_mapper.count:,}")
         log_yellow(f"  Input URL Groups: {self.manager.scrape_mapper.group_count:,}")
         log_yellow(f"  Total Runtime: {runtime}")
@@ -151,11 +156,19 @@ def log_failures(failures: list[UiFailureTotal], title: str = "Failures:", last_
     return error_padding
 
 
-def get_input(manager: Manager) -> Path | str:
+def get_input(manager: Manager) -> str:
     if manager.parsed_args.cli_only_args.retry_all:
         return "--retry-all"
     if manager.parsed_args.cli_only_args.retry_failed:
         return "--retry-failed"
     if manager.parsed_args.cli_only_args.retry_maintenance:
         return "--retry-maintenance"
-    return manager.config_manager.settings_data.files.input_file
+    if manager.scrape_mapper.using_input_file:
+        return get_console_hyperlink(manager.path_manager.input_file)
+    return "--links (CLI args)"
+
+
+def get_console_hyperlink(file_path: Path, text: str = "") -> str:
+    full_path = file_path.resolve()
+    show_text = text or full_path
+    return f"[link=file://{full_path}]{show_text}[/link]"
