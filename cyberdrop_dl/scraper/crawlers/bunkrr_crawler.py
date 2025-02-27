@@ -1,19 +1,22 @@
 from __future__ import annotations
 
+import base64
 import calendar
 import datetime
+import json
+import math
 import re
 from dataclasses import dataclass
 from functools import partial
+from itertools import cycle
 from pathlib import Path
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.constants import FILE_FORMATS
-from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -22,6 +25,7 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup, Tag
 
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 BASE_CDNS = [
     "bacon",
@@ -44,6 +48,8 @@ BASE_CDNS = [
     r"mlk-bk\.cdn\.gigachad-cdn",
 ]
 
+API_ENTRYPOINT = URL("https://get.bunkrr.su/api/vs")
+
 EXTENDED_CDNS = [f"cdn-{cdn}" for cdn in BASE_CDNS]
 IMAGE_CDNS = [f"i-{cdn}" for cdn in BASE_CDNS]
 CDNS = BASE_CDNS + EXTENDED_CDNS + IMAGE_CDNS
@@ -55,7 +61,14 @@ ITEM_NAME_SELECTOR = "p[class*='theName']"
 ITEM_DATE_SELECTOR = 'span[class*="theDate"]'
 DOWNLOAD_BUTTON_SELECTOR = "a.btn.ic-download-01"
 IMAGE_PREVIEW_SELECTOR = "img.max-h-full.w-auto.object-cover.relative"
+VIDEO_SELECTOR = "video > source"
 VIDEO_AND_IMAGE_EXTS = FILE_FORMATS["Images"] | FILE_FORMATS["Videos"]
+
+
+class ApiResponse(NamedTuple):
+    encrypted: bool
+    timestamp: int
+    url: str
 
 
 @dataclass(frozen=True)
@@ -100,16 +113,18 @@ class BunkrrCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        scrape_item.url = await self.get_final_url(scrape_item)
-        if not scrape_item.url:
-            return
 
-        if "a" in scrape_item.url.parts:
-            await self.album(scrape_item)
-        elif is_cdn(scrape_item.url) and not is_stream_redirect(scrape_item.url):
-            await self.handle_direct_link(scrape_item, fallback_filename=scrape_item.url.name)
-        else:
-            await self.file(scrape_item)
+        if is_reinforced_link(scrape_item.url):  #  get.bunkr.su/file/file_id>
+            return await self.reinforced_file(scrape_item)
+
+        if "a" in scrape_item.url.parts:  #  bunkr.site/a/<album_id>
+            return await self.album(scrape_item)
+
+        if is_cdn(scrape_item.url) and not is_stream_redirect(scrape_item.url):  # kebab.bunkr.su/<uuid>
+            return await self.handle_direct_link(scrape_item, scrape_item.url, fallback_filename=scrape_item.url.name)
+
+        # bunkr.su/f/<filename> or bunkr.su/<short_file_id> or cdn.bunkr.su/<file_id> (stream redirect)
+        await self.file(scrape_item)
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
@@ -119,37 +134,37 @@ class BunkrrCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        scrape_item.album_id = scrape_item.url.parts[2]
-        scrape_item.part_of_album = True
-        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
+        album_id = scrape_item.url.parts[2]
         title = soup.select_one("title").text.rsplit(" | Bunkr")[0].strip()  # type: ignore
-        title = self.create_title(title, scrape_item.album_id)
-        scrape_item.add_to_parent_title(title)
-        results = await self.get_album_results(scrape_item.album_id)
+        title = self.create_title(title, album_id)
+        scrape_item.setup_as_album(title)
+        scrape_item.album_id = album_id
+        results = await self.get_album_results(album_id)
 
         item_tags: list[Tag] = soup.select(ALBUM_ITEM_SELECTOR)
         parse_url = partial(self.parse_url, relative_to=scrape_item.url.with_path("/"))
-        create = partial(self.create_scrape_item, scrape_item, add_parent=scrape_item.url)
 
         for tag in item_tags:
             item = AlbumItem.from_tag(tag, parse_url)
-            new_scrape_item = create(item.url, possible_datetime=item.date)
+            new_scrape_item = scrape_item.create_child(item.url, possible_datetime=item.date)
             await self.process_album_item(new_scrape_item, item, results)
             scrape_item.add_children()
 
-    async def process_album_item(self, scrape_item: ScrapeItem, item: AlbumItem, results: dict):
-        src = item.get_src(self.parse_url)
-        if src.suffix.lower() not in VIDEO_AND_IMAGE_EXTS or "no-image" in src.name or self.deep_scrape(src):
-            return self.manager.task_group.create_task(self.run(scrape_item))
+    @error_handling_wrapper
+    async def process_album_item(self, scrape_item: ScrapeItem, item: AlbumItem, results: dict) -> None:
+        link = item.get_src(self.parse_url)
+        if link.suffix.lower() not in VIDEO_AND_IMAGE_EXTS or "no-image" in link.name or self.deep_scrape(link):
+            self.manager.task_group.create_task(self.file(scrape_item))
+            return
 
-        filename, ext = self.get_filename_and_ext(src.name, assume_ext=".mp4")
-        custom_name, _ = self.get_filename_and_ext(item.name, assume_ext=".mp4")
-        if not self.check_album_results(src, results):
-            await self.handle_file(src, scrape_item, filename, ext, custom_filename=custom_name)
+        filename, ext = self.get_filename_and_ext(link.name, assume_ext=".mp4")
+        custom_filename, _ = self.get_filename_and_ext(item.name, assume_ext=".mp4")
+        if not self.check_album_results(link, results):
+            await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a file."""
+        """Scrapes a file from a streaming URL."""
         soup = link_container = date = None  # type: ignore
         src_selector = "src"
         if is_stream_redirect(scrape_item.url):
@@ -165,7 +180,7 @@ class BunkrrCrawler(Crawler):
 
         # try video
         if not self.manager.config_manager.deep_scrape:
-            link_container = soup.select_one("video > source")
+            link_container = soup.select_one(VIDEO_SELECTOR)
 
         # try image
         if not (link_container or self.manager.config_manager.deep_scrape):
@@ -181,64 +196,76 @@ class BunkrrCrawler(Crawler):
             raise ScrapeError(422, "Couldn't find source", origin=scrape_item)
 
         link = self.parse_url(link_str)
-        date_str = soup.select_one(ITEM_DATE_SELECTOR)
-        if date_str:
-            date = parse_datetime(date_str.text.strip())
+        if not scrape_item.possible_datetime:
+            date_str = soup.select_one(ITEM_DATE_SELECTOR)
+            if date_str:
+                date = parse_datetime(date_str.text.strip())
+                scrape_item.possible_datetime = date
 
-        new_scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, possible_datetime=date)
-        await self.handle_direct_link(new_scrape_item, link, fallback_filename=soup.select_one("h1").text)  # type: ignore
-
-    async def handle_direct_link(
-        self, scrape_item: ScrapeItem, url: URL | None = None, fallback_filename: str | None = None
-    ) -> None:
-        """Handles direct links (CDNs URLs) before sending them to the downloader.
-
-        If `link` is not supplied, `scrape_item.url` will be used by default
-
-        `fallback_filename` will only be used if the link has not `n` query parameter"""
-
-        link = url or scrape_item.url
-        referer = ""
-        if is_reinforced_link(link):
-            referer = link
-            link: URL = await self.handle_reinforced_link(link, scrape_item)
-
-        if not link:
-            return
-        link = override_cdn(link)
-        try:
-            src_filename, ext = self.get_filename_and_ext(link.name)
-        except NoExtensionError:
-            src_filename, ext = self.get_filename_and_ext(scrape_item.url.name, assume_ext=".mp4")
-        filename, _ = self.get_filename_and_ext(link.query.get("n") or fallback_filename)
-        if not url:
-            referer = referer or URL("https://get.bunkrr.su/")
-            scrape_item = self.create_scrape_item(scrape_item, referer)
-        await self.handle_file(link, scrape_item, src_filename, ext, custom_filename=filename)
+        title: str = soup.select_one("h1").text.strip()  # type: ignore
+        await self.handle_direct_link(scrape_item, link, fallback_filename=title)
 
     @error_handling_wrapper
-    async def handle_reinforced_link(self, url: URL, scrape_item: ScrapeItem) -> URL | None:
-        """Gets the download link for a given reinforced URL (get.bunkr.su)."""
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, url, origin=scrape_item)
+    async def reinforced_file(self, scrape_item: ScrapeItem) -> None:
+        """Scrapes a file from a reinforced URL.
+
+        Gets the filename from the soup before sending the scrape_item to `handle_direct_link`"""
+        soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+
+        title: str = soup.select_one("h1").text.strip()  # type: ignore
+        link: URL = await self.handle_reinforced_link(scrape_item)
+        await self.handle_direct_link(scrape_item, link, fallback_filename=title)
+
+    @error_handling_wrapper
+    async def handle_direct_link(self, scrape_item: ScrapeItem, url: URL, fallback_filename: str | None = None) -> None:
+        """Handles direct links (CDNs URLs) before sending them to the downloader.
+
+        `fallback_filename` will only be used if the link has no `n` query parameter"""
+
+        link = url
+
+        if is_reinforced_link(link):
+            scrape_item.url = link
+            link = await self.handle_reinforced_link(scrape_item)
+
+        link = override_cdn(link)
 
         try:
-            link_container = soup.select('a[download*=""]')[-1]
-        except IndexError:
-            link_container = soup.select("a[class*=download]")[-1]
-        link_str: str = link_container.get("href")  # type: ignore
-        return self.parse_url(link_str)
+            filename, ext = self.get_filename_and_ext(link.name)
+        except NoExtensionError:
+            filename, ext = self.get_filename_and_ext(scrape_item.url.name, assume_ext=".mp4")
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+        custom_filename: str = link.query.get("n") or fallback_filename  # type: ignore
+        custom_filename, _ = self.get_filename_and_ext(custom_filename)
+
+        if is_cdn(scrape_item.url) and not is_reinforced_link(scrape_item.url):
+            scrape_item.url = URL("https://get.bunkr.su/")  # Using a CDN as referer gets a 403 response
+
+        await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
+
+    async def handle_reinforced_link(self, scrape_item: ScrapeItem) -> URL:
+        """Gets the download link for a given reinforced URL (get.bunkr.su/<file_id>)."""
+        url = scrape_item.url
+        file_id_index = url.parts.index("file") + 1
+        file_id = url.parts[file_id_index]
+        data = json.dumps({"id": file_id})
+        headers = {
+            "Referer": str(url),
+            "Content-Type": "application/json",
+            "Origin": "https://get.bunkrr.su",
+        }
+        async with self.request_limiter:
+            json_resp: dict = await self.client.post_data(self.domain, API_ENTRYPOINT, data=data, headers_inc=headers)
+
+        api_response = ApiResponse(**json_resp)
+        link_str = decrypt_api_response(api_response)
+        return self.parse_url(link_str)
 
     def deep_scrape(self, url: URL) -> bool:
         assert url.host
         return any(part in url.host.split(".") for part in ("burger",)) or self.manager.config_manager.deep_scrape
 
-    async def get_final_url(self, scrape_item: ScrapeItem) -> URL:
-        if not is_reinforced_link(scrape_item.url):
-            return scrape_item.url
-        return await self.handle_reinforced_link(scrape_item.url, scrape_item)
+    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
 
 def is_stream_redirect(url: URL) -> bool:
@@ -267,7 +294,7 @@ def override_cdn(url: URL) -> URL:
 
 def is_reinforced_link(url: URL) -> bool:
     assert url.host
-    return any(part in url.host.split(".") for part in ("get",))
+    return any(part in url.host.split(".") for part in ("get",)) and "file" in url.parts
 
 
 def parse_datetime(date: str) -> int:
@@ -279,3 +306,19 @@ def parse_datetime(date: str) -> int:
 def with_suffix_encoded(url: URL, suffix: str) -> URL:
     name = Path(url.raw_name).with_suffix(suffix)
     return url.parent.joinpath(str(name), encoded=True).with_query(url.query).with_fragment(url.fragment)
+
+
+def decrypt_api_response(api_response: ApiResponse) -> str:
+    if not api_response.encrypted:
+        return api_response.url
+
+    time_key = math.floor(api_response.timestamp / 3600)
+    secret_key = f"SECRET_KEY_{time_key}"
+    byte_array = bytearray(base64.b64decode(api_response.url))
+    return xor_decrypt(byte_array, secret_key)
+
+
+def xor_decrypt(encrypted_data: bytearray, key: str) -> str:
+    key_bytes = key.encode("utf-8")
+    decrypted_data = bytearray(b_input ^ b_key for b_input, b_key in zip(encrypted_data, cycle(key_bytes)))
+    return decrypted_data.decode("utf-8", errors="ignore")
