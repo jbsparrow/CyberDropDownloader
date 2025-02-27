@@ -51,6 +51,8 @@ class MediaItem:
     partial_file: Path | None = field(default=None, init=False)
     complete_file: Path | None = field(default=None, init=False)
     task_id: TaskID | None = field(default=None, init=False, hash=False, compare=False)
+    hash: str | None = field(default=None, init=False, hash=False, compare=False)
+    downloaded: bool = field(default=False, init=False, hash=False, compare=False)
 
     # slots for __post_init__
     referer: URL = field(init=False)
