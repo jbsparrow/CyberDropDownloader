@@ -4,7 +4,6 @@ import time
 from dataclasses import field
 from datetime import timedelta
 from functools import partial
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from pydantic import ByteSize
@@ -21,6 +20,8 @@ from cyberdrop_dl.ui.progress.statistic_progress import DownloadStatsProgress, S
 from cyberdrop_dl.utils.logger import log, log_spacer, log_with_color
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from rich.console import RenderableType
 
     from cyberdrop_dl.managers.manager import Manager
@@ -98,26 +99,15 @@ class ProgressManager:
 
         log_spacer(20)
         log("Printing Stats...\n", 20)
-        config_path = self.manager.path_manager.replace_config_in_path(
-            self.manager.path_manager.config_folder / "{config}"
-        ).absolute()
-        input_file = get_input(self.manager)
-        if isinstance(input_file, Path):
-            input_file_text = f"[link=file://{input_file.absolute()}]{input_file}[/link]"
-        else:
-            input_file_text = input_file
-        log_cyan(
-            f"Run Stats (config: [link=file://{config_path}]{self.manager.config_manager.loaded_config}[/link]):",
-            markup=True,
-        )
-        log_yellow(
-            f"  Log Folder: [link=file://{self.manager.path_manager.log_folder.absolute()}]{self.manager.path_manager.log_folder}[/link]",
-            markup=True,
-        )
-        if self.manager.scrape_mapper.using_input_file:
-            log_yellow(f"  Input File: {input_file_text}", markup=True)
-            log_yellow(f"  Input URL Groups: {self.manager.scrape_mapper.group_count:,}")
+        config_path = self.manager.path_manager.config_folder / self.manager.config_manager.loaded_config
+        config_path_text = get_console_hyperlink(config_path)
+        input_file_text = get_input(self.manager)
+        log_folder_text = get_console_hyperlink(self.manager.path_manager.log_folder)
+        log_cyan(f"Run Stats (config: {config_path_text}):", markup=True)
+        log_yellow(f"  Log Folder: {log_folder_text}", markup=True)
+        log_yellow(f"  Input File: {input_file_text}", markup=True)
         log_yellow(f"  Input URLs: {self.manager.scrape_mapper.count:,}")
+        log_yellow(f"  Input URL Groups: {self.manager.scrape_mapper.group_count:,}")
         log_yellow(f"  Total Runtime: {runtime}")
         log_yellow(f"  Total Downloaded Data: {data_size}")
 
@@ -166,11 +156,17 @@ def log_failures(failures: list[UiFailureTotal], title: str = "Failures:", last_
     return error_padding
 
 
-def get_input(manager: Manager) -> Path | str:
+def get_input(manager: Manager) -> str:
     if manager.parsed_args.cli_only_args.retry_all:
         return "--retry-all"
     if manager.parsed_args.cli_only_args.retry_failed:
         return "--retry-failed"
     if manager.parsed_args.cli_only_args.retry_maintenance:
         return "--retry-maintenance"
-    return manager.path_manager.input_file
+    if manager.scrape_mapper.using_input_file:
+        return get_console_hyperlink(manager.path_manager.input_file)
+    return "--links (CLI args)"
+
+
+def get_console_hyperlink(file_path: Path) -> str:
+    return f"[link=file://{file_path.resolve()}]{file_path}[/link]"
