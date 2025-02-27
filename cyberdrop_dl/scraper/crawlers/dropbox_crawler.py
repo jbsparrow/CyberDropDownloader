@@ -24,6 +24,7 @@ class DropboxCrawler(Crawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "dropbox", "Dropbox")
+        self.download_folders = manager.parsed_args.cli_only_args.download_dropbox_folders_as_zip
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -42,8 +43,8 @@ class DropboxCrawler(Crawler):
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a dropbox file"""
         item = get_item_info(scrape_item.url)
-        if not item.is_file and BLOCK_FOLDER_DOWNLOADS:
-            raise ScrapeError(422)
+        if not item.is_file and not self.download_folders:
+            raise ScrapeError(422, message="Folders download is not enabled")
 
         if await self.check_complete_from_referer(item.view_url):
             return
