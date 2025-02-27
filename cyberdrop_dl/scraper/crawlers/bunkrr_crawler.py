@@ -8,6 +8,7 @@ import math
 import re
 from dataclasses import dataclass
 from functools import partial
+from itertools import cycle
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
@@ -310,22 +311,13 @@ def decrypt_api_response(api_response: ApiResponse) -> str:
     if not api_response.encrypted:
         return api_response.url
 
-    time_key = math.floor(api_response.timestamp / 0xE10)
+    time_key = math.floor(api_response.timestamp / 3600)
     secret_key = f"SECRET_KEY_{time_key}"
-    byte_array = decode_base64_to_byte_array(api_response.url)
+    byte_array = bytearray(base64.b64decode(api_response.url))
     return xor_decrypt(byte_array, secret_key)
 
 
-def decode_base64_to_byte_array(url_base64_encrypted: str) -> bytearray:
-    binary_data = base64.b64decode(url_base64_encrypted)
-    byte_array = bytearray(binary_data)
-    return byte_array
-
-
-def xor_decrypt(data: bytearray, key: str) -> str:
+def xor_decrypt(encrypted_data: bytearray, key: str) -> str:
     key_bytes = key.encode("utf-8")
-    decrypted_data = bytearray(len(data))
-    for i in range(len(data)):
-        decrypted_data[i] = data[i] ^ key_bytes[i % len(key_bytes)]  # XOR over each byte
-
+    decrypted_data = bytearray(b_input ^ b_key for b_input, b_key in zip(encrypted_data, cycle(key_bytes)))
     return decrypted_data.decode("utf-8", errors="ignore")
