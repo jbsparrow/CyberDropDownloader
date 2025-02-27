@@ -189,6 +189,7 @@ class DownloadClient:
                 media_item.partial_file.unlink()
 
             await self.client_manager.check_http_status(resp, download=True, origin=media_item.url)
+
             _ = get_content_type(media_item.ext, resp.headers)
 
             media_item.filesize = int(resp.headers.get("Content-Length", "0"))
@@ -467,11 +468,15 @@ class DownloadClient:
         self._file_path = media_item.filename
 
 
-def get_content_type(ext: str, headers: CIMultiDictProxy) -> str:
+def get_content_type(ext: str, headers: CIMultiDictProxy) -> str | None:
     content_type: str = headers.get("Content-Type", "")
-    if not content_type:
+    content_length = headers.get("Content-Length")
+    if not content_type and not content_length:
         msg = "No content type in response headers"
         raise InvalidContentTypeError(message=msg)
+
+    if not content_type:
+        return None
 
     override_key = next((name for name in CONTENT_TYPES_OVERRIDES if name in content_type), "<NO_OVERRIDE>")
     override: str | None = CONTENT_TYPES_OVERRIDES.get(override_key)
