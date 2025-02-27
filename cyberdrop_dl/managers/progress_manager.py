@@ -100,7 +100,7 @@ class ProgressManager:
         log_spacer(20)
         log("Printing Stats...\n", 20)
         config_path = self.manager.path_manager.config_folder / self.manager.config_manager.loaded_config
-        config_path_text = get_console_hyperlink(config_path)
+        config_path_text = get_console_hyperlink(config_path, text=self.manager.config_manager.loaded_config)
         input_file_text = get_input(self.manager)
         log_folder_text = get_console_hyperlink(self.manager.path_manager.log_folder)
         log_cyan(f"Run Stats (config: {config_path_text}):", markup=True)
@@ -168,6 +168,7 @@ def get_input(manager: Manager) -> str:
     return "--links (CLI args)"
 
 
-def get_console_hyperlink(file_path: Path) -> str:
+def get_console_hyperlink(file_path: Path, text: str = "") -> str:
     full_path = file_path.resolve()
-    return f"[link=file://{full_path}]{full_path}[/link]"
+    show_text = text or full_path
+    return f"[link=file://{full_path}]{show_text}[/link]"
