@@ -35,7 +35,6 @@ from __future__ import annotations
 import calendar
 import re
 from dataclasses import dataclass
-from functools import partial
 from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
@@ -44,7 +43,6 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import DownloadError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -64,7 +62,7 @@ ITEM_SELECTOR = "div.flip-entry-info > a"
 
 @dataclass(frozen=True, slots=True)
 class GoogleDriveFolder:
-    id_: str
+    id: str
     title: str
     items: tuple[str]
 
@@ -85,24 +83,18 @@ class GoogleDriveCrawler(Crawler):
         if is_folder(scrape_item.url):
             return await self.folder(scrape_item)
 
-        file_id = get_file_id(scrape_item.url)
-        if not file_id:
-            raise ValueError
+        if bool(get_file_id(scrape_item.url)):
+            await self.file(scrape_item)
 
-        await self.file(scrape_item)
+        raise ValueError
 
     @error_handling_wrapper
     async def folder(self, scrape_item: ScrapeItem) -> None:
         folder = await self.get_folder_details(scrape_item)
-        title = self.create_title(folder.title, folder.id_)
-        scrape_item.add_to_parent_title(title)
-        scrape_item.album_id = folder.id_
-        # Do not reset children inside nested folders
-        if scrape_item.type != FILE_HOST_ALBUM:
-            scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
+        title = self.create_title(folder.title, folder.id)
+        scrape_item.setup_as_album(title, album_id=folder.id)
 
-        results = await self.get_album_results(scrape_item.album_id)
-        create = partial(self.create_scrape_item, scrape_item, add_parent=scrape_item.url)
+        results = await self.get_album_results(folder.id)
 
         subfolders = []
         for link_str in folder.items:
@@ -111,12 +103,12 @@ class GoogleDriveCrawler(Crawler):
                 subfolders.append(link)
                 continue
             if not self.check_album_results(link, results):
-                new_scrape_item = create(link)
+                new_scrape_item = scrape_item.create_child(link)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.add_children()
 
-        for folder in subfolders:
-            new_scrape_item = create(folder)
+        for folder_link in subfolders:
+            new_scrape_item = scrape_item.create_child(folder_link)
             self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.add_children()
 
@@ -267,20 +259,19 @@ def get_datetime_from_headers(headers: dict) -> int | None:
         return calendar.timegm(parsed_date.timetuple())
 
 
-def get_canonical_url(id_: str, folder: bool = False) -> URL:
+def get_canonical_url(item_id: str, folder: bool = False) -> URL:
     if folder:
-        return URL(f"https://drive.google.com/drive/folders/{id_}")
-    return URL(f"https://drive.google.com/file/d/{id_}")
+        return URL(f"https://drive.google.com/drive/folders/{item_id}")
+    return URL(f"https://drive.google.com/file/d/{item_id}")
 
 
-def get_download_url(id_: str, folder: bool = False) -> URL:
+def get_download_url(item_id: str, folder: bool = False) -> URL:
     if folder:
-        return URL(f"https://drive.google.com/embeddedfolderview?id={id_}")
-    return URL(f"https://drive.google.com/uc?id={id_}")
+        return URL(f"https://drive.google.com/embeddedfolderview?id={item_id}")
+    return URL(f"https://drive.google.com/uc?id={item_id}")
 
 
 def get_url_from_download_button(soup: BeautifulSoup, url_parser: Callable[..., URL]) -> URL | None:
-    ### Todo handle docs,slides and spread sheets
     form = soup.select_one("#download-form")
     if not form:
         return None
