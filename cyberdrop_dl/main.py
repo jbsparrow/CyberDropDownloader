@@ -22,6 +22,7 @@ from cyberdrop_dl.scraper.scraper import ScrapeMapper
 from cyberdrop_dl.ui.program_ui import ProgramUI
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.apprise import send_apprise_notifications
+from cyberdrop_dl.utils.dumper import Dumper
 from cyberdrop_dl.utils.logger import RedactedConsole, add_custom_log_render, log, log_spacer, log_with_color
 from cyberdrop_dl.utils.sorting import Sorter
 from cyberdrop_dl.utils.updates import check_latest_pypi
@@ -112,6 +113,10 @@ async def post_runtime(manager: Manager) -> None:
 
     if manager.config_manager.settings_data.runtime_options.update_last_forum_post:
         await manager.log_manager.update_last_forum_post()
+
+    if manager.config_manager.settings_data.files.dump_json:
+        dumper = Dumper(manager)
+        await dumper.run()
 
 
 def setup_startup_logger(*, first_time_setup: bool = False) -> None:
