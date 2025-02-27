@@ -5,6 +5,30 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.6.1] - 2025-02-28
+
+### Fixed
+
+- Parse videos with no date (YouJizz)
+- Detect and ignore invalid responses from forums
+- `File is being used by another process` error when running multiple configs
+- Handle or ignore any errors when checking for updates
+- [regression] Do not remove trailing slash from URLs (jpg5, img.kiwi, imagepond.net)
+- Messages being logged to the console with `--ui` values other than `disabled`
+- Lines in the main log file being cutoff if they were longer than `log_line_width`
+- Handle permission errors while creating logs files
+- TikTok crawler returning 403 on all downloads
+- Use new API to download files (bunkr)
+
+### Changed
+
+- Log downloads with no content type as `InvalidContentType` instead of `418 IM_A_TEAPOT`
+- Only make 1 request at a time to Flaresolverr
+- Show log folder in stats
+- Show `--links (CLI args)` as input (if they were used)
+- Paths printed to the stats will have hyperlinks to their location (when supported by the terminal)
+
+
 ## [6.6.0] - 2025-02-23
 
 ### Added
