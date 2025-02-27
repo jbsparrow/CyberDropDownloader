@@ -21,7 +21,6 @@ from cyberdrop_dl.managers.progress_manager import ProgressManager
 from cyberdrop_dl.managers.realdebrid_manager import RealDebridManager
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.args import ParsedArgs
-from cyberdrop_dl.utils.data_enums_classes.supported_domains import SUPPORTED_FORUMS
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.transfer import transfer_v5_db_to_v6
 
@@ -194,24 +193,10 @@ class Manager:
 
     def args_logging(self) -> None:
         """Logs the runtime arguments."""
-        forum_xf_cookies_provided = {}
-        forum_credentials_provided = {}
+        auth_data: dict[str, dict] = self.config_manager.authentication_data.model_dump()
+        auth_provided = {}
 
-        auth_data_forums = self.config_manager.authentication_data.forums.model_dump()
-        auth_data_others: dict[str, dict] = self.config_manager.authentication_data.model_dump(exclude="forums")
-
-        for forum_name in SUPPORTED_FORUMS:
-            forum_xf_cookies_provided[forum_name] = bool(auth_data_forums[f"{forum_name}_xf_user_cookie"])
-            forum_credentials_provided[forum_name] = bool(
-                auth_data_forums[f"{forum_name}_username"] and auth_data_forums[f"{forum_name}_password"],
-            )
-
-        auth_provided = {
-            "Forums Credentials": forum_credentials_provided,
-            "Forums XF Cookies": forum_xf_cookies_provided,
-        }
-
-        for site, auth_entries in auth_data_others.items():
+        for site, auth_entries in auth_data.items():
             auth_provided[site] = all(auth_entries.values())
 
         config_settings = self.config_manager.settings_data.model_copy()
@@ -221,18 +206,18 @@ class Manager:
         cli_only_args = self.parsed_args.cli_only_args.model_dump_json(indent=4)
         system_info = get_system_information()
 
-        log("Starting Cyberdrop-DL Process", 10)
-        log(f"Running Version: {__version__}", 10)
+        log("Starting Cyberdrop-DL Process")
+        log(f"Running Version: {__version__}")
         log(f"System Info:{system_info}")
-        log(f"Using Config: {self.config_manager.loaded_config}", 10)
-        log(f"Using Config File: {self.config_manager.settings.resolve()}", 10)
-        log(f"Using Input File: {self.path_manager.input_file.resolve()}", 10)
-        log(f"Using Download Folder: {self.path_manager.download_folder.resolve()}", 10)
-        log(f"Using Database File: {self.path_manager.history_db.resolve()}", 10)
-        log(f"Using CLI only options: {cli_only_args}", 10)
-        log(f"Using Authentication: \n{json.dumps(auth_provided, indent=4, sort_keys=True)}", 10)
-        log(f"Using Settings: \n{config_settings}", 10)
-        log(f"Using Global Settings: \n{global_settings}", 10)
+        log(f"Using Config: {self.config_manager.loaded_config}")
+        log(f"Using Config File: {self.config_manager.settings.resolve()}")
+        log(f"Using Input File: {self.path_manager.input_file.resolve()}")
+        log(f"Using Download Folder: {self.path_manager.download_folder.resolve()}")
+        log(f"Using Database File: {self.path_manager.history_db.resolve()}")
+        log(f"Using CLI only options: {cli_only_args}")
+        log(f"Using Authentication: \n{json.dumps(auth_provided, indent=4, sort_keys=True)}")
+        log(f"Using Settings: \n{config_settings}")
+        log(f"Using Global Settings: \n{global_settings}")
 
     async def async_db_close(self) -> None:
         "Partial shutdown for managers used for hash directory scanner"
