@@ -94,7 +94,7 @@ class ProgressManager:
         vertical_layout = Layout()
 
         upper_layouts = (
-            Layout(renderable=self.download_progress.get_progress(), name="Files", ratio=1),
+            Layout(renderable=self.download_progress.get_progress(), name="Files", ratio=1, minimum_size=9),
             Layout(renderable=self.scrape_stats_progress.get_progress(), name="Scrape Failures", ratio=1),
             Layout(renderable=self.download_stats_progress.get_progress(), name="Download Failures", ratio=1),
         )
@@ -105,8 +105,8 @@ class ProgressManager:
             Layout(renderable=status_message_columns, name="status_message", ratio=2),
         )
 
-        horizontal_layout.split_column(Layout(name="upper", ratio=20, minimum_size=8), *lower_layouts)
-        vertical_layout.split_column(Layout(name="upper", ratio=60, minimum_size=8), *lower_layouts)
+        horizontal_layout.split_column(Layout(name="upper", ratio=20), *lower_layouts)
+        vertical_layout.split_column(Layout(name="upper", ratio=60), *lower_layouts)
 
         horizontal_layout["upper"].split_row(*upper_layouts)
         vertical_layout["upper"].split_column(*upper_layouts)
