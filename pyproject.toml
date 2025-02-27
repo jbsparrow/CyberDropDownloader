@@ -18,6 +18,7 @@ dependencies = [
     "inquirerpy (>=0.3.4,<0.4.0)",
     "mediafire (>=0.6.1,<0.7.0)",
     "myjdapi (>=1.1.9,<2.0.0)",
+    "packaging (>=24.2)",
     "pillow (>=11.1.0,<12.0.0)",
     "platformdirs (>=4.3.6,<5.0.0)",
     "pydantic (>=2.10.6,<3.0.0)",
@@ -25,14 +26,13 @@ dependencies = [
     "pyyaml (>=6.0.2,<7.0.0)",
     "rich (>=13.9.4,<14.0.0)",
     "send2trash (>=1.8.3,<2.0.0)",
-    "xxhash (>=3.5.0,<4.0.0)",
-    "packaging (>=24.2)"
+    "xxhash (>=3.5.0,<4.0.0)"
 ]
 description = "Bulk downloader for multiple file hosts"
 license = {text = "GPL-3.0-only"}
 readme = "README.md"
 requires-python = ">=3.11,<4"
-version = "6.6.0"
+version = "6.6.1"
 
 [project.scripts]
 cyberdrop-dl = "cyberdrop_dl.main:main"
