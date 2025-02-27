@@ -169,4 +169,5 @@ def get_input(manager: Manager) -> str:
 
 
 def get_console_hyperlink(file_path: Path) -> str:
-    return f"[link=file://{file_path.resolve()}]{file_path}[/link]"
+    full_path = file_path.resolve()
+    return f"[link=file://{full_path}]{full_path}[/link]"
