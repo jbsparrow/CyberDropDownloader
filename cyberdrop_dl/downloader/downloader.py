@@ -15,6 +15,7 @@ from cyberdrop_dl.clients.errors import (
     DownloadError,
     DurationError,
     InsufficientFreeSpaceError,
+    InvalidContentTypeError,
     RestrictedFiletypeError,
 )
 from cyberdrop_dl.utils.constants import CustomHTTPStatus
@@ -189,7 +190,7 @@ class Downloader:
             self.manager.progress_manager.download_progress.add_skipped()
             self.attempt_task_removal(media_item)
 
-        except (DownloadError, ClientResponseError):
+        except (DownloadError, ClientResponseError, InvalidContentTypeError):
             raise
 
         except (
