@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import json
 from typing import TYPE_CHECKING, NamedTuple
 
 from yarl import URL
 
+from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
@@ -17,12 +19,13 @@ if TYPE_CHECKING:
 
 
 VIDEO_SELECTOR = "video#fp-video-0 > source"
+FLOWPLAYER_VIDEO_SELECTOR = "div.freedomplayer"
 PLAYLIST_ITEM_SELECTOR = "li.thumi > a"
 NEXT_PAGE_SELECTOR = "a.page-next"
 
 
 class Format(NamedTuple):
-    resolution: int
+    resolution: int | None
     url: URL
 
 
@@ -69,14 +72,23 @@ class DirtyShipCrawler(Crawler):
         videos = soup.select(VIDEO_SELECTOR)
         formats: set[Format] = set()
         for video in videos:
-            res, link_str = video.get("title"), video.get("src")
+            link_str: str = video.get("src")  # type: ignore
+            if link_str.startswith("type="):
+                continue
+            res: str = video.get("title")  # type: ignore
             link = self.parse_url(link_str)  # type: ignore
-            formats.add(Format(int(res), link))  # type: ignore
+            formats.add(Format(int(res), link))
 
-        res, link = sorted(formats)[-1]
+        if not formats:
+            formats = self.get_flowplayer_sources(soup)
+        if not formats:
+            raise ScrapeError(422, message="No video source found")
+
+        res, link = sorted(formats)[-1]  # type: ignore
+        res = f"{res}p" if res else "Unknown"
 
         filename, ext = get_filename_and_ext(link.name)
-        custom_filename, _ = get_filename_and_ext(f"{title} [{res}p]{link.suffix}")
+        custom_filename, _ = get_filename_and_ext(f"{title} [{res}]{link.suffix}")
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -93,3 +105,13 @@ class DirtyShipCrawler(Crawler):
             if not page_url_str:
                 break
             page_url = self.parse_url(page_url_str)
+
+    def get_flowplayer_sources(self, soup: BeautifulSoup) -> set[Format]:
+        flow_player = soup.select_one(FLOWPLAYER_VIDEO_SELECTOR)
+        data_item: str = flow_player.get("data-item")  # type: ignore
+        if not data_item:
+            return set()
+        data_item = data_item.replace(r"\/", "/")
+        json_data = json.loads(data_item)
+        sources = json_data["sources"]
+        return {Format(None, self.parse_url(s["src"])) for s in sources}
