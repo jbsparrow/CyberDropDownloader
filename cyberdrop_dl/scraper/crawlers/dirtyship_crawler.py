@@ -73,10 +73,10 @@ class DirtyShipCrawler(Crawler):
             link = self.parse_url(link_str)  # type: ignore
             formats.add(Format(int(res), link))  # type: ignore
 
-        _, link = sorted(formats)[-1]
+        res, link = sorted(formats)[-1]
 
         filename, ext = get_filename_and_ext(link.name)
-        custom_filename, _ = get_filename_and_ext(title + link.suffix)
+        custom_filename, _ = get_filename_and_ext(f"{title} [{res}p]{link.suffix}")
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
