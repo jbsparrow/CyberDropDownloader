@@ -56,8 +56,11 @@ class FileProgress(DequeProgress):
     def add_task(self, *, domain: str, filename: str, expected_size: int | None = None) -> TaskID:
         """Adds a new task to the progress bar."""
         filename = filename.split("/")[-1].encode("ascii", "ignore").decode().strip()
-        filename = escape(adjust_title(filename))
-        description = f"({domain.upper()}) {filename}"
+        # We need a minimum of 50 characters to properly show the download progress + 10 for the bar
+        max_size = min((self.manager.progress_manager.console.size.width - 60), 40)
+        description = escape(adjust_title(filename, length=max_size))
+        if not self.manager.progress_manager.portrait:
+            description = f"({domain.upper()}) {description}"
         return super().add_task(description, expected_size)
 
     def advance_file(self, task_id: TaskID, amount: int) -> None:
