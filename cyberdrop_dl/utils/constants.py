@@ -140,3 +140,6 @@ FILE_FORMATS = {
         ".zip",
     },
 }
+
+
+MEDIA_EXTENSIONS = FILE_FORMATS["Audio"] | FILE_FORMATS["Videos"] | FILE_FORMATS["Images"]
