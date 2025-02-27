@@ -310,6 +310,7 @@ class Flaresolverr:
         if self.session_id:
             async with ClientSession() as client_session:
                 await self._request("sessions.destroy", client_session)
+                self.session_id = None
 
     async def get(
         self,
