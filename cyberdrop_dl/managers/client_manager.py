@@ -266,11 +266,12 @@ class Flaresolverr:
         if not self.enabled:
             raise DDOSGuardError(message="FlareSolverr is not configured", origin=origin)
         async with self.session_lock:
-            if not self.session_id:
+            if not (self.session_id or kwargs.get("session")):
                 await self._create_session()
         return await self._make_request(command, client_session, **kwargs)
 
     async def _make_request(self, command: str, client_session: ClientSession, **kwargs):
+        client_session = kwargs.pop("session", client_session)
         headers = client_session.headers.copy()
         headers.update({"Content-Type": "application/json"})
         for key, value in kwargs.items():
@@ -310,7 +311,6 @@ class Flaresolverr:
         if self.session_id:
             async with ClientSession() as client_session:
                 await self._request("sessions.destroy", client_session)
-                self.session_id = None
 
     async def get(
         self,
