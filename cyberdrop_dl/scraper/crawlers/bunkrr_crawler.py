@@ -137,7 +137,8 @@ class BunkrrCrawler(Crawler):
         album_id = scrape_item.url.parts[2]
         title = soup.select_one("title").text.rsplit(" | Bunkr")[0].strip()  # type: ignore
         title = self.create_title(title, album_id)
-        scrape_item.setup_as_album(title, album_id=album_id)
+        scrape_item.setup_as_album(title)
+        scrape_item.album_id = album_id
         results = await self.get_album_results(album_id)
 
         item_tags: list[Tag] = soup.select(ALBUM_ITEM_SELECTOR)
