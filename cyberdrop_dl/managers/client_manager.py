@@ -266,9 +266,9 @@ class Flaresolverr:
         if not self.enabled:
             raise DDOSGuardError(message="FlareSolverr is not configured", origin=origin)
 
-        async with self.session_lock:
-            if not (self.session_id or kwargs.get("session")):
-                await self._create_session()
+        # async with self.session_lock:
+        if not (self.session_id or kwargs.get("session")):
+            await self._create_session()
 
         headers = client_session.headers.copy()
         headers.update({"Content-Type": "application/json"})
