@@ -145,10 +145,10 @@ def log_with_color(
     message: str, style: str, level: int, show_in_stats: bool = True, markup: bool = False, **kwargs
 ) -> None:
     """Simple logging function with color."""
-    log(message, level, **kwargs)
     text = Text(message, style=style)
     if markup:
         text = Text.from_markup(message, style=style)
+    log(text.plain, level, **kwargs)
     if constants.CONSOLE_LEVEL >= 50:
         console.print(text)
     if show_in_stats:
