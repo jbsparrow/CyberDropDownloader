@@ -126,9 +126,12 @@ class ScrapeItem:
         if reset_parent_title:
             self.parent_title = ""
 
-    def setup_as(self, title: str, type: ScrapeItemType) -> None:
+    def setup_as(self, title: str, type: ScrapeItemType, *, album_id: str | None = None) -> None:
         self.part_of_album = True
-        self.set_type(type)
+        if album_id:
+            self.album_id = album_id
+        if self.type != type:
+            self.set_type(type)
         self.add_to_parent_title(title)
 
     def create_new(
