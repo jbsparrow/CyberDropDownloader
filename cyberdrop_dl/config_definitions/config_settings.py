@@ -118,7 +118,7 @@ class IgnoreOptions(BaseModel):
         if not value:
             return None
         try:
-            value = re.compile(value)  # type: ignore
+            re.compile(value)
         except re.error as e:
             raise ValueError("input is not a valid regex") from e
         return value
