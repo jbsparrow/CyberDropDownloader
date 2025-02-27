@@ -271,7 +271,6 @@ class Flaresolverr:
         return await self._make_request(command, client_session, **kwargs)
 
     async def _make_request(self, command: str, client_session: ClientSession, **kwargs):
-        client_session = kwargs.pop("session", client_session)
         headers = client_session.headers.copy()
         headers.update({"Content-Type": "application/json"})
         for key, value in kwargs.items():
