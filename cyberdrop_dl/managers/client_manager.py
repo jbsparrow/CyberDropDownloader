@@ -265,17 +265,18 @@ class Flaresolverr:
         """Base request function to call flaresolverr."""
         if not self.enabled:
             raise DDOSGuardError(message="FlareSolverr is not configured", origin=origin)
-
         async with self.session_lock:
             if not (self.session_id or kwargs.get("session")):
                 await self._create_session()
+        return await self._make_request(command, client_session, **kwargs)
 
+    async def _make_request(self, command: str, client_session: ClientSession, **kwargs):
+        client_session = kwargs.pop("client_session", client_session)
         headers = client_session.headers.copy()
         headers.update({"Content-Type": "application/json"})
         for key, value in kwargs.items():
             if isinstance(value, URL):
                 kwargs[key] = str(value)
-
         data = {"cmd": command, "maxTimeout": 60000, "session": self.session_id} | kwargs
 
         self.request_count += 1
@@ -300,7 +301,7 @@ class Flaresolverr:
         """Creates a permanet flaresolverr session."""
         session_id = "cyberdrop-dl"
         async with ClientSession() as client_session:
-            flaresolverr_resp = await self._request("sessions.create", client_session, session=session_id)
+            flaresolverr_resp = await self._make_request("sessions.create", client_session)
         status = flaresolverr_resp.get("status")
         if status != "ok":
             raise DDOSGuardError(message="Failed to create flaresolverr session")
@@ -309,7 +310,8 @@ class Flaresolverr:
     async def _destroy_session(self):
         if self.session_id:
             async with ClientSession() as client_session:
-                await self._request("sessions.destroy", client_session, session=self.session_id)
+                await self._make_request("sessions.destroy", client_session, session=self.session_id)
+                self.session_id = None
 
     async def get(
         self,
