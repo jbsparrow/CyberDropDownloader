@@ -62,7 +62,7 @@ class LogManager:
             self.download_error_log, url=media_item.url, error=error_message, referer=media_item.referer, origin=origin
         )
 
-    async def write_scrape_error_log(self, url: URL, error_message: str, origin: URL | None = None) -> None:
+    async def write_scrape_error_log(self, url: URL, error_message: str, origin: URL | Path | None = None) -> None:
         """Writes to the scrape error log."""
         await self.write_to_csv(self.scrape_error_log, url=url, error=error_message, origin=origin)
 

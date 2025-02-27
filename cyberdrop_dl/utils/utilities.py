@@ -17,6 +17,7 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import (
     CDLBaseError,
+    ErrorLogMessage,
     InvalidExtensionError,
     InvalidURLError,
     NoExtensionError,
@@ -45,39 +46,45 @@ def error_handling_wrapper(func: Callable) -> Callable:
     @wraps(func)
     async def wrapper(self: Crawler | Downloader, *args, **kwargs):
         item: ScrapeItem | MediaItem | URL = args[0]
-        link = item if isinstance(item, URL) else item.url
+        link: URL = item if isinstance(item, URL) else item.url
         origin = exc_info = None
         try:
             return await func(self, *args, **kwargs)
         except CDLBaseError as e:
-            log_message_short = e_ui_failure = e.ui_message
-            log_message = f"{e.ui_message} - {e.message}" if e.ui_message != e.message else e.message
+            ui_failure = e.ui_message
+            main_log_msg = str(e)
             origin = e.origin or get_origin(item)
             if isinstance(e, InvalidURLError):
-                link = e.url or link
+                link: URL = e.url or link  # type: ignore
         except TimeoutError:
-            log_message_short = log_message = e_ui_failure = "Timeout"
+            main_log_msg = ui_failure = "Timeout"
         except ClientConnectorError as e:
-            log_message_short = e_ui_failure = "ClientConnectorError"
-            log_message = f"Can't connect to {link}. If you're using a VPN, try turning it off \n  {e!s}"
+            ui_failure = "ClientConnectorError"
+            main_log_msg = f"Can't connect to {link}. If you're using a VPN, try turning it off \n  {e!s}"
         except Exception as e:
             exc_info = e
-            if hasattr(e, "status") and hasattr(e, "message"):
-                msg = f"{e.status} - {e.message}" if str(e.status) != e.message else e.message
-                log_message_short = log_message = e_ui_failure = msg
+            e_status = getattr(e, "status", None)
+            e_message = getattr(e, "message", None)
+            if e_status and e_message:
+                main_log_msg = ui_failure = CDLBaseError.format(str(e_status), e_message)
             else:
-                log_message = str(e)
-                log_message_short = "See Log for Details"
-                e_ui_failure = "Unknown"
+                main_log_msg = str(e)
+                ui_failure = "Unknown"
+
+        csv_log_msg = ui_failure
+        if csv_log_msg == "Unknown":
+            csv_log_msg = "See Log for Details"
+
+        error_log_msg = ErrorLogMessage(ui_failure, main_log_msg, csv_log_msg)
 
         log_prefix = getattr(self, "log_prefix", None)
         if log_prefix:
-            await self.write_download_error(item, log_message_short, e_ui_failure, exc_info)  # type: ignore
+            await self.write_download_error(item, error_log_msg, exc_info)  # type: ignore
             return
 
-        log(f"Scrape Failed: {link} ({log_message})", 40, exc_info=exc_info)
-        await self.manager.log_manager.write_scrape_error_log(link, log_message_short, origin)
-        self.manager.progress_manager.scrape_stats_progress.add_failure(e_ui_failure)
+        log(f"Scrape Failed: {link} ({main_log_msg})", 40, exc_info=exc_info)
+        await self.manager.log_manager.write_scrape_error_log(link, error_log_msg.csv_log_msg, origin)
+        self.manager.progress_manager.scrape_stats_progress.add_failure(ui_failure)
         return None
 
     return wrapper
@@ -275,8 +282,8 @@ async def send_webhook_message(manager: Manager) -> None:
             json_resp: dict = await response.json()
             if "content" in json_resp:
                 json_resp.pop("content")
-            json_resp = json.dumps(json_resp, indent=4)
-            result_to_log = constants.NotificationResult.FAILED.value, json_resp
+            json_resp_str = json.dumps(json_resp, indent=4)
+            result_to_log = constants.NotificationResult.FAILED.value, json_resp_str
 
         log_spacer(10, log_to_console=False)
         rich.print("Webhook Notifications Results:", *result)

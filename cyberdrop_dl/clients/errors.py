@@ -3,7 +3,7 @@ from __future__ import annotations
 from functools import singledispatch
 from http import HTTPStatus
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from yaml import YAMLError
 from yarl import URL
@@ -50,9 +50,13 @@ class CDLBaseError(Exception):
             super().__init__(self.status)
 
     def __str__(self):
-        if self.ui_message == self.message:
-            return self.message
-        return f"{self.ui_message} - {self.message}"
+        return self.format(self.ui_message, self.message)
+
+    @classmethod
+    def format(cls, ui_message: str, message: str) -> str:
+        if ui_message == message:
+            return message
+        return f"{ui_message} - {message}"
 
 
 class InvalidContentTypeError(CDLBaseError):
@@ -231,3 +235,9 @@ def get_origin(origin: ScrapeItem | Path | MediaItem | URL | None = None) -> Pat
     if origin and not isinstance(origin, URL | Path):
         return origin.parents[0] if origin.parents else None
     return origin
+
+
+class ErrorLogMessage(NamedTuple):
+    ui_msg: str
+    main_log_msg: str
+    csv_log_msg: str
