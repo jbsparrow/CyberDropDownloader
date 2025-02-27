@@ -22,7 +22,7 @@ NEXT_PAGE_SELECTOR = "a.page-next"
 
 
 class Format(NamedTuple):
-    resolution: str
+    resolution: int
     url: URL
 
 
@@ -71,7 +71,7 @@ class DirtyShipCrawler(Crawler):
         for video in videos:
             res, link_str = video.get("title"), video.get("src")
             link = self.parse_url(link_str)  # type: ignore
-            formats.add(Format(res, link))  # type: ignore
+            formats.add(Format(int(res), link))  # type: ignore
 
         _, link = sorted(formats)[-1]
 
