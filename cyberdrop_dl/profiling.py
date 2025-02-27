@@ -53,7 +53,7 @@ def setup_profile(temp_dir: Path | str) -> tuple[Path, Path]:
 
     os.chdir(temp_dir_path)
     print(f"Using {temp_dir_path} as temp AppData dir")
-    env.DEBUG_LOG_FILE_FOLDER = temp_dir_path
+    env.DEBUG_LOG_FOLDER = temp_dir_path
     return old_cwd, temp_dir_path
 
 
