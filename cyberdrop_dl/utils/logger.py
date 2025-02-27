@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from rich._log_render import LogRender
 from rich.console import Console, Group
-from rich.containers import Renderables
+from rich.containers import Lines, Renderables
 from rich.measure import Measurement
 from rich.padding import Padding
 from rich.text import Text, TextType
@@ -83,7 +83,7 @@ class NoPaddingLogRender(LogRender):
 
         for renderable in Renderables(renderables):  # type: ignore
             if isinstance(renderable, Text):
-                renderable = indent_text(renderable, self.cdl_padding)
+                renderable = indent_text(renderable, console, self.cdl_padding)
                 renderable.stylize("log.message")
                 output.append(renderable)
                 continue
@@ -98,11 +98,12 @@ def get_renderable_length(renderable) -> int:
     return measurement.maximum
 
 
-def indent_text(text: Text, indent: int = 30) -> Text:
+def indent_text(text: Text, console: Console, indent: int = 30) -> Text:
     """Indents each line of a Text object except the first one."""
     indent_str = Text("\n" + (" " * indent))
     new_text = Text()
-    lines = text.split("\n")
+    new_width = console.width - indent
+    lines: Lines = text.wrap(console, width=new_width)
     first_line = lines[0]
     other_lines = lines[1:]
     for line in other_lines:
@@ -140,10 +141,14 @@ def log_debug(message: Exception | str, level: int = 10, **kwargs) -> None:
         logger_debug.log(level, message.encode("ascii", "ignore").decode("ascii"), **kwargs)
 
 
-def log_with_color(message: str, style: str, level: int, show_in_stats: bool = True, **kwargs) -> None:
+def log_with_color(
+    message: str, style: str, level: int, show_in_stats: bool = True, markup: bool = False, **kwargs
+) -> None:
     """Simple logging function with color."""
     log(message, level, **kwargs)
     text = Text(message, style=style)
+    if markup:
+        text = Text.from_markup(message, style=style)
     if constants.CONSOLE_LEVEL >= 50:
         console.print(text)
     if show_in_stats:

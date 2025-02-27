@@ -268,7 +268,7 @@ class Crawler(ABC):
         title = title_format.format(id=id, number=id, date=date, title=title)
         scrape_item.add_to_parent_title(title)
 
-    def parse_url(self, link_str: str, relative_to: URL | None = None) -> URL:
+    def parse_url(self, link_str: str, relative_to: URL | None = None, *, trim: bool = True) -> URL:
         try:
             assert link_str
             assert isinstance(link_str, str)
@@ -282,6 +282,8 @@ class Crawler(ABC):
             new_url = base.join(new_url)
         if not new_url.scheme:
             new_url = new_url.with_scheme(base.scheme or "https")
+        if not trim:
+            return new_url
         return remove_trailing_slash(new_url)
 
     def update_cookies(self, cookies: dict, url: URL | None = None) -> None:

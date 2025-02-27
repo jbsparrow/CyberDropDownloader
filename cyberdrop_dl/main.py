@@ -119,18 +119,19 @@ def setup_startup_logger(*, first_time_setup: bool = False) -> None:
         STARTUP_LOGGER_FILE.unlink(missing_ok=True)  # Only delete file once. Subsequent calls will append to file
     destroy_startup_logger()
     startup_logger.setLevel(10)
+    console_handler = RichHandler(**(constants.RICH_HANDLER_CONFIG | {"show_time": False}), level=10)
+    startup_logger.addHandler(console_handler)
+
     file_io = STARTUP_LOGGER_FILE.open("a", encoding="utf8")
     file_console = RedactedConsole(file=file_io, width=constants.DEFAULT_CONSOLE_WIDTH)
     file_handler = RichHandler(**constants.RICH_HANDLER_CONFIG, console=file_console, level=10)
-    console_handler = RichHandler(**(constants.RICH_HANDLER_CONFIG | {"show_time": False}), level=10)
     add_custom_log_render(file_handler)
     startup_logger.addHandler(file_handler)
-    startup_logger.addHandler(console_handler)
 
 
 def destroy_startup_logger(remove_all_handlers: bool = True) -> None:
     handlers: list[RichHandler] = startup_logger.handlers  # type: ignore
-    for handler in handlers:
+    for handler in handlers[:]:  # create copy
         if not (handler.console._file or remove_all_handlers):
             continue
         if handler.console._file:
@@ -161,11 +162,22 @@ def setup_debug_logger(manager: Manager) -> Path | None:
     manager.config_manager.settings_data.runtime_options.log_level = log_level
     logger_debug.setLevel(log_level)
     debug_log_file_path = Path(__file__).parents[1] / "cyberdrop_dl_debug.log"
-    if env.DEBUG_LOG_FOLDER:
-        date = datetime.now().strftime("%Y%m%d_%H%M%S")
-        debug_log_file_path = Path(env.DEBUG_LOG_FOLDER) / f"cyberdrop_dl_debug_{date}.log"
+    with startup_logging():
+        if env.DEBUG_LOG_FOLDER:
+            debug_log_folder = Path(env.DEBUG_LOG_FOLDER)
+            if not debug_log_folder.is_dir():
+                msg = "Value of env var 'CDL_DEBUG_LOG_FOLDER' is invalid."
+                msg += f" Folder '{debug_log_folder}' does not exists"
+                startup_logger.error(msg)
+                sys.exit(1)
+            date = datetime.now().strftime("%Y%m%d_%H%M%S")
+            debug_log_file_path = debug_log_folder / f"cyberdrop_dl_debug_{date}.log"
+        try:
+            file_io = debug_log_file_path.open("w", encoding="utf8")
+        except OSError as e:
+            startup_logger.exception(str(e))
+            sys.exit(1)
 
-    file_io = debug_log_file_path.open("w", encoding="utf8")
     file_console = Console(file=file_io, width=manager.config_manager.settings_data.logs.log_line_width)
     file_handler_debug = RichHandler(**constants.RICH_HANDLER_DEBUG_CONFIG, console=file_console, level=log_level)
     add_custom_log_render(file_handler_debug)
@@ -191,14 +203,19 @@ def setup_logger(manager: Manager, config_name: str) -> None:
                 logger.removeHandler(logger.handlers[0])
                 old_file_handler.close()
 
+        try:
+            file_io = manager.path_manager.main_log.open("w", encoding="utf8")
+        except OSError as e:
+            startup_logger.exception(str(e))
+            sys.exit(1)
+
     log_level = manager.config_manager.settings_data.runtime_options.log_level
-    console_log_level = manager.config_manager.settings_data.runtime_options.console_log_level
     logger.setLevel(log_level)
 
     if not manager.parsed_args.cli_only_args.fullscreen_ui:
-        constants.CONSOLE_LEVEL = console_log_level
+        constants.CONSOLE_LEVEL = manager.config_manager.settings_data.runtime_options.console_log_level
 
-    file_io = manager.path_manager.main_log.open("w", encoding="utf8")
+    console_log_level = constants.CONSOLE_LEVEL
     file_console = RedactedConsole(file=file_io, width=manager.config_manager.settings_data.logs.log_line_width)
     file_handler = RichHandler(**constants.RICH_HANDLER_CONFIG, console=file_console, level=log_level)
     console_handler = RichHandler(**(constants.RICH_HANDLER_CONFIG | {"show_time": False}), level=console_log_level)
