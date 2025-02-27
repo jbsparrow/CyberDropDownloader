@@ -49,6 +49,11 @@ class CDLBaseError(Exception):
             self.status = status
             super().__init__(self.status)
 
+    def __str__(self):
+        if self.ui_message == self.message:
+            return self.message
+        return f"{self.ui_message} - {self.message}"
+
 
 class InvalidContentTypeError(CDLBaseError):
     def __init__(self, *, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
