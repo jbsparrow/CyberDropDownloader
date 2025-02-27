@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import ByteSize
 from rich.columns import Columns
-from rich.console import Group
+from rich.console import Console, Group
 from rich.layout import Layout
 from rich.progress import Progress, SpinnerColumn, TaskID, TextColumn
 
@@ -40,6 +40,8 @@ class ProgressManager:
     def __init__(self, manager: Manager) -> None:
         # File Download Bars
         self.manager = manager
+        self.console = Console()
+        self._portrait = manager.parsed_args.cli_only_args.portrait
         self.file_progress: FileProgress = FileProgress(
             manager.config_manager.global_settings_data.ui_options.downloading_item_limit,
             manager,
@@ -60,7 +62,6 @@ class ProgressManager:
 
         self.ui_refresh_rate = manager.config_manager.global_settings_data.ui_options.refresh_rate
 
-        self.fullscreen_layout: Layout = field(init=False)
         self.hash_remove_layout: RenderableType = field(init=False)
         self.hash_layout: RenderableType = field(init=False)
         self.sort_layout: RenderableType = field(init=False)
@@ -77,14 +78,11 @@ class ProgressManager:
 
     def startup(self) -> None:
         """Startup process for the progress manager."""
-
-        spinner = SpinnerColumn(style="green", spinner_name="dots"), TextColumn("Running Cyberdrop-DL")
-        activity_placeholder = Progress(*spinner)
+        spinner = SpinnerColumn(style="green", spinner_name="dots")
+        text_placeholder = TextColumn("Running Cyberdrop-DL")
+        activity_placeholder = Progress(spinner, text_placeholder)
         activity_placeholder.add_task("running with no UI", total=100, completed=0)
-
-        self.status_message = Progress(
-            SpinnerColumn(style="green", spinner_name="dots"), "[progress.description]{task.description}"
-        )
+        self.status_message = Progress(spinner, "[progress.description]{task.description}")
 
         self.status_message_task_id = self.status_message.add_task("", total=100, completed=0, visible=False)
 
@@ -92,26 +90,47 @@ class ProgressManager:
 
         status_message_columns = Columns([activity_placeholder, self.status_message], expand=False)
 
-        progress_layout = Layout()
-        progress_layout.split_column(
-            Layout(name="upper", ratio=20, minimum_size=8),
-            Layout(renderable=self.scraping_progress.get_renderable(), name="Scraping", ratio=20),
-            Layout(renderable=self.file_progress.get_renderable(), name="Downloads", ratio=20),
-            Layout(renderable=status_message_columns, name="status_message", ratio=2),
-        )
+        horizontal_layout = Layout()
+        vertical_layout = Layout()
 
-        progress_layout["upper"].split_row(
+        upper_layouts = (
             Layout(renderable=self.download_progress.get_progress(), name="Files", ratio=1),
             Layout(renderable=self.scrape_stats_progress.get_progress(), name="Scrape Failures", ratio=1),
             Layout(renderable=self.download_stats_progress.get_progress(), name="Download Failures", ratio=1),
         )
 
+        lower_layouts = (
+            Layout(renderable=self.scraping_progress.get_renderable(), name="Scraping", ratio=20),
+            Layout(renderable=self.file_progress.get_renderable(), name="Downloads", ratio=20),
+            Layout(renderable=status_message_columns, name="status_message", ratio=2),
+        )
+
+        horizontal_layout.split_column(Layout(name="upper", ratio=20, minimum_size=8), *lower_layouts)
+        vertical_layout.split_column(Layout(name="upper", ratio=60, minimum_size=8), *lower_layouts)
+
+        horizontal_layout["upper"].split_row(*upper_layouts)
+        vertical_layout["upper"].split_column(*upper_layouts)
+
+        self.horizontal_layout = horizontal_layout
+        self.vertical_layout = vertical_layout
         self.activity_layout = activity_placeholder
         self.simple_layout = simple_layout
-        self.fullscreen_layout = progress_layout
         self.hash_remove_layout = self.hash_progress.get_removed_progress()
         self.hash_layout = self.hash_progress.get_renderable()
         self.sort_layout = self.sort_progress.get_renderable()
+
+    @property
+    def portrait(self) -> bool:
+        if self._portrait is not None:
+            return self._portrait
+        width, height = self.console.size
+        return (height / width) > 1.2
+
+    @property
+    def fullscreen_layout(self) -> Layout:
+        if self.portrait:
+            return self.vertical_layout
+        return self.horizontal_layout
 
     def print_stats(self, start_time: float) -> None:
         """Prints the stats of the program."""
