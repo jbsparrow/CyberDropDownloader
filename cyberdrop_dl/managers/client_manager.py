@@ -266,7 +266,7 @@ class Flaresolverr:
         if not self.enabled:
             raise DDOSGuardError(message="FlareSolverr is not configured", origin=origin)
         async with self.session_lock:
-            if not (self.session_id or kwargs.get("session")):
+            if not self.session_id:
                 await self._create_session()
         return await self._make_request(command, client_session, **kwargs)
 
