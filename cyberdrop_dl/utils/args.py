@@ -56,7 +56,7 @@ class CommandLineOnlyArgs(BaseModel):
     download_tiktok_audios: bool = Field(False, description="download TikTok audios")
     print_stats: bool = Field(True, description="Show stats report at the end of a run")
     ui: UIOptions = Field(UIOptions.FULLSCREEN, description="DISABLED, ACTIVITY, SIMPLE or FULLSCREEN")
-    portrait: bool = Field(False, description="show UI in a portrait layout")  # type: ignore
+    portrait: bool = Field(False, description="show UI in a portrait layout")
 
     @property
     def retry_any(self) -> bool:
@@ -153,7 +153,6 @@ class ParsedArgs(AliasModel):
 def _add_args_from_model(
     parser: ArgumentParser | ArgGroup, model: type[BaseModel], *, cli_args: bool = False, deprecated: bool = False
 ) -> None:
-    cli_only_boolean_optional = ("portrait",)
     for name, field in model.model_fields.items():
         cli_name = name.replace("_", "-")
         arg_type = type(field.default)
@@ -169,7 +168,7 @@ def _add_args_from_model(
         if arg_type is bool:
             action = BooleanOptionalAction
             default_options.pop("default")
-            if cli_args and name not in cli_only_boolean_optional:
+            if cli_args:
                 action = "store_false" if default else "store_true"
             if deprecated:
                 default_options = default_options | {"default": SUPPRESS}

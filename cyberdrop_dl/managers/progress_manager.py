@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import ByteSize
 from rich.columns import Columns
-from rich.console import Console, Group
+from rich.console import Group
 from rich.layout import Layout
 from rich.progress import Progress, SpinnerColumn, TaskID, TextColumn
 
@@ -40,29 +40,19 @@ class ProgressManager:
     def __init__(self, manager: Manager) -> None:
         # File Download Bars
         self.manager = manager
-        self.console = Console()
-        cli_only_args = manager.parsed_args.cli_only_args.model_dump(exclude_unset=True)
-        self._portrait = cli_only_args.get("portrait")
-        self.file_progress: FileProgress = FileProgress(
-            manager.config_manager.global_settings_data.ui_options.downloading_item_limit,
-            manager,
-            portrait=self.portrait,
-        )
-
-        # Scraping Printout
-        self.scraping_progress: ScrapingProgress = ScrapingProgress(
-            manager.config_manager.global_settings_data.ui_options.scraping_item_limit,
-            manager,
-        )
+        ui_options = manager.config_manager.global_settings_data.ui_options
+        self.portrait = manager.parsed_args.cli_only_args.portrait
+        self.file_progress = FileProgress(manager)
+        self.scraping_progress = ScrapingProgress(manager)
 
         # Overall Progress Bars & Stats
-        self.download_progress: DownloadsProgress = DownloadsProgress(manager)
-        self.download_stats_progress: DownloadStatsProgress = DownloadStatsProgress()
-        self.scrape_stats_progress: ScrapeStatsProgress = ScrapeStatsProgress()
-        self.hash_progress: HashProgress = HashProgress(manager)
-        self.sort_progress: SortProgress = SortProgress(1, manager)
+        self.download_progress = DownloadsProgress(manager)
+        self.download_stats_progress = DownloadStatsProgress()
+        self.scrape_stats_progress = ScrapeStatsProgress()
+        self.hash_progress = HashProgress(manager)
+        self.sort_progress = SortProgress(1, manager)
 
-        self.ui_refresh_rate = manager.config_manager.global_settings_data.ui_options.refresh_rate
+        self.ui_refresh_rate = ui_options.refresh_rate
 
         self.hash_remove_layout: RenderableType = field(init=False)
         self.hash_layout: RenderableType = field(init=False)
@@ -120,13 +110,6 @@ class ProgressManager:
         self.hash_remove_layout = self.hash_progress.get_removed_progress()
         self.hash_layout = self.hash_progress.get_renderable()
         self.sort_layout = self.sort_progress.get_renderable()
-
-    @property
-    def portrait(self) -> bool:
-        if self._portrait is not None:
-            return self._portrait
-        width, height = self.console.size
-        return (height / width) > 1.2
 
     @property
     def fullscreen_layout(self) -> Layout:
