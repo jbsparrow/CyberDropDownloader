@@ -94,7 +94,9 @@ class ScraperClient:
         with_response_url: bool = False,
         cache_disabled: bool = False,
         retry: bool = True,
-    ) -> BeautifulSoup:
+        *,
+        with_response_headers: bool = False,
+    ) -> BeautifulSoup | tuple[BeautifulSoup, CIMultiDictProxy | URL]:
         """Returns a BeautifulSoup object from the given URL."""
         async with (
             cache_control_manager(client_session, disabled=cache_disabled),
@@ -127,6 +129,8 @@ class ScraperClient:
                     )
                 if with_response_url:
                     return soup, response_URL
+                if with_response_headers:
+                    return soup, response.headers
                 return soup
 
             content_type = response.headers.get("Content-Type")
