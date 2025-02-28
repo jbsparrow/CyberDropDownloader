@@ -1,6 +1,7 @@
 import re
 from enum import Enum, IntEnum, StrEnum, auto
 from pathlib import Path
+from typing import Any
 
 from rich.text import Text
 
@@ -10,7 +11,7 @@ MAX_NAME_LENGTHS = {"FILE": 95, "FOLDER": 60}
 DEFAULT_CONSOLE_WIDTH = 240
 CSV_DELIMITER = ","
 LOG_OUTPUT_TEXT = Text("")
-RICH_HANDLER_CONFIG = {"show_time": True, "rich_tracebacks": True, "tracebacks_show_locals": False}
+RICH_HANDLER_CONFIG: dict[str, Any] = {"show_time": True, "rich_tracebacks": True, "tracebacks_show_locals": False}
 RICH_HANDLER_DEBUG_CONFIG = {
     "show_time": True,
     "rich_tracebacks": True,
@@ -72,18 +73,6 @@ class NotificationResult(Enum):
     PARTIAL = Text("Partial Success", "yellow")
     NONE = Text("No Notifications Sent", "yellow")
 
-
-# Pypi
-PRERELEASE_TAGS = {
-    "dev": "Development",
-    "pre": "Pre-Release",
-    "rc": "Release Candidate",
-    "a": "Alpha",
-    "b": "Beta",
-}
-
-PRELEASE_VERSION_PATTERN = r"(\d+)\.(\d+)\.(\d+)(?:\.([a-z]+)\d+|([a-z]+)\d+)"
-PYPI_JSON_URL = "https://pypi.org/pypi/cyberdrop-dl-patched/json"
 
 # file formats
 FILE_FORMATS = {
@@ -151,3 +140,6 @@ FILE_FORMATS = {
         ".zip",
     },
 }
+
+
+MEDIA_EXTENSIONS = FILE_FORMATS["Audio"] | FILE_FORMATS["Videos"] | FILE_FORMATS["Images"]

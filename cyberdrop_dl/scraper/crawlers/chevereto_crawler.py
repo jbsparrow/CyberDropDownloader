@@ -12,6 +12,7 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import PasswordProtectedError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
+from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
@@ -27,6 +28,8 @@ CDN_PATTERNS = {
 }
 
 CDN_POSSIBILITIES = re.compile("|".join(CDN_PATTERNS.values()))
+JS_SELECTOR = "script[data-cfasync='false']:contains('image_viewer_full_fix')"
+JS_CONTENT_START = "document.addEventListener('DOMContentLoaded', function(event)"
 
 
 class UrlType(enum.StrEnum):
@@ -88,9 +91,9 @@ class CheveretoCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        if self.check_direct_link(scrape_item.url):
+        if check_direct_link(scrape_item.url):
             return await self.handle_direct_link(scrape_item)
-        scrape_item.url = scrape_item.url.with_host(self.primary_base_domain.host)
+        scrape_item.url = scrape_item.url.with_host(self.primary_base_domain.host)  # type: ignore
         if any(part in scrape_item.url.parts for part in self.album_parts):
             await self.album(scrape_item)
         elif any(part in scrape_item.url.parts for part in self.images_parts):
@@ -109,12 +112,14 @@ class CheveretoCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        title = self.create_title(soup.select_one(self.profile_title_selector).get("content"))
+        title_tag = soup.select_one(self.profile_title_selector)
+        title_text: str = title_tag.get("content")  # type: ignore
+        title = self.create_title(title_text)
 
         async for soup in self.web_pager(scrape_item):
             links = soup.select(self.profile_item_selector)
             for link in links:
-                link_str: str = link.get("href")
+                link_str: str = link.get("href")  # type: ignore
                 if not link_str:
                     continue
                 link = self.parse_url(link_str)
@@ -160,14 +165,16 @@ class CheveretoCrawler(Crawler):
         if "This content is password protected" in soup.text:
             raise PasswordProtectedError(message="Wrong password" if password else None, origin=scrape_item)
 
-        title = self.create_title(soup.select_one(self.album_title_selector).get_text(), album_id)
+        title_tag = soup.select_one(self.album_title_selector)
+        title_text: str = title_tag.get_text()  # type: ignore
+        title = self.create_title(title_text, album_id)
         scrape_item.add_to_parent_title(title)
         scrape_item.part_of_album = True
 
         async for soup in self.web_pager(scrape_item):
             links = soup.select(self.album_img_selector)
             for link in links:
-                link_str: str = link.get("src")
+                link_str: str = link.get("src")  # type: ignore
                 link = self.parse_url(link_str)
                 new_scrape_item = self.create_scrape_item(
                     scrape_item,
@@ -218,21 +225,26 @@ class CheveretoCrawler(Crawler):
         scrape_item.url = canonical_url
 
         try:
-            link_str: str = soup.select_one(selector[0]).get(selector[1])
+            link_str: str = soup.select_one(selector[0]).get(selector[1])  # type: ignore
             link = self.parse_url(link_str)
-            link = link.with_name(link.name.replace(".md.", ".").replace(".th.", "."))
+            name = link.name.replace(".md.", ".").replace(".th.", ".")
+            link = link.with_name(name)
+            if name == "loading.svg":
+                link_str = get_url_from_js(soup)
+                link = self.parse_url(link_str)
+
         except AttributeError:
             raise ScrapeError(422, f"Couldn't find {url_type.value} source", origin=scrape_item) from None
 
         desc_rows = soup.select("p[class*=description-meta]")
-        date = None
+        date_str: str | None = None
         for row in desc_rows:
             if "uploaded" in row.text.casefold():
-                date = row.select_one("span").get("title")
+                date_str = row.select_one("span").get("title")  # type: ignore
                 break
 
-        if date:
-            date = self.parse_datetime(date)
+        if date_str:
+            date = parse_datetime(date_str)
             scrape_item.possible_datetime = date
 
         filename, ext = get_filename_and_ext(link.name)
@@ -271,7 +283,7 @@ class CheveretoCrawler(Crawler):
     async def web_pager(self, scrape_item: ScrapeItem, sub_albums: bool = False) -> AsyncGenerator[BeautifulSoup]:
         """Generator of website pages."""
         url = scrape_item.url if not sub_albums else scrape_item.url / "sub"
-        page_url = await self.get_sort_by_new_url(url)
+        page_url = get_sort_by_new_url(url)
         while True:
             async with self.request_limiter:
                 soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url, origin=scrape_item)
@@ -280,19 +292,31 @@ class CheveretoCrawler(Crawler):
             page_url_str: str = next_page.get("href") if next_page else None  # type: ignore
             if not page_url_str:
                 break
-            page_url = self.parse_url(page_url_str)
+            page_url = self.parse_url(page_url_str, trim=False)
 
-    @staticmethod
-    async def get_sort_by_new_url(url: URL) -> URL:
-        return url.with_query({"sort": "date_desc", "page": 1})
 
-    @staticmethod
-    def parse_datetime(date: str) -> int:
-        """Parses a datetime string into a unix timestamp."""
-        parsed_date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
-        return calendar.timegm(parsed_date.timetuple())
+def get_sort_by_new_url(url: URL) -> URL:
+    return url.with_query({"sort": "date_desc", "page": 1})
 
-    @staticmethod
-    def check_direct_link(url: URL) -> bool:
-        """Determines if the url is a direct link or not."""
-        return bool(CDN_POSSIBILITIES.match(str(url)))
+
+def parse_datetime(date: str) -> int:
+    """Parses a datetime string into a unix timestamp."""
+    parsed_date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
+    return calendar.timegm(parsed_date.timetuple())
+
+
+def check_direct_link(url: URL) -> bool:
+    """Determines if the url is a direct link or not."""
+    return bool(CDN_POSSIBILITIES.match(str(url)))
+
+
+def get_url_from_js(soup: BeautifulSoup) -> str:
+    info_js_script = soup.select_one(JS_SELECTOR)
+    log_debug(str(soup))
+    del soup
+    info_js_script_text: str = info_js_script.text  # type: ignore
+    _, _, content = info_js_script_text.partition(JS_CONTENT_START)
+    dirty_url = content.split("url:", 1)[1].split("medium:", 1)[0]
+    _, scheme, rest = dirty_url.strip().partition("http")
+    url = scheme + rest.split('"', 1)[0]
+    return url

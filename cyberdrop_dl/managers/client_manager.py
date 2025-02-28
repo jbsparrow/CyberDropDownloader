@@ -20,7 +20,6 @@ from cyberdrop_dl.clients.errors import DDOSGuardError, DownloadError, ScrapeErr
 from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.managers.download_speed_manager import DownloadSpeedLimiter
 from cyberdrop_dl.ui.prompts.user_prompts import get_cookies_from_browsers
-from cyberdrop_dl.utils.constants import CustomHTTPStatus
 from cyberdrop_dl.utils.logger import log, log_spacer
 
 if TYPE_CHECKING:
@@ -153,6 +152,7 @@ class ClientManager:
         """Checks the HTTP status code and raises an exception if it's not acceptable."""
         status = response.status
         headers = response.headers
+        message = None
 
         if download and headers.get("ETag") in DOWNLOAD_ERROR_ETAGS:
             message = DOWNLOAD_ERROR_ETAGS.get(headers.get("ETag"))
@@ -161,10 +161,10 @@ class ClientManager:
         if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
             return
 
-        if any(domain in response.url.host for domain in ("gofile", "imgur")):
+        if any(domain in response.url.host for domain in ("gofile", "imgur")):  # type: ignore
             with contextlib.suppress(ContentTypeError):
                 JSON_Resp: dict = await response.json()
-                status = JSON_Resp.get("status")
+                status: str | int = JSON_Resp.get("status")  # type: ignore
                 if status and isinstance(status, str) and "notFound" in status:
                     raise ScrapeError(404, origin=origin)
                 data = JSON_Resp.get("data")
@@ -179,8 +179,6 @@ class ClientManager:
             soup = BeautifulSoup(response_text, "html.parser")
             if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
                 raise DDOSGuardError(origin=origin)
-        status = status if headers.get("Content-Type") else CustomHTTPStatus.IM_A_TEAPOT
-        message = None if headers.get("Content-Type") else "No content-type in response header"
 
         raise DownloadError(status=status, message=message, origin=origin)
 
@@ -253,6 +251,8 @@ class Flaresolverr:
         self.enabled = bool(self.flaresolverr_host)
         self.session_id = None
         self.timeout = aiohttp.ClientTimeout(total=120000, connect=60000)
+        self.session_lock = asyncio.Lock()
+        self.request_lock = asyncio.Lock()
 
     async def _request(
         self,
@@ -264,26 +264,31 @@ class Flaresolverr:
         """Base request function to call flaresolverr."""
         if not self.enabled:
             raise DDOSGuardError(message="FlareSolverr is not configured", origin=origin)
+        async with self.session_lock:
+            if not (self.session_id or kwargs.get("session")):
+                await self._create_session()
+        return await self._make_request(command, client_session, **kwargs)
 
-        if not (self.session_id or kwargs.get("session")):
-            await self._create_session()
-
+    async def _make_request(self, command: str, client_session: ClientSession, **kwargs):
+        client_session = kwargs.pop("client_session", client_session)
         headers = client_session.headers.copy()
         headers.update({"Content-Type": "application/json"})
         for key, value in kwargs.items():
             if isinstance(value, URL):
                 kwargs[key] = str(value)
-
         data = {"cmd": command, "maxTimeout": 60000, "session": self.session_id} | kwargs
 
-        async with client_session.post(
-            self.flaresolverr_host / "v1",
-            headers=headers,
-            ssl=self.client_manager.ssl_context,
-            proxy=self.client_manager.proxy,
-            json=data,
-            timeout=self.timeout,
-        ) as response:
+        async with (
+            self.request_lock,
+            client_session.post(
+                self.flaresolverr_host / "v1",
+                headers=headers,
+                ssl=self.client_manager.ssl_context,
+                proxy=self.client_manager.proxy,
+                json=data,
+                timeout=self.timeout,
+            ) as response,
+        ):
             json_obj: dict = await response.json()  # type: ignore
 
         return json_obj
@@ -292,7 +297,7 @@ class Flaresolverr:
         """Creates a permanet flaresolverr session."""
         session_id = "cyberdrop-dl"
         async with ClientSession() as client_session:
-            flaresolverr_resp = await self._request("sessions.create", client_session, session=session_id)
+            flaresolverr_resp = await self._make_request("sessions.create", client_session)
         status = flaresolverr_resp.get("status")
         if status != "ok":
             raise DDOSGuardError(message="Failed to create flaresolverr session")
@@ -301,7 +306,8 @@ class Flaresolverr:
     async def _destroy_session(self):
         if self.session_id:
             async with ClientSession() as client_session:
-                await self._request("sessions.destroy", client_session, session=self.session_id)
+                await self._make_request("sessions.destroy", client_session, session=self.session_id)
+                self.session_id = None
 
     async def get(
         self,

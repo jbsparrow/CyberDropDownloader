@@ -6,7 +6,6 @@ import itertools
 import time
 from functools import partial, wraps
 from http import HTTPStatus
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import aiofiles
@@ -26,7 +25,10 @@ from cyberdrop_dl.utils.logger import log, log_debug
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine
+    from pathlib import Path
     from typing import Any
+
+    from multidict import CIMultiDictProxy
 
     from cyberdrop_dl.managers.client_manager import ClientManager
     from cyberdrop_dl.managers.manager import Manager
@@ -187,11 +189,8 @@ class DownloadClient:
                 media_item.partial_file.unlink()
 
             await self.client_manager.check_http_status(resp, download=True, origin=media_item.url)
-            content_type = resp.headers.get("Content-Type", "")
-            override = next(
-                (override for type, override in CONTENT_TYPES_OVERRIDES.items() if type in content_type), None
-            )
-            content_type = override or content_type
+
+            _ = get_content_type(media_item.ext, resp.headers)
 
             media_item.filesize = int(resp.headers.get("Content-Length", "0"))
             if not media_item.complete_file:
@@ -207,15 +206,6 @@ class DownloadClient:
                     await self.handle_media_item_completion(media_item, downloaded=False)
 
                     return False
-
-            ext = Path(media_item.filename).suffix.lower()
-            if (
-                content_type
-                and any(s in content_type.lower() for s in ("html", "text"))
-                and ext not in FILE_FORMATS["Text"]
-            ):
-                msg = f"Received '{content_type}', was expecting other"
-                raise InvalidContentTypeError(message=msg)
 
             if resp.status != HTTPStatus.PARTIAL_CONTENT and media_item.partial_file.is_file():
                 media_item.partial_file.unlink()
@@ -475,3 +465,29 @@ class DownloadClient:
     @file_path.setter
     def file_path(self, media_item: MediaItem):
         self._file_path = media_item.filename
+
+
+def get_content_type(ext: str, headers: CIMultiDictProxy) -> str | None:
+    content_type: str = headers.get("Content-Type", "")
+    content_length = headers.get("Content-Length")
+    if not content_type and not content_length:
+        msg = "No content type in response headers"
+        raise InvalidContentTypeError(message=msg)
+
+    if not content_type:
+        return None
+
+    override_key = next((name for name in CONTENT_TYPES_OVERRIDES if name in content_type), "<NO_OVERRIDE>")
+    override: str | None = CONTENT_TYPES_OVERRIDES.get(override_key)
+    content_type = override or content_type
+    content_type = content_type.lower()
+
+    if is_html_or_text(content_type) and ext.lower() not in FILE_FORMATS["Text"]:
+        msg = f"Received '{content_type}', was expecting other"
+        raise InvalidContentTypeError(message=msg)
+
+    return content_type
+
+
+def is_html_or_text(content_type: str) -> bool:
+    return any(s in content_type for s in ("html", "text"))

@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from cyberdrop_dl import __version__ as current_version
 from cyberdrop_dl import env
 from cyberdrop_dl.scraper.crawlers.allporncomix_crawler import AllPornComixCrawler
 from cyberdrop_dl.scraper.crawlers.bellazon_crawler import BellazonCrawler
@@ -63,18 +62,13 @@ from cyberdrop_dl.scraper.crawlers.xbunker_crawler import XBunkerCrawler
 from cyberdrop_dl.scraper.crawlers.xbunkr_crawler import XBunkrCrawler
 from cyberdrop_dl.scraper.crawlers.xxxbunker_crawler import XXXBunkerCrawler
 from cyberdrop_dl.scraper.crawlers.youjizz_crawler import YouJizzCrawler
-from cyberdrop_dl.utils import constants
 
 if TYPE_CHECKING:
     from cyberdrop_dl.scraper.crawler import Crawler
 
 ALL_CRAWLERS: set[type[Crawler]] = {crawler for name, crawler in globals().items() if name.endswith("Crawler")}
-DISABLED_CRAWLERS = {SimpCityCrawler}
-DEBUG_CRAWLERS = {BunkrAlbumsIOCrawler}
-CRAWLERS = ALL_CRAWLERS - DISABLED_CRAWLERS - DEBUG_CRAWLERS
+DEBUG_CRAWLERS = {SimpCityCrawler, BunkrAlbumsIOCrawler}
+CRAWLERS = ALL_CRAWLERS - DEBUG_CRAWLERS
 
-if env.RUNNING_IN_IDE:
+if env.ENABLE_DEBUG_CRAWLERS == "d396ab8c85fcb1fecd22c8d9b58acf944a44e6d35014e9dd39e42c9a64091eda":
     CRAWLERS.update(DEBUG_CRAWLERS)
-
-if env.KEY == "d396ab8c85fcb1fecd22c8d9b58acf944a44e6d35014e9dd39e42c9a64091eda":
-    CRAWLERS.update(DISABLED_CRAWLERS)

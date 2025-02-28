@@ -19,7 +19,8 @@ from cyberdrop_dl.ui.prompts.basic_prompts import ask_dir_path, enter_to_continu
 from cyberdrop_dl.ui.prompts.defaults import DONE_CHOICE, EXIT_CHOICE
 from cyberdrop_dl.utils.cookie_management import clear_cookies
 from cyberdrop_dl.utils.sorting import Sorter
-from cyberdrop_dl.utils.utilities import check_latest_pypi, clear_term, open_in_text_editor
+from cyberdrop_dl.utils.updates import check_latest_pypi
+from cyberdrop_dl.utils.utilities import clear_term, open_in_text_editor
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -103,7 +104,7 @@ class ProgramUI:
 
     def _check_updates(self) -> None:
         """Checks Cyberdrop-DL updates."""
-        check_latest_pypi(call_from_ui=True)
+        check_latest_pypi(logging="CONSOLE")
         enter_to_continue()
 
     def _change_config(self) -> None:
@@ -266,7 +267,11 @@ class ProgramUI:
         """Get latest changelog file from github. Returns its content."""
         path = self.manager.path_manager.config_folder.parent / "CHANGELOG.md"
         url = "https://raw.githubusercontent.com/jbsparrow/CyberDropDownloader/refs/heads/master/CHANGELOG.md"
-        _, latest_version = check_latest_pypi(log_to_console=False)
+        _, latest_version = check_latest_pypi(logging="OFF")
+        if not latest_version:
+            self.print_error("UNABLE TO GET LATEST VERSION INFORMATION")
+            return None
+
         name = f"{path.stem}_{latest_version}{path.suffix}"
         changelog = path.with_name(name)
         if not changelog.is_file():
