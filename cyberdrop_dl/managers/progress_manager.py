@@ -46,6 +46,7 @@ class ProgressManager:
         self.file_progress: FileProgress = FileProgress(
             manager.config_manager.global_settings_data.ui_options.downloading_item_limit,
             manager,
+            portrait=self.portrait,
         )
 
         # Scraping Printout

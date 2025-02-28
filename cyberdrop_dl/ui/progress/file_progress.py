@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 class FileProgress(DequeProgress):
     """Class that manages the download progress of individual files."""
 
-    def __init__(self, visible_tasks_limit: int, manager: Manager) -> None:
+    def __init__(self, visible_tasks_limit: int, manager: Manager, *, portrait: bool = False) -> None:
         self.manager = manager
         progress_colums = (SpinnerColumn(), "[progress.description]{task.description}", BarColumn(bar_width=None))
         horizontal_columns = (
@@ -38,7 +38,7 @@ class FileProgress(DequeProgress):
         )
         vertical_columns = (*progress_colums, DownloadColumn(), "━", TransferSpeedColumn())
         use_columns = horizontal_columns
-        if manager.progress_manager.portrait:
+        if portrait:
             use_columns = vertical_columns
         self._progress = Progress(*use_columns)
         self.downloaded_data = ByteSize(0)
