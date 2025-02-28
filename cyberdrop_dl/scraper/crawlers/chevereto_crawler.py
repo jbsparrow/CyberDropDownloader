@@ -12,6 +12,7 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import PasswordProtectedError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
+from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
@@ -27,6 +28,8 @@ CDN_PATTERNS = {
 }
 
 CDN_POSSIBILITIES = re.compile("|".join(CDN_PATTERNS.values()))
+JS_SELECTOR = "script[data-cfasync='false']:contains('image_viewer_full_fix')"
+JS_CONTENT_START = "document.addEventListener('DOMContentLoaded', function(event)"
 
 
 class UrlType(enum.StrEnum):
@@ -224,7 +227,12 @@ class CheveretoCrawler(Crawler):
         try:
             link_str: str = soup.select_one(selector[0]).get(selector[1])  # type: ignore
             link = self.parse_url(link_str)
-            link = link.with_name(link.name.replace(".md.", ".").replace(".th.", "."))
+            name = link.name.replace(".md.", ".").replace(".th.", ".")
+            link = link.with_name(name)
+            if name == "loading.svg":
+                link_str = get_url_from_js(soup)
+                link = self.parse_url(link_str)
+
         except AttributeError:
             raise ScrapeError(422, f"Couldn't find {url_type.value} source", origin=scrape_item) from None
 
@@ -300,3 +308,15 @@ def parse_datetime(date: str) -> int:
 def check_direct_link(url: URL) -> bool:
     """Determines if the url is a direct link or not."""
     return bool(CDN_POSSIBILITIES.match(str(url)))
+
+
+def get_url_from_js(soup: BeautifulSoup) -> str:
+    info_js_script = soup.select_one(JS_SELECTOR)
+    log_debug(str(soup))
+    del soup
+    info_js_script_text: str = info_js_script.text  # type: ignore
+    _, _, content = info_js_script_text.partition(JS_CONTENT_START)
+    dirty_url = content.split("url:", 1)[1].split("medium:", 1)[0]
+    _, scheme, rest = dirty_url.strip().partition("http")
+    url = scheme + rest.split('"', 1)[0]
+    return url
