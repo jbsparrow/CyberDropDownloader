@@ -3,6 +3,7 @@ import time
 import warnings
 from argparse import SUPPRESS, ArgumentParser, BooleanOptionalAction, RawDescriptionHelpFormatter
 from argparse import _ArgumentGroup as ArgGroup
+from collections.abc import Iterable
 from datetime import date
 from enum import StrEnum, auto
 from pathlib import Path
@@ -33,7 +34,7 @@ warnings.simplefilter("always", DeprecationWarning)
 WARNING_TIMEOUT = 5  # seconds
 
 
-def _check_mutually_exclusive(group: set, msg: str) -> None:
+def _check_mutually_exclusive(group: Iterable, msg: str) -> None:
     if sum(1 for value in group if value) >= 2:
         raise ValueError(msg)
 
@@ -56,6 +57,7 @@ class CommandLineOnlyArgs(BaseModel):
     download_tiktok_audios: bool = Field(False, description="download TikTok audios")
     print_stats: bool = Field(True, description="Show stats report at the end of a run")
     ui: UIOptions = Field(UIOptions.FULLSCREEN, description="DISABLED, ACTIVITY, SIMPLE or FULLSCREEN")
+    portrait: bool = Field(False, description="show UI in a portrait layout")
 
     @property
     def retry_any(self) -> bool:
@@ -75,10 +77,10 @@ class CommandLineOnlyArgs(BaseModel):
 
     @model_validator(mode="after")
     def mutually_exclusive(self) -> Self:
-        group1 = {self.retry_all, self.retry_failed, self.retry_maintenance}
-        msg1 = "'--retry-all', '--retry-maintenace' and '--retry-failed' are mutually exclusive"
+        group1 = [self.links, self.retry_all, self.retry_failed, self.retry_maintenance]
+        msg1 = "`--links`, '--retry-all', '--retry-maintenace' and '--retry-failed' are mutually exclusive"
         _check_mutually_exclusive(group1, msg1)
-        group2 = {self.config, self.config_file}
+        group2 = [self.config, self.config_file]
         msg2 = "'--config' and '--config-file' are mutually exclusive"
         _check_mutually_exclusive(group2, msg2)
         return self
@@ -127,11 +129,11 @@ class ParsedArgs(AliasModel):
             time.sleep(WARNING_TIMEOUT)
 
     @staticmethod
-    def parse_args():
+    def parse_args() -> "ParsedArgs":
         """Parses the command line arguments passed into the program. Returns an instance of `ParsedArgs`"""
         return parse_args()
 
-    def prepare_warnings(self) -> set:
+    def prepare_warnings(self) -> set[str]:
         warnings_to_emit = set()
 
         def add_warning_msg_from(field_name: str) -> None:
@@ -241,7 +243,7 @@ def parse_args() -> ParsedArgs:
         group_lists["deprecated_args"] = [deprecated]
 
     args = parser.parse_intermixed_args()
-    parsed_args = {}
+    parsed_args: dict[str, dict] = {}
     for name, groups in group_lists.items():
         parsed_args[name] = {}
         for group in groups:
@@ -257,9 +259,9 @@ def parse_args() -> ParsedArgs:
         parsed_args["deprecated_args"] = parsed_args["deprecated_args"].get("deprecated") or {}
     parsed_args["cli_only_args"] = parsed_args["cli_only_args"]["CLI-only options"]
     try:
-        parsed_args = ParsedArgs.model_validate(parsed_args)
+        parsed_args_model = ParsedArgs.model_validate(parsed_args)
 
     except ValidationError as e:
         handle_validation_error(e, title="CLI arguments")
         sys.exit(1)
-    return parsed_args
+    return parsed_args_model

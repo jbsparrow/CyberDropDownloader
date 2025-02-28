@@ -23,12 +23,12 @@ if TYPE_CHECKING:
 class FileProgress(DequeProgress):
     """Class that manages the download progress of individual files."""
 
-    def __init__(self, visible_tasks_limit: int, manager: Manager) -> None:
+    def __init__(self, manager: Manager) -> None:
         self.manager = manager
-        self._progress = Progress(
-            SpinnerColumn(),
-            "[progress.description]{task.description}",
-            BarColumn(bar_width=None),
+        progress_colums = (SpinnerColumn(), "[progress.description]{task.description}", BarColumn(bar_width=None))
+        visible_tasks_limit: int = manager.config_manager.global_settings_data.ui_options.downloading_item_limit
+        horizontal_columns = (
+            *progress_colums,
             "[progress.percentage]{task.percentage:>6.2f}%",
             "━",
             DownloadColumn(),
@@ -37,6 +37,11 @@ class FileProgress(DequeProgress):
             "━",
             TimeRemainingColumn(),
         )
+        vertical_columns = (*progress_colums, DownloadColumn(), "━", TransferSpeedColumn())
+        use_columns = horizontal_columns
+        if manager.parsed_args.cli_only_args.portrait:
+            use_columns = vertical_columns
+        self._progress = Progress(*use_columns)
         self.downloaded_data = ByteSize(0)
         super().__init__("Downloads", visible_tasks_limit)
 
@@ -56,8 +61,9 @@ class FileProgress(DequeProgress):
     def add_task(self, *, domain: str, filename: str, expected_size: int | None = None) -> TaskID:
         """Adds a new task to the progress bar."""
         filename = filename.split("/")[-1].encode("ascii", "ignore").decode().strip()
-        filename = escape(adjust_title(filename))
-        description = f"({domain.upper()}) {filename}"
+        description = escape(adjust_title(filename, length=40))
+        if not self.manager.progress_manager.portrait:
+            description = f"({domain.upper()}) {description}"
         return super().add_task(description, expected_size)
 
     def advance_file(self, task_id: TaskID, amount: int) -> None:
