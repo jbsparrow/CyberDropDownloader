@@ -201,49 +201,58 @@ def parse_rich_text_by_style(text: Text, style_map: dict, default_style_map_key:
 
 
 def purge_dir_tree(dirname: Path) -> None:
-    """Purges empty files and directories."""
-    for file in dirname.rglob("*"):
-        if file.is_file() and file.stat().st_size == 0:
-            file.unlink()
-
-    for dirpath, _, _ in os.walk(dirname, topdown=False):
-        dir_to_remove = Path(dirpath)
-        with contextlib.suppress(OSError):
-            dir_to_remove.rmdir()
-
-
-def check_partials_and_empty_folders(manager: Manager) -> None:
-    """Checks for partial downloads, deletes partial files and empty folders."""
-    delete_partial_files(manager)
-    check_for_partial_files(manager)
-    delete_empty_folders(manager)
-
-
-def delete_partial_files(manager: Manager) -> None:
-    if not manager.config_manager.settings_data.runtime_options.delete_partial_files:
+    """Purges empty files and directories efficiently."""
+    if not dirname.exists():
         return
+
+    # Use os.walk() to remove empty files and directories in a single pass
+    for dirpath, _dirnames, filenames in os.walk(dirname, topdown=False):
+        dir_path = Path(dirpath)
+
+        # Remove empty files
+        for file_name in filenames:
+            file_path = dir_path / file_name
+            if file_path.stat().st_size == 0:
+                file_path.unlink()
+
+        # Remove empty directories
+        with contextlib.suppress(OSError):
+            dir_path.rmdir()
+
+
+def check_partials_and_empty_folders(manager: Manager):
+    """Checks for partial downloads, deletes partial files and empty folders."""
+    settings = manager.config_manager.settings_data.runtime_options
+    if settings.delete_partial_files:
+        delete_partial_files(manager)
+    if not settings.skip_check_for_partial_files:
+        check_for_partial_files(manager)
+    if not settings.skip_check_for_empty_folders:
+        delete_empty_folders(manager)
+
+
+def delete_partial_files(manager: Manager):
+    """Deletes partial download files recursively."""
     log_red("Deleting partial downloads...")
-    partial_downloads = manager.path_manager.download_folder.rglob("*.part")
-    for file in partial_downloads:
+    for file in manager.path_manager.download_folder.rglob("*.part"):
         file.unlink(missing_ok=True)
 
 
 def check_for_partial_files(manager: Manager):
-    if manager.config_manager.settings_data.runtime_options.skip_check_for_partial_files:
-        return
+    """Checks if there are partial downloads in any subdirectory and logs if found."""
     log_yellow("Checking for partial downloads...")
-    partial_downloads = any(manager.path_manager.download_folder.rglob("*.part"))
-    if partial_downloads:
+    if next(manager.path_manager.download_folder.rglob("*.part"), None) is not None:
         log_yellow("There are partial downloads in the downloads folder")
 
 
 def delete_empty_folders(manager: Manager):
-    if manager.config_manager.settings_data.runtime_options.skip_check_for_empty_folders:
-        return
+    """Deletes empty folders efficiently."""
     log_yellow("Checking for empty folders...")
     purge_dir_tree(manager.path_manager.download_folder)
-    if manager.path_manager.sorted_folder and manager.config_manager.settings_data.sorting.sort_downloads:
-        purge_dir_tree(manager.path_manager.sorted_folder)
+
+    sorted_folder = manager.path_manager.sorted_folder
+    if sorted_folder and manager.config_manager.settings_data.sorting.sort_downloads:
+        purge_dir_tree(sorted_folder)
 
 
 async def send_webhook_message(manager: Manager) -> None:
