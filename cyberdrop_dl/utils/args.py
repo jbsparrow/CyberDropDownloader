@@ -52,6 +52,7 @@ class CommandLineOnlyArgs(BaseModel):
     retry_maintenance: bool = Field(
         False, description="retry download of maintenance files (bunkr). Requires files to be hashed"
     )
+    download_dropbox_folders_as_zip: bool = Field(False, description="download Dropbox folder without api key as zip")
     download_tiktok_audios: bool = Field(False, description="download TikTok audios")
     print_stats: bool = Field(True, description="Show stats report at the end of a run")
     ui: UIOptions = Field(UIOptions.FULLSCREEN, description="DISABLED, ACTIVITY, SIMPLE or FULLSCREEN")
