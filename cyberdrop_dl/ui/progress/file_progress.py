@@ -25,10 +25,9 @@ class FileProgress(DequeProgress):
 
     def __init__(self, visible_tasks_limit: int, manager: Manager) -> None:
         self.manager = manager
-        self._progress = Progress(
-            SpinnerColumn(),
-            "[progress.description]{task.description}",
-            BarColumn(bar_width=None),
+        progress_colums = (SpinnerColumn(), "[progress.description]{task.description}", BarColumn(bar_width=None))
+        horizontal_columns = (
+            *progress_colums,
             "[progress.percentage]{task.percentage:>6.2f}%",
             "━",
             DownloadColumn(),
@@ -37,6 +36,11 @@ class FileProgress(DequeProgress):
             "━",
             TimeRemainingColumn(),
         )
+        vertical_columns = (*progress_colums, DownloadColumn(), "━", TransferSpeedColumn())
+        use_columns = horizontal_columns
+        if manager.progress_manager.portrait:
+            use_columns = vertical_columns
+        self._progress = Progress(*use_columns)
         self.downloaded_data = ByteSize(0)
         super().__init__("Downloads", visible_tasks_limit)
 
@@ -56,8 +60,8 @@ class FileProgress(DequeProgress):
     def add_task(self, *, domain: str, filename: str, expected_size: int | None = None) -> TaskID:
         """Adds a new task to the progress bar."""
         filename = filename.split("/")[-1].encode("ascii", "ignore").decode().strip()
-        # We need a minimum of 50 characters to properly show the download progress + 10 for the bar
-        max_size = min((self.manager.progress_manager.console.size.width - 60), 40)
+        # We need a minimum of 30 characters to properly show the download progress + 10 for the bar
+        max_size = min((self.manager.progress_manager.console.size.width - 40), 40)
         description = escape(adjust_title(filename, length=max_size))
         if not self.manager.progress_manager.portrait:
             description = f"({domain.upper()}) {description}"
