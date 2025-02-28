@@ -205,7 +205,7 @@ class CustomHelpFormatter(RawDescriptionHelpFormatter):
 
     def format_help(self):
         help_text = super().format_help()
-        if env.RUNNING_IN_IDE:
+        if env.RUNNING_IN_IDE and CLI_ARGUMENTS_MD.is_file():
             cli_overview, *_ = help_text.partition(CDL_EPILOG)
             current_text = CLI_ARGUMENTS_MD.read_text(encoding="utf8")
             new_text, *_ = current_text.partition("```shell")
