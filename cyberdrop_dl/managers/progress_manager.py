@@ -41,7 +41,8 @@ class ProgressManager:
         # File Download Bars
         self.manager = manager
         self.console = Console()
-        self._portrait = manager.parsed_args.cli_only_args.portrait
+        cli_only_args = manager.parsed_args.cli_only_args.model_dump(exclude_unset=True)
+        self._portrait = cli_only_args.get("portrait")
         self.file_progress: FileProgress = FileProgress(
             manager.config_manager.global_settings_data.ui_options.downloading_item_limit,
             manager,
