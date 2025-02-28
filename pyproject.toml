@@ -52,6 +52,7 @@ requires-poetry = ">=2.0"
 pre-commit = ">=4.0.1,<5"
 ruff = "0.9.6"
 snakeviz = "^2.2.2"
+tox = "^4.24.1"
 
 [tool.poetry.group.test.dependencies]
 pytest = ">=8.3.4,<9"
