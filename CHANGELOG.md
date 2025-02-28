@@ -5,6 +5,13 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [UNRELEASED]
+
+### Changed
+
+- Speed up checking for empty files & folders by up to 2x
+- Speed up sorting files by up to 1.5x
+
 ## [6.6.1] - 2025-02-28
 
 ### Fixed
