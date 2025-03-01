@@ -214,6 +214,7 @@ class XenforoCrawler(Crawler):
                 break
         return continue_scraping, post_url
 
+    @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         """Scrapes a post."""
         self.add_separate_post_title(scrape_item, post)  # type: ignore
@@ -286,13 +287,17 @@ class XenforoCrawler(Crawler):
             if not link_str or link_str.startswith("data:image/svg"):
                 continue
 
-            link = await self.get_absolute_link(link_str)
-            link = self.filter_link(link)
-            if not link:
-                continue
-            new_scrape_item = self.create_scrape_item(scrape_item, link)
-            await self.handle_link(new_scrape_item)
-            scrape_item.add_children()
+            await self.process_child(scrape_item, link_str)
+
+    @error_handling_wrapper
+    async def process_child(self, scrape_item: ScrapeItem, link_str: str) -> None:
+        link = await self.get_absolute_link(link_str)
+        link = self.filter_link(link)
+        if not link:
+            return
+        new_scrape_item = self.create_scrape_item(scrape_item, link)
+        await self.handle_link(new_scrape_item)
+        scrape_item.add_children()
 
     @singledispatchmethod
     def is_attachment(self, link: URL) -> bool:
