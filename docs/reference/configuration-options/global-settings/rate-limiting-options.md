@@ -9,7 +9,11 @@ description: These are limiting options for the program
 | ------------- | ------- |
 | `PositiveInt` | `15`    |
 
-The number of seconds to wait while connecting to a website before timing out.
+The number of seconds to wait while connecting to a website before timing out
+```
+If you have flaresolverr enabled this is the max number seconds for each capcha challege
+```
+
 
 ## `download_attempts`
 
