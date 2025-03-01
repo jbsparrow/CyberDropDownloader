@@ -174,7 +174,7 @@ class ScrapeMapper:
         """Loads failed links from database."""
         entries = await self.manager.db_manager.history_table.get_failed_items()
         for entry in entries:
-            yield self.create_item_from_entry(entry)
+            yield create_item_from_entry(entry)
 
     async def load_all_links(self) -> AsyncGenerator[ScrapeItem]:
         """Loads all links from database."""
@@ -182,14 +182,14 @@ class ScrapeMapper:
         before = self.manager.parsed_args.cli_only_args.completed_before or datetime.now().date()
         entries = await self.manager.db_manager.history_table.get_all_items(after, before)
         for entry in entries:
-            yield self.create_item_from_entry(entry)
+            yield create_item_from_entry(entry)
 
     async def load_all_bunkr_failed_links_via_hash(self) -> AsyncGenerator[ScrapeItem]:
         """Loads all bunkr links with maintenance hash."""
         entries = await self.manager.db_manager.history_table.get_all_bunkr_failed()
         entries = sorted(set(entries), reverse=True, key=lambda x: arrow.get(x[-1]))
         for entry in entries:
-            yield self.create_item_from_entry(entry)
+            yield create_item_from_entry(entry)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -199,18 +199,6 @@ class ScrapeMapper:
             scrape_item.url = URL(scrape_item.url)
         if self.filter_items(scrape_item):
             await self.send_to_crawler(scrape_item)
-
-    def create_item_from_entry(self, entry: Sequence) -> ScrapeItem:
-        url = URL(entry[0])
-        retry_path = Path(entry[1])
-        item = ScrapeItem(url=url, part_of_album=True, retry=True, retry_path=retry_path)
-        completed_at = entry[2]
-        created_at = entry[3]
-        if not isinstance(item.url, URL):
-            item.url = URL(item.url)
-        item.completed_at = completed_at
-        item.created_at = created_at
-        return item
 
     async def send_to_crawler(self, scrape_item: ScrapeItem) -> None:
         """Maps URLs to their respective handlers."""
@@ -345,3 +333,16 @@ def regex_links(line: str) -> list[URL]:
         encoded = "%" in link
         yarl_links.append(URL(link, encoded=encoded))
     return yarl_links
+
+
+def create_item_from_entry(entry: Sequence) -> ScrapeItem:
+    url = URL(entry[0])
+    retry_path = Path(entry[1])
+    item = ScrapeItem(url=url, part_of_album=True, retry=True, retry_path=retry_path)
+    completed_at = entry[2]
+    created_at = entry[3]
+    if not isinstance(item.url, URL):
+        item.url = URL(item.url)
+    item.completed_at = completed_at
+    item.created_at = created_at
+    return item
