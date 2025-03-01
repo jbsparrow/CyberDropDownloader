@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import datetime
 import enum
 import json
@@ -30,8 +29,8 @@ class Dumper:
         for item in self.manager.path_manager.completed_downloads:
             yield convert_to_dict(item)
 
-    async def run(self) -> None:
-        await dump_jsonl(self.get_media_items_as_dict(), self.jsonl_file)
+    def run(self) -> None:
+        dump_jsonl(self.get_media_items_as_dict(), self.jsonl_file)
 
 
 def convert_to_dict(media_item: MediaItem) -> dict:
@@ -45,12 +44,11 @@ def convert_to_dict(media_item: MediaItem) -> dict:
     return {k: v for k, v in item.items() if k not in KEYS_TO_REMOVE}
 
 
-async def dump_jsonl(data: Generator[dict], file: Path) -> None:
+def dump_jsonl(data: Generator[dict], file: Path) -> None:
     with file.open("w", encoding="utf8") as f:
         for item in data:
-            json.dump(item, f, cls=JSONStrEncoder)
+            json.dump(item, f, cls=JSONStrEncoder, ensure_ascii=False)
             f.write("\n")
-            await asyncio.sleep(0)  # required to update the UI, but there's no UI at the moment
 
 
 class JSONStrEncoder(json.JSONEncoder):
