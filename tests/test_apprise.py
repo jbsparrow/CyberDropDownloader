@@ -1,17 +1,19 @@
+import inspect
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import pytest
+from rich.text import Text
 
 from cyberdrop_dl.managers.config_manager import ConfigManager
 from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.managers.path_manager import PathManager
-from cyberdrop_dl.utils import apprise
+from cyberdrop_dl.utils import apprise, constants
 from cyberdrop_dl.utils.constants import NotificationResult
 from tests.fake_classes.managers import FakeCacheManager
 
-TEST_FILES_PATH = Path("tests/test_files/apprise")
+TEST_FILES_PATH = Path(__file__).parent / "test_files/apprise"
 FAKE_MANAGER = Manager()
 FAKE_MANAGER.cache_manager = FakeCacheManager(FAKE_MANAGER)
 FAKE_MANAGER.config_manager = ConfigManager(FAKE_MANAGER)
@@ -28,6 +30,7 @@ class AppriseTestCase:
     include: list[str] = field(default_factory=list)
     exclude: list[str] = field(default_factory=list)
     file: Path | None = None
+    name: str = "Testing Apprise"
 
 
 def test_get_apprise_urls():
@@ -74,12 +77,13 @@ def test_get_apprise_urls():
 
 
 async def send_notification(test_case: AppriseTestCase):
-    assert URL_SUCCESS, "Email URL should be set on enviroment"
+    assert URL_SUCCESS, "Apprise URL should be set on enviroment"
     FAKE_MANAGER.config_manager.apprise_urls = []
     if test_case.urls and any(test_case.urls):
         FAKE_MANAGER.config_manager.apprise_urls = apprise.get_apprise_urls(urls=test_case.urls)
     FAKE_MANAGER.path_manager = PathManager(FAKE_MANAGER)
     FAKE_MANAGER.path_manager.main_log = test_case.file or TEST_FILES_PATH / "valid_single_url.txt"
+    constants.LOG_OUTPUT_TEXT = Text(test_case.name)
     result, logs = await apprise.send_apprise_notifications(FAKE_MANAGER)
     assert result.value == test_case.result.value, f"Result for this case should be {test_case.result.value}"
     assert isinstance(logs, list), "Invalid return type for logs"
@@ -94,7 +98,11 @@ async def send_notification(test_case: AppriseTestCase):
 
 
 async def test_failed_notification():
-    test_case = AppriseTestCase(urls=[URL_FAIL], result=NotificationResult.FAILED)
+    test_case = AppriseTestCase(
+        urls=[URL_FAIL],
+        result=NotificationResult.FAILED,
+        name=inspect.currentframe().f_code.co_name,  # type: ignore
+    )
     await send_notification(test_case)
 
 
@@ -102,8 +110,8 @@ async def test_successful_notification():
     test_case = AppriseTestCase(
         urls=[URL_SUCCESS],
         result=NotificationResult.SUCCESS,
-        include=["Sent Email to"],
-        exclude=["Preparing Email attachment"],
+        include=["Sent Discord notification", "Discord Payload"],
+        name=inspect.currentframe().f_code.co_name,  # type: ignore
     )
     await send_notification(test_case)
 
@@ -112,7 +120,8 @@ async def test_successful_notification_with_successful_attachment():
     test_case = AppriseTestCase(
         urls=[URL_SUCCESS_ATTACH_LOGS],
         result=NotificationResult.SUCCESS,
-        include=["Sent Email to", "Preparing Email attachment"],
+        include=["Sent Discord notification", "Discord Payload"],
+        name=inspect.currentframe().f_code.co_name,  # type: ignore
     )
     await send_notification(test_case)
 
@@ -121,22 +130,28 @@ async def test_successful_notification_with_failed_attachment():
     test_case = AppriseTestCase(
         urls=[URL_SUCCESS_ATTACH_LOGS],
         result=NotificationResult.SUCCESS,
-        include=["Sent Email to"],
-        exclude=["Preparing Email attachment"],
+        include=["Sent Discord notification", "Discord Payload", "Unable to get copy of main log file"],
         file=TEST_FILES_PATH / "file_that_does_exists.txt",
+        name=inspect.currentframe().f_code.co_name,  # type: ignore
     )
     await send_notification(test_case)
 
 
 async def test_none_notification():
     test_case = AppriseTestCase(
-        urls=[""], result=NotificationResult.NONE, include=[NotificationResult.NONE.value.plain]
+        urls=[""],
+        result=NotificationResult.NONE,
+        include=[NotificationResult.NONE.value.plain],
+        name=inspect.currentframe().f_code.co_name,  # type: ignore
     )
     await send_notification(test_case)
 
 
 async def test_partial_notification():
     test_case = AppriseTestCase(
-        urls=[URL_SUCCESS_ATTACH_LOGS, URL_FAIL], result=NotificationResult.PARTIAL, include=["Sent Email to"]
+        urls=[URL_SUCCESS_ATTACH_LOGS, URL_FAIL],
+        result=NotificationResult.PARTIAL,
+        include=["Connection error while submitting email", "Sent Discord notification"],
+        name=inspect.currentframe().f_code.co_name,  # type: ignore
     )
     await send_notification(test_case)

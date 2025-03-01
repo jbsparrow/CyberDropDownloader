@@ -11,8 +11,6 @@ on:
 
 jobs:
   test:
-    env:
-        APPRISE_TEST_EMAIL_URL: ${{ secrets.APPRISE_TEST_EMAIL_URL }}
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -42,4 +40,31 @@ jobs:
 
       - name: Run pytest
         run: |
-          poetry run pytest -v --cov
+          poetry run pytest -v --cov --ignore=tests/test_apprise.py
+
+  test_apprise:
+    env:
+      APPRISE_TEST_EMAIL_URL: ${{ secrets.APPRISE_TEST_EMAIL_URL }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.11
+
+      - name: Install Poetry
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          export PATH="$HOME/.poetry/bin:$PATH"
+
+      - name: Install dependencies
+        run: |
+          poetry install
+
+      - name: Run pytest
+        run: |
+          poetry run pytest --cov
