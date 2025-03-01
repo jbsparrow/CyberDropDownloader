@@ -48,7 +48,8 @@ BASE_CDNS = [
     r"mlk-bk\.cdn\.gigachad-cdn",
 ]
 
-API_ENTRYPOINT = URL("https://get.bunkrr.su/api/vs")
+DOWNLOAD_API_ENTRYPOINT = URL("https://get.bunkrr.su/api/vs")
+STREAMING_API_ENTRYPOINT = URL("https://bunkr.site/api/vs")
 
 EXTENDED_CDNS = [f"cdn-{cdn}" for cdn in BASE_CDNS]
 IMAGE_CDNS = [f"i-{cdn}" for cdn in BASE_CDNS]
@@ -114,7 +115,7 @@ class BunkrrCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
 
-        if is_reinforced_link(scrape_item.url):  #  get.bunkr.su/file/file_id>
+        if is_reinforced_link(scrape_item.url):  #  get.bunkr.su/file/<file_id>
             return await self.reinforced_file(scrape_item)
 
         if "a" in scrape_item.url.parts:  #  bunkr.site/a/<album_id>
@@ -123,7 +124,7 @@ class BunkrrCrawler(Crawler):
         if is_cdn(scrape_item.url) and not is_stream_redirect(scrape_item.url):  # kebab.bunkr.su/<uuid>
             return await self.handle_direct_link(scrape_item, scrape_item.url, fallback_filename=scrape_item.url.name)
 
-        # bunkr.su/f/<filename> or bunkr.su/<short_file_id> or cdn.bunkr.su/<file_id> (stream redirect)
+        # bunkr.su/f/<filename>, bunkr.su/f/<file_slug>, bunkr.su/<short_file_id> or cdn.bunkr.su/<file_id> (stream redirect)
         await self.file(scrape_item)
 
     @error_handling_wrapper
@@ -165,8 +166,7 @@ class BunkrrCrawler(Crawler):
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a file from a streaming URL."""
-        soup = link_container = date = None  # type: ignore
-        src_selector = "src"
+        soup = link = date = None  # type: ignore
         if is_stream_redirect(scrape_item.url):
             soup, scrape_item.url = await self.client.get_soup_and_return_url(self.domain, scrape_item.url)
 
@@ -178,24 +178,27 @@ class BunkrrCrawler(Crawler):
             async with self.request_limiter:
                 soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        # try video
-        if not self.manager.config_manager.deep_scrape:
-            link_container = soup.select_one(VIDEO_SELECTOR)
+        image_container = soup.select_one(IMAGE_PREVIEW_SELECTOR)
+        download_link_container = soup.select_one(DOWNLOAD_BUTTON_SELECTOR)
 
-        # try image
-        if not (link_container or self.manager.config_manager.deep_scrape):
-            link_container = soup.select_one(IMAGE_PREVIEW_SELECTOR)
+        # Try image first to not make any aditional request
+        if image_container:
+            link_str: str = image_container.get("src")  # type: ignore
+            link = self.parse_url(link_str)
 
-        # fallback for everything else
-        if not link_container:
-            link_container = soup.select_one(DOWNLOAD_BUTTON_SELECTOR)
-            src_selector = "href"
+        # Try to get downloadd URL from streaming API. Should work for most files, even none video files
+        if not link and "f" in scrape_item.url.parts:
+            link = await self.get_download_url_from_api(scrape_item.url)
 
-        link_str: str = link_container.get(src_selector) if link_container else None  # type: ignore
-        if not link_str:
-            raise ScrapeError(422, "Couldn't find source", origin=scrape_item)
+        # Fallback for everything else, try to get the download URL. `handle_direct_link` will make the final request to the API
+        if not link and download_link_container:
+            link_str: str = download_link_container.get("href")  # type: ignore
+            link = self.parse_url(link_str)
 
-        link = self.parse_url(link_str)
+        # Everything failed, abort
+        if not link:
+            raise ScrapeError(422, "Could not find source")
+
         if not scrape_item.possible_datetime:
             date_str = soup.select_one(ITEM_DATE_SELECTOR)
             if date_str:
@@ -213,11 +216,11 @@ class BunkrrCrawler(Crawler):
         soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         title: str = soup.select_one("h1").text.strip()  # type: ignore
-        link: URL = await self.handle_reinforced_link(scrape_item)
+        link: URL = await self.get_download_url_from_api(scrape_item.url)
         await self.handle_direct_link(scrape_item, link, fallback_filename=title)
 
     @error_handling_wrapper
-    async def handle_direct_link(self, scrape_item: ScrapeItem, url: URL, fallback_filename: str | None = None) -> None:
+    async def handle_direct_link(self, scrape_item: ScrapeItem, url: URL, fallback_filename: str = "") -> None:
         """Handles direct links (CDNs URLs) before sending them to the downloader.
 
         `fallback_filename` will only be used if the link has no `n` query parameter"""
@@ -226,7 +229,7 @@ class BunkrrCrawler(Crawler):
 
         if is_reinforced_link(link):
             scrape_item.url = link
-            link = await self.handle_reinforced_link(scrape_item)
+            link = await self.get_download_url_from_api(link)
 
         link = override_cdn(link)
 
@@ -235,7 +238,7 @@ class BunkrrCrawler(Crawler):
         except NoExtensionError:
             filename, ext = self.get_filename_and_ext(scrape_item.url.name, assume_ext=".mp4")
 
-        custom_filename: str = link.query.get("n") or fallback_filename  # type: ignore
+        custom_filename: str = link.query.get("n") or fallback_filename
         custom_filename, _ = self.get_filename_and_ext(custom_filename)
 
         if is_cdn(scrape_item.url) and not is_reinforced_link(scrape_item.url):
@@ -243,19 +246,23 @@ class BunkrrCrawler(Crawler):
 
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
-    async def handle_reinforced_link(self, scrape_item: ScrapeItem) -> URL:
-        """Gets the download link for a given reinforced URL (get.bunkr.su/<file_id>)."""
-        url = scrape_item.url
-        file_id_index = url.parts.index("file") + 1
-        file_id = url.parts[file_id_index]
-        data = json.dumps({"id": file_id})
-        headers = {
-            "Referer": str(url),
-            "Content-Type": "application/json",
-            "Origin": "https://get.bunkrr.su",
-        }
+    async def get_download_url_from_api(self, url: URL) -> URL:
+        """Gets the download link for a given URL
+
+        1. Reinforced URL (get.bunkr.su/<file_id>). or
+        2. Streaming URL (bunkr.site/f/<file_slug>)"""
+
+        api_url = DOWNLOAD_API_ENTRYPOINT
+        headers = {"Referer": str(url), "Content-Type": "application/json"}
+        if is_reinforced_link(url):
+            data_dict = {"id": get_part_next_to(url, "file")}
+        else:
+            data_dict = {"slug": get_part_next_to(url, "f")}
+            api_url = STREAMING_API_ENTRYPOINT
+
+        data = json.dumps(data_dict)
         async with self.request_limiter:
-            json_resp: dict = await self.client.post_data(self.domain, API_ENTRYPOINT, data=data, headers_inc=headers)
+            json_resp: dict = await self.client.post_data(self.domain, api_url, data=data, headers_inc=headers)
 
         api_response = ApiResponse(**json_resp)
         link_str = decrypt_api_response(api_response)
@@ -266,6 +273,11 @@ class BunkrrCrawler(Crawler):
         return any(part in url.host.split(".") for part in ("burger",)) or self.manager.config_manager.deep_scrape
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+
+def get_part_next_to(url: URL, part: str) -> str:
+    part_index = url.parts.index(part) + 1
+    return url.parts[part_index]
 
 
 def is_stream_redirect(url: URL) -> bool:
