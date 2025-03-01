@@ -55,10 +55,10 @@ echo Attempting to start venv
 call "%VENV_DIR%\Scripts\activate.bat"
 echo:
 
-if [ "$AUTO_UPDATE_PIP" = true ]; then
-    echo Updating pip...
-    python -m pip install --upgrade pip
-fi
+if "%AUTO_UPDATE_PIP%" == "true" (
+  echo Updating pip...
+  python -m pip install --upgrade pip
+)
 
 pip uninstall -y -qq cyberdrop-dl
 rem Ensure Cyberdrop-DL is installed
