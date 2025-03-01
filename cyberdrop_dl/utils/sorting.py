@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import contextlib
 import itertools
 from fractions import Fraction
@@ -24,8 +23,7 @@ if TYPE_CHECKING:
 
 
 def get_modified_date(file: Path) -> datetime:
-    file_obj = File(str(file))
-    return file_obj.modified
+    return File(str(file)).modified
 
 
 class Sorter:
@@ -36,10 +34,11 @@ class Sorter:
         self.incrementer_format: str = manager.config_manager.settings_data.sorting.sort_incrementer_format
         self.db_manager = manager.db_manager
 
-        self.audio_format: str | None = manager.config_manager.settings_data.sorting.sorted_audio
-        self.image_format: str | None = manager.config_manager.settings_data.sorting.sorted_image
-        self.video_format: str | None = manager.config_manager.settings_data.sorting.sorted_video
-        self.other_format: str | None = manager.config_manager.settings_data.sorting.sorted_other
+        settings = manager.config_manager.settings_data.sorting
+        self.audio_format: str | None = settings.sorted_audio
+        self.image_format: str | None = settings.sorted_image
+        self.video_format: str | None = settings.sorted_video
+        self.other_format: str | None = settings.sorted_other
 
     def _get_files(self, directory: Path) -> list[Path]:
         """Finds all files in a directory and returns them in a list."""
@@ -47,12 +46,15 @@ class Sorter:
 
     def _move_file(self, old_path: Path, new_path: Path) -> bool:
         """Moves a file to a destination folder."""
-        if old_path.resolve() == new_path.resolve():
+        if new_path.is_symlink():
+            new_path = new_path.resolve()
+        if old_path == new_path:
             return True
-        try:
-            new_path.parent.mkdir(parents=True, exist_ok=True)
-            old_path.rename(new_path)
 
+        new_path.parent.mkdir(parents=True, exist_ok=True)
+
+        try:
+            old_path.rename(new_path)
         except FileExistsError:
             if old_path.stat().st_size == new_path.stat().st_size:
                 old_path.unlink()
@@ -60,9 +62,11 @@ class Sorter:
             for auto_index in itertools.count(1):
                 new_filename = f"{new_path.stem}{self.incrementer_format.format(i=auto_index)}{new_path.suffix}"
                 possible_new_path = new_path.parent / new_filename
-                if not possible_new_path.is_file():
+                try:
                     old_path.rename(possible_new_path)
                     break
+                except FileExistsError:
+                    continue
         except OSError:
             return False
 
@@ -71,26 +75,30 @@ class Sorter:
     async def run(self) -> None:
         """Sorts the files in the download directory into their respective folders."""
         if not self.download_folder.is_dir():
-            log_with_color(f"Download directory ({self.download_folder}) does not exists", "red", 40)
+            log_with_color(f"Download directory ({self.download_folder}) does not exist", "red", 40)
             return
 
         log_with_color("\nSorting downloads, please wait", "cyan", 20)
         self.sorted_folder.mkdir(parents=True, exist_ok=True)
 
         files_to_sort: dict[str, list[Path]] = {}
+
         with self.manager.live_manager.get_sort_live(stop=True):
             subfolders = [f.resolve() for f in self.download_folder.iterdir() if f.is_dir()]
             for folder in subfolders:
                 files_to_sort[folder.name] = self._get_files(folder)
             await self._sort_files(files_to_sort)
             log_with_color("DONE!", "green", 20)
+
         purge_dir_tree(self.download_folder)
 
     async def _sort_files(self, files_to_sort: dict[str, list[Path]]) -> None:
         queue_length = len(files_to_sort)
         self.manager.progress_manager.sort_progress.set_queue_length(queue_length)
+
         for folder_name, files in files_to_sort.items():
             task_id = self.manager.progress_manager.sort_progress.add_task(folder_name, len(files))
+
             for file in files:
                 ext = file.suffix.lower()
                 if ".part" in ext:
@@ -106,10 +114,10 @@ class Sorter:
                     self.sort_other(file, folder_name)
 
                 self.manager.progress_manager.sort_progress.advance_folder(task_id)
+
             self.manager.progress_manager.sort_progress.remove_task(task_id)
             queue_length -= 1
             self.manager.progress_manager.sort_progress.set_queue_length(queue_length)
-            await asyncio.sleep(1)  # required to update the UI
 
     def sort_audio(self, file: Path, base_name: str) -> None:
         """Sorts an audio file into the sorted audio folder."""
@@ -215,5 +223,4 @@ class Sorter:
                 **kwargs,
             ),
         )
-
         return self._move_file(file, new_file)
