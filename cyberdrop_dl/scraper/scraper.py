@@ -43,10 +43,14 @@ class ScrapeMapper:
         self.jdownloader = JDownloader(self.manager)
         self.jdownloader_whitelist = self.manager.config_manager.settings_data.runtime_options.jdownloader_whitelist
         self.using_input_file = False
-        self.group_count = 0
+        self.groups = set()
         self.count = 0
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+    @property
+    def group_count(self) -> int:
+        return len(self.groups)
 
     def start_scrapers(self) -> None:
         """Starts all scrapers."""
@@ -106,18 +110,21 @@ class ScrapeMapper:
             items_generator = self.load_links()
 
         async for item in items_generator:
+            item.children_limits = self.manager.config_manager.settings_data.download_options.maximum_number_of_children
             if self.filter_items(item):
                 if item_limit and self.count >= item_limit:
                     break
                 yield item
                 self.count += 1
 
+        if not self.count:
+            log("No valid links found.", 30)
+
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def parse_input_file_groups(self) -> dict[str, list[URL]]:
+    async def parse_input_file_groups(self) -> AsyncGenerator[tuple[str, list[URL]]]:
         """Split URLs from input file by their groups."""
         input_file = self.manager.path_manager.input_file
-        link_groups: dict[str, list[URL]] = {"": []}
         block_quote = False
         current_group_name = ""
         async with aiofiles.open(input_file, encoding="utf8") as f:
@@ -126,18 +133,16 @@ class ScrapeMapper:
 
                 if line.startswith(("---", "===")):
                     current_group_name = line.replace("---", "").replace("===", "").strip()
-                    if current_group_name and current_group_name not in link_groups:
-                        link_groups[current_group_name] = []
+                    if current_group_name and current_group_name not in self.groups:
+                        self.groups.add(current_group_name)
 
                 if current_group_name:
-                    link_groups[current_group_name].extend(regex_links(line))
+                    yield (current_group_name, regex_links(line))
                     continue
 
                 block_quote = not block_quote if line == "#\n" else block_quote
                 if not block_quote:
-                    link_groups[""].extend(regex_links(line))
-        self.group_count = len(link_groups) - 1
-        return link_groups
+                    yield ("", regex_links(line))
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~``
 
@@ -148,26 +153,22 @@ class ScrapeMapper:
         if not input_file.is_file():
             input_file.touch(exist_ok=True)
 
-        link_groups: dict[str, list[URL]] = {"": []}
         if not self.manager.parsed_args.cli_only_args.links:
             self.using_input_file = True
-            link_groups = await self.parse_input_file_groups()
+            async for group_name, urls in self.parse_input_file_groups():
+                for url in urls:
+                    if not url:
+                        continue
+                    item = self.create_item_from_link(url)
+                    if group_name:
+                        item.add_to_parent_title(group_name)
+                        item.part_of_album = True
+                    yield item
 
-        else:
-            link_groups[""] = self.manager.parsed_args.cli_only_args.links  # type: ignore
+            return
 
-        if not link_groups:
-            log("No valid links found.", 30)
-
-        for title, urls in link_groups.items():
-            for url in urls:
-                if not url:
-                    continue
-                item = self.create_item_from_link(url)
-                if title:
-                    item.add_to_parent_title(title)
-                    item.part_of_album = True
-                yield item
+        for url in self.manager.parsed_args.cli_only_args.links:
+            yield self.create_item_from_link(url)  # type: ignore
 
     async def load_failed_links(self) -> AsyncGenerator[ScrapeItem]:
         """Loads failed links from database."""
@@ -200,9 +201,7 @@ class ScrapeMapper:
             await self.send_to_crawler(scrape_item)
 
     def create_item_from_link(self, link: URL) -> ScrapeItem:
-        item = ScrapeItem(url=link)
-        item.children_limits = self.manager.config_manager.settings_data.download_options.maximum_number_of_children
-        return item
+        return ScrapeItem(url=link)
 
     def create_item_from_entry(self, entry: Sequence) -> ScrapeItem:
         url = URL(entry[0])
@@ -214,7 +213,6 @@ class ScrapeMapper:
             item.url = URL(item.url)
         item.completed_at = completed_at
         item.created_at = created_at
-        item.children_limits = self.manager.config_manager.settings_data.download_options.maximum_number_of_children
         return item
 
     async def send_to_crawler(self, scrape_item: ScrapeItem) -> None:
@@ -340,10 +338,11 @@ def regex_links(line: str) -> list[URL]:
 
     This allows code blocks or full paragraphs to be copy and pasted into the URLs.txt.
     """
-    yarl_links = []
-    if line.lstrip().rstrip().startswith("#"):
-        return yarl_links
 
+    if line.lstrip().rstrip().startswith("#"):
+        return []
+
+    yarl_links = []
     all_links = [x.group().replace(".md.", ".") for x in re.finditer(REGEX_LINKS, line)]
     for link in all_links:
         encoded = "%" in link
