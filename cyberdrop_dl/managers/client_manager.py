@@ -6,7 +6,7 @@ import ssl
 from dataclasses import dataclass
 from http import HTTPStatus
 from http.cookiejar import MozillaCookieJar
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import aiohttp
 import certifi
@@ -247,10 +247,11 @@ class Flaresolverr:
 
     def __init__(self, client_manager: ClientManager) -> None:
         self.client_manager = client_manager
-        self.flaresolverr_host = client_manager.manager.config_manager.global_settings_data.general.flaresolverr
+        self.flaresolverr_host: URL = client_manager.manager.config_manager.global_settings_data.general.flaresolverr  # type: ignore
         self.enabled = bool(self.flaresolverr_host)
-        self.session_id = None
-        self.timeout = aiohttp.ClientTimeout(total=120000, connect=60000)
+        self.session_id: str = ""
+        self.session_create_timeout = aiohttp.ClientTimeout(total=5 * 60, connect=60)  # 5 minutes to create session
+        self.timeout = client_manager.scraper_session._timeouts  # Config timeout for normal requests
         self.session_lock = asyncio.Lock()
         self.request_lock = asyncio.Lock()
         self.request_count = 0
@@ -270,14 +271,22 @@ class Flaresolverr:
                 await self._create_session()
         return await self._make_request(command, client_session, **kwargs)
 
-    async def _make_request(self, command: str, client_session: ClientSession, **kwargs):
-        client_session = kwargs.pop("client_session", client_session)
+    async def _make_request(self, command: str, client_session: ClientSession, **kwargs) -> dict[str, Any]:
+        timeout = self.timeout
+        if command == "sessions.create":
+            timeout = self.session_create_timeout
+
         headers = client_session.headers.copy()
         headers.update({"Content-Type": "application/json"})
         for key, value in kwargs.items():
             if isinstance(value, URL):
                 kwargs[key] = str(value)
-        data = {"cmd": command, "maxTimeout": 60000, "session": self.session_id} | kwargs
+
+        data = {
+            "cmd": command,
+            "maxTimeout": 60_000,  # This timeout is in miliseconds (60s)
+            "session": self.session_id,
+        } | kwargs
 
         self.request_count += 1
         msg = f"Waiting For Flaresolverr Response [{self.request_count}]"
@@ -290,7 +299,7 @@ class Flaresolverr:
                 ssl=self.client_manager.ssl_context,
                 proxy=self.client_manager.proxy,
                 json=data,
-                timeout=self.timeout,
+                timeout=timeout,
             ) as response,
         ):
             json_obj: dict = await response.json()  # type: ignore
@@ -301,7 +310,7 @@ class Flaresolverr:
         """Creates a permanet flaresolverr session."""
         session_id = "cyberdrop-dl"
         async with ClientSession() as client_session:
-            flaresolverr_resp = await self._make_request("sessions.create", client_session)
+            flaresolverr_resp = await self._make_request("sessions.create", client_session, session=session_id)
         status = flaresolverr_resp.get("status")
         if status != "ok":
             raise DDOSGuardError(message="Failed to create flaresolverr session")
