@@ -48,7 +48,7 @@ def convert_to_dict(media_item: MediaItem) -> dict:
 async def dump_jsonl(data: Generator[dict], file: Path) -> None:
     with file.open("w", encoding="utf8") as f:
         for item in data:
-            json.dump(item, f, cls=JSONStrEncoder)
+            json.dump(item, f, cls=JSONStrEncoder, ensure_ascii=False)
             f.write("\n")
             await asyncio.sleep(0)  # required to update the UI, but there's no UI at the moment
 
