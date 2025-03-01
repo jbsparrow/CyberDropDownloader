@@ -212,7 +212,7 @@ def purge_dir_tree(dirname: Path) -> None:
         # Remove empty files
         for file_name in filenames:
             file_path = dir_path / file_name
-            if file_path.stat().st_size == 0:
+            if file_path.exists() and file_path.stat().st_size == 0:
                 file_path.unlink()
 
         # Remove empty directories
