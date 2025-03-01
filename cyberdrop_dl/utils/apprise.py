@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import sys
 import tempfile
 from dataclasses import dataclass
 from enum import IntEnum
@@ -89,6 +90,7 @@ def get_apprise_urls(*, file: Path | None = None, urls: list[str] | None = None)
 
     except ValidationError as e:
         handle_validation_error(e, title="Apprise", file=file)
+        sys.exit(1)
 
 
 def _simplify_urls(apprise_urls: list[AppriseURLModel]) -> list[AppriseURL]:
@@ -194,6 +196,7 @@ async def send_apprise_notifications(manager: Manager) -> tuple[constants.Notifi
     main_log = manager.path_manager.main_log.resolve()
     results = {}
     all_urls = [x.raw_url for x in apprise_urls]
+    log_lines = []
 
     with (
         apprise.LogCapture(level=10, fmt="%(levelname)-7s - %(message)s") as capture,
@@ -207,6 +210,7 @@ async def send_apprise_notifications(manager: Manager) -> tuple[constants.Notifi
             "simplified": {},
         }
         attach_file_failed_msg = "Unable to get copy of main log file. 'attach_logs' URLs will be proccessed without it"
+        log_lines = [LogLine(LogLevel.ERROR, attach_file_failed_msg)]
         try:
             shutil.copy(main_log, temp_main_log)
             notifications_to_send["attach_logs"]["attach"] = str(temp_main_log.resolve())
@@ -218,4 +222,5 @@ async def send_apprise_notifications(manager: Manager) -> tuple[constants.Notifi
             results[tag] = await apprise_obj.async_notify(**msg, tag=tag)
         apprise_logs = capture.getvalue()
 
-    return _process_results(all_urls, results, apprise_logs)
+    result, new_log_lines = _process_results(all_urls, results, apprise_logs)
+    return result, log_lines + new_log_lines
