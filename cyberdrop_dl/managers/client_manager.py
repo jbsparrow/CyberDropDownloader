@@ -65,7 +65,7 @@ class ClientManager:
 
         self.ssl_context = ssl.create_default_context(cafile=certifi.where()) if self.verify_ssl else False
         self.cookies = aiohttp.CookieJar(quote_cookie=False)
-        self.proxy = global_settings_data.general.proxy
+        self.proxy: URL | None = global_settings_data.general.proxy  # type: ignore
 
         self.domain_rate_limits = {
             "bunkrr": AsyncLimiter(5, 1),
@@ -124,7 +124,7 @@ class ClientManager:
                     if simplified_domain in domains_seen:
                         log(f"Previous cookies for domain {simplified_domain} detected. They will be overwritten", 30)
                 domains_seen.add(simplified_domain)
-                self.cookies.update_cookies({cookie.name: cookie.value}, response_url=URL(f"https://{cookie.domain}"))
+                self.cookies.update_cookies({cookie.name: cookie.value}, response_url=URL(f"https://{cookie.domain}"))  # type: ignore
 
         log_spacer(20, log_to_console=False)
 
@@ -154,8 +154,9 @@ class ClientManager:
         headers = response.headers
         message = None
 
-        if download and headers.get("ETag") in DOWNLOAD_ERROR_ETAGS:
-            message = DOWNLOAD_ERROR_ETAGS.get(headers.get("ETag"))
+        e_tag = headers.get("ETag")
+        if download and e_tag in DOWNLOAD_ERROR_ETAGS:
+            message = DOWNLOAD_ERROR_ETAGS.get(e_tag)
             raise DownloadError(HTTPStatus.NOT_FOUND, message=message, origin=origin)
 
         if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
@@ -191,7 +192,7 @@ class ClientManager:
     def check_ddos_guard(soup: BeautifulSoup) -> bool:
         if soup.title:
             for title in DDOS_GUARD_CHALLENGE_TITLES:
-                challenge_found = title.casefold() == soup.title.string.casefold()
+                challenge_found = title.casefold() == soup.title.string.casefold()  # type: ignore
                 if challenge_found:
                     return True
 
@@ -206,7 +207,7 @@ class ClientManager:
     def check_cloudflare(soup: BeautifulSoup) -> bool:
         if soup.title:
             for title in CLOUDFLARE_CHALLENGE_TITLES:
-                challenge_found = title.casefold() == soup.title.string.casefold()
+                challenge_found = title.casefold() == soup.title.string.casefold()  # type: ignore
                 if challenge_found:
                     return True
 
@@ -320,7 +321,7 @@ class Flaresolverr:
         if self.session_id:
             async with ClientSession() as client_session:
                 await self._make_request("sessions.destroy", client_session, session=self.session_id)
-                self.session_id = None
+            self.session_id = ""
 
     async def get(
         self,
