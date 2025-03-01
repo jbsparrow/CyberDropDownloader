@@ -54,12 +54,12 @@ jobs:
           mkdir -p zip/Cyberdrop-DL.v${{ env.VERSION_NUMBER }}
           cp -r scripts/release/* zip/Cyberdrop-DL.v${{ env.VERSION_NUMBER }}
           cd zip
-          zip -r ../Cyberdrop-DL.v${{ env.VERSION_NUMBER }}.zip *
+          zip -r ../Cyberdrop-DL.v${{ env.TAG_NAME }}.zip *
 
       - name: Create GH release
         id: create_release
         uses: softprops/action-gh-release@v2
         with:
-          name: Cyberdrop-DL V${{ env.VERSION_NUMBER }} Start Files
+          name: ${{ env.TAG_NAME }}
           body: ${{ env.CHANGELOG_CONTENT }}
-          files: Cyberdrop-DL.v${{ env.VERSION_NUMBER }}.zip
+          files: Cyberdrop-DL.v${{ env.TAG_NAME }}.zip
