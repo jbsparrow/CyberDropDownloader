@@ -116,7 +116,7 @@ async def post_runtime(manager: Manager) -> None:
 
     if manager.config_manager.settings_data.files.dump_json:
         dumper = Dumper(manager)
-        await dumper.run()
+        dumper.run()
 
 
 def setup_startup_logger(*, first_time_setup: bool = False) -> None:
