@@ -159,7 +159,7 @@ class ScrapeMapper:
                 for url in urls:
                     if not url:
                         continue
-                    item = self.create_item_from_link(url)
+                    item = ScrapeItem(url=url)
                     if group_name:
                         item.add_to_parent_title(group_name)
                         item.part_of_album = True
@@ -168,7 +168,7 @@ class ScrapeMapper:
             return
 
         for url in self.manager.parsed_args.cli_only_args.links:
-            yield self.create_item_from_link(url)  # type: ignore
+            yield ScrapeItem(url=url)  # type: ignore
 
     async def load_failed_links(self) -> AsyncGenerator[ScrapeItem]:
         """Loads failed links from database."""
@@ -199,9 +199,6 @@ class ScrapeMapper:
             scrape_item.url = URL(scrape_item.url)
         if self.filter_items(scrape_item):
             await self.send_to_crawler(scrape_item)
-
-    def create_item_from_link(self, link: URL) -> ScrapeItem:
-        return ScrapeItem(url=link)
 
     def create_item_from_entry(self, entry: Sequence) -> ScrapeItem:
         url = URL(entry[0])
