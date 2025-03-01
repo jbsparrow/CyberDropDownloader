@@ -202,7 +202,7 @@ def parse_rich_text_by_style(text: Text, style_map: dict, default_style_map_key:
 
 def purge_dir_tree(dirname: Path) -> None:
     """Purges empty files and directories efficiently."""
-    if not dirname.exists():
+    if not dirname.is_dir():
         return
 
     # Use os.walk() to remove empty files and directories in a single pass
