@@ -131,12 +131,11 @@ class ScrapeMapper:
             async for line in f:
                 assert isinstance(line, str)
 
-                if line.startswith(("---", "===")):
+                if line.startswith(("---", "===")):  # New group begins here
                     current_group_name = line.replace("---", "").replace("===", "").strip()
-                    if current_group_name and current_group_name not in self.groups:
-                        self.groups.add(current_group_name)
 
                 if current_group_name:
+                    self.groups.add(current_group_name)
                     yield (current_group_name, regex_links(line))
                     continue
 
