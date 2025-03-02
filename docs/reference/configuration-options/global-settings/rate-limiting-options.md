@@ -9,7 +9,10 @@ description: These are limiting options for the program
 | ------------- | ------- |
 | `PositiveInt` | `15`    |
 
-The number of seconds to wait while connecting to a website before timing out.
+The number of seconds to wait while connecting to a website before timing out
+
+{% hint style="info" %} This value will also be used for Flaresolverr (if enabled) as the max number of seconds to solve a CAPTCHA challenge {% endhint %}
+
 
 ## `download_attempts`
 
