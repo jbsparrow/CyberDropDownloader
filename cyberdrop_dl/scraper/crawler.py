@@ -42,6 +42,7 @@ class Crawler(ABC):
     primary_base_domain: URL = None  # type: ignore
     DEFAULT_POST_TITLE_FORMAT = "{date} - {number} - {title}"
     update_unsupported = False
+    skip_pre_check = False
 
     def __init__(self, manager: Manager, domain: str, folder_domain: str | None = None) -> None:
         self.manager = manager
@@ -309,7 +310,8 @@ def create_task_id(func: Callable) -> Callable:
         scrape_item: ScrapeItem = args[0]
         task_id = self.scraping_progress.add_task(scrape_item.url)
         try:
-            pre_check_scrape_item(scrape_item)
+            if not self.skip_pre_check:
+                pre_check_scrape_item(scrape_item)
             return await func(self, *args, **kwargs)
         except ValueError:
             log(f"Scrape Failed: {UNKNOWN_URL_PATH_MSG}: {scrape_item.url}", 40)
