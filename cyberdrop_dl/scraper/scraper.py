@@ -27,7 +27,7 @@ from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import AsyncGenerator, Sequence
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.scraper.crawler import Crawler
@@ -43,10 +43,14 @@ class ScrapeMapper:
         self.jdownloader = JDownloader(self.manager)
         self.jdownloader_whitelist = self.manager.config_manager.settings_data.runtime_options.jdownloader_whitelist
         self.using_input_file = False
-        self.group_count = 0
+        self.groups = set()
         self.count = 0
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+    @property
+    def group_count(self) -> int:
+        return len(self.groups)
 
     def start_scrapers(self) -> None:
         """Starts all scrapers."""
@@ -88,119 +92,103 @@ class ScrapeMapper:
         self.start_jdownloader()
         await self.start_real_debrid()
         self.no_crawler_downloader.startup()
+        async for item in self.get_input_items():
+            self.manager.task_group.create_task(self.send_to_crawler(item))
 
-        async with self.manager.progress_manager.show_status_msg("Reading input URLs"):
-            if self.manager.parsed_args.cli_only_args.retry_failed:
-                items = await self.load_failed_links()
-            elif self.manager.parsed_args.cli_only_args.retry_all:
-                items = await self.load_all_links()
-            elif self.manager.parsed_args.cli_only_args.retry_maintenance:
-                items = await self.load_all_bunkr_failed_links_via_hash()
-            else:
-                items = await self.load_links()
-            filtered_items = [item for item in items if self.filter_items(item)]
-        self.process_items(filtered_items)
+    async def get_input_items(self) -> AsyncGenerator[ScrapeItem]:
+        item_limit = 0
+        if self.manager.parsed_args.cli_only_args.retry_any and self.manager.parsed_args.cli_only_args.max_items_retry:
+            item_limit = self.manager.parsed_args.cli_only_args.max_items_retry
+
+        if self.manager.parsed_args.cli_only_args.retry_failed:
+            items_generator = self.load_failed_links()
+        elif self.manager.parsed_args.cli_only_args.retry_all:
+            items_generator = self.load_all_links()
+        elif self.manager.parsed_args.cli_only_args.retry_maintenance:
+            items_generator = self.load_all_bunkr_failed_links_via_hash()
+        else:
+            items_generator = self.load_links()
+
+        async for item in items_generator:
+            item.children_limits = self.manager.config_manager.settings_data.download_options.maximum_number_of_children
+            if self.filter_items(item):
+                if item_limit and self.count >= item_limit:
+                    break
+                yield item
+                self.count += 1
+
+        if not self.count:
+            log("No valid links found.", 30)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @staticmethod
-    def regex_links(line: str) -> list:
-        """Regex grab the links from the URLs.txt file.
-
-        This allows code blocks or full paragraphs to be copy and pasted into the URLs.txt.
-        """
-        yarl_links = []
-        if line.lstrip().rstrip().startswith("#"):
-            return yarl_links
-
-        all_links = [x.group().replace(".md.", ".") for x in re.finditer(REGEX_LINKS, line)]
-        for link in all_links:
-            encoded = "%" in link
-            yarl_links.append(URL(link, encoded=encoded))
-        return yarl_links
-
-    async def parse_input_file_groups(self) -> dict[str, list[URL]]:
+    async def parse_input_file_groups(self) -> AsyncGenerator[tuple[str, list[URL]]]:
         """Split URLs from input file by their groups."""
         input_file = self.manager.path_manager.input_file
-        link_groups: dict[str, list[URL]] = {"": []}
         block_quote = False
         current_group_name = ""
         async with aiofiles.open(input_file, encoding="utf8") as f:
             async for line in f:
                 assert isinstance(line, str)
 
-                if line.startswith(("---", "===")):
+                if line.startswith(("---", "===")):  # New group begins here
                     current_group_name = line.replace("---", "").replace("===", "").strip()
-                    if current_group_name and current_group_name not in link_groups:
-                        link_groups[current_group_name] = []
 
                 if current_group_name:
-                    link_groups[current_group_name].extend(self.regex_links(line))
+                    self.groups.add(current_group_name)
+                    yield (current_group_name, regex_links(line))
                     continue
 
                 block_quote = not block_quote if line == "#\n" else block_quote
                 if not block_quote:
-                    link_groups[""].extend(self.regex_links(line))
-        self.group_count = len(link_groups) - 1
-        return link_groups
+                    yield ("", regex_links(line))
 
-    async def load_links(self) -> list[ScrapeItem]:
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~``
+
+    async def load_links(self) -> AsyncGenerator[ScrapeItem]:
         """Loads links from args / input file."""
         input_file = self.manager.path_manager.input_file
         # we need to touch the file just in case, purge_tree deletes it
         if not input_file.is_file():
             input_file.touch(exist_ok=True)
 
-        link_groups: dict[str, list[URL]] = {"": []}
         if not self.manager.parsed_args.cli_only_args.links:
             self.using_input_file = True
-            link_groups = await self.parse_input_file_groups()
+            async for group_name, urls in self.parse_input_file_groups():
+                for url in urls:
+                    if not url:
+                        continue
+                    item = ScrapeItem(url=url)
+                    if group_name:
+                        item.add_to_parent_title(group_name)
+                        item.part_of_album = True
+                    yield item
 
-        else:
-            link_groups[""].extend(self.manager.parsed_args.cli_only_args.links)  # type: ignore
+            return
 
-        link_groups = {k: list(filter(None, v)) for k, v in link_groups.items()}
-        items = []
+        for url in self.manager.parsed_args.cli_only_args.links:
+            yield ScrapeItem(url=url)  # type: ignore
 
-        if not link_groups:
-            log("No valid links found.", 30)
-        for title in link_groups:
-            for url in link_groups[title]:
-                item = self.create_item_from_link(url)
-                if title:
-                    item.add_to_parent_title(title)
-                    item.part_of_album = True
-                items.append(item)
-        return items
-
-    async def load_failed_links(self) -> list[ScrapeItem]:
+    async def load_failed_links(self) -> AsyncGenerator[ScrapeItem]:
         """Loads failed links from database."""
         entries = await self.manager.db_manager.history_table.get_failed_items()
-        return [self.create_item_from_entry(entry) for entry in entries]
+        for entry in entries:
+            yield create_item_from_entry(entry)
 
-    async def load_all_links(self) -> list[ScrapeItem]:
+    async def load_all_links(self) -> AsyncGenerator[ScrapeItem]:
         """Loads all links from database."""
         after = self.manager.parsed_args.cli_only_args.completed_after or date.fromtimestamp(0)
         before = self.manager.parsed_args.cli_only_args.completed_before or datetime.now().date()
         entries = await self.manager.db_manager.history_table.get_all_items(after, before)
-        return [self.create_item_from_entry(entry) for entry in entries]
+        for entry in entries:
+            yield create_item_from_entry(entry)
 
-    async def load_all_bunkr_failed_links_via_hash(self) -> list[ScrapeItem]:
+    async def load_all_bunkr_failed_links_via_hash(self) -> AsyncGenerator[ScrapeItem]:
         """Loads all bunkr links with maintenance hash."""
         entries = await self.manager.db_manager.history_table.get_all_bunkr_failed()
         entries = sorted(set(entries), reverse=True, key=lambda x: arrow.get(x[-1]))
-        return [self.create_item_from_entry(entry) for entry in entries]
-
-    def process_items(self, items: list[ScrapeItem]) -> None:
-        if self.manager.parsed_args.cli_only_args.retry_any and self.manager.parsed_args.cli_only_args.max_items_retry:
-            items = items[: self.manager.parsed_args.cli_only_args.max_items_retry]
-        self.count = len(items)
-        msg = f"Processing {self.count} URLs"
-        if self.group_count:
-            msg += f" from {self.group_count} groups"
-        log(msg)
-        for item in items:
-            self.manager.task_group.create_task(self.send_to_crawler(item))
+        for entry in entries:
+            yield create_item_from_entry(entry)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -210,24 +198,6 @@ class ScrapeMapper:
             scrape_item.url = URL(scrape_item.url)
         if self.filter_items(scrape_item):
             await self.send_to_crawler(scrape_item)
-
-    def create_item_from_link(self, link: URL) -> ScrapeItem:
-        item = ScrapeItem(url=link)
-        item.children_limits = self.manager.config_manager.settings_data.download_options.maximum_number_of_children
-        return item
-
-    def create_item_from_entry(self, entry: Sequence) -> ScrapeItem:
-        url = URL(entry[0])
-        retry_path = Path(entry[1])
-        item = ScrapeItem(url=url, part_of_album=True, retry=True, retry_path=retry_path)
-        completed_at = entry[2]
-        created_at = entry[3]
-        if not isinstance(item.url, URL):
-            item.url = URL(item.url)
-        item.completed_at = completed_at
-        item.created_at = created_at
-        item.children_limits = self.manager.config_manager.settings_data.download_options.maximum_number_of_children
-        return item
 
     async def send_to_crawler(self, scrape_item: ScrapeItem) -> None:
         """Maps URLs to their respective handlers."""
@@ -345,3 +315,33 @@ class ScrapeMapper:
             return True
 
         return False
+
+
+def regex_links(line: str) -> list[URL]:
+    """Regex grab the links from the URLs.txt file.
+
+    This allows code blocks or full paragraphs to be copy and pasted into the URLs.txt.
+    """
+
+    if line.lstrip().rstrip().startswith("#"):
+        return []
+
+    yarl_links = []
+    all_links = [x.group().replace(".md.", ".") for x in re.finditer(REGEX_LINKS, line)]
+    for link in all_links:
+        encoded = "%" in link
+        yarl_links.append(URL(link, encoded=encoded))
+    return yarl_links
+
+
+def create_item_from_entry(entry: Sequence) -> ScrapeItem:
+    url = URL(entry[0])
+    retry_path = Path(entry[1])
+    item = ScrapeItem(url=url, part_of_album=True, retry=True, retry_path=retry_path)
+    completed_at = entry[2]
+    created_at = entry[3]
+    if not isinstance(item.url, URL):
+        item.url = URL(item.url)
+    item.completed_at = completed_at
+    item.created_at = created_at
+    return item
