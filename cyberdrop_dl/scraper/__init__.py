@@ -53,6 +53,7 @@ from cyberdrop_dl.scraper.crawlers.rule34xyz_crawler import Rule34XYZCrawler
 from cyberdrop_dl.scraper.crawlers.saint_crawler import SaintCrawler
 from cyberdrop_dl.scraper.crawlers.scrolller_crawler import ScrolllerCrawler
 from cyberdrop_dl.scraper.crawlers.sendvid_crawler import SendVidCrawler
+from cyberdrop_dl.scraper.crawlers.sex_dot_com_crawler import SexDotComCrawler
 from cyberdrop_dl.scraper.crawlers.simpcity_crawler import SimpCityCrawler
 from cyberdrop_dl.scraper.crawlers.socialmediagirls_crawler import SocialMediaGirlsCrawler
 from cyberdrop_dl.scraper.crawlers.spankbang_crawler import SpankBangCrawler
