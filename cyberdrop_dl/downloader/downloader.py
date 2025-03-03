@@ -8,7 +8,7 @@ from http import HTTPStatus
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from aiohttp import ClientError, ClientResponseError
+from aiohttp import ClientConnectorError, ClientError, ClientResponseError
 from filedate import File
 
 from cyberdrop_dl.clients.errors import (
@@ -189,7 +189,7 @@ class Downloader:
             self.manager.progress_manager.download_progress.add_skipped()
             self.attempt_task_removal(media_item)
 
-        except (DownloadError, ClientResponseError, InvalidContentTypeError):
+        except (DownloadError, ClientResponseError, InvalidContentTypeError, ClientConnectorError):
             raise
 
         except (
