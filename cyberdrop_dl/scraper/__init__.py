@@ -22,6 +22,7 @@ from cyberdrop_dl.scraper.crawlers.eporner_crawler import EpornerCrawler
 from cyberdrop_dl.scraper.crawlers.erome_crawler import EromeCrawler
 from cyberdrop_dl.scraper.crawlers.f95zone_crawler import F95ZoneCrawler
 from cyberdrop_dl.scraper.crawlers.fapello_crawler import FapelloCrawler
+from cyberdrop_dl.scraper.crawlers.fileditch_crawler import FileditchCrawler
 from cyberdrop_dl.scraper.crawlers.gofile_crawler import GoFileCrawler
 from cyberdrop_dl.scraper.crawlers.google_drive_crawler import GoogleDriveCrawler
 from cyberdrop_dl.scraper.crawlers.hotpic_crawler import HotPicCrawler
