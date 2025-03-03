@@ -37,6 +37,7 @@ from cyberdrop_dl.scraper.crawlers.nekohouse_crawler import NekohouseCrawler
 from cyberdrop_dl.scraper.crawlers.nudostar_crawler import NudoStarCrawler
 from cyberdrop_dl.scraper.crawlers.nudostartv_crawler import NudoStarTVCrawler
 from cyberdrop_dl.scraper.crawlers.omegascans_crawler import OmegaScansCrawler
+from cyberdrop_dl.scraper.crawlers.onedrive_crawler import OneDriveCrawler
 from cyberdrop_dl.scraper.crawlers.pimpandhost_crawler import PimpAndHostCrawler
 from cyberdrop_dl.scraper.crawlers.pixeldrain_crawler import PixelDrainCrawler
 from cyberdrop_dl.scraper.crawlers.pixhost_crawler import PixHostCrawler
