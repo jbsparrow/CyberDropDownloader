@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Speed up sorting files by up to 1.5x
 - Remove browsers that aren't supported by the user's OS from the list of available browsers
 
+### Fixed
+
+- Fixed an error when trying to select done after choosing to import cookies
+
 ## [6.6.1] - 2025-02-28
 
 ### Fixed
