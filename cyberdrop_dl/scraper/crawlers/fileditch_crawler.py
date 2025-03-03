@@ -14,6 +14,9 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
+DOWNLOAD_SELECTOR = "a[class*='download-button']"
+HOMEPAGE_CATCHALL_FILE = "/s21/FHVZKQyAZlIsrneDAsp.jpeg"
+
 
 class FileditchCrawler(Crawler):
     primary_base_domain = URL("https://fileditchfiles.me/")
@@ -34,10 +37,10 @@ class FileditchCrawler(Crawler):
     async def file(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
-        link_str: str = soup.select_one("a[class*='download-button']").get("href")
+        link_str: str = soup.select_one(DOWNLOAD_SELECTOR).get("href")
         link = self.parse_url(link_str)
-        if link.path == "/s21/FHVZKQyAZlIsrneDAsp.jpeg":  # homepage
-            raise ScrapeError(999, "assertion failed")
+        if link.path == HOMEPAGE_CATCHALL_FILE:
+            raise ScrapeError(422, origin=scrape_item)
         filename, ext = get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 
