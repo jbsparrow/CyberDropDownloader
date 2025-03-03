@@ -48,6 +48,7 @@ BASE_CDNS = [
     r"mlk-bk\.cdn\.gigachad-cdn",
 ]
 
+DOWNLOAD_API_ENTRYPOINT = URL("https://get.bunkrr.su/api/vs")
 DOWNLOAD_API_ENTRYPOINT = URL("https://get.bunkrr.su/api/_001")
 STREAMING_API_ENTRYPOINT = URL("https://bunkr.site/api/vs")
 

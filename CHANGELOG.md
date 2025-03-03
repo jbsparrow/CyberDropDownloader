@@ -26,6 +26,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Handle permission errors while creating logs files
 - TikTok crawler returning 403 on all downloads
 - Use new API to download files (bunkr)
+- Download encrypted URLs (jpg5)
+- Do not overwrite user provided regex  (`--filename-regex-filter`)
 
 ### Changed
 
