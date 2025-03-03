@@ -219,9 +219,9 @@ class Downloader:
     async def write_download_error(self, media_item: MediaItem, error_log_msg: ErrorLogMessage, exc_info=None) -> None:
         self.attempt_task_removal(media_item)
         full_message = f"{self.log_prefix} Failed: {media_item.url} ({error_log_msg.main_log_msg}) \n -> Referer: {media_item.referer}"
-        log(full_message, 40, exc_info=exc_info)  # type: ignore
-        await self.manager.log_manager.write_download_error_log(media_item, error_log_msg.csv_log_msg)  # type: ignore
-        self.manager.progress_manager.download_stats_progress.add_failure(error_log_msg.ui_msg)
+        log(full_message, 40, exc_info=exc_info)
+        await self.manager.log_manager.write_download_error_log(media_item, error_log_msg.csv_log_msg)
+        self.manager.progress_manager.download_stats_progress.add_failure(error_log_msg.ui_failure)
         self.manager.progress_manager.download_progress.add_failed()
 
     @staticmethod

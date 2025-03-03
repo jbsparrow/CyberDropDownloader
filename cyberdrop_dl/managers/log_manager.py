@@ -62,7 +62,9 @@ class LogManager:
             self.download_error_log, url=media_item.url, error=error_message, referer=media_item.referer, origin=origin
         )
 
-    async def write_scrape_error_log(self, url: URL, error_message: str, origin: URL | Path | None = None) -> None:
+    async def write_scrape_error_log(
+        self, url: URL | str, error_message: str, origin: URL | Path | None = None
+    ) -> None:
         """Writes to the scrape error log."""
         await self.write_to_csv(self.scrape_error_log, url=url, error=error_message, origin=origin)
 
@@ -95,7 +97,7 @@ class LogManager:
         async with aiofiles.open(self.last_post_log, encoding="utf8") as f:
             reader = csv.DictReader(await f.readlines())
             for row in reader:
-                new_url = base_url = row.get("url").strip().removesuffix("/")
+                new_url = base_url = row.get("url").strip().removesuffix("/")  # type: ignore
 
                 if "https" in new_url and "/post-" in new_url:
                     base_url = new_url.rsplit("/post", 1)[0]
