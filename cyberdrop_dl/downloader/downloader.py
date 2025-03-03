@@ -61,11 +61,9 @@ def retry(func: Callable) -> Callable:
                 if e.status != 999:
                     media_item.current_attempt += 1
 
-                full_message = str(e.status)
-                if e.message != full_message:
-                    full_message = f"{e.status} - {e.message}"
+                error_log_msg = ErrorLogMessage(e.ui_failure, str(e))
 
-                log_message = f"with error: {full_message}"
+                log_message = f"with error: {error_log_msg.main_log_msg}"
                 log(f"{self.log_prefix} failed: {media_item.url} {log_message}", 40)
                 if media_item.current_attempt < max_attempts:
                     retry_msg = f"Retrying {self.log_prefix.lower()}: {media_item.url} , retry attempt: {media_item.current_attempt + 1}"
