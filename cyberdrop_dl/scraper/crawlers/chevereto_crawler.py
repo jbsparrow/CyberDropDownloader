@@ -12,7 +12,6 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import PasswordProtectedError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
@@ -222,24 +221,24 @@ class CheveretoCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        scrape_item.url = canonical_url
-
         try:
             link_str: str = soup.select_one(selector[0]).get(selector[1])  # type: ignore
             link = self.parse_url(link_str)
             name = link.name.replace(".md.", ".").replace(".th.", ".")
             link = link.with_name(name)
-            if name == "loading.svg":
-                link_str = get_url_from_js(soup)
-                link = self.parse_url(link_str)
+            filename = link.name
 
         except AttributeError:
             raise ScrapeError(422, f"Couldn't find {url_type.value} source", origin=scrape_item) from None
 
+        if name == "loading.svg":
+            filename, link = await self.get_embed_info(scrape_item.url)
+
+        scrape_item.url = canonical_url
         desc_rows = soup.select("p[class*=description-meta]")
         date_str: str | None = None
         for row in desc_rows:
-            if "uploaded" in row.text.casefold():
+            if any(text in row.text.casefold() for text in ("uploaded", "added to")):
                 date_str = row.select_one("span").get("title")  # type: ignore
                 break
 
@@ -247,7 +246,7 @@ class CheveretoCrawler(Crawler):
             date = parse_datetime(date_str)
             scrape_item.possible_datetime = date
 
-        filename, ext = get_filename_and_ext(link.name)
+        filename, ext = get_filename_and_ext(filename)
         await self.handle_file(link, scrape_item, filename, ext)
 
     @error_handling_wrapper
@@ -258,6 +257,20 @@ class CheveretoCrawler(Crawler):
         scrape_item.url = URL(re.sub(pattern, r"host.church/", str(scrape_item.url)))
         filename, ext = get_filename_and_ext(scrape_item.url.name)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
+
+    async def get_embed_info(self, url: URL) -> tuple[str, URL]:
+        embed_url = self.primary_base_domain / "oembed" / ""
+        embed_url = embed_url.with_query(url=str(url), format="json")
+
+        async with self.request_limiter:
+            json_resp: dict = await self.client.get_json(self.domain, embed_url)
+
+        link_str: str = json_resp["url"]
+        link_str = link_str.replace(".md.", ".").replace(".th.", ".")
+        link = self.parse_url(link_str)
+        filename = json_resp["title"] + link.suffix
+
+        return filename, link
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -308,15 +321,3 @@ def parse_datetime(date: str) -> int:
 def check_direct_link(url: URL) -> bool:
     """Determines if the url is a direct link or not."""
     return bool(CDN_POSSIBILITIES.match(str(url)))
-
-
-def get_url_from_js(soup: BeautifulSoup) -> str:
-    info_js_script = soup.select_one(JS_SELECTOR)
-    log_debug(str(soup))
-    del soup
-    info_js_script_text: str = info_js_script.text  # type: ignore
-    _, _, content = info_js_script_text.partition(JS_CONTENT_START)
-    dirty_url = content.split("url:", 1)[1].split("medium:", 1)[0]
-    _, scheme, rest = dirty_url.strip().partition("http")
-    url = scheme + rest.split('"', 1)[0]
-    return url
