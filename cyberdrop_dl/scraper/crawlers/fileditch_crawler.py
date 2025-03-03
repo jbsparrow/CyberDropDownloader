@@ -28,8 +28,7 @@ class FileditchCrawler(Crawler):
         if scrape_item.url.path == "/file.php":
             await self.file(scrape_item)
         else:
-            filename, ext = get_filename_and_ext(scrape_item.url.path)
-            await self.handle_file(scrape_item.url, scrape_item, filename, ext)
+            await self.file_legacy(scrape_item)
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
@@ -41,3 +40,9 @@ class FileditchCrawler(Crawler):
             raise ScrapeError(999, "assertion failed")
         filename, ext = get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
+
+    @error_handling_wrapper
+    async def file_legacy(self, scrape_item: ScrapeItem) -> None:
+        # Some old files are only direct linkable
+        filename, ext = get_filename_and_ext(scrape_item.url.path)
+        await self.handle_file(scrape_item.url, scrape_item, filename, ext)
