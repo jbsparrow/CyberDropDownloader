@@ -2,6 +2,19 @@ from __future__ import annotations
 
 import calendar
 import datetime
+
+import calendar
+from typing import TYPE_CHECKING
+
+from aiolimiter import AsyncLimiter
+from dateutil import parser
+from yarl import URL
+
+from cyberdrop_dl import __version__
+from cyberdrop_dl.clients.errors import ScrapeError
+from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
+from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 from typing import TYPE_CHECKING
 
 from yarl import URL
@@ -19,11 +32,11 @@ if TYPE_CHECKING:
 
 
 class SexDotComCrawler(Crawler):
-    primary_base_domain = URL("https://www.sex.com")
+    primary_base_domain = URL("https://sex.com")
 
     def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "sex", "SexDotCom")
-        self.api_url = URL("iframe.sex.com/api/")
+        super().__init__(manager, "sex", "Sex.com")
+        self.api_url = URL("https://iframe.sex.com/api/")
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -31,24 +44,14 @@ class SexDotComCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
         parts = scrape_item.url.parts
-        if len(parts) >= 4:
-            if parts[2] == "shorts":
-                scrape_map = {
-                    "photo": self.image,
-                    "short": self.short,
-                }
-                if len(parts) < 5:
-                    await self.profile(scrape_item)
-                elif parts[4] in scrape_map:
-                    await scrape_map[parts[4]](scrape_item)
+        if len(parts) > 5:
+            await self.post(scrape_item)
+        elif len(parts) <= 5 and parts[2] == "shorts":
+            await self.profile(scrape_item)
+
 
     async def shorts_profile_paginator(self, scrape_item: ScrapeItem) -> AsyncGenerator[dict]:
         username = scrape_item.url.parts[3]
-        platform = scrape_item.url.parts[2]
-        try:
-            media_type = scrape_item.url.parts[4]
-        except IndexError:
-            media_type = None
         page = 1
         while True:
             posts_api_url = self.api_url / "feed" / "listUserItems"
@@ -58,11 +61,7 @@ class SexDotComCrawler(Crawler):
                 "pageNumber": page,
                 "visibility": "public",
                 "username": username,
-                "platform": platform,
             }
-
-            if media_type:
-                query["mediaType"] = media_type
 
             posts_api_url = posts_api_url.with_query(query)
             async with self.request_limiter:
@@ -71,7 +70,7 @@ class SexDotComCrawler(Crawler):
             if scrape_item.album_id is None:
                 user_id = json_data["page"]["items"][0]["media"]["user"]["userUid"]
                 scrape_item.album_id = user_id
-                scrape_item.add_to_parent_title(self.create_title(username, user_id))
+                scrape_item.add_to_parent_title(self.create_title(username))
 
             yield json_data
 
@@ -79,18 +78,20 @@ class SexDotComCrawler(Crawler):
                 break
             page += 1
 
+    @error_handling_wrapper
     async def get_media(self, scrape_item: ScrapeItem) -> dict:
         """Gets media from its relative URL."""
         relative_url = "/".join(scrape_item.url.parts[3:])
         data_url = self.api_url / "media" / "getMedia"
-        data_url = data_url.with_query({
+        query = {
             "relativeUrl": relative_url,
-        })
+        }
+        data_url = data_url.with_query(query)
         async with self.request_limiter:
             json_data = await self.client.get_json(self.domain, data_url, origin=scrape_item)
-        return json_data
+        return json_data["media"]
 
-
+    @error_handling_wrapper
     async def handle_media(self, scrape_item: ScrapeItem, item: dict = None) -> None:
         if item is None:
             item = await self.get_media(scrape_item)
@@ -99,13 +100,13 @@ class SexDotComCrawler(Crawler):
         if await self.check_complete_from_referer(canonical_url):
             return
 
-        fileType = item["fileType"]
+        fileType = item.get("fileType") or item.get("mediaType")
         if fileType.startswith("image"):
             media_url = URL(item["fullPath"]).with_query({
                 "optimizer": "image",
                 "width": 1200,
             })
-            filename = item["pictureUid"]
+            filename = f"{item["pictureUid"]}.jpg"
             ext = "jpg"
         elif fileType.startswith("video"):
             media_url = URL(item["sources"][0]["fullPath"])
@@ -124,12 +125,10 @@ class SexDotComCrawler(Crawler):
             for item in json_data["page"]["items"]:
                 await self.handle_media(scrape_item, item["media"])
 
-    async def image(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an image."""
-        await self.handle_media(scrape_item)
-
-    async def short(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a short."""
+    async def post(self, scrape_item: ScrapeItem):
+        """Scrapes a post."""
+        username = scrape_item.url.parts[2]
+        scrape_item.add_to_parent_title(self.create_title(username))
         await self.handle_media(scrape_item)
 
 
@@ -139,5 +138,5 @@ class SexDotComCrawler(Crawler):
     @staticmethod
     def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
-        parsed_date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
-        return calendar.timegm(parsed_date.timetuple())
+        parsed_date = parser.isoparse(date)
+        return calendar.timegm(parsed_date.utctimetuple())
