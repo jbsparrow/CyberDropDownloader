@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from enum import IntEnum
+from platform import system
 from typing import TYPE_CHECKING
 
 from InquirerPy import get_style
@@ -17,7 +18,11 @@ from cyberdrop_dl.ui.prompts import basic_prompts
 from cyberdrop_dl.ui.prompts.defaults import ALL_CHOICE, DONE_CHOICE, EXIT_CHOICE
 from cyberdrop_dl.utils.constants import BROWSERS, RESERVED_CONFIG_NAMES
 from cyberdrop_dl.utils.cookie_management import get_cookies_from_browsers
-from cyberdrop_dl.utils.data_enums_classes.supported_domains import SUPPORTED_FORUMS, SUPPORTED_WEBSITES
+from cyberdrop_dl.utils.data_enums_classes.supported_domains import (
+    SUPPORTED_FORUMS,
+    SUPPORTED_SITES_DOMAINS,
+    SUPPORTED_WEBSITES,
+)
 from cyberdrop_dl.utils.utilities import clear_term
 
 if TYPE_CHECKING:
@@ -154,12 +159,15 @@ class DomainType(IntEnum):
 
 def domains_prompt(*, domain_message: str = "Select site(s):") -> tuple[list[str], list[str]]:
     """Asks the user to select website(s) for cookie actions and cache actions."""
-    OPTIONS = [["forum", "file-host"]]
+    OPTIONS = [["Forum", "File Host"], ["All Supported Websites"]]
     choices = basic_prompts.create_choices(OPTIONS)
     domain_type = basic_prompts.ask_choice(choices, message="Select category:")
 
     if domain_type == DONE_CHOICE.value:
-        return []
+        return [], []
+
+    if domain_type == 3:
+        return SUPPORTED_SITES_DOMAINS, SUPPORTED_SITES_DOMAINS
 
     all_domains = list(SUPPORTED_FORUMS.values() if domain_type == DomainType.FORUM else SUPPORTED_WEBSITES.values())
     domain_choices = [Choice(site) for site in all_domains] + [ALL_CHOICE]
@@ -193,6 +201,8 @@ def extract_cookies(manager: Manager, *, dry_run: bool = False) -> None:
     """Asks the user to select browser(s) and domains(s) to import cookies from."""
 
     domains, all_domains = domains_prompt(domain_message="Select site(s) to import cookies from:")
+    if domains == []:
+        return
     browsers = browser_prompt()
 
     if ALL_CHOICE.value in browsers:
@@ -211,7 +221,13 @@ def extract_cookies(manager: Manager, *, dry_run: bool = False) -> None:
 
 
 def browser_prompt() -> str:
-    choices = [Choice(browser, browser.capitalize()) for browser in BROWSERS]
+    """Asks the user to select browser(s) for cookie extraction."""
+    unsupported_browsers = {
+        "Windows": {"safari"},
+        "Linux": {"safari", "edge"},
+        "Darwin": {"edge"},
+    }.get(system(), set())
+    choices = [Choice(browser, browser.capitalize()) for browser in BROWSERS if browser not in unsupported_browsers]
     return basic_prompts.ask_checkbox(choices, message="Select the browser(s) for extraction:")
 
 
