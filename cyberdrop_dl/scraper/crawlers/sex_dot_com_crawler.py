@@ -1,32 +1,17 @@
 from __future__ import annotations
 
 import calendar
-import datetime
-
-import calendar
 from typing import TYPE_CHECKING
 
-from aiolimiter import AsyncLimiter
 from dateutil import parser
 from yarl import URL
 
-from cyberdrop_dl import __version__
-from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
-from typing import TYPE_CHECKING
-
-from yarl import URL
-
-from cyberdrop_dl.clients.errors import ScrapeError
-from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem, FILE_HOST_PROFILE
+from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_PROFILE, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
-    from bs4 import BeautifulSoup, Tag
 
     from cyberdrop_dl.managers.manager import Manager
 
@@ -48,7 +33,6 @@ class SexDotComCrawler(Crawler):
             await self.post(scrape_item)
         elif len(parts) <= 5 and parts[2] == "shorts":
             await self.profile(scrape_item)
-
 
     async def shorts_profile_paginator(self, scrape_item: ScrapeItem) -> AsyncGenerator[dict]:
         username = scrape_item.url.parts[3]
@@ -92,21 +76,23 @@ class SexDotComCrawler(Crawler):
         return json_data["media"]
 
     @error_handling_wrapper
-    async def handle_media(self, scrape_item: ScrapeItem, item: dict = None) -> None:
+    async def handle_media(self, scrape_item: ScrapeItem, item: dict | None) -> None:
         if item is None:
             item = await self.get_media(scrape_item)
         relative_url = item["relativeUrl"]
-        canonical_url = URL('https://sex.com/en/shorts') / relative_url
+        canonical_url = URL("https://sex.com/en/shorts") / relative_url
         if await self.check_complete_from_referer(canonical_url):
             return
 
         fileType = item.get("fileType") or item.get("mediaType")
         if fileType.startswith("image"):
-            media_url = URL(item["fullPath"]).with_query({
-                "optimizer": "image",
-                "width": 1200,
-            })
-            filename = f"{item["pictureUid"]}.jpg"
+            media_url = URL(item["fullPath"]).with_query(
+                {
+                    "optimizer": "image",
+                    "width": 1200,
+                }
+            )
+            filename = f"{item['pictureUid']}.jpg"
             ext = "jpg"
         elif fileType.startswith("video"):
             media_url = URL(item["sources"][0]["fullPath"])
@@ -115,7 +101,6 @@ class SexDotComCrawler(Crawler):
         new_scrape_item = self.create_scrape_item(scrape_item, canonical_url, "", True, scrape_item.album_id, date)
         await self.handle_file(media_url, new_scrape_item, filename, ext)
         scrape_item.add_children()
-
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
@@ -129,9 +114,7 @@ class SexDotComCrawler(Crawler):
         """Scrapes a post."""
         username = scrape_item.url.parts[2]
         scrape_item.add_to_parent_title(self.create_title(username))
-        await self.handle_media(scrape_item)
-
-
+        await self.handle_media(scrape_item, None)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
