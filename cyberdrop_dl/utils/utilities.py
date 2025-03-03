@@ -19,7 +19,6 @@ from cyberdrop_dl.clients.errors import (
     CDLBaseError,
     ErrorLogMessage,
     InvalidExtensionError,
-    InvalidURLError,
     NoExtensionError,
     get_origin,
 )
@@ -48,44 +47,35 @@ def error_handling_wrapper(func: Callable) -> Callable:
         item: ScrapeItem | MediaItem | URL = args[0]
         link: URL = item if isinstance(item, URL) else item.url
         origin = exc_info = None
+        link_to_show: URL | str = ""
         try:
             return await func(self, *args, **kwargs)
         except CDLBaseError as e:
-            ui_failure = e.ui_message
-            main_log_msg = str(e)
-            origin = e.origin or get_origin(item)
-            if isinstance(e, InvalidURLError):
-                link: URL = e.url or link  # type: ignore
+            error_log_msg = ErrorLogMessage(e.ui_failure, str(e))
+            origin = e.origin
+            e_url: URL | str | None = getattr(e, "url", None)
+            link_to_show = e_url or link_to_show
         except TimeoutError:
-            main_log_msg = ui_failure = "Timeout"
+            error_log_msg = ErrorLogMessage("Timeout")
         except ClientConnectorError as e:
-            ui_failure = "ClientConnectorError"
-            main_log_msg = f"Can't connect to {link}. If you're using a VPN, try turning it off \n  {e!s}"
+            ui_failure = "Client Connector Error"
+            # link_to_show = link.with_host(e.host) # For bunkr and jpg5, to make sure the log message matches the actual URL we tried to connect
+            log_msg = f"Can't connect to {link}. If you're using a VPN, try turning it off \n  {e!s}"
+            error_log_msg = ErrorLogMessage(ui_failure, log_msg)
         except Exception as e:
             exc_info = e
-            e_status = getattr(e, "status", None)
-            e_message = getattr(e, "message", None)
-            if e_status and e_message:
-                main_log_msg = ui_failure = CDLBaseError.format(str(e_status), e_message)
-            else:
-                main_log_msg = str(e)
-                ui_failure = "Unknown"
+            error_log_msg = ErrorLogMessage.from_unknown_exc(e)
 
-        csv_log_msg = ui_failure
-        if csv_log_msg == "Unknown":
-            csv_log_msg = "See Log for Details"
-
-        error_log_msg = ErrorLogMessage(ui_failure, main_log_msg, csv_log_msg)
-
+        link_to_show = link_to_show or link
+        origin = origin or get_origin(item)
         log_prefix = getattr(self, "log_prefix", None)
-        if log_prefix:
+        if log_prefix:  # This error came from a Downloader
             await self.write_download_error(item, error_log_msg, exc_info)  # type: ignore
             return
 
-        log(f"Scrape Failed: {link} ({main_log_msg})", 40, exc_info=exc_info)
-        await self.manager.log_manager.write_scrape_error_log(link, error_log_msg.csv_log_msg, origin)
-        self.manager.progress_manager.scrape_stats_progress.add_failure(ui_failure)
-        return None
+        log(f"Scrape Failed: {link_to_show} ({error_log_msg.main_log_msg})", 40, exc_info=exc_info)
+        await self.manager.log_manager.write_scrape_error_log(link_to_show, error_log_msg.csv_log_msg, origin)
+        self.manager.progress_manager.scrape_stats_progress.add_failure(error_log_msg.ui_failure)
 
     return wrapper
 
@@ -151,7 +141,7 @@ def get_download_path(manager: Manager, scrape_item: ScrapeItem, domain: str) ->
     download_dir = manager.path_manager.download_folder
 
     if scrape_item.retry:
-        return scrape_item.retry_path
+        return scrape_item.retry_path  # type: ignore
     if scrape_item.parent_title and scrape_item.part_of_album:
         return download_dir / scrape_item.parent_title
     if scrape_item.parent_title:
@@ -263,7 +253,7 @@ async def send_webhook_message(manager: Manager) -> None:
         return
 
     rich.print("\nSending Webhook Notifications.. ")
-    url = webhook.url.get_secret_value()
+    url: URL = webhook.url.get_secret_value()  # type: ignore
     text: Text = constants.LOG_OUTPUT_TEXT
     plain_text = parse_rich_text_by_style(text, constants.STYLE_TO_DIFF_FORMAT_MAP)
     main_log = manager.path_manager.main_log
