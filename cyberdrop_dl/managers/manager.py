@@ -80,6 +80,7 @@ class Manager:
         self.adjust_for_simpcity()
         if self.config_manager.loaded_config.casefold() == "all" or self.parsed_args.cli_only_args.multiconfig:
             self.multiconfig = True
+        self.set_constants()
 
     def adjust_for_simpcity(self) -> None:
         """Adjusts settings for SimpCity update."""
@@ -244,6 +245,12 @@ class Manager:
             return
         for config in all_configs:
             self.config_manager.change_config(config)
+
+    def set_constants(self):
+        """
+        rewrite constants after config/arg manager have loaded
+        """
+        constants.disable_cache = self.parsed_args.cli_only_args.disable_cache
 
 
 def get_system_information() -> str:

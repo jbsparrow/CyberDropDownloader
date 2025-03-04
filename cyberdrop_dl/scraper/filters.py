@@ -163,8 +163,3 @@ async def filter_fn(response: ClientResponse) -> bool:
     cache_response, reason = await filter_fn(response) if filter_fn else False, "No caching manager for host"
     del reason
     return cache_response
-
-
-def disable_all_cache(response: ClientResponse):
-    """Disables all writing/reading of the cache"""
-    return False
