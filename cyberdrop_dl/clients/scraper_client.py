@@ -10,8 +10,8 @@ from aiohttp_client_cache import CachedSession
 from aiohttp_client_cache.response import CachedStreamReader
 from bs4 import BeautifulSoup
 
+import cyberdrop_dl.utils.constants as constants
 from cyberdrop_dl.clients.errors import DDOSGuardError, InvalidContentTypeError
-from cyberdrop_dl.utils.constants import disable_cache
 from cyberdrop_dl.utils.logger import log_debug
 
 if TYPE_CHECKING:
@@ -50,7 +50,7 @@ def limiter(func: Callable) -> Any:
 
 @asynccontextmanager
 async def cache_control_manager(client_session: CachedSession, disabled: bool = False):
-    client_session.cache.disabled = disable_cache or disabled
+    client_session.cache.disabled = constants.disable_cache or disabled
     yield
     client_session.cache.disabled = False
 
