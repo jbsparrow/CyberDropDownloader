@@ -98,7 +98,7 @@ class ScraperClient:
             verify=bool(self.client_manager.ssl_context),
             proxy=proxy,
             timeout=self._timeout_tuple,
-            cookies=self.client_manager.cookies._cookies.values(),  # type: ignore
+            cookies={c.key: c.value for c in self.client_manager.cookies},
         ) as session:
             response: CurlResponse = await session.get(str(url))
             await self.client_manager.check_http_status(response)
