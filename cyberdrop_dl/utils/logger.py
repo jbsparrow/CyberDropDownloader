@@ -30,6 +30,9 @@ if TYPE_CHECKING:
     from rich.logging import RichHandler
 
 
+EXCLUDE_PATH_LOGGING_FROM = "logger.py", "base.py", "session.py", "cache_control.py"
+
+
 class NoPaddingLogRender(LogRender):
     cdl_padding = 0
 
@@ -67,7 +70,7 @@ class NoPaddingLogRender(LogRender):
         if not self.cdl_padding:
             self.cdl_padding = get_renderable_length(output)
 
-        if self.show_path and path and "logger.py" not in path:
+        if self.show_path and path and not any(path.startswith(p) for p in EXCLUDE_PATH_LOGGING_FROM):
             path_text = Text(style="log.path")
             path_text.append(path, style=f"link file://{link_path}" if link_path else "")
             if line_no:
