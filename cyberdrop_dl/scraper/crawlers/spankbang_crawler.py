@@ -120,7 +120,7 @@ class SpankBangCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, scrape_item.url)
 
         video_removed = soup.select_one(VIDEO_REMOVED_SELECTOR)
-        if video_removed:
+        if video_removed or "This video is no longer available" in str(soup):
             raise ScrapeError(410, origin=scrape_item)
 
         info = get_info_dict(soup)
