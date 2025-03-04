@@ -167,14 +167,19 @@ def get_info_dict(soup: BeautifulSoup) -> VideoInfo:
     info_js_script = soup.select_one(JS_SELECTOR)
     extended_info_js_script = soup.select_one(EXTENDED_JS_SELECTOR)
 
+    info_js_script_text: str = info_js_script.text  # type: ignore
+    extended_info_js_script_text: str = extended_info_js_script.text  # type: ignore
+
     title_tag = soup.select_one("div#video h1")
     title: str = title_tag.get("title") or title_tag.text.replace("\n", "")  # type: ignore
-    info: dict[str, str | dict] = javascript.parse_js_vars(info_js_script.text)  # type: ignore
-    extended_info_dict = javascript.parse_json_to_dict(extended_info_js_script.text)  # type: ignore
-    embed_url = URL(info["embedUrl"])  # type: ignore
+    del soup
+    info: dict[str, str | dict] = javascript.parse_js_vars(info_js_script_text)
+    extended_info_dict = javascript.parse_json_to_dict(extended_info_js_script_text)
+    # type: ignore
 
     info["title"] = title.strip()
     info = info | extended_info_dict
+    embed_url = URL(info["embedUrl"])
     info["video_id"] = embed_url.parts[1]
     javascript.clean_dict(info, "stream_data")
     log_debug(json.dumps(info, indent=4))
