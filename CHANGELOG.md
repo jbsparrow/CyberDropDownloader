@@ -29,12 +29,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Speed up sorting files by up to 1.5x
 - Remove browsers that aren't supported by the user's OS from the list of available browsers
 - Flaresolverr timeout will be the same as the config timeout
-- Input URLs will be process lazily instead of waiting for all of them to be parsed
+- Input URLs will be processed lazily instead of waiting for all of them to be parsed
 
 ### Fixed
 
 - Get URL from encrypted link (new logic)(jpg5)
-- 404/403/404 on some files (bunkr)
+- 400/403/404 on some files (bunkr)
 - Add error handle at post level and individual item level (forums)
 - Fixed an error when trying to select done after choosing to import cookies
 - Flaresolverr integration
