@@ -5,21 +5,44 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [UNRELEASED]
+## [6.7.0] - 2025-03-07
 
 ### Added
 
-- Add an option to import cookies from all supported sites
+- Show activity messages at the bottom of the UI (waiting on Flaresolverr connections, reading input file, etc..)
+- WeTransfer support
+- Google Drive support
+- DirtyShip support
+- OneDrive support
+- Yandex Disk support (Files and folders, but no support for nested folders)
+- Dropbox support (files and folders, but folders are disabled by default because they will be downloaded as a single zip file. Enable them with `--download-dropbox-folders-as-zip`)
+- Fileditch support
+- Sex.com  support (shorts from profiles only)
+- Option to import cookies from all supported websites in the main UI
+- Get information about all the downloaded files with the new `--dump-json` option:
+- Run CDl with a portrait layout using the `--portrait` option:
+- Disable requests caching (reading and writing) with the `--disable-cache` option:
 
 ### Changed
 
 - Speed up checking for empty files & folders by up to 2x
 - Speed up sorting files by up to 1.5x
 - Remove browsers that aren't supported by the user's OS from the list of available browsers
+- Flaresolverr timeout will be the same as the config timeout
+- Input URLs will be process lazily instead of waiting for all of them to be parsed
 
 ### Fixed
 
+- Get URL from encrypted link (new logic)(jpg5)
+- 403/404 on some files (bunkr)
+- Add error handle at post level and individual item level (forums)
 - Fixed an error when trying to select done after choosing to import cookies
+- Flaresolverr integration
+- Long UI messages for unknown errors
+
+### Removed
+
+- Forums authentication settings (username, password and `xf_cookie`). Use cookie files for forums that require login
 
 ## [6.6.1] - 2025-02-28
 
