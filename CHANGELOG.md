@@ -14,14 +14,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Google Drive support
 - DirtyShip support
 - OneDrive support
-- Yandex Disk support (Files and folders, but no support for nested folders)
+- Yandex Disk support (files and folders, but no support for nested folders)
 - Dropbox support (files and folders, but folders are disabled by default because they will be downloaded as a single zip file. Enable them with `--download-dropbox-folders-as-zip`)
-- Fileditch support
-- Sex.com  support (shorts from profiles only)
+- FileDitch support
+- Sex.com support (shorts from profiles only)
 - Option to import cookies from all supported websites in the main UI
-- Get information about all the downloaded files with the new `--dump-json` option:
-- Run CDl with a portrait layout using the `--portrait` option:
-- Disable requests caching (reading and writing) with the `--disable-cache` option:
+- Get information about all the downloaded files with the new `--dump-json` option: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/files#dump_json
+- Run CDL with a portrait layout using the `--portrait` option: https://script-ware.gitbook.io/cyberdrop-dl/reference/cli-arguments#portrait
+- Disable requests caching (reading and writing) with the `--disable-cache` option: https://script-ware.gitbook.io/cyberdrop-dl/reference/cli-arguments#disable-cache
 
 ### Changed
 
@@ -34,7 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Get URL from encrypted link (new logic)(jpg5)
-- 403/404 on some files (bunkr)
+- 404/403/404 on some files (bunkr)
 - Add error handle at post level and individual item level (forums)
 - Fixed an error when trying to select done after choosing to import cookies
 - Flaresolverr integration
