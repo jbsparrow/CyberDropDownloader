@@ -58,6 +58,7 @@ class CommandLineOnlyArgs(BaseModel):
     print_stats: bool = Field(True, description="Show stats report at the end of a run")
     ui: UIOptions = Field(UIOptions.FULLSCREEN, description="DISABLED, ACTIVITY, SIMPLE or FULLSCREEN")
     portrait: bool = Field(False, description="show UI in a portrait layout")
+    disable_cache: bool = Field(False, description="Temporarily disable the requests cache")
 
     @property
     def retry_any(self) -> bool:

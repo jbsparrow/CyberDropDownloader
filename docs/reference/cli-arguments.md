@@ -139,6 +139,22 @@ Retry download of maintenance files (bunkr). Requires files to be hashed
 
 ***
 
+### `disable-cache`  
+
+| Type       | Default | Action       |
+| ---------- | ------- | ------------ |
+| `BoolFlag` | `False` | `store_true` |
+
+Disables the use of the requests cache for the current run only
+all config settings or arguments relating to the cache expiry such as file_host_cache_expire_after will be ignored
+
+{% hint style="info" %}
+This does not affect the original cache
+{% endhint %}
+
+
+***
+
 ## Overview
 
 Bool arguments like options within `Download Options`, `Ignore Options`, `Runtime Options`, etc. can be prefixed with `--no-` to negate them. Ex: `--no-auto-dedupe` will disable auto dedupe, overriding whatever the config option was set to.

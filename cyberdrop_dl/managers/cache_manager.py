@@ -5,7 +5,7 @@ from datetime import timedelta
 from http import HTTPStatus
 from typing import TYPE_CHECKING, Any
 
-from aiohttp_client_cache import SQLiteBackend
+from aiohttp_client_cache import CacheBackend, SQLiteBackend
 
 from cyberdrop_dl import __version__ as current_version
 from cyberdrop_dl.scraper.filters import filter_fn
@@ -22,7 +22,7 @@ class CacheManager:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
 
-        self.request_cache: SQLiteBackend = field(init=False)
+        self.request_cache: SQLiteBackend | CacheBackend = field(init=False)
         self.cache_file: Path = field(init=False)
         self._cache = {}
 
@@ -50,7 +50,6 @@ class CacheManager:
             urls_expire_after[match_host] = rate_limiting_options.file_host_cache_expire_after
         for forum in SUPPORTED_FORUMS.values():
             urls_expire_after[forum] = rate_limiting_options.forum_cache_expire_after
-
         self.request_cache = SQLiteBackend(
             cache_name=self.manager.path_manager.cache_db,
             autoclose=False,
