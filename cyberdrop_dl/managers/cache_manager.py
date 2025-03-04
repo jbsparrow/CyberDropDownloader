@@ -5,7 +5,7 @@ from datetime import timedelta
 from http import HTTPStatus
 from typing import TYPE_CHECKING, Any
 
-from aiohttp_client_cache import SQLiteBackend
+from aiohttp_client_cache import CacheBackend, SQLiteBackend
 
 from cyberdrop_dl import __version__ as current_version
 from cyberdrop_dl.scraper.filters import filter_fn
@@ -22,7 +22,7 @@ class CacheManager:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
 
-        self.request_cache: SQLiteBackend = field(init=False)
+        self.request_cache: SQLiteBackend | CacheBackend = field(init=False)
         self.cache_file: Path = field(init=False)
         self._cache = {}
 
@@ -51,20 +51,23 @@ class CacheManager:
         for forum in SUPPORTED_FORUMS.values():
             urls_expire_after[forum] = rate_limiting_options.forum_cache_expire_after
 
-        self.request_cache = SQLiteBackend(
-            cache_name=self.manager.path_manager.cache_db,
-            autoclose=False,
-            allowed_codes=(
-                HTTPStatus.OK,
-                HTTPStatus.NOT_FOUND,
-                HTTPStatus.GONE,
-                HTTPStatus.UNAVAILABLE_FOR_LEGAL_REASONS,
-            ),
-            allowed_methods=["GET"],
-            expire_after=timedelta(days=7),
-            urls_expire_after=urls_expire_after,
-            filter_fn=filter_fn,
-        )
+        if self.manager.parsed_args.cli_only_args.disable_cache:
+            self.request_cache = CacheBackend(expire_after=0)
+        else:
+            self.request_cache = SQLiteBackend(
+                cache_name=self.manager.path_manager.cache_db,
+                autoclose=False,
+                allowed_codes=(
+                    HTTPStatus.OK,
+                    HTTPStatus.NOT_FOUND,
+                    HTTPStatus.GONE,
+                    HTTPStatus.UNAVAILABLE_FOR_LEGAL_REASONS,
+                ),
+                allowed_methods=["GET"],
+                expire_after=timedelta(days=7),
+                urls_expire_after=urls_expire_after,
+                filter_fn=filter_fn,
+            )
 
     def get(self, key: str) -> Any:
         """Returns the value of a key in the cache."""
