@@ -117,7 +117,7 @@ class SpankBangCrawler(Crawler):
                 return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, scrape_item.url)
 
         video_removed = soup.select_one(VIDEO_REMOVED_SELECTOR)
         if video_removed:
@@ -148,7 +148,7 @@ class SpankBangCrawler(Crawler):
         current_page = 1
         while True:
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url, origin=scrape_item)
+                soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, page_url)
 
             playlist = PlaylistInfo.from_url(page_url, soup)
             videos = soup.select(PLAYLIST_ITEM_SELECTOR)
