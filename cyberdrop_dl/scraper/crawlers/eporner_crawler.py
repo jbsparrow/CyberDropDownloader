@@ -109,6 +109,12 @@ class EpornerCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
+        soup_str = str(soup)
+        if "File has been removed due to copyright owner request" in soup_str:
+            raise ScrapeError(451)
+        if "Video has been deleted" in soup_str:
+            raise ScrapeError(410)
+
         scrape_item.url = canonical_url
         info_dict = get_info_dict(soup)
         log_debug(json.dumps(info_dict, indent=4))
