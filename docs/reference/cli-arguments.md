@@ -82,6 +82,15 @@ If both `config` and `config-file` are supplied, `config-file` takes priority
 
 Skips UI, start download immediately
 
+### `download-dropbox-folders-as-zip`
+
+
+| Type       | Default | Action       |
+| ---------- | ------- | ------------ |
+| `BoolFlag` | `False` | `store_true` |
+
+Folder downloads from Dropbox are disabled by default because they will be downloaded as a single zip file. Enable them with this option
+
 ### `download-tiktok-audios`
 
 | Type       | Default | Action       |
@@ -97,6 +106,14 @@ Download TikTok audios from posts and save them as separate files
 | `NonNegativeInt` | `0`     |
 
 Max number of links to retry. Using `0` means no limit
+
+### `portrait`
+
+| Type       | Default | Action       |
+| ---------- | ------- | ------------ |
+| `BoolFlag` | `False` | `store_true` |
+
+Run CDL with a vertical layout
 
 ### `ui`  
 
