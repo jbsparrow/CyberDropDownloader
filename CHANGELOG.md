@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Yandex Disk support (files and folders, but no support for nested folders)
 - Dropbox support (files and folders, but folders are disabled by default because they will be downloaded as a single zip file. Enable them with `--download-dropbox-folders-as-zip`)
 - FileDitch support
-- Sex.com support (shorts from profiles only)
+- Sex.com support (shorts and images from profiles only)
 - Option to import cookies from all supported websites in the main UI
 - Get information about all the downloaded files with the new `--dump-json` option: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/files#dump_json
 - Run CDL with a portrait layout using the `--portrait` option: https://script-ware.gitbook.io/cyberdrop-dl/reference/cli-arguments#portrait
