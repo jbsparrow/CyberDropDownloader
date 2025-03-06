@@ -5,21 +5,44 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [UNRELEASED]
+## [6.7.0] - 2025-03-07
 
 ### Added
 
-- Add an option to import cookies from all supported sites
+- Show activity messages at the bottom of the UI (waiting on Flaresolverr connections, reading input file, etc..)
+- WeTransfer support
+- Google Drive support
+- DirtyShip support
+- OneDrive support
+- Yandex Disk support (files and folders, but no support for nested folders)
+- Dropbox support (files and folders, but folders are disabled by default because they will be downloaded as a single zip file. Enable them with `--download-dropbox-folders-as-zip`)
+- FileDitch support
+- Sex.com support (shorts and images from profiles only)
+- Option to import cookies from all supported websites in the main UI
+- Get information about all the downloaded files with the new `--dump-json` option: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/files#dump_json
+- Run CDL with a portrait layout using the `--portrait` option: https://script-ware.gitbook.io/cyberdrop-dl/reference/cli-arguments#portrait
+- Disable requests caching (reading and writing) with the `--disable-cache` option: https://script-ware.gitbook.io/cyberdrop-dl/reference/cli-arguments#disable-cache
 
 ### Changed
 
 - Speed up checking for empty files & folders by up to 2x
 - Speed up sorting files by up to 1.5x
 - Remove browsers that aren't supported by the user's OS from the list of available browsers
+- Flaresolverr timeout will be the same as the config timeout
+- Input URLs will be processed lazily instead of waiting for all of them to be parsed
 
 ### Fixed
 
+- Get URL from encrypted link (new logic)(jpg5)
+- 400/403/404 on some files (bunkr)
+- Add error handle at post level and individual item level (forums)
 - Fixed an error when trying to select done after choosing to import cookies
+- Flaresolverr integration
+- Long UI messages for unknown errors
+
+### Removed
+
+- Deprecated forums authentication settings (username, password and `xf_cookie`). Use cookie files for forums that require login
 
 ## [6.6.1] - 2025-02-28
 
