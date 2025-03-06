@@ -42,7 +42,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-- Forums authentication settings (username, password and `xf_cookie`). Use cookie files for forums that require login
+- Deprecated forums authentication settings (username, password and `xf_cookie`). Use cookie files for forums that require login
 
 ## [6.6.1] - 2025-02-28
 
