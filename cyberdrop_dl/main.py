@@ -188,6 +188,10 @@ def setup_debug_logger(manager: Manager) -> Path | None:
     add_custom_log_render(file_handler_debug)
     logger_debug.addHandler(file_handler_debug)
 
+    aiohttp_client_cache_logger = logging.getLogger("aiohttp_client_cache")
+    aiohttp_client_cache_logger.setLevel(log_level)
+    aiohttp_client_cache_logger.addHandler(file_handler_debug)
+
     # aiosqlite_log = logging.getLogger("aiosqlite")
     # aiosqlite_log.setLevel(log_level)
     # aiosqlite_log.addHandler(file_handler_debug)
