@@ -143,4 +143,4 @@ FILE_FORMATS = {
 
 
 MEDIA_EXTENSIONS = FILE_FORMATS["Audio"] | FILE_FORMATS["Videos"] | FILE_FORMATS["Images"]
-disable_cache = None
+DISABLE_CACHE = None

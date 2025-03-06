@@ -50,7 +50,7 @@ def limiter(func: Callable) -> Any:
 
 @asynccontextmanager
 async def cache_control_manager(client_session: CachedSession, disabled: bool = False):
-    client_session.cache.disabled = constants.disable_cache or disabled
+    client_session.cache.disabled = constants.DISABLE_CACHE or disabled
     yield
     client_session.cache.disabled = False
 

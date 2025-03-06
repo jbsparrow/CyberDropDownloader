@@ -250,7 +250,7 @@ class Manager:
         """
         rewrite constants after config/arg manager have loaded
         """
-        constants.disable_cache = self.parsed_args.cli_only_args.disable_cache
+        constants.DISABLE_CACHE = self.parsed_args.cli_only_args.disable_cache
 
 
 def get_system_information() -> str:

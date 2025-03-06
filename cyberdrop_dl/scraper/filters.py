@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import NoExtensionError
-from cyberdrop_dl.utils.constants import FILE_FORMATS
+from cyberdrop_dl.utils.constants import FILE_FORMATS, DISABLE_CACHE
 from cyberdrop_dl.utils.utilities import get_filename_and_ext
 
 if TYPE_CHECKING:
@@ -98,6 +98,8 @@ async def get_return_value(url: URL | str) -> bool | None:
 
 async def filter_fn(response: ClientResponse) -> bool:
     """Filter function for aiohttp_client_cache"""
+    if DISABLE_CACHE:
+        return False
     HTTP_404_LIKE_STATUS = {HTTPStatus.NOT_FOUND, HTTPStatus.GONE, HTTPStatus.UNAVAILABLE_FOR_LEGAL_REASONS}
 
     if response.status in HTTP_404_LIKE_STATUS:
