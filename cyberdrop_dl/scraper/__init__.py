@@ -13,6 +13,8 @@ from cyberdrop_dl.scraper.crawlers.chevereto_crawler import CheveretoCrawler
 from cyberdrop_dl.scraper.crawlers.coomer_crawler import CoomerCrawler
 from cyberdrop_dl.scraper.crawlers.cyberdrop_crawler import CyberdropCrawler
 from cyberdrop_dl.scraper.crawlers.cyberfile_crawler import CyberfileCrawler
+from cyberdrop_dl.scraper.crawlers.dirtyship_crawler import DirtyShipCrawler
+from cyberdrop_dl.scraper.crawlers.dropbox_crawler import DropboxCrawler
 from cyberdrop_dl.scraper.crawlers.e621_crawler import E621Crawler
 from cyberdrop_dl.scraper.crawlers.ehentai_crawler import EHentaiCrawler
 from cyberdrop_dl.scraper.crawlers.eightmuses_crawler import EightMusesCrawler
@@ -20,7 +22,9 @@ from cyberdrop_dl.scraper.crawlers.eporner_crawler import EpornerCrawler
 from cyberdrop_dl.scraper.crawlers.erome_crawler import EromeCrawler
 from cyberdrop_dl.scraper.crawlers.f95zone_crawler import F95ZoneCrawler
 from cyberdrop_dl.scraper.crawlers.fapello_crawler import FapelloCrawler
+from cyberdrop_dl.scraper.crawlers.fileditch_crawler import FileditchCrawler
 from cyberdrop_dl.scraper.crawlers.gofile_crawler import GoFileCrawler
+from cyberdrop_dl.scraper.crawlers.google_drive_crawler import GoogleDriveCrawler
 from cyberdrop_dl.scraper.crawlers.hotpic_crawler import HotPicCrawler
 from cyberdrop_dl.scraper.crawlers.imagebam_crawler import ImageBamCrawler
 from cyberdrop_dl.scraper.crawlers.imgbb_crawler import ImgBBCrawler
@@ -34,6 +38,7 @@ from cyberdrop_dl.scraper.crawlers.nekohouse_crawler import NekohouseCrawler
 from cyberdrop_dl.scraper.crawlers.nudostar_crawler import NudoStarCrawler
 from cyberdrop_dl.scraper.crawlers.nudostartv_crawler import NudoStarTVCrawler
 from cyberdrop_dl.scraper.crawlers.omegascans_crawler import OmegaScansCrawler
+from cyberdrop_dl.scraper.crawlers.onedrive_crawler import OneDriveCrawler
 from cyberdrop_dl.scraper.crawlers.pimpandhost_crawler import PimpAndHostCrawler
 from cyberdrop_dl.scraper.crawlers.pixeldrain_crawler import PixelDrainCrawler
 from cyberdrop_dl.scraper.crawlers.pixhost_crawler import PixHostCrawler
@@ -49,6 +54,7 @@ from cyberdrop_dl.scraper.crawlers.rule34xyz_crawler import Rule34XYZCrawler
 from cyberdrop_dl.scraper.crawlers.saint_crawler import SaintCrawler
 from cyberdrop_dl.scraper.crawlers.scrolller_crawler import ScrolllerCrawler
 from cyberdrop_dl.scraper.crawlers.sendvid_crawler import SendVidCrawler
+from cyberdrop_dl.scraper.crawlers.sex_dot_com_crawler import SexDotComCrawler
 from cyberdrop_dl.scraper.crawlers.simpcity_crawler import SimpCityCrawler
 from cyberdrop_dl.scraper.crawlers.socialmediagirls_crawler import SocialMediaGirlsCrawler
 from cyberdrop_dl.scraper.crawlers.spankbang_crawler import SpankBangCrawler
@@ -58,9 +64,11 @@ from cyberdrop_dl.scraper.crawlers.titsintops_crawler import TitsInTopsCrawler
 from cyberdrop_dl.scraper.crawlers.tokyomotion_crawler import TokioMotionCrawler
 from cyberdrop_dl.scraper.crawlers.toonily_crawler import ToonilyCrawler
 from cyberdrop_dl.scraper.crawlers.twitter_images_crawler import TwimgCrawler
+from cyberdrop_dl.scraper.crawlers.wetransfer_crawler import WeTransferCrawler
 from cyberdrop_dl.scraper.crawlers.xbunker_crawler import XBunkerCrawler
 from cyberdrop_dl.scraper.crawlers.xbunkr_crawler import XBunkrCrawler
 from cyberdrop_dl.scraper.crawlers.xxxbunker_crawler import XXXBunkerCrawler
+from cyberdrop_dl.scraper.crawlers.yandex_disk_crawler import YandexDiskCrawler
 from cyberdrop_dl.scraper.crawlers.youjizz_crawler import YouJizzCrawler
 
 if TYPE_CHECKING:

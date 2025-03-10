@@ -22,6 +22,7 @@ from cyberdrop_dl.scraper.scraper import ScrapeMapper
 from cyberdrop_dl.ui.program_ui import ProgramUI
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.apprise import send_apprise_notifications
+from cyberdrop_dl.utils.dumper import Dumper
 from cyberdrop_dl.utils.logger import RedactedConsole, add_custom_log_render, log, log_spacer, log_with_color
 from cyberdrop_dl.utils.sorting import Sorter
 from cyberdrop_dl.utils.updates import check_latest_pypi
@@ -113,6 +114,10 @@ async def post_runtime(manager: Manager) -> None:
     if manager.config_manager.settings_data.runtime_options.update_last_forum_post:
         await manager.log_manager.update_last_forum_post()
 
+    if manager.config_manager.settings_data.files.dump_json:
+        dumper = Dumper(manager)
+        dumper.run()
+
 
 def setup_startup_logger(*, first_time_setup: bool = False) -> None:
     if first_time_setup:
@@ -182,6 +187,10 @@ def setup_debug_logger(manager: Manager) -> Path | None:
     file_handler_debug = RichHandler(**constants.RICH_HANDLER_DEBUG_CONFIG, console=file_console, level=log_level)
     add_custom_log_render(file_handler_debug)
     logger_debug.addHandler(file_handler_debug)
+
+    aiohttp_client_cache_logger = logging.getLogger("aiohttp_client_cache")
+    aiohttp_client_cache_logger.setLevel(log_level)
+    aiohttp_client_cache_logger.addHandler(file_handler_debug)
 
     # aiosqlite_log = logging.getLogger("aiosqlite")
     # aiosqlite_log.setLevel(log_level)
@@ -285,13 +294,12 @@ async def director(manager: Manager) -> None:
         start_time = perf_counter()
 
 
-def main():
-    profiling: bool = False
+def main(*, profiling: bool = False, ask: bool = True):
     if not (profiling or env.PROFILING):
         return actual_main()
     from cyberdrop_dl.profiling import profile
 
-    profile(actual_main)
+    profile(actual_main, ask)
 
 
 def actual_main() -> None:

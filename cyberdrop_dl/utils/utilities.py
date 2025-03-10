@@ -19,7 +19,6 @@ from cyberdrop_dl.clients.errors import (
     CDLBaseError,
     ErrorLogMessage,
     InvalidExtensionError,
-    InvalidURLError,
     NoExtensionError,
     get_origin,
 )
@@ -48,44 +47,35 @@ def error_handling_wrapper(func: Callable) -> Callable:
         item: ScrapeItem | MediaItem | URL = args[0]
         link: URL = item if isinstance(item, URL) else item.url
         origin = exc_info = None
+        link_to_show: URL | str = ""
         try:
             return await func(self, *args, **kwargs)
         except CDLBaseError as e:
-            ui_failure = e.ui_message
-            main_log_msg = str(e)
-            origin = e.origin or get_origin(item)
-            if isinstance(e, InvalidURLError):
-                link: URL = e.url or link  # type: ignore
+            error_log_msg = ErrorLogMessage(e.ui_failure, str(e))
+            origin = e.origin
+            e_url: URL | str | None = getattr(e, "url", None)
+            link_to_show = e_url or link_to_show
         except TimeoutError:
-            main_log_msg = ui_failure = "Timeout"
+            error_log_msg = ErrorLogMessage("Timeout")
         except ClientConnectorError as e:
-            ui_failure = "ClientConnectorError"
-            main_log_msg = f"Can't connect to {link}. If you're using a VPN, try turning it off \n  {e!s}"
+            ui_failure = "Client Connector Error"
+            # link_to_show = link.with_host(e.host) # For bunkr and jpg5, to make sure the log message matches the actual URL we tried to connect
+            log_msg = f"Can't connect to {link}. If you're using a VPN, try turning it off \n  {e!s}"
+            error_log_msg = ErrorLogMessage(ui_failure, log_msg)
         except Exception as e:
             exc_info = e
-            e_status = getattr(e, "status", None)
-            e_message = getattr(e, "message", None)
-            if e_status and e_message:
-                main_log_msg = ui_failure = CDLBaseError.format(str(e_status), e_message)
-            else:
-                main_log_msg = str(e)
-                ui_failure = "Unknown"
+            error_log_msg = ErrorLogMessage.from_unknown_exc(e)
 
-        csv_log_msg = ui_failure
-        if csv_log_msg == "Unknown":
-            csv_log_msg = "See Log for Details"
-
-        error_log_msg = ErrorLogMessage(ui_failure, main_log_msg, csv_log_msg)
-
+        link_to_show = link_to_show or link
+        origin = origin or get_origin(item)
         log_prefix = getattr(self, "log_prefix", None)
-        if log_prefix:
+        if log_prefix:  # This error came from a Downloader
             await self.write_download_error(item, error_log_msg, exc_info)  # type: ignore
             return
 
-        log(f"Scrape Failed: {link} ({main_log_msg})", 40, exc_info=exc_info)
-        await self.manager.log_manager.write_scrape_error_log(link, error_log_msg.csv_log_msg, origin)
-        self.manager.progress_manager.scrape_stats_progress.add_failure(ui_failure)
-        return None
+        log(f"Scrape Failed: {link_to_show} ({error_log_msg.main_log_msg})", 40, exc_info=exc_info)
+        await self.manager.log_manager.write_scrape_error_log(link_to_show, error_log_msg.csv_log_msg, origin)
+        self.manager.progress_manager.scrape_stats_progress.add_failure(error_log_msg.ui_failure)
 
     return wrapper
 
@@ -151,7 +141,7 @@ def get_download_path(manager: Manager, scrape_item: ScrapeItem, domain: str) ->
     download_dir = manager.path_manager.download_folder
 
     if scrape_item.retry:
-        return scrape_item.retry_path
+        return scrape_item.retry_path  # type: ignore
     if scrape_item.parent_title and scrape_item.part_of_album:
         return download_dir / scrape_item.parent_title
     if scrape_item.parent_title:
@@ -201,49 +191,58 @@ def parse_rich_text_by_style(text: Text, style_map: dict, default_style_map_key:
 
 
 def purge_dir_tree(dirname: Path) -> None:
-    """Purges empty files and directories."""
-    for file in dirname.rglob("*"):
-        if file.is_file() and file.stat().st_size == 0:
-            file.unlink()
-
-    for dirpath, _, _ in os.walk(dirname, topdown=False):
-        dir_to_remove = Path(dirpath)
-        with contextlib.suppress(OSError):
-            dir_to_remove.rmdir()
-
-
-def check_partials_and_empty_folders(manager: Manager) -> None:
-    """Checks for partial downloads, deletes partial files and empty folders."""
-    delete_partial_files(manager)
-    check_for_partial_files(manager)
-    delete_empty_folders(manager)
-
-
-def delete_partial_files(manager: Manager) -> None:
-    if not manager.config_manager.settings_data.runtime_options.delete_partial_files:
+    """Purges empty files and directories efficiently."""
+    if not dirname.is_dir():
         return
+
+    # Use os.walk() to remove empty files and directories in a single pass
+    for dirpath, _dirnames, filenames in os.walk(dirname, topdown=False):
+        dir_path = Path(dirpath)
+
+        # Remove empty files
+        for file_name in filenames:
+            file_path = dir_path / file_name
+            if file_path.exists() and file_path.stat().st_size == 0:
+                file_path.unlink()
+
+        # Remove empty directories
+        with contextlib.suppress(OSError):
+            dir_path.rmdir()
+
+
+def check_partials_and_empty_folders(manager: Manager):
+    """Checks for partial downloads, deletes partial files and empty folders."""
+    settings = manager.config_manager.settings_data.runtime_options
+    if settings.delete_partial_files:
+        delete_partial_files(manager)
+    if not settings.skip_check_for_partial_files:
+        check_for_partial_files(manager)
+    if not settings.skip_check_for_empty_folders:
+        delete_empty_folders(manager)
+
+
+def delete_partial_files(manager: Manager):
+    """Deletes partial download files recursively."""
     log_red("Deleting partial downloads...")
-    partial_downloads = manager.path_manager.download_folder.rglob("*.part")
-    for file in partial_downloads:
+    for file in manager.path_manager.download_folder.rglob("*.part"):
         file.unlink(missing_ok=True)
 
 
 def check_for_partial_files(manager: Manager):
-    if manager.config_manager.settings_data.runtime_options.skip_check_for_partial_files:
-        return
+    """Checks if there are partial downloads in any subdirectory and logs if found."""
     log_yellow("Checking for partial downloads...")
-    partial_downloads = any(manager.path_manager.download_folder.rglob("*.part"))
-    if partial_downloads:
+    if next(manager.path_manager.download_folder.rglob("*.part"), None) is not None:
         log_yellow("There are partial downloads in the downloads folder")
 
 
 def delete_empty_folders(manager: Manager):
-    if manager.config_manager.settings_data.runtime_options.skip_check_for_empty_folders:
-        return
+    """Deletes empty folders efficiently."""
     log_yellow("Checking for empty folders...")
     purge_dir_tree(manager.path_manager.download_folder)
-    if manager.path_manager.sorted_folder and manager.config_manager.settings_data.sorting.sort_downloads:
-        purge_dir_tree(manager.path_manager.sorted_folder)
+
+    sorted_folder = manager.path_manager.sorted_folder
+    if sorted_folder and manager.config_manager.settings_data.sorting.sort_downloads:
+        purge_dir_tree(sorted_folder)
 
 
 async def send_webhook_message(manager: Manager) -> None:
@@ -254,7 +253,7 @@ async def send_webhook_message(manager: Manager) -> None:
         return
 
     rich.print("\nSending Webhook Notifications.. ")
-    url = webhook.url.get_secret_value()
+    url: URL = webhook.url.get_secret_value()  # type: ignore
     text: Text = constants.LOG_OUTPUT_TEXT
     plain_text = parse_rich_text_by_style(text, constants.STYLE_TO_DIFF_FORMAT_MAP)
     main_log = manager.path_manager.main_log

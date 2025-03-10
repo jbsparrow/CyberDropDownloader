@@ -214,6 +214,7 @@ class XenforoCrawler(Crawler):
                 break
         return continue_scraping, post_url
 
+    @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         """Scrapes a post."""
         self.add_separate_post_title(scrape_item, post)  # type: ignore
@@ -286,13 +287,17 @@ class XenforoCrawler(Crawler):
             if not link_str or link_str.startswith("data:image/svg"):
                 continue
 
-            link = await self.get_absolute_link(link_str)
-            link = self.filter_link(link)
-            if not link:
-                continue
-            new_scrape_item = self.create_scrape_item(scrape_item, link)
-            await self.handle_link(new_scrape_item)
-            scrape_item.add_children()
+            await self.process_child(scrape_item, link_str)
+
+    @error_handling_wrapper
+    async def process_child(self, scrape_item: ScrapeItem, link_str: str) -> None:
+        link = await self.get_absolute_link(link_str)
+        link = self.filter_link(link)
+        if not link:
+            return
+        new_scrape_item = self.create_scrape_item(scrape_item, link)
+        await self.handle_link(new_scrape_item)
+        scrape_item.add_children()
 
     @singledispatchmethod
     def is_attachment(self, link: URL) -> bool:
@@ -429,19 +434,21 @@ class XenforoCrawler(Crawler):
         host_cookies: dict = self.client.client_manager.cookies.filter_cookies(self.primary_base_domain)
         session_cookie = host_cookies.get(self.session_cookie_name)
         session_cookie = session_cookie.value if session_cookie else None
-        if session_cookie:
-            self.logged_in = True
+        msg = f"No cookies found for {self.folder_domain}"
+        if not session_cookie and self.login_required:
+            raise LoginError(message=msg)
+
+        _, self.logged_in = await self.check_login_with_request(login_url)
+
+        if self.logged_in:
             return
+        if session_cookie:
+            msg = f"Cookies for {self.folder_domain} are not valid."
+        if self.login_required:
+            raise LoginError(message=msg)
 
-        forums_auth_data = self.manager.config_manager.authentication_data.forums
-        session_cookie = getattr(forums_auth_data, f"{self.domain}_xf_user_cookie")
-        username = getattr(forums_auth_data, f"{self.domain}_username")
-        password = getattr(forums_auth_data, f"{self.domain}_password")
-
-        await self.forum_login(login_url, session_cookie, username, password)
-
-        if not (self.login_required or self.logged_in):
-            log(f"Scraping {self.folder_domain} without an account", 30)
+        msg += " Scraping without an account"
+        log(msg, 30)
 
     @error_handling_wrapper
     async def forum_login(self, login_url: URL, session_cookie: str, username: str, password: str) -> None:

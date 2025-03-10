@@ -12,6 +12,7 @@ from asyncpraw import Reddit
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import LoginError, NoExtensionError, ScrapeError
+from cyberdrop_dl.clients.scraper_client import cache_control_manager
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
 from cyberdrop_dl.utils.logger import log, log_debug
@@ -66,14 +67,15 @@ class RedditCrawler(Crawler):
         async with CachedSession(
             cache=self.manager.cache_manager.request_cache, trace_configs=self.trace_configs
         ) as session:
-            reddit = self.new_reddit_conn(session)
-            if any(part in scrape_item.url.parts for part in ("user", "u")):
-                return await self.user(scrape_item, reddit)
-            if any(part in scrape_item.url.parts for part in ("comments", "r")):
-                return await self.subreddit(scrape_item, reddit)
-            if "redd.it" in scrape_item.url.host:
-                return await self.media(scrape_item, reddit)
-            raise ValueError
+            async with cache_control_manager(session):
+                reddit = self.new_reddit_conn(session)
+                if any(part in scrape_item.url.parts for part in ("user", "u")):
+                    return await self.user(scrape_item, reddit)
+                if any(part in scrape_item.url.parts for part in ("comments", "r")):
+                    return await self.subreddit(scrape_item, reddit)
+                if "redd.it" in scrape_item.url.host:
+                    return await self.media(scrape_item, reddit)
+                raise ValueError
 
     @error_handling_wrapper
     async def user(self, scrape_item: ScrapeItem, reddit: Reddit) -> None:

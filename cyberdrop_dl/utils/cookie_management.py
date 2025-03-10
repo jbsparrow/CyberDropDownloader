@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import contextlib
 import os
 from functools import wraps
 from http.cookiejar import MozillaCookieJar
@@ -10,11 +9,8 @@ from typing import TYPE_CHECKING
 import browser_cookie3
 from rich.console import Console
 
-from cyberdrop_dl.utils.data_enums_classes.supported_domains import SUPPORTED_FORUMS
-
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from http.cookiejar import CookieJar
 
     from cyberdrop_dl.managers.manager import Manager
 
@@ -86,20 +82,7 @@ def get_cookies_from_browsers(
                 cookie_jar.set_cookie(cookie)
             manager.path_manager.cookies_dir.mkdir(parents=True, exist_ok=True)
             cookie_file_path = manager.path_manager.cookies_dir / f"{domain}.txt"
-            update_forum_config_cookies(manager, domain, cookies)
         cookie_jar.save(cookie_file_path, ignore_discard=True, ignore_expires=True)
-
-
-def update_forum_config_cookies(manager: Manager, forum: str, cookie: CookieJar) -> None:
-    if forum not in SUPPORTED_FORUMS:
-        return
-    auth_args = manager.config_manager.authentication_data
-    forum_domain = SUPPORTED_FORUMS[forum]
-    forum_dict = auth_args.forums.model_dump()
-    with contextlib.suppress(KeyError):
-        forum_dict[f"{forum}_xf_user_cookie"] = cookie._cookies[forum_domain]["/"]["xf_user"].value
-        forum_dict[f"{forum}_xf_user_cookie"] = cookie._cookies["www." + forum_domain]["/"]["xf_user"].value
-    auth_args.forums = auth_args.forums.model_copy(update=forum_dict)
 
 
 def clear_cookies(manager: Manager, domains: list[str] | None = None) -> None:

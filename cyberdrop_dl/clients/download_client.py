@@ -316,6 +316,7 @@ class DownloadClient:
     async def handle_media_item_completion(self, media_item: MediaItem, downloaded: bool = False) -> None:
         """Sends to hash client to handle hashing and marks as completed/current download."""
         try:
+            media_item.downloaded = downloaded
             await self.manager.hash_manager.hash_client.hash_item_during_download(media_item)
             self.manager.path_manager.add_completed(media_item)
         except Exception:

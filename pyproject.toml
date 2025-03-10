@@ -32,7 +32,7 @@ description = "Bulk downloader for multiple file hosts"
 license = {text = "GPL-3.0-only"}
 readme = "README.md"
 requires-python = ">=3.11,<4"
-version = "6.6.1"
+version = "6.7.0"
 
 [project.scripts]
 cyberdrop-dl = "cyberdrop_dl.main:main"
@@ -52,6 +52,7 @@ requires-poetry = ">=2.0"
 pre-commit = ">=4.0.1,<5"
 ruff = "0.9.6"
 snakeviz = "^2.2.2"
+tox = "^4.24.1"
 
 [tool.poetry.group.test.dependencies]
 pytest = ">=8.3.4,<9"

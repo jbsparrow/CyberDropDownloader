@@ -8,7 +8,7 @@ from http import HTTPStatus
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from aiohttp import ClientError, ClientResponseError
+from aiohttp import ClientConnectorError, ClientError, ClientResponseError
 from filedate import File
 
 from cyberdrop_dl.clients.errors import (
@@ -61,11 +61,9 @@ def retry(func: Callable) -> Callable:
                 if e.status != 999:
                     media_item.current_attempt += 1
 
-                full_message = str(e.status)
-                if e.message != full_message:
-                    full_message = f"{e.status} - {e.message}"
+                error_log_msg = ErrorLogMessage(e.ui_failure, str(e))
 
-                log_message = f"with error: {full_message}"
+                log_message = f"with error: {error_log_msg.main_log_msg}"
                 log(f"{self.log_prefix} failed: {media_item.url} {log_message}", 40)
                 if media_item.current_attempt < max_attempts:
                     retry_msg = f"Retrying {self.log_prefix.lower()}: {media_item.url} , retry attempt: {media_item.current_attempt + 1}"
@@ -191,7 +189,7 @@ class Downloader:
             self.manager.progress_manager.download_progress.add_skipped()
             self.attempt_task_removal(media_item)
 
-        except (DownloadError, ClientResponseError, InvalidContentTypeError):
+        except (DownloadError, ClientResponseError, InvalidContentTypeError, ClientConnectorError):
             raise
 
         except (
@@ -219,9 +217,9 @@ class Downloader:
     async def write_download_error(self, media_item: MediaItem, error_log_msg: ErrorLogMessage, exc_info=None) -> None:
         self.attempt_task_removal(media_item)
         full_message = f"{self.log_prefix} Failed: {media_item.url} ({error_log_msg.main_log_msg}) \n -> Referer: {media_item.referer}"
-        log(full_message, 40, exc_info=exc_info)  # type: ignore
-        await self.manager.log_manager.write_download_error_log(media_item, error_log_msg.csv_log_msg)  # type: ignore
-        self.manager.progress_manager.download_stats_progress.add_failure(error_log_msg.ui_msg)
+        log(full_message, 40, exc_info=exc_info)
+        await self.manager.log_manager.write_download_error_log(media_item, error_log_msg.csv_log_msg)
+        self.manager.progress_manager.download_stats_progress.add_failure(error_log_msg.ui_failure)
         self.manager.progress_manager.download_progress.add_failed()
 
     @staticmethod

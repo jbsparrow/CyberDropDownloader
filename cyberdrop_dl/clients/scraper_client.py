@@ -10,6 +10,7 @@ from aiohttp_client_cache import CachedSession
 from aiohttp_client_cache.response import CachedStreamReader
 from bs4 import BeautifulSoup
 
+import cyberdrop_dl.utils.constants as constants
 from cyberdrop_dl.clients.errors import DDOSGuardError, InvalidContentTypeError
 from cyberdrop_dl.utils.logger import log_debug
 
@@ -49,7 +50,7 @@ def limiter(func: Callable) -> Any:
 
 @asynccontextmanager
 async def cache_control_manager(client_session: CachedSession, disabled: bool = False):
-    client_session.cache.disabled = disabled
+    client_session.cache.disabled = constants.DISABLE_CACHE or disabled
     yield
     client_session.cache.disabled = False
 
@@ -94,7 +95,9 @@ class ScraperClient:
         with_response_url: bool = False,
         cache_disabled: bool = False,
         retry: bool = True,
-    ) -> BeautifulSoup:
+        *,
+        with_response_headers: bool = False,
+    ) -> BeautifulSoup | tuple[BeautifulSoup, CIMultiDictProxy | URL]:
         """Returns a BeautifulSoup object from the given URL."""
         async with (
             cache_control_manager(client_session, disabled=cache_disabled),
@@ -127,6 +130,8 @@ class ScraperClient:
                     )
                 if with_response_url:
                     return soup, response_URL
+                if with_response_headers:
+                    return soup, response.headers
                 return soup
 
             content_type = response.headers.get("Content-Type")
@@ -248,7 +253,7 @@ class ScraperClient:
         """Returns the headers from the given URL."""
         async with client_session.head(
             url,
-            headers=self._headers,
+            headers=self._headers | {"Accept-Encoding": "identity"},
             ssl=self.client_manager.ssl_context,
             proxy=self.client_manager.proxy,
         ) as response:

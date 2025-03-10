@@ -6,7 +6,7 @@ import ssl
 from dataclasses import dataclass
 from http import HTTPStatus
 from http.cookiejar import MozillaCookieJar
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import aiohttp
 import certifi
@@ -65,7 +65,7 @@ class ClientManager:
 
         self.ssl_context = ssl.create_default_context(cafile=certifi.where()) if self.verify_ssl else False
         self.cookies = aiohttp.CookieJar(quote_cookie=False)
-        self.proxy = global_settings_data.general.proxy
+        self.proxy: URL | None = global_settings_data.general.proxy  # type: ignore
 
         self.domain_rate_limits = {
             "bunkrr": AsyncLimiter(5, 1),
@@ -124,7 +124,7 @@ class ClientManager:
                     if simplified_domain in domains_seen:
                         log(f"Previous cookies for domain {simplified_domain} detected. They will be overwritten", 30)
                 domains_seen.add(simplified_domain)
-                self.cookies.update_cookies({cookie.name: cookie.value}, response_url=URL(f"https://{cookie.domain}"))
+                self.cookies.update_cookies({cookie.name: cookie.value}, response_url=URL(f"https://{cookie.domain}"))  # type: ignore
 
         log_spacer(20, log_to_console=False)
 
@@ -154,8 +154,9 @@ class ClientManager:
         headers = response.headers
         message = None
 
-        if download and headers.get("ETag") in DOWNLOAD_ERROR_ETAGS:
-            message = DOWNLOAD_ERROR_ETAGS.get(headers.get("ETag"))
+        e_tag = headers.get("ETag")
+        if download and e_tag in DOWNLOAD_ERROR_ETAGS:
+            message = DOWNLOAD_ERROR_ETAGS.get(e_tag)
             raise DownloadError(HTTPStatus.NOT_FOUND, message=message, origin=origin)
 
         if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
@@ -191,7 +192,7 @@ class ClientManager:
     def check_ddos_guard(soup: BeautifulSoup) -> bool:
         if soup.title:
             for title in DDOS_GUARD_CHALLENGE_TITLES:
-                challenge_found = title.casefold() == soup.title.string.casefold()
+                challenge_found = title.casefold() == soup.title.string.casefold()  # type: ignore
                 if challenge_found:
                     return True
 
@@ -206,7 +207,7 @@ class ClientManager:
     def check_cloudflare(soup: BeautifulSoup) -> bool:
         if soup.title:
             for title in CLOUDFLARE_CHALLENGE_TITLES:
-                challenge_found = title.casefold() == soup.title.string.casefold()
+                challenge_found = title.casefold() == soup.title.string.casefold()  # type: ignore
                 if challenge_found:
                     return True
 
@@ -247,12 +248,14 @@ class Flaresolverr:
 
     def __init__(self, client_manager: ClientManager) -> None:
         self.client_manager = client_manager
-        self.flaresolverr_host = client_manager.manager.config_manager.global_settings_data.general.flaresolverr
+        self.flaresolverr_host: URL = client_manager.manager.config_manager.global_settings_data.general.flaresolverr  # type: ignore
         self.enabled = bool(self.flaresolverr_host)
-        self.session_id = None
-        self.timeout = aiohttp.ClientTimeout(total=120000, connect=60000)
+        self.session_id: str = ""
+        self.session_create_timeout = aiohttp.ClientTimeout(total=5 * 60, connect=60)  # 5 minutes to create session
+        self.timeout = client_manager.scraper_session._timeouts  # Config timeout for normal requests
         self.session_lock = asyncio.Lock()
         self.request_lock = asyncio.Lock()
+        self.request_count = 0
 
     async def _request(
         self,
@@ -269,24 +272,35 @@ class Flaresolverr:
                 await self._create_session()
         return await self._make_request(command, client_session, **kwargs)
 
-    async def _make_request(self, command: str, client_session: ClientSession, **kwargs):
-        client_session = kwargs.pop("client_session", client_session)
+    async def _make_request(self, command: str, client_session: ClientSession, **kwargs) -> dict[str, Any]:
+        timeout = self.timeout
+        if command == "sessions.create":
+            timeout = self.session_create_timeout
+
         headers = client_session.headers.copy()
         headers.update({"Content-Type": "application/json"})
         for key, value in kwargs.items():
             if isinstance(value, URL):
                 kwargs[key] = str(value)
-        data = {"cmd": command, "maxTimeout": 60000, "session": self.session_id} | kwargs
 
+        data = {
+            "cmd": command,
+            "maxTimeout": 60_000,  # This timeout is in miliseconds (60s)
+            "session": self.session_id,
+        } | kwargs
+
+        self.request_count += 1
+        msg = f"Waiting For Flaresolverr Response [{self.request_count}]"
         async with (
             self.request_lock,
+            self.client_manager.manager.progress_manager.show_status_msg(msg),
             client_session.post(
                 self.flaresolverr_host / "v1",
                 headers=headers,
                 ssl=self.client_manager.ssl_context,
                 proxy=self.client_manager.proxy,
                 json=data,
-                timeout=self.timeout,
+                timeout=timeout,
             ) as response,
         ):
             json_obj: dict = await response.json()  # type: ignore
@@ -297,7 +311,7 @@ class Flaresolverr:
         """Creates a permanet flaresolverr session."""
         session_id = "cyberdrop-dl"
         async with ClientSession() as client_session:
-            flaresolverr_resp = await self._make_request("sessions.create", client_session)
+            flaresolverr_resp = await self._make_request("sessions.create", client_session, session=session_id)
         status = flaresolverr_resp.get("status")
         if status != "ok":
             raise DDOSGuardError(message="Failed to create flaresolverr session")
@@ -307,7 +321,7 @@ class Flaresolverr:
         if self.session_id:
             async with ClientSession() as client_session:
                 await self._make_request("sessions.destroy", client_session, session=self.session_id)
-                self.session_id = None
+            self.session_id = ""
 
     async def get(
         self,
@@ -327,9 +341,8 @@ class Flaresolverr:
         if fs_resp.status != "ok":
             raise DDOSGuardError(message="Failed to resolve URL with flaresolverr", origin=origin)
 
-        mismatch_msg = f"Config user_agent and flaresolverr user_agent do not match: \n  Cyberdrop-DL: {fs_resp.user_agent}\n  Flaresolverr: {fs_resp.user_agent}"
-
         user_agent = client_session.headers["User-Agent"].strip()
+        mismatch_msg = f"Config user_agent and flaresolverr user_agent do not match: \n  Cyberdrop-DL: {user_agent}\n  Flaresolverr: {fs_resp.user_agent}"
         if fs_resp.soup and (
             self.client_manager.check_ddos_guard(fs_resp.soup) or self.client_manager.check_cloudflare(fs_resp.soup)
         ):
