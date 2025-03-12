@@ -42,7 +42,7 @@ from dateutil import parser
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import DownloadError, ScrapeError
-from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:

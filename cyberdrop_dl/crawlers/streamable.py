@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
-from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 

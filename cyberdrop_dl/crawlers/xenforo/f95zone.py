@@ -6,7 +6,7 @@ from yarl import URL
 
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
-from .xenforo_crawler import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
+from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager

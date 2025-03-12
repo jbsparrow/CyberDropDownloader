@@ -13,7 +13,7 @@ from bs4 import BeautifulSoup
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import InvalidURLError, LoginError, ScrapeError
-from cyberdrop_dl.scraper.crawler import Crawler, create_task_id, remove_trailing_slash
+from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id, remove_trailing_slash
 from cyberdrop_dl.scraper.filters import set_return_value
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FORUM, FORUM_POST, ScrapeItem
 from cyberdrop_dl.utils.logger import log, log_debug
@@ -276,13 +276,13 @@ class XenforoCrawler(Crawler):
         for link_obj in links:
             link_tag: Tag | str = link_obj.get(selector)  # type: ignore
             if link_tag and not isinstance(link_tag, str):
-                parent_simp_check = link_tag.parent.get("data-simp")
+                parent_simp_check = link_tag.parent.get("data-simp")  # type: ignore
                 if parent_simp_check and "init" in parent_simp_check:
                     continue
 
             link_str: str | None = link_tag or link_obj.get("href")  # type: ignore
             if selector == self.selectors.posts.embeds.attribute:
-                link_str = self.process_embed(link_tag)
+                link_str = self.process_embed(link_tag)  # type: ignore
 
             if not link_str or link_str.startswith("data:image/svg"):
                 continue

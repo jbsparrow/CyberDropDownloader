@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from yarl import URL
 
-from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.utilities import get_filename_and_ext
 
 if TYPE_CHECKING:

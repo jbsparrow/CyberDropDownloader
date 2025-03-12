@@ -2,17 +2,17 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from cyberdrop_dl.scraper import CRAWLERS
-from cyberdrop_dl.scraper.crawlers.xenforo_crawler import XenforoCrawler
+from cyberdrop_dl.crawlers import CRAWLERS
+from cyberdrop_dl.crawlers.xenforo import XenforoCrawler
 
 if TYPE_CHECKING:
-    from cyberdrop_dl.scraper.crawler import Crawler
+    from cyberdrop_dl.crawlers import Crawler
 
 forum_crawlers = {crawler for crawler in CRAWLERS if issubclass(crawler, XenforoCrawler)}
 website_crawlers = CRAWLERS - forum_crawlers
 
 
-def get_supported_sites_from(crawlers: set[type[Crawler]]) -> dict[str, str]:
+def get_supported_sites_from(crawlers: set[type[Crawler]] | set[type[XenforoCrawler]]) -> dict[str, str]:
     support_sites_dict = {}
     for crawler in crawlers:
         if not crawler.SUPPORTED_SITES or crawler.primary_base_domain:

@@ -11,8 +11,8 @@ import arrow
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import JDownloaderError, NoExtensionError
+from cyberdrop_dl.crawlers import CRAWLERS
 from cyberdrop_dl.downloader.downloader import Downloader
-from cyberdrop_dl.scraper import CRAWLERS
 from cyberdrop_dl.scraper.filters import (
     has_valid_extension,
     is_in_domain_list,
@@ -29,8 +29,8 @@ from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Sequence
 
+    from cyberdrop_dl.crawlers import Crawler
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.scraper.crawler import Crawler
 
 
 class ScrapeMapper:
@@ -78,7 +78,7 @@ class ScrapeMapper:
             self.manager.real_debrid_manager.startup()
 
         if self.manager.real_debrid_manager.enabled:
-            from cyberdrop_dl.scraper.crawlers.realdebrid_crawler import RealDebridCrawler
+            from cyberdrop_dl.crawlers.realdebrid import RealDebridCrawler
 
             self.existing_crawlers["real-debrid"] = RealDebridCrawler(self.manager)
             await self.existing_crawlers["real-debrid"].startup()

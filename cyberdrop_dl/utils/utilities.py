@@ -31,9 +31,9 @@ if TYPE_CHECKING:
 
     from rich.text import Text
 
+    from cyberdrop_dl.crawlers import Crawler
     from cyberdrop_dl.downloader.downloader import Downloader
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.scraper.crawler import Crawler
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
 
 

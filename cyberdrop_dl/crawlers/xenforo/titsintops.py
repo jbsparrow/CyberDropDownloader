@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from yarl import URL
 
-from .xenforo_crawler import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
+from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
 
 if TYPE_CHECKING:
     from bs4 import Tag

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from yarl import URL
 
-from .xenforo_crawler import XenforoCrawler
+from .xenforo import XenforoCrawler
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
