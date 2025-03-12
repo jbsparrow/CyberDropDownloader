@@ -300,8 +300,6 @@ def override_cdn(url: URL) -> URL:
     assert url.host
     if "milkshake" in url.host:
         return url.with_host("mlk-bk.cdn.gigachad-cdn.ru")
-    if "brg-bk.cdn" in url.host:
-        return url.with_host("i-burger.bunkr.ru")
     return url
 
 
