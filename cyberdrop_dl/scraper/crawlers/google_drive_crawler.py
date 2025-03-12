@@ -225,7 +225,8 @@ def get_file_id(url: URL) -> str:
 
     if "d" in url.parts and any(p in url.parts for p in VALID_FILE_URL_PARTS):
         file_id_index = url.parts.index("d") + 1
-        return url.parts[file_id_index]
+        if len(url.parts) > file_id_index:
+            return url.parts[file_id_index]
     return ""
 
 
@@ -236,7 +237,9 @@ def get_folder_id(url: URL) -> str:
         return folder_id
 
     folder_id_index = url.parts.index("folders") + 1
-    return url.parts[folder_id_index]
+    if len(url.parts) > folder_id_index:
+        return url.parts[folder_id_index]
+    return ""
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
