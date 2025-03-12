@@ -28,11 +28,12 @@ class SexDotComCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        parts = scrape_item.url.parts
-        if len(parts) > 5:
-            await self.post(scrape_item)
-        elif len(parts) <= 5 and parts[2] == "shorts":
-            await self.profile(scrape_item)
+        n_parts = len(scrape_item.url.parts)
+        if n_parts > 5:
+            return await self.post(scrape_item)
+        if 3 <= n_parts <= 5 and scrape_item.url.parts[2] == "shorts":
+            return await self.profile(scrape_item)
+        raise ValueError
 
     async def shorts_profile_paginator(self, scrape_item: ScrapeItem) -> AsyncGenerator[dict]:
         username = scrape_item.url.parts[3]
