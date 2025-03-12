@@ -161,6 +161,9 @@ class BunkrrCrawler(Crawler):
 
         filename, ext = self.get_filename_and_ext(link.name, assume_ext=".mp4")
         custom_filename, _ = self.get_filename_and_ext(item.name, assume_ext=".mp4")
+        if not link.query.get("n"):
+            link = link.update_query(n=item.name)
+
         if not self.check_album_results(link, results):
             await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
@@ -239,7 +242,10 @@ class BunkrrCrawler(Crawler):
         except NoExtensionError:
             filename, ext = self.get_filename_and_ext(scrape_item.url.name, assume_ext=".mp4")
 
-        custom_filename: str = link.query.get("n") or fallback_filename
+        if not link.query.get("n"):
+            link = link.update_query(n=fallback_filename)
+
+        custom_filename: str = link.query.get("n")  # type: ignore
         custom_filename, _ = self.get_filename_and_ext(custom_filename)
 
         if is_cdn(scrape_item.url) and not is_reinforced_link(scrape_item.url):
