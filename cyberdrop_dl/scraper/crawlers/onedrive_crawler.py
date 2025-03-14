@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import calendar
+import json
 from dataclasses import dataclass
 from datetime import datetime
 from functools import partial
@@ -22,7 +23,13 @@ if TYPE_CHECKING:
 
 
 API_ENTRYPOINT = URL("https://api.onedrive.com/v1.0/drives/")
+PERSONAL_API_ENTRYPOINT = URL("https://my.microsoftpersonalcontent.com/_api/v2.0/shares/")
+BADGER_URL = URL("https://api-badgerp.svc.ms/v1.0/token")
 SHARE_LINK_HOST = "1drv.ms"
+
+# Default app details used in browsers by unautenticated sessions
+APP_ID = "1141147648"
+APP_UUID = "5cbed6ac-a083-4e14-b191-b4ba07653de2"
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,11 +37,13 @@ class AccessDetails:
     container_id: str
     resid: str
     auth_key: str
+    redeem: str
 
     @classmethod
     def from_url(cls, direct_url: URL) -> AccessDetails:
         resid = direct_url.query.get("resid") or ""  # ex: ABCXYZ000!12345
         auth_key = direct_url.query.get("authkey") or ""
+        redeem = direct_url.query.get("redeem") or ""
         id_ = direct_url.query.get("id") or ""
         container_id = direct_url.query.get("cid")
         if not resid and "!" in id_:
@@ -42,7 +51,7 @@ class AccessDetails:
         if not container_id:
             container_id = resid.split("!")[0]
 
-        return AccessDetails(container_id, resid, auth_key)
+        return AccessDetails(container_id, resid, auth_key, redeem)
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,6 +94,8 @@ class OneDriveCrawler(Crawler):
 
     def __init__(self, manager: Manager, _) -> None:
         super().__init__(manager, "onedrive", "OneDrive")
+        self.barger_token = ""
+        self.auth_headers = {}
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -117,8 +128,12 @@ class OneDriveCrawler(Crawler):
 
     @error_handling_wrapper
     async def process_access_details(self, scrape_item: ScrapeItem, access_details: AccessDetails) -> None:
-        if not access_details.resid or not access_details.auth_key:
+        if not (access_details.resid and access_details.auth_key) and not access_details.redeem:
             raise ScrapeError(401)
+
+        async with self.startup_lock:
+            if access_details.redeem and not self.barger_token:
+                await self.get_badger_token()
 
         api_url = get_api_url(access_details)
         json_resp: dict = await self.make_api_request(api_url)
@@ -137,7 +152,8 @@ class OneDriveCrawler(Crawler):
         scrape_item.setup_as_album(title)
 
         subfolders: list[AccessDetails] = []
-        new_access_details = partial(AccessDetails, auth_key=folder.access_details.auth_key)
+        old_ad = folder.access_details
+        new_access_details = partial(AccessDetails, auth_key=old_ad.auth_key, redeem=old_ad.redeem)
 
         for item in folder.children:
             if is_folder(item):
@@ -168,15 +184,27 @@ class OneDriveCrawler(Crawler):
         await self.handle_file(file.url, scrape_item, filename, ext, debrid_link=file.download_url)
 
     async def make_api_request(self, api_url: URL) -> dict[str, Any]:
-        headers = {"Content-Type": "application/json"}
+        headers = {"Content-Type": "application/json"} | self.auth_headers
         async with self.request_limiter:
             json_resp: dict = await self.client.get_json(self.domain, api_url, headers_inc=headers)
 
         return json_resp
 
+    async def get_badger_token(self) -> None:
+        new_headers = {"Content-Type": "application/json", "AppId": APP_ID}
+        data = {"appId": APP_UUID}
+
+        async with self.request_limiter:
+            json_resp: dict = await self.client.post_data(
+                self.domain, BADGER_URL, headers_inc=new_headers, data=json.dumps(data)
+            )
+
+        self.barger_token: str = json_resp["token"]
+        self.auth_headers = {"Prefer": "autoredeem", "Authorization": f"Badger {self.barger_token}"}
+
 
 def is_share_link(url: URL) -> bool:
-    return bool(url.host and url.host == SHARE_LINK_HOST) and any(p in url.parts for p in ("f", "t"))
+    return bool(url.host and url.host == SHARE_LINK_HOST) and any(p in url.parts for p in ("f", "t", "u"))
 
 
 def is_folder(json_resp: dict[str, Any]) -> bool:
@@ -188,7 +216,7 @@ def parse_api_response(json_resp: dict, access_details: AccessDetails) -> dict[s
     item_id = json_resp["id"]
     date_str = json_resp["fileSystemInfo"]["lastModifiedDateTime"]
     drive_id = json_resp["parentReference"]["driveId"]
-    new_access_details = AccessDetails(drive_id, item_id, access_details.auth_key)
+    new_access_details = AccessDetails(drive_id, item_id, access_details.auth_key, access_details.redeem)
     return {
         "id": item_id,
         "url": get_api_url(new_access_details),
@@ -200,6 +228,9 @@ def parse_api_response(json_resp: dict, access_details: AccessDetails) -> dict[s
 
 
 def get_api_url(access_details: AccessDetails) -> URL:
+    if access_details.redeem:
+        return PERSONAL_API_ENTRYPOINT / f"u!{access_details.redeem}" / "driveitem"
+
     api_url = API_ENTRYPOINT / access_details.container_id / "items" / access_details.resid
     return api_url.with_query(authkey=access_details.auth_key, expand="children", orderby="folder,name")
 
