@@ -7,7 +7,7 @@ from __future__ import annotations
 import calendar
 import json
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from functools import partial
 from typing import TYPE_CHECKING, Any, ClassVar, Self
 
@@ -94,15 +94,33 @@ class OneDriveCrawler(Crawler):
 
     def __init__(self, manager: Manager, _) -> None:
         super().__init__(manager, "onedrive", "OneDrive")
-        self.barger_token = ""
+        badger_token: str = manager.cache_manager.get("onedrive_badger_token") or ""
+        badger_token_expires: str = manager.cache_manager.get("onedrive_badger_token_expires") or ""
         self.auth_headers = {}
+        expired = True
+        if badger_token_expires:
+            if badger_token_expires.endswith("Z"):
+                badger_token_expires = badger_token_expires.replace("Z", "+00:00")
+            expire_datetime = datetime.fromisoformat(badger_token_expires)
+            t_delta = expire_datetime - datetime.now(UTC)
+            if t_delta > timedelta(hours=12):
+                expired = False
+        if badger_token and not expired:
+            self.auth_headers = {"Prefer": "autoredeem", "Authorization": f"Badger {badger_token}"}
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+    async def async_startup(self) -> None:
+        if self.auth_headers:
+            return
+        await self.get_badger_token(BADGER_URL)
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        if is_share_link(scrape_item.url):  # ex: https://1drv.ms/t/s!ABCJKL-ABCJKL?e=ABC123
+
+        # ex: https://1drv.ms/t/s!ABCJKL-ABCJKL?e=ABC123 or  https://1drv.ms/t/c/a12345678/aTOKEN?e=ABC123
+        if is_share_link(scrape_item.url):
             return await self.share_link(scrape_item)
 
         # ex: https://onedrive.live.com/?authkey=!AUTHXXX-12345&id=ABCXYZ!12345&cid=ABC0123BVC
@@ -131,9 +149,8 @@ class OneDriveCrawler(Crawler):
         if not (access_details.resid and access_details.auth_key) and not access_details.redeem:
             raise ScrapeError(401)
 
-        async with self.startup_lock:
-            if access_details.redeem and not self.barger_token:
-                await self.get_badger_token()
+        if access_details.redeem and not self.auth_headers:
+            raise ScrapeError(401)
 
         api_url = get_api_url(access_details)
         json_resp: dict = await self.make_api_request(api_url)
@@ -190,17 +207,21 @@ class OneDriveCrawler(Crawler):
 
         return json_resp
 
-    async def get_badger_token(self) -> None:
+    @error_handling_wrapper
+    async def get_badger_token(self, badger_url: URL = BADGER_URL) -> None:
         new_headers = {"Content-Type": "application/json", "AppId": APP_ID}
         data = {"appId": APP_UUID}
-
+        data_json = data = json.dumps(data)
         async with self.request_limiter:
             json_resp: dict = await self.client.post_data(
-                self.domain, BADGER_URL, headers_inc=new_headers, data=json.dumps(data)
+                self.domain, badger_url, headers_inc=new_headers, data=data_json
             )
 
-        self.barger_token: str = json_resp["token"]
-        self.auth_headers = {"Prefer": "autoredeem", "Authorization": f"Badger {self.barger_token}"}
+        badger_token: str = json_resp["token"]
+        badger_token_expires: str = json_resp["expiryTimeUtc"]
+        self.auth_headers = {"Prefer": "autoredeem", "Authorization": f"Badger {badger_token}"}
+        self.manager.cache_manager.save("onedrive_badger_token", badger_token)
+        self.manager.cache_manager.save("onedrive_badger_token_expires", badger_token_expires)
 
 
 def is_share_link(url: URL) -> bool:
