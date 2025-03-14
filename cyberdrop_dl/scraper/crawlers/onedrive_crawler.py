@@ -133,19 +133,25 @@ class OneDriveCrawler(Crawler):
         location = headers.get("location")
         if not location:
             raise ScrapeError(400)
+        og_share_link = scrape_item.url
         scrape_item.url = self.parse_url(location)
-        await self.link_with_credentials(scrape_item)
+        await self.link_with_credentials(scrape_item, og_share_link)
 
     @error_handling_wrapper
-    async def link_with_credentials(self, scrape_item: ScrapeItem) -> None:
+    async def link_with_credentials(self, scrape_item: ScrapeItem, og_share_link: URL | None = None) -> None:
         if await self.check_complete_from_referer(scrape_item):
             return
 
+        if og_share_link and await self.check_complete_from_referer(og_share_link):
+            return
+
         access_details = AccessDetails.from_url(scrape_item.url)
-        await self.process_access_details(scrape_item, access_details)
+        await self.process_access_details(scrape_item, access_details, og_share_link)
 
     @error_handling_wrapper
-    async def process_access_details(self, scrape_item: ScrapeItem, access_details: AccessDetails) -> None:
+    async def process_access_details(
+        self, scrape_item: ScrapeItem, access_details: AccessDetails, og_share_link: URL | None = None
+    ) -> None:
         if not (access_details.resid and access_details.auth_key) and not access_details.redeem:
             raise ScrapeError(401)
 
@@ -157,7 +163,7 @@ class OneDriveCrawler(Crawler):
 
         if not is_folder(json_resp):
             file = OneDriveFile.from_api_response(json_resp, access_details)
-            scrape_item.url = file.web_url
+            scrape_item.url = og_share_link or file.web_url
             return await self.process_file(scrape_item, file)
 
         folder = OneDriveFolder.from_api_response(json_resp, access_details)
