@@ -202,7 +202,7 @@ def get_input(manager: Manager) -> Text | str:
 def get_console_hyperlink(file_path: Path, text: str = "") -> Text:
     full_path = file_path.resolve()
     show_text = text or full_path
-    file_url = URL(str(full_path)).with_scheme("file")
+    file_url = URL(full_path.as_posix()).with_scheme("file")
     return Text(str(show_text), style=f"link {file_url}")
 
 
