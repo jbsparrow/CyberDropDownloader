@@ -5,8 +5,9 @@ import json
 import os
 import platform
 import re
+import shutil
 import subprocess
-from functools import partial, wraps
+from functools import lru_cache, partial, wraps
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -35,6 +36,8 @@ if TYPE_CHECKING:
     from cyberdrop_dl.scraper.crawler import Crawler
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
 
+
+TEXT_EDITORS = "micro", "nano", "vim"  # Ordered by preference
 
 subprocess_get_text = partial(subprocess.run, capture_output=True, text=True, check=False)
 
@@ -293,35 +296,47 @@ async def send_webhook_message(manager: Manager) -> None:
 
 def open_in_text_editor(file_path: Path) -> bool | None:
     """Opens file in OS text editor."""
-    using_desktop_enviroment = (
-        any(var in os.environ for var in ("DISPLAY", "WAYLAND_DISPLAY")) and "SSH_CONNECTION" not in os.environ
-    )
-    default_editor = os.environ.get("EDITOR")
-    if platform.system() == "Darwin":
-        subprocess.Popen(["open", "-a", "TextEdit", file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    using_ssh = "SSH_CONNECTION" in os.environ
+    using_desktop_enviroment = any(var in os.environ for var in ("DISPLAY", "WAYLAND_DISPLAY"))
+    custom_editor = os.environ.get("EDITOR")
+
+    if custom_editor:
+        path = shutil.which(custom_editor)
+        if not path:
+            msg = f"Editor '{custom_editor}' from env bar $EDITOR is not available"
+            raise ValueError(msg)
+        cmd = path, file_path
+
+    elif platform.system() == "Darwin":
+        cmd = "open", "-a", "TextEdit", file_path
 
     elif platform.system() == "Windows":
-        subprocess.Popen(["notepad.exe", file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        cmd = "notepad.exe", file_path
 
-    elif using_desktop_enviroment and set_default_app_if_none(file_path):
-        subprocess.Popen(["xdg-open", file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    elif using_desktop_enviroment and not using_ssh and set_default_app_if_none(file_path):
+        cmd = "xdg-open", file_path
 
-    elif default_editor:
-        subprocess.call([default_editor, file_path])
-
-    elif subprocess.call(["which", "micro"], stdout=subprocess.DEVNULL) == 0:
-        subprocess.call(["micro", file_path])
-
-    elif subprocess.call(["which", "nano"], stdout=subprocess.DEVNULL) == 0:
-        subprocess.call(["nano", file_path])
-
-    elif subprocess.call(["which", "vim"], stdout=subprocess.DEVNULL) == 0:
-        subprocess.call(["vim", file_path])
-
+    elif fallback_editor := get_first_available_editor():
+        cmd = fallback_editor, file_path
+        if fallback_editor.stem == "micro":
+            cmd = fallback_editor, "-keymenu", "true", file_path
     else:
-        raise ValueError
+        msg = "No default text editor found"
+        raise ValueError(msg)
+
+    rich.print(f"Opening '{file_path}' with '{cmd[0]}'...")
+    subprocess.call([*cmd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+@lru_cache
+def get_first_available_editor() -> Path | None:
+    for editor in TEXT_EDITORS:
+        path = shutil.which(editor)
+        if path:
+            return Path(path)
+
+
+@lru_cache
 def set_default_app_if_none(file_path: Path) -> bool:
     mimetype = xdg_mime_query("filetype", str(file_path))
     if not mimetype:
