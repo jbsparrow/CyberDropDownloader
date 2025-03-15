@@ -7,7 +7,7 @@ import platform
 import re
 import shutil
 import subprocess
-from functools import partial, wraps
+from functools import lru_cache, partial, wraps
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -320,6 +320,7 @@ def open_in_text_editor(file_path: Path) -> bool | None:
     subprocess.call([*cmd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+@lru_cache
 def get_first_available_editor() -> Path | None:
     for editor in TEXT_EDITORS:
         if not editor:
@@ -329,6 +330,7 @@ def get_first_available_editor() -> Path | None:
             return Path(path)
 
 
+@lru_cache
 def set_default_app_if_none(file_path: Path) -> bool:
     mimetype = xdg_mime_query("filetype", str(file_path))
     if not mimetype:
