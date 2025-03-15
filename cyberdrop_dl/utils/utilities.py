@@ -310,7 +310,7 @@ def open_in_text_editor(file_path: Path) -> bool | None:
         subprocess.call([default_editor, file_path])
 
     elif subprocess.call(["which", "micro"], stdout=subprocess.DEVNULL) == 0:
-        subprocess.call(["micro", file_path])
+        subprocess.call(["micro", "-keymenu", "true", file_path])
 
     elif subprocess.call(["which", "nano"], stdout=subprocess.DEVNULL) == 0:
         subprocess.call(["nano", file_path])
