@@ -52,7 +52,7 @@ class DirtyShipCrawler(Crawler):
                 title: str = soup.select_one("title").text  # type: ignore
                 title = title.split("Archives - DirtyShip")[0]
                 title = self.create_title(title)
-                scrape_item.setup_as_album(title, self.manager)
+                scrape_item.setup_as_album(title)
                 add_title = False
 
             for video in soup.select(PLAYLIST_ITEM_SELECTOR):
@@ -108,7 +108,7 @@ class DirtyShipCrawler(Crawler):
 
     def get_flowplayer_sources(self, soup: BeautifulSoup) -> set[Format]:
         flow_player = soup.select_one(FLOWPLAYER_VIDEO_SELECTOR)
-        data_item: str = flow_player.get("data-item")  # type: ignore
+        data_item: str = flow_player.get("data-item") if flow_player else None  # type: ignore
         if not data_item:
             return set()
         data_item = data_item.replace(r"\/", "/")
