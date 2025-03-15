@@ -13,8 +13,7 @@ from cyberdrop_dl.utils.constants import VALIDATION_ERROR_FOOTER
 if TYPE_CHECKING:
     from requests import Response
 
-    from cyberdrop_dl.scraper.crawler import ScrapeItem
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
 
 
 # See: https://developers.cloudflare.com/support/troubleshooting/cloudflare-errors/troubleshooting-cloudflare-5xx-errors/
