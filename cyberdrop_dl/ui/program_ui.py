@@ -244,8 +244,8 @@ class ProgramUI:
     def _open_in_text_editor(self, file_path: Path, *, reload_config: bool = True):
         try:
             open_in_text_editor(file_path)
-        except ValueError:
-            self.print_error("No default text editor found")
+        except ValueError as e:
+            self.print_error(str(e))
             return
         if reload_config:
             console.print("Revalidating config, please wait..")
