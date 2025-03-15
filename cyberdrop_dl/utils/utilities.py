@@ -300,25 +300,24 @@ def open_in_text_editor(file_path: Path) -> bool | None:
         any(var in os.environ for var in ("DISPLAY", "WAYLAND_DISPLAY")) and "SSH_CONNECTION" not in os.environ
     )
     fallback_editor = get_first_available_editor()
-    args = (file_path,)
 
     if platform.system() == "Darwin":
-        args = "-a", "TextEdit", *args
-        subprocess.Popen(["open", *args], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        cmd = "open", "-a", "TextEdit", file_path
 
     elif platform.system() == "Windows":
-        subprocess.Popen(["notepad.exe", *args], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        cmd = "notepad.exe", file_path
 
     elif using_desktop_enviroment and set_default_app_if_none(file_path):
-        subprocess.Popen(["xdg-open", *args], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        cmd = "xdg-open", file_path
 
     elif fallback_editor:
+        cmd = fallback_editor, file_path
         if fallback_editor.stem == "micro":
-            args = "-keymenu", "true", *args
-        subprocess.call([fallback_editor, *args])
-
+            cmd = fallback_editor, "-keymenu", "true", file_path
     else:
         raise ValueError
+
+    subprocess.call([*cmd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
 def get_first_available_editor() -> Path | None:
