@@ -144,13 +144,9 @@ def log_debug(message: Exception | str, level: int = 10, **kwargs) -> None:
         logger_debug.log(level, message.encode("ascii", "ignore").decode("ascii"), **kwargs)
 
 
-def log_with_color(
-    message: str, style: str, level: int, show_in_stats: bool = True, markup: bool = False, **kwargs
-) -> None:
+def log_with_color(message: Text | str, style: str, level: int = 20, show_in_stats: bool = True, **kwargs) -> None:
     """Simple logging function with color."""
-    text = Text(message, style=style)
-    if markup:
-        text = Text.from_markup(message, style=style)
+    text = message if isinstance(message, Text) else Text(message, style=style)
     log(text.plain, level, **kwargs)
     if constants.CONSOLE_LEVEL >= 50:
         console.print(text)
