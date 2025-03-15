@@ -296,10 +296,8 @@ async def send_webhook_message(manager: Manager) -> None:
 
 def open_in_text_editor(file_path: Path) -> bool | None:
     """Opens file in OS text editor."""
-    using_desktop_enviroment = (
-        any(var in os.environ for var in ("DISPLAY", "WAYLAND_DISPLAY")) and "SSH_CONNECTION" not in os.environ
-    )
-    fallback_editor = get_first_available_editor()
+    using_ssh = "SSH_CONNECTION" in os.environ
+    using_desktop_enviroment = any(var in os.environ for var in ("DISPLAY", "WAYLAND_DISPLAY"))
 
     if platform.system() == "Darwin":
         cmd = "open", "-a", "TextEdit", file_path
@@ -307,10 +305,10 @@ def open_in_text_editor(file_path: Path) -> bool | None:
     elif platform.system() == "Windows":
         cmd = "notepad.exe", file_path
 
-    elif using_desktop_enviroment and set_default_app_if_none(file_path):
+    elif using_desktop_enviroment and not using_ssh and set_default_app_if_none(file_path):
         cmd = "xdg-open", file_path
 
-    elif fallback_editor:
+    elif fallback_editor := get_first_available_editor():
         cmd = fallback_editor, file_path
         if fallback_editor.stem == "micro":
             cmd = fallback_editor, "-keymenu", "true", file_path
