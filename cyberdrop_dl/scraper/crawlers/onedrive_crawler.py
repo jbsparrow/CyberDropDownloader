@@ -158,7 +158,7 @@ class OneDriveCrawler(Crawler):
         if access_details.redeem and not self.auth_headers:
             raise ScrapeError(401)
 
-        api_url = get_api_url(access_details)
+        api_url = create_api_url(access_details)
         json_resp: dict = await self.make_api_request(api_url)
 
         if not is_folder(json_resp):
@@ -192,7 +192,7 @@ class OneDriveCrawler(Crawler):
             scrape_item.add_children()
 
         for access_details in subfolders:
-            api_url = get_api_url(access_details)
+            api_url = create_api_url(access_details)
             new_scrape_item = scrape_item.create_child(api_url)
             self.manager.task_group.create_task(self.process_access_details(new_scrape_item, access_details))
             scrape_item.add_children()
@@ -217,7 +217,7 @@ class OneDriveCrawler(Crawler):
     async def get_badger_token(self, badger_url: URL = BADGER_URL) -> None:
         new_headers = {"Content-Type": "application/json", "AppId": APP_ID}
         data = {"appId": APP_UUID}
-        data_json = data = json.dumps(data)
+        data_json = json.dumps(data)
         async with self.request_limiter:
             json_resp: dict = await self.client.post_data(
                 self.domain, badger_url, headers_inc=new_headers, data=data_json
@@ -246,7 +246,7 @@ def parse_api_response(json_resp: dict, access_details: AccessDetails) -> dict[s
     new_access_details = AccessDetails(drive_id, item_id, access_details.auth_key, access_details.redeem)
     return {
         "id": item_id,
-        "url": get_api_url(new_access_details),
+        "url": create_api_url(new_access_details),
         "web_url": URL(web_url_str, encoded="%" in web_url_str),
         "name": json_resp["name"],
         "date": parse_datetime(date_str),
@@ -254,12 +254,16 @@ def parse_api_response(json_resp: dict, access_details: AccessDetails) -> dict[s
     }
 
 
-def get_api_url(access_details: AccessDetails) -> URL:
+def create_api_url(access_details: AccessDetails) -> URL:
     if access_details.redeem:
-        return PERSONAL_API_ENTRYPOINT / f"u!{access_details.redeem}" / "driveitem"
+        api_url = PERSONAL_API_ENTRYPOINT / f"u!{access_details.redeem}" / "driveitem"
+    else:
+        api_url = API_ENTRYPOINT / access_details.container_id / "items" / access_details.resid
 
-    api_url = API_ENTRYPOINT / access_details.container_id / "items" / access_details.resid
-    return api_url.with_query(authkey=access_details.auth_key, expand="children", orderby="folder,name")
+    api_url = api_url.with_query(expand="children", orderby="folder,name")
+    if access_details.auth_key:
+        return api_url.update_query(authkey=access_details.auth_key)
+    return api_url
 
 
 def parse_datetime(date: str) -> int:
