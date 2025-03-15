@@ -346,6 +346,7 @@ optional = false
 python-versions = "*"
 groups = ["main"]
 files = [
+    {file = "browser_cookie3-0.20.1-py3-none-any.whl", hash = "sha256:4b38bf669d386250733c8339f0036e1cf09c3d8e4d326fd507b9afb84def13d6"},
     {file = "browser_cookie3-0.20.1.tar.gz", hash = "sha256:6d8d0744bf42a5327c951bdbcf77741db3455b8b4e840e18bab266d598368a12"},
 ]
 
@@ -2455,4 +2456,4 @@ test = ["pytest (>=8.1,<9.0)", "pytest-rerunfailures (>=14.0,<15.0)"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4"
-content-hash = "c14586d18c677cfe8f662ef358e7e3fc8a6837ac3dc1b5c1c7be0558430cc758"
+content-hash = "ad9fe2a36db138049fff4ab58a2a2145d5dbb37514812f29e90e222e19befe96"
