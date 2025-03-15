@@ -12,6 +12,8 @@ from rich.columns import Columns
 from rich.console import Group
 from rich.layout import Layout
 from rich.progress import Progress, SpinnerColumn, TaskID, TextColumn
+from rich.text import Text
+from yarl import URL
 
 from cyberdrop_dl.ui.progress.downloads_progress import DownloadsProgress
 from cyberdrop_dl.ui.progress.file_progress import FileProgress
@@ -131,11 +133,12 @@ class ProgressManager:
         config_path_text = get_console_hyperlink(config_path, text=self.manager.config_manager.loaded_config)
         input_file_text = get_input(self.manager)
         log_folder_text = get_console_hyperlink(self.manager.path_manager.log_folder)
-        log_cyan(f"Run Stats (config: {config_path_text}):", markup=True)
-        log_yellow(f"  Log Folder: {log_folder_text}", markup=True)
-        log_yellow(f"  Input File: {input_file_text}", markup=True)
+
+        log_concat("Run Stats (config: ", config_path_text, ")", style="cyan")
+        log_concat("  Input File: ", input_file_text, style="yellow")
         log_yellow(f"  Input URLs: {self.manager.scrape_mapper.count:,}")
         log_yellow(f"  Input URL Groups: {self.manager.scrape_mapper.group_count:,}")
+        log_concat("  Log Folder: ", log_folder_text, style="yellow")
         log_yellow(f"  Total Runtime: {runtime}")
         log_yellow(f"  Total Downloaded Data: {data_size}")
 
@@ -184,7 +187,7 @@ def log_failures(failures: list[UiFailureTotal], title: str = "Failures:", last_
     return error_padding
 
 
-def get_input(manager: Manager) -> str:
+def get_input(manager: Manager) -> Text | str:
     if manager.parsed_args.cli_only_args.retry_all:
         return "--retry-all"
     if manager.parsed_args.cli_only_args.retry_failed:
@@ -196,7 +199,27 @@ def get_input(manager: Manager) -> str:
     return "--links (CLI args)"
 
 
-def get_console_hyperlink(file_path: Path, text: str = "") -> str:
+def get_console_hyperlink(file_path: Path, text: str = "") -> Text:
     full_path = file_path.resolve()
     show_text = text or full_path
-    return f"[link=file://{full_path}]{show_text}[/link]"
+    file_url = URL(full_path.as_posix()).with_scheme("file")
+    return Text(str(show_text), style=f"link {file_url}")
+
+
+def concat_as_text(*text_or_str, style: str = "") -> Text:
+    result = Text()
+    for elem in text_or_str:
+        if isinstance(elem, Text):
+            text = elem
+            if style and text.style != style:
+                text.stylize(f"{style} {text.style}")
+        else:
+            text = Text(elem, style=style)
+
+        result.append(text)
+    return result
+
+
+def log_concat(*text_or_str, style: str = "", **kwargs) -> None:
+    text = concat_as_text(*text_or_str, style=style)
+    log_with_color(text, style, **kwargs)
