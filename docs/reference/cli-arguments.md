@@ -197,9 +197,12 @@ CLI-only options:
   --retry-all                                                                   retry all downloads
   --retry-failed                                                                retry failed downloads
   --retry-maintenance                                                           retry download of maintenance files (bunkr). Requires files to be hashed
+  --download-dropbox-folders-as-zip                                             download Dropbox folder without api key as zip
   --download-tiktok-audios                                                      download TikTok audios
   --print-stats                                                                 Show stats report at the end of a run
   --ui UI                                                                       DISABLED, ACTIVITY, SIMPLE or FULLSCREEN
+  --portrait                                                                    show UI in a portrait layout
+  --disable-cache                                                               Temporarily disable the requests cache
 
 browser_cookies:
   --auto-import, --no-auto-import
@@ -246,6 +249,7 @@ media_duration_limits:
 files:
   -d DOWNLOAD_FOLDER, --download-folder DOWNLOAD_FOLDER
   -i INPUT_FILE, --input-file INPUT_FILE
+  -j, --dump-json, --no-dump-json
 
 ignore_options:
   --exclude-audio, --no-exclude-audio
