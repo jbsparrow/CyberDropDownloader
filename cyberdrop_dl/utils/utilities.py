@@ -5,6 +5,7 @@ import json
 import os
 import platform
 import re
+import shutil
 import subprocess
 from functools import partial, wraps
 from pathlib import Path
@@ -35,6 +36,8 @@ if TYPE_CHECKING:
     from cyberdrop_dl.scraper.crawler import Crawler
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
 
+
+TEXT_EDITORS = os.environ.get("EDITOR"), "micro", "nano", "vim"  # Ordered by preference
 
 subprocess_get_text = partial(subprocess.run, capture_output=True, text=True, check=False)
 
@@ -296,30 +299,35 @@ def open_in_text_editor(file_path: Path) -> bool | None:
     using_desktop_enviroment = (
         any(var in os.environ for var in ("DISPLAY", "WAYLAND_DISPLAY")) and "SSH_CONNECTION" not in os.environ
     )
-    default_editor = os.environ.get("EDITOR")
+    fallback_editor = get_first_available_editor()
+    args = (file_path,)
+
     if platform.system() == "Darwin":
-        subprocess.Popen(["open", "-a", "TextEdit", file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        args = "-a", "TextEdit", *args
+        subprocess.Popen(["open", *args], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     elif platform.system() == "Windows":
-        subprocess.Popen(["notepad.exe", file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.Popen(["notepad.exe", *args], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
     elif using_desktop_enviroment and set_default_app_if_none(file_path):
-        subprocess.Popen(["xdg-open", file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.Popen(["xdg-open", *args], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    elif default_editor:
-        subprocess.call([default_editor, file_path])
-
-    elif subprocess.call(["which", "micro"], stdout=subprocess.DEVNULL) == 0:
-        subprocess.call(["micro", "-keymenu", "true", file_path])
-
-    elif subprocess.call(["which", "nano"], stdout=subprocess.DEVNULL) == 0:
-        subprocess.call(["nano", file_path])
-
-    elif subprocess.call(["which", "vim"], stdout=subprocess.DEVNULL) == 0:
-        subprocess.call(["vim", file_path])
+    elif fallback_editor:
+        if fallback_editor.stem == "micro":
+            args = "-keymenu", "true", *args
+        subprocess.call([fallback_editor, *args])
 
     else:
         raise ValueError
+
+
+def get_first_available_editor() -> Path | None:
+    for editor in TEXT_EDITORS:
+        if not editor:
+            continue
+        path = shutil.which(editor)
+        if path:
+            return Path(path)
 
 
 def set_default_app_if_none(file_path: Path) -> bool:
