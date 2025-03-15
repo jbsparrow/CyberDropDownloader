@@ -17,7 +17,7 @@ def recover_urls(js_text: str) -> str:
     return js_text.replace(HTTPS_PLACEHOLDER, "https:").replace(HTTP_PLACEHOLDER, "http:")
 
 
-def parse_js_vars(js_text: str) -> dict:
+def parse_js_vars(js_text: str, use_regex: bool = False) -> dict:
     data = {}
     lines = js_text.split(";")
     for line in lines:
@@ -30,11 +30,11 @@ def parse_js_vars(js_text: str) -> dict:
         value = value.strip()
         data[name] = value
         if value.startswith("{") or value.startswith("["):
-            data[name] = parse_json_to_dict(value)
+            data[name] = parse_json_to_dict(value, use_regex)
     return data
 
 
-def parse_json_to_dict(js_text: str, use_regex: bool = True) -> dict:
+def parse_json_to_dict(js_text: str, use_regex: bool = False) -> dict:
     json_str = js_text.replace("\t", "").replace("\n", "").strip()
     json_str = replace_quotes(json_str)
     if use_regex:
@@ -46,7 +46,24 @@ def parse_json_to_dict(js_text: str, use_regex: bool = True) -> dict:
 
 
 def replace_quotes(js_text: str) -> str:
-    return js_text.replace(",'", ',"').replace("':", '":').replace(", '", ', "').replace("' :", '" :')
+    # We can't just replace every single ' with " because it will brake if the json has english words like: it's
+
+    replace_pairs = [
+        ("{'", '{"'),
+        ("'}", '"}'),
+        ("['", '["'),
+        ("']", '"]'),
+        (",'", ',"'),
+        ("':", '":'),
+        (", '", ', "'),
+        ("' :", '" :'),
+        ("',", '",'),
+        (": '", ': "'),
+    ]
+    clean_js_text = js_text
+    for old, new in replace_pairs:
+        clean_js_text = clean_js_text.replace(old, new)
+    return clean_js_text
 
 
 def is_valid_key(key: str) -> bool:

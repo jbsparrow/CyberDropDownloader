@@ -117,10 +117,10 @@ class SpankBangCrawler(Crawler):
                 return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, scrape_item.url)
 
         video_removed = soup.select_one(VIDEO_REMOVED_SELECTOR)
-        if video_removed:
+        if video_removed or "This video is no longer available" in str(soup):
             raise ScrapeError(410, origin=scrape_item)
 
         info = get_info_dict(soup)
@@ -148,7 +148,7 @@ class SpankBangCrawler(Crawler):
         current_page = 1
         while True:
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url, origin=scrape_item)
+                soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, page_url)
 
             playlist = PlaylistInfo.from_url(page_url, soup)
             videos = soup.select(PLAYLIST_ITEM_SELECTOR)
@@ -167,14 +167,19 @@ def get_info_dict(soup: BeautifulSoup) -> VideoInfo:
     info_js_script = soup.select_one(JS_SELECTOR)
     extended_info_js_script = soup.select_one(EXTENDED_JS_SELECTOR)
 
+    info_js_script_text: str = info_js_script.text  # type: ignore
+    extended_info_js_script_text: str = extended_info_js_script.text  # type: ignore
+
     title_tag = soup.select_one("div#video h1")
     title: str = title_tag.get("title") or title_tag.text.replace("\n", "")  # type: ignore
-    info: dict[str, str | dict] = javascript.parse_js_vars(info_js_script.text)  # type: ignore
-    extended_info_dict = javascript.parse_json_to_dict(extended_info_js_script.text)  # type: ignore
-    embed_url = URL(info["embedUrl"])  # type: ignore
+    del soup
+    info: dict[str, str | dict] = javascript.parse_js_vars(info_js_script_text)
+    extended_info_dict = javascript.parse_json_to_dict(extended_info_js_script_text)
+    # type: ignore
 
     info["title"] = title.strip()
     info = info | extended_info_dict
+    embed_url = URL(info["embedUrl"])
     info["video_id"] = embed_url.parts[1]
     javascript.clean_dict(info, "stream_data")
     log_debug(json.dumps(info, indent=4))

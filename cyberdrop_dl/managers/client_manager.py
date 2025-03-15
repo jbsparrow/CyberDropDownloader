@@ -13,6 +13,7 @@ import certifi
 from aiohttp import ClientResponse, ClientSession, ContentTypeError
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
+from curl_cffi.requests.models import Response as CurlResponse
 from yarl import URL
 
 from cyberdrop_dl.clients.download_client import DownloadClient
@@ -145,12 +146,13 @@ class ClientManager:
     @classmethod
     async def check_http_status(
         cls,
-        response: ClientResponse,
+        response: ClientResponse | CurlResponse,
         download: bool = False,
         origin: ScrapeItem | URL | None = None,
     ) -> None:
         """Checks the HTTP status code and raises an exception if it's not acceptable."""
-        status = response.status
+        is_curl = isinstance(response, CurlResponse)
+        status = response.status_code if is_curl else response.status
         headers = response.headers
         message = None
 
@@ -174,7 +176,7 @@ class ClientManager:
 
         response_text = None
         with contextlib.suppress(UnicodeDecodeError):
-            response_text = await response.text()
+            response_text = response.text if is_curl else await response.text()
 
         if response_text:
             soup = BeautifulSoup(response_text, "html.parser")
