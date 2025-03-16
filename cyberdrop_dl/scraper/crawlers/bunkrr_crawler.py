@@ -354,6 +354,8 @@ def xor_decrypt(encrypted_data: bytearray, key: str) -> str:
 
 def get_slug_from_soup(soup: BeautifulSoup) -> str | None:
     info_js = soup.select_one("script:contains('jsSlug')")
+    if not info_js:
+        return
     info_js_text: str = info_js.text  # type: ignore
     info_js_dict = javascript.parse_js_vars(info_js_text)
     javascript.clean_dict(info_js_dict)
