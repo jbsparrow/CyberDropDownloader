@@ -7,9 +7,10 @@ import platform
 import re
 import shutil
 import subprocess
+from dataclasses import fields
 from functools import lru_cache, partial, wraps
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, ClassVar, Protocol
 
 import aiofiles
 import rich
@@ -38,6 +39,11 @@ if TYPE_CHECKING:
 
 
 TEXT_EDITORS = "micro", "nano", "vim"  # Ordered by preference
+
+
+class Dataclass(Protocol):
+    __dataclass_fields__: ClassVar[dict[str, Any]]
+
 
 subprocess_get_text = partial(subprocess.run, capture_output=True, text=True, check=False)
 
@@ -368,6 +374,12 @@ def xdg_mime_query(*args) -> str:
     assert args
     arg_list = ["xdg-mime", "query", *args]
     return subprocess_get_text(arg_list).stdout.strip()
+
+
+def get_valid_dict(dataclass: Dataclass | type[Dataclass], info: dict[str, Any]) -> dict[str, Any]:
+    """Remove all keys that are not fields in the dataclass"""
+    valid_fields = {f.name for f in fields(dataclass)}
+    return {k: v for k, v in info.items() if k in valid_fields}
 
 
 log_cyan = partial(log_with_color, style="cyan", level=20)
