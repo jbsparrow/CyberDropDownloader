@@ -42,13 +42,6 @@ class CustomHTTPStatus(IntEnum):
 BLOCKED_DOMAINS = ("facebook", "instagram", "fbcdn")
 
 
-STYLE_TO_DIFF_FORMAT_MAP = {
-    "default": "{}",
-    "green": "+   {}",
-    "red": "-   {}",
-    "yellow": "*** {}",
-}
-
 APP_STORAGE = Path("./AppData")
 DOWNLOAD_STORAGE = Path("./Downloads")
 RESERVED_CONFIG_NAMES = ["all", "default"]

@@ -181,14 +181,21 @@ def clear_term():
     os.system("cls" if os.name == "nt" else "clear")
 
 
-def parse_rich_text_by_style(text: Text, style_map: dict[str, str], default_style_map_key: str = "default") -> str:
-    """Returns `text` as a plain str, parsing each tag in text acording to `style_map`."""
+def convert_text_by_diff(text: Text) -> str:
+    """Returns `rich.text` as a plain str with diff syntax."""
+
+    STYLE_TO_DIFF = {
+        "green": "+   {}",
+        "red": "-   {}",
+        "yellow": "*** {}",
+    }
+
     plain_text = ""
-    default_style = style_map.get(default_style_map_key)
+    default_style: str = "{}"
     for line in text.split(allow_blank=True):
         line_str = line.plain.rstrip("\n")
-        style = str(line.style).split()[0]  # remove console markdown
-        line_format: str | None = style_map.get(style) or default_style
+        style = str(line.style).split()[0]  # remove console hyperlink markup (if any)
+        line_format: str = STYLE_TO_DIFF.get(style) or default_style
         if line_format:
             plain_text += line_format.format(line_str) + "\n"
 
@@ -260,7 +267,7 @@ async def send_webhook_message(manager: Manager) -> None:
     rich.print("\nSending Webhook Notifications.. ")
     url: URL = webhook.url.get_secret_value()  # type: ignore
     text: Text = constants.LOG_OUTPUT_TEXT
-    plain_text = parse_rich_text_by_style(text, constants.STYLE_TO_DIFF_FORMAT_MAP)
+    diff_text = convert_text_by_diff(text)
     main_log = manager.path_manager.main_log
 
     form = FormData()
@@ -271,10 +278,10 @@ async def send_webhook_message(manager: Manager) -> None:
                 form.add_field("file", await f.read(), filename=main_log.name)
 
         else:
-            plain_text += "\n\nWARNING: log file too large to send as attachment\n"
+            diff_text += "\n\nWARNING: log file too large to send as attachment\n"
 
     form.add_fields(
-        ("content", f"```diff\n{plain_text}```"),
+        ("content", f"```diff\n{diff_text}```"),
         ("username", "CyberDrop-DL"),
     )
 
