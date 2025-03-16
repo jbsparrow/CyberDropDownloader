@@ -190,16 +190,17 @@ def convert_text_by_diff(text: Text) -> str:
         "yellow": "*** {}",
     }
 
-    plain_text = ""
-    default_style: str = "{}"
+    diff_text = ""
+    default_format: str = "{}"
     for line in text.split(allow_blank=True):
         line_str = line.plain.rstrip("\n")
-        style = str(line.style).split()[0]  # remove console hyperlink markup (if any)
-        line_format: str = STYLE_TO_DIFF.get(style) or default_style
-        if line_format:
-            plain_text += line_format.format(line_str) + "\n"
+        first_span = line.spans[0] if line.spans else None
+        style: str = str(first_span.style) if first_span else ""
+        color = style.split(" ")[0] or "black"  # remove console hyperlink markup (if any)
+        line_format: str = STYLE_TO_DIFF.get(color) or default_format
+        diff_text += line_format.format(line_str) + "\n"
 
-    return plain_text
+    return diff_text
 
 
 def purge_dir_tree(dirname: Path) -> None:
