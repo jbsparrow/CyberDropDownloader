@@ -181,14 +181,16 @@ def clear_term():
     os.system("cls" if os.name == "nt" else "clear")
 
 
-def parse_rich_text_by_style(text: Text, style_map: dict, default_style_map_key: str = "default") -> str:
+def parse_rich_text_by_style(text: Text, style_map: dict[str, str], default_style_map_key: str = "default") -> str:
     """Returns `text` as a plain str, parsing each tag in text acording to `style_map`."""
     plain_text = ""
-    for span in text.spans:
-        span_text = text.plain[span.start : span.end].rstrip("\n")
-        plain_line: str | None = style_map.get(span.style) or style_map.get(default_style_map_key)
-        if plain_line:
-            plain_text += plain_line.format(span_text) + "\n"
+    default_style = style_map.get(default_style_map_key)
+    for line in text.split(allow_blank=True):
+        line_str = line.plain.rstrip("\n")
+        style = str(line.style).split()[0]  # remove console markdown
+        line_format: str | None = style_map.get(style) or default_style
+        if line_format:
+            plain_text += line_format.format(line_str) + "\n"
 
     return plain_text
 
