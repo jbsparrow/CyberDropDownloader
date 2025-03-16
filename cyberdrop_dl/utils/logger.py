@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -131,17 +132,24 @@ class RedactedConsole(Console):
         return _redact_message(output)
 
 
-def log(message: Exception | str, level: int = 10, *, sleep: int | None = None, **kwargs) -> None:
+def process_log_msg(message: dict | Exception | str) -> str:
+    if isinstance(message, dict):
+        return json.dumps(message, indent=4, ensure_ascii=False)
+    return str(message)
+
+
+def log(message: dict | Exception | str, level: int = 10, **kwargs) -> None:
     """Simple logging function."""
-    logger.log(level, message, **kwargs)
-    log_debug(message, level, **kwargs)
+    msg = process_log_msg(message)
+    logger.log(level, msg, **kwargs)
+    log_debug(msg, level, **kwargs)
 
 
-def log_debug(message: Exception | str, level: int = 10, **kwargs) -> None:
+def log_debug(message: dict | Exception | str, level: int = 10, **kwargs) -> None:
     """Simple logging function."""
     if env.DEBUG_VAR:
-        message = str(message)
-        logger_debug.log(level, message.encode("ascii", "ignore").decode("ascii"), **kwargs)
+        msg = process_log_msg(message)
+        logger_debug.log(level, msg, **kwargs)
 
 
 def log_with_color(message: Text | str, style: str, level: int = 20, show_in_stats: bool = True, **kwargs) -> None:
