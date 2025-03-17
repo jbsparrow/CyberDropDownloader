@@ -34,7 +34,7 @@ class PMVHavenCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        title: str = soup.select_one("title").text.split("|")[1].strip()
+        title: str = soup.select_one("title").text.split("PMV Haven |")[1].strip()
         res: str = soup.find("meta", property=RESOLUTION_PROPERTY)["content"]
         video_src = soup.find("meta", property=VIDEO_PROPERTY)["content"]
         if not video_src:
