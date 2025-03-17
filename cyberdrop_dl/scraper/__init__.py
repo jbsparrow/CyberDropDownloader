@@ -42,6 +42,7 @@ from cyberdrop_dl.scraper.crawlers.onedrive_crawler import OneDriveCrawler
 from cyberdrop_dl.scraper.crawlers.pimpandhost_crawler import PimpAndHostCrawler
 from cyberdrop_dl.scraper.crawlers.pixeldrain_crawler import PixelDrainCrawler
 from cyberdrop_dl.scraper.crawlers.pixhost_crawler import PixHostCrawler
+from cyberdrop_dl.scraper.crawlers.pmvhaven_crawler import PMVHavenCrawler
 from cyberdrop_dl.scraper.crawlers.pornpics_crawler import PornPicsCrawler
 from cyberdrop_dl.scraper.crawlers.postimg_crawler import PostImgCrawler
 from cyberdrop_dl.scraper.crawlers.realbooru_crawler import RealBooruCrawler
