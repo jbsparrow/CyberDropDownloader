@@ -20,8 +20,6 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
-VIDEO_PROPERTY = "og:video"
-RESOLUTION_PROPERTY = "og:video:height"
 JS_VIDEO_INFO_SELECTOR = "script#__NUXT_DATA__"
 
 
@@ -42,17 +40,18 @@ class PMVHavenCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        title: str = soup.select_one("title").text.split("PMV Haven |")[1].strip()  # type: ignore
-        res: str = soup.find("meta", property=RESOLUTION_PROPERTY)["content"]  # type: ignore
-        video_src: str = soup.find("meta", property=VIDEO_PROPERTY)["content"]  # type: ignore
-
         video_info = get_video_info(soup)
         if not video_info:
             raise ScrapeError(422, message="No video source found")
 
+        # video_id: str = video_info["_id"]
+        res: str = video_info.get("height") or ""
+        title: str = video_info.get("title") or video_info["uploadTitle"]
+        link_str: str = video_info["url"]
         date = parse_datetime(video_info["isoDate"])
+
         scrape_item.possible_datetime = date
-        link = self.parse_url(video_src)
+        link = self.parse_url(link_str)
         res = f"{res}p" if res else "Unknown"
 
         filename, ext = get_filename_and_ext(link.name)
