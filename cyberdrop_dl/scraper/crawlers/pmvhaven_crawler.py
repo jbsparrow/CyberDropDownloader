@@ -27,20 +27,22 @@ class PMVHavenCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        return await self.video(scrape_item)
+        if "video" in scrape_item.url.parts:
+            return await self.video(scrape_item)
+        raise ValueError
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        title: str = soup.select_one("title").text.split("PMV Haven |")[1].strip()
-        res: str = soup.find("meta", property=RESOLUTION_PROPERTY)["content"]
-        video_src = soup.find("meta", property=VIDEO_PROPERTY)["content"]
+        title: str = soup.select_one("title").text.split("PMV Haven |")[1].strip()  # type: ignore
+        res: str = soup.find("meta", property=RESOLUTION_PROPERTY)["content"]  # type: ignore
+        video_src: str = soup.find("meta", property=VIDEO_PROPERTY)["content"]  # type: ignore
         if not video_src:
             raise ScrapeError(422, message="No video source found")
-        link = self.parse_url(video_src)  # type: ignore
 
+        link = self.parse_url(video_src)
         res = f"{res}p" if res else "Unknown"
 
         filename, ext = get_filename_and_ext(link.name)
