@@ -1,11 +1,16 @@
 from __future__ import annotations
 
+import calendar
+import json
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
+from cyberdrop_dl.utils import javascript
+from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
@@ -17,6 +22,7 @@ if TYPE_CHECKING:
 
 VIDEO_PROPERTY = "og:video"
 RESOLUTION_PROPERTY = "og:video:height"
+JS_VIDEO_INFO_SELECTOR = "script#__NUXT_DATA__"
 
 
 class PMVHavenCrawler(Crawler):
@@ -39,12 +45,43 @@ class PMVHavenCrawler(Crawler):
         title: str = soup.select_one("title").text.split("PMV Haven |")[1].strip()  # type: ignore
         res: str = soup.find("meta", property=RESOLUTION_PROPERTY)["content"]  # type: ignore
         video_src: str = soup.find("meta", property=VIDEO_PROPERTY)["content"]  # type: ignore
-        if not video_src:
+
+        video_info = get_video_info(soup)
+        if not video_info:
             raise ScrapeError(422, message="No video source found")
 
+        date = parse_datetime(video_info["isoDate"])
+        scrape_item.possible_datetime = date
         link = self.parse_url(video_src)
         res = f"{res}p" if res else "Unknown"
 
         filename, ext = get_filename_and_ext(link.name)
         custom_filename, _ = get_filename_and_ext(f"{title} [{res}]{link.suffix}")
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
+
+
+def get_video_info(soup: BeautifulSoup) -> dict:
+    info_js_script = soup.select_one(JS_VIDEO_INFO_SELECTOR)
+    js_text = info_js_script.text if info_js_script else None
+    if not js_text:
+        raise ScrapeError(422)
+    json_data: list = javascript.parse_json_to_dict(js_text, use_regex=False)  # type: ignore
+    info_dict = {"data": json_data}
+    javascript.clean_dict(info_dict)
+    indices: dict[str, int] = {}
+    video_properties = {}
+    for elem in info_dict["data"]:
+        if isinstance(elem, dict) and all(p in elem for p in ("uploadTitle", "isoDate")):
+            indices = elem
+            break
+    for name, index in indices.items():
+        video_properties[name] = info_dict["data"][index]
+
+    log_debug(json.dumps(video_properties, indent=4))
+    return video_properties
+
+
+def parse_datetime(date: str) -> int:
+    """Parses a datetime string into a unix timestamp."""
+    parsed_date = datetime.fromisoformat(date.replace("Z", "+00.00"))
+    return calendar.timegm(parsed_date.timetuple())
