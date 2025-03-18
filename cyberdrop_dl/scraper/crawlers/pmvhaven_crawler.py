@@ -37,11 +37,15 @@ class PMVHavenCrawler(Crawler):
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
+        if await self.check_complete_from_referer(scrape_item):
+            return
+
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         video_info = get_video_info(soup)
-        if not video_info:
+        link_str: str = video_info.get("url") or ""
+        if not link_str:
             raise ScrapeError(422, message="No video source found")
 
         video_id: str = video_info["_id"]
