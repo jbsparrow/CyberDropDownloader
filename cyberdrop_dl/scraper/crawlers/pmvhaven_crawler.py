@@ -44,18 +44,17 @@ class PMVHavenCrawler(Crawler):
         if not video_info:
             raise ScrapeError(422, message="No video source found")
 
-        # video_id: str = video_info["_id"]
-        res: str = video_info.get("height") or ""
+        video_id: str = video_info["_id"]
+        resolution: str = video_info.get("height") or ""
         title: str = video_info.get("title") or video_info["uploadTitle"]
         link_str: str = video_info["url"]
         date = parse_datetime(video_info["isoDate"])
 
         scrape_item.possible_datetime = date
         link = self.parse_url(link_str)
-        res = f"{res}p" if res else "Unknown"
-
+        resolution = f"{resolution}p" if resolution else "Unknown"
         filename, ext = get_filename_and_ext(link.name)
-        custom_filename, _ = get_filename_and_ext(f"{title} [{res}]{link.suffix}")
+        custom_filename, _ = get_filename_and_ext(f"{title} [{video_id}][{resolution}]{ext}")
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
 
