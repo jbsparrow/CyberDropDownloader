@@ -8,6 +8,7 @@ from cyberdrop_dl.scraper.crawlers.allporncomix_crawler import AllPornComixCrawl
 from cyberdrop_dl.scraper.crawlers.bellazon_crawler import BellazonCrawler
 from cyberdrop_dl.scraper.crawlers.bunkrr_albums_io_crawler import BunkrAlbumsIOCrawler
 from cyberdrop_dl.scraper.crawlers.bunkrr_crawler import BunkrrCrawler
+from cyberdrop_dl.scraper.crawlers.catbox_crawler import CatboxCrawler
 from cyberdrop_dl.scraper.crawlers.celebforum_crawler import CelebForumCrawler
 from cyberdrop_dl.scraper.crawlers.chevereto_crawler import CheveretoCrawler
 from cyberdrop_dl.scraper.crawlers.coomer_crawler import CoomerCrawler
