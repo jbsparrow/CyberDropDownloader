@@ -50,7 +50,7 @@ requires-poetry = ">=2.0"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = ">=4.0.1,<5"
-ruff = "0.9.6"
+ruff = "0.11.0"
 snakeviz = "^2.2.2"
 tox = "^4.24.1"
 
