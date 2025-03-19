@@ -26,7 +26,7 @@ body:
       label: Describe what kind of content this site provides
       placeholder: |
         1. website that provides comic books and manga
-        2. forum which allows it's users to share images and videos
+        2. forum which allows its users to share images and videos
         3. specialized in high-res scanned images of physical paintings
     validations:
       required: true
