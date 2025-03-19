@@ -73,12 +73,13 @@ class Crawler(ABC):
 
         Does nothing unless `ignore_options.exclude_files_with_no_extension` is `False`
         """
-        filename_as_path = Path(filename)
+        clean_filename = Path(filename).as_posix().replace("/", "-")  # remove OS separators
+        filename_as_path = Path(clean_filename)
         if assume_ext and self.allow_no_extension and not filename_as_path.suffix:
             filename_as_path = filename_as_path.with_suffix(assume_ext)
             new_filename, ext = get_filename_and_ext(filename_as_path.name, *args, *kwargs)
             return Path(new_filename).stem, ext
-        return get_filename_and_ext(filename, *args, *kwargs)
+        return get_filename_and_ext(clean_filename, *args, *kwargs)
 
     async def startup(self) -> None:
         """Starts the crawler."""

@@ -119,7 +119,8 @@ def truncate_str(text: str, max_length: int = 0) -> str:
 
 def get_filename_and_ext(filename: str, forum: bool = False) -> tuple[str, str]:
     """Returns the filename and extension of a given file, throws `NoExtensionError` if there is no extension."""
-    filename_as_path = Path(filename)
+    clean_filename = Path(filename).as_posix().replace("/", "-")  # remove OS separators
+    filename_as_path = Path(clean_filename)
     if not filename_as_path.suffix:
         raise NoExtensionError
     ext_no_dot = filename_as_path.suffix.split(".")[1]
