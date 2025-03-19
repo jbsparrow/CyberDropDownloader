@@ -56,6 +56,7 @@ class PMVHavenCrawler(Crawler):
     async def profile(self, scrape_item: ScrapeItem) -> None:
         username = scrape_item.url.name
         api_url = API_ENTRYPOINT / "profileInput"
+        title = f"{username} [user]"
         title = self.create_title(username)
         scrape_item.setup_as_album(title)
 
@@ -82,10 +83,10 @@ class PMVHavenCrawler(Crawler):
             playlist_id = playlist["_id"]
             link = PRIMARY_BASE_DOMAIN / "playlist" / playlist_id
             new_scrape_item = scrape_item.create_child(link, new_title_part="Playlists")
-            self.manager.task_group.create_task(self.run(new_scrape_item))
+            self.manager.task_group.create_task(self.playlist(new_scrape_item, add_suffix=False))
             scrape_item.add_children()
 
-    async def playlist(self, scrape_item: ScrapeItem) -> None:
+    async def playlist(self, scrape_item: ScrapeItem, add_suffix: bool = True) -> None:
         playlist_id = scrape_item.url.name
         add_data = {"mode": "loadPlaylistVideos", "playlist": playlist_id}
         api_url = API_ENTRYPOINT / "playlists"
@@ -93,39 +94,40 @@ class PMVHavenCrawler(Crawler):
         async for json_resp in self.api_pager(api_url, add_data, check_key="videos"):
             if not title:
                 playlist_name: str = json_resp["playlist"]["name"]
-                title = self.create_title(playlist_name, playlist_id)
+                title = f"{playlist_name} [playlist]" if add_suffix else playlist_name
+                title = self.create_title(title, playlist_id)
                 scrape_item.setup_as_album(title, album_id=playlist_id)
             await self.iter_videos(scrape_item, json_resp["videos"])
 
     async def model(self, scrape_item: ScrapeItem) -> None:
         model_name = scrape_item.url.name
         add_data = {"mode": "SearchStar", "star": model_name, "profile": None}
-        await self._generic_search_pager(scrape_item, add_data, model_name)
+        await self._generic_search_pager(scrape_item, add_data, model_name, "model")
 
     async def creator(self, scrape_item: ScrapeItem) -> None:
         creator_name = scrape_item.url.name
         add_data = {"mode": "SearchCreator", "creator": creator_name, "profile": None}
-        await self._generic_search_pager(scrape_item, add_data, creator_name)
+        await self._generic_search_pager(scrape_item, add_data, creator_name, "creator")
 
     async def music(self, scrape_item: ScrapeItem) -> None:
         song_name = scrape_item.url.name
         add_data = {"mode": "SearchMusic", "music": song_name, "profile": None}
-        await self._generic_search_pager(scrape_item, add_data, song_name)
+        await self._generic_search_pager(scrape_item, add_data, song_name, "music")
 
     async def search(self, scrape_item: ScrapeItem) -> None:
         search_value = scrape_item.url.name
         add_data = {"mode": "DefaultSearch", "data": search_value, "profile": None}
-        await self._generic_search_pager(scrape_item, add_data, search_value)
+        await self._generic_search_pager(scrape_item, add_data, search_value, "search")
 
     async def category(self, scrape_item: ScrapeItem) -> None:
         category_name = scrape_item.url.name
         add_data = {"mode": category_name, "profile": None}
-        await self._generic_search_pager(scrape_item, add_data, category_name)
+        await self._generic_search_pager(scrape_item, add_data, category_name, "category")
 
     async def tag(self, scrape_item: ScrapeItem) -> None:
         tag_name = scrape_item.url.name
         add_data = {"mode": "SearchMoreTag", "tag": tag_name, "profile": None}
-        await self._generic_search_pager(scrape_item, add_data, tag_name)
+        await self._generic_search_pager(scrape_item, add_data, tag_name, "tag")
 
     @error_handling_wrapper
     async def video_from_api(self, scrape_item: ScrapeItem):
@@ -152,11 +154,12 @@ class PMVHavenCrawler(Crawler):
         video_info = get_video_info_from_js(soup)
         await self.process_video_info(scrape_item, video_info)
 
-    async def _generic_search_pager(self, scrape_item: ScrapeItem, add_data: dict, name: str) -> None:
+    async def _generic_search_pager(self, scrape_item: ScrapeItem, add_data: dict, name: str, type: str = "") -> None:
         title: str = ""
         api_url = API_ENTRYPOINT / "search"
         async for json_resp in self.api_pager(api_url, add_data):
             if not title:
+                title = f"{name} [{type}]" if type else name
                 title = self.create_title(name)
                 scrape_item.setup_as_album(title)
 
