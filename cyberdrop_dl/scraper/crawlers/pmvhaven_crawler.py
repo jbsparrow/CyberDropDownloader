@@ -160,7 +160,7 @@ class PMVHavenCrawler(Crawler):
         async for json_resp in self.api_pager(api_url, add_data):
             if not title:
                 title = f"{name} [{type}]" if type else name
-                title = self.create_title(name)
+                title = self.create_title(title)
                 scrape_item.setup_as_album(title)
 
             await self.iter_videos(scrape_item, json_resp["data"])
