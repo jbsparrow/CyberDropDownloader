@@ -36,7 +36,7 @@ body:
     attributes:
       label: Provide example URLs to support
       description: |
-        1. Please include examples of every posible URL you would like to be supported from the site
+        1. Please include examples of every possible URL you would like to be supported from the site
         2. Add a description of URL format in front of them
         3. The provided URLs must be real and valid
 
@@ -56,12 +56,11 @@ body:
 
           etc...
 
-
-
     validations:
       required: true
 
-  - id: NSFW
+  - type: checkboxes
+    id: NSFW
     attributes:
       label: Does this site offer adult content(NSFW)?
       options:
@@ -75,23 +74,23 @@ body:
     multiple: true
     attributes:
       label: What kind of content can be found on the site?
-    options:
-      - Videos / Gifs
-      - Images
-      - Audio
-      - Others
+      options:
+        - Videos / Gifs
+        - Images
+        - Audio
+        - Others
     validations:
       required: true
 
   - type: textarea
     attributes:
       label: Additional context
-      description: Include any aditional information that may be relevent to support this site
+      description: Include any additional information that may be relevant to support this site
       placeholder: |
-         - Needs an account to download files
-         - Blocked in the US
-         - Has a known rate limit of 20 requests per second
-         - Similar to <other site that cyberdrop-dl already supports>
+        - Needs an account to download files
+        - Blocked in the US
+        - Has a known rate limit of 20 requests per second
+        - Similar to <other site that cyberdrop-dl already supports>
     id: additional-context
 
 description: Request for a new site to be supported
