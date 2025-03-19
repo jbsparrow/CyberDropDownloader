@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from cyberdrop_dl import env
 from cyberdrop_dl.scraper.crawlers.allporncomix_crawler import AllPornComixCrawler
 from cyberdrop_dl.scraper.crawlers.bellazon_crawler import BellazonCrawler
+from cyberdrop_dl.scraper.crawlers.bestprettygirl_crawler import BestPrettyGirlCrawler
 from cyberdrop_dl.scraper.crawlers.bunkrr_albums_io_crawler import BunkrAlbumsIOCrawler
 from cyberdrop_dl.scraper.crawlers.bunkrr_crawler import BunkrrCrawler
 from cyberdrop_dl.scraper.crawlers.catbox_crawler import CatboxCrawler
