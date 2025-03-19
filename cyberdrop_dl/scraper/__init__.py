@@ -38,6 +38,7 @@ from cyberdrop_dl.scraper.crawlers.leakedmodels_crawler import LeakedModelsCrawl
 from cyberdrop_dl.scraper.crawlers.luscious_crawler import LusciousCrawler
 from cyberdrop_dl.scraper.crawlers.mediafire_crawler import MediaFireCrawler
 from cyberdrop_dl.scraper.crawlers.nekohouse_crawler import NekohouseCrawler
+from cyberdrop_dl.scraper.crawlers.nhentai_crawler import NHentaiCrawler
 from cyberdrop_dl.scraper.crawlers.nudostar_crawler import NudoStarCrawler
 from cyberdrop_dl.scraper.crawlers.nudostartv_crawler import NudoStarTVCrawler
 from cyberdrop_dl.scraper.crawlers.omegascans_crawler import OmegaScansCrawler
