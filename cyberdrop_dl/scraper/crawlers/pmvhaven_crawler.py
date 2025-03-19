@@ -129,12 +129,16 @@ class PMVHavenCrawler(Crawler):
 
     @error_handling_wrapper
     async def video_from_api(self, scrape_item: ScrapeItem):
-        video_id: str = scrape_item.url.name.rsplit("_", 1)[-1]
-        data = {"video": video_id, "mode": "InitVideo", "view": True}
-        async with self.request_limiter:
-            json_resp: dict = await self.client.post_data(self.domain, API_ENTRYPOINT, data=data)
+        if await self.check_complete_from_referer(scrape_item):
+            return
 
-        video_info: dict | None = json_resp.get("video") or {}
+        video_id: str = scrape_item.url.name.rsplit("_", 1)[-1]
+        add_data = {"video": video_id, "mode": "InitVideo", "view": True}
+        api_url = API_ENTRYPOINT / "videoInput"
+        async with self.request_limiter:
+            json_resp: dict = await self.client.post_data(self.domain, api_url, data=add_data)
+
+        video_info: dict = json_resp.get("video") or {}
         await self.process_video_info(scrape_item, video_info)
 
     @error_handling_wrapper
