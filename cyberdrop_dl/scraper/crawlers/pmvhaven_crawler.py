@@ -60,7 +60,7 @@ class PMVHavenCrawler(Crawler):
         username = scrape_item.url.name
         api_url = API_ENTRYPOINT / "profileInput"
         title = f"{username} [user]"
-        title = self.create_title(username)
+        title = self.create_title(title)
         scrape_item.setup_as_profile(title)
 
         # Videos
