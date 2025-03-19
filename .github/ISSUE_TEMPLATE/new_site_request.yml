@@ -2,7 +2,7 @@ body:
   - type: checkboxes
     id: prechecks
     attributes:
-      label: I have check previously requested sites
+      label: I have checked previously requested sites
       description: Before requesting a new site, please review the following cases
       options:
         - label: "The site is not listed in the [wiki's supported sites](https://script-ware.gitbook.io/cyberdrop-dl/reference/supported-websites)"
