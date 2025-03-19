@@ -58,8 +58,15 @@ class YandexDiskCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
-        folder = get_folder_info(soup)
+        item_info = get_item_info(soup)
         del soup
+        if is_single_item(item_info):
+            item_info["sk"] = item_info["environment"]["sk"]
+            item_info["file_url"] = scrape_item.url
+            file = YandexFile.from_json(item_info)
+            return await self.file(scrape_item, file)
+
+        folder = YandexFolder.from_json(item_info)
         title = self.create_title(folder.name, folder.id)
         scrape_item.setup_as_album(title, album_id=folder.id)
 
@@ -114,7 +121,7 @@ class YandexDiskCrawler(Crawler):
         await self.handle_file(file.url, scrape_item, filename, ext, debrid_link=link)
 
 
-def get_folder_info(soup: BeautifulSoup) -> YandexFolder:
+def get_item_info(soup: BeautifulSoup) -> dict:
     info_js_script = soup.select_one(JS_SELECTOR)
     info_js_script_text: str = info_js_script.text  # type: ignore
     info_json: dict[str, dict[str, Any]] = javascript.parse_json_to_dict(info_js_script_text, use_regex=False)
@@ -123,7 +130,7 @@ def get_folder_info(soup: BeautifulSoup) -> YandexFolder:
     env: dict[str, str] = info_json["environment"]
     info_json["environment"] = {"sk": env["sk"]}  # We don't need any other info from env
     log_debug(json.dumps(info_json, indent=4))
-    return YandexFolder.from_json(info_json)
+    return info_json
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -134,6 +141,7 @@ class YandexItem:
     id: str
     path: str
     sk: str
+    short_url: URL  # https://yadi.sk/d/<id>
 
     @classmethod
     def get_valid_dict(cls, info: dict) -> dict[str, Any]:
@@ -153,7 +161,6 @@ class YandexItem:
 @dataclass(frozen=True, kw_only=True)
 class YandexFolder(YandexItem):
     resources: dict[str, Any]
-    short_url: URL  # https://yadi.sk/d/<id>
     children_ids: list[str]
 
     @cached_property
@@ -182,10 +189,10 @@ class YandexFolder(YandexItem):
         return PRIMARY_BASE_DOMAIN / "d" / self.id
 
     @classmethod
-    def from_json(cls, json: dict) -> Self:
-        resources: dict[str, dict] = json["resources"]
-        folder_id: str = json["currentResourceId"]
-        sk: str = json["environment"]["sk"]
+    def from_json(cls, json_resp: dict) -> Self:
+        resources: dict[str, dict] = json_resp["resources"]
+        folder_id: str = json_resp["currentResourceId"]
+        sk: str = json_resp["environment"]["sk"]
 
         folder_details = resources[folder_id]
         short_url = URL(folder_details["meta"]["short_url"])
@@ -196,14 +203,34 @@ class YandexFolder(YandexItem):
 
 @dataclass(frozen=True, kw_only=True)
 class YandexFile(YandexItem):
-    parent_folder_public_id: str
+    parent_folder_public_id: str = ""
+    file_url: URL | None = None
 
     @cached_property
     def url(self) -> URL:
-        return PRIMARY_BASE_DOMAIN / "d" / self.parent_folder_public_id / self.name
+        if self.parent_folder_public_id:
+            return PRIMARY_BASE_DOMAIN / "d" / self.parent_folder_public_id / self.name
+        if self.file_url:
+            return self.file_url
+        return self.short_url
+
+    @classmethod
+    def from_json(cls, json_resp: dict) -> Self:
+        resources: dict[str, dict] = json_resp["resources"]
+        assert len(resources) == 1
+        file_details = next(iter(resources.items()))[1]
+        sk: str = json_resp["environment"]["sk"]
+
+        short_url = URL(file_details["meta"]["short_url"])
+        valid_dict: dict[str, Any] = cls.get_valid_dict(file_details)
+        return cls(**valid_dict, sk=sk, short_url=short_url)
 
 
 def get_canonical_url(url: URL) -> URL:
     folder_id_index = url.parts.index("d") + 1
     folder_id = url.parts[folder_id_index]
     return PRIMARY_BASE_DOMAIN / "d" / folder_id
+
+
+def is_single_item(json_resp: dict) -> bool:
+    return len(json_resp["resources"]) == 1 and not bool(json_resp["currentResourceId"])
