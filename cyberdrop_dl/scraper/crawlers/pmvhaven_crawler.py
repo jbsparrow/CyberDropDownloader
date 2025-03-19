@@ -54,6 +54,7 @@ class PMVHavenCrawler(Crawler):
             return await self.playlist(scrape_item)
         raise ValueError
 
+    @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
         username = scrape_item.url.name
         api_url = API_ENTRYPOINT / "profileInput"
@@ -85,6 +86,7 @@ class PMVHavenCrawler(Crawler):
             self.manager.task_group.create_task(self.playlist(new_scrape_item, add_suffix=False))
             scrape_item.add_children()
 
+    @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem, add_suffix: bool = True) -> None:
         playlist_id = scrape_item.url.name
         add_data = {"mode": "loadPlaylistVideos", "playlist": playlist_id}
@@ -98,31 +100,37 @@ class PMVHavenCrawler(Crawler):
                 scrape_item.setup_as_album(title, album_id=playlist_id)
             await self.iter_videos(scrape_item, json_resp["videos"])
 
+    @error_handling_wrapper
     async def model(self, scrape_item: ScrapeItem) -> None:
         model_name = scrape_item.url.name
         add_data = {"mode": "SearchStar", "star": model_name, "profile": None}
         await self._generic_search_pager(scrape_item, add_data, model_name, "model")
 
+    @error_handling_wrapper
     async def creator(self, scrape_item: ScrapeItem) -> None:
         creator_name = scrape_item.url.name
         add_data = {"mode": "SearchCreator", "creator": creator_name, "profile": None}
         await self._generic_search_pager(scrape_item, add_data, creator_name, "creator")
 
+    @error_handling_wrapper
     async def music(self, scrape_item: ScrapeItem) -> None:
         song_name = scrape_item.url.name
         add_data = {"mode": "SearchMusic", "music": song_name, "profile": None}
         await self._generic_search_pager(scrape_item, add_data, song_name, "music")
 
+    @error_handling_wrapper
     async def search(self, scrape_item: ScrapeItem) -> None:
         search_value = scrape_item.url.name
         add_data = {"mode": "DefaultSearch", "data": search_value, "profile": None}
         await self._generic_search_pager(scrape_item, add_data, search_value, "search")
 
+    @error_handling_wrapper
     async def category(self, scrape_item: ScrapeItem) -> None:
         category_name = scrape_item.url.name
         add_data = {"mode": category_name, "profile": None}
         await self._generic_search_pager(scrape_item, add_data, category_name, "category")
 
+    @error_handling_wrapper
     async def tag(self, scrape_item: ScrapeItem) -> None:
         tag_name = scrape_item.url.name
         add_data = {"mode": "SearchMoreTag", "tag": tag_name, "profile": None}

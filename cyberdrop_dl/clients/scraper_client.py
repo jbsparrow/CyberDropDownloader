@@ -11,7 +11,7 @@ from aiohttp_client_cache.response import CachedStreamReader
 from bs4 import BeautifulSoup
 
 import cyberdrop_dl.utils.constants as constants
-from cyberdrop_dl.clients.errors import DDOSGuardError, InvalidContentTypeError
+from cyberdrop_dl.clients.errors import DDOSGuardError, InvalidContentTypeError, ScrapeError
 from cyberdrop_dl.utils.logger import log_debug
 
 if TYPE_CHECKING:
@@ -240,6 +240,8 @@ class ScraperClient:
         ):
             await self.client_manager.check_http_status(response, origin=origin)
             if req_resp:
+                if response.status == 204:
+                    raise ScrapeError(204)
                 content = await response.content.read()
                 if content == b"":
                     content = await CachedStreamReader(await response.read()).read()
