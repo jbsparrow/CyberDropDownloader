@@ -37,7 +37,7 @@ def limiter(func: Callable) -> Any:
             await self._global_limiter.acquire()
             await domain_limiter.acquire()
 
-            if func.__name__ == "get_soup_cffi":
+            if "cffi" in func.__name__:
                 kwargs.pop("client_session", None)
                 return await func(self, *args[1:], **kwargs)  # remove domain por params
 
@@ -74,6 +74,19 @@ class ScraperClient:
         self.trace_configs = []
         self.add_request_log_hooks()
 
+    @asynccontextmanager
+    async def new_curl_session(self, impersonate):
+        proxy = str(self.client_manager.proxy) if self.client_manager.proxy else None
+        async with AsyncSession(
+            headers=self._headers,
+            impersonate=impersonate,
+            verify=bool(self.client_manager.ssl_context),
+            proxy=proxy,
+            timeout=self._timeout_tuple,
+            cookies={c.key: c.value for c in self.client_manager.cookies},
+        ) as curl_session:
+            yield curl_session
+
     def add_request_log_hooks(self) -> None:
         async def on_request_start(*args):
             params: aiohttp.TraceRequestStartParams = args[2]
@@ -92,22 +105,25 @@ class ScraperClient:
 
     @limiter
     async def get_soup_cffi(self, url: URL, impersonate: BrowserTypeLiteral | None = "chrome", **_) -> BeautifulSoup:
-        proxy = str(self.client_manager.proxy) if self.client_manager.proxy else None
-        async with AsyncSession(
-            headers=self._headers,
-            impersonate=impersonate,
-            verify=bool(self.client_manager.ssl_context),
-            proxy=proxy,
-            timeout=self._timeout_tuple,
-            cookies={c.key: c.value for c in self.client_manager.cookies},
-        ) as session:
+        async with self.new_curl_session(impersonate) as session:
             response: CurlResponse = await session.get(str(url))
             await self.client_manager.check_http_status(response)
             content_type: str = response.headers.get("Content-Type")
             assert content_type is not None
             if not any(s in content_type.lower() for s in ("html", "text")):
                 raise InvalidContentTypeError(message=f"Received {content_type}, was expecting text")
+            self.client_manager.cookies.update_cookies(session.cookies, url)
             return BeautifulSoup(response.content, "html.parser")
+
+    @limiter
+    async def post_data_cffi(
+        self, url: URL, impersonate: BrowserTypeLiteral | None = "chrome", data: dict | None = None, **kwargs
+    ) -> CurlResponse:
+        data = data or {}
+        async with self.new_curl_session(impersonate) as session:
+            response: CurlResponse = await session.post(str(url), data=data, **kwargs)
+            await self.client_manager.check_http_status(response)
+            return response
 
     @limiter
     async def get_soup(
@@ -249,6 +265,8 @@ class ScraperClient:
         origin: ScrapeItem | URL | None = None,
         cache_disabled: bool = False,
         headers_inc: dict | None = None,
+        *,
+        req_headers: bool = False,
     ) -> dict | bytes:
         """Returns a JSON object from the given URL when posting data. If raw == True, returns raw binary data of response."""
         headers = self._headers | headers_inc if headers_inc else self._headers
@@ -260,6 +278,7 @@ class ScraperClient:
                 ssl=self.client_manager.ssl_context,
                 proxy=self.client_manager.proxy,
                 data=data,
+                allow_redirects=req_headers,
             ) as response,
         ):
             await self.client_manager.check_http_status(response, origin=origin)
@@ -268,6 +287,8 @@ class ScraperClient:
                 if content == b"":
                     content = await CachedStreamReader(await response.read()).read()
                 return content if raw else json.loads(content)
+            if req_headers:
+                return dict(response.headers)
             return {}
 
     @limiter
