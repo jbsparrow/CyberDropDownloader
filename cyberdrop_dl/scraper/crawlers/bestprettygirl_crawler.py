@@ -47,7 +47,7 @@ class BestPrettyGirlCrawler(Crawler):
     @error_handling_wrapper
     async def collection(self, scrape_item: ScrapeItem) -> None:
         collection_type = title = ""
-        async for soup in self.web_pager(scrape_item):
+        async for soup in self.web_pager(scrape_item.url):
             if not collection_type:
                 title_tag = soup.select_one(TITLE_SELECTOR)
                 if not title_tag:
@@ -101,8 +101,8 @@ class BestPrettyGirlCrawler(Crawler):
             custom_filename, _ = get_filename_and_ext(custom_filename)
             await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
-        for _ in soup.select(VIDEO_IFRAME_SELECTOR):
-            link_str: str = image.get("data-src")  # type: ignore
+        for video_ifr in soup.select(VIDEO_IFRAME_SELECTOR):
+            link_str: str = video_ifr.get("data-src")  # type: ignore
             link_str = link_str.replace("//dood.re/", "//vidply.com/")
             link = self.parse_url(link_str)
             new_scrape_item = scrape_item.create_child(link)
