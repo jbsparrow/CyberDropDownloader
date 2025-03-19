@@ -25,6 +25,7 @@ GALLERY_TITLE_SELECTOR = "div.gallery-title > h2"
 GROUP_TITLE_SELECTOR = "div.group-bio > h1"
 ITEM_GALLERY_TITLE_SELECTOR = "div.gallery-captions > a.gallery-data"
 NOT_FOUND_TEXTS = "The page you're looking for cannot be found", "File not Found. Nothing to see here"
+USER_NAME_SELECTOR = "div.member-bio-username"
 INCLUDE_ID_IN_FILENAME = True
 
 
@@ -46,17 +47,50 @@ class MotherlessCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem, collection_id: str = "") -> None:
         """Determines where to send the scrape item based on the url."""
+        parts = scrape_item.url.parts
+        n_parts = len(parts)
         item_id = collection_id or scrape_item.url.name
-        is_gallery_homepage = scrape_item.url.name.startswith("G") and len(scrape_item.url.parts) == 2
-        is_group_homepage = "g" in scrape_item.url.parts and len(scrape_item.url.parts) == 3
+        is_gallery_homepage = scrape_item.url.name.startswith("G") and n_parts == 2
+        is_group_homepage = "g" in parts and n_parts == 3
+        is_user = any(p in parts for p in ("u", "f"))  # /member/ is for user galleries, not supported yet
+        is_videos_or_images = any(p in parts for p in ("videos", "images"))
+        is_supported_user_url = is_user and (n_parts == 3 or (n_parts > 3 and is_videos_or_images))
 
-        if "gi" in scrape_item.url.parts:  # group images
+        if "gi" in parts:  # group images
             return await self.collection_items(scrape_item, "images", item_id)
-        if "gv" in scrape_item.url.parts:  # group videos
+        if "gv" in parts:  # group videos
             return await self.collection_items(scrape_item, "videos", item_id)
         if is_group_homepage or is_gallery_homepage:  # gallery or group
             return await self.collection(scrape_item)
+        if is_supported_user_url:
+            return await self.user(scrape_item)
+        if is_user:
+            raise ValueError
         return await self.media(scrape_item)
+
+    @error_handling_wrapper
+    async def user(self, scrape_item: ScrapeItem) -> None:
+        n_parts = len(scrape_item.url.parts)
+        assert n_parts >= 3
+        username = scrape_item.url.parts[2]
+        canonical_url = self.primary_base_domain / "f" / username
+        videos_url = canonical_url / "videos"
+        images_url = canonical_url / "images"
+        is_homepage = n_parts == 3
+
+        title: str = f"{username} [user]"
+        title = self.create_title(title)
+        scrape_item.setup_as_album(title)
+
+        if is_homepage or "images" in scrape_item.url.parts:
+            async for soup in self.web_pager(images_url):
+                check_soup(soup)
+                await self.iter_items(scrape_item, soup, "Images")
+
+        if is_homepage or "videos" in scrape_item.url.parts:
+            async for soup in self.web_pager(videos_url):
+                check_soup(soup)
+                await self.iter_items(scrape_item, soup, "Videos")
 
     @error_handling_wrapper
     async def collection(self, scrape_item: ScrapeItem) -> None:
@@ -86,21 +120,15 @@ class MotherlessCrawler(Crawler):
         self, scrape_item: ScrapeItem, media_type: Literal["videos", "images"], collection_id: str | None = None
     ) -> None:
         title = ""
-        async for soup in self.web_pager(scrape_item):
+        async for soup in self.web_pager(scrape_item.url):
             check_soup(soup)
             if not title:
                 title_tag = soup.select_one(GALLERY_TITLE_SELECTOR) or soup.select_one(GROUP_TITLE_SELECTOR)
                 title: str = title_tag.get_text(strip=True)  # type: ignore
                 title = self.create_title(title, collection_id)
                 scrape_item.setup_as_album(title, album_id=collection_id)
-                scrape_item.add_to_parent_title(media_type)
 
-            for item in soup.select(ITEM_SELECTOR):
-                link_str: str = item.get("href")  # type: ignore
-                link = self.parse_url(link_str)
-                new_scrape_item = scrape_item.create_child(link)
-                self.manager.task_group.create_task(self.run(new_scrape_item))
-                scrape_item.add_children()
+            await self.iter_items(scrape_item, soup, media_type.capitalize())
 
     @error_handling_wrapper
     async def media(self, scrape_item: ScrapeItem) -> None:
@@ -125,6 +153,8 @@ class MotherlessCrawler(Crawler):
             custom_filename = f"{custom_filename.stem} [{media_id}]{ext}"
         custom_filename, _ = get_filename_and_ext(str(custom_filename))
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     def process_media_soup(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> MediaInfo:
         media_info = get_media_info(soup)
@@ -153,9 +183,17 @@ class MotherlessCrawler(Crawler):
             scrape_item.parents.append(parent_url)
             title = self.create_title(parent_title, parent_id)
             scrape_item.setup_as_album(title, album_id=parent_id)
-            scrape_item.add_to_parent_title(f"{media_info.type}s")
+            scrape_item.add_to_parent_title(f"{media_info.type.capitalize()}s")
 
         return media_info
+
+    async def iter_items(self, scrape_item: ScrapeItem, soup: BeautifulSoup, new_title_part: str = "") -> None:
+        for item in soup.select(ITEM_SELECTOR):
+            link_str: str = item.get("href")  # type: ignore
+            link = self.parse_url(link_str)
+            new_scrape_item = scrape_item.create_child(link, new_title_part=new_title_part)
+            self.manager.task_group.create_task(self.run(new_scrape_item))
+            scrape_item.add_children()
 
 
 def check_soup(soup: BeautifulSoup) -> None:
