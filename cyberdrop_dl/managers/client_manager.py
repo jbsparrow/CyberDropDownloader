@@ -192,7 +192,7 @@ class ClientManager:
 
     @staticmethod
     def check_ddos_guard(soup: BeautifulSoup) -> bool:
-        if soup.title:
+        if soup.title and soup.title.string:
             for title in DDOS_GUARD_CHALLENGE_TITLES:
                 challenge_found = title.casefold() == soup.title.string.casefold()  # type: ignore
                 if challenge_found:
@@ -207,7 +207,7 @@ class ClientManager:
 
     @staticmethod
     def check_cloudflare(soup: BeautifulSoup) -> bool:
-        if soup.title:
+        if soup.title and soup.title.string:
             for title in CLOUDFLARE_CHALLENGE_TITLES:
                 challenge_found = title.casefold() == soup.title.string.casefold()  # type: ignore
                 if challenge_found:
