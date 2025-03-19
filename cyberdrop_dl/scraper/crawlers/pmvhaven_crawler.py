@@ -11,7 +11,7 @@ from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 JS_VIDEO_INFO_SELECTOR = "script#__NUXT_DATA__"
 API_ENTRYPOINT = URL("https://pmvhaven.com/api/v2/")
 PRIMARY_BASE_DOMAIN = URL("https://pmvhaven.com")
+INCLUDE_VIDEO_ID_IN_FILENAME = True
 
 
 class PMVHavenCrawler(Crawler):
@@ -182,8 +183,10 @@ class PMVHavenCrawler(Crawler):
         scrape_item.possible_datetime = date
         link = self.parse_url(link_str)
         resolution = f"{resolution}p" if resolution else "Unknown"
-        filename, ext = get_filename_and_ext(link.name)
-        custom_filename, _ = get_filename_and_ext(f"{title} [{video_id}][{resolution}]{ext}")
+        filename, ext = self.get_filename_and_ext(link.name, assume_ext=".mp4")
+        include_id = f"[{video_id}]" if INCLUDE_VIDEO_ID_IN_FILENAME else ""
+        custom_filename = f"{title} {include_id}[{resolution}]{ext}"
+        custom_filename, _ = self.get_filename_and_ext(custom_filename)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     async def iter_videos(self, scrape_item: ScrapeItem, videos: list[dict], new_title_part: str = "") -> None:
