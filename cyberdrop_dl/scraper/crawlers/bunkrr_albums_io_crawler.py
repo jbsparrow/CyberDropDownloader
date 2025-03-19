@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
 class BunkrAlbumsIOCrawler(Crawler):
     primary_base_domain = URL("https://bunkr-albums.io/")
+    skip_pre_check = True
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "bunkr-albums.io", "Bunkr-Albums.io")
