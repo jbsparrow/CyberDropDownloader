@@ -25,7 +25,7 @@ from cyberdrop_dl.utils.logger import log, log_spacer
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.scraper.crawler import ScrapeItem
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 DOWNLOAD_ERROR_ETAGS = {
     "d835884373f4d6c8f24742ceabe74946": "Imgur image has been removed",
