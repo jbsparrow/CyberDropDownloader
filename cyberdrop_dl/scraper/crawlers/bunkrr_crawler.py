@@ -16,6 +16,7 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
+from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.constants import FILE_FORMATS
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -192,7 +193,9 @@ class BunkrrCrawler(Crawler):
 
         # Try to get downloadd URL from streaming API. Should work for most files, even none video files
         if not link and "f" in scrape_item.url.parts:
-            link = await self.get_download_url_from_api(scrape_item.url)
+            slug = get_slug_from_soup(soup) or scrape_item.url.name or scrape_item.url.parent.name
+            slug_url = self.primary_base_domain / "f" / slug
+            link = await self.get_download_url_from_api(slug_url)
 
         # Fallback for everything else, try to get the download URL. `handle_direct_link` will make the final request to the API
         if not link and download_link_container:
@@ -220,7 +223,9 @@ class BunkrrCrawler(Crawler):
         soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         title: str = soup.select_one("h1").text.strip()  # type: ignore
-        link: URL = await self.get_download_url_from_api(scrape_item.url)
+        link: URL | None = await self.get_download_url_from_api(scrape_item.url)
+        if not link:
+            raise ScrapeError(422)
         await self.handle_direct_link(scrape_item, link, fallback_filename=title)
 
     @error_handling_wrapper
@@ -234,6 +239,9 @@ class BunkrrCrawler(Crawler):
         if is_reinforced_link(link):
             scrape_item.url = link
             link = await self.get_download_url_from_api(link)
+
+        if not link:
+            raise ScrapeError(422)
 
         link = override_cdn(link)
 
@@ -253,7 +261,7 @@ class BunkrrCrawler(Crawler):
 
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
-    async def get_download_url_from_api(self, url: URL) -> URL:
+    async def get_download_url_from_api(self, url: URL) -> URL | None:
         """Gets the download link for a given URL
 
         1. Reinforced URL (get.bunkr.su/<file_id>). or
@@ -273,7 +281,10 @@ class BunkrrCrawler(Crawler):
 
         api_response = ApiResponse(**json_resp)
         link_str = decrypt_api_response(api_response)
-        return self.parse_url(link_str)
+        link = self.parse_url(link_str)
+        if link == self.primary_base_domain:
+            return
+        return link
 
     def deep_scrape(self, url: URL) -> bool:
         assert url.host
@@ -339,3 +350,13 @@ def xor_decrypt(encrypted_data: bytearray, key: str) -> str:
     key_bytes = key.encode("utf-8")
     decrypted_data = bytearray(b_input ^ b_key for b_input, b_key in zip(encrypted_data, cycle(key_bytes)))
     return decrypted_data.decode("utf-8", errors="ignore")
+
+
+def get_slug_from_soup(soup: BeautifulSoup) -> str | None:
+    info_js = soup.select_one("script:contains('jsSlug')")
+    if not info_js:
+        return
+    info_js_text: str = info_js.text  # type: ignore
+    info_js_dict = javascript.parse_js_vars(info_js_text)
+    javascript.clean_dict(info_js_dict)
+    return info_js_dict.get("jsSlug")
