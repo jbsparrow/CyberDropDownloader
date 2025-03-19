@@ -21,7 +21,9 @@ from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext, remove_file_id
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import AsyncGenerator, Callable
+
+    from bs4 import BeautifulSoup
 
     from cyberdrop_dl.clients.scraper_client import ScraperClient
     from cyberdrop_dl.managers.manager import Manager
@@ -43,6 +45,7 @@ class Crawler(ABC):
     DEFAULT_POST_TITLE_FORMAT = "{date} - {number} - {title}"
     update_unsupported = False
     skip_pre_check = False
+    next_page_selector: str = ""
     scrape_prefix = "Scraping:"
     scrape_mapper_domain = ""
 
@@ -297,6 +300,22 @@ class Crawler(ABC):
         """
         response_url = url or self.primary_base_domain
         self.client.client_manager.cookies.update_cookies(cookies, response_url)
+
+    async def web_pager(self, url: URL, next_page_selector: str = "") -> AsyncGenerator[BeautifulSoup]:
+        """Generator of website pages."""
+        page_url = url
+        next_page_selector = next_page_selector or self.next_page_selector
+        while True:
+            async with self.request_limiter:
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url)
+            yield soup
+            if not next_page_selector:
+                return
+            next_page = soup.select_one(next_page_selector)
+            page_url_str: str | None = next_page.get("href") if next_page else None  # type: ignore
+            if not page_url_str:
+                break
+            page_url = self.parse_url(page_url_str)
 
 
 def remove_trailing_slash(url: URL) -> URL:
