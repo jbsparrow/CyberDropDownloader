@@ -58,19 +58,19 @@ class PMVHavenCrawler(Crawler):
         api_url = API_ENTRYPOINT / "profileInput"
         title = f"{username} [user]"
         title = self.create_title(username)
-        scrape_item.setup_as_album(title)
+        scrape_item.setup_as_profile(title)
 
         # Videos
         add_data = {"mode": "GetMoreProfileVideos", "user": username}
         new_scrape_item = scrape_item.create_new(scrape_item.url, new_title_part="Videos")
         async for json_resp in self.api_pager(api_url, add_data):
-            await self.iter_videos(new_scrape_item, json_resp["data"])
+            await self.iter_videos(new_scrape_item, json_resp["data"], scrape_item)
 
         # Favorites
         add_data = {"mode": "GetMoreFavoritedVideos", "user": username, "search": None, "date": "Date", "sort": "Sort"}
         new_scrape_item = scrape_item.create_new(scrape_item.url, new_title_part="Favorites")
         async for json_resp in self.api_pager(api_url, add_data):
-            await self.iter_videos(new_scrape_item, json_resp["data"])
+            await self.iter_videos(new_scrape_item, json_resp["data"], scrape_item)
 
         # Playlist
         # TODO: add pagination support for user playlists
@@ -187,12 +187,15 @@ class PMVHavenCrawler(Crawler):
         custom_filename, _ = get_filename_and_ext(f"{title} [{video_id}][{resolution}]{ext}")
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
-    async def iter_videos(self, scrape_item: ScrapeItem, videos: list[dict]) -> None:
+    async def iter_videos(
+        self, scrape_item: ScrapeItem, videos: list[dict], og_scrape_item: ScrapeItem | None = None
+    ) -> None:
+        og_scrape_item = og_scrape_item or scrape_item
         for video in videos:
             link = create_canonical_video_url(video)
             new_scrape_item = scrape_item.create_child(link)
             await self.process_video_info(new_scrape_item, video)
-            scrape_item.add_children()
+            og_scrape_item.add_children()
 
     async def api_pager(self, api_url: URL, add_data: dict, *, check_key: str = "data") -> AsyncGenerator[dict]:
         """Generator of API pages."""
