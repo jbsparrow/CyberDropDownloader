@@ -5,11 +5,11 @@ from typing import TYPE_CHECKING
 from yarl import URL
 
 from cyberdrop_dl.scraper.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_PROFILE, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
 class RedGifsCrawler(Crawler):
@@ -28,47 +28,42 @@ class RedGifsCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-
         if "users" in scrape_item.url.parts:
-            await self.user(scrape_item)
-        else:
-            await self.post(scrape_item)
+            return await self.user(scrape_item)
+
+        await self.post(scrape_item)
 
     @error_handling_wrapper
     async def user(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a users page."""
         user_id = scrape_item.url.parts[-1].split(".")[0]
-
-        page = 1
-        total_pages = 1
-
-        scrape_item.set_type(FILE_HOST_PROFILE, self.manager)
+        page = total_pages = 1
+        title: str = ""
 
         while page <= total_pages:
             async with self.request_limiter:
                 api_url = self.redgifs_api / "v2/users" / user_id / "search"
-                url = api_url.with_query(f"order=new&count=40&page={page}")
-                JSON_Resp = await self.client.get_json(self.domain, url, headers_inc=self.headers, origin=scrape_item)
-            total_pages = JSON_Resp["pages"]
-            gifs = JSON_Resp["gifs"]
+                url = api_url.with_query(order="new", page=page)
+                json_resp = await self.client.get_json(self.domain, url, headers_inc=self.headers, origin=scrape_item)
+
+            gifs = json_resp["gifs"]
+            if not title:
+                total_gifs = json_resp["users"][0]["gifs"]
+                total_pages, res = divmod(total_gifs, len(gifs))
+                total_pages += bool(res)
+                title = self.create_title(user_id)
+                scrape_item.setup_as_album(title)
+
             for gif in gifs:
                 links: dict[str, str] = gif["urls"]
-                date = gif["createDate"]
-                title = self.create_title(user_id)
-
-                link_str: str = links.get("hd") or links.get("sd")
+                date: int = gif["createDate"]
+                link_str: str = links.get("hd") or links.get("sd")  # type: ignore
                 link = self.parse_url(link_str)
                 filename, ext = get_filename_and_ext(link.name)
-                new_scrape_item = self.create_scrape_item(
-                    scrape_item,
-                    link,
-                    title,
-                    part_of_album=True,
-                    possible_datetime=date,
-                    add_parent=scrape_item.url,
-                )
+                new_scrape_item = scrape_item.create_child(link, possible_datetime=date)
                 await self.handle_file(link, new_scrape_item, filename, ext)
                 scrape_item.add_children()
+
             page += 1
 
     @error_handling_wrapper
@@ -77,25 +72,22 @@ class RedGifsCrawler(Crawler):
         post_id = scrape_item.url.parts[-1].split(".")[0]
         async with self.request_limiter:
             api_url = self.redgifs_api / "v2/gifs" / post_id
-            JSON_Resp = await self.client.get_json(self.domain, api_url, headers_inc=self.headers, origin=scrape_item)
+            json_resp: dict[str, dict] = await self.client.get_json(
+                self.domain, api_url, headers_inc=self.headers, origin=scrape_item
+            )
 
-        title_part = JSON_Resp["gif"].get("title", "Loose Files")
+        title_part: str = json_resp["gif"].get("title") or "Loose Files"
         title = self.create_title(title_part)
-        links: dict[str, str] = JSON_Resp["gif"]["urls"]
-        date = JSON_Resp["gif"]["createDate"]
+        scrape_item.setup_as_album(title)
 
-        link_str: str = links.get("hd") or links.get("sd")
+        links: dict[str, str] = json_resp["gif"]["urls"]
+        date = json_resp["gif"]["createDate"]
+
+        link_str: str = links.get("hd") or links.get("sd")  # type: ignore
         link = self.parse_url(link_str)
 
         filename, ext = get_filename_and_ext(link.name)
-        new_scrape_item = self.create_scrape_item(
-            scrape_item,
-            link,
-            title,
-            part_of_album=True,
-            possible_datetime=date,
-            add_parent=scrape_item.url,
-        )
+        new_scrape_item = scrape_item.create_child(link, possible_datetime=date)
         await self.handle_file(link, new_scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
