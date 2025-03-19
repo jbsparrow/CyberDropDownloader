@@ -181,16 +181,26 @@ def clear_term():
     os.system("cls" if os.name == "nt" else "clear")
 
 
-def parse_rich_text_by_style(text: Text, style_map: dict, default_style_map_key: str = "default") -> str:
-    """Returns `text` as a plain str, parsing each tag in text acording to `style_map`."""
-    plain_text = ""
-    for span in text.spans:
-        span_text = text.plain[span.start : span.end].rstrip("\n")
-        plain_line: str | None = style_map.get(span.style) or style_map.get(default_style_map_key)
-        if plain_line:
-            plain_text += plain_line.format(span_text) + "\n"
+def convert_text_by_diff(text: Text) -> str:
+    """Returns `rich.text` as a plain str with diff syntax."""
 
-    return plain_text
+    STYLE_TO_DIFF = {
+        "green": "+   {}",
+        "red": "-   {}",
+        "yellow": "*** {}",
+    }
+
+    diff_text = ""
+    default_format: str = "{}"
+    for line in text.split(allow_blank=True):
+        line_str = line.plain.rstrip("\n")
+        first_span = line.spans[0] if line.spans else None
+        style: str = str(first_span.style) if first_span else ""
+        color = style.split(" ")[0] or "black"  # remove console hyperlink markup (if any)
+        line_format: str = STYLE_TO_DIFF.get(color) or default_format
+        diff_text += line_format.format(line_str) + "\n"
+
+    return diff_text
 
 
 def purge_dir_tree(dirname: Path) -> None:
@@ -258,7 +268,7 @@ async def send_webhook_message(manager: Manager) -> None:
     rich.print("\nSending Webhook Notifications.. ")
     url: URL = webhook.url.get_secret_value()  # type: ignore
     text: Text = constants.LOG_OUTPUT_TEXT
-    plain_text = parse_rich_text_by_style(text, constants.STYLE_TO_DIFF_FORMAT_MAP)
+    diff_text = convert_text_by_diff(text)
     main_log = manager.path_manager.main_log
 
     form = FormData()
@@ -269,10 +279,10 @@ async def send_webhook_message(manager: Manager) -> None:
                 form.add_field("file", await f.read(), filename=main_log.name)
 
         else:
-            plain_text += "\n\nWARNING: log file too large to send as attachment\n"
+            diff_text += "\n\nWARNING: log file too large to send as attachment\n"
 
     form.add_fields(
-        ("content", f"```diff\n{plain_text}```"),
+        ("content", f"```diff\n{diff_text}```"),
         ("username", "CyberDrop-DL"),
     )
 
