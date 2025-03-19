@@ -75,13 +75,16 @@ def retry(func: Callable) -> Callable:
     return wrapper
 
 
+GENERIC_CRAWLERS = ".", "no_crawler"
+
+
 class Downloader:
     def __init__(self, manager: Manager, domain: str) -> None:
         self.manager: Manager = manager
         self.domain: str = domain
 
         self.client: DownloadClient = field(init=False)
-        self.log_prefix = "Download attempt (unsupported domain)" if domain == "no_crawler" else "Download"
+        self.log_prefix = "Download attempt (unsupported domain)" if domain in GENERIC_CRAWLERS else "Download"
         self.processed_items: set = set()
         self.waiting_items = 0
 
