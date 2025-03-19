@@ -36,7 +36,7 @@ body:
     attributes:
       label: Provide example URLs to support
       description: |
-        1. Please include examples of every posible URL you will like to be supported from the site
+        1. Please include examples of every posible URL you would like to be supported from the site
         2. Add a description of URL format in front of them
         3. The provided URLs must real and valid
 
