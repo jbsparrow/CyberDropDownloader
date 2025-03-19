@@ -25,6 +25,7 @@ if TYPE_CHECKING:
 JS_VIDEO_INFO_SELECTOR = "script#__NUXT_DATA__"
 API_ENTRYPOINT = URL("https://pmvhaven.com/api/v2/")
 PRIMARY_BASE_DOMAIN = URL("https://pmvhaven.com")
+CATEGORIES = "Hmv", "Pmv", "Hypno", "Tiktok", "KoreanBJ"
 INCLUDE_VIDEO_ID_IN_FILENAME = True
 
 
@@ -126,7 +127,13 @@ class PMVHavenCrawler(Crawler):
 
     @error_handling_wrapper
     async def category(self, scrape_item: ScrapeItem) -> None:
-        category_name = scrape_item.url.name
+        category_name = ""
+        for cat in CATEGORIES:  # Search values are case sensitive but the URL for categories is always lowercase
+            if cat.casefold() == scrape_item.url.name.casefold():
+                category_name = cat
+                break
+        if not category_name:
+            raise ScrapeError(422)
         add_data = {"mode": category_name, "profile": None}
         await self._generic_search_pager(scrape_item, add_data, category_name, "category")
 
