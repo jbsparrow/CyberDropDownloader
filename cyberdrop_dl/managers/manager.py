@@ -27,7 +27,7 @@ from cyberdrop_dl.utils.transfer import transfer_v5_db_to_v6
 if TYPE_CHECKING:
     from asyncio import TaskGroup
 
-    from cyberdrop_dl.scraper.scraper import ScrapeMapper
+    from cyberdrop_dl.scraper.scrape_mapper import ScrapeMapper
 
 
 class Manager:

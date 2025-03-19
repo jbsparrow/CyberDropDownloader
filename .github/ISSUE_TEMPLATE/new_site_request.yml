@@ -71,9 +71,9 @@ body:
 
   - type: dropdown
     id: mimetype
-    multiple: true
     attributes:
       label: What kind of content can be found on the site?
+      multiple: true
       options:
         - Videos / Gifs
         - Images

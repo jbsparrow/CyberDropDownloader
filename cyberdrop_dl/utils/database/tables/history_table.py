@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     import aiosqlite
     from yarl import URL
 
-    from cyberdrop_dl.scraper.crawler import Crawler
+    from cyberdrop_dl.crawlers import Crawler
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
 

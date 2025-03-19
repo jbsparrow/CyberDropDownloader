@@ -18,7 +18,7 @@ from rich.logging import RichHandler
 from cyberdrop_dl import env
 from cyberdrop_dl.clients.errors import InvalidYamlError
 from cyberdrop_dl.managers.manager import Manager
-from cyberdrop_dl.scraper.scraper import ScrapeMapper
+from cyberdrop_dl.scraper.scrape_mapper import ScrapeMapper
 from cyberdrop_dl.ui.program_ui import ProgramUI
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.apprise import send_apprise_notifications
