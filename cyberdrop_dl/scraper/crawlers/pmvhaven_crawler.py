@@ -138,7 +138,8 @@ class PMVHavenCrawler(Crawler):
         async with self.request_limiter:
             json_resp: dict = await self.client.post_data(self.domain, api_url, data=add_data)
 
-        video_info: dict = json_resp.get("video") or {}
+        videos = json_resp.get("video")
+        video_info: dict = videos[0] if videos else {}
         await self.process_video_info(scrape_item, video_info)
 
     @error_handling_wrapper
