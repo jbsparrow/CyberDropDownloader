@@ -75,9 +75,10 @@ class PMVHavenCrawler(Crawler):
 
         # Playlist
         # TODO: add pagination support for user playlists
-        add_data = {"profile": username, "mode": "GetUser"}
+        add_headers = {"Content-Type": "text/plain;charset=UTF-8"}
+        add_data = json.dumps({"profile": username, "mode": "GetUser"})
         async with self.request_limiter:
-            json_resp: dict = await self.client.post_data(self.domain, api_url, data=add_data)
+            json_resp: dict = await self.client.post_data(self.domain, api_url, data=add_data, headers_inc=add_headers)
 
         user_info: dict[str, dict] = json_resp["data"]
         for playlist in user_info["playlists"]:
@@ -214,10 +215,15 @@ class PMVHavenCrawler(Crawler):
     async def api_pager(self, api_url: URL, add_data: dict, *, check_key: str = "data") -> AsyncGenerator[dict]:
         """Generator of API pages."""
         page: int = 1
+        is_profile = api_url.name == "profileInput"
+        add_headers = {"Content-Type": "text/plain;charset=UTF-8"} if is_profile else None
+
         while True:
             data = {"index": page} | add_data
+            if is_profile:
+                data = json.dumps(data)
             async with self.request_limiter:
-                json_resp: dict = await self.client.post_data(self.domain, api_url, data=data)
+                json_resp: dict = await self.client.post_data(self.domain, api_url, data=data, headers_inc=add_headers)
 
             has_videos = bool(json_resp[check_key])
             if not has_videos:
