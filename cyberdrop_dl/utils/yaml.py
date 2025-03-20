@@ -76,7 +76,7 @@ def handle_validation_error(e: ValidationError, *, title: str = "", file: Path |
     error_count = e.error_count()
     msg = ""
     if file:
-        msg += f"File '{file.resolve()}' has an invalid config\n\n"
+        msg += f"File '{file}' has an invalid config\n\n"
 
     show_title = title or e.title
     msg += f"Found {error_count} error{'s' if error_count > 1 else ''} [{show_title}]:"

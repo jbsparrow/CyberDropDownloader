@@ -84,7 +84,7 @@ class Sorter:
         files_to_sort: dict[str, list[Path]] = {}
 
         with self.manager.live_manager.get_sort_live(stop=True):
-            subfolders = [f.resolve() for f in self.download_folder.iterdir() if f.is_dir()]
+            subfolders = [f for f in self.download_folder.iterdir() if f.is_dir()]
             for folder in subfolders:
                 files_to_sort[folder.name] = self._get_files(folder)
             await self._sort_files(files_to_sort)
