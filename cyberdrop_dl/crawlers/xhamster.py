@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, NamedTuple, Self
+from typing import TYPE_CHECKING, Any, NamedTuple, Self
 
 from yarl import URL
 
@@ -92,10 +92,10 @@ class XhamsterCrawler(Crawler):
 
         json_info = get_window_initials_json(soup)
         del soup
-        gallery: dict = json_info.get("photosGalleryModel") or json_info["galleryModel"]
+        gallery: dict[str, Any] = json_info.get("photosGalleryModel") or json_info["galleryModel"]
         log_debug(gallery)
         images: list[dict] = gallery["photos"]
-        gallery_id = gallery["id"]
+        gallery_id: int = gallery["id"]
         title = f"{gallery['title']} [gallery]"
         scrape_item.setup_as_album(title, album_id=gallery_id)
         scrape_item.possible_datetime = gallery["created"]
@@ -103,7 +103,7 @@ class XhamsterCrawler(Crawler):
         n_images = gallery["quantity"]
         padding = max(3, len(str(n_images)))
 
-        is_single_image = gallery_id != scrape_item.url.name
+        is_single_image = not scrape_item.url.name.endswith(str(gallery_id))
         single_image_id = int(scrape_item.url.name) if is_single_image else None
         for index, image in enumerate(images, 1):
             if is_single_image and single_image_id != image["id"]:
