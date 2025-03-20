@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, NamedTuple, Self
+from typing import TYPE_CHECKING, NamedTuple, Self
 
 from yarl import URL
 
@@ -20,6 +20,8 @@ if TYPE_CHECKING:
 
 NEXT_PAGE_SELECTOR = ""
 JS_VIDEO_INFO_SELECTOR = "script#initials-script"
+GALLERY_TITLE_SELECTOR = "meta [property='og:image:alt']"
+IMAGE_SELECTOR = "div.fotorama__img a"
 
 
 class Format(NamedTuple):
@@ -70,7 +72,9 @@ class XhamsterCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        ## TODO: gallery support, user profile support, categories and tags
+        ## TODO: user profile support, categories and tags
+        if "gallery" in scrape_item.url.parts:
+            return await self.gallery(scrape_item)
         return await self.video(scrape_item)
 
     @error_handling_wrapper
@@ -82,6 +86,43 @@ class XhamsterCrawler(Crawler):
         raise NotImplementedError
 
     @error_handling_wrapper
+    async def gallery(self, scrape_item: ScrapeItem) -> None:
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+
+        json_info = get_window_initials_json(soup)
+        del soup
+        gallery: dict = json_info.get("photosGalleryModel") or json_info["galleryModel"]
+        log_debug(gallery)
+        images: list[dict] = gallery["photos"]
+        gallery_id = gallery["id"]
+        title = f"{gallery['title']} [gallery]"
+        scrape_item.setup_as_album(title, album_id=gallery_id)
+        scrape_item.possible_datetime = gallery["created"]
+
+        n_images = gallery["quantity"]
+        padding = max(3, len(str(n_images)))
+
+        is_single_image = gallery_id != scrape_item.url.name
+        single_image_id = int(scrape_item.url.name) if is_single_image else None
+        for index, image in enumerate(images, 1):
+            if is_single_image and single_image_id != image["id"]:
+                continue
+            link = self.parse_url(image["imageURL"])
+            page_url = self.parse_url(image["pageURL"])
+
+            filename, ext = self.get_filename_and_ext(link.name)
+            custom_filename = f"{index:0{padding}d} - {filename}"
+            new_scrape_item = scrape_item.create_child(page_url)
+            await self.handle_file(link, new_scrape_item, filename, ext, custom_filename=custom_filename)
+            scrape_item.add_children()
+
+    @error_handling_wrapper
+    async def image(self, scrape_item: ScrapeItem) -> None:
+        if await self.check_complete_from_referer(scrape_item):
+            return
+
+    @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
         if await self.check_complete_from_referer(scrape_item):
             return
@@ -89,10 +130,10 @@ class XhamsterCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
-        video_info = get_info_dict(soup)
-        if not video_info:
-            raise ScrapeError(422)
-
+        json_info = get_window_initials_json(soup)
+        del soup
+        video_info = json_info["videoModel"]
+        log_debug(video_info)
         video = Video.from_dict(video_info)
         canonical_url = self.parse_url(video.url)
         best_format = max(video.formats)
@@ -114,15 +155,21 @@ class XhamsterCrawler(Crawler):
         )
 
 
-def get_info_dict(soup: BeautifulSoup) -> dict[str, Any]:
+def get_window_initials_json(soup: BeautifulSoup) -> dict[str, dict]:
+    js_code = get_javascript_text(soup)
+    return get_json_from_js(js_code)
+
+
+def get_javascript_text(soup: BeautifulSoup) -> str:
     info_js_script = soup.select_one(JS_VIDEO_INFO_SELECTOR)
-    del soup
     info_js_script_text = info_js_script.text if info_js_script else None
     if not info_js_script_text:
         raise ScrapeError(422)
-    json_text = info_js_script_text.split("=", 1)[-1].removesuffix(";")
-    info_dict = javascript.parse_json_to_dict(json_text)
-    javascript.clean_dict(info_dict)
-    video_info = info_dict["videoModel"]
-    log_debug(video_info)
-    return video_info
+    return info_js_script_text
+
+
+def get_json_from_js(js_code: str) -> dict[str, dict]:
+    json_text = js_code.split("=", 1)[-1].removesuffix(";")
+    json_dict = javascript.parse_json_to_dict(json_text)
+    javascript.clean_dict(json_dict)
+    return json_dict
