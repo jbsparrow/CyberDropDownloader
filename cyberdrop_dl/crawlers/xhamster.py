@@ -1,25 +1,32 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, NamedTuple
+from functools import partial
+from typing import TYPE_CHECKING, Annotated, NamedTuple
 
-from pydantic import Field
+from pydantic import AfterValidator, Field
 from yarl import URL
 
-from cyberdrop_dl.config_definitions.custom.types import AliasModel, ParsedURL
+from cyberdrop_dl.config_definitions.custom.converters import convert_to_yarl
+from cyberdrop_dl.config_definitions.custom.types import AliasModel, ParsedHttpStrURL
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, parse_url
 
 if TYPE_CHECKING:
+    from collections.abc import Generator
+
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
-PRIMARY_BASE_DOMAIN = URL("https://xhamster.com")
+PRIMARY_BASE_DOMAIN = URL("https://xhamster.com/")
 NEXT_PAGE_SELECTOR = ""
 JS_VIDEO_INFO_SELECTOR = "script#initials-script"
+
+
+ParsedHttpURL = Annotated[ParsedHttpStrURL, AfterValidator(partial(convert_to_yarl, relative_to=PRIMARY_BASE_DOMAIN))]
 
 
 class XhamsterCrawler(Crawler):
@@ -65,13 +72,7 @@ class XhamsterCrawler(Crawler):
         scrape_item.possible_datetime = gallery.created
 
         padding = max(3, len(str(gallery.quantity)))
-        is_single_image = not scrape_item.url.name.endswith(str(gallery.id))
-        single_image_id = int(scrape_item.url.name) if is_single_image else None
-
         for index, image in enumerate(gallery.photos, 1):
-            if is_single_image and single_image_id != image.id:
-                continue
-
             filename, ext = self.get_filename_and_ext(image.url.name)
             custom_filename = f"{index:0{padding}d} - {filename.removesuffix(ext)} [{image.id}]{ext}"
             new_scrape_item = scrape_item.create_child(image.page_url)
@@ -85,19 +86,16 @@ class XhamsterCrawler(Crawler):
 
         json_info = await self.get_model_details(scrape_item.url, "videoModel")
         video = Video(**json_info)
-        best_format = max(video.formats)
 
         scrape_item.url = video.page_url
         scrape_item.possible_datetime = video.created
-        resolution = f"{best_format.height}p" if best_format.height else "Unknown"
-        link = self.primary_base_domain / "movies" / video.id / "download" / resolution
+        _, resolution, download_url = max(video.get_formats())
+        link = PRIMARY_BASE_DOMAIN / "movies" / video.id / "download" / resolution
 
-        filename = f"{video.id}.mp4"
-        filename, ext = self.get_filename_and_ext(filename)
-        custom_filename = f"{video.title} [{video.id}][{resolution}]{ext}"
-        custom_filename, _ = self.get_filename_and_ext(custom_filename)
+        filename, ext = self.get_filename_and_ext(f"{video.id}.mp4")
+        custom_filename, _ = self.get_filename_and_ext(f"{video.title} [{video.id}][{resolution}]{ext}")
         await self.handle_file(
-            link, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=best_format.url
+            link, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=download_url
         )
 
     async def get_model_details(self, url: URL, *model_name_choices: str) -> dict:
@@ -131,17 +129,18 @@ def get_window_initials_json(soup: BeautifulSoup) -> dict[str, dict]:
 
 class Format(NamedTuple):
     height: int
+    resolution: str
     url: URL
 
 
 class XHamsterItem(AliasModel):
     id: str = Field(alias="idHashSlug")
-    page_url: ParsedURL = Field(alias="pageURL")
+    page_url: ParsedHttpURL = Field(alias="pageURL")
     created: int = 0
 
 
 class Image(XHamsterItem):
-    url: ParsedURL = Field(alias="imageURL")
+    url: ParsedHttpURL = Field(alias="imageURL")
 
 
 class Gallery(XHamsterItem):
@@ -152,17 +151,14 @@ class Gallery(XHamsterItem):
 
 class Video(XHamsterItem):
     title: str
-    mp4_file: ParsedURL = Field(alias="mp4File")
+    mp4_file: ParsedHttpURL = Field(alias="mp4File")
     sources: dict = Field({})
 
-    @property
-    def formats(self) -> tuple[Format, ...]:
+    def get_formats(self) -> Generator[Format]:
         mp4_sources: dict[str, str] = self.sources.get("mp4") or {}
-        formats = [Format(0, self.mp4_file)]
+        yield Format(0, "Unknown", self.mp4_file)
         for resolution, details in mp4_sources.items():
             height = int(resolution.removesuffix("p"))
             link: str = details["link"] if isinstance(details, dict) else details
-            url = parse_url(link)
-            formats.append(Format(height, url))
-
-        return tuple(formats)
+            url = parse_url(link, relative_to=PRIMARY_BASE_DOMAIN)
+            yield Format(height, f"{height}p", url)
