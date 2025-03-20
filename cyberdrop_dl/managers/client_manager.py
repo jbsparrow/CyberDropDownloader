@@ -4,6 +4,7 @@ import asyncio
 import contextlib
 import ssl
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from http import HTTPStatus
 from http.cookiejar import MozillaCookieJar
 from typing import TYPE_CHECKING, Any
@@ -109,6 +110,7 @@ class ClientManager:
         if not cookie_files:
             return
 
+        now = datetime.now(UTC)
         domains_seen = set()
         for file in cookie_files:
             cookie_jar = MozillaCookieJar(file)
@@ -117,7 +119,8 @@ class ClientManager:
             except OSError as e:
                 log(f"Unable to load cookies from '{file.name}':\n  {e!s}", 40)
                 continue
-            current_cookie_file_domains = set()
+            current_cookie_file_domains: set[str] = set()
+            expire_dates: set[datetime] = set()
             for cookie in cookie_jar:
                 simplified_domain = cookie.domain.removeprefix(".")
                 if simplified_domain not in current_cookie_file_domains:
@@ -125,8 +128,15 @@ class ClientManager:
                     current_cookie_file_domains.add(simplified_domain)
                     if simplified_domain in domains_seen:
                         log(f"Previous cookies for domain {simplified_domain} detected. They will be overwritten", 30)
+
+                if cookie.expires:
+                    expire_dates.add(datetime.fromtimestamp(cookie.expires))
+
                 domains_seen.add(simplified_domain)
                 self.cookies.update_cookies({cookie.name: cookie.value}, response_url=URL(f"https://{cookie.domain}"))  # type: ignore
+
+            if expire_dates and any(date < now for date in expire_dates):
+                log(f"Cookies for {simplified_domain} are expired", 30)
 
         log_spacer(20, log_to_console=False)
 
