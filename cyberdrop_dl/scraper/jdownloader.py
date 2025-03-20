@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from dataclasses import field
 from functools import wraps
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from myjdapi import myjdapi
@@ -12,6 +11,7 @@ from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from pathlib import Path
 
     from yarl import URL
 
@@ -53,7 +53,7 @@ class JDownloader:
         self.jdownloader_autostart = manager.config_manager.settings_data.runtime_options.jdownloader_autostart
         if not self.jdownloader_download_dir:
             self.jdownloader_download_dir = manager.path_manager.download_folder
-        self.jdownloader_download_dir = Path(self.jdownloader_download_dir)
+        self.jdownloader_download_dir = self.jdownloader_download_dir.resolve()
         self.jdownloader_agent = field(init=False)
 
     @error_wrapper
