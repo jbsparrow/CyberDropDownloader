@@ -42,7 +42,9 @@ def parse_json_to_dict(js_text: str, use_regex: bool = False) -> dict:
         json_str = re.sub(*QUOTE_KEYS_REGEX, json_str)
         json_str = re.sub(*QUOTE_VALUES_REGEX, json_str)
         json_str = recover_urls(json_str)
-    return json.loads(json_str)
+    result = json.loads(json_str)
+    clean_dict(result)
+    return result
 
 
 def replace_quotes(js_text: str) -> str:

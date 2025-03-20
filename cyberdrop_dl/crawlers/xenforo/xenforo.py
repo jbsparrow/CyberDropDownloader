@@ -13,11 +13,11 @@ from bs4 import BeautifulSoup
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import InvalidURLError, LoginError, ScrapeError
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id, remove_trailing_slash
+from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.scraper.filters import set_return_value
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FORUM, FORUM_POST, ScrapeItem
 from cyberdrop_dl.utils.logger import log, log_debug
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext, remove_trailing_slash
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Sequence

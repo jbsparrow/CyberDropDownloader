@@ -7,9 +7,10 @@ import platform
 import re
 import shutil
 import subprocess
+from dataclasses import fields
 from functools import lru_cache, partial, wraps
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, ClassVar, Protocol
 
 import aiofiles
 import rich
@@ -20,6 +21,7 @@ from cyberdrop_dl.clients.errors import (
     CDLBaseError,
     ErrorLogMessage,
     InvalidExtensionError,
+    InvalidURLError,
     NoExtensionError,
     get_origin,
 )
@@ -38,6 +40,11 @@ if TYPE_CHECKING:
 
 
 TEXT_EDITORS = "micro", "nano", "vim"  # Ordered by preference
+
+
+class Dataclass(Protocol):
+    __dataclass_fields__: ClassVar[dict[str, Any]]
+
 
 subprocess_get_text = partial(subprocess.run, capture_output=True, text=True, check=False)
 
@@ -368,6 +375,60 @@ def xdg_mime_query(*args) -> str:
     assert args
     arg_list = ["xdg-mime", "query", *args]
     return subprocess_get_text(arg_list).stdout.strip()
+
+
+def get_valid_dict(dataclass: Dataclass | type[Dataclass], info: dict[str, Any]) -> dict[str, Any]:
+    """Remove all keys that are not fields in the dataclass"""
+    valid_fields = {f.name for f in fields(dataclass)}
+    return {k: v for k, v in info.items() if k in valid_fields}
+
+
+def get_text_between(original_text: str, start: str, end: str) -> str:
+    """Extracts the text between two strings in a larger text."""
+    start_index = original_text.index(start) + len(start)
+    end_index = original_text.index(end, start_index)
+    return original_text[start_index:end_index]
+
+
+def parse_url(link_str: str, relative_to: URL | None = None, *, trim: bool = True) -> URL:
+    """Parse a string into an absolute URL, handling relative URLs, encoding and optionally removes trailing slash (trimming).
+
+    Raises:
+        InvalidURLError: If the input string is not a valid URL or if any other error
+            occurs during parsing.
+        TypeError: If `relative_to` is `None` and the parsed URL is relative or has no scheme.
+    """
+
+    base: URL = relative_to  # type: ignore
+
+    def fix_query_params_encoding() -> str:
+        if "?" not in link_str:
+            return link_str
+        parts, query_and_frag = link_str.split("?", 1)
+        query_and_frag = query_and_frag.replace("+", "%20")
+        return f"{parts}?{query_and_frag}"
+
+    try:
+        assert link_str, "link_str is empty"
+        assert isinstance(link_str, str), f"link_str must be a string object, got: {link_str!r}"
+        clean_link_str = fix_query_params_encoding()
+        is_encoded = "%" in clean_link_str
+        new_url = URL(clean_link_str, encoded=is_encoded)
+    except (AssertionError, AttributeError, ValueError, TypeError) as e:
+        raise InvalidURLError(str(e), url=link_str) from e
+    if not new_url.absolute:
+        new_url = base.join(new_url)
+    if not new_url.scheme:
+        new_url = new_url.with_scheme(base.scheme or "https")
+    if not trim:
+        return new_url
+    return remove_trailing_slash(new_url)
+
+
+def remove_trailing_slash(url: URL) -> URL:
+    if url.name or url.path == "/":
+        return url
+    return url.parent.with_fragment(url.fragment).with_query(url.query)
 
 
 log_cyan = partial(log_with_color, style="cyan", level=20)
