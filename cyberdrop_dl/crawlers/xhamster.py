@@ -79,7 +79,7 @@ class XhamsterCrawler(Crawler):
                 continue
 
             filename, ext = self.get_filename_and_ext(image.url.name)
-            custom_filename = f"{index:0{padding}d} - {filename}"
+            custom_filename = f"{index:0{padding}d} - {filename.removesuffix(ext)} [{image.id}]{ext}"
             new_scrape_item = scrape_item.create_child(image.page_url)
             await self.handle_file(image.url, new_scrape_item, filename, ext, custom_filename=custom_filename)
             scrape_item.add_children()
