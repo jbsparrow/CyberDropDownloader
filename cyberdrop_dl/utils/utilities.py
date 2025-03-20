@@ -385,8 +385,8 @@ def get_valid_dict(dataclass: Dataclass | type[Dataclass], info: dict[str, Any])
 
 def get_text_between(original_text: str, start: str, end: str) -> str:
     """Extracts the text between two strings in a larger text."""
-    start_index = original_text.index(start) + len(end)
-    end_index = original_text.index(start, start_index)
+    start_index = original_text.index(start) + len(start)
+    end_index = original_text.index(end, start_index)
     return original_text[start_index:end_index]
 
 
