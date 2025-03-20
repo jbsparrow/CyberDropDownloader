@@ -21,7 +21,7 @@ from cyberdrop_dl.managers.progress_manager import ProgressManager
 from cyberdrop_dl.managers.realdebrid_manager import RealDebridManager
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.args import ParsedArgs
-from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.logger import QueuedLogger, log
 from cyberdrop_dl.utils.transfer import transfer_v5_db_to_v6
 
 if TYPE_CHECKING:
@@ -58,6 +58,7 @@ class Manager:
         self.start_time: float = perf_counter()
         self.downloaded_data: int = 0
         self.multiconfig: bool = False
+        self.loggers: dict[str, QueuedLogger] = {}
 
     def startup(self) -> None:
         """Startup process for the manager."""
@@ -235,6 +236,8 @@ class Manager:
         await self.async_db_close()
         await self.cache_manager.close()
         self.cache_manager.close_sync()
+        for queued_logger in self.loggers.values():
+            queued_logger.stop()
         self.cache_manager: CacheManager = field(init=False)
         self.hash_manager: HashManager = field(init=False)
 

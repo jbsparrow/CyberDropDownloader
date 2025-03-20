@@ -23,7 +23,14 @@ from cyberdrop_dl.ui.program_ui import ProgramUI
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.apprise import send_apprise_notifications
 from cyberdrop_dl.utils.dumper import Dumper
-from cyberdrop_dl.utils.logger import RedactedConsole, add_custom_log_render, log, log_spacer, log_with_color
+from cyberdrop_dl.utils.logger import (
+    QueuedLogger,
+    RedactedConsole,
+    add_custom_log_render,
+    log,
+    log_spacer,
+    log_with_color,
+)
 from cyberdrop_dl.utils.sorting import Sorter
 from cyberdrop_dl.utils.updates import check_latest_pypi
 from cyberdrop_dl.utils.utilities import check_partials_and_empty_folders, send_webhook_message
@@ -31,6 +38,7 @@ from cyberdrop_dl.utils.yaml import handle_validation_error
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
+
 
 startup_logger = logging.getLogger("cyberdrop_dl_startup")
 STARTUP_LOGGER_FILE = Path.cwd().joinpath("startup.log")
@@ -162,10 +170,10 @@ def setup_debug_logger(manager: Manager) -> Path | None:
     if not env.DEBUG_VAR:
         return
 
-    logger_debug = logging.getLogger("cyberdrop_dl_debug")
+    debug_logger = logging.getLogger("cyberdrop_dl_debug")
     log_level = 10
     manager.config_manager.settings_data.runtime_options.log_level = log_level
-    logger_debug.setLevel(log_level)
+    debug_logger.setLevel(log_level)
     debug_log_file_path = Path(__file__).parents[1] / "cyberdrop_dl_debug.log"
     with startup_logging():
         if env.DEBUG_LOG_FOLDER:
@@ -186,11 +194,14 @@ def setup_debug_logger(manager: Manager) -> Path | None:
     file_console = Console(file=file_io, width=manager.config_manager.settings_data.logs.log_line_width)
     file_handler_debug = RichHandler(**constants.RICH_HANDLER_DEBUG_CONFIG, console=file_console, level=log_level)
     add_custom_log_render(file_handler_debug)
-    logger_debug.addHandler(file_handler_debug)
+
+    queued_logger = QueuedLogger.new(file_handler_debug)
+    manager.loggers["debug"] = queued_logger
+    debug_logger.addHandler(queued_logger.handler)
 
     aiohttp_client_cache_logger = logging.getLogger("aiohttp_client_cache")
     aiohttp_client_cache_logger.setLevel(log_level)
-    aiohttp_client_cache_logger.addHandler(file_handler_debug)
+    aiohttp_client_cache_logger.addHandler(queued_logger.handler)
 
     # aiosqlite_log = logging.getLogger("aiosqlite")
     # aiosqlite_log.setLevel(log_level)
@@ -201,16 +212,15 @@ def setup_debug_logger(manager: Manager) -> Path | None:
 
 def setup_logger(manager: Manager, config_name: str) -> None:
     logger = logging.getLogger("cyberdrop_dl")
+    queued_logger = manager.loggers.get("main")
     with startup_logging():
-        if manager.multiconfig:
-            if len(logger.handlers) > 0:
-                log("Picking new config...", 20)
+        if manager.multiconfig and queued_logger:
+            log("Picking new config...", 20)
             manager.config_manager.change_config(config_name)
-            if len(logger.handlers) > 0:
-                log(f"Changing config to {config_name}...", 20)
-                old_file_handler = logger.handlers[0]
-                logger.removeHandler(logger.handlers[0])
-                old_file_handler.close()
+            log(f"Changed config to {config_name}...", 20)
+            logger.removeHandler(queued_logger.handler)
+            queued_logger.stop()
+            manager.loggers.pop("main")
 
         try:
             file_io = manager.path_manager.main_log.open("w", encoding="utf8")
@@ -229,8 +239,11 @@ def setup_logger(manager: Manager, config_name: str) -> None:
     file_handler = RichHandler(**constants.RICH_HANDLER_CONFIG, console=file_console, level=log_level)
     console_handler = RichHandler(**(constants.RICH_HANDLER_CONFIG | {"show_time": False}), level=console_log_level)
     add_custom_log_render(file_handler)
-    logger.addHandler(file_handler)
     logger.addHandler(console_handler)
+
+    queued_logger = QueuedLogger.new(file_handler)
+    manager.loggers["main"] = queued_logger
+    logger.addHandler(queued_logger.handler)
 
 
 def ui_error_handling_wrapper(func: Callable) -> Callable:

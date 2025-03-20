@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import json
 import logging
+import queue
+from dataclasses import dataclass
+from logging.handlers import QueueHandler, QueueListener
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -32,6 +35,25 @@ if TYPE_CHECKING:
 
 
 EXCLUDE_PATH_LOGGING_FROM = "logger.py", "base.py", "session.py", "cache_control.py"
+
+
+@dataclass
+class QueuedLogger:
+    handler: QueueHandler
+    listener: QueueListener
+
+    def stop(self) -> None:
+        """Makes sure pending messages in the queue get processed."""
+        self.listener.stop()
+        self.handler.close()
+
+    @classmethod
+    def new(cls, *handlers: logging.Handler) -> QueuedLogger:
+        log_queue = queue.Queue()
+        handler = QueueHandler(log_queue)
+        listener = QueueListener(log_queue, *handlers, respect_handler_level=True)
+        listener.start()
+        return QueuedLogger(handler, listener)
 
 
 class NoPaddingLogRender(LogRender):
