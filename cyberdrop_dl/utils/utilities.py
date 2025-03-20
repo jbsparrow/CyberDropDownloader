@@ -390,30 +390,39 @@ def get_text_between(original_text: str, start: str, end: str) -> str:
     return original_text[start_index:end_index]
 
 
-def parse_url(link_str: str, relative_to: URL, *, trim: bool = True) -> URL:
+def parse_url(link_str: str, relative_to: URL | None = None, *, trim: bool = True) -> URL:
+    """Parse a string into an absolute URL, handling relative URLs, encoding and optionally removes trailing slash (trimming).
+
+    Raises:
+        InvalidURLError: If the input string is not a valid URL or if any other error
+            occurs during parsing.
+        TypeError: If `relative_to` is `None` and the parsed URL is relative or has no scheme.
+    """
+
+    base: URL = relative_to  # type: ignore
+
+    def fix_query_params_encoding() -> str:
+        if "?" not in link_str:
+            return link_str
+        parts, query_and_frag = link_str.split("?", 1)
+        query_and_frag = query_and_frag.replace("+", "%20")
+        return f"{parts}?{query_and_frag}"
+
     try:
-        assert link_str
-        assert isinstance(link_str, str)
-        link_str = clean_link_str(link_str)
-        encoded = "%" in link_str
-        new_url = URL(link_str, encoded=encoded)
+        assert link_str, "link_str is empty"
+        assert isinstance(link_str, str), f"link_str must be a string object, got: {link_str!r}"
+        clean_link_str = fix_query_params_encoding()
+        is_encoded = "%" in clean_link_str
+        new_url = URL(clean_link_str, encoded=is_encoded)
     except (AssertionError, AttributeError, ValueError, TypeError) as e:
         raise InvalidURLError(str(e), url=link_str) from e
     if not new_url.absolute:
-        new_url = relative_to.join(new_url)
+        new_url = base.join(new_url)
     if not new_url.scheme:
-        new_url = new_url.with_scheme(relative_to.scheme or "https")
+        new_url = new_url.with_scheme(base.scheme or "https")
     if not trim:
         return new_url
     return remove_trailing_slash(new_url)
-
-
-def clean_link_str(link_str: str) -> str:
-    if "?" in link_str:
-        parts, query = link_str.split("?", 1)
-        query = query.replace("+", "%20")
-        return f"{parts}?{query}"
-    return link_str
 
 
 def remove_trailing_slash(url: URL) -> URL:

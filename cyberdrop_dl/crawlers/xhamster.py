@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-from functools import partial
-from typing import TYPE_CHECKING, Annotated, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 
-from pydantic import AfterValidator, Field, PlainValidator
+from pydantic import Field
 from yarl import URL
 
-from cyberdrop_dl.config_definitions.custom.types import AliasModel
+from cyberdrop_dl.config_definitions.custom.types import AliasModel, ParsedURL
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug
@@ -21,11 +20,6 @@ if TYPE_CHECKING:
 PRIMARY_BASE_DOMAIN = URL("https://xhamster.com")
 NEXT_PAGE_SELECTOR = ""
 JS_VIDEO_INFO_SELECTOR = "script#initials-script"
-GALLERY_TITLE_SELECTOR = "meta [property='og:image:alt']"
-IMAGE_SELECTOR = "div.fotorama__img a"
-
-parse = partial(parse_url, relative_to=PRIMARY_BASE_DOMAIN)
-ParsedURL = Annotated[URL, PlainValidator(str), AfterValidator(parse)]
 
 
 class XhamsterCrawler(Crawler):
@@ -130,8 +124,8 @@ class XhamsterCrawler(Crawler):
 
 def get_window_initials_json(soup: BeautifulSoup) -> dict[str, dict]:
     js_script = soup.select_one(JS_VIDEO_INFO_SELECTOR)
-    js_code: str = str(js_script)  # type: ignore
-    json_text: str = get_text_between(js_code, "window.initials=", ";</script>")
+    js_code: str = str(js_script)
+    json_text: str = get_text_between(js_code, "window.initials=", "</script>").removesuffix(";").strip()
     return javascript.parse_json_to_dict(json_text)
 
 
@@ -165,9 +159,10 @@ class Video(XHamsterItem):
     def formats(self) -> tuple[Format, ...]:
         mp4_sources: dict[str, str] = self.sources.get("mp4") or {}
         formats = [Format(0, self.mp4_file)]
-        for resolution, link in mp4_sources.items():
+        for resolution, details in mp4_sources.items():
             height = int(resolution.removesuffix("p"))
-            url = parse(link)
+            link: str = details["link"] if isinstance(details, dict) else details
+            url = parse_url(link)
             formats.append(Format(height, url))
 
         return tuple(formats)
