@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated
+from typing import Annotated
 
+import yarl
 from pydantic import (
     AfterValidator,
     AnyUrl,
@@ -14,6 +15,7 @@ from pydantic import (
     HttpUrl,
     NonNegativeInt,
     PlainSerializer,
+    PlainValidator,
     Secret,
     SerializationInfo,
     StringConstraints,
@@ -24,8 +26,6 @@ from pydantic import (
 from .converters import change_path_suffix, convert_byte_size_to_str, convert_to_yarl
 from .validators import parse_apprise_url, parse_falsy_as_none, parse_list
 
-if TYPE_CHECKING:
-    from yarl import URL
 StrSerializer = PlainSerializer(str, return_type=str, when_used="json-unless-none")
 
 
@@ -40,6 +40,21 @@ ListNonEmptyStr = Annotated[list[NonEmptyStr], BeforeValidator(parse_list)]
 PathOrNone = Annotated[Path | None, BeforeValidator(parse_falsy_as_none)]
 LogPath = Annotated[Path, AfterValidator(partial(change_path_suffix, suffix=".csv"))]
 MainLogPath = Annotated[LogPath, AfterValidator(partial(change_path_suffix, suffix=".log"))]
+
+
+YarlURLSerilized = Annotated[yarl.URL, StrSerializer]
+
+# A yarl.URL in type hints that is actually a str at runtime, to use as base for custom URL parsers
+CustomHttpStrURL = Annotated[YarlURLSerilized, PlainValidator(str)]
+
+# A yarl.URL in type hints that is actually a pydantic.HttpUrl at runtime
+CustomHttpURL = Annotated[YarlURLSerilized, PlainValidator(HttpUrl)]
+
+# An actual yarl.URL in type hints and runtime but uses str for validation.
+ParsedHttpStrURL = Annotated[CustomHttpStrURL, AfterValidator(convert_to_yarl)]
+
+# An actual yarl.URL in type hints and runtime but uses pydantic.HttpUrl for validation.
+ParsedHttpURL = Annotated[CustomHttpURL, AfterValidator(convert_to_yarl)]
 
 
 class AliasModel(BaseModel):
@@ -64,7 +79,7 @@ class AppriseURLModel(FrozenModel):
 
     @model_validator(mode="before")
     @staticmethod
-    def parse_input(value: URL | dict | str) -> dict:
+    def parse_input(value: yarl.URL | dict | str) -> dict:
         return parse_apprise_url(value)
 
 
