@@ -108,11 +108,11 @@ class Downloader:
         self.manager.progress_manager.download_progress.update_queued(queued_files)
         self.manager.progress_manager.download_progress.update_total(increase_total)
 
-    async def run(self, media_item: MediaItem) -> None:
+    async def run(self, media_item: MediaItem) -> bool:
         """Runs the download loop."""
 
         if media_item.url.path in self.processed_items and not self._ignore_history:
-            return
+            return False
 
         self.waiting_items += 1
         media_item.current_attempt = 0
@@ -123,7 +123,7 @@ class Downloader:
             self.processed_items.add(media_item.url.path)
             self.update_queued_files(increase_total=False)
             async with self.manager.client_manager.download_session_limit:
-                await self.start_download(media_item)
+                return await self.start_download(media_item)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -160,17 +160,17 @@ class Downloader:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def start_download(self, media_item: MediaItem) -> None:
+    async def start_download(self, media_item: MediaItem) -> bool:
         log(f"{self.log_prefix} starting: {media_item.url}", 20)
         if not media_item.file_lock_reference_name:
             media_item.file_lock_reference_name = media_item.filename
         lock = self._file_lock_vault.get_lock(media_item.file_lock_reference_name)
         async with lock:
-            await self.download(media_item)
+            return bool(await self.download(media_item))
 
     @error_handling_wrapper
     @retry
-    async def download(self, media_item: MediaItem) -> None:
+    async def download(self, media_item: MediaItem) -> bool | None:
         """Downloads the media item."""
         url_as_str = str(media_item.url)
         if url_as_str in KNOWN_BAD_URLS:
@@ -186,6 +186,7 @@ class Downloader:
                 self.attempt_task_removal(media_item)
                 self.manager.progress_manager.download_progress.add_completed()
                 log(f"Download finished: {media_item.url}", 20)
+            return downloaded
 
         except RestrictedFiletypeError:
             log(f"Download skip {media_item.url} due to ignore_extension config ({media_item.ext})", 10)
