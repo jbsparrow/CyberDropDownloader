@@ -21,6 +21,7 @@ from cyberdrop_dl.clients.errors import (
     CDLBaseError,
     ErrorLogMessage,
     InvalidExtensionError,
+    InvalidURLError,
     NoExtensionError,
     get_origin,
 )
@@ -380,6 +381,45 @@ def get_valid_dict(dataclass: Dataclass | type[Dataclass], info: dict[str, Any])
     """Remove all keys that are not fields in the dataclass"""
     valid_fields = {f.name for f in fields(dataclass)}
     return {k: v for k, v in info.items() if k in valid_fields}
+
+
+def get_text_between(original_text: str, start: str, end: str) -> str:
+    """Extracts the text between two strings in a larger text."""
+    start_index = original_text.index(start) + len(end)
+    end_index = original_text.index(start, start_index)
+    return original_text[start_index:end_index]
+
+
+def parse_url(link_str: str, relative_to: URL, *, trim: bool = True) -> URL:
+    try:
+        assert link_str
+        assert isinstance(link_str, str)
+        link_str = clean_link_str(link_str)
+        encoded = "%" in link_str
+        new_url = URL(link_str, encoded=encoded)
+    except (AssertionError, AttributeError, ValueError, TypeError) as e:
+        raise InvalidURLError(str(e), url=link_str) from e
+    if not new_url.absolute:
+        new_url = relative_to.join(new_url)
+    if not new_url.scheme:
+        new_url = new_url.with_scheme(relative_to.scheme or "https")
+    if not trim:
+        return new_url
+    return remove_trailing_slash(new_url)
+
+
+def clean_link_str(link_str: str) -> str:
+    if "?" in link_str:
+        parts, query = link_str.split("?", 1)
+        query = query.replace("+", "%20")
+        return f"{parts}?{query}"
+    return link_str
+
+
+def remove_trailing_slash(url: URL) -> URL:
+    if url.name or url.path == "/":
+        return url
+    return url.parent.with_fragment(url.fragment).with_query(url.query)
 
 
 log_cyan = partial(log_with_color, style="cyan", level=20)
