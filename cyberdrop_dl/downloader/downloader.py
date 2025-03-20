@@ -19,15 +19,17 @@ from cyberdrop_dl.clients.errors import (
     RestrictedFiletypeError,
 )
 from cyberdrop_dl.utils.constants import CustomHTTPStatus
+from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
+from cyberdrop_dl.utils.ffmpeg import FFmpeg
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Generator
 
     from cyberdrop_dl.clients.download_client import DownloadClient
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import HlsSegment
 
 
 KNOWN_BAD_URLS = {
@@ -125,6 +127,50 @@ class Downloader:
             self.update_queued_files(increase_total=False)
             async with self.manager.client_manager.download_session_limit:
                 return await self.start_download(media_item)
+
+    async def download_hls(self, media_item: MediaItem, segments: Generator[HlsSegment]):
+        await self.client.mark_incomplete(media_item, self.domain)
+        seg_media_items: list[MediaItem] = []
+
+        def make_task(segment: HlsSegment):
+            seg_media_item = MediaItem(
+                segment.url,
+                media_item,
+                media_item.download_folder,
+                segment.name,
+                ext=media_item.ext,
+                # add_to_database=False,
+                # quiet=True,
+                # reference=media_item,
+                # skip_hashing=True,
+            )
+            seg_media_items.append(media_item)
+            return self.run(seg_media_item)
+
+        self.update_queued_files()
+        results = await asyncio.gather(*(make_task(s) for s in segments))
+        n_segmets = len(results)
+        media_item.complete_file = media_item.download_folder / media_item.filename
+        if all(results):
+            seg_paths = [m.complete_file for m in seg_media_items if m.complete_file]
+            ffmpeg = FFmpeg(self.manager)
+            success = await ffmpeg.concat(*seg_paths, output=media_item.complete_file)
+            await self.client.process_completed(media_item, self.domain)
+            await self.client.handle_media_item_completion(media_item, downloaded=True)
+            self.finalize_download(media_item, success)
+            return
+
+        failed_segments = [s for s in results if not s]
+        msg = f"Download of {failed_segments} / {n_segmets} segments failed"
+        log(msg)
+
+    def finalize_download(self, media_item: MediaItem, downloaded: bool) -> None:
+        if downloaded:
+            Path.chmod(media_item.complete_file, 0o666)
+            self.set_file_datetime(media_item, media_item.complete_file)
+        self.attempt_task_removal(media_item)
+        self.manager.progress_manager.download_progress.add_completed()
+        log(f"Download finished: {media_item.url}", 20)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 

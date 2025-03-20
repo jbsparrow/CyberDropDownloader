@@ -14,13 +14,13 @@ from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.downloader.downloader import Downloader
-from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
+from cyberdrop_dl.utils.data_enums_classes.url_objects import HlsSegment, MediaItem, ScrapeItem
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext, parse_url, remove_file_id
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Callable
+    from collections.abc import AsyncGenerator, Callable, Generator
 
     from bs4 import BeautifulSoup
 
@@ -155,6 +155,40 @@ class Crawler(ABC):
             return
 
         self.manager.task_group.create_task(self.downloader.run(media_item))
+
+    async def handle_hls(
+        self,
+        url: URL,
+        scrape_item: ScrapeItem,
+        filename: str,
+        ext: str,
+        segments: Generator[HlsSegment],
+        *,
+        custom_filename: str | None = None,
+    ) -> None:
+        if custom_filename:
+            original_filename, filename = filename, custom_filename
+        elif self.domain in ["cyberdrop"]:
+            original_filename, filename = remove_file_id(self.manager, filename, ext)
+        else:
+            original_filename = filename
+
+        download_folder = get_download_path(self.manager, scrape_item, self.folder_domain)
+        media_item = MediaItem(url, scrape_item, download_folder, filename, original_filename, ext=ext)
+
+        check_complete = await self.manager.db_manager.history_table.check_complete(self.domain, url, scrape_item.url)
+        if check_complete:
+            if media_item.album_id:
+                await self.manager.db_manager.history_table.set_album_id(self.domain, media_item)
+            log(f"Skipping {url} as it has already been downloaded", 10)
+            self.manager.progress_manager.download_progress.add_previously_completed()
+            return
+
+        if await self.check_skip_by_config(media_item):
+            self.manager.progress_manager.download_progress.add_skipped()
+            return
+
+        self.manager.task_group.create_task(self.downloader.download_hls(media_item, segments))
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
