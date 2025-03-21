@@ -236,8 +236,10 @@ class Manager:
         await self.async_db_close()
         await self.cache_manager.close()
         self.cache_manager.close_sync()
-        for queued_logger in self.loggers.values():
+        while self.loggers:
+            _, queued_logger = self.loggers.popitem()
             queued_logger.stop()
+
         self.cache_manager: CacheManager = field(init=False)
         self.hash_manager: HashManager = field(init=False)
 
