@@ -22,7 +22,7 @@ from cyberdrop_dl.ui.program_ui import ProgramUI
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.apprise import send_apprise_notifications
 from cyberdrop_dl.utils.dumper import Dumper
-from cyberdrop_dl.utils.logger import LogHandler, QueuedLogger, SplitLogHandler, log, log_spacer, log_with_color
+from cyberdrop_dl.utils.logger import LogHandler, QueuedLogger, log, log_spacer, log_with_color
 from cyberdrop_dl.utils.sorting import Sorter
 from cyberdrop_dl.utils.updates import check_latest_pypi
 from cyberdrop_dl.utils.utilities import check_partials_and_empty_folders, send_webhook_message
@@ -162,7 +162,8 @@ def setup_debug_logger(manager: Manager) -> Path | None:
 
     debug_logger = logging.getLogger("cyberdrop_dl_debug")
     log_level = 10
-    manager.config_manager.settings_data.runtime_options.log_level = log_level
+    settings_data = manager.config_manager.settings_data
+    settings_data.runtime_options.log_level = log_level
     debug_logger.setLevel(log_level)
     debug_log_file_path = Path(__file__).parents[1] / "cyberdrop_dl_debug.log"
     with startup_logging():
@@ -181,10 +182,8 @@ def setup_debug_logger(manager: Manager) -> Path | None:
             startup_logger.exception(str(e))
             sys.exit(1)
 
-    file_handler_debug = SplitLogHandler(
-        level=log_level, file=file_io, width=manager.config_manager.settings_data.logs.log_line_width, debug=True
-    )
-    queued_logger = QueuedLogger.new(file_handler_debug)
+    file_handler = LogHandler(level=log_level, file=file_io, width=settings_data.logs.log_line_width, debug=True)
+    queued_logger = QueuedLogger.new(file_handler)
     manager.loggers["debug"] = queued_logger
     debug_logger.addHandler(queued_logger.handler)
 
@@ -218,19 +217,17 @@ def setup_logger(manager: Manager, config_name: str) -> None:
             startup_logger.exception(str(e))
             sys.exit(1)
 
-    log_level = manager.config_manager.settings_data.runtime_options.log_level
+    settings_data = manager.config_manager.settings_data
+    log_level = settings_data.runtime_options.log_level
     logger.setLevel(log_level)
 
     if not manager.parsed_args.cli_only_args.fullscreen_ui:
-        constants.CONSOLE_LEVEL = manager.config_manager.settings_data.runtime_options.console_log_level
+        constants.CONSOLE_LEVEL = settings_data.runtime_options.console_log_level
 
-    console_log_level = constants.CONSOLE_LEVEL
-    console_handler = LogHandler(level=console_log_level)
+    console_handler = LogHandler(level=constants.CONSOLE_LEVEL)
     logger.addHandler(console_handler)
 
-    file_handler = SplitLogHandler(
-        level=log_level, file=file_io, width=manager.config_manager.settings_data.logs.log_line_width
-    )
+    file_handler = LogHandler(level=log_level, file=file_io, width=settings_data.logs.log_line_width)
     queued_logger = QueuedLogger.new(file_handler)
     manager.loggers["main"] = queued_logger
     logger.addHandler(queued_logger.handler)

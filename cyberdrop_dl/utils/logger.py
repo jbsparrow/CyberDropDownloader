@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import copy
 import json
 import logging
 import queue
@@ -10,14 +9,12 @@ from pathlib import Path
 from typing import IO, TYPE_CHECKING
 
 from rich._log_render import LogRender
-from rich._null_file import NullFile
 from rich.console import Console, Group
 from rich.containers import Lines, Renderables
 from rich.logging import RichHandler
 from rich.measure import Measurement
 from rich.padding import Padding
 from rich.text import Text, TextType
-from rich.traceback import Traceback
 
 from cyberdrop_dl import env
 from cyberdrop_dl.utils import constants
@@ -57,70 +54,25 @@ class LogHandler(RichHandler):
             self._log_render = NoPaddingLogRender(show_level=True)
 
 
-class SplitLogHandler(LogHandler):
-    """Custom class to split the creation of the log renderable and its emition"""
+class BareQueueHandler(QueueHandler):
+    """Sends the log record to the queue as is.
 
-    def get_log_renderable(self, record: logging.LogRecord) -> ConsoleRenderable:
-        message = self.format(record)
-        traceback = None
-        if self.rich_tracebacks and record.exc_info and record.exc_info != (None, None, None):
-            exc_type, exc_value, exc_traceback = record.exc_info
-            assert exc_type is not None
-            assert exc_value is not None
-            traceback = Traceback.from_exception(
-                exc_type,
-                exc_value,
-                exc_traceback,
-                width=self.tracebacks_width,
-                code_width=self.tracebacks_code_width,
-                extra_lines=self.tracebacks_extra_lines,
-                theme=self.tracebacks_theme,
-                word_wrap=self.tracebacks_word_wrap,
-                show_locals=self.tracebacks_show_locals,
-                locals_max_length=self.locals_max_length,
-                locals_max_string=self.locals_max_string,
-                suppress=self.tracebacks_suppress,
-                max_frames=self.tracebacks_max_frames,
-            )
-            message = record.getMessage()
-            if self.formatter:
-                record.message = record.getMessage()
-                formatter = self.formatter
-                if hasattr(formatter, "usesTime") and formatter.usesTime():
-                    record.asctime = formatter.formatTime(record, formatter.datefmt)
-                message = formatter.formatMessage(record)
+    The base class formats the record by merging the message and arguments.
+    It also removes all other attributes of the record, just in case they have not pickleable objects.
 
-        message_renderable = self.render_message(record, message)
-        return self.render(record=record, traceback=traceback, message_renderable=message_renderable)
+    This made tracebacks render improperly because when the rich handler picks the log record from the queue, it has no traceback.
+    The original traceback was being formatted as normal text and included as part of the message.
 
-    def emit(self, record: logging.LogRecord):
-        if isinstance(self.console.file, NullFile):
-            self.handleError(record)
-            return
-        try:
-            self.console.print(record.log_renderable)  # type: ignore
-        except Exception:
-            self.handleError(record)
-
-
-class RichQueueHandler(QueueHandler):
-    """Computes entire log renderable and adds it to the log record as a property before sending it to the queue"""
-
-    def __init__(self, queue, log_handler: SplitLogHandler) -> None:
-        super().__init__(queue)
-        self.get_log_renderable = log_handler.get_log_renderable
+    Having not pickleable objects is only an issue in multi-processing operations (multiprocessing.Queue)
+    """
 
     def prepare(self, record: logging.LogRecord) -> logging.LogRecord:
-        record = copy.copy(record)
-        record.log_renderable = self.get_log_renderable(record)
-        # Remove all other attributes in case they are not pickleable.
-        record.args = record.exc_info = record.exc_text = record.stack_info = None
         return record
 
 
 @dataclass
 class QueuedLogger:
-    handler: RichQueueHandler
+    handler: BareQueueHandler
     listener: QueueListener
 
     def stop(self) -> None:
@@ -129,9 +81,9 @@ class QueuedLogger:
         self.handler.close()
 
     @classmethod
-    def new(cls, split_handler: SplitLogHandler) -> QueuedLogger:
+    def new(cls, split_handler: LogHandler) -> QueuedLogger:
         log_queue = queue.Queue()
-        handler = RichQueueHandler(log_queue, log_handler=split_handler)
+        handler = BareQueueHandler(log_queue)
         listener = QueueListener(log_queue, split_handler, respect_handler_level=True)
         listener.start()
         return QueuedLogger(handler, listener)
@@ -196,8 +148,7 @@ class NoPaddingLogRender(LogRender):
                 continue
             padded_lines.append(Padding(renderable, (0, 0, 0, self.cdl_padding), expand=False))
 
-        output = Group(output, *padded_lines)
-        return output
+        return Group(output, *padded_lines)
 
 
 def get_renderable_length(renderable) -> int:
