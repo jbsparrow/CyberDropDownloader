@@ -26,6 +26,7 @@ from cyberdrop_dl.utils.dumper import Dumper
 from cyberdrop_dl.utils.logger import (
     QueuedLogger,
     RedactedConsole,
+    SplitRichHandler,
     add_custom_log_render,
     log,
     log_spacer,
@@ -192,7 +193,7 @@ def setup_debug_logger(manager: Manager) -> Path | None:
             sys.exit(1)
 
     file_console = Console(file=file_io, width=manager.config_manager.settings_data.logs.log_line_width)
-    file_handler_debug = RichHandler(**constants.RICH_HANDLER_DEBUG_CONFIG, console=file_console, level=log_level)
+    file_handler_debug = SplitRichHandler(**constants.RICH_HANDLER_DEBUG_CONFIG, console=file_console, level=log_level)
     add_custom_log_render(file_handler_debug)
 
     queued_logger = QueuedLogger.new(file_handler_debug)
@@ -214,13 +215,14 @@ def setup_logger(manager: Manager, config_name: str) -> None:
     logger = logging.getLogger("cyberdrop_dl")
     queued_logger = manager.loggers.get("main")
     with startup_logging():
-        if manager.multiconfig and queued_logger:
+        if manager.multiconfig:
             log("Picking new config...", 20)
             manager.config_manager.change_config(config_name)
+            if queued_logger:
+                logger.removeHandler(queued_logger.handler)
+                queued_logger.stop()
+                manager.loggers.pop("main")
             log(f"Changed config to {config_name}...", 20)
-            logger.removeHandler(queued_logger.handler)
-            queued_logger.stop()
-            manager.loggers.pop("main")
 
         try:
             file_io = manager.path_manager.main_log.open("w", encoding="utf8")
@@ -236,7 +238,7 @@ def setup_logger(manager: Manager, config_name: str) -> None:
 
     console_log_level = constants.CONSOLE_LEVEL
     file_console = RedactedConsole(file=file_io, width=manager.config_manager.settings_data.logs.log_line_width)
-    file_handler = RichHandler(**constants.RICH_HANDLER_CONFIG, console=file_console, level=log_level)
+    file_handler = SplitRichHandler(**constants.RICH_HANDLER_CONFIG, console=file_console, level=log_level)
     console_handler = RichHandler(**(constants.RICH_HANDLER_CONFIG | {"show_time": False}), level=console_log_level)
     add_custom_log_render(file_handler)
     logger.addHandler(console_handler)
