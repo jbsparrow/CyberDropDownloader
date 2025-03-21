@@ -7,7 +7,7 @@ import queue
 from dataclasses import dataclass
 from logging.handlers import QueueHandler, QueueListener
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import IO, TYPE_CHECKING
 
 from rich._log_render import LogRender
 from rich._null_file import NullFile
@@ -40,7 +40,29 @@ if TYPE_CHECKING:
 EXCLUDE_PATH_LOGGING_FROM = "logger.py", "base.py", "session.py", "cache_control.py"
 
 
-class SplitRichHandler(RichHandler):
+class CustomRichHandler(RichHandler):
+    """Rich Handler with default settings and custom log render to remove padding in files."""
+
+    def __init__(
+        self,
+        level: int = logging.NOTSET,
+        file: IO[str] | None = None,
+        width: int | None = None,
+        debug: bool = False,
+        **kwargs,
+    ) -> None:
+        is_file: bool = file is not None
+        redacted: bool = is_file and not debug
+        console_cls = RedactedConsole if redacted else Console
+        console = console_cls(file=file, width=width)
+        options = constants.RICH_HANDLER_DEBUG_CONFIG if debug else constants.RICH_HANDLER_CONFIG
+        options = options | kwargs
+        super().__init__(level, console, show_time=is_file, **options)
+        if is_file:
+            self._log_render = NoPaddingLogRender(show_level=True)
+
+
+class SplitRichHandler(CustomRichHandler):
     """Custom class to split the creation of the log renderable and its emition"""
 
     def get_log_renderable(self, record: logging.LogRecord) -> ConsoleRenderable:
@@ -203,15 +225,6 @@ def indent_text(text: Text, console: Console, indent: int = 30) -> Text:
         new_text.append(indent_str + line)
     first_line.rstrip()
     return first_line.append(new_text)
-
-
-def add_custom_log_render(rich_handler: RichHandler) -> None:
-    rich_handler._log_render = NoPaddingLogRender(
-        omit_repeated_times=True,
-        show_time=True,
-        show_level=True,
-        show_path=True,
-    )
 
 
 class RedactedConsole(Console):

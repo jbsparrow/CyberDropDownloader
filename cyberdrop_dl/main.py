@@ -12,8 +12,7 @@ from typing import TYPE_CHECKING
 
 import browser_cookie3
 from pydantic import ValidationError
-from rich.console import Console
-from rich.logging import RichHandler
+from rich import print as rich_print
 
 from cyberdrop_dl import env
 from cyberdrop_dl.clients.errors import InvalidYamlError
@@ -24,10 +23,9 @@ from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.apprise import send_apprise_notifications
 from cyberdrop_dl.utils.dumper import Dumper
 from cyberdrop_dl.utils.logger import (
+    CustomRichHandler,
     QueuedLogger,
-    RedactedConsole,
     SplitRichHandler,
-    add_custom_log_render,
     log,
     log_spacer,
     log_with_color,
@@ -133,18 +131,16 @@ def setup_startup_logger(*, first_time_setup: bool = False) -> None:
         STARTUP_LOGGER_FILE.unlink(missing_ok=True)  # Only delete file once. Subsequent calls will append to file
     destroy_startup_logger()
     startup_logger.setLevel(10)
-    console_handler = RichHandler(**(constants.RICH_HANDLER_CONFIG | {"show_time": False}), level=10)
+    console_handler = CustomRichHandler(level=10)
     startup_logger.addHandler(console_handler)
 
     file_io = STARTUP_LOGGER_FILE.open("a", encoding="utf8")
-    file_console = RedactedConsole(file=file_io, width=constants.DEFAULT_CONSOLE_WIDTH)
-    file_handler = RichHandler(**constants.RICH_HANDLER_CONFIG, console=file_console, level=10)
-    add_custom_log_render(file_handler)
+    file_handler = CustomRichHandler(level=10, file=file_io, width=constants.DEFAULT_CONSOLE_WIDTH)
     startup_logger.addHandler(file_handler)
 
 
 def destroy_startup_logger(remove_all_handlers: bool = True) -> None:
-    handlers: list[RichHandler] = startup_logger.handlers  # type: ignore
+    handlers: list[CustomRichHandler] = startup_logger.handlers  # type: ignore
     for handler in handlers[:]:  # create copy
         if not (handler.console._file or remove_all_handlers):
             continue
@@ -192,10 +188,9 @@ def setup_debug_logger(manager: Manager) -> Path | None:
             startup_logger.exception(str(e))
             sys.exit(1)
 
-    file_console = Console(file=file_io, width=manager.config_manager.settings_data.logs.log_line_width)
-    file_handler_debug = SplitRichHandler(**constants.RICH_HANDLER_DEBUG_CONFIG, console=file_console, level=log_level)
-    add_custom_log_render(file_handler_debug)
-
+    file_handler_debug = SplitRichHandler(
+        level=log_level, file=file_io, width=manager.config_manager.settings_data.logs.log_line_width, debug=True
+    )
     queued_logger = QueuedLogger.new(file_handler_debug)
     manager.loggers["debug"] = queued_logger
     debug_logger.addHandler(queued_logger.handler)
@@ -237,12 +232,12 @@ def setup_logger(manager: Manager, config_name: str) -> None:
         constants.CONSOLE_LEVEL = manager.config_manager.settings_data.runtime_options.console_log_level
 
     console_log_level = constants.CONSOLE_LEVEL
-    file_console = RedactedConsole(file=file_io, width=manager.config_manager.settings_data.logs.log_line_width)
-    file_handler = SplitRichHandler(**constants.RICH_HANDLER_CONFIG, console=file_console, level=log_level)
-    console_handler = RichHandler(**(constants.RICH_HANDLER_CONFIG | {"show_time": False}), level=console_log_level)
-    add_custom_log_render(file_handler)
+    console_handler = CustomRichHandler(level=console_log_level)
     logger.addHandler(console_handler)
 
+    file_handler = SplitRichHandler(
+        level=log_level, file=file_io, width=manager.config_manager.settings_data.logs.log_line_width
+    )
     queued_logger = QueuedLogger.new(file_handler)
     manager.loggers["main"] = queued_logger
     logger.addHandler(queued_logger.handler)
@@ -328,7 +323,7 @@ def actual_main() -> None:
             asyncio.run(director(manager))
             exit_code = 0
         except KeyboardInterrupt:
-            Console().print("Trying to Exit ...")
+            rich_print("Trying to Exit ...")
         finally:
             asyncio.run(manager.close())
     loop.close()
