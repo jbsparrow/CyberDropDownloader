@@ -60,14 +60,14 @@ def setup_profile(temp_dir: Path | str) -> tuple[Path, Path]:
 
 def destroy_profile(old_cwd: Path, temp_dir_path: Path) -> None:
     os.chdir(old_cwd)
-    suffix = "profiling"
     new_log_file = None
     old_log_file = next(temp_dir_path.glob("cyberdrop_dl_debug*"), None)
     if old_log_file and old_log_file.is_file():
-        new_log_file = old_log_file
+        suffix = "_profiling"
         if env.PROFILING == "use_date":
             suffix += f"_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-            new_log_file = Path(f"cyberdrop_dl_debug_{suffix}.log").resolve()
+
+        new_log_file = Path(f"cyberdrop_dl_debug{suffix}.log").resolve()
         shutil.move(old_log_file, new_log_file)
     print(f"Profile AppData folder: {temp_dir_path}")
     print(f"Debug log file: {new_log_file}")
