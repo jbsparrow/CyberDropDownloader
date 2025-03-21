@@ -183,8 +183,7 @@ def setup_debug_logger(manager: Manager) -> Path | None:
             sys.exit(1)
 
     file_handler = LogHandler(level=log_level, file=file_io, width=settings_data.logs.log_line_width, debug=True)
-    queued_logger = QueuedLogger.new(file_handler)
-    manager.loggers["debug"] = queued_logger
+    queued_logger = QueuedLogger.new(manager, file_handler, "debug")
     debug_logger.addHandler(queued_logger.handler)
 
     aiohttp_client_cache_logger = logging.getLogger("aiohttp_client_cache")
@@ -200,16 +199,14 @@ def setup_debug_logger(manager: Manager) -> Path | None:
 
 def setup_logger(manager: Manager, config_name: str) -> None:
     logger = logging.getLogger("cyberdrop_dl")
-    queued_logger = manager.loggers.get("main")
+    queued_logger = manager.loggers.pop("main", None)
     with startup_logging():
-        if manager.multiconfig:
+        if manager.multiconfig and queued_logger:
             log("Picking new config...", 20)
             manager.config_manager.change_config(config_name)
-            if queued_logger:
-                logger.removeHandler(queued_logger.handler)
-                queued_logger.stop()
-                manager.loggers.pop("main")
             log(f"Changed config to {config_name}...", 20)
+            logger.removeHandler(queued_logger.handler)
+            queued_logger.stop()
 
         try:
             file_io = manager.path_manager.main_log.open("w", encoding="utf8")
@@ -228,8 +225,7 @@ def setup_logger(manager: Manager, config_name: str) -> None:
     logger.addHandler(console_handler)
 
     file_handler = LogHandler(level=log_level, file=file_io, width=settings_data.logs.log_line_width)
-    queued_logger = QueuedLogger.new(file_handler)
-    manager.loggers["main"] = queued_logger
+    queued_logger = QueuedLogger.new(manager, file_handler, "main")
     logger.addHandler(queued_logger.handler)
 
 

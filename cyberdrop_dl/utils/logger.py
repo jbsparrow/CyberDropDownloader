@@ -33,6 +33,8 @@ if TYPE_CHECKING:
 
     from rich.console import ConsoleRenderable
 
+    from cyberdrop_dl.managers.manager import Manager
+
 
 EXCLUDE_PATH_LOGGING_FROM = "logger.py", "base.py", "session.py", "cache_control.py"
 
@@ -81,12 +83,15 @@ class QueuedLogger:
         self.handler.close()
 
     @classmethod
-    def new(cls, split_handler: LogHandler) -> QueuedLogger:
+    def new(cls, manager: Manager, split_handler: LogHandler, name: str = "main") -> QueuedLogger:
+        assert name not in manager.loggers, f"A logger with the name '{name}' already exists"
         log_queue = queue.Queue()
         handler = BareQueueHandler(log_queue)
         listener = QueueListener(log_queue, split_handler, respect_handler_level=True)
         listener.start()
-        return QueuedLogger(handler, listener)
+        queued_logger = QueuedLogger(handler, listener)
+        manager.loggers[name] = queued_logger
+        return queued_logger
 
 
 class NoPaddingLogRender(LogRender):
