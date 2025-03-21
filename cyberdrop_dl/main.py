@@ -53,10 +53,6 @@ def startup() -> Manager:
         if not manager.parsed_args.cli_only_args.download:
             ProgramUI(manager)
 
-    except InvalidYamlError as e:
-        startup_logger.error(e.message)
-        sys.exit(1)
-
     except ValidationError as e:
         sources = {
             "GlobalSettings": manager.config_manager.global_settings,
@@ -68,21 +64,7 @@ def startup() -> Manager:
         handle_validation_error(e, file=file)
         sys.exit(1)
 
-    except KeyboardInterrupt:
-        startup_logger.info("Exiting...")
-        sys.exit(0)
-
-    except browser_cookie3.BrowserCookieError:
-        startup_logger.exception("")
-        sys.exit(1)
-
-    except Exception:
-        msg = "An error occurred, please report this to the developer with your logs file:"
-        startup_logger.exception(msg)
-        sys.exit(1)
-
-    else:
-        return manager
+    return manager
 
 
 async def runtime(manager: Manager) -> None:
@@ -149,11 +131,35 @@ def destroy_startup_logger(remove_all_handlers: bool = True) -> None:
 
 @contextlib.contextmanager
 def startup_logging(*, first_time_setup: bool = False) -> Generator:
+    exit_code = 1
     try:
         setup_startup_logger(first_time_setup=first_time_setup)
         yield
+
+    except InvalidYamlError as e:
+        startup_logger.error(e.message)
+
+    except browser_cookie3.BrowserCookieError:
+        startup_logger.exception("")
+
+    except OSError as e:
+        startup_logger.exception(str(e))
+
+    except KeyboardInterrupt:
+        startup_logger.info("Exiting...")
+        exit_code = 0
+
+    except Exception:
+        msg = "An error occurred, please report this to the developer with your logs file:"
+        startup_logger.exception(msg)
+
+    else:
+        return
+
     finally:
         destroy_startup_logger()
+
+    sys.exit(exit_code)
 
 
 def setup_debug_logger(manager: Manager) -> Path | None:
@@ -176,11 +182,8 @@ def setup_debug_logger(manager: Manager) -> Path | None:
                 sys.exit(1)
             date = datetime.now().strftime("%Y%m%d_%H%M%S")
             debug_log_file_path = debug_log_folder / f"cyberdrop_dl_debug_{date}.log"
-        try:
-            file_io = debug_log_file_path.open("w", encoding="utf8")
-        except OSError as e:
-            startup_logger.exception(str(e))
-            sys.exit(1)
+
+        file_io = debug_log_file_path.open("w", encoding="utf8")
 
     file_handler = LogHandler(level=log_level, file=file_io, width=settings_data.logs.log_line_width, debug=True)
     queued_logger = QueuedLogger.new(manager, file_handler, "debug")
@@ -210,11 +213,7 @@ def setup_logger(manager: Manager, config_name: str) -> None:
                 logger.removeHandler(queued_logger.handler)
                 queued_logger.stop()
 
-        try:
-            file_io = manager.path_manager.main_log.open("w", encoding="utf8")
-        except OSError as e:
-            startup_logger.exception(str(e))
-            sys.exit(1)
+        file_io = manager.path_manager.main_log.open("w", encoding="utf8")
 
     settings_data = manager.config_manager.settings_data
     log_level = settings_data.runtime_options.log_level
