@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import json
 import logging
 import queue
@@ -37,9 +38,17 @@ if TYPE_CHECKING:
 EXCLUDE_PATH_LOGGING_FROM = "logger.py", "base.py", "session.py", "cache_control.py"
 
 
+class RichQueueHandler(QueueHandler):
+    def prepare(self, record: logging.LogRecord) -> logging.LogRecord:
+        # Do not override record information, to make sure rich tracebacks work
+        # But still make copy of record to avoid affecting other handlers in the chain
+        # This could potentially cause problem if traceback has not pickleable objects
+        return copy.copy(record)
+
+
 @dataclass
 class QueuedLogger:
-    handler: QueueHandler
+    handler: RichQueueHandler
     listener: QueueListener
 
     def stop(self) -> None:
@@ -48,9 +57,9 @@ class QueuedLogger:
         self.handler.close()
 
     @classmethod
-    def new(cls, *handlers: logging.Handler) -> QueuedLogger:
+    def new(cls, *handlers: RichHandler) -> QueuedLogger:
         log_queue = queue.Queue()
-        handler = QueueHandler(log_queue)
+        handler = RichQueueHandler(log_queue)
         listener = QueueListener(log_queue, *handlers, respect_handler_level=True)
         listener.start()
         return QueuedLogger(handler, listener)
