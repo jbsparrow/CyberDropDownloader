@@ -202,17 +202,19 @@ def setup_logger(manager: Manager, config_name: str) -> None:
     queued_logger = manager.loggers.pop("main", None)
     with startup_logging():
         if manager.multiconfig and queued_logger:
-            log("Picking new config...", 20)
+            log(f"Picking new config: '{config_name}' ...", 20)
             manager.config_manager.change_config(config_name)
             log(f"Changed config to {config_name}...", 20)
-            logger.removeHandler(queued_logger.handler)
-            queued_logger.stop()
 
         try:
             file_io = manager.path_manager.main_log.open("w", encoding="utf8")
         except OSError as e:
             startup_logger.exception(str(e))
             sys.exit(1)
+        finally:
+            if queued_logger:
+                logger.removeHandler(queued_logger.handler)
+                queued_logger.stop()
 
     settings_data = manager.config_manager.settings_data
     log_level = settings_data.runtime_options.log_level
