@@ -40,16 +40,11 @@ if TYPE_CHECKING:
 EXCLUDE_PATH_LOGGING_FROM = "logger.py", "base.py", "session.py", "cache_control.py"
 
 
-class CustomRichHandler(RichHandler):
-    """Rich Handler with default settings and custom log render to remove padding in files."""
+class LogHandler(RichHandler):
+    """Rich Handler with default settings, automatic console creation and custom log render to remove padding in files."""
 
     def __init__(
-        self,
-        level: int = logging.NOTSET,
-        file: IO[str] | None = None,
-        width: int | None = None,
-        debug: bool = False,
-        **kwargs,
+        self, level: int = 10, file: IO[str] | None = None, width: int | None = None, debug: bool = False, **kwargs
     ) -> None:
         is_file: bool = file is not None
         redacted: bool = is_file and not debug
@@ -62,7 +57,7 @@ class CustomRichHandler(RichHandler):
             self._log_render = NoPaddingLogRender(show_level=True)
 
 
-class SplitRichHandler(CustomRichHandler):
+class SplitLogHandler(LogHandler):
     """Custom class to split the creation of the log renderable and its emition"""
 
     def get_log_renderable(self, record: logging.LogRecord) -> ConsoleRenderable:
@@ -109,19 +104,17 @@ class SplitRichHandler(CustomRichHandler):
 
 
 class RichQueueHandler(QueueHandler):
-    def __init__(self, queue, rich_handler: SplitRichHandler) -> None:
+    """Computes entire log renderable and adds it to the log record as a property before sending it to the queue"""
+
+    def __init__(self, queue, log_handler: SplitLogHandler) -> None:
         super().__init__(queue)
-        self.get_log_renderable = rich_handler.get_log_renderable
+        self.get_log_renderable = log_handler.get_log_renderable
 
     def prepare(self, record: logging.LogRecord) -> logging.LogRecord:
-        """Compute entire log renderable before sending it to the queue"""
         record = copy.copy(record)
         record.log_renderable = self.get_log_renderable(record)
-        # Remove all other atributes in case they are not pickleable.
-        record.args = None
-        record.exc_info = None
-        record.exc_text = None
-        record.stack_info = None
+        # Remove all other attributes in case they are not pickleable.
+        record.args = record.exc_info = record.exc_text = record.stack_info = None
         return record
 
 
@@ -131,14 +124,14 @@ class QueuedLogger:
     listener: QueueListener
 
     def stop(self) -> None:
-        """Makes sure pending messages in the queue get processed."""
+        """This asks the thread to terminate, and waits until all pending messages are processed."""
         self.listener.stop()
         self.handler.close()
 
     @classmethod
-    def new(cls, split_handler: SplitRichHandler) -> QueuedLogger:
+    def new(cls, split_handler: SplitLogHandler) -> QueuedLogger:
         log_queue = queue.Queue()
-        handler = RichQueueHandler(log_queue, rich_handler=split_handler)
+        handler = RichQueueHandler(log_queue, log_handler=split_handler)
         listener = QueueListener(log_queue, split_handler, respect_handler_level=True)
         listener.start()
         return QueuedLogger(handler, listener)

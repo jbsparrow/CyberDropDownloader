@@ -22,14 +22,7 @@ from cyberdrop_dl.ui.program_ui import ProgramUI
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.apprise import send_apprise_notifications
 from cyberdrop_dl.utils.dumper import Dumper
-from cyberdrop_dl.utils.logger import (
-    CustomRichHandler,
-    QueuedLogger,
-    SplitRichHandler,
-    log,
-    log_spacer,
-    log_with_color,
-)
+from cyberdrop_dl.utils.logger import LogHandler, QueuedLogger, SplitLogHandler, log, log_spacer, log_with_color
 from cyberdrop_dl.utils.sorting import Sorter
 from cyberdrop_dl.utils.updates import check_latest_pypi
 from cyberdrop_dl.utils.utilities import check_partials_and_empty_folders, send_webhook_message
@@ -131,16 +124,16 @@ def setup_startup_logger(*, first_time_setup: bool = False) -> None:
         STARTUP_LOGGER_FILE.unlink(missing_ok=True)  # Only delete file once. Subsequent calls will append to file
     destroy_startup_logger()
     startup_logger.setLevel(10)
-    console_handler = CustomRichHandler(level=10)
+    console_handler = LogHandler(level=10)
     startup_logger.addHandler(console_handler)
 
     file_io = STARTUP_LOGGER_FILE.open("a", encoding="utf8")
-    file_handler = CustomRichHandler(level=10, file=file_io, width=constants.DEFAULT_CONSOLE_WIDTH)
+    file_handler = LogHandler(level=10, file=file_io, width=constants.DEFAULT_CONSOLE_WIDTH)
     startup_logger.addHandler(file_handler)
 
 
 def destroy_startup_logger(remove_all_handlers: bool = True) -> None:
-    handlers: list[CustomRichHandler] = startup_logger.handlers  # type: ignore
+    handlers: list[LogHandler] = startup_logger.handlers  # type: ignore
     for handler in handlers[:]:  # create copy
         if not (handler.console._file or remove_all_handlers):
             continue
@@ -188,7 +181,7 @@ def setup_debug_logger(manager: Manager) -> Path | None:
             startup_logger.exception(str(e))
             sys.exit(1)
 
-    file_handler_debug = SplitRichHandler(
+    file_handler_debug = SplitLogHandler(
         level=log_level, file=file_io, width=manager.config_manager.settings_data.logs.log_line_width, debug=True
     )
     queued_logger = QueuedLogger.new(file_handler_debug)
@@ -232,10 +225,10 @@ def setup_logger(manager: Manager, config_name: str) -> None:
         constants.CONSOLE_LEVEL = manager.config_manager.settings_data.runtime_options.console_log_level
 
     console_log_level = constants.CONSOLE_LEVEL
-    console_handler = CustomRichHandler(level=console_log_level)
+    console_handler = LogHandler(level=console_log_level)
     logger.addHandler(console_handler)
 
-    file_handler = SplitRichHandler(
+    file_handler = SplitLogHandler(
         level=log_level, file=file_io, width=manager.config_manager.settings_data.logs.log_line_width
     )
     queued_logger = QueuedLogger.new(file_handler)
