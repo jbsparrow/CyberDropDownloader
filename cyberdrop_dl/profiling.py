@@ -8,12 +8,12 @@ import os
 import pstats
 import shutil
 from contextlib import contextmanager
-from datetime import datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
 from cyberdrop_dl import env
+from cyberdrop_dl.utils import constants
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -60,12 +60,14 @@ def setup_profile(temp_dir: Path | str) -> tuple[Path, Path]:
 
 def destroy_profile(old_cwd: Path, temp_dir_path: Path) -> None:
     os.chdir(old_cwd)
-    suffix = "profiling"
-    old_log_file = temp_dir_path / "cyberdrop_dl_debug.log"
-    if env.PROFILING == "use_date":
-        suffix += f"_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    new_log_file = Path(f"cyberdrop_dl_debug_{suffix}.log").resolve()
-    if old_log_file.is_file():
+    new_log_file = None
+    old_log_file = next(temp_dir_path.glob("cyberdrop_dl_debug*"), None)
+    if old_log_file and old_log_file.is_file():
+        suffix = "_profiling"
+        if env.PROFILING == "use_date":
+            suffix += f"_{constants.STARTUP_TIME.strftime(constants.LOGS_DATETIME_FORMAT)}"
+
+        new_log_file = Path(f"cyberdrop_dl_debug{suffix}.log").resolve()
         shutil.move(old_log_file, new_log_file)
     print(f"Profile AppData folder: {temp_dir_path}")
     print(f"Debug log file: {new_log_file}")

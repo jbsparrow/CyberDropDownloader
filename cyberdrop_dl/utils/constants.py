@@ -1,9 +1,16 @@
 import re
+from datetime import UTC, datetime
 from enum import Enum, IntEnum, StrEnum, auto
 from pathlib import Path
 from typing import Any
 
 from rich.text import Text
+
+# TIME
+STARTUP_TIME = datetime.now()
+STARTUP_TIME_UTC = datetime.now(UTC)
+LOGS_DATETIME_FORMAT = "%Y%m%d_%H%M%S"
+LOGS_DATE_FORMAT = "%Y_%m_%d"
 
 # logging
 CONSOLE_LEVEL = 100
