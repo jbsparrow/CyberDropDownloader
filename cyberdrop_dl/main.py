@@ -186,7 +186,7 @@ def setup_debug_logger(manager: Manager) -> Path | None:
         file_io = debug_log_file_path.open("w", encoding="utf8")
 
     file_handler = LogHandler(level=log_level, file=file_io, width=settings_data.logs.log_line_width, debug=True)
-    queued_logger = QueuedLogger.new(manager, file_handler, "debug")
+    queued_logger = QueuedLogger(manager, file_handler, "debug")
     debug_logger.addHandler(queued_logger.handler)
 
     aiohttp_client_cache_logger = logging.getLogger("aiohttp_client_cache")
@@ -226,7 +226,7 @@ def setup_logger(manager: Manager, config_name: str) -> None:
     logger.addHandler(console_handler)
 
     file_handler = LogHandler(level=log_level, file=file_io, width=settings_data.logs.log_line_width)
-    queued_logger = QueuedLogger.new(manager, file_handler, "main")
+    queued_logger = QueuedLogger(manager, file_handler)
     logger.addHandler(queued_logger.handler)
 
 

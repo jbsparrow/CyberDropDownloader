@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import logging
 import queue
-from dataclasses import dataclass
 from logging.handlers import QueueHandler, QueueListener
 from pathlib import Path
 from typing import IO, TYPE_CHECKING
@@ -72,26 +71,21 @@ class BareQueueHandler(QueueHandler):
         return record
 
 
-@dataclass
 class QueuedLogger:
-    handler: BareQueueHandler
-    listener: QueueListener
+    """A helper class to setup a queue handler + listener."""
+
+    def __init__(self, manager: Manager, split_handler: LogHandler, name: str = "main") -> None:
+        assert name not in manager.loggers, f"A logger with the name '{name}' already exists"
+        log_queue = queue.Queue()
+        self.handler = BareQueueHandler(log_queue)
+        self.listener = QueueListener(log_queue, split_handler, respect_handler_level=True)
+        self.listener.start()
+        manager.loggers[name] = self
 
     def stop(self) -> None:
         """This asks the thread to terminate, and waits until all pending messages are processed."""
         self.listener.stop()
         self.handler.close()
-
-    @classmethod
-    def new(cls, manager: Manager, split_handler: LogHandler, name: str = "main") -> QueuedLogger:
-        assert name not in manager.loggers, f"A logger with the name '{name}' already exists"
-        log_queue = queue.Queue()
-        handler = BareQueueHandler(log_queue)
-        listener = QueueListener(log_queue, split_handler, respect_handler_level=True)
-        listener.start()
-        queued_logger = QueuedLogger(handler, listener)
-        manager.loggers[name] = queued_logger
-        return queued_logger
 
 
 class NoPaddingLogRender(LogRender):
