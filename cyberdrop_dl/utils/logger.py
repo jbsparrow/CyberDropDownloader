@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import json
 import logging
+import queue
+from logging.handlers import QueueHandler, QueueListener
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import IO, TYPE_CHECKING
 
 from rich._log_render import LogRender
 from rich.console import Console, Group
 from rich.containers import Lines, Renderables
+from rich.logging import RichHandler
 from rich.measure import Measurement
 from rich.padding import Padding
 from rich.text import Text, TextType
@@ -28,10 +31,61 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     from rich.console import ConsoleRenderable
-    from rich.logging import RichHandler
+
+    from cyberdrop_dl.managers.manager import Manager
 
 
 EXCLUDE_PATH_LOGGING_FROM = "logger.py", "base.py", "session.py", "cache_control.py"
+
+
+class LogHandler(RichHandler):
+    """Rich Handler with default settings, automatic console creation and custom log render to remove padding in files."""
+
+    def __init__(
+        self, level: int = 10, file: IO[str] | None = None, width: int | None = None, debug: bool = False, **kwargs
+    ) -> None:
+        is_file: bool = file is not None
+        redacted: bool = is_file and not debug
+        console_cls = RedactedConsole if redacted else Console
+        console = console_cls(file=file, width=width)
+        options = constants.RICH_HANDLER_DEBUG_CONFIG if debug else constants.RICH_HANDLER_CONFIG
+        options = options | kwargs
+        super().__init__(level, console, show_time=is_file, **options)
+        if is_file:
+            self._log_render = NoPaddingLogRender(show_level=True)
+
+
+class BareQueueHandler(QueueHandler):
+    """Sends the log record to the queue as is.
+
+    The base class formats the record by merging the message and arguments.
+    It also removes all other attributes of the record, just in case they have not pickleable objects.
+
+    This made tracebacks render improperly because when the rich handler picks the log record from the queue, it has no traceback.
+    The original traceback was being formatted as normal text and included as part of the message.
+
+    Having not pickleable objects is only an issue in multi-processing operations (multiprocessing.Queue)
+    """
+
+    def prepare(self, record: logging.LogRecord) -> logging.LogRecord:
+        return record
+
+
+class QueuedLogger:
+    """A helper class to setup a queue handler + listener."""
+
+    def __init__(self, manager: Manager, split_handler: LogHandler, name: str = "main") -> None:
+        assert name not in manager.loggers, f"A logger with the name '{name}' already exists"
+        log_queue = queue.Queue()
+        self.handler = BareQueueHandler(log_queue)
+        self.listener = QueueListener(log_queue, split_handler, respect_handler_level=True)
+        self.listener.start()
+        manager.loggers[name] = self
+
+    def stop(self) -> None:
+        """This asks the thread to terminate, and waits until all pending messages are processed."""
+        self.listener.stop()
+        self.handler.close()
 
 
 class NoPaddingLogRender(LogRender):
@@ -93,8 +147,7 @@ class NoPaddingLogRender(LogRender):
                 continue
             padded_lines.append(Padding(renderable, (0, 0, 0, self.cdl_padding), expand=False))
 
-        output = Group(output, *padded_lines)
-        return output
+        return Group(output, *padded_lines)
 
 
 def get_renderable_length(renderable) -> int:
@@ -115,15 +168,6 @@ def indent_text(text: Text, console: Console, indent: int = 30) -> Text:
         new_text.append(indent_str + line)
     first_line.rstrip()
     return first_line.append(new_text)
-
-
-def add_custom_log_render(rich_handler: RichHandler) -> None:
-    rich_handler._log_render = NoPaddingLogRender(
-        omit_repeated_times=True,
-        show_time=True,
-        show_level=True,
-        show_path=True,
-    )
 
 
 class RedactedConsole(Console):
