@@ -20,6 +20,7 @@ from cyberdrop_dl.clients.errors import InvalidYamlError
 from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.scraper.scrape_mapper import ScrapeMapper
 from cyberdrop_dl.ui.program_ui import ProgramUI
+from cyberdrop_dl.ui.textual import TextualUI
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.apprise import send_apprise_notifications
 from cyberdrop_dl.utils.dumper import Dumper
@@ -70,6 +71,21 @@ def startup() -> Manager:
     return manager
 
 
+@contextlib.asynccontextmanager
+async def textual_ui(manager: Manager):
+    ui_task = None
+    try:
+        textual_ui = TextualUI(manager)
+        constants.TEXTUAL_UI = textual_ui
+        ui_task = asyncio.create_task(textual_ui.run_async())
+        yield
+    finally:
+        if ui_task:
+            textual_ui.exit()
+            constants.TEXTUAL_UI = None
+            await ui_task
+
+
 async def runtime(manager: Manager) -> None:
     """Main runtime loop for the program, this will run until all scraping and downloading is complete."""
     if manager.multiconfig and manager.config_manager.settings_data.sorting.sort_downloads:
@@ -77,7 +93,7 @@ async def runtime(manager: Manager) -> None:
 
     with manager.live_manager.get_main_live(stop=True):
         scrape_mapper = ScrapeMapper(manager)
-        async with asyncio.TaskGroup() as task_group:
+        async with textual_ui(manager), asyncio.TaskGroup() as task_group:
             manager.task_group = task_group
             await scrape_mapper.start()
 

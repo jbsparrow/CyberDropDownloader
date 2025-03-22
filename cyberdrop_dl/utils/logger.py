@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import logging
 import queue
+import random
 from logging.handlers import QueueHandler, QueueListener
 from pathlib import Path
 from typing import IO, TYPE_CHECKING
@@ -36,6 +37,34 @@ if TYPE_CHECKING:
 
 
 EXCLUDE_PATH_LOGGING_FROM = "logger.py", "base.py", "session.py", "cache_control.py"
+
+
+def get_log_level_text(name: str, color: str) -> Text:
+    #  From markup to prevent applying the color to the entire line
+    return Text.from_markup(f"[{color}]{name}[/{color}]") if color else Text(name)
+
+
+RICH_LOG_LEVELS = {
+    10: get_log_level_text("DEBUG    ", "cyan"),
+    20: get_log_level_text("INFO     ", ""),
+    30: get_log_level_text("WARNING  ", "yellow"),
+    40: get_log_level_text("ERROR    ", "bold red"),
+    50: get_log_level_text("CRITICAL ", "bold red"),
+}
+
+
+def get_log_level_text(name: str, color: str) -> Text:
+    #  From markup to prevent applying the color to the entire line
+    return Text.from_markup(f"[{color}]{name}[/{color}]") if color else Text(name)
+
+
+RICH_LOG_LEVELS = {
+    10: get_log_level_text("DEBUG    ", "cyan"),
+    20: get_log_level_text("INFO     ", ""),
+    30: get_log_level_text("WARNING  ", "yellow"),
+    40: get_log_level_text("ERROR    ", "bold red"),
+    50: get_log_level_text("CRITICAL ", "bold red"),
+}
 
 
 class LogHandler(RichHandler):
@@ -170,6 +199,16 @@ def indent_text(text: Text, console: Console, indent: int = 30) -> Text:
     return first_line.append(new_text)
 
 
+def indent_string(text: str, indent_level: int = 9) -> str:
+    """Indents each line of a string object except the first one."""
+    indentation = " " * indent_level
+    lines = text.splitlines()
+    if len(lines) <= 1:
+        return text
+    indented_lines = [lines[0]] + [indentation + line for line in lines[1:]]
+    return "\n".join(indented_lines)
+
+
 class RedactedConsole(Console):
     def _render_buffer(self, buffer) -> str:
         output: str = super()._render_buffer(buffer)
@@ -182,9 +221,19 @@ def process_log_msg(message: dict | Exception | str) -> str:
     return str(message)
 
 
+def create_rich_log_msg(msg: str, level: int = 10) -> Text:
+    level = random.choice(range(10, 51, 10))
+    rich_level = RICH_LOG_LEVELS.get(level) or RICH_LOG_LEVELS[10]
+    # msg = f"{msg}\nline 2"
+    return rich_level + indent_string(msg)
+
+
 def log(message: dict | Exception | str, level: int = 10, **kwargs) -> None:
     """Simple logging function."""
     msg = process_log_msg(message)
+    if constants.TEXTUAL_UI:
+        rich_msg = create_rich_log_msg(msg, level)
+        constants.TEXTUAL_UI.log_to_ui(rich_msg)
     logger.log(level, msg, **kwargs)
     log_debug(msg, level, **kwargs)
 
