@@ -18,10 +18,8 @@ MAX_NAME_LENGTHS = {"FILE": 95, "FOLDER": 60}
 DEFAULT_CONSOLE_WIDTH = 240
 CSV_DELIMITER = ","
 LOG_OUTPUT_TEXT = Text("")
-RICH_HANDLER_CONFIG: dict[str, Any] = {"show_time": True, "rich_tracebacks": True, "tracebacks_show_locals": False}
-RICH_HANDLER_DEBUG_CONFIG = {
-    "show_time": True,
-    "rich_tracebacks": True,
+RICH_HANDLER_CONFIG: dict[str, Any] = {"rich_tracebacks": True, "tracebacks_show_locals": False}
+RICH_HANDLER_DEBUG_CONFIG = RICH_HANDLER_CONFIG | {
     "tracebacks_show_locals": True,
     "locals_max_string": DEFAULT_CONSOLE_WIDTH,
     "tracebacks_extra_lines": 2,
