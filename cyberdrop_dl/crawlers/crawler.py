@@ -13,12 +13,11 @@ from typing import TYPE_CHECKING, Any, ClassVar, Protocol
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import InvalidURLError
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.logger import log
-from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext, remove_file_id
+from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext, parse_url, remove_file_id
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable
@@ -276,22 +275,8 @@ class Crawler(ABC):
         scrape_item.add_to_parent_title(title)
 
     def parse_url(self, link_str: str, relative_to: URL | None = None, *, trim: bool = True) -> URL:
-        try:
-            assert link_str
-            assert isinstance(link_str, str)
-            link_str = clean_link_str(link_str)
-            encoded = "%" in link_str
-            base = relative_to or self.primary_base_domain
-            new_url = URL(link_str, encoded=encoded)
-        except (AssertionError, AttributeError, ValueError, TypeError) as e:
-            raise InvalidURLError(str(e), url=link_str) from e
-        if not new_url.absolute:
-            new_url = base.join(new_url)
-        if not new_url.scheme:
-            new_url = new_url.with_scheme(base.scheme or "https")
-        if not trim:
-            return new_url
-        return remove_trailing_slash(new_url)
+        base = relative_to or self.primary_base_domain
+        return parse_url(link_str, base, trim=trim)
 
     def update_cookies(self, cookies: dict, url: URL | None = None) -> None:
         """Update cookies for the provided URL
@@ -318,12 +303,6 @@ class Crawler(ABC):
             page_url = self.parse_url(page_url_str)
 
 
-def remove_trailing_slash(url: URL) -> URL:
-    if url.name or url.path == "/":
-        return url
-    return url.parent.with_fragment(url.fragment).with_query(url.query)
-
-
 def create_task_id(func: Callable) -> Callable:
     """Wrapper handles task_id creation and removal for ScrapeItems"""
 
@@ -348,11 +327,3 @@ def create_task_id(func: Callable) -> Callable:
 def pre_check_scrape_item(scrape_item: ScrapeItem) -> None:
     if scrape_item.url.path == "/":
         raise ValueError
-
-
-def clean_link_str(link_str: str) -> str:
-    if "?" in link_str:
-        parts, query = link_str.split("?", 1)
-        query = query.replace("+", "%20")
-        return f"{parts}?{query}"
-    return link_str

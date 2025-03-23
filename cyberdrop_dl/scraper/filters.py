@@ -58,18 +58,6 @@ def is_in_domain_list(scrape_item: ScrapeItem, domain_list: Sequence[str]) -> bo
     return any(domain in scrape_item.url.host for domain in domain_list)  # type: ignore
 
 
-def remove_trailing_slash(url: URL) -> URL:
-    if not str(url).endswith("/"):
-        return url
-
-    url_trimmed = url.with_path(url.path[:-1])
-    if url.query_string:
-        query = url.query_string[:-1]
-        url_trimmed = url.with_query(query)
-
-    return url_trimmed
-
-
 def has_valid_extension(url: URL, forum: bool = False) -> bool:
     """Checks if the URL has a valid extension."""
     try:
