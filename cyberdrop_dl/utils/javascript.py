@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from typing import Any
 
 HTTPS_PLACEHOLDER = "<<SAFE_HTTPS>>"
 HTTP_PLACEHOLDER = "<<SAFE_HTTP>>"
@@ -34,7 +35,7 @@ def parse_js_vars(js_text: str, use_regex: bool = False) -> dict:
     return data
 
 
-def parse_json_to_dict(js_text: str, use_regex: bool = False) -> dict:
+def parse_json_to_dict(js_text: str, use_regex: bool = False) -> dict[str, Any] | list[Any]:
     json_str = js_text.replace("\t", "").replace("\n", "").strip()
     json_str = replace_quotes(json_str)
     if use_regex:
@@ -42,7 +43,14 @@ def parse_json_to_dict(js_text: str, use_regex: bool = False) -> dict:
         json_str = re.sub(*QUOTE_KEYS_REGEX, json_str)
         json_str = re.sub(*QUOTE_VALUES_REGEX, json_str)
         json_str = recover_urls(json_str)
-    return json.loads(json_str)
+    result = json.loads(json_str)
+    is_list = isinstance(result, list)
+    if is_list:
+        result = {"data": result}
+    clean_dict(result)
+    if is_list:
+        return result["data"]
+    return result
 
 
 def replace_quotes(js_text: str) -> str:

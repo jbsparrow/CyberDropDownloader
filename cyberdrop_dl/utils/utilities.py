@@ -7,9 +7,10 @@ import platform
 import re
 import shutil
 import subprocess
+from dataclasses import fields
 from functools import lru_cache, partial, wraps
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, ClassVar, Protocol
 
 import aiofiles
 import rich
@@ -36,6 +37,10 @@ if TYPE_CHECKING:
     from cyberdrop_dl.downloader.downloader import Downloader
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
+
+
+class Dataclass(Protocol):
+    __dataclass_fields__: ClassVar[dict]
 
 
 TEXT_EDITORS = "micro", "nano", "vim"  # Ordered by preference
@@ -363,6 +368,23 @@ def set_default_app_if_none(file_path: Path) -> bool:
         return subprocess.call(["xdg-mime", "default", text_default, mimetype]) == 0
 
     return False
+
+
+def get_valid_dict(dataclass: Dataclass | type[Dataclass], info: dict[str, Any]) -> dict[str, Any]:
+    """Remove all keys that are not fields in the dataclass"""
+    return {k: v for k, v in info.items() if k in get_field_names(dataclass)}
+
+
+@lru_cache
+def get_field_names(dataclass: Dataclass | type[Dataclass]) -> list[str]:
+    return [f.name for f in fields(dataclass)]
+
+
+def get_text_between(original_text: str, start: str, end: str) -> str:
+    """Extracts the text between two strings in a larger text."""
+    start_index = original_text.index(start) + len(start)
+    end_index = original_text.index(end, start_index)
+    return original_text[start_index:end_index]
 
 
 def xdg_mime_query(*args) -> str:
