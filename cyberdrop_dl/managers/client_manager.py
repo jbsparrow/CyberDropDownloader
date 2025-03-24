@@ -97,8 +97,8 @@ class ClientManager:
         )
 
         self.scraper_session = ScraperClient(self)
-        self.downloader_session = DownloadClient(manager, self)
         self.speed_limiter = DownloadSpeedLimiter(manager)
+        self.downloader_session = DownloadClient(manager, self)
         self.flaresolverr = Flaresolverr(self)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
