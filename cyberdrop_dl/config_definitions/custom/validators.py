@@ -7,9 +7,15 @@ from datetime import timedelta
 from functools import singledispatch
 from typing import Any
 
+from pydantic import HttpUrl
 from yarl import URL
 
-from .converters import convert_str_to_timedelta
+from .converters import convert_str_to_timedelta, convert_to_yarl
+
+
+def pydantyc_yarl_url(value: str) -> URL:
+    url = HttpUrl(value)
+    return convert_to_yarl(url)
 
 
 def parse_falsy_as(value: Any, falsy_value: Any, func: Callable | None = None, *args, **kwargs) -> Any:
