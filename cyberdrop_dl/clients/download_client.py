@@ -20,6 +20,7 @@ from cyberdrop_dl.clients.errors import (
     InvalidContentTypeError,
     SlowDownloadError,
 )
+from cyberdrop_dl.config_definitions.global_settings import MIN_REQUIRED_FREE_SPACE
 from cyberdrop_dl.utils.constants import FILE_FORMATS
 from cyberdrop_dl.utils.logger import log, log_debug
 
@@ -120,6 +121,9 @@ class DownloadClient:
         self._file_path = None
         self.slow_download_period = 10  # seconds
         self.download_speed_threshold = self.manager.config_manager.settings_data.runtime_options.slow_download_speed
+        self.chunk_size = client_manager.speed_limiter.chunk_size
+        self.chunks_counter: int = 0
+        self.free_space_check_lock = asyncio.Lock()
         self.add_request_log_hooks()
 
     def add_request_log_hooks(self) -> None:
@@ -229,8 +233,11 @@ class DownloadClient:
         update_progress: partial,
     ) -> None:
         """Appends content to a file."""
-        if not self.client_manager.manager.download_manager.check_free_space(media_item.download_folder):
-            raise InsufficientFreeSpaceError(origin=media_item)
+        check_free_space = self.client_manager.manager.download_manager.check_free_space
+        async_check_free_space = partial(asyncio.to_thread, check_free_space, media_item.download_folder)
+        async with self.free_space_check_lock:
+            if not await async_check_free_space():
+                raise InsufficientFreeSpaceError(origin=media_item)
 
         media_item.partial_file.parent.mkdir(parents=True, exist_ok=True)
         if not media_item.partial_file.is_file():
@@ -249,12 +256,18 @@ class DownloadClient:
                 raise SlowDownloadError(origin=media_item)
 
         async with aiofiles.open(media_item.partial_file, mode="ab") as f:  # type: ignore
-            async for chunk in content.iter_chunked(self.client_manager.speed_limiter.chunk_size):
+            async for chunk in content.iter_chunked(self.chunk_size):
                 chunk_size = len(chunk)
                 await self.client_manager.speed_limiter.acquire(chunk_size)
                 await asyncio.sleep(0)
                 await f.write(chunk)
                 update_progress(chunk_size)
+                self.chunks_counter += 1
+                async with self.free_space_check_lock:
+                    if self.chunks_counter * self.chunk_size >= MIN_REQUIRED_FREE_SPACE:
+                        await async_check_free_space()
+                        self.chunks_counter = 0
+
                 if self.download_speed_threshold:
                     check_download_speed()
 
