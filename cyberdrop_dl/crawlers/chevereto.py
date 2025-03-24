@@ -29,6 +29,7 @@ CDN_PATTERNS = {
 CDN_POSSIBILITIES = re.compile("|".join(CDN_PATTERNS.values()))
 JS_SELECTOR = "script[data-cfasync='false']:contains('image_viewer_full_fix')"
 JS_CONTENT_START = "document.addEventListener('DOMContentLoaded', function(event)"
+ITEM_DESCRIPTION_SELECTOR = "p[class*=description-meta]"
 
 
 class UrlType(enum.StrEnum):
@@ -91,7 +92,7 @@ class CheveretoCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        if check_direct_link(scrape_item.url):
+        if is_direct_link(scrape_item.url):
             return await self.handle_direct_link(scrape_item)
         scrape_item.url = scrape_item.url.with_host(self.primary_base_domain.host)  # type: ignore
         if any(part in scrape_item.url.parts for part in self.album_parts):
@@ -110,41 +111,33 @@ class CheveretoCrawler(Crawler):
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an user profile."""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         title_tag = soup.select_one(self.profile_title_selector)
         title_text: str = title_tag.get("content")  # type: ignore
         title = self.create_title(title_text)
+        scrape_item.setup_as_profile(title)
 
         async for soup in self.web_pager(scrape_item):
             links = soup.select(self.profile_item_selector)
             for link in links:
                 link_str: str = link.get("href")  # type: ignore
-                if not link_str:
-                    continue
                 link = self.parse_url(link_str)
-                new_scrape_item = self.create_scrape_item(
-                    scrape_item,
-                    link,
-                    new_title_part=title,
-                    part_of_album=True,
-                    add_parent=scrape_item.url,
-                )
+                new_scrape_item = scrape_item.create_child(link)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
+                scrape_item.add_children()
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
         album_id, canonical_url = self.get_canonical_url(scrape_item)
         results = await self.get_album_results(album_id)
-        scrape_item.album_id = album_id
-        scrape_item.part_of_album = True
         password = scrape_item.url.query.get("password", "")
         scrape_item.url = scrape_item.url.with_query(None)
 
         async with self.request_limiter:
             sub_albums = scrape_item.url / "sub"
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, sub_albums, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, sub_albums)
 
         scrape_item.url = canonical_url
 
@@ -152,36 +145,24 @@ class CheveretoCrawler(Crawler):
             password_data = {"content-password": password}
             async with self.request_limiter:
                 soup = BeautifulSoup(
-                    await self.client.post_data(
-                        self.domain,
-                        scrape_item.url,
-                        data=password_data,
-                        raw=True,
-                        origin=scrape_item,
-                    ),
+                    await self.client.post_data(self.domain, scrape_item.url, data=password_data, raw=True),
                     "html.parser",
                 )
 
         if "This content is password protected" in soup.text:
-            raise PasswordProtectedError(message="Wrong password" if password else None, origin=scrape_item)
+            raise PasswordProtectedError(message="Wrong password" if password else None)
 
         title_tag = soup.select_one(self.album_title_selector)
         title_text: str = title_tag.get_text()  # type: ignore
         title = self.create_title(title_text, album_id)
-        scrape_item.add_to_parent_title(title)
-        scrape_item.part_of_album = True
+        scrape_item.setup_as_album(title, album_id=album_id)
 
         async for soup in self.web_pager(scrape_item):
             links = soup.select(self.album_img_selector)
             for link in links:
                 link_str: str = link.get("src")  # type: ignore
                 link = self.parse_url(link_str)
-                new_scrape_item = self.create_scrape_item(
-                    scrape_item,
-                    link,
-                    album_id=album_id,
-                    add_parent=scrape_item.url,
-                )
+                new_scrape_item = scrape_item.create_child(link)
                 if not self.check_album_results(link, results):
                     await self.handle_direct_link(new_scrape_item)
 
@@ -196,6 +177,7 @@ class CheveretoCrawler(Crawler):
                 link = self.parse_url(link_str)
                 new_scrape_item = self.create_scrape_item(scrape_item, link)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
+                scrape_item.add_children()
 
     async def video(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a video."""
@@ -219,24 +201,24 @@ class CheveretoCrawler(Crawler):
         if await self.check_complete_from_referer(canonical_url):
             return
 
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
-
-        try:
-            link_str: str = soup.select_one(selector[0]).get(selector[1])  # type: ignore
-            link = self.parse_url(link_str)
-            name = link.name.replace(".md.", ".").replace(".th.", ".")
-            link = link.with_name(name)
-            filename = link.name
-
-        except AttributeError:
-            raise ScrapeError(422, f"Couldn't find {url_type.value} source", origin=scrape_item) from None
-
-        if name == "loading.svg":
+        if self.domain == "jpg5.su":
             filename, link = await self.get_embed_info(scrape_item.url)
+        else:
+            async with self.request_limiter:
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+
+            try:
+                link_str: str = soup.select_one(selector[0]).get(selector[1])  # type: ignore
+                link = self.parse_url(link_str)
+                name = link.name.replace(".md.", ".").replace(".th.", ".")
+                link = link.with_name(name)
+                filename = link.name
+
+            except AttributeError:
+                raise ScrapeError(422, f"Couldn't find {url_type.value} source") from None
 
         scrape_item.url = canonical_url
-        desc_rows = soup.select("p[class*=description-meta]")
+        desc_rows = soup.select(ITEM_DESCRIPTION_SELECTOR)
         date_str: str | None = None
         for row in desc_rows:
             if any(text in row.text.casefold() for text in ("uploaded", "added to")):
@@ -255,7 +237,7 @@ class CheveretoCrawler(Crawler):
         """Handles a direct link."""
         scrape_item.url = scrape_item.url.with_name(scrape_item.url.name.replace(".md.", ".").replace(".th.", "."))
         pattern = r"(jpg\.fish/)|(jpg\.fishing/)|(jpg\.church/)"
-        scrape_item.url = URL(re.sub(pattern, r"host.church/", str(scrape_item.url)))
+        scrape_item.url = self.parse_url(re.sub(pattern, r"host.church/", str(scrape_item.url)))
         filename, ext = get_filename_and_ext(scrape_item.url.name)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
@@ -319,6 +301,6 @@ def parse_datetime(date: str) -> int:
     return calendar.timegm(parsed_date.timetuple())
 
 
-def check_direct_link(url: URL) -> bool:
+def is_direct_link(url: URL) -> bool:
     """Determines if the url is a direct link or not."""
     return bool(CDN_POSSIBILITIES.match(str(url)))
