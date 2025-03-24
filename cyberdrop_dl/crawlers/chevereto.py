@@ -7,7 +7,7 @@ import re
 from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import PasswordProtectedError, ScrapeError
@@ -15,7 +15,7 @@ from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
+    from collections.abc import AsyncGenerator, Sequence
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
@@ -119,13 +119,8 @@ class CheveretoCrawler(Crawler):
         scrape_item.setup_as_profile(title)
 
         async for soup in self.web_pager(scrape_item):
-            links = soup.select(self.profile_item_selector)
-            for link in links:
-                link_str: str = link.get("href")  # type: ignore
-                link = self.parse_url(link_str)
-                new_scrape_item = scrape_item.create_child(link)
-                self.manager.task_group.create_task(self.run(new_scrape_item))
-                scrape_item.add_children()
+            for album in self.iter_children(scrape_item, soup.select(self.profile_item_selector)):
+                self.manager.task_group.create_task(self.run(album))
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
@@ -158,26 +153,21 @@ class CheveretoCrawler(Crawler):
         scrape_item.setup_as_album(title, album_id=album_id)
 
         async for soup in self.web_pager(scrape_item):
-            links = soup.select(self.album_img_selector)
-            for link in links:
-                link_str: str = link.get("src")  # type: ignore
-                link = self.parse_url(link_str)
-                new_scrape_item = scrape_item.create_child(link)
-                if not self.check_album_results(link, results):
-                    await self.handle_direct_link(new_scrape_item)
+            for image in self.iter_children(scrape_item, soup.select(self.album_img_selector), "src"):
+                if not self.check_album_results(image.url, results):
+                    await self.handle_direct_link(image)
 
-        await self.process_sub_albums(scrape_item)
-
-    @error_handling_wrapper
-    async def process_sub_albums(self, scrape_item: ScrapeItem) -> None:
         async for soup in self.web_pager(scrape_item, sub_albums=True):
-            sub_albums = soup.select(self.profile_item_selector)
-            for album in sub_albums:
-                link_str: str = album.get("href")  # type: ignore
-                link = self.parse_url(link_str)
-                new_scrape_item = self.create_scrape_item(scrape_item, link)
-                self.manager.task_group.create_task(self.run(new_scrape_item))
-                scrape_item.add_children()
+            for sub_album in self.iter_children(scrape_item, soup.select(self.profile_item_selector)):
+                self.manager.task_group.create_task(self.run(sub_album))
+
+    def iter_children(self, scrape_item: ScrapeItem, children: Sequence[Tag], selector: str = "href"):
+        for item in children:
+            link_str: str = item.get(selector)  # type: ignore
+            link = self.parse_url(link_str)
+            new_scrape_item = scrape_item.create_child(link)
+            scrape_item.add_children()
+            yield new_scrape_item
 
     async def video(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a video."""
