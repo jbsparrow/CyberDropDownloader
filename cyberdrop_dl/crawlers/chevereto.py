@@ -114,7 +114,7 @@ class CheveretoCrawler(Crawler):
         title = self.create_title(title_text)
         scrape_item.setup_as_profile(title)
 
-        async for soup in self.web_pager(scrape_item):
+        async for soup in self.web_pager(scrape_item.url):
             for src, item in self.iter_children(scrape_item, soup):
                 # Item may be an image, a video or an album
                 # For images, we can download the file from the thumbnail
@@ -132,6 +132,7 @@ class CheveretoCrawler(Crawler):
         results = await self.get_album_results(album_id)
         password = scrape_item.url.query.get("password", "")
         scrape_item.url = scrape_item.url.with_query(None)
+        original_url = scrape_item.url
 
         async with self.request_limiter:
             sub_albums = scrape_item.url / "sub"
@@ -153,13 +154,16 @@ class CheveretoCrawler(Crawler):
         title = self.create_title(title_text, album_id)
         scrape_item.setup_as_album(title, album_id=album_id)
 
-        async for soup in self.web_pager(scrape_item):
+        async for soup in self.web_pager(scrape_item.url):
             for image_src, image in self.iter_children(scrape_item, soup):
                 if not self.check_album_results(image_src, results):
                     _, image.url = self.get_canonical_url(image, url_type="image")
                     await self.handle_direct_link(image, image_src)
 
-        async for soup in self.web_pager(scrape_item, sub_albums=True):
+        # Sub album URL needs to be the full URL + a 'sub'
+        # Using the canonical URL + 'sub' won't work because it redirects to the "homepage" of the album
+        sub_album_url = original_url / "sub"
+        async for soup in self.web_pager(sub_album_url):
             for _, sub_album in self.iter_children(scrape_item, soup):
                 self.manager.task_group.create_task(self.run(sub_album))
 
@@ -225,7 +229,7 @@ class CheveretoCrawler(Crawler):
         link = url or scrape_item.url
         link = link.with_name(link.name.replace(".md.", ".").replace(".th.", "."))
         pattern = r"(jpg\.fish/)|(jpg\.fishing/)|(jpg\.church/)"
-        link = self.parse_url(re.sub(pattern, r"host.church/", str(url)))
+        link = self.parse_url(re.sub(pattern, r"host.church/", str(link)))
         filename, ext = get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 
@@ -262,13 +266,12 @@ class CheveretoCrawler(Crawler):
         new_path = "/" + "/".join(new_parts)
         return _id, self.parse_url(new_path, scrape_item.url.with_path("/"))
 
-    async def web_pager(self, scrape_item: ScrapeItem, sub_albums: bool = False) -> AsyncGenerator[BeautifulSoup]:
+    async def web_pager(self, url: URL) -> AsyncGenerator[BeautifulSoup]:
         """Generator of website pages."""
-        url = scrape_item.url if not sub_albums else scrape_item.url / "sub"
         page_url = get_sort_by_new_url(url)
         while True:
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url, origin=scrape_item)
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url)
             next_page = soup.select_one(self.next_page_selector)
             yield soup
             page_url_str: str = next_page.get("href") if next_page else None  # type: ignore
