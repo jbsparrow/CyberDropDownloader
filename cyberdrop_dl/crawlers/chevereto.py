@@ -15,7 +15,7 @@ from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Sequence
+    from collections.abc import AsyncGenerator, Generator, Sequence
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
@@ -119,8 +119,15 @@ class CheveretoCrawler(Crawler):
         scrape_item.setup_as_profile(title)
 
         async for soup in self.web_pager(scrape_item):
-            for album in self.iter_children(scrape_item, soup.select(self.profile_item_selector)):
-                self.manager.task_group.create_task(self.run(album))
+            for src, item in self.iter_children(scrape_item, soup.select(self.profile_item_selector)):
+                # Item may be an image, a video or an album
+                # For images, we can download the file from the thumbnail
+                if any(p in item.url.parts for p in self.images_parts):
+                    item.url = src
+                    await self.handle_direct_link(item)
+                    return
+                # For videos and albums, we have to keep scraping
+                self.manager.task_group.create_task(self.run(item))
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
@@ -153,21 +160,23 @@ class CheveretoCrawler(Crawler):
         scrape_item.setup_as_album(title, album_id=album_id)
 
         async for soup in self.web_pager(scrape_item):
-            for image in self.iter_children(scrape_item, soup.select(self.album_img_selector), "src"):
-                if not self.check_album_results(image.url, results):
+            for image_src, image in self.iter_children(scrape_item, soup.select(self.album_img_selector)):
+                if not self.check_album_results(image_src, results):
+                    image.url = image_src
                     await self.handle_direct_link(image)
 
         async for soup in self.web_pager(scrape_item, sub_albums=True):
-            for sub_album in self.iter_children(scrape_item, soup.select(self.profile_item_selector)):
+            for _, sub_album in self.iter_children(scrape_item, soup.select(self.profile_item_selector)):
                 self.manager.task_group.create_task(self.run(sub_album))
 
-    def iter_children(self, scrape_item: ScrapeItem, children: Sequence[Tag], selector: str = "href"):
+    def iter_children(self, scrape_item: ScrapeItem, children: Sequence[Tag]) -> Generator[tuple[URL, ScrapeItem]]:
+        """Generates tuple with an URL from the `src` value and a new scrape item from the `href` value`"""
         for item in children:
-            link_str: str = item.get(selector)  # type: ignore
-            link = self.parse_url(link_str)
+            src_str, link_str = item["src"], item["href"]
+            src, link = self.parse_url(src_str), self.parse_url(link_str)  # type: ignore
             new_scrape_item = scrape_item.create_child(link)
             scrape_item.add_children()
-            yield new_scrape_item
+            yield src, new_scrape_item
 
     async def video(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a video."""
