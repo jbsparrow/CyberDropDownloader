@@ -6,7 +6,7 @@ import re
 from typing import TYPE_CHECKING, ClassVar, Literal
 
 from aiolimiter import AsyncLimiter
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import PasswordProtectedError, ScrapeError
@@ -14,7 +14,7 @@ from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator, Sequence
+    from collections.abc import AsyncGenerator, Generator
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
@@ -73,9 +73,9 @@ class CheveretoCrawler(Crawler):
         self.primary_base_domain = self.PRIMARY_BASE_DOMAINS.get(site, URL(f"https://{site}"))
         self.next_page_selector = "a[data-pagination=next]"
         self.album_title_selector = "a[data-text=album-name]"
-        self.album_img_selector = "a[class='image-container --media'] img"
-        self.profile_item_selector = "a[class='image-container --media']"
+        self.item_selector = "a[class='image-container --media']"
         self.profile_title_selector = 'meta[property="og:title"]'
+
         self.images_parts = "image", "img"
         self.album_parts = "a", "album"
         self.video_parts = "video", "videos"
@@ -115,7 +115,7 @@ class CheveretoCrawler(Crawler):
         scrape_item.setup_as_profile(title)
 
         async for soup in self.web_pager(scrape_item):
-            for src, item in self.iter_children(scrape_item, soup.select(self.profile_item_selector)):
+            for src, item in self.iter_children(scrape_item, soup):
                 # Item may be an image, a video or an album
                 # For images, we can download the file from the thumbnail
                 if any(p in item.url.parts for p in self.images_parts):
@@ -154,19 +154,19 @@ class CheveretoCrawler(Crawler):
         scrape_item.setup_as_album(title, album_id=album_id)
 
         async for soup in self.web_pager(scrape_item):
-            for image_src, image in self.iter_children(scrape_item, soup.select(self.album_img_selector)):
+            for image_src, image in self.iter_children(scrape_item, soup):
                 if not self.check_album_results(image_src, results):
                     _, image.url = self.get_canonical_url(image, url_type="image")
                     await self.handle_direct_link(image, image_src)
 
         async for soup in self.web_pager(scrape_item, sub_albums=True):
-            for _, sub_album in self.iter_children(scrape_item, soup.select(self.profile_item_selector)):
+            for _, sub_album in self.iter_children(scrape_item, soup):
                 self.manager.task_group.create_task(self.run(sub_album))
 
-    def iter_children(self, scrape_item: ScrapeItem, children: Sequence[Tag]) -> Generator[tuple[URL, ScrapeItem]]:
+    def iter_children(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> Generator[tuple[URL, ScrapeItem]]:
         """Generates tuple with an URL from the `src` value and a new scrape item from the `href` value`"""
-        for item in children:
-            src_str, link_str = item["src"], item["href"]
+        for item in soup.select(self.item_selector):
+            src_str, link_str = item.select_one("img")["src"], item["href"]  # type: ignore
             src, link = self.parse_url(src_str), self.parse_url(link_str)  # type: ignore
             new_scrape_item = scrape_item.create_child(link)
             scrape_item.add_children()
