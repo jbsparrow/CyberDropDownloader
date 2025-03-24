@@ -80,4 +80,4 @@ class HttpAppriseURL(AppriseURLModel):
 
 
 # DEPRECATED
-# HttpURL = Annotated[HttpUrl, AfterValidator(convert_to_yarl), StrSerializer]
+HttpURL = Annotated[HttpUrl, AfterValidator(convert_to_yarl), StrSerializer]
