@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import TYPE_CHECKING, Annotated, NamedTuple
+from typing import TYPE_CHECKING, Annotated, Any, NamedTuple
 
-from pydantic import Field, PlainValidator
+from pydantic import AliasPath, Field, PlainValidator
 from yarl import URL
 
 from cyberdrop_dl.config_definitions.custom.types import AliasModel
@@ -167,12 +167,11 @@ class Gallery(XHamsterItem):
 class Video(XHamsterItem):
     title: str
     mp4_file: HttpURL = Field(alias="mp4File")
-    sources: dict = Field({})
+    mp4_sources: dict[str, Any] = Field({}, validation_alias=AliasPath("sources", "mp4"))
 
     def get_formats(self) -> Generator[Format]:
-        mp4_sources: dict[str, str] = self.sources.get("mp4") or {}
         yield Format(0, "Unknown", self.mp4_file)
-        for resolution, details in mp4_sources.items():
+        for resolution, details in self.mp4_sources.items():
             height = int(resolution.removesuffix("p"))
             link: str = details["link"] if isinstance(details, dict) else details
             url = parse_url(link, relative_to=PRIMARY_BASE_DOMAIN)
