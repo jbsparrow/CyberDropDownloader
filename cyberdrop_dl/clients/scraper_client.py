@@ -373,6 +373,6 @@ class ScraperClient:
             info = info | {"error": str(exc), "exception": repr(exc)}
         text = f"<!-- cyberdrop-dl scraping result\n{json.dumps(info, indent=4, ensure_ascii=False)}\n-->\n{html_text}"
         try:
-            await asyncio.to_thread(file_path.write_text, text)
+            await asyncio.to_thread(file_path.write_text, text, "utf8")
         except OSError:
             pass
