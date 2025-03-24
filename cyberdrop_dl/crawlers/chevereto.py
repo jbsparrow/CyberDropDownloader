@@ -209,18 +209,9 @@ class CheveretoCrawler(Crawler):
             except AttributeError:
                 raise ScrapeError(422, f"Couldn't find {url_type} source") from None
 
+            add_date_from_soup(scrape_item, soup)
+
         scrape_item.url = canonical_url
-        desc_rows = soup.select(ITEM_DESCRIPTION_SELECTOR)
-        date_str: str | None = None
-        for row in desc_rows:
-            if any(text in row.text.casefold() for text in ("uploaded", "added to")):
-                date_str = row.select_one("span").get("title")  # type: ignore
-                break
-
-        if date_str:
-            date = parse_datetime(date_str)
-            scrape_item.possible_datetime = date
-
         await self.handle_direct_link(scrape_item, link)
 
     @error_handling_wrapper
@@ -293,3 +284,16 @@ def parse_datetime(date: str) -> int:
 def is_direct_link(url: URL) -> bool:
     """Determines if the url is a direct link or not."""
     return bool(CDN_POSSIBILITIES.match(str(url)))
+
+
+def add_date_from_soup(scrape_item: ScrapeItem, soup: BeautifulSoup) -> None:
+    desc_rows = soup.select(ITEM_DESCRIPTION_SELECTOR)
+    date_str: str | None = None
+    for row in desc_rows:
+        if any(text in row.text.casefold() for text in ("uploaded", "added to")):
+            date_str = row.select_one("span").get("title")  # type: ignore
+            break
+
+    if date_str:
+        date = parse_datetime(date_str)
+        scrape_item.possible_datetime = date
