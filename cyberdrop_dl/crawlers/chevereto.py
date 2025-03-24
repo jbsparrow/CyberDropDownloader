@@ -94,18 +94,18 @@ class CheveretoCrawler(Crawler):
         """Determines where to send the scrape item based on the url."""
         if is_direct_link(scrape_item.url):
             return await self.handle_direct_link(scrape_item)
+
         scrape_item.url = scrape_item.url.with_host(self.primary_base_domain.host)  # type: ignore
         if any(part in scrape_item.url.parts for part in self.album_parts):
-            await self.album(scrape_item)
-        elif any(part in scrape_item.url.parts for part in self.images_parts):
-            await self.image(scrape_item)
-        elif any(part in scrape_item.url.parts for part in self.video_parts):
-            await self.video(scrape_item)
-        elif any(part in scrape_item.url.parts for part in self.direct_link_parts):
-            filename, ext = get_filename_and_ext(scrape_item.url.name)
-            await self.handle_file(scrape_item.url, scrape_item, filename, ext)
-        else:
-            await self.profile(scrape_item)
+            return await self.album(scrape_item)
+        if any(part in scrape_item.url.parts for part in self.images_parts):
+            return await self.image(scrape_item)
+        if any(part in scrape_item.url.parts for part in self.video_parts):
+            return await self.video(scrape_item)
+        if any(part in scrape_item.url.parts for part in self.direct_link_parts):
+            return await self.handle_direct_link(scrape_item)
+
+        await self.profile(scrape_item)
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
@@ -123,8 +123,7 @@ class CheveretoCrawler(Crawler):
                 # Item may be an image, a video or an album
                 # For images, we can download the file from the thumbnail
                 if any(p in item.url.parts for p in self.images_parts):
-                    item.url = src
-                    await self.handle_direct_link(item)
+                    await self.handle_direct_link(item, src)
                     return
                 # For videos and albums, we have to keep scraping
                 self.manager.task_group.create_task(self.run(item))
@@ -162,8 +161,7 @@ class CheveretoCrawler(Crawler):
         async for soup in self.web_pager(scrape_item):
             for image_src, image in self.iter_children(scrape_item, soup.select(self.album_img_selector)):
                 if not self.check_album_results(image_src, results):
-                    image.url = image_src
-                    await self.handle_direct_link(image)
+                    await self.handle_direct_link(image, image_src)
 
         async for soup in self.web_pager(scrape_item, sub_albums=True):
             for _, sub_album in self.iter_children(scrape_item, soup.select(self.profile_item_selector)):
@@ -232,13 +230,14 @@ class CheveretoCrawler(Crawler):
         await self.handle_file(link, scrape_item, filename, ext)
 
     @error_handling_wrapper
-    async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:
+    async def handle_direct_link(self, scrape_item: ScrapeItem, url: URL | None = None) -> None:
         """Handles a direct link."""
-        scrape_item.url = scrape_item.url.with_name(scrape_item.url.name.replace(".md.", ".").replace(".th.", "."))
+        link = url or scrape_item.url
+        link = link.with_name(link.name.replace(".md.", ".").replace(".th.", "."))
         pattern = r"(jpg\.fish/)|(jpg\.fishing/)|(jpg\.church/)"
-        scrape_item.url = self.parse_url(re.sub(pattern, r"host.church/", str(scrape_item.url)))
-        filename, ext = get_filename_and_ext(scrape_item.url.name)
-        await self.handle_file(scrape_item.url, scrape_item, filename, ext)
+        link = self.parse_url(re.sub(pattern, r"host.church/", str(url)))
+        filename, ext = get_filename_and_ext(link.name)
+        await self.handle_file(link, scrape_item, filename, ext)
 
     async def get_embed_info(self, url: URL) -> tuple[str, URL]:
         embed_url = self.primary_base_domain / "oembed" / ""
