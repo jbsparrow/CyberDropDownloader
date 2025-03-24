@@ -21,10 +21,9 @@ from pydantic import (
     model_serializer,
     model_validator,
 )
-from pydantic import HttpUrl as PydanticHttpUrl
 
-from .converters import change_path_suffix, convert_byte_size_to_str, convert_to_yarl
-from .validators import parse_apprise_url, parse_falsy_as_none, parse_list
+from .converters import change_path_suffix, convert_byte_size_to_str
+from .validators import parse_apprise_url, parse_falsy_as_none, parse_list, pydantyc_yarl_url
 
 # ~~~~~ Strings ~~~~~~~
 StrSerializer = PlainSerializer(str, return_type=str, when_used="json-unless-none")
@@ -37,12 +36,10 @@ PathOrNone = Annotated[Path | None, BeforeValidator(parse_falsy_as_none)]
 LogPath = Annotated[Path, AfterValidator(partial(change_path_suffix, suffix=".csv"))]
 MainLogPath = Annotated[LogPath, AfterValidator(partial(change_path_suffix, suffix=".log"))]
 
-# ~~~~~ URLs ~~~~~~~
-URLSerilized = Annotated[yarl.URL, StrSerializer]
-HttpStr = Annotated[URLSerilized, PlainValidator(str)]  # URL in type hints, str at runtime
-HttpStrURL = Annotated[HttpStr, AfterValidator(convert_to_yarl)]  # URL with str validation
-HttpUrl = Annotated[URLSerilized, PlainValidator(PydanticHttpUrl)]  # URL in type hints, pydantic.HttpUrl at runtime
-HttpURL = Annotated[HttpUrl, AfterValidator(convert_to_yarl)]  # URL with pydantic.HttpUrl validation
+# URL with pydantic.HttpUrl validation (must be absolute, must be http/https, detailed validation error).
+# In type hints it's a yarl.URL. After validation the result is parsed with `parse_url` so this is also a yarl.URL at runtime
+# Only use for config validation. To parse URLs internally while scraping, call `parse_url` directly
+HttpURL = Annotated[yarl.URL, PlainValidator(pydantyc_yarl_url), StrSerializer]
 
 # ~~~~~ Others ~~~~~~~
 ByteSizeSerilized = Annotated[ByteSize, PlainSerializer(convert_byte_size_to_str, return_type=str)]
@@ -80,4 +77,4 @@ class HttpAppriseURL(AppriseURLModel):
 
 
 # DEPRECATED
-HttpURL = Annotated[HttpUrl, AfterValidator(convert_to_yarl), StrSerializer]
+# HttpURL = Annotated[HttpUrl, AfterValidator(convert_to_yarl), StrSerializer]
