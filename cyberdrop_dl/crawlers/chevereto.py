@@ -119,6 +119,7 @@ class CheveretoCrawler(Crawler):
                 # Item may be an image, a video or an album
                 # For images, we can download the file from the thumbnail
                 if any(p in item.url.parts for p in self.images_parts):
+                    _, item.url = self.get_canonical_url(item, url_type="image")
                     await self.handle_direct_link(item, src)
                     return
                 # For videos and albums, we have to keep scraping
@@ -155,6 +156,7 @@ class CheveretoCrawler(Crawler):
         async for soup in self.web_pager(scrape_item):
             for image_src, image in self.iter_children(scrape_item, soup.select(self.album_img_selector)):
                 if not self.check_album_results(image_src, results):
+                    _, image.url = self.get_canonical_url(image, url_type="image")
                     await self.handle_direct_link(image, image_src)
 
         async for soup in self.web_pager(scrape_item, sub_albums=True):
@@ -191,7 +193,7 @@ class CheveretoCrawler(Crawler):
             return
 
         if self.domain == "jpg5.su":
-            filename, link = await self.get_embed_info(scrape_item.url)
+            _, link = await self.get_embed_info(scrape_item.url)
         else:
             async with self.request_limiter:
                 soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
@@ -199,9 +201,6 @@ class CheveretoCrawler(Crawler):
             try:
                 link_str: str = soup.select_one(selector[0]).get(selector[1])  # type: ignore
                 link = self.parse_url(link_str)
-                name = link.name.replace(".md.", ".").replace(".th.", ".")
-                link = link.with_name(name)
-                filename = link.name
 
             except AttributeError:
                 raise ScrapeError(422, f"Couldn't find {url_type} source") from None
@@ -218,8 +217,7 @@ class CheveretoCrawler(Crawler):
             date = parse_datetime(date_str)
             scrape_item.possible_datetime = date
 
-        filename, ext = get_filename_and_ext(filename)
-        await self.handle_file(link, scrape_item, filename, ext)
+        await self.handle_direct_link(scrape_item, link)
 
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem, url: URL | None = None) -> None:
