@@ -47,6 +47,7 @@ class PathManager:
         self.unsupported_urls_log: Path = field(init=False)
         self.download_error_urls_log: Path = field(init=False)
         self.scrape_error_urls_log: Path = field(init=False)
+        self.pages_folder: Path = field(init=False)
 
         self._logs_model_names = [
             "main_log",
@@ -120,6 +121,8 @@ class PathManager:
             internal_name = f"{model_name.replace('_log', '')}_log"
             setattr(self, internal_name, self.log_folder / getattr(log_settings_config, model_name))
 
+        self.pages_folder = self.main_log.parent / "cdl_responses"
+
     def _delete_logs_and_folders(self, now: datetime):
         if self.manager.config_manager.settings_data.logs.logs_expire_after:
             for file in set(self.log_folder.rglob("*.log")) | set(self.log_folder.rglob("*.csv")):
@@ -134,6 +137,9 @@ class PathManager:
             internal_name = f"{model_name.replace('_log', '')}_log"
             path: Path = getattr(self, internal_name)
             path.parent.mkdir(parents=True, exist_ok=True)
+
+        if self.manager.config_manager.settings_data.files.save_pages_html:
+            self.pages_folder.mkdir(parents=True, exist_ok=True)
 
     def add_completed(self, media_item: MediaItem) -> None:
         self._completed_downloads.add(media_item)

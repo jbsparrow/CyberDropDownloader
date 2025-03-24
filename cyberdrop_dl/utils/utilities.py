@@ -13,7 +13,9 @@ from typing import TYPE_CHECKING
 
 import aiofiles
 import rich
-from aiohttp import ClientConnectorError, ClientSession, FormData
+from aiohttp import ClientConnectorError, ClientResponse, ClientSession, FormData
+from bs4 import BeautifulSoup
+from curl_cffi.requests.models import Response as CurlResponse
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import (
@@ -408,6 +410,17 @@ def remove_trailing_slash(url: URL) -> URL:
     if url.name or url.path == "/":
         return url
     return url.parent.with_fragment(url.fragment).with_query(url.query)
+
+
+async def get_soup_from_response(response: CurlResponse | ClientResponse) -> BeautifulSoup | None:
+    response_text = None
+    with contextlib.suppress(UnicodeDecodeError):
+        response_text = response.text if isinstance(response, CurlResponse) else await response.text()
+
+    if not response_text:
+        return
+
+    return BeautifulSoup(response_text, "html.parser")
 
 
 log_cyan = partial(log_with_color, style="cyan", level=20)
