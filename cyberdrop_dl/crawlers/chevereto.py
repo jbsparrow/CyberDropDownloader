@@ -2,9 +2,8 @@ from __future__ import annotations
 
 import calendar
 import datetime
-import enum
 import re
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, Literal
 
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup, Tag
@@ -32,10 +31,7 @@ JS_CONTENT_START = "document.addEventListener('DOMContentLoaded', function(event
 ITEM_DESCRIPTION_SELECTOR = "p[class*=description-meta]"
 
 
-class UrlType(enum.StrEnum):
-    album = enum.auto()
-    image = enum.auto()
-    video = enum.auto()
+UrlType = Literal["album", "image", "video"]
 
 
 class CheveretoCrawler(Crawler):
@@ -143,12 +139,10 @@ class CheveretoCrawler(Crawler):
         scrape_item.url = canonical_url
 
         if "This content is password protected" in soup.text and password:
-            password_data = {"content-password": password}
+            data = {"content-password": password}
             async with self.request_limiter:
-                soup = BeautifulSoup(
-                    await self.client.post_data(self.domain, scrape_item.url, data=password_data, raw=True),
-                    "html.parser",
-                )
+                html = await self.client.post_data(self.domain, scrape_item.url, data=data, raw=True)
+                soup = BeautifulSoup(html, "html.parser")
 
         if "This content is password protected" in soup.text:
             raise PasswordProtectedError(message="Wrong password" if password else None)
@@ -178,15 +172,13 @@ class CheveretoCrawler(Crawler):
 
     async def video(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a video."""
-        url_type = UrlType.video
         selector = "meta[property='og:video']", "content"
-        await self._proccess_media_item(scrape_item, url_type, selector)
+        await self._proccess_media_item(scrape_item, "video", selector)
 
     async def image(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image."""
-        url_type = UrlType.image
         selector = "div[id=image-viewer] img", "src"
-        await self._proccess_media_item(scrape_item, url_type, selector)
+        await self._proccess_media_item(scrape_item, "image", selector)
 
     @error_handling_wrapper
     async def _proccess_media_item(self, scrape_item: ScrapeItem, url_type: UrlType, selector: tuple[str, str]) -> None:
@@ -212,7 +204,7 @@ class CheveretoCrawler(Crawler):
                 filename = link.name
 
             except AttributeError:
-                raise ScrapeError(422, f"Couldn't find {url_type.value} source") from None
+                raise ScrapeError(422, f"Couldn't find {url_type} source") from None
 
         scrape_item.url = canonical_url
         desc_rows = soup.select(ITEM_DESCRIPTION_SELECTOR)
@@ -255,15 +247,13 @@ class CheveretoCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    def get_canonical_url(self, scrape_item: ScrapeItem, url_type: UrlType = UrlType.album) -> tuple[str, URL]:
+    def get_canonical_url(self, scrape_item: ScrapeItem, url_type: UrlType = "album") -> tuple[str, URL]:
         "Returns the id and canonical URL from a given item (album, image or video)"
-        if url_type not in UrlType:
-            raise ValueError("Invalid URL Type")
 
         search_parts = self.album_parts
-        if url_type == UrlType.image:
+        if url_type == "image":
             search_parts = self.images_parts
-        elif url_type == UrlType.video:
+        elif url_type == "video":
             search_parts = self.video_parts
 
         found_part = next(part for part in search_parts if part in scrape_item.url.parts)
