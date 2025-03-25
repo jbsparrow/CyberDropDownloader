@@ -24,7 +24,7 @@ from cyberdrop_dl.ui.textual import TextualUI
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.apprise import send_apprise_notifications
 from cyberdrop_dl.utils.dumper import Dumper
-from cyberdrop_dl.utils.logger import LogHandler, QueuedLogger, log, log_spacer, log_with_color
+from cyberdrop_dl.utils.logger import LogHandler, QueuedLogger, TextualLogQueueHandler, log, log_spacer, log_with_color
 from cyberdrop_dl.utils.sorting import Sorter
 from cyberdrop_dl.utils.updates import check_latest_pypi
 from cyberdrop_dl.utils.utilities import check_partials_and_empty_folders, send_webhook_message
@@ -75,13 +75,11 @@ async def textual_ui(manager: Manager):
         ui_task = None
         try:
             textual_ui = TextualUI(manager)
-            constants.TEXTUAL_UI = textual_ui
             ui_task = asyncio.create_task(textual_ui.run_async())
             yield
         finally:
             if ui_task:
                 textual_ui.exit()
-                constants.TEXTUAL_UI = None
                 await ui_task
     else:
         yield
@@ -248,7 +246,9 @@ def setup_logger(manager: Manager, config_name: str) -> None:
 
     file_handler = LogHandler(level=log_level, file=file_io, width=settings_data.logs.log_line_width)
     queued_logger = QueuedLogger(manager, file_handler)
+    textual_log_handler = TextualLogQueueHandler(manager)
     logger.addHandler(queued_logger.handler)
+    logger.addHandler(textual_log_handler)
 
 
 def ui_error_handling_wrapper(func: Callable) -> Callable:

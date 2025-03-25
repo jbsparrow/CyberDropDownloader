@@ -53,20 +53,6 @@ RICH_LOG_LEVELS = {
 }
 
 
-def get_log_level_text(name: str, color: str) -> Text:
-    #  From markup to prevent applying the color to the entire line
-    return Text.from_markup(f"[{color}]{name}[/{color}]") if color else Text(name)
-
-
-RICH_LOG_LEVELS = {
-    10: get_log_level_text("DEBUG    ", "cyan"),
-    20: get_log_level_text("INFO     ", ""),
-    30: get_log_level_text("WARNING  ", "yellow"),
-    40: get_log_level_text("ERROR    ", "bold red"),
-    50: get_log_level_text("CRITICAL ", "bold red"),
-}
-
-
 class LogHandler(RichHandler):
     """Rich Handler with default settings, automatic console creation and custom log render to remove padding in files."""
 
@@ -98,6 +84,17 @@ class BareQueueHandler(QueueHandler):
 
     def prepare(self, record: logging.LogRecord) -> logging.LogRecord:
         return record
+
+
+class TextualLogQueueHandler(QueueHandler):
+    """Auto queue and format the log record as a rich text before sending it to the queue"""
+
+    def __init__(self, manager: Manager):
+        manager.textual_log_queue = q = queue.Queue()
+        super().__init__(q)
+
+    def prepare(self, record: logging.LogRecord) -> Text:
+        return create_rich_log_msg(record.getMessage(), record.levelno)
 
 
 class QueuedLogger:
@@ -231,9 +228,6 @@ def create_rich_log_msg(msg: str, level: int = 10) -> Text:
 def log(message: dict | Exception | str, level: int = 10, **kwargs) -> None:
     """Simple logging function."""
     msg = process_log_msg(message)
-    if constants.TEXTUAL_UI:
-        rich_msg = create_rich_log_msg(msg, level)
-        constants.TEXTUAL_UI.log_to_ui(rich_msg)
     logger.log(level, msg, **kwargs)
     log_debug(msg, level, **kwargs)
 

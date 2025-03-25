@@ -2,7 +2,7 @@ import re
 from datetime import UTC, datetime
 from enum import Enum, IntEnum, StrEnum, auto
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from rich.text import Text
 
@@ -12,11 +12,8 @@ STARTUP_TIME_UTC = datetime.now(UTC)
 LOGS_DATETIME_FORMAT = "%Y%m%d_%H%M%S"
 LOGS_DATE_FORMAT = "%Y_%m_%d"
 
-if TYPE_CHECKING:
-    from cyberdrop_dl.ui.textual import TextualUI
 
 # logging
-TEXTUAL_UI: "TextualUI | None" = None
 CONSOLE_LEVEL = 100
 MAX_NAME_LENGTHS = {"FILE": 95, "FOLDER": 60}
 DEFAULT_CONSOLE_WIDTH = 240

@@ -37,7 +37,7 @@ class TextualUI(App):
     def __init__(self, manager: Manager):
         super().__init__()
         self.manager = manager
-        self.queue: queue.Queue[Text] = queue.Queue()
+        self.queue: queue.Queue[Text] = manager.textual_log_queue
         self.auto_scroll = True
 
     def compose(self) -> ComposeResult:
@@ -75,9 +75,6 @@ class TextualUI(App):
                 self.queue.task_done()
             except queue.Empty:
                 break
-
-    def log_to_ui(self, msg: Text) -> None:
-        self.queue.put_nowait(msg)
 
     def action_toggle_dark(self) -> None:
         self.theme = "textual-dark" if self.theme == "textual-light" else "textual-light"

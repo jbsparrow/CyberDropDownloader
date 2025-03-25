@@ -26,6 +26,7 @@ from cyberdrop_dl.utils.logger import QueuedLogger, log
 from cyberdrop_dl.utils.transfer import transfer_v5_db_to_v6
 
 if TYPE_CHECKING:
+    import queue
     from asyncio import TaskGroup
 
     from cyberdrop_dl.scraper.scrape_mapper import ScrapeMapper
@@ -52,6 +53,7 @@ class Manager:
         self.download_manager: DownloadManager = field(init=False)
         self.progress_manager: ProgressManager = field(init=False)
         self.live_manager: LiveManager = field(init=False)
+        self.textual_log_queue: queue.Queue = field(init=False)
 
         self._loaded_args_config: bool = False
         self._made_portable: bool = False
