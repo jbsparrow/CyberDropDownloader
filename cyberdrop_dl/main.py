@@ -70,7 +70,7 @@ def startup() -> Manager:
 
 @contextlib.asynccontextmanager
 async def textual_ui(manager: Manager):
-    if manager.parsed_args.cli_only_args.textual_ui:
+    if manager.live_manager.use_textual:
         UI = TextualUI
         if manager.parsed_args.cli_only_args.portrait:
             UI = PortraitTextualUI
