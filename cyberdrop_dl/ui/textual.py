@@ -18,14 +18,17 @@ if TYPE_CHECKING:
 # Only global binding
 PAUSE = Binding("p", "pause_resume", "Pause/Resume")
 
-DARK_MODE = ("d", "toggle_dark", "Dark Mode")
-VIEW_LOGS = ("l", "toggle_logs", "Switch To Logs/UI")
-AUTO_SCROLL_LOGS = ("s", "toggle_auto_scroll_logs", "AutoScroll ON/OFF")
-EXTRACT_COOKIES = ("ctrl+i", "extract_cookies", "Extract Cookies")
+CORE_BINDINGS = [
+    (VIEW_LOGS := ("l", "toggle_logs", "Switch To Logs/UI")),
+    (AUTO_SCROLL_LOGS := ("s", "toggle_auto_scroll_logs", "AutoScroll ON/OFF")),
+    (EXTRACT_COOKIES := ("ctrl+i", "extract_cookies", "Extract Cookies")),
+]
 
-CORE_BINDINGS: list[tuple[str, ...]] = [VIEW_LOGS, AUTO_SCROLL_LOGS, EXTRACT_COOKIES]
 LANDSCAPE_BINDINGS: list[Binding] = [PAUSE] + [Binding(*b, show=True) for b in CORE_BINDINGS]
 PORTRAIT_BINDINGS: list[Binding] = [PAUSE] + [Binding(*b, show=False) for b in CORE_BINDINGS]
+
+# Not used
+DARK_MODE = ("d", "toggle_dark", "Dark Mode")
 
 
 class LiveConsole(Static):
@@ -40,7 +43,7 @@ class LiveConsole(Static):
 class TextualUI(App[int]):
     TITLE = "cyberdrop-dl"
     SUB_TITLE = "Main UI"
-    BINDINGS = [PAUSE, VIEW_LOGS, AUTO_SCROLL_LOGS, EXTRACT_COOKIES]  # noqa: RUF012
+    BINDINGS = LANDSCAPE_BINDINGS  # type: ignore
 
     def __init__(self, manager: Manager):
         super().__init__()
