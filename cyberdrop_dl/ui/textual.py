@@ -98,3 +98,8 @@ class TextualUI(App[int]):
         # Quit
         self.manager.shutdown(from_user=True)
         self.exit(0)
+
+    def action_help_quit(self) -> None:
+        """Bound to ctrl+C to alert the user that it no longer quits."""
+        # Doing this because users will reflexively hit ctrl+C to exit
+        self.notify("Press [b]ctrl+q[/b] to quit the cyberdrop-dl", title="Do you want to quit?")
