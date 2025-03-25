@@ -5,6 +5,7 @@ import json
 from contextlib import asynccontextmanager
 from datetime import datetime
 from functools import wraps
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import aiohttp
@@ -17,7 +18,7 @@ from curl_cffi.requests.models import Response as CurlResponse
 import cyberdrop_dl.utils.constants as constants
 from cyberdrop_dl.clients.errors import DDOSGuardError, DownloadError, InvalidContentTypeError, ScrapeError
 from cyberdrop_dl.utils.logger import log_debug
-from cyberdrop_dl.utils.utilities import get_filename_and_ext, get_soup_from_response
+from cyberdrop_dl.utils.utilities import get_soup_from_response, sanitize_filename
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -357,8 +358,8 @@ class ScraperClient:
         log_date = now.strftime(constants.LOGS_DATETIME_FORMAT)
         url_str = str(url)
         response_url_str = str(response.url)
-        stem = f"{url_str[: self.max_html_stem_len]}_{log_date}"
-        filename, _ = get_filename_and_ext(f"{stem}.html")
+        clean_url = sanitize_filename(Path(url_str).as_posix().replace("/", "-"))
+        filename = f"{clean_url[: self.max_html_stem_len]}_{log_date}.html"
         file_path = self.pages_folder / filename
         info = {
             "crawler": domain,
