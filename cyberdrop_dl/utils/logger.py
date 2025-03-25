@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import logging
 import queue
-import random
 from logging.handlers import QueueHandler, QueueListener
 from pathlib import Path
 from typing import IO, TYPE_CHECKING
@@ -219,7 +218,7 @@ def process_log_msg(message: dict | Exception | str) -> str:
 
 
 def create_rich_log_msg(msg: str, level: int = 10) -> Text:
-    level = random.choice(range(10, 51, 10))
+    # level = random.choice(range(10, 51, 10))
     rich_level = RICH_LOG_LEVELS.get(level) or RICH_LOG_LEVELS[10]
     # msg = f"{msg}\nline 2"
     return rich_level + indent_string(msg)
