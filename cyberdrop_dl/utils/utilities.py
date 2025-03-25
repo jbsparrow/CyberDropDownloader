@@ -15,7 +15,6 @@ import aiofiles
 import rich
 from aiohttp import ClientConnectorError, ClientResponse, ClientSession, FormData
 from bs4 import BeautifulSoup
-from curl_cffi.requests.models import Response as CurlResponse
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import (
@@ -32,6 +31,7 @@ from cyberdrop_dl.utils.logger import log, log_debug, log_spacer, log_with_color
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from curl_cffi.requests.models import Response as CurlResponse
     from rich.text import Text
 
     from cyberdrop_dl.crawlers import Crawler
@@ -415,7 +415,7 @@ def remove_trailing_slash(url: URL) -> URL:
 async def get_soup_from_response(response: CurlResponse | ClientResponse) -> BeautifulSoup | None:
     response_text = None
     with contextlib.suppress(UnicodeDecodeError):
-        response_text = response.text if isinstance(response, CurlResponse) else await response.text()
+        response_text = await response.text() if isinstance(response, ClientResponse) else response.text
 
     if not response_text:
         return
