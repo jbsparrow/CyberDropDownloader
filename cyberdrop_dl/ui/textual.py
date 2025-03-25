@@ -3,13 +3,14 @@ from __future__ import annotations
 import queue
 from typing import TYPE_CHECKING
 
-from textual.app import App, ComposeResult
+from textual.app import App, ComposeResult, SystemCommand
 from textual.widgets import Footer, RichLog, Static, TabbedContent, TabPane
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Iterable
 
     from rich.text import Text
+    from textual.screen import Screen
 
     from cyberdrop_dl.managers.manager import Manager
 
@@ -67,7 +68,7 @@ class TextualUI(App[int]):
         for msg in self.get_queued_log_messages():
             logger.write(msg, scroll_end=self.auto_scroll)
 
-    def get_queued_log_messages(self) -> Generator[Text]:
+    def get_queued_log_messages(self) -> Iterable[Text]:
         while True:
             try:
                 log_msg = self.queue.get(block=False)
@@ -102,4 +103,44 @@ class TextualUI(App[int]):
     def action_help_quit(self) -> None:
         """Bound to ctrl+C to alert the user that it no longer quits."""
         # Doing this because users will reflexively hit ctrl+C to exit
-        self.notify("Press [b]ctrl+q[/b] to quit the cyberdrop-dl", title="Do you want to quit?")
+        self.notify("Press [b]ctrl+q[/b] to quit [b]cyberdrop-dl[/b]", title="Do you want to quit?")
+
+    def get_system_commands(self, screen: Screen) -> Iterable[SystemCommand]:
+        """Custom system commands to remove `take screenshot` from the command palette."""
+
+        yield SystemCommand(
+            "Pause/Resume",
+            "Pause all scraping and downloading progress",
+            self.action_pause_resume,
+        )
+
+        yield SystemCommand(
+            "AutoScroll ON/OFF",
+            "Toggle auto scroll in the logs tab",
+            self.action_toggle_auto_scroll_logs,
+        )
+
+        yield SystemCommand(
+            "Extract Cookies",
+            "Extract cookies from browser right now and apply them to the current session",
+            self.action_extract_cookies,
+        )
+
+        if screen.query("HelpPanel"):
+            yield SystemCommand(
+                "Hide keys and help panel",
+                "Hide the keys and help panel",
+                self.action_hide_help_panel,
+            )
+        else:
+            yield SystemCommand(
+                "Show keys and help panel",
+                "Show help and a summary of available keys",
+                self.action_show_help_panel,
+            )
+
+        yield SystemCommand(
+            "Quit the application",
+            "Quit the application as soon as possible",
+            self.action_quit,
+        )
