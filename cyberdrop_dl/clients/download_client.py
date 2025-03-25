@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import calendar
 import copy
 import itertools
 import time
@@ -11,6 +12,7 @@ from typing import TYPE_CHECKING
 import aiofiles
 import aiohttp
 from aiohttp import ClientSession
+from dateutil import parser
 from videoprops import get_audio_properties, get_video_properties
 from yarl import URL
 
@@ -214,6 +216,8 @@ class DownloadClient:
             if resp.status != HTTPStatus.PARTIAL_CONTENT and media_item.partial_file.is_file():
                 media_item.partial_file.unlink()
 
+            if not media_item.datetime:
+                add_last_modified(media_item, resp.headers)
             media_item.task_id = self.manager.progress_manager.file_progress.add_task(
                 domain=domain,
                 filename=media_item.filename,
@@ -501,6 +505,19 @@ def get_content_type(ext: str, headers: CIMultiDictProxy) -> str | None:
         raise InvalidContentTypeError(message=msg)
 
     return content_type
+
+
+def get_last_modified(headers: CIMultiDictProxy) -> int | None:
+    if date_str := headers.get("Last-Modified"):
+        parsed_date = parser.parse(date_str)
+        return calendar.timegm(parsed_date.timetuple())
+
+
+def add_last_modified(media_item: MediaItem, headers: CIMultiDictProxy) -> None:
+    if date := get_last_modified(headers):
+        msg = f"Unable to parse upload date for {media_item.url}, using `Last-Modified` value from server as file datetime"
+        log(msg, 30)
+        media_item.datetime = date
 
 
 def is_html_or_text(content_type: str) -> bool:

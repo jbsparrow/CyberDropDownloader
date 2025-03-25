@@ -32,13 +32,11 @@
 
 from __future__ import annotations
 
-import calendar
 import re
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
-from dateutil import parser
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import DownloadError, ScrapeError
@@ -143,8 +141,6 @@ class GoogleDriveCrawler(Crawler):
         scrape_item.url = canonical_url
 
         filename = get_filename_from_headers(headers) or link.name
-        date = get_datetime_from_headers(headers)
-        scrape_item.possible_datetime = date
         filename, ext = self.get_filename_and_ext(filename)
         await self.handle_file(canonical_url, scrape_item, filename, ext, debrid_link=link)
 
@@ -253,13 +249,6 @@ def get_filename_from_headers(headers: dict) -> str | None:
     if match:
         matches = match.groups()
         return matches[0] or matches[1]
-
-
-def get_datetime_from_headers(headers: dict) -> int | None:
-    date_str = headers.get("Last-Modified")
-    if date_str:
-        parsed_date = parser.parse(date_str)
-        return calendar.timegm(parsed_date.timetuple())
 
 
 def get_canonical_url(item_id: str, folder: bool = False) -> URL:
