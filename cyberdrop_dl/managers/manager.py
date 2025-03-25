@@ -248,10 +248,12 @@ class Manager:
 
     async def close(self) -> None:
         """Closes the manager."""
+        self.states.RUNNING.clear()
         if not isinstance(self.client_manager, Field):
             await self.client_manager.close()
         await self.async_db_close()
         await self.cache_manager.close()
+        await self.download_manager.storage_manager.close()
         self.cache_manager.close_sync()
         while self.loggers:
             _, queued_logger = self.loggers.popitem()
