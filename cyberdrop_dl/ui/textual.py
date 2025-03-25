@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import contextlib
 import queue
 from typing import TYPE_CHECKING
 
@@ -172,3 +174,20 @@ class TextualUI(App[int]):
 
 class PortraitTextualUI(TextualUI):
     BINDINGS = PORTRAIT_BINDINGS  # type: ignore
+
+
+@contextlib.asynccontextmanager
+async def textual_ui(manager: Manager):
+    if manager.live_manager.use_textual:
+        UI = TextualUI
+        if manager.parsed_args.cli_only_args.portrait:
+            UI = PortraitTextualUI
+        textual_ui = UI(manager)
+        ui_task = asyncio.create_task(textual_ui.run_async())
+        try:
+            yield
+        finally:
+            textual_ui.exit()
+            await ui_task
+    else:
+        yield

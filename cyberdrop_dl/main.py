@@ -19,7 +19,7 @@ from cyberdrop_dl.clients.errors import InvalidYamlError
 from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.scraper.scrape_mapper import ScrapeMapper
 from cyberdrop_dl.ui.program_ui import ProgramUI
-from cyberdrop_dl.ui.textual import PortraitTextualUI, TextualUI
+from cyberdrop_dl.ui.textual import textual_ui
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.apprise import send_apprise_notifications
 from cyberdrop_dl.utils.dumper import Dumper
@@ -66,23 +66,6 @@ def startup() -> Manager:
         sys.exit(1)
 
     return manager
-
-
-@contextlib.asynccontextmanager
-async def textual_ui(manager: Manager):
-    if manager.live_manager.use_textual:
-        UI = TextualUI
-        if manager.parsed_args.cli_only_args.portrait:
-            UI = PortraitTextualUI
-        textual_ui = UI(manager)
-        ui_task = asyncio.create_task(textual_ui.run_async())
-        try:
-            yield
-        finally:
-            textual_ui.exit()
-            await ui_task
-    else:
-        yield
 
 
 async def runtime(manager: Manager) -> None:
