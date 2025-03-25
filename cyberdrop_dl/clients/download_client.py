@@ -217,7 +217,7 @@ class DownloadClient:
                 media_item.partial_file.unlink()
 
             if not media_item.datetime and (last_modified := get_last_modified(resp.headers)):
-                msg = f"Unable to parse upload date for {media_item.url}, using `Last-Modified` value from server as file datetime"
+                msg = f"Unable to parse upload date for {media_item.url}, using `Last-Modified` header as file datetime"
                 log(msg, 30)
                 media_item.datetime = last_modified
 
