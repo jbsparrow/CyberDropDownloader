@@ -206,6 +206,8 @@ def indent_string(text: str, indent_level: int = 9) -> str:
 
 
 class RedactedConsole(Console):
+    """Custom console to remove username from logs"""
+
     def _render_buffer(self, buffer) -> str:
         output: str = super()._render_buffer(buffer)
         return _redact_message(output)
@@ -218,9 +220,8 @@ def process_log_msg(message: dict | Exception | str) -> str:
 
 
 def create_rich_log_msg(msg: str, level: int = 10) -> Text:
-    # level = random.choice(range(10, 51, 10))
+    """Create a rich text where the level has color"""
     rich_level = RICH_LOG_LEVELS.get(level) or RICH_LOG_LEVELS[10]
-    # msg = f"{msg}\nline 2"
     return rich_level + indent_string(msg)
 
 

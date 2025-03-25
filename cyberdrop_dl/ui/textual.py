@@ -67,10 +67,19 @@ class TextualUI(App[int]):
                 yield create_footer()
 
     def on_mount(self):
+        """Sets a refresh rate according to the config
+
+        This is only for the main UI progress. Textual will compute the required refresh for its native stuff"""
         refresh_rate = self.manager.live_manager.refresh_rate
         self.set_interval(1 / refresh_rate, self.update_live)
 
     def update_live(self) -> None:
+        """Get the current layout from the manager's live and manually update the content in the main UI"""
+
+        # This is not officially supported by textual but it works
+        # Doing this natively in textual will required a lot more work
+        # It will not look as `good` either because textual widgets are still really basic
+        # Ex: progress bar can only show % and ETA (no speed)
         content = self.manager.live_manager.live._renderable
         self.query_one(LiveConsole).update(content)  # type: ignore
 
@@ -79,6 +88,7 @@ class TextualUI(App[int]):
             logger.write(msg, scroll_end=self.auto_scroll)
 
     def get_queued_log_messages(self) -> Iterable[Text]:
+        """Get all messages from the queue handler"""
         while True:
             try:
                 log_msg = self.queue.get(block=False)
@@ -88,12 +98,14 @@ class TextualUI(App[int]):
                 break
 
     def action_toggle_dark(self) -> None:
+        """Not used"""
         self.theme = "textual-dark" if self.theme == "textual-light" else "textual-light"
 
     def action_pause_resume(self) -> None:
         self.manager.progress_manager.pause_or_resume()
 
     def action_toggle_logs(self) -> None:
+        """Switch betwen the logs tab and the main UI"""
         tabs = self.query_one(TabbedContent)
         current = tabs.active
         tabs.active = "main-ui" if current == "logs" else "logs"
@@ -102,21 +114,23 @@ class TextualUI(App[int]):
         self.auto_scroll = not self.auto_scroll
 
     def action_extract_cookies(self):
-        # This is blocking. Not ideal but it works
+        """Extract cookies right now and apply them to the current session
+
+        This is IO blocking. Not ideal but it works"""
+
         self.manager.client_manager.load_cookie_files()
 
     def action_quit(self):
-        # Quit
+        """Call manager shutdown before the UI quits"""
         self.manager.shutdown(from_user=True)
         self.exit(0)
 
     def action_help_quit(self) -> None:
         """Bound to ctrl+C to alert the user that it no longer quits."""
-        # Doing this because users will reflexively hit ctrl+C to exit
-        self.notify("Press [b]ctrl+q[/b] to quit [b]cyberdrop-dl[/b]", title="Do you want to quit?")
+        self.notify("Press [b]ctrl+q[/b] to quit", title="Do you want to quit?")
 
     def get_system_commands(self, screen: Screen) -> Iterable[SystemCommand]:
-        """Custom system commands to remove `take screenshot` from the command palette."""
+        """Custom system commands to remove `take screenshot` and `change theme` from the command palette."""
 
         yield SystemCommand(
             "Pause/Resume",
