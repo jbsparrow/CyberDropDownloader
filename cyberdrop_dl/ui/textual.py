@@ -4,6 +4,7 @@ import queue
 from typing import TYPE_CHECKING
 
 from textual.app import App, ComposeResult, SystemCommand
+from textual.binding import Binding
 from textual.widgets import Footer, RichLog, Static, TabbedContent, TabPane
 
 if TYPE_CHECKING:
@@ -14,11 +15,17 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.managers.manager import Manager
 
+# Only global binding
+PAUSE = Binding("p", "pause_resume", "Pause/Resume")
+
 DARK_MODE = ("d", "toggle_dark", "Dark Mode")
-PAUSE = ("p", "pause_resume", "Pause/Resume")
 VIEW_LOGS = ("l", "toggle_logs", "Switch To Logs/UI")
 AUTO_SCROLL_LOGS = ("s", "toggle_auto_scroll_logs", "AutoScroll ON/OFF")
 EXTRACT_COOKIES = ("ctrl+i", "extract_cookies", "Extract Cookies")
+
+CORE_BINDINGS: list[tuple[str, ...]] = [VIEW_LOGS, AUTO_SCROLL_LOGS, EXTRACT_COOKIES]
+LANDSCAPE_BINDINGS: list[Binding] = [PAUSE] + [Binding(*b, show=True) for b in CORE_BINDINGS]
+PORTRAIT_BINDINGS: list[Binding] = [PAUSE] + [Binding(*b, show=False) for b in CORE_BINDINGS]
 
 
 class LiveConsole(Static):
@@ -144,3 +151,7 @@ class TextualUI(App[int]):
             "Quit the application as soon as possible",
             self.action_quit,
         )
+
+
+class PortraitTextualUI(TextualUI):
+    BINDINGS = PORTRAIT_BINDINGS  # type: ignore
