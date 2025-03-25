@@ -124,13 +124,15 @@ class TextualUI(App[int]):
         This is IO blocking. Not ideal but it works"""
 
         try:
-            self.manager.client_manager.load_cookie_files()
+            got_cookies = self.manager.client_manager.load_cookie_files()
         except browser_cookie3.BrowserCookieError as e:
             log(e, 40)
         except Exception as e:
             log(e, 40, exc_info=e)
         else:
-            return self.notify("Cookies imported successfully", title="Done!")
+            if got_cookies:
+                return self.notify("Cookies imported successfully", title="Done!")
+            return self.notify("Please check your config values", title="No cookies imported!", severity="warning")
 
         self.notify("See logs for details", title="Cookie extraction failed!", severity="error")
 
