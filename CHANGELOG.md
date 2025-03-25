@@ -35,12 +35,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PMVHaven.com support
 - Motherless support
 - `generic crawler` to scrape pages from sites that are not supported. This replaces the basic `no crawler` logic
+- Graceful shutdown: Pressing `Ctrl` + `C` will cancel scraping, print stats and send notifications instead of just quitting
 
 ### Changed
 
 - Flaresolverr is no longer required for Spankbang
 - Reduce rate limits (JPG5)
 - Config is revalidated after the user edits it from the UI
+- Warn about expired cookie files
 
 ### Fixed
 
@@ -56,6 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Invalid Content Type` from some URLs (bunkr)
 - jsonl timestamp serializer (`'str' object cannot be interpreted as an integer`)
 - Download profiles with more than 1k posts (RedGifs)
+- Genal performance improvements
 
 
 ## [6.7.0] - 2025-03-07
