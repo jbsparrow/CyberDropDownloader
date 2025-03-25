@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
-import signal
 import sys
 from datetime import datetime
 from functools import wraps
@@ -73,14 +72,13 @@ def startup() -> Manager:
 async def textual_ui(manager: Manager):
     if manager.parsed_args.cli_only_args.textual_ui:
         ui_task = None
+        textual_ui = TextualUI(manager)
+        ui_task = asyncio.create_task(textual_ui.run_async())
         try:
-            textual_ui = TextualUI(manager)
-            ui_task = asyncio.create_task(textual_ui.run_async())
             yield
         finally:
-            if ui_task:
-                textual_ui.exit()
-                await ui_task
+            textual_ui.exit()
+            await ui_task
     else:
         yield
 
@@ -272,21 +270,12 @@ def ui_error_handling_wrapper(func: Callable) -> Callable:
 
 
 async def scheduler(manager: Manager) -> None:
-    loop = asyncio.get_running_loop()
-
-    def shutdown(current_task: asyncio.Task):
-        log("Received keyboard interrupt, shutting down...", 30)
-        manager.states.SHUTTING_DOWN.set()
-        current_task.cancel()
-        signal.signal(signal.SIGINT, signal.SIG_DFL)
-
     for func in (runtime, post_runtime):
         if manager.states.SHUTTING_DOWN.is_set():
             return
-        current_task = asyncio.create_task(func(manager))
-        loop.add_signal_handler(signal.SIGINT, shutdown, current_task)
+        manager.current_task = t = asyncio.create_task(func(manager))
         try:
-            await current_task
+            await t
         except asyncio.CancelledError:
             if not manager.states.SHUTTING_DOWN.is_set():
                 raise

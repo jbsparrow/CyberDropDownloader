@@ -29,7 +29,7 @@ class LiveConsole(Static):
         return super().get_content_height(*args, **kwargs) - 3
 
 
-class TextualUI(App):
+class TextualUI(App[int]):
     TITLE = "cyberdrop-dl"
     SUB_TITLE = "Main UI"
     BINDINGS = [PAUSE, VIEW_LOGS, AUTO_SCROLL_LOGS, EXTRACT_COOKIES]  # noqa: RUF012
@@ -93,3 +93,8 @@ class TextualUI(App):
     def action_extract_cookies(self):
         # This is blocking. Not ideal but it works
         self.manager.client_manager.load_cookie_files()
+
+    def action_quit(self):
+        # Quit
+        self.manager.shutdown(from_user=True)
+        self.exit(0)

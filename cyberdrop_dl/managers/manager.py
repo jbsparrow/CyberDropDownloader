@@ -61,6 +61,7 @@ class Manager:
         self.task_group: TaskGroup = field(init=False)
         self.task_list: list = []
         self.scrape_mapper: ScrapeMapper = field(init=False)
+        self.current_task: asyncio.Task = field(init=False)
 
         self.vi_mode: bool = False
         self.start_time: float = perf_counter()
@@ -68,6 +69,13 @@ class Manager:
         self.multiconfig: bool = False
         self.loggers: dict[str, QueuedLogger] = {}
         self.states = AsyncioEvents()
+
+    def shutdown(self, from_user: bool = False):
+        """ "Shut everything down (something failed or the user used ctrl + q)"""
+        if from_user:
+            log("Received keyboard interrupt, shutting down...", 30)
+        self.states.SHUTTING_DOWN.set()
+        self.current_task.cancel()
 
     def startup(self) -> None:
         """Startup process for the manager."""
