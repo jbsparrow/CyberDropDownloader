@@ -71,17 +71,20 @@ def startup() -> Manager:
 
 @contextlib.asynccontextmanager
 async def textual_ui(manager: Manager):
-    ui_task = None
-    try:
-        textual_ui = TextualUI(manager)
-        constants.TEXTUAL_UI = textual_ui
-        ui_task = asyncio.create_task(textual_ui.run_async())
+    if manager.parsed_args.cli_only_args.textual_ui:
+        ui_task = None
+        try:
+            textual_ui = TextualUI(manager)
+            constants.TEXTUAL_UI = textual_ui
+            ui_task = asyncio.create_task(textual_ui.run_async())
+            yield
+        finally:
+            if ui_task:
+                textual_ui.exit()
+                constants.TEXTUAL_UI = None
+                await ui_task
+    else:
         yield
-    finally:
-        if ui_task:
-            textual_ui.exit()
-            constants.TEXTUAL_UI = None
-            await ui_task
 
 
 async def runtime(manager: Manager) -> None:
