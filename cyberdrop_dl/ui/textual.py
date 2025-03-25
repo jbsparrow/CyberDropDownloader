@@ -83,8 +83,7 @@ class TextualUI(App):
         self.theme = "textual-dark" if self.theme == "textual-light" else "textual-light"
 
     def action_pause_resume(self) -> None:
-        # Not implemented. Needs GH-PR-#820
-        return
+        self.manager.progress_manager.pause_or_resume()
 
     def action_toggle_logs(self) -> None:
         tabs = self.query_one(TabbedContent)

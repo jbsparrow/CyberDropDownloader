@@ -105,6 +105,7 @@ class ScrapeMapper:
             items_generator = self.load_links()
 
         async for item in items_generator:
+            await self.manager.states.RUNNING.wait()
             item.children_limits = self.manager.config_manager.settings_data.download_options.maximum_number_of_children
             if self.filter_items(item):
                 if item_limit and self.count >= item_limit:

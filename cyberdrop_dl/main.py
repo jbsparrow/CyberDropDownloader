@@ -37,8 +37,6 @@ if TYPE_CHECKING:
 startup_logger = logging.getLogger("cyberdrop_dl_startup")
 STARTUP_LOGGER_FILE = Path.cwd().joinpath("startup.log")
 
-SHUTDOWN = asyncio.Event()
-
 
 def startup() -> Manager:
     """Starts the program and returns the manager.
@@ -91,6 +89,7 @@ async def runtime(manager: Manager) -> None:
     if manager.multiconfig and manager.config_manager.settings_data.sorting.sort_downloads:
         return
 
+    manager.states.RUNNING.set()
     with manager.live_manager.get_main_live(stop=True):
         scrape_mapper = ScrapeMapper(manager)
         async with textual_ui(manager), asyncio.TaskGroup() as task_group:
@@ -274,19 +273,19 @@ async def scheduler(manager: Manager) -> None:
 
     def shutdown(current_task: asyncio.Task):
         log("Received keyboard interrupt, shutting down...", 30)
-        SHUTDOWN.set()
+        manager.states.SHUTTING_DOWN.set()
         current_task.cancel()
         signal.signal(signal.SIGINT, signal.SIG_DFL)
 
     for func in (runtime, post_runtime):
-        if SHUTDOWN.is_set():
+        if manager.states.SHUTTING_DOWN.is_set():
             return
         current_task = asyncio.create_task(func(manager))
         loop.add_signal_handler(signal.SIGINT, shutdown, current_task)
         try:
             await current_task
         except asyncio.CancelledError:
-            if not SHUTDOWN.is_set():
+            if not manager.states.SHUTTING_DOWN.is_set():
                 raise
 
 
@@ -318,7 +317,7 @@ async def director(manager: Manager) -> None:
 
         manager.progress_manager.print_stats(start_time)
 
-        if not configs_to_run or SHUTDOWN.is_set():
+        if not configs_to_run or manager.states.SHUTTING_DOWN.is_set():
             log_spacer(20)
             log("Checking for Updates...", 20)
             check_latest_pypi()
@@ -329,7 +328,7 @@ async def director(manager: Manager) -> None:
         await send_webhook_message(manager)
         await send_apprise_notifications(manager)
         start_time = perf_counter()
-        if SHUTDOWN.is_set():
+        if manager.states.SHUTTING_DOWN.is_set():
             return
 
 

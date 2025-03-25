@@ -11,7 +11,7 @@ from pydantic import ByteSize
 from rich.columns import Columns
 from rich.console import Group
 from rich.layout import Layout
-from rich.progress import Progress, SpinnerColumn, TaskID, TextColumn
+from rich.progress import Progress, SpinnerColumn, TaskID
 from rich.text import Text
 from yarl import URL
 
@@ -70,19 +70,27 @@ class ProgressManager:
         finally:
             self.status_message.update(self.status_message_task_id, visible=False)
 
+    def pause_or_resume(self):
+        if self.manager.states.RUNNING.is_set():
+            self.manager.states.RUNNING.clear()
+            self.activity.update(self.activity_task_id, description="Paused")
+        else:
+            self.manager.states.RUNNING.set()
+            self.activity.update(self.activity_task_id, description="Running Cyberdrop-DL")
+
     def startup(self) -> None:
         """Startup process for the progress manager."""
         spinner = SpinnerColumn(style="green", spinner_name="dots")
-        text_placeholder = TextColumn("Running Cyberdrop-DL")
-        activity_placeholder = Progress(spinner, text_placeholder)
-        activity_placeholder.add_task("running with no UI", total=100, completed=0)
+        activity = Progress(spinner, "[progress.description]{task.description}")
         self.status_message = Progress(spinner, "[progress.description]{task.description}")
 
         self.status_message_task_id = self.status_message.add_task("", total=100, completed=0, visible=False)
+        self.activity_task_id = activity.add_task("Running Cyberdrop-DL", total=100, completed=0)
+        self.activity = activity
 
-        simple_layout = Group(activity_placeholder, self.download_progress.simple_progress)
+        simple_layout = Group(activity, self.download_progress.simple_progress)
 
-        status_message_columns = Columns([activity_placeholder, self.status_message], expand=False)
+        status_message_columns = Columns([activity, self.status_message], expand=False)
 
         horizontal_layout = Layout()
         vertical_layout = Layout()
@@ -107,7 +115,7 @@ class ProgressManager:
 
         self.horizontal_layout = horizontal_layout
         self.vertical_layout = vertical_layout
-        self.activity_layout = activity_placeholder
+        self.activity_layout = activity
         self.simple_layout = simple_layout
         self.hash_remove_layout = self.hash_progress.get_removed_progress()
         self.hash_layout = self.hash_progress.get_renderable()

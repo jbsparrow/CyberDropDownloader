@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import platform
 from dataclasses import Field, field
 from time import perf_counter
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from cyberdrop_dl import __version__
 from cyberdrop_dl.config_definitions import ConfigSettings, GlobalSettings
@@ -28,6 +29,11 @@ if TYPE_CHECKING:
     from asyncio import TaskGroup
 
     from cyberdrop_dl.scraper.scrape_mapper import ScrapeMapper
+
+
+class AsyncioEvents(NamedTuple):
+    SHUTTING_DOWN: asyncio.Event = asyncio.Event()
+    RUNNING: asyncio.Event = asyncio.Event()
 
 
 class Manager:
@@ -59,6 +65,7 @@ class Manager:
         self.downloaded_data: int = 0
         self.multiconfig: bool = False
         self.loggers: dict[str, QueuedLogger] = {}
+        self.states = AsyncioEvents()
 
     def startup(self) -> None:
         """Startup process for the manager."""

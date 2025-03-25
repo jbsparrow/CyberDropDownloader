@@ -100,6 +100,8 @@ class Crawler(ABC):
         """Runs the crawler loop."""
         if not item.url.host:
             return
+
+        await self.manager.states.RUNNING.wait()
         self.waiting_items += 1
         async with self._semaphore:
             self.waiting_items -= 1
@@ -129,6 +131,7 @@ class Crawler(ABC):
         debrid_link: URL | None = None,
     ) -> None:
         """Finishes handling the file and hands it off to the downloader."""
+        await self.manager.states.RUNNING.wait()
         if custom_filename:
             original_filename, filename = filename, custom_filename
         elif self.domain in ["cyberdrop"]:
@@ -309,6 +312,7 @@ def create_task_id(func: Callable) -> Callable:
     @wraps(func)
     async def wrapper(self: Crawler, *args, **kwargs):
         scrape_item: ScrapeItem = args[0]
+        await self.manager.states.RUNNING.wait()
         task_id = self.scraping_progress.add_task(scrape_item.url)
         try:
             if not self.skip_pre_check:
