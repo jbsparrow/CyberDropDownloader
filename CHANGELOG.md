@@ -34,15 +34,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Send.now support
 - PMVHaven.com support
 - Motherless support
+- xHamster support
 - `generic crawler` to scrape pages from sites that are not supported. This replaces the basic `no crawler` logic
-- Graceful shutdown: Pressing `Ctrl` + `C` will cancel scraping, print stats and send notifications instead of just quitting
+- Ability to pause/resume the program
+- Ability to extract and apply cookies in real time (while CDL is running)
+- Updated scraping TUI with additional controls, logs view screen and mouse support
+- Graceful shutdown: Pressing `ctrl` + `q` will cancel scraping, print stats and send notifications instead of hard quitting
+- Save scraped pages as html with the new `--save-pages-html` option:
+- Use `--no-textual-ui` to disable the new TUI and use the old one:
 
 ### Changed
 
+- `ctrl` + `c` shortcut has been disabled. Use `ctrl` + `q` to quit
 - Flaresolverr is no longer required for Spankbang
 - Reduce rate limits (JPG5)
 - Config is revalidated after the user edits it from the UI
 - Warn about expired cookie files
+- Use server's `Last-Modified` header value as the file datetime if CDL could not parse a date while scraping.
+- Try to download images from any URL (twing)
+- CDL will start by default in portrait mode when running inside termux. You can override it by using `--no-portrait`
 
 ### Fixed
 
@@ -55,9 +65,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Handle paths with special characters (stats hyperlinks)
 - Do not crash if pages have no title (DDoS Guard check)
 - Fixed tags and category downloads (DirtyShip)
-- `Invalid Content Type` from some URLs (bunkr)
+- `Invalid Content Type` from some URLs (Bunkr)
 - jsonl timestamp serializer (`'str' object cannot be interpreted as an integer`)
 - Download profiles with more than 1k posts (RedGifs)
+- Reduce the number of requests needed (jpg5, img.kiwi, imagepond)
+- CDL filling up storage if multiple concurrent downloads where larger that `required_free_space` value
+- Handle confirmation links as input URL (forums)
 - Genal performance improvements
 
 
