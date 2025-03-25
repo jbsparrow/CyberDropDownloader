@@ -57,7 +57,7 @@ class CommandLineOnlyArgs(BaseModel):
     download_tiktok_audios: bool = Field(False, description="download TikTok audios")
     print_stats: bool = Field(True, description="Show stats report at the end of a run")
     ui: UIOptions = Field(UIOptions.FULLSCREEN, description="DISABLED, ACTIVITY, SIMPLE or FULLSCREEN")
-    portrait: bool = Field(False, description="show UI in a portrait layout")
+    portrait: bool = Field(env.RUNNING_IN_TERMUX, description="show UI in a portrait layout")
     disable_cache: bool = Field(False, description="Temporarily disable the requests cache")
 
     @property
@@ -170,7 +170,7 @@ def _add_args_from_model(
         if arg_type is bool:
             action = BooleanOptionalAction
             default_options.pop("default")
-            if cli_args:
+            if cli_args and not (cli_name == "portrait" and env.RUNNING_IN_TERMUX):
                 action = "store_false" if default else "store_true"
             if deprecated:
                 default_options = default_options | {"default": SUPPRESS}
@@ -259,6 +259,7 @@ def parse_args() -> ParsedArgs:
     if using_deprecated_args:
         parsed_args["deprecated_args"] = parsed_args["deprecated_args"].get("deprecated") or {}
     parsed_args["cli_only_args"] = parsed_args["cli_only_args"]["CLI-only options"]
+
     try:
         parsed_args_model = ParsedArgs.model_validate(parsed_args)
 
