@@ -5,9 +5,12 @@ import contextlib
 import queue
 from typing import TYPE_CHECKING
 
+import browser_cookie3
 from textual.app import App, ComposeResult, SystemCommand
 from textual.binding import Binding
 from textual.widgets import Footer, RichLog, Static, TabbedContent, TabPane
+
+from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -120,7 +123,16 @@ class TextualUI(App[int]):
 
         This is IO blocking. Not ideal but it works"""
 
-        self.manager.client_manager.load_cookie_files()
+        try:
+            self.manager.client_manager.load_cookie_files()
+        except browser_cookie3.BrowserCookieError as e:
+            log(e, 40)
+        except Exception as e:
+            log(e, 40, exc_info=e)
+        else:
+            return self.notify("Cookies imported successfully", title="Done!")
+
+        self.notify("See logs for details", title="Cookie extraction failed!", severity="error")
 
     def action_quit(self):
         """Call manager shutdown before the UI quits"""
