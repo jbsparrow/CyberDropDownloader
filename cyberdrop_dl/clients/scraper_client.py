@@ -354,11 +354,10 @@ class ScraperClient:
 
         # The date is not really relevant in the filename and makes them longer, potencially truncating the URL part
         # But it garanties the filename will be unique
-        # The natural sorting order of the files will also be somewhat similiar to the order in which the responses were received.
         log_date = now.strftime(constants.LOGS_DATETIME_FORMAT)
         url_str = str(url)
         response_url_str = str(response.url)
-        stem = f"{log_date}_{url_str}"[: self.max_html_stem_len]
+        stem = f"{url_str[: self.max_html_stem_len]}_{log_date}"
         filename, _ = get_filename_and_ext(f"{stem}.html")
         file_path = self.pages_folder / filename
         info = {
