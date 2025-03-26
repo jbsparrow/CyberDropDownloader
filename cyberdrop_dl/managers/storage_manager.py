@@ -29,6 +29,7 @@ class StorageManager:
         self._mount_addition_locks: dict[Path, asyncio.Lock] = defaultdict(asyncio.Lock)
         self._period = 2  # seconds
         self._checking_loop = asyncio.create_task(self.free_space_check_loop())
+        self._updated = asyncio.Event()
 
     def get_mount_point(self, folder: Path) -> Path | None:
         possible_mountpoints = [mount for mount in self.mounts if mount in folder.parents or mount == folder]
@@ -67,6 +68,7 @@ class StorageManager:
             #    continue
             # But every second is more accurate
             await self.manager.states.RUNNING.wait()
+            self._updated.clear()
             last_check += 1
             if self.used_mounts:
                 used_mounts = sorted(self.used_mounts)
@@ -74,7 +76,7 @@ class StorageManager:
                 results = await asyncio.gather(*tasks)
                 for mount, result in zip(used_mounts, results, strict=True):
                     self.mounts_free_space[mount] = result.free
-
+            self._updated.set()
             await asyncio.sleep(self._period)
 
     async def check_free_space(self, media_item: MediaItem) -> None:
@@ -82,14 +84,14 @@ class StorageManager:
         if not await self.has_free_space(media_item.download_folder):
             raise InsufficientFreeSpaceError(origin=media_item)
 
-    def reset(self):
-        """Resets `total_data_written` and `used_mounts`"""
+    async def reset(self):
+        await self._updated.wait()
         self.total_data_written = 0
         self.used_mounts = set()
         self.mounts_free_space = {}
 
     async def close(self) -> None:
-        self.reset()
+        await self.reset()
         self._checking_loop.cancel()
         try:
             await self._checking_loop
