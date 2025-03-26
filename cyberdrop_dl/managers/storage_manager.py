@@ -42,6 +42,13 @@ class StorageManager:
 
         return max(possible_mountpoints, key=lambda path: len(path.parts))
 
+    def get_used_mounts_stats(self) -> dict:
+        data = {}
+        for mount in self.used_mounts:
+            data[mount] = self.partitions_map[mount]._asdict()
+            data[mount]["free_space"] = self.mounts_free_space[mount]
+        return data
+
     async def has_free_space(self, folder: Path | None = None) -> bool:
         """Checks if there is enough free space on the drive to continue operating.
 
@@ -63,6 +70,15 @@ class StorageManager:
             self.mounts_free_space[mount] > self.manager.config_manager.global_settings_data.general.required_free_space
         )
 
+    async def check_free_space(self, media_item: MediaItem, no_pause: bool = False) -> None:
+        """Checks if there is enough free space on the drive to continue operating."""
+        if not await self.has_free_space(media_item.download_folder):
+            if self.pause_if_no_free_space and not no_pause:
+                self.manager.states.RUNNING.clear()
+                await self.manager.states.RUNNING.wait()
+                return await self.check_free_space(media_item, no_pause=True)
+            raise InsufficientFreeSpaceError(origin=media_item)
+
     async def free_space_check_loop(self) -> None:
         """Queries free space of all used mounts and updates internal dict"""
 
@@ -82,25 +98,9 @@ class StorageManager:
                 for mount, result in zip(used_mounts, results, strict=True):
                     self.mounts_free_space[mount] = result.free
                 if last_check % self._log_period == 0:
-                    log_debug({"Storage status": self.get_used_mount_stats()})
+                    log_debug({"Storage status": self.get_used_mounts_stats()})
             self._updated.set()
             await asyncio.sleep(self._period)
-
-    def get_used_mount_stats(self) -> dict:
-        data = {}
-        for mount in self.used_mounts:
-            data[mount] = self.partitions_map[mount]._asdict()
-            data[mount]["free_space"] = self.mounts_free_space[mount]
-        return data
-
-    async def check_free_space(self, media_item: MediaItem, no_pause: bool = False) -> None:
-        """Checks if there is enough free space on the drive to continue operating."""
-        if not await self.has_free_space(media_item.download_folder):
-            if self.pause_if_no_free_space and not no_pause:
-                self.manager.states.RUNNING.clear()
-                await self.manager.states.RUNNING.wait()
-                return await self.check_free_space(media_item, no_pause=True)
-            raise InsufficientFreeSpaceError(origin=media_item)
 
     async def reset(self):
         await self._updated.wait()  # Make sure a query is not running right now
