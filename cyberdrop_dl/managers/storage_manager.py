@@ -49,16 +49,24 @@ class StorageManager:
             data[mount]["free_space"] = self.mounts_free_space[mount]
         return data
 
-    async def has_free_space(self, folder: Path | None = None) -> bool:
-        """Checks if there is enough free space on the drive to continue operating.
+    async def has_sufficient_space(self, media_item: MediaItem) -> bool:
+        """Checks if there is enough free space to download this item"""
 
-        if `folder` is `None`, checks config's `download_folder`"""
-        folder = folder or self.manager.path_manager.download_folder
+        if isinstance(media_item.mount_point, Path):
+            mount = media_item.mount_point
+        else:
+            mount = self.get_mount_point(media_item.download_folder)
+            if mount:
+                media_item.mount_point = mount
+            else:
+                return False
 
-        mount = self.get_mount_point(folder)
-        if not mount:
-            return False
+        return await self.has_sufficient_space_mount(mount)
 
+    async def has_sufficient_space_mount(self, mount: Path) -> bool:
+        """Checks if there is enough free space in this mount point"""
+
+        assert mount in self.mounts
         async with self._mount_addition_locks[mount]:
             if not self.mounts_free_space.get(mount):
                 # Manually query this mount now. Next time it will be part of the loop
@@ -72,7 +80,8 @@ class StorageManager:
 
     async def check_free_space(self, media_item: MediaItem, no_pause: bool = False) -> None:
         """Checks if there is enough free space on the drive to continue operating."""
-        if not await self.has_free_space(media_item.download_folder):
+
+        if not await self.has_sufficient_space(media_item):
             if self.pause_if_no_free_space and not no_pause:
                 self.manager.states.RUNNING.clear()
                 await self.manager.states.RUNNING.wait()
