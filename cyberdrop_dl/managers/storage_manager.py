@@ -81,8 +81,7 @@ class StorageManager:
                 for mount, result in zip(used_mounts, results, strict=True):
                     self.mounts_free_space[mount] = result.free
                 if last_check % self._log_period:
-                    msg = f"Storage status: {self.get_used_mount_stats()}"
-                    log_debug(msg)
+                    log_debug({"Storage status": self.get_used_mount_stats()})
             self._updated.set()
             await asyncio.sleep(self._period)
 
@@ -92,7 +91,7 @@ class StorageManager:
             if mount not in self.used_mounts:
                 continue
             data[mount] = partition._asdict()
-            data["free_space"] = self.mounts_free_space[mount]
+            data[mount]["free_space"] = self.mounts_free_space[mount]
         return data
 
     async def check_free_space(self, media_item: MediaItem) -> None:
