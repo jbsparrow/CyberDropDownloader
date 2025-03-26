@@ -134,6 +134,8 @@ class Manager:
             self.download_manager = DownloadManager(self)
         if not isinstance(self.real_debrid_manager, RealDebridManager):
             self.real_debrid_manager = RealDebridManager(self)
+
+        self.storage_manager.reset()  # Reset total downloaded data if running multiple configs
         await self.async_db_hash_startup()
 
         constants.MAX_NAME_LENGTHS["FILE"] = self.config_manager.global_settings_data.general.max_file_name_length

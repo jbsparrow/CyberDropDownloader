@@ -61,18 +61,19 @@ class StorageManager:
         """Queries free space of all used mounts and updates internal dict"""
 
         last_check = -1
-        await self.manager.states.RUNNING.wait()
         while True:
             # We could also update the values every 512MB of data written (MIN_REQUIRED_FREE_SPACE)
             # if self.data_writen // MIN_REQUIRED_FREE_SPACE <= last_check:
             #    continue
             # But every second is more accurate
+            await self.manager.states.RUNNING.wait()
             last_check += 1
-            used_mounts = sorted(self.used_mounts)
-            tasks = [asyncio.to_thread(psutil.disk_usage, str(mount)) for mount in used_mounts]
-            results = await asyncio.gather(*tasks)
-            for mount, result in zip(used_mounts, results, strict=True):
-                self.mounts_free_space[mount] = result.free
+            if self.used_mounts:
+                used_mounts = sorted(self.used_mounts)
+                tasks = [asyncio.to_thread(psutil.disk_usage, str(mount)) for mount in used_mounts]
+                results = await asyncio.gather(*tasks)
+                for mount, result in zip(used_mounts, results, strict=True):
+                    self.mounts_free_space[mount] = result.free
 
             await asyncio.sleep(self._period)
 
@@ -81,8 +82,14 @@ class StorageManager:
         if not await self.has_free_space(media_item.download_folder):
             raise InsufficientFreeSpaceError(origin=media_item)
 
-    async def close(self) -> None:
+    def reset(self):
+        """Resets `total_data_written` and `used_mounts`"""
+        self.total_data_written = 0
         self.used_mounts = set()
+        self.mounts_free_space = {}
+
+    async def close(self) -> None:
+        self.reset()
         self._checking_loop.cancel()
         try:
             await self._checking_loop
