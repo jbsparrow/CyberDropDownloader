@@ -108,11 +108,12 @@ def get_mount_point(folder: Path) -> Path | None:
     # Cached for performance.
     # It's not an expensive operation nor IO blocking, but it's very common for multiple files to share the same download folder
     # ex: HLS downloads could have over a thousand segments. All of them will go to the same folder
+    assert folder.is_absolute()
     mounts = get_available_mountpoints()
     possible_mountpoints = [mount for mount in mounts if mount in folder.parents or mount == folder]
     if not possible_mountpoints:
         # Mount point for this path does not exists
-        # This will only happend on Windows (ex: an USB drive (`D:`) that is not currently available (AKA disconnected)
+        # This will only happend on Windows, ex: an USB drive (`D:`) that is not currently available (AKA disconnected)
         # On Unix there always at least 1 mountpoint, root (`/`)
         return
 
