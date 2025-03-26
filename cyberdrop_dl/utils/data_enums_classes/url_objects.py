@@ -53,7 +53,6 @@ class MediaItem:
     task_id: TaskID | None = field(default=None, init=False, hash=False, compare=False)
     hash: str | None = field(default=None, init=False, hash=False, compare=False)
     downloaded: bool = field(default=False, init=False, hash=False, compare=False)
-    mount_point: Path = field(init=False, hash=False, compare=False)
 
     # slots for __post_init__
     referer: URL = field(init=False)
