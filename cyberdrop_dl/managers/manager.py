@@ -20,6 +20,7 @@ from cyberdrop_dl.managers.log_manager import LogManager
 from cyberdrop_dl.managers.path_manager import PathManager
 from cyberdrop_dl.managers.progress_manager import ProgressManager
 from cyberdrop_dl.managers.realdebrid_manager import RealDebridManager
+from cyberdrop_dl.managers.storage_manager import StorageManager
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.args import ParsedArgs
 from cyberdrop_dl.utils.logger import QueuedLogger, log
@@ -49,6 +50,7 @@ class Manager:
         self.log_manager: LogManager = field(init=False)
         self.db_manager: DBManager = field(init=False)
         self.client_manager: ClientManager = field(init=False)
+        self.storage_manager: StorageManager = field(init=False)
 
         self.download_manager: DownloadManager = field(init=False)
         self.progress_manager: ProgressManager = field(init=False)
@@ -126,6 +128,8 @@ class Manager:
 
         if not isinstance(self.client_manager, ClientManager):
             self.client_manager = ClientManager(self)
+        if not isinstance(self.storage_manager, StorageManager):
+            self.storage_manager = StorageManager(self)
         if not isinstance(self.download_manager, DownloadManager):
             self.download_manager = DownloadManager(self)
         if not isinstance(self.real_debrid_manager, RealDebridManager):
@@ -251,9 +255,11 @@ class Manager:
         self.states.RUNNING.clear()
         if not isinstance(self.client_manager, Field):
             await self.client_manager.close()
+
         await self.async_db_close()
         await self.cache_manager.close()
-        await self.download_manager.storage_manager.close()
+        await self.storage_manager.close()
+
         self.cache_manager.close_sync()
         while self.loggers:
             _, queued_logger = self.loggers.popitem()

@@ -130,7 +130,7 @@ class Downloader:
 
     async def check_file_can_download(self, media_item: MediaItem) -> None:
         """Checks if the file can be downloaded."""
-        await self.manager.download_manager.check_free_space(media_item)
+        await self.manager.storage_manager.check_free_space(media_item)
         if not self.manager.download_manager.check_allowed_filetype(media_item):
             raise RestrictedFiletypeError(origin=media_item)
         if not self.manager.download_manager.pre_check_duration(media_item):

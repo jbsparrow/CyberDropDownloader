@@ -234,7 +234,7 @@ class DownloadClient:
     ) -> None:
         """Appends content to a file."""
 
-        check_free_space = partial(self.client_manager.manager.download_manager.check_free_space, media_item)
+        check_free_space = partial(self.manager.storage_manager.check_free_space, media_item)
         await check_free_space()
 
         media_item.partial_file.parent.mkdir(parents=True, exist_ok=True)
