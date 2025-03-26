@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 import psutil
 
 from cyberdrop_dl.clients.errors import InsufficientFreeSpaceError
+from cyberdrop_dl.utils.logger import log_debug
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -22,13 +23,15 @@ class StorageManager:
         # all=True is required to make sure it works on most platforms. See: https://github.com/giampaolo/psutil/issues/2191
         # We query all of them initially but we only check on a loop the ones that we need (self.used_mounts)
         self.partitions = psutil.disk_partitions(all=True)
-        self.mounts = [Path(p.mountpoint) for p in self.partitions]
+        self.partitions_map = {Path(p.mountpoint): p for p in self.partitions}
+        self.mounts = sorted(self.partitions_map.keys())
         self.used_mounts: set[Path] = set()
         self.mounts_free_space: dict[Path, int] = {}
         self.total_data_written: int = 0
         self._mount_addition_locks: dict[Path, asyncio.Lock] = defaultdict(asyncio.Lock)
-        self._period = 2  # seconds
-        self._checking_loop = asyncio.create_task(self.free_space_check_loop())
+        self._period: int = 2  # seconds
+        self._log_period: int = 10  # loops, AKA log every 20 (2x10) seconds,
+        self._loop = asyncio.create_task(self.free_space_check_loop())
         self._updated = asyncio.Event()
 
     def get_mount_point(self, folder: Path) -> Path | None:
@@ -39,9 +42,10 @@ class StorageManager:
         return max(possible_mountpoints, key=lambda path: len(path.parts))
 
     async def has_free_space(self, folder: Path | None = None) -> bool:
-        """Checks if there is enough free space on the drive to continue operating."""
-        if not folder:
-            folder = self.manager.path_manager.download_folder
+        """Checks if there is enough free space on the drive to continue operating.
+
+        if `folder` is `None`, checks config's `download_folder`"""
+        folder = folder or self.manager.path_manager.download_folder
 
         mount = self.get_mount_point(folder)
         if not mount:
@@ -76,8 +80,20 @@ class StorageManager:
                 results = await asyncio.gather(*tasks)
                 for mount, result in zip(used_mounts, results, strict=True):
                     self.mounts_free_space[mount] = result.free
+                if last_check % self._log_period:
+                    msg = f"Storage status: {self.get_used_mount_stats()}"
+                    log_debug(msg)
             self._updated.set()
             await asyncio.sleep(self._period)
+
+    def get_used_mount_stats(self) -> dict:
+        data = {}
+        for mount, partition in self.partitions_map.items():
+            if mount not in self.used_mounts:
+                continue
+            data[mount] = partition._asdict()
+            data["free_space"] = self.mounts_free_space[mount]
+        return data
 
     async def check_free_space(self, media_item: MediaItem) -> None:
         """Checks if there is enough free space on the drive to continue operating."""
@@ -85,15 +101,15 @@ class StorageManager:
             raise InsufficientFreeSpaceError(origin=media_item)
 
     async def reset(self):
-        await self._updated.wait()
+        await self._updated.wait()  # Make sure a query is not running right now
         self.total_data_written = 0
         self.used_mounts = set()
         self.mounts_free_space = {}
 
     async def close(self) -> None:
         await self.reset()
-        self._checking_loop.cancel()
+        self._loop.cancel()
         try:
-            await self._checking_loop
+            await self._loop
         except asyncio.CancelledError:
             pass
