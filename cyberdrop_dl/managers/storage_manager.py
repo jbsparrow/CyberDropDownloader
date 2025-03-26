@@ -28,6 +28,7 @@ class StorageManager:
         self.used_mounts: set[Path] = set()
         self.mounts_free_space: dict[Path, int] = {}
         self.total_data_written: int = 0
+        self.pause_if_no_free_space = True
         self._mount_addition_locks: dict[Path, asyncio.Lock] = defaultdict(asyncio.Lock)
         self._period: int = 2  # seconds
         self._log_period: int = 10  # loops, AKA log every 20 (2x10) seconds,
@@ -94,9 +95,13 @@ class StorageManager:
             data[mount]["free_space"] = self.mounts_free_space[mount]
         return data
 
-    async def check_free_space(self, media_item: MediaItem) -> None:
+    async def check_free_space(self, media_item: MediaItem, no_pause: bool = False) -> None:
         """Checks if there is enough free space on the drive to continue operating."""
         if not await self.has_free_space(media_item.download_folder):
+            if self.pause_if_no_free_space and not no_pause:
+                self.manager.states.RUNNING.clear()
+                await self.manager.states.RUNNING.wait()
+                return await self.check_free_space(media_item, no_pause=True)
             raise InsufficientFreeSpaceError(origin=media_item)
 
     async def reset(self):
