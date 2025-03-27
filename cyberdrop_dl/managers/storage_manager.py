@@ -27,7 +27,6 @@ class StorageManager:
         self._paused_datetime = None
         self._used_mounts: set[Path] = set()
         self._free_space: dict[Path, int] = {}
-        self._pause_if_no_free_space = False
         self._mount_addition_locks: dict[Path, asyncio.Lock] = defaultdict(asyncio.Lock)
         self._updated = asyncio.Event()
         self._period: int = 2  # how often the check_free_space_loop will run (in seconds)
@@ -47,7 +46,7 @@ class StorageManager:
 
         await self.manager.states.RUNNING.wait()
         if not await self._has_sufficient_space(media_item.download_folder):
-            if self._pause_if_no_free_space:
+            if self.manager.config_manager.global_settings_data.general.pause_on_insufficient_space:
                 if not self._paused_datetime:
                     self.manager.progress_manager.pause()
                     self._paused_datetime = datetime.now()
