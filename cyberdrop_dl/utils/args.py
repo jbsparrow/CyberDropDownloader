@@ -75,6 +75,7 @@ class CommandLineOnlyArgs(BaseModel):
     config_file: Path | None = Field(None, description="path to the CDL settings.yaml file to load")
     download: bool = Field(False, description="skips UI, start download immediatly")
     max_items_retry: int = Field(0, description="max number of links to retry")
+    no_textual_ui: bool = Field(False, description="Disable textual UI (TUI with mouse support)")
     retry_all: bool = Field(False, description="retry all downloads")
     retry_failed: bool = Field(False, description="retry failed downloads")
     retry_maintenance: bool = Field(
@@ -86,7 +87,6 @@ class CommandLineOnlyArgs(BaseModel):
     ui: UIOptions = Field(UIOptions.FULLSCREEN, description="DISABLED, ACTIVITY, SIMPLE or FULLSCREEN")
     portrait: bool = Field(is_terminal_in_portrait(), description="show UI in a portrait layout")
     disable_cache: bool = Field(False, description="Temporarily disable the requests cache")
-    textual_ui: bool = Field(True, description="Enable/Disable textual UI (TUI with mouse support)")
 
     @property
     def retry_any(self) -> bool:
