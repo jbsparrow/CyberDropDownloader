@@ -197,11 +197,6 @@ class ScrapeMapper:
 
     async def send_to_crawler(self, scrape_item: ScrapeItem) -> None:
         """Maps URLs to their respective handlers."""
-        # count = 1
-        # while True:
-        #    count += 1
-        #    log(f"Hello world {count}")
-        #    await asyncio.sleep(0)
         scrape_item.url = remove_trailing_slash(scrape_item.url)
         supported_domain = [key for key in self.existing_crawlers if key in scrape_item.url.host]  # type: ignore
         jdownloader_whitelisted = True
