@@ -35,10 +35,11 @@ class StorageManager:
         self._loop = asyncio.create_task(self._check_free_space_loop())
 
     def get_used_mounts_stats(self) -> dict:
-        data = {}
+        mounts = {}
         for mount in self._used_mounts:
-            data[mount] = get_available_partitions()[mount]._asdict()
-            data[mount]["free_space"] = self._free_space[mount]
+            data = get_available_partitions()[mount]._asdict() | {"free_space": self._free_space[mount]}
+            data.pop("mountpoint", None)
+            mounts[str(mount)] = data
         return data
 
     async def check_free_space(self, media_item: MediaItem) -> None:
