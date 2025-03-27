@@ -70,9 +70,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - jsonl timestamp serializer (`'str' object cannot be interpreted as an integer`)
 - Download profiles with more than 1k posts (RedGifs)
 - Reduce the number of requests needed (jpg5, img.kiwi, imagepond)
-- CDL filling up storage if multiple concurrent downloads where larger that `required_free_space` value
+- CDL filling up storage if multiple concurrent downloads where larger that `required_free_space`
 - Handle confirmation links as input URL (forums)
-- Genal performance improvements
+- General performance improvements
 
 
 ## [6.7.0] - 2025-03-07
