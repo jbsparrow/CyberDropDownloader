@@ -49,10 +49,10 @@ This is the maximum number of characters allowable in a folder name.
 | ------ | ------- |
 | `bool` | `false` |
 
-Setting this to `true` will make CDL pause if there not eought free space available.
+Setting this to `true` will make CDL pause if there not enough free space available.
 
 {% hint style="info" %}
-CDL will only pause once. After the user resumes, every `InsuficientFreeSpaceError` will be propagated
+CDL will only pause once. After the user resumes, every `InsufficientFreeSpaceError` will be propagated
 {% endhint %}
 
 ## `proxy`
