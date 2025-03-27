@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections import defaultdict
+from datetime import datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
 from types import MappingProxyType
@@ -23,7 +24,7 @@ class StorageManager:
     def __init__(self, manager: Manager):
         self.manager = manager
         self.total_data_written: int = 0
-        self._has_paused = False
+        self._paused_datetime = None
         self._used_mounts: set[Path] = set()
         self._free_space: dict[Path, int] = {}
         self._pause_if_no_free_space = False
@@ -31,6 +32,7 @@ class StorageManager:
         self._updated = asyncio.Event()
         self._period: int = 2  # how often the check_free_space_loop will run (in seconds)
         self._log_period: int = 10  # log storage details every <x> loops, AKA log every 20 (2x10) seconds,
+        self._timedelta_period = timedelta(seconds=self._period)
         self._loop = asyncio.create_task(self._check_free_space_loop())
 
     def get_used_mounts_stats(self) -> dict:
@@ -43,12 +45,14 @@ class StorageManager:
     async def check_free_space(self, media_item: MediaItem) -> None:
         """Checks if there is enough free space on download this item"""
 
+        await self.manager.states.RUNNING.wait()
         if not await self._has_sufficient_space(media_item.download_folder):
-            if self._pause_if_no_free_space and not self._has_paused:
-                self.manager.progress_manager.pause()
-                self._has_paused = True
-                await self.manager.states.RUNNING.wait()
-                return await self.check_free_space(media_item)
+            if self._pause_if_no_free_space:
+                if not self._paused_datetime:
+                    self.manager.progress_manager.pause()
+                    self._paused_datetime = datetime.now()
+                if (datetime.now() - self._paused_datetime) < self._timedelta_period:
+                    return await self.check_free_space(media_item)
             raise InsufficientFreeSpaceError(origin=media_item)
 
     async def reset(self):
@@ -79,7 +83,6 @@ class StorageManager:
                 self._free_space[mount] = result.free
                 self._used_mounts.add(mount)
 
-        await self.manager.states.RUNNING.wait()
         return self._free_space[mount] > self.manager.config_manager.global_settings_data.general.required_free_space
 
     async def _check_free_space_loop(self) -> None:
