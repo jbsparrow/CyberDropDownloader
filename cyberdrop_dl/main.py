@@ -260,7 +260,7 @@ async def scheduler(manager: Manager) -> None:
             return
         manager.current_task = task = asyncio.create_task(func(manager))
         try:
-            await t
+            await task
         except asyncio.CancelledError:
             if not manager.states.SHUTTING_DOWN.is_set():
                 raise
