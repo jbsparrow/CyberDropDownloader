@@ -14,7 +14,6 @@ import certifi
 from aiohttp import ClientResponse, ClientSession, ContentTypeError
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
-from curl_cffi.requests.models import Response as CurlResponse
 from yarl import URL
 
 from cyberdrop_dl.clients.download_client import DownloadClient
@@ -23,8 +22,11 @@ from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.managers.download_speed_manager import DownloadSpeedLimiter
 from cyberdrop_dl.ui.prompts.user_prompts import get_cookies_from_browsers
 from cyberdrop_dl.utils.logger import log, log_spacer
+from cyberdrop_dl.utils.utilities import get_soup_from_response
 
 if TYPE_CHECKING:
+    from curl_cffi.requests.models import Response as CurlResponse
+
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
@@ -162,7 +164,7 @@ class ClientManager:
         origin: ScrapeItem | URL | None = None,
     ) -> None:
         """Checks the HTTP status code and raises an exception if it's not acceptable."""
-        is_curl = isinstance(response, CurlResponse)
+        is_curl = not isinstance(response, ClientResponse)
         status = response.status_code if is_curl else response.status
         headers = response.headers
         message = None
@@ -185,12 +187,8 @@ class ClientManager:
                 if data and isinstance(data, dict) and "error" in data:
                     raise ScrapeError(status, data["error"], origin=origin)
 
-        response_text = None
-        with contextlib.suppress(UnicodeDecodeError):
-            response_text = response.text if is_curl else await response.text()
-
-        if response_text:
-            soup = BeautifulSoup(response_text, "html.parser")
+        soup = await get_soup_from_response(response)
+        if soup:
             if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
                 raise DDOSGuardError(origin=origin)
 
