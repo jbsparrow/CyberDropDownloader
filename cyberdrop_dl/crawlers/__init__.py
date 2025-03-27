@@ -79,6 +79,7 @@ from .xenforo import (
     TitsInTopsCrawler,
     XBunkerCrawler,
 )
+from .xhamster import XhamsterCrawler
 from .xxxbunker import XXXBunkerCrawler
 from .yandex_disk import YandexDiskCrawler
 from .youjizz import YouJizzCrawler

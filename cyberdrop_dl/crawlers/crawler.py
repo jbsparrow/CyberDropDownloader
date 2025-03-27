@@ -286,7 +286,7 @@ class Crawler(ABC):
         response_url = url or self.primary_base_domain
         self.client.client_manager.cookies.update_cookies(cookies, response_url)
 
-    async def web_pager(self, url: URL, next_page_selector: str = "") -> AsyncGenerator[BeautifulSoup]:
+    async def web_pager(self, url: URL, next_page_selector: str | None = None) -> AsyncGenerator[BeautifulSoup]:
         """Generator of website pages."""
         page_url = url
         next_page_selector = next_page_selector or self.next_page_selector
