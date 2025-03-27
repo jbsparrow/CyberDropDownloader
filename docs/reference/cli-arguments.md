@@ -107,6 +107,14 @@ Download TikTok audios from posts and save them as separate files
 
 Max number of links to retry. Using `0` means no limit
 
+### `no-textual-ui`
+
+| Type       | Default | Action       |
+| ---------- | ------- | ------------ |
+| `BoolFlag` | `False` | `store_true` |
+
+Disable CDL's textual UI (TUI with buttons and mouse support)
+
 ### `portrait`
 
 | Type       | Default | Action       |
@@ -203,6 +211,7 @@ CLI-only options:
   --ui UI                                                                       DISABLED, ACTIVITY, SIMPLE or FULLSCREEN
   --portrait                                                                    show UI in a portrait layout
   --disable-cache                                                               Temporarily disable the requests cache
+  --no-textual-ui                                                               Disable textual UI (TUI with mouse support)
 
 browser_cookies:
   --auto-import, --no-auto-import
@@ -248,8 +257,9 @@ media_duration_limits:
 
 files:
   -d DOWNLOAD_FOLDER, --download-folder DOWNLOAD_FOLDER
-  -i INPUT_FILE, --input-file INPUT_FILE
   -j, --dump-json, --no-dump-json
+  -i INPUT_FILE, --input-file INPUT_FILE
+  --save-pages-html, --no-save-pages-html
 
 ignore_options:
   --exclude-audio, --no-exclude-audio

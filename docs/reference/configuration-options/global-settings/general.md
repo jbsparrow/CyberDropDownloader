@@ -43,6 +43,18 @@ This is the maximum number of characters allowable in a filename.
 
 This is the maximum number of characters allowable in a folder name.
 
+## `pause_on_insufficient_space`
+
+| Type   | Default |
+| ------ | ------- |
+| `bool` | `false` |
+
+Setting this to `true` will make CDL pause if there not eought free space available.
+
+{% hint style="info" %}
+CDL will only pause once. After the user resumes, every `InsuficientFreeSpaceError` will be propagated
+{% endhint %}
+
 ## `proxy`
 
 | Type                | Default |
