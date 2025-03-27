@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
-import signal
 import sys
 from datetime import datetime
 from functools import wraps
@@ -20,10 +19,11 @@ from cyberdrop_dl.clients.errors import InvalidYamlError
 from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.scraper.scrape_mapper import ScrapeMapper
 from cyberdrop_dl.ui.program_ui import ProgramUI
+from cyberdrop_dl.ui.textual import textual_ui
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.apprise import send_apprise_notifications
 from cyberdrop_dl.utils.dumper import Dumper
-from cyberdrop_dl.utils.logger import LogHandler, QueuedLogger, log, log_spacer, log_with_color
+from cyberdrop_dl.utils.logger import LogHandler, QueuedLogger, TextualLogQueueHandler, log, log_spacer, log_with_color
 from cyberdrop_dl.utils.sorting import Sorter
 from cyberdrop_dl.utils.updates import check_latest_pypi
 from cyberdrop_dl.utils.utilities import check_partials_and_empty_folders, send_webhook_message
@@ -35,8 +35,6 @@ if TYPE_CHECKING:
 
 startup_logger = logging.getLogger("cyberdrop_dl_startup")
 STARTUP_LOGGER_FILE = Path.cwd().joinpath("startup.log")
-
-SHUTDOWN = asyncio.Event()
 
 
 def startup() -> Manager:
@@ -75,9 +73,10 @@ async def runtime(manager: Manager) -> None:
     if manager.multiconfig and manager.config_manager.settings_data.sorting.sort_downloads:
         return
 
+    manager.states.RUNNING.set()
     with manager.live_manager.get_main_live(stop=True):
         scrape_mapper = ScrapeMapper(manager)
-        async with asyncio.TaskGroup() as task_group:
+        async with textual_ui(manager), asyncio.TaskGroup() as task_group:
             manager.task_group = task_group
             await scrape_mapper.start()
 
@@ -230,7 +229,9 @@ def setup_logger(manager: Manager, config_name: str) -> None:
 
     file_handler = LogHandler(level=log_level, file=file_io, width=settings_data.logs.log_line_width)
     queued_logger = QueuedLogger(manager, file_handler)
+    textual_log_handler = TextualLogQueueHandler(manager)
     logger.addHandler(queued_logger.handler)
+    logger.addHandler(textual_log_handler)
 
 
 def ui_error_handling_wrapper(func: Callable) -> Callable:
@@ -254,23 +255,14 @@ def ui_error_handling_wrapper(func: Callable) -> Callable:
 
 
 async def scheduler(manager: Manager) -> None:
-    loop = asyncio.get_running_loop()
-
-    def shutdown(current_task: asyncio.Task):
-        log("Received keyboard interrupt, shutting down...", 30)
-        SHUTDOWN.set()
-        current_task.cancel()
-        signal.signal(signal.SIGINT, signal.SIG_DFL)
-
     for func in (runtime, post_runtime):
-        if SHUTDOWN.is_set():
+        if manager.states.SHUTTING_DOWN.is_set():
             return
-        current_task = asyncio.create_task(func(manager))
-        loop.add_signal_handler(signal.SIGINT, shutdown, current_task)
+        manager.current_task = task = asyncio.create_task(func(manager))
         try:
-            await current_task
+            await task
         except asyncio.CancelledError:
-            if not SHUTDOWN.is_set():
+            if not manager.states.SHUTTING_DOWN.is_set():
                 raise
 
 
@@ -302,7 +294,7 @@ async def director(manager: Manager) -> None:
 
         manager.progress_manager.print_stats(start_time)
 
-        if not configs_to_run or SHUTDOWN.is_set():
+        if not configs_to_run or manager.states.SHUTTING_DOWN.is_set():
             log_spacer(20)
             log("Checking for Updates...", 20)
             check_latest_pypi()
@@ -313,7 +305,7 @@ async def director(manager: Manager) -> None:
         await send_webhook_message(manager)
         await send_apprise_notifications(manager)
         start_time = perf_counter()
-        if SHUTDOWN.is_set():
+        if manager.states.SHUTTING_DOWN.is_set():
             return
 
 

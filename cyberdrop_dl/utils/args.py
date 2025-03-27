@@ -59,6 +59,7 @@ class CommandLineOnlyArgs(BaseModel):
     ui: UIOptions = Field(UIOptions.FULLSCREEN, description="DISABLED, ACTIVITY, SIMPLE or FULLSCREEN")
     portrait: bool = Field(env.RUNNING_IN_TERMUX, description="show UI in a portrait layout")
     disable_cache: bool = Field(False, description="Temporarily disable the requests cache")
+    textual_ui: bool = Field(True, description="Enable/Disable textual UI (TUI with mouse support)")
 
     @property
     def retry_any(self) -> bool:

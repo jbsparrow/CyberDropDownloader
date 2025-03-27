@@ -114,11 +114,13 @@ class Downloader:
         if media_item.url.path in self.processed_items and not self._ignore_history:
             return False
 
+        await self.manager.states.RUNNING.wait()
         self.waiting_items += 1
         media_item.current_attempt = 0
         await self.client.mark_incomplete(media_item, self.domain)
         self.update_queued_files()
         async with self._semaphore:
+            await self.manager.states.RUNNING.wait()
             self.waiting_items -= 1
             self.processed_items.add(media_item.url.path)
             self.update_queued_files(increase_total=False)
@@ -176,6 +178,7 @@ class Downloader:
         if url_as_str in KNOWN_BAD_URLS:
             raise DownloadError(KNOWN_BAD_URLS[url_as_str])
         try:
+            await self.manager.states.RUNNING.wait()
             media_item.current_attempt = media_item.current_attempt or 1
             media_item.duration = await self.manager.db_manager.history_table.get_duration(self.domain, media_item)
             self.check_file_can_download(media_item)

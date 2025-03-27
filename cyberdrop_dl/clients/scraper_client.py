@@ -40,6 +40,7 @@ def limiter(func: Callable) -> Any:
         async with self.client_manager.session_limit:
             await self._global_limiter.acquire()
             await domain_limiter.acquire()
+            await self.client_manager.manager.states.RUNNING.wait()
 
             if "cffi" in func.__name__:
                 kwargs.pop("client_session", None)

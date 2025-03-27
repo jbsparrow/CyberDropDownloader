@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import platform
 from dataclasses import Field, field
 from time import perf_counter
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from cyberdrop_dl import __version__
 from cyberdrop_dl.config_definitions import ConfigSettings, GlobalSettings
@@ -25,9 +26,15 @@ from cyberdrop_dl.utils.logger import QueuedLogger, log
 from cyberdrop_dl.utils.transfer import transfer_v5_db_to_v6
 
 if TYPE_CHECKING:
+    import queue
     from asyncio import TaskGroup
 
     from cyberdrop_dl.scraper.scrape_mapper import ScrapeMapper
+
+
+class AsyncioEvents(NamedTuple):
+    SHUTTING_DOWN: asyncio.Event = asyncio.Event()
+    RUNNING: asyncio.Event = asyncio.Event()
 
 
 class Manager:
@@ -46,6 +53,7 @@ class Manager:
         self.download_manager: DownloadManager = field(init=False)
         self.progress_manager: ProgressManager = field(init=False)
         self.live_manager: LiveManager = field(init=False)
+        self.textual_log_queue: queue.Queue = field(init=False)
 
         self._loaded_args_config: bool = False
         self._made_portable: bool = False
@@ -53,12 +61,21 @@ class Manager:
         self.task_group: TaskGroup = field(init=False)
         self.task_list: list = []
         self.scrape_mapper: ScrapeMapper = field(init=False)
+        self.current_task: asyncio.Task = field(init=False)
 
         self.vi_mode: bool = False
         self.start_time: float = perf_counter()
         self.downloaded_data: int = 0
         self.multiconfig: bool = False
         self.loggers: dict[str, QueuedLogger] = {}
+        self.states = AsyncioEvents()
+
+    def shutdown(self, from_user: bool = False):
+        """ "Shut everything down (something failed or the user used ctrl + q)"""
+        if from_user:
+            log("Received keyboard interrupt, shutting down...", 30)
+        self.states.SHUTTING_DOWN.set()
+        self.current_task.cancel()
 
     def startup(self) -> None:
         """Startup process for the manager."""

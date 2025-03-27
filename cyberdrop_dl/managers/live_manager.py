@@ -21,9 +21,11 @@ class LiveManager:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
         self.ui_setting = self.manager.parsed_args.cli_only_args.ui
-        fullscreen = self.manager.parsed_args.cli_only_args.fullscreen_ui
-        refresh_rate = self.manager.config_manager.global_settings_data.ui_options.refresh_rate
-        self.live = Live(refresh_per_second=refresh_rate, console=console, transient=True, screen=fullscreen)
+        self.fullscreen = f = self.manager.parsed_args.cli_only_args.fullscreen_ui
+        self.refresh_rate = rate = self.manager.config_manager.global_settings_data.ui_options.refresh_rate
+        self.use_textual = manager.parsed_args.cli_only_args.textual_ui and self.fullscreen
+        self.auto_refresh = a = not self.use_textual
+        self.live = Live(refresh_per_second=rate, console=console, transient=True, screen=f, auto_refresh=a)
 
     @contextmanager
     def get_live(self, name: str, stop: bool = False) -> Generator[Live | None]:
@@ -48,8 +50,9 @@ class LiveManager:
         try:
             self.live.start()
             if not (10 <= constants.CONSOLE_LEVEL <= 50) and layout:
-                self.live.update(layout, refresh=True)
+                self.live.update(layout, refresh=not self.use_textual)
             yield self.live
         finally:
             if stop:
+                self.live.update("")
                 self.live.stop()
