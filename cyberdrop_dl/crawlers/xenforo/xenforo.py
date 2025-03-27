@@ -145,13 +145,18 @@ class XenforoCrawler(Crawler):
             return
         scrape_item.url = self.pre_filter_link(scrape_item.url)
         if self.is_attachment(scrape_item.url):
-            await self.handle_internal_link(scrape_item)
-        elif self.thread_url_part in scrape_item.url.parts:
-            await self.thread(scrape_item)
-        elif any(p in scrape_item.url.parts for p in ("goto", "posts")):
-            await self.redirect(scrape_item)
-        else:
-            raise ValueError
+            return await self.handle_internal_link(scrape_item)
+        if self.thread_url_part in scrape_item.url.parts:
+            return await self.thread(scrape_item)
+        if self.is_confirmation_link(scrape_item.url):
+            scrape_item.url = await self.handle_confirmation_link(scrape_item.url)
+            if scrape_item.url:  # If there was an error, this will be None
+                # This could end up back in here if the URL goes to another thread
+                return self.handle_external_links(scrape_item)
+        if any(p in scrape_item.url.parts for p in ("goto", "posts")):
+            return await self.redirect(scrape_item)
+
+        raise ValueError
 
     @error_handling_wrapper
     async def redirect(self, scrape_item: ScrapeItem) -> None:
