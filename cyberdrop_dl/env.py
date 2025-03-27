@@ -1,7 +1,8 @@
 import os
 from hashlib import sha256
 
-RUNNING_IN_IDE = os.getenv("PYCHARM_HOSTED") or os.getenv("TERM_PROGRAM") == "vscode"
+RUNNING_IN_IDE = bool(os.getenv("PYCHARM_HOSTED") or os.getenv("TERM_PROGRAM") == "vscode")
+RUNNING_IN_TERMUX = bool(os.getenv("TERMUX_VERSION") or "com.termux" in os.getenv("$PREFIX", ""))
 ENABLE_DEBUG_CRAWLERS = os.getenv("CDL_ENABLE_DEBUG_CRAWLERS")
 if ENABLE_DEBUG_CRAWLERS:
     ENABLE_DEBUG_CRAWLERS = sha256(ENABLE_DEBUG_CRAWLERS.encode("utf-8")).hexdigest()
