@@ -56,7 +56,8 @@ class StorageManager:
             raise InsufficientFreeSpaceError(origin=media_item)
 
     async def reset(self):
-        await self._updated.wait()  # Make sure a query is not running right now
+        # This is causing lock ups
+        # await self._updated.wait()  # Make sure a query is not running right now
         self.total_data_written = 0
         self._used_mounts = set()
         self._free_space = {}

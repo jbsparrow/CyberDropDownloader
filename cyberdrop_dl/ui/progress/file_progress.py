@@ -66,7 +66,7 @@ class FileProgress(DequeProgress):
 
     def advance_file(self, task_id: TaskID, amount: int) -> None:
         """Advances the progress of the given task by the given amount."""
-        self.manager.download_manager.storage_manager.total_data_written += amount
+        self.manager.storage_manager.total_data_written += amount
         self._progress.advance(task_id, amount)
 
     def get_speed(self, task_id: TaskID) -> float:
