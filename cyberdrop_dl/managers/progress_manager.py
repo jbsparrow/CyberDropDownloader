@@ -72,11 +72,17 @@ class ProgressManager:
 
     def pause_or_resume(self):
         if self.manager.states.RUNNING.is_set():
-            self.manager.states.RUNNING.clear()
-            self.activity.update(self.activity_task_id, description="Paused")
+            self.pause()
         else:
-            self.manager.states.RUNNING.set()
-            self.activity.update(self.activity_task_id, description="Running Cyberdrop-DL")
+            self.resume()
+
+    def pause(self):
+        self.manager.states.RUNNING.clear()
+        self.activity.update(self.activity_task_id, description="Paused")
+
+    def resume(self):
+        self.manager.states.RUNNING.set()
+        self.activity.update(self.activity_task_id, description="Running Cyberdrop-DL")
 
     def startup(self) -> None:
         """Startup process for the progress manager."""
