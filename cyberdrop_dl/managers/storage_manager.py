@@ -9,6 +9,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING, NamedTuple
 
 import psutil
+from pydantic import ByteSize
 
 from cyberdrop_dl.clients.errors import InsufficientFreeSpaceError
 from cyberdrop_dl.utils.logger import log_debug
@@ -34,13 +35,22 @@ class StorageManager:
         self._timedelta_period = timedelta(seconds=self._period)
         self._loop = asyncio.create_task(self._check_free_space_loop())
 
-    def get_used_mounts_stats(self) -> dict:
+    def get_used_mounts_stats(self, simplified: bool = True) -> dict:
+        """Returns a dict with the infomartion + free space of every used mount.
+
+        If simplified is `True` (the default), all the information is flatten as a single string and mounts are converted to `str` (for logging)"""
         mounts = {}
         for mount in self._used_mounts:
-            data = get_available_partitions()[mount]._asdict() | {"free_space": self._free_space[mount]}
+            free_space = ByteSize(self._free_space[mount])
+            if simplified:
+                free_space = free_space.human_readable(decimal=True)
+            data = get_available_partitions()[mount]._asdict() | {"free_space": free_space}
             data.pop("mountpoint", None)
-            mounts[str(mount)] = data
-        return data
+            mounts[mount] = data
+
+        if simplified:
+            return {str(key): str(value) for key, value in mounts.items()}
+        return mounts
 
     async def check_free_space(self, media_item: MediaItem) -> None:
         """Checks if there is enough free space on download this item"""
