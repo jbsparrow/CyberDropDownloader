@@ -76,9 +76,10 @@ class ProgressManager:
         else:
             self.resume()
 
-    def pause(self):
+    def pause(self, msg: str = ""):
         self.manager.states.RUNNING.clear()
-        self.activity.update(self.activity_task_id, description="Paused")
+        suffix = f" [{msg}]" if msg else ""
+        self.activity.update(self.activity_task_id, description=f"Paused{suffix}")
 
     def resume(self):
         self.manager.states.RUNNING.set()

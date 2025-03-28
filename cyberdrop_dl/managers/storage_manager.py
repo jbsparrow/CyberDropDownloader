@@ -59,7 +59,7 @@ class StorageManager:
         if not await self._has_sufficient_space(media_item.download_folder):
             if self.manager.config_manager.global_settings_data.general.pause_on_insufficient_space:
                 if not self._paused_datetime:
-                    self.manager.progress_manager.pause()
+                    self.manager.progress_manager.pause("Insufficient Free Space")
                     self.manager.notify(
                         title="Insufficient Free Space",
                         msg="Clean up storage space and click resume to continue",
