@@ -12,18 +12,24 @@ import aiohttp
 from aiohttp_client_cache import CachedSession
 from aiohttp_client_cache.response import CachedStreamReader
 from bs4 import BeautifulSoup
-from curl_cffi.requests import AsyncSession
-from curl_cffi.requests.models import Response as CurlResponse
 
 import cyberdrop_dl.utils.constants as constants
+from cyberdrop_dl import env
 from cyberdrop_dl.clients.errors import DDOSGuardError, DownloadError, InvalidContentTypeError, ScrapeError
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import get_soup_from_response, sanitize_filename
+
+curl_import_error = None
+try:
+    from curl_cffi.requests import AsyncSession
+except ImportError as e:
+    curl_import_error = e
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
     from curl_cffi.requests.impersonate import BrowserTypeLiteral
+    from curl_cffi.requests.models import Response as CurlResponse
     from multidict import CIMultiDictProxy
     from yarl import URL
 
@@ -36,15 +42,21 @@ def limiter(func: Callable) -> Any:
 
     @wraps(func)
     async def wrapper(self: ScraperClient, *args, **kwargs) -> Any:
-        domain_limiter = await self.client_manager.get_rate_limiter(args[0])
+        domain = args[0]
+        domain_limiter = await self.client_manager.get_rate_limiter(domain)
         async with self.client_manager.session_limit:
             await self._global_limiter.acquire()
             await domain_limiter.acquire()
             await self.client_manager.manager.states.RUNNING.wait()
 
             if "cffi" in func.__name__:
+                if curl_import_error is not None:
+                    system = "Android" if env.RUNNING_IN_TERMUX else "the system"
+                    msg = f"curl_cffi is required to scrape URLs from {domain}, but a dependency it's not available on {system}.\n"
+                    msg += f"See: https://github.com/lexiforest/curl_cffi/issues/74#issuecomment-1849365636\n{curl_import_error!r}"
+                    raise ScrapeError("Missing Dependency", msg)
                 kwargs.pop("client_session", None)
-                return await func(self, *args, **kwargs)  # remove domain por params
+                return await func(self, *args, **kwargs)
 
             async with CachedSession(
                 headers=self._headers,
@@ -350,7 +362,7 @@ class ScraperClient:
         exc: Exception | None = None,
     ):
         html_text = soup.prettify(formatter="html")  # Not sure if we should prettify
-        status_code = response.status_code if isinstance(response, CurlResponse) else response.status
+        status_code = response.status if isinstance(response, aiohttp.ClientResponse) else response.status_code
         response_headers = dict(response.headers)
         now = datetime.now()
 
