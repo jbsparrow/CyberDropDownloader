@@ -5,9 +5,9 @@ from argparse import SUPPRESS, ArgumentParser, BooleanOptionalAction, RawDescrip
 from argparse import _ArgumentGroup as ArgGroup
 from collections.abc import Iterable
 from datetime import date
-from shutil import get_terminal_size
 from enum import StrEnum, auto
 from pathlib import Path
+from shutil import get_terminal_size
 from typing import TYPE_CHECKING, Self
 
 from pydantic import BaseModel, Field, ValidationError, computed_field, field_validator, model_validator
@@ -39,8 +39,10 @@ def _check_mutually_exclusive(group: Iterable, msg: str) -> None:
     if sum(1 for value in group if value) >= 2:
         raise ValueError(msg)
 
+
 def check_for_portrait() -> bool:
     """Check if CDL is being run in portrait mode based on a few conditions."""
+
     def check_terminal_size():
         terminal_size = get_terminal_size()
         width, height = terminal_size.columns, terminal_size.lines
