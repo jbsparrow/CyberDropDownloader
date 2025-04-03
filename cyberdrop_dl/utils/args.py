@@ -40,15 +40,16 @@ def _check_mutually_exclusive(group: Iterable, msg: str) -> None:
         raise ValueError(msg)
 
 
-def check_for_portrait() -> bool:
+def is_terminal_in_portrait() -> bool:
     """Check if CDL is being run in portrait mode based on a few conditions."""
+    # Return True if running in portait mode, False otherwise (landscape mode)
 
     def check_terminal_size():
         terminal_size = get_terminal_size()
         width, height = terminal_size.columns, terminal_size.lines
         aspect_ratio = width / height
 
-        # High aspect ratios are likely to be computers
+        # High aspect ratios are likely to be in landscape mode
         if aspect_ratio >= 3.2:
             return False
 
@@ -83,7 +84,7 @@ class CommandLineOnlyArgs(BaseModel):
     download_tiktok_audios: bool = Field(False, description="download TikTok audios")
     print_stats: bool = Field(True, description="Show stats report at the end of a run")
     ui: UIOptions = Field(UIOptions.FULLSCREEN, description="DISABLED, ACTIVITY, SIMPLE or FULLSCREEN")
-    portrait: bool = Field(check_for_portrait(), description="show UI in a portrait layout")
+    portrait: bool = Field(is_terminal_in_portrait(), description="show UI in a portrait layout")
     disable_cache: bool = Field(False, description="Temporarily disable the requests cache")
     textual_ui: bool = Field(True, description="Enable/Disable textual UI (TUI with mouse support)")
 
