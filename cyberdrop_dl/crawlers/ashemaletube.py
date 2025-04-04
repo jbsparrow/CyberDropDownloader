@@ -14,6 +14,8 @@ from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.managers.manager import Manager
@@ -22,7 +24,8 @@ if TYPE_CHECKING:
 
 PRIMARY_BASE_DOMAIN = URL("https://www.ashemaletube.com")
 VIDEO_SELECTOR = "video > source"
-PROFILE_SELECTOR = "div#ajax-profile-content div.media-item__inner"
+PROFILE_VIDEOS_SELECTOR = "div#ajax-profile-content div.media-item__inner"
+NEXT_PAGE_SELECTOR = "a.rightKey"
 MODEL_VIDEO_SELECTOR = "a data-video-preview"
 MODEL_NAME_SELECTOR = "h1.username"
 DATETIME_SELECTOR = "div.views-count-add"
@@ -60,15 +63,14 @@ class AShemaleTubeCrawler(Crawler):
 
     @error_handling_wrapper
     async def model(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, scrape_item.url)
-        if model_name := soup.select_one(MODEL_NAME_SELECTOR):
-            title = model_name.get_text().strip()
-            title = self.create_title(title)
-            scrape_item.setup_as_profile(title)
+        async for soup in self.web_pager(scrape_item):
+            if model_name := soup.select_one(MODEL_NAME_SELECTOR):
+                title = model_name.get_text().strip()
+                title = self.create_title(title)
+                scrape_item.setup_as_profile(title)
 
-        videos = soup.select(PROFILE_SELECTOR)
-        await self.iter_videos(scrape_item, videos)
+            videos = soup.select(PROFILE_VIDEOS_SELECTOR)
+            await self.iter_videos(scrape_item, videos)
 
     async def iter_videos(self, scrape_item: ScrapeItem, videos) -> None:
         for video in videos:
@@ -77,6 +79,21 @@ class AShemaleTubeCrawler(Crawler):
             new_scrape_item = scrape_item.create_child(link)
             await self.video(new_scrape_item)
             scrape_item.add_children()
+
+    async def web_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
+        """Generator of website pages."""
+        page_url = scrape_item.url
+        while True:
+            async with self.request_limiter:
+                soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, page_url)
+            next_page = soup.select_one(NEXT_PAGE_SELECTOR)
+            yield soup
+            page_url_str: str | None = next_page.get("href") if next_page else None  # type: ignore
+            if not page_url_str:
+                break
+            if (PRIMARY_BASE_DOMAIN / page_url_str.strip("/")) == page_url:
+                break
+            page_url = self.parse_url(page_url_str, PRIMARY_BASE_DOMAIN)
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
