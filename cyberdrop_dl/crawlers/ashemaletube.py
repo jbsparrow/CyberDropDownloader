@@ -20,8 +20,10 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
-PRIMARY_BASE_DOMAIN = URL("https://www.ashemaletube.com/")
+PRIMARY_BASE_DOMAIN = URL("https://www.ashemaletube.com")
 VIDEO_SELECTOR = "video > source"
+PROFILE_SELECTOR = "div#ajax-profile-content div.media-item__inner"
+MODEL_VIDEO_SELECTOR = "a data-video-preview"
 DATETIME_SELECTOR = "div.views-count-add"
 JS_SELECTOR = "script:contains('var player = new VideoPlayer')"
 RESOLUTIONS = ["2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"]  # best to worst
@@ -44,14 +46,27 @@ class AShemaleTubeCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        if is_playlist(scrape_item.url):
-            return await self.playlist(scrape_item)
-        else:
+        if "videos" in scrape_item.url.parts:
             return await self.video(scrape_item)
+        elif "model" in scrape_item.url.parts:
+            return await self.model(scrape_item)
+        elif "playlist" in scrape_item.url.parts:
+            return await self.playlist(scrape_item)
         raise ValueError
 
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem) -> None: ...
+
+    @error_handling_wrapper
+    async def model(self, scrape_item: ScrapeItem) -> None:
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, scrape_item.url)
+        for item in soup.select(PROFILE_SELECTOR):
+            if model_video := item.select_one("a"):
+                link: URL = create_canonical_video_url(model_video.get("href"))
+                new_scrape_item = scrape_item.create_child(link, new_title_part="Model")
+                await self.video(new_scrape_item)
+                scrape_item.add_children()
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
@@ -78,10 +93,15 @@ class AShemaleTubeCrawler(Crawler):
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
 
+def create_canonical_video_url(href: str) -> URL:
+    return URL(f"{PRIMARY_BASE_DOMAIN}{href}")
+
+
 def get_best_quality(info_dict: dict) -> Format:
     """Returns name and URL of the best available quality.
 
     Returns URL as `str`"""
+
     active_url: str = ""
     active_res: str = ""
     for res in RESOLUTIONS:
