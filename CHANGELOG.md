@@ -35,18 +35,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PMVHaven.com support
 - Motherless support
 - xHamster support
+- Auto detect orientation
 - `generic crawler` to scrape pages from sites that are not supported. This replaces the basic `no crawler` logic
-- Ability to pause/resume the program
-- Ability to extract and apply cookies in real time (while CDL is running)
-- Updated scraping TUI with additional controls, logs view screen and mouse support
-- Graceful shutdown: Pressing `ctrl` + `q` will cancel scraping, print stats and send notifications instead of hard quitting
 - Save scraped pages as html with the new `--save-pages-html` option: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/files#save_pages_html
-- Use `--no-textual-ui` to disable the new TUI and use the old one: https://script-ware.gitbook.io/cyberdrop-dl/reference/cli-arguments#no-textual-ui
-- New `--pause-on-insufficient-space` option: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/global-settings/general#pause_on_insufficient_space
 
 ### Changed
 
-- `ctrl` + `c` shortcut has been disabled. Use `ctrl` + `q` to quit
 - Flaresolverr is no longer required for Spankbang
 - Reduce rate limits (JPG5)
 - Config is revalidated after the user edits it from the UI
