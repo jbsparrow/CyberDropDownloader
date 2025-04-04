@@ -24,10 +24,10 @@ if TYPE_CHECKING:
 
 PRIMARY_BASE_DOMAIN = URL("https://www.ashemaletube.com")
 VIDEO_SELECTOR = "video > source"
-PROFILE_VIDEOS_SELECTOR = "div#ajax-profile-content div.media-item__inner"
+PROFILE_VIDEOS_SELECTOR = "div.sub-content div.media-item__inner"
 NEXT_PAGE_SELECTOR = "a.rightKey"
 MODEL_VIDEO_SELECTOR = "a data-video-preview"
-MODEL_NAME_SELECTOR = "h1.username"
+USER_NAME_SELECTOR = "h1.username"
 PLAYLIST_VIDEOS_SELECTOR = "a.playlist-video-item__thumbnail"
 DATETIME_SELECTOR = "div.views-count-add"
 JS_SELECTOR = "script:contains('var player = new VideoPlayer')"
@@ -57,6 +57,8 @@ class AShemaleTubeCrawler(Crawler):
             return await self.model(scrape_item)
         elif "playlists" in scrape_item.url.parts:
             return await self.playlist(scrape_item)
+        elif "profiles" in scrape_item.url.parts:
+            return await self.profile(scrape_item)
         raise ValueError
 
     @error_handling_wrapper
@@ -72,9 +74,13 @@ class AShemaleTubeCrawler(Crawler):
             await self.iter_videos(scrape_item, videos, True)
 
     @error_handling_wrapper
+    async def profile(self, scrape_item: ScrapeItem) -> None:
+        return await self.model(scrape_item)
+
+    @error_handling_wrapper
     async def model(self, scrape_item: ScrapeItem) -> None:
         async for soup in self.web_pager(scrape_item):
-            if model_name := soup.select_one(MODEL_NAME_SELECTOR):
+            if model_name := soup.select_one(USER_NAME_SELECTOR):
                 title = model_name.get_text().strip()
                 title = self.create_title(title)
                 scrape_item.setup_as_profile(title)
