@@ -15,7 +15,6 @@ from cyberdrop_dl.clients.errors import (
     DownloadError,
     DurationError,
     ErrorLogMessage,
-    InsufficientFreeSpaceError,
     InvalidContentTypeError,
     RestrictedFiletypeError,
 )
@@ -129,10 +128,9 @@ class Downloader:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    def check_file_can_download(self, media_item: MediaItem) -> None:
+    async def check_file_can_download(self, media_item: MediaItem) -> None:
         """Checks if the file can be downloaded."""
-        if not self.manager.download_manager.check_free_space(media_item.download_folder):
-            raise InsufficientFreeSpaceError(origin=media_item)
+        await self.manager.storage_manager.check_free_space(media_item)
         if not self.manager.download_manager.check_allowed_filetype(media_item):
             raise RestrictedFiletypeError(origin=media_item)
         if not self.manager.download_manager.pre_check_duration(media_item):
@@ -181,7 +179,7 @@ class Downloader:
             await self.manager.states.RUNNING.wait()
             media_item.current_attempt = media_item.current_attempt or 1
             media_item.duration = await self.manager.db_manager.history_table.get_duration(self.domain, media_item)
-            self.check_file_can_download(media_item)
+            await self.check_file_can_download(media_item)
             downloaded = await self.client.download_file(self.manager, self.domain, media_item)
             if downloaded:
                 Path.chmod(media_item.complete_file, 0o666)

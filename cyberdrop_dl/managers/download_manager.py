@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 from base64 import b64encode
 from contextlib import asynccontextmanager
-from shutil import disk_usage
 from typing import TYPE_CHECKING
 
 from cyberdrop_dl.clients.download_client import check_file_duration
@@ -12,7 +11,6 @@ from cyberdrop_dl.utils.logger import log_debug
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
-    from pathlib import Path
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
@@ -42,7 +40,6 @@ class DownloadManager:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
         self._download_instances: dict = {}
-
         self.file_locks = FileLocksVault()
 
         self.download_limits = {
@@ -69,21 +66,6 @@ class DownloadManager:
         """Returns a basic auth token."""
         token = b64encode(f"{username}:{password}".encode()).decode("ascii")
         return f"Basic {token}"
-
-    def check_free_space(self, folder: Path | None = None) -> bool:
-        """Checks if there is enough free space on the drive to continue operating."""
-        if not folder:
-            folder = self.manager.path_manager.download_folder
-
-        folder = folder.resolve()
-        while not folder.is_dir() and folder.parents:
-            folder = folder.parent
-
-        # check if we reached an anchor (root) that does not exists, ex: disconnected USB drive
-        if not folder.is_dir():
-            return False
-        free_space = disk_usage(folder).free
-        return free_space >= self.manager.config_manager.global_settings_data.general.required_free_space
 
     def check_allowed_filetype(self, media_item: MediaItem) -> bool:
         """Checks if the file type is allowed to download."""

@@ -5,7 +5,7 @@ import json
 import platform
 from dataclasses import Field, field
 from time import perf_counter
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, Literal, NamedTuple
 
 from cyberdrop_dl import __version__
 from cyberdrop_dl.config_definitions import ConfigSettings, GlobalSettings
@@ -20,6 +20,8 @@ from cyberdrop_dl.managers.log_manager import LogManager
 from cyberdrop_dl.managers.path_manager import PathManager
 from cyberdrop_dl.managers.progress_manager import ProgressManager
 from cyberdrop_dl.managers.realdebrid_manager import RealDebridManager
+from cyberdrop_dl.managers.storage_manager import StorageManager
+from cyberdrop_dl.ui.textual import TextualUI
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.args import ParsedArgs
 from cyberdrop_dl.utils.logger import QueuedLogger, log
@@ -49,11 +51,13 @@ class Manager:
         self.log_manager: LogManager = field(init=False)
         self.db_manager: DBManager = field(init=False)
         self.client_manager: ClientManager = field(init=False)
+        self.storage_manager: StorageManager = field(init=False)
 
         self.download_manager: DownloadManager = field(init=False)
         self.progress_manager: ProgressManager = field(init=False)
         self.live_manager: LiveManager = field(init=False)
         self.textual_log_queue: queue.Queue = field(init=False)
+        self._textual_ui: TextualUI = field(init=False)
 
         self._loaded_args_config: bool = False
         self._made_portable: bool = False
@@ -100,6 +104,19 @@ class Manager:
             self.multiconfig = True
         self.set_constants()
 
+    def notify(
+        self,
+        msg: str,
+        title: str = "",
+        severity: Literal["information", "warning", "error"] = "information",
+        timeout: float | None = None,
+    ):
+        """Wrapper around textual.app.notify
+
+        Does nothing if CDL is not using textual (`--no-textual-ui`)"""
+        if isinstance(self._textual_ui, TextualUI):
+            self._textual_ui.notify(msg, title=title, severity=severity, timeout=timeout)
+
     def adjust_for_simpcity(self) -> None:
         """Adjusts settings for SimpCity update."""
         simp_settings_adjusted = self.cache_manager.get("simp_settings_adjusted")
@@ -126,10 +143,17 @@ class Manager:
 
         if not isinstance(self.client_manager, ClientManager):
             self.client_manager = ClientManager(self)
+        if not isinstance(self.storage_manager, StorageManager):
+            self.storage_manager = StorageManager(self)
+
+        elif self.states.RUNNING.is_set():
+            await self.storage_manager.reset()  # Reset total downloaded data if running multiple configs
+
         if not isinstance(self.download_manager, DownloadManager):
             self.download_manager = DownloadManager(self)
         if not isinstance(self.real_debrid_manager, RealDebridManager):
             self.real_debrid_manager = RealDebridManager(self)
+
         await self.async_db_hash_startup()
 
         constants.MAX_NAME_LENGTHS["FILE"] = self.config_manager.global_settings_data.general.max_file_name_length
@@ -248,10 +272,14 @@ class Manager:
 
     async def close(self) -> None:
         """Closes the manager."""
+        self.states.RUNNING.clear()
         if not isinstance(self.client_manager, Field):
             await self.client_manager.close()
+
         await self.async_db_close()
         await self.cache_manager.close()
+        await self.storage_manager.close()
+
         self.cache_manager.close_sync()
         while self.loggers:
             _, queued_logger = self.loggers.popitem()
