@@ -7,6 +7,7 @@ from collections.abc import Iterable
 from datetime import date
 from enum import StrEnum, auto
 from pathlib import Path
+from shutil import get_terminal_size
 from typing import TYPE_CHECKING, Self
 
 from pydantic import BaseModel, Field, ValidationError, computed_field, field_validator, model_validator
@@ -39,6 +40,32 @@ def _check_mutually_exclusive(group: Iterable, msg: str) -> None:
         raise ValueError(msg)
 
 
+def is_terminal_in_portrait() -> bool:
+    """Check if CDL is being run in portrait mode based on a few conditions."""
+    # Return True if running in portait mode, False otherwise (landscape mode)
+
+    def check_terminal_size():
+        terminal_size = get_terminal_size()
+        width, height = terminal_size.columns, terminal_size.lines
+        aspect_ratio = width / height
+
+        # High aspect ratios are likely to be in landscape mode
+        if aspect_ratio >= 3.2:
+            return False
+
+        # Check for mobile device in portrait mode
+        if (aspect_ratio < 1.5 and height >= 40) or (width <= 85 and aspect_ratio < 2.3):
+            return True
+
+        # Assume landscape mode for other cases
+        return False
+
+    if env.PORTRAIT_MODE:
+        return True
+
+    return check_terminal_size()
+
+
 class CommandLineOnlyArgs(BaseModel):
     links: list[HttpURL] = Field([], description="link(s) to content to download (passing multiple links is supported)")
     appdata_folder: Path | None = Field(None, description="AppData folder path")
@@ -57,7 +84,7 @@ class CommandLineOnlyArgs(BaseModel):
     download_tiktok_audios: bool = Field(False, description="download TikTok audios")
     print_stats: bool = Field(True, description="Show stats report at the end of a run")
     ui: UIOptions = Field(UIOptions.FULLSCREEN, description="DISABLED, ACTIVITY, SIMPLE or FULLSCREEN")
-    portrait: bool = Field(env.RUNNING_IN_TERMUX, description="show UI in a portrait layout")
+    portrait: bool = Field(is_terminal_in_portrait(), description="show UI in a portrait layout")
     disable_cache: bool = Field(False, description="Temporarily disable the requests cache")
     textual_ui: bool = Field(True, description="Enable/Disable textual UI (TUI with mouse support)")
 
