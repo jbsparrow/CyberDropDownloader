@@ -24,6 +24,7 @@ PRIMARY_BASE_DOMAIN = URL("https://www.ashemaletube.com")
 VIDEO_SELECTOR = "video > source"
 PROFILE_SELECTOR = "div#ajax-profile-content div.media-item__inner"
 MODEL_VIDEO_SELECTOR = "a data-video-preview"
+MODEL_NAME_SELECTOR = "h1.username"
 DATETIME_SELECTOR = "div.views-count-add"
 JS_SELECTOR = "script:contains('var player = new VideoPlayer')"
 RESOLUTIONS = ["2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"]  # best to worst
@@ -61,12 +62,21 @@ class AShemaleTubeCrawler(Crawler):
     async def model(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, scrape_item.url)
-        for item in soup.select(PROFILE_SELECTOR):
-            if model_video := item.select_one("a"):
-                link: URL = create_canonical_video_url(model_video.get("href"))
-                new_scrape_item = scrape_item.create_child(link, new_title_part="Model")
-                await self.video(new_scrape_item)
-                scrape_item.add_children()
+        if model_name := soup.select_one(MODEL_NAME_SELECTOR):
+            title = model_name.get_text().strip()
+            title = self.create_title(title)
+            scrape_item.setup_as_profile(title)
+
+        videos = soup.select(PROFILE_SELECTOR)
+        await self.iter_videos(scrape_item, videos)
+
+    async def iter_videos(self, scrape_item: ScrapeItem, videos) -> None:
+        for video in videos:
+            model_video = video.select_one("a")
+            link: URL = create_canonical_video_url(model_video.get("href"))
+            new_scrape_item = scrape_item.create_child(link)
+            await self.video(new_scrape_item)
+            scrape_item.add_children()
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
