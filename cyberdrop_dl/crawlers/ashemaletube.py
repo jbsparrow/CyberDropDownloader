@@ -28,6 +28,7 @@ PROFILE_VIDEOS_SELECTOR = "div#ajax-profile-content div.media-item__inner"
 NEXT_PAGE_SELECTOR = "a.rightKey"
 MODEL_VIDEO_SELECTOR = "a data-video-preview"
 MODEL_NAME_SELECTOR = "h1.username"
+PLAYLIST_VIDEOS_SELECTOR = "a.playlist-video-item__thumbnail"
 DATETIME_SELECTOR = "div.views-count-add"
 JS_SELECTOR = "script:contains('var player = new VideoPlayer')"
 RESOLUTIONS = ["2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"]  # best to worst
@@ -54,12 +55,21 @@ class AShemaleTubeCrawler(Crawler):
             return await self.video(scrape_item)
         elif "model" in scrape_item.url.parts:
             return await self.model(scrape_item)
-        elif "playlist" in scrape_item.url.parts:
+        elif "playlists" in scrape_item.url.parts:
             return await self.playlist(scrape_item)
         raise ValueError
 
     @error_handling_wrapper
-    async def playlist(self, scrape_item: ScrapeItem) -> None: ...
+    async def playlist(self, scrape_item: ScrapeItem) -> None:
+        async for soup in self.web_pager(scrape_item):
+            if playlist_name := soup.select_one("h1"):
+                play_list_name_str = playlist_name.get_text().replace("\n", "").replace("\t", "").strip()
+                title = f"{play_list_name_str} [playlist]"
+                title = self.create_title(title)
+                scrape_item.setup_as_album(title)
+
+            videos = soup.select(PLAYLIST_VIDEOS_SELECTOR)
+            await self.iter_videos(scrape_item, videos, True)
 
     @error_handling_wrapper
     async def model(self, scrape_item: ScrapeItem) -> None:
@@ -72,10 +82,17 @@ class AShemaleTubeCrawler(Crawler):
             videos = soup.select(PROFILE_VIDEOS_SELECTOR)
             await self.iter_videos(scrape_item, videos)
 
-    async def iter_videos(self, scrape_item: ScrapeItem, videos) -> None:
+    async def iter_videos(self, scrape_item: ScrapeItem, videos, playlist: bool = False) -> None:
         for video in videos:
-            model_video = video.select_one("a")
-            link: URL = create_canonical_video_url(model_video.get("href"))
+            href: str = None
+            if playlist:
+                href = video.get("href")
+            else:
+                if model_video := video.select_one("a"):
+                    href = model_video.get("href")
+            if href is None:
+                raise ScrapeError(404, origin=scrape_item)
+            link: URL = create_canonical_video_url(href)
             new_scrape_item = scrape_item.create_child(link)
             await self.video(new_scrape_item)
             scrape_item.add_children()
@@ -159,7 +176,3 @@ def parse_datetime(date: str) -> int:
     """Parses a datetime string into a unix timestamp."""
     parsed_date = datetime.datetime.strptime(date, "Added %Y-%m-%d")
     return calendar.timegm(parsed_date.timetuple())
-
-
-def is_playlist(url: URL) -> bool:
-    return False
