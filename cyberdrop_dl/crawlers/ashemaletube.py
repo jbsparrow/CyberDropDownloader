@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 PRIMARY_BASE_DOMAIN = URL("https://www.ashemaletube.com")
 VIDEO_SELECTOR = "video > source"
-PROFILE_VIDEOS_SELECTOR = "div.media-item__inner a"
+PROFILE_VIDEOS_SELECTOR = "div.media-item__inner a[data-video-preview]"
 NEXT_PAGE_SELECTOR = "a.rightKey"
 MODEL_VIDEO_SELECTOR = "a data-video-preview"
 USER_NAME_SELECTOR = "h1.username"
