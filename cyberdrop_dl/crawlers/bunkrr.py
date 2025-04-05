@@ -63,6 +63,7 @@ ALBUM_ITEM_SELECTOR = "div[class*='relative group/item theItem']"
 ITEM_NAME_SELECTOR = "p[class*='theName']"
 ITEM_DATE_SELECTOR = 'span[class*="theDate"]'
 DOWNLOAD_BUTTON_SELECTOR = "a.btn.ic-download-01"
+THUMBNAIL_SELECTOR = 'img[alt="image"]'
 IMAGE_PREVIEW_SELECTOR = "img.max-h-full.w-auto.object-cover.relative"
 VIDEO_SELECTOR = "video > source"
 VIDEO_AND_IMAGE_EXTS = FILE_FORMATS["Images"] | FILE_FORMATS["Videos"]
@@ -84,7 +85,7 @@ class AlbumItem:
     @classmethod
     def from_tag(cls, tag: Tag, parse_url: Callable[..., URL]) -> AlbumItem:
         name = tag.select_one(ITEM_NAME_SELECTOR).text  # type: ignore
-        thumbnail: str = tag.select_one("img").get("src")  # type: ignore
+        thumbnail: str = tag.select_one(THUMBNAIL_SELECTOR).get("src")  # type: ignore
         date_str = tag.select_one(ITEM_DATE_SELECTOR).text.strip()  # type: ignore
         date = parse_datetime(date_str)
         link_str: str = tag.find("a").get("href")  # type: ignore
