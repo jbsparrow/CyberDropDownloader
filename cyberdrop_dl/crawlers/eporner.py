@@ -12,7 +12,7 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils import javascript
-from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
+from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -28,16 +28,15 @@ ALLOW_AV1 = True
 
 
 DOWNLOADS_SELECTOR = "div#hd-porn-dload > div.dloaddivcol"
-PLAYLIST_ITEM_SELECTOR = "div[id^='vidresults'] > div[id^='vf'] div.mbcontent a"
+VIDEO_SELECTOR = "div[id^='vidresults'] > div[id^='vf'] div.mbcontent a"
 PLAYLIST_NEXT_PAGE_SELECTOR = "div.numlist2 a.nmnext"
 
 PROFILE_IMAGES_SELECTOR = "div.streameventsday.showAll > div[id^='pf'] a"
 PROFILE_PLAYLIST_SELECTOR = "div.streameventsday.showAll > div#pl > a"
-PROFILE_VIDEOS_SELECTOR = "div.streameventsday.showAll > div[id^='vf'] div.mbcontent a"
 
 PROFILE_URL_PARTS = {
     "pics": ("uploaded-pics", PROFILE_IMAGES_SELECTOR),
-    "videos": ("uploaded-videos", PROFILE_VIDEOS_SELECTOR),
+    "videos": ("uploaded-videos", VIDEO_SELECTOR),
     "playlists": ("playlists", PROFILE_PLAYLIST_SELECTOR),
 }
 
@@ -87,54 +86,47 @@ class EpornerCrawler(Crawler):
     async def profile(self, scrape_item: ScrapeItem) -> None:
         username = scrape_item.url.parts[2]
         canonical_url = self.primary_base_domain / "profile" / username
+        if canonical_url in scrape_item.parents:
+            await self.playlist(scrape_item, from_profile=True)
         title = self.create_title(f"{username} [user] ")
         scrape_item.setup_as_profile(title)
 
-        parts_to_scrape = []
+        parts_to_scrape = {}
         for name, parts in PROFILE_URL_PARTS.items():
             if any(p in scrape_item.url.parts for p in (name, parts[0])):
-                parts_to_scrape = [parts]
+                parts_to_scrape = {name: parts}
                 break
 
-        async def iter_items(url: URL, selector: str):
-            async for soup in self.web_pager(url):
-                item_tags: list[Tag] = soup.select(selector)
-                for item in item_tags:
-                    link_str: str = item.get("href")  # type: ignore
-                    link = self.parse_url(link_str)
-                    new_scrape_item = scrape_item.create_child(link, new_title_part=name)
-                    self.manager.task_group.create_task(self.run(new_scrape_item))
-                    scrape_item.add_children()
-
-        parts_to_scrape = parts_to_scrape or PROFILE_URL_PARTS.values()
-        for part, selector in parts_to_scrape:
+        parts_to_scrape = parts_to_scrape or PROFILE_URL_PARTS
+        for name, parts in parts_to_scrape:
+            part, selector = parts
             url = canonical_url / part
-            await iter_items(url, selector)
+            async for soup in self.web_pager(url):
+                await self.iter_items(scrape_item, soup.select(selector), name)
 
     @error_handling_wrapper
-    async def playlist(self, scrape_item: ScrapeItem) -> None:
+    async def playlist(self, scrape_item: ScrapeItem, from_profile: bool = False) -> None:
         added_title = False
 
         async for soup in self.web_pager(scrape_item.url):
-            if not added_title:
-                scrape_item.part_of_album = True
-                scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
+            if not added_title and not from_profile:
                 title = soup.title.text  # type: ignore
                 title_trash = "Porn Star Videos", "Porn Videos", "Videos -", "EPORNER"
                 for trash in title_trash:
                     title = title.rsplit(trash)[0].strip()
                 title = self.create_title(title)
-                scrape_item.add_to_parent_title(title)
+                scrape_item.setup_as_album(title)
                 added_title = True
 
-            item_tags: list[Tag] = soup.select(PLAYLIST_ITEM_SELECTOR)
+            await self.iter_items(scrape_item, soup.select(VIDEO_SELECTOR))
 
-            for item in item_tags:
-                link_str: str = item.get("href")  # type: ignore
-                link = self.parse_url(link_str)
-                new_scrape_item = self.create_scrape_item(scrape_item, link, add_parent=scrape_item.url)
-                self.manager.task_group.create_task(self.run(new_scrape_item))
-                scrape_item.add_children()
+    async def iter_items(self, scrape_item: ScrapeItem, item_tags: list[Tag], new_title_part: str = "") -> None:
+        for item in item_tags:
+            link_str: str = item.get("href")  # type: ignore
+            link = self.parse_url(link_str)
+            new_scrape_item = scrape_item.create_child(link, new_title_part=new_title_part)
+            self.manager.task_group.create_task(self.run(new_scrape_item))
+            scrape_item.add_children()
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
