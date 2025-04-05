@@ -13,13 +13,22 @@ from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
+
 UNAUTHORIZED_SELECTOR = "div.video-holder:contains('This video is a private video')"
 JS_SELECTOR = "div.video-holder > script:contains('var flashvars')"
+USER_NAME_SELECTOR = "div.headline > h2"
+PUBLIC_VIDEOS_SELECTOR = "div#list_videos_public_videos_items"
+PRIVATE_VIDEOS_SELECTOR = "div#list_videos_private_videos_items"
+FAVOURITE_VIDEOS_SELECTOR = "div#list_videos_favourite_videos_items"
+NEXT_PAGE_SELECTOR = "li.pagination-next > a"
+VIDEOS_SELECTOR = "a.tumbpu"
 
 
 class Format(NamedTuple):
@@ -38,12 +47,49 @@ class ThisVidCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        if any(p in scrape_item.url.parts for p in ("tag", "category")):
-            return await self.playlist(scrape_item)
-        return await self.video(scrape_item)
+        if "members" in scrape_item.url.parts:
+            return await self.profile(scrape_item)
+        elif "videos" in scrape_item.url.parts:
+            return await self.video(scrape_item)
+        raise ValueError
 
     @error_handling_wrapper
-    async def playlist(self, scrape_item: ScrapeItem) -> None: ...
+    async def profile(self, scrape_item: ScrapeItem) -> None:
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+        user_name: str = soup.select_one(USER_NAME_SELECTOR).get_text().split("'s Profile")[0].strip()
+        title = f"{user_name} [user]"
+        title = self.create_title(title)
+        scrape_item.setup_as_profile(title)
+
+        if _ := soup.select(PUBLIC_VIDEOS_SELECTOR):
+            await self.iter_videos(scrape_item, "public_videos")
+        if _ := soup.select(FAVOURITE_VIDEOS_SELECTOR):
+            await self.iter_videos(scrape_item, "favourite_videos")
+        if _ := soup.select(PRIVATE_VIDEOS_SELECTOR):
+            await self.iter_videos(scrape_item, "private_videos")
+
+    async def iter_videos(self, scrape_item: ScrapeItem, video_category: str = "") -> None:
+        category_url: URL = get_category_url(scrape_item, video_category)
+        async for soup in self.web_pager(category_url):
+            if videos := soup.select(VIDEOS_SELECTOR):
+                for video in videos:
+                    new_scrape_item = scrape_item.create_child(video.get("href"), new_title_part=video_category)
+                    await self.video(new_scrape_item)
+                    scrape_item.add_children()
+
+    async def web_pager(self, category_url: URL) -> AsyncGenerator[BeautifulSoup]:
+        """Generator of website pages."""
+        page_url: URL = category_url
+        while True:
+            async with self.request_limiter:
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url)
+            next_page = soup.select_one(NEXT_PAGE_SELECTOR)
+            yield soup
+            page_url_str: str | None = next_page.get("href") if next_page else None  # type: ignore
+            if not page_url_str:
+                break
+            page_url = self.parse_url(page_url_str, self.primary_base_domain)
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
@@ -59,9 +105,9 @@ class ThisVidCrawler(Crawler):
         best_fmt = get_best_resolution(str(scrape_item.url), js_to_json(flashvars))
         title: str = soup.select_one("title").text.split("- ThisVid.com")[0].strip()
         filename, ext = get_filename_and_ext(best_fmt["url"])
-        video_id: str = URL(best_fmt["url"]).parts[-3]
-        custom_filename, _ = get_filename_and_ext(f"{title} [{video_id}] [{best_fmt['format_id']}].{ext}")
-        await self.handle_file(URL(best_fmt["url"]), scrape_item, filename, ext, custom_filename=custom_filename)
+        video_url: URL = URL(best_fmt["url"])
+        custom_filename, _ = get_filename_and_ext(f"{title} [{video_url.parts[-3]}] [{best_fmt['format_id']}].{ext}")
+        await self.handle_file(video_url, scrape_item, filename, ext, custom_filename=custom_filename)
 
 
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -256,3 +302,7 @@ def js_to_json(code, vars={}, *, strict=False):  # noqa: B006
             code,
         )
     )
+
+
+def get_category_url(scrape_item: ScrapeItem, video_category: str) -> URL:
+    return scrape_item.url / video_category
