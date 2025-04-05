@@ -289,7 +289,6 @@ class BunkrrCrawler(Crawler):
 
     def deep_scrape(self, url: URL) -> bool:
         assert url.host
-        return True  # Always deepscrape albums, see GH-848
         return any(part in url.host.split(".") for part in ("burger",)) or self.manager.config_manager.deep_scrape
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
