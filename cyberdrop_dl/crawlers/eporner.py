@@ -17,8 +17,6 @@ from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
-
     from bs4 import BeautifulSoup, Tag
 
     from cyberdrop_dl.managers.manager import Manager
@@ -32,6 +30,16 @@ ALLOW_AV1 = True
 DOWNLOADS_SELECTOR = "div#hd-porn-dload > div.dloaddivcol"
 PLAYLIST_ITEM_SELECTOR = "div[id^='vidresults'] > div[id^='vf'] div.mbcontent a"
 PLAYLIST_NEXT_PAGE_SELECTOR = "div.numlist2 a.nmnext"
+
+PROFILE_IMAGES_SELECTOR = "div.streameventsday.showAll > div[id^='pf'] a"
+PROFILE_PLAYLIST_SELECTOR = "div.streameventsday.showAll > div#pl > a"
+PROFILE_VIDEOS_SELECTOR = "div.streameventsday.showAll > div[id^='vf'] div.mbcontent a"
+
+PROFILE_URL_PARTS = {
+    "pics": ("uploaded-pics", PROFILE_IMAGES_SELECTOR),
+    "videos": ("uploaded-videos", PROFILE_VIDEOS_SELECTOR),
+    "playlists": ("playlists", PROFILE_PLAYLIST_SELECTOR),
+}
 
 
 class VideoInfo(NamedTuple):
@@ -57,6 +65,7 @@ class VideoInfo(NamedTuple):
 
 class EpornerCrawler(Crawler):
     primary_base_domain = URL("https://www.eporner.com/")
+    next_page_selector = PLAYLIST_NEXT_PAGE_SELECTOR
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "eporner", "ePorner")
@@ -70,13 +79,43 @@ class EpornerCrawler(Crawler):
             return await self.video(scrape_item)
         if any(p in scrape_item.url.parts for p in ("cat", "channel", "search", "pornstar")):
             return await self.playlist(scrape_item)
+        if "profile" in scrape_item.url.parts:
+            return await self.profile(scrape_item)
         raise ValueError
+
+    @error_handling_wrapper
+    async def profile(self, scrape_item: ScrapeItem) -> None:
+        username = scrape_item.url.parts[2]
+        canonical_url = self.primary_base_domain / "profile" / username
+        title = self.create_title(f"{username} [user] ")
+        scrape_item.setup_as_profile(title)
+
+        parts_to_scrape = []
+        for name, parts in PROFILE_URL_PARTS.items():
+            if any(p in scrape_item.url.parts for p in (name, parts[0])):
+                parts_to_scrape = [parts]
+                break
+
+        async def iter_items(url: URL, selector: str):
+            async for soup in self.web_pager(url):
+                item_tags: list[Tag] = soup.select(selector)
+                for item in item_tags:
+                    link_str: str = item.get("href")  # type: ignore
+                    link = self.parse_url(link_str)
+                    new_scrape_item = scrape_item.create_child(link, new_title_part=name)
+                    self.manager.task_group.create_task(self.run(new_scrape_item))
+                    scrape_item.add_children()
+
+        parts_to_scrape = parts_to_scrape or PROFILE_URL_PARTS.values()
+        for part, selector in parts_to_scrape:
+            url = canonical_url / part
+            await iter_items(url, selector)
 
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem) -> None:
         added_title = False
 
-        async for soup in self.web_pager(scrape_item):
+        async for soup in self.web_pager(scrape_item.url):
             if not added_title:
                 scrape_item.part_of_album = True
                 scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
@@ -132,19 +171,6 @@ class EpornerCrawler(Crawler):
         custom_filename, _ = self.get_filename_and_ext(custom_filename)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
-    async def web_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
-        """Generator of website pages."""
-        page_url = scrape_item.url
-        while True:
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url, origin=scrape_item)
-            next_page = soup.select_one(PLAYLIST_NEXT_PAGE_SELECTOR)
-            yield soup
-            page_url_str: str = next_page.get("href") if next_page else None  # type: ignore
-            if not page_url_str:
-                break
-            page_url = self.parse_url(page_url_str)
-
 
 def get_available_resolutions(soup: BeautifulSoup) -> list[VideoInfo]:
     downloads = soup.select_one(DOWNLOADS_SELECTOR)
@@ -179,7 +205,7 @@ def get_best_quality(soup: BeautifulSoup) -> tuple[str, str]:
 
 def get_info_dict(soup: BeautifulSoup) -> dict:
     info_js_script = soup.select_one("main script:contains('uploadDate')")
-    info_dict = javascript.parse_json_to_dict(info_js_script.text, use_regex=False)  # type: ignore
+    info_dict: dict = javascript.parse_json_to_dict(info_js_script.text, use_regex=False)  # type: ignore
     javascript.clean_dict(info_dict)
     return info_dict
 
