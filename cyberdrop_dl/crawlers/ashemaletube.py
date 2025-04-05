@@ -102,8 +102,6 @@ class AShemaleTubeCrawler(Crawler):
             page_url_str: str | None = next_page.get("href") if next_page else None  # type: ignore
             if not page_url_str:
                 break
-            if (PRIMARY_BASE_DOMAIN / page_url_str.strip("/")) == page_url:
-                break
             page_url = self.parse_url(page_url_str, PRIMARY_BASE_DOMAIN)
 
     @error_handling_wrapper
