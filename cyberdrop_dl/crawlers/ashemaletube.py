@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 PRIMARY_BASE_DOMAIN = URL("https://www.ashemaletube.com")
 VIDEO_SELECTOR = "video > source"
-PROFILE_VIDEOS_SELECTOR = "div.sub-content div.media-item__inner"
+PROFILE_VIDEOS_SELECTOR = "div.media-item__inner a"
 NEXT_PAGE_SELECTOR = "a.rightKey"
 MODEL_VIDEO_SELECTOR = "a data-video-preview"
 USER_NAME_SELECTOR = "h1.username"
@@ -69,9 +69,7 @@ class AShemaleTubeCrawler(Crawler):
                 title = f"{play_list_name_str} [playlist]"
                 title = self.create_title(title)
                 scrape_item.setup_as_album(title)
-
-            videos = soup.select(PLAYLIST_VIDEOS_SELECTOR)
-            await self.iter_videos(scrape_item, videos, True)
+            await self.iter_videos(scrape_item, soup.select(PLAYLIST_VIDEOS_SELECTOR))
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
@@ -84,21 +82,11 @@ class AShemaleTubeCrawler(Crawler):
                 title = model_name.get_text().strip()
                 title = self.create_title(title)
                 scrape_item.setup_as_profile(title)
+            await self.iter_videos(scrape_item, soup.select(PROFILE_VIDEOS_SELECTOR))
 
-            videos = soup.select(PROFILE_VIDEOS_SELECTOR)
-            await self.iter_videos(scrape_item, videos)
-
-    async def iter_videos(self, scrape_item: ScrapeItem, videos, playlist: bool = False) -> None:
+    async def iter_videos(self, scrape_item: ScrapeItem, videos) -> None:
         for video in videos:
-            href: str = None
-            if playlist:
-                href = video.get("href")
-            else:
-                if model_video := video.select_one("a"):
-                    href = model_video.get("href")
-            if href is None:
-                raise ScrapeError(404, origin=scrape_item)
-            link: URL = create_canonical_video_url(href)
+            link: URL = create_canonical_video_url(video.get("href"))
             new_scrape_item = scrape_item.create_child(link)
             await self.video(new_scrape_item)
             scrape_item.add_children()
