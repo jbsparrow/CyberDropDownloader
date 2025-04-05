@@ -28,14 +28,16 @@ ALLOW_AV1 = True
 
 
 DOWNLOADS_SELECTOR = "div#hd-porn-dload > div.dloaddivcol"
-VIDEO_SELECTOR = "div[id^='vidresults'] > div[id^='vf'] div.mbcontent a"
+VIDEO_SELECTOR = "div[id^='vf'] div.mbcontent a"
 PLAYLIST_NEXT_PAGE_SELECTOR = "div.numlist2 a.nmnext"
 
-PROFILE_IMAGES_SELECTOR = "div.streameventsday.showAll > div[id^='pf'] a"
+IMAGES_SELECTOR = "div[id^='pf'] a"
 PROFILE_PLAYLIST_SELECTOR = "div.streameventsday.showAll > div#pl > a"
 
+GALLERY_TITLE_SELECTOR = "div#galleryheader"
+
 PROFILE_URL_PARTS = {
-    "pics": ("uploaded-pics", PROFILE_IMAGES_SELECTOR),
+    "pics": ("uploaded-pics", IMAGES_SELECTOR),
     "videos": ("uploaded-videos", VIDEO_SELECTOR),
     "playlists": ("playlists", PROFILE_PLAYLIST_SELECTOR),
 }
@@ -78,6 +80,8 @@ class EpornerCrawler(Crawler):
             return await self.video(scrape_item)
         if any(p in scrape_item.url.parts for p in ("cat", "channel", "search", "pornstar")):
             return await self.playlist(scrape_item)
+        if "gallery" in scrape_item.url.parts:
+            return await self.gallery(scrape_item)
         if "profile" in scrape_item.url.parts:
             return await self.profile(scrape_item)
         raise ValueError
@@ -102,7 +106,8 @@ class EpornerCrawler(Crawler):
             part, selector = parts
             url = canonical_url / part
             async for soup in self.web_pager(url):
-                await self.iter_items(scrape_item, soup.select(selector), name)
+                for _, new_scrape_item in self.iter_items(scrape_item, soup.select(selector), name):
+                    self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem, from_profile: bool = False) -> None:
@@ -118,14 +123,33 @@ class EpornerCrawler(Crawler):
                 scrape_item.setup_as_album(title)
                 added_title = True
 
-            await self.iter_items(scrape_item, soup.select(VIDEO_SELECTOR))
+            for _, new_scrape_item in self.iter_items(scrape_item, soup.select(VIDEO_SELECTOR)):
+                self.manager.task_group.create_task(self.run(new_scrape_item))
 
-    async def iter_items(self, scrape_item: ScrapeItem, item_tags: list[Tag], new_title_part: str = "") -> None:
+    @error_handling_wrapper
+    async def gallery(self, scrape_item: ScrapeItem) -> None:
+        added_title = False
+
+        async for soup in self.web_pager(scrape_item.url):
+            if not added_title:
+                title = soup.select_one(GALLERY_TITLE_SELECTOR).get_text(strip=True)  # type: ignore
+                title = self.create_title(title)
+                scrape_item.setup_as_album(title)
+                added_title = True
+
+            for thumb, new_scrape_item in self.iter_items(scrape_item, soup.select(IMAGES_SELECTOR)):
+                filename = thumb.name.rsplit("-", 1)[0]
+                filename, ext = self.get_filename_and_ext(f"{filename}{thumb.suffix}")
+                link = thumb.with_name(filename)
+                await self.handle_file(link, new_scrape_item, filename, ext)
+
+    def iter_items(self, scrape_item: ScrapeItem, item_tags: list[Tag], new_title_part: str = ""):
         for item in item_tags:
             link_str: str = item.get("href")  # type: ignore
             link = self.parse_url(link_str)
-            new_scrape_item = scrape_item.create_child(link, new_title_part=new_title_part)
-            self.manager.task_group.create_task(self.run(new_scrape_item))
+            thumb_str: str = item.select_one("img").get("src")  # type: ignore
+            thumb = self.parse_url(thumb_str)
+            yield (thumb, scrape_item.create_child(link, new_title_part=new_title_part))
             scrape_item.add_children()
 
     @error_handling_wrapper
