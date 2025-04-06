@@ -120,7 +120,7 @@ class AShemaleTubeCrawler(Crawler):
             if video_object := soup.select_one(VIDEO_OBJECT_SCRIPT_SELECTOR):
                 json_data = json.loads(video_object.string.strip())
                 if "uploadDate" in json_data:
-                    scrape_item.possible_datetime = json_data["uploadDate"]
+                    scrape_item.possible_datetime = parse_datetime(json_data["uploadDate"])
 
             video_id: str = scrape_item.url.parts[2]
             title: str = soup.select_one("title").text.split("- aShemaletube.com")[0].strip()
@@ -170,5 +170,5 @@ def parse_player_info(script_text: str) -> dict[str, str | dict] | None:
 
 def parse_datetime(date: str) -> int:
     """Parses a datetime string into a unix timestamp."""
-    parsed_date = datetime.datetime.strptime(date, "Added %Y-%m-%d")
-    return calendar.timegm(parsed_date.timetuple())
+    dt = datetime.datetime.fromisoformat(date)
+    return calendar.timegm(dt.timetuple())
