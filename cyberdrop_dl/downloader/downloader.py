@@ -22,7 +22,7 @@ from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Coroutine, Generator
+    from collections.abc import Callable, Coroutine, Generator, Iterable
 
     from cyberdrop_dl.clients.download_client import DownloadClient
     from cyberdrop_dl.managers.manager import Manager
@@ -158,37 +158,40 @@ class Downloader:
         if self.was_processed_before(media_item):
             return
 
-        assert media_item.debrid_link
+        assert media_item.debrid_link is not None
         if not self.manager.ffmpeg.is_available:
             raise DownloadError("FFmpeg Error", "FFmpeg is required for HLS downloads but is not available", media_item)
 
         seg_media_items: list[MediaItem] = []
         media_item.complete_file = s = media_item.download_folder / media_item.filename
-        segments_folder = s.with_suffix(".cdl_hls")
-        m3u8_lines = m3u8_content.splitlines()
+        segments_folder = s.with_suffix(".temp")
 
         def create_segments() -> Generator[HlsSegment]:
-            def get_last_segment_line() -> str:
-                for line in reversed(m3u8_lines):
-                    if not line.startswith("#"):
-                        return line.strip()
-                raise DownloadError("Invalid M3U8", "Inable to parse m3u8 content", media_item)
+            last_segment = ""
 
-            def get_segment_lines() -> Generator[str]:
-                for line in m3u8_lines:
-                    segment = line.strip()
-                    if not segment or segment.startswith("#"):
-                        continue
-                    yield segment
+            def get_segment_names() -> Generator[str]:
+                nonlocal last_segment
+                m3u8_lines = m3u8_content.splitlines()
 
-            last_segment_part = get_last_segment_line()
-            last_index_str = re.sub(r"\D", "", last_segment_part)
-            padding = max(5, len(last_index_str))
-            parts = get_segment_lines()
-            for index, part in enumerate(parts, 1):
-                url = media_item.debrid_link / part  # type: ignore
-                name = f"{index:0{padding}d}.cdl_hsl"
-                yield HlsSegment(part, name, url)
+                def get_valid_segment_lines(lines: Iterable[str]):
+                    for line in lines:
+                        segment_name = line.strip()
+                        if segment_name or not segment_name.startswith("#"):
+                            yield segment_name
+
+                for segment in get_valid_segment_lines(reversed(m3u8_lines)):
+                    last_segment = segment
+                    break
+
+                yield from get_valid_segment_lines(m3u8_lines)
+
+            last_segment_index = re.sub(r"\D", "", last_segment)
+            padding = max(5, len(last_segment_index))
+
+            for index, name in enumerate(get_segment_names(), 1):
+                url = media_item.debrid_link / name
+                custom_name = f"{index:0{padding}d}.cdl_hsl"
+                yield HlsSegment(name, custom_name, url)
 
         def make_download_task(segment: HlsSegment):
             seg_media_item = MediaItem(
