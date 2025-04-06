@@ -78,7 +78,7 @@ class AShemaleTubeCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, scrape_item.url)
         if model_name := soup.select_one(USER_NAME_SELECTOR):
-            title = model_name.get_text().strip()
+            title = model_name.get_text(strip=True)
             title = self.create_title(title)
             scrape_item.setup_as_profile(title)
         async for soup in self.web_pager(scrape_item):
