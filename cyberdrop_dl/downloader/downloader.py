@@ -98,8 +98,9 @@ def exception_wrapper(func: Callable):
             ClientError,
         ) as e:
             ui_message = getattr(e, "status", type(e).__name__)
-            if media_item.partial_file and media_item.partial_file.is_file():
-                size = media_item.partial_file.stat().st_size
+            if media_item.partial_file and await asyncio.to_thread(media_item.partial_file.is_file):
+                stat = await asyncio.to_thread(media_item.partial_file.stat)
+                size = stat.st_size
                 if (
                     media_item.filename in self._current_attempt_filesize
                     and self._current_attempt_filesize[media_item.filename] >= size
@@ -152,10 +153,6 @@ class Downloader:
         """Starts the downloader."""
         self.client = self.manager.client_manager.downloader_session
         self._semaphore = asyncio.Semaphore(self.manager.download_manager.get_download_limit(self.domain))
-
-        self.manager.path_manager.download_folder.mkdir(parents=True, exist_ok=True)
-        if self.manager.config_manager.settings_data.sorting.sort_downloads:
-            self.manager.path_manager.sorted_folder.mkdir(parents=True, exist_ok=True)
 
     def update_queued_files(self, increase_total: bool = True):
         queued_files = self.manager.progress_manager.file_progress.get_queue_length()
@@ -339,16 +336,16 @@ class Downloader:
         return ffmpeg_result.success
 
 
-async def set_file_datetime(media_item: MediaItem, complete_file: Path | None = None) -> None:
+async def set_file_datetime(media_item: MediaItem, file_path: Path | None = None) -> None:
     """Sets the file's datetime."""
     if not media_item.datetime:
         log(f"Unable to parse upload date for {media_item.url}, using current datetime as file datetime", 30)
         return
 
-        complete_file = complete_file or media_item.complete_file
+        file_path = file_path or media_item.complete_file
 
     def set_date():
-            file = File(str(complete_file))
+            file = File(str(file_path))
             file.set(*(media_item.datetime,) * 3)  # type: ignore
 
     await asyncio.to_thread(set_date)

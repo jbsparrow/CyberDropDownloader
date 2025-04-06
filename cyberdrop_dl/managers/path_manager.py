@@ -141,6 +141,10 @@ class PathManager:
         if self.manager.config_manager.settings_data.files.save_pages_html:
             self.pages_folder.mkdir(parents=True, exist_ok=True)
 
+        self.download_folder.mkdir(parents=True, exist_ok=True)
+        if self.manager.config_manager.settings_data.sorting.sort_downloads:
+            self.sorted_folder.mkdir(parents=True, exist_ok=True)
+
     def add_completed(self, media_item: MediaItem) -> None:
         if media_item.is_segment:
             return
