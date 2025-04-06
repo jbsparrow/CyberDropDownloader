@@ -126,6 +126,8 @@ class AShemaleTubeCrawler(Crawler):
             include_id = f"[{video_id}]" if INCLUDE_VIDEO_ID_IN_FILENAME else ""
             custom_filename = f"{title} {include_id}[{info['res']}]{ext}"
             await self.handle_file(URL(info["url"]), scrape_item, filename, ext, custom_filename=custom_filename)
+        else:
+            raise ScrapeError(422, origin=scrape_item)
 
 
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
