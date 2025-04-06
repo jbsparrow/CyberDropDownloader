@@ -221,11 +221,11 @@ class Downloader:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    def finalize_download(self, media_item: MediaItem, downloaded: bool) -> None:
+    async def finalize_download(self, media_item: MediaItem, downloaded: bool) -> None:
         if downloaded:
-            Path.chmod(media_item.complete_file, 0o666)
+            await asyncio.to_thread(Path.chmod, media_item.complete_file, 0o666)
             if not self.manager.config_manager.settings_data.download_options.disable_file_timestamps:
-                set_file_datetime(media_item)
+                await set_file_datetime(media_item)
             self.manager.progress_manager.download_progress.add_completed()
             log(f"Download finished: {media_item.url}", 20)
         self.attempt_task_removal(media_item)
@@ -253,7 +253,7 @@ class Downloader:
         media_item.duration = await self.manager.db_manager.history_table.get_duration(self.domain, media_item)
         await self.check_file_can_download(media_item)
         downloaded = await self.client.download_file(self.manager, self.domain, media_item)
-        self.finalize_download(media_item, downloaded)
+        await self.finalize_download(media_item, downloaded)
         return downloaded
 
     @error_handling_wrapper
@@ -330,19 +330,23 @@ class Downloader:
 
         await self.client.process_completed(media_item, self.domain)
         await self.client.handle_media_item_completion(media_item, downloaded=ffmpeg_result.success)
-        self.finalize_download(media_item, ffmpeg_result.success)
+        await self.finalize_download(media_item, ffmpeg_result.success)
         return ffmpeg_result.success
 
 
-def set_file_datetime(media_item: MediaItem, complete_file: Path | None = None) -> None:
+async def set_file_datetime(media_item: MediaItem, complete_file: Path | None = None) -> None:
     """Sets the file's datetime."""
     if not media_item.datetime:
         log(f"Unable to parse upload date for {media_item.url}, using current datetime as file datetime", 30)
         return
 
         complete_file = complete_file or media_item.complete_file
-        file = File(str(complete_file))
-        file.set(*(media_item.datetime,) * 3)  # type: ignore
+
+    def set_date():
+            file = File(str(complete_file))
+            file.set(*(media_item.datetime,) * 3)  # type: ignore
+
+    await asyncio.to_thread(set_date)
 
     def attempt_task_removal(self, media_item: MediaItem) -> None:
         """Attempts to remove the task from the progress bar."""
