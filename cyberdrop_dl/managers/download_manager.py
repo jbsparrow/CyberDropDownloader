@@ -24,7 +24,7 @@ class FileLocksVault:
         self._locked_files: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 
     @asynccontextmanager
-    async def get_lock(self, media_item: MediaItem) -> AsyncGenerator:
+    async def get_lock(self, media_item: MediaItem) -> AsyncGenerator[None, None]:
         """Get filelock for the media_item. Creates one if none exists"""
         if not media_item.file_lock_reference_name:
             media_item.file_lock_reference_name = media_item.filename

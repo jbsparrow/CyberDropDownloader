@@ -160,7 +160,7 @@ class Downloader:
         if not self.manager.ffmpeg.is_available:
             raise DownloadError("FFmpeg Error", "FFmpeg is required for HLS downloads but is not available", media_item)
 
-        seg_media_items: list[MediaItem] = []
+        segment_paths: set[Path] = set()
         media_item.complete_file = s = media_item.download_folder / media_item.filename
         segments_folder = s.with_suffix(".temp")
 
@@ -206,10 +206,17 @@ class Downloader:
                 # reference=media_item,
                 # skip_hashing=True,
             )
-            seg_media_items.append(seg_media_item)
-            return self.download(seg_media_item)
 
-        results = await asyncio.gather(*(make_download_task(s) for s in create_segments()))
+            async def download_segment():
+                await self.download(seg_media_item)
+                # download will return False if the file already exists (ex: downloaded in a previous run)
+                # We have to manually check if the segment exists after the download
+                segment_paths.add(seg_media_item.complete_file)
+                await asyncio.to_thread(seg_media_item.complete_file.is_file)
+
+            return download_segment()
+
+        results = await asyncio.gather(*(make_download_task(segment) for segment in create_segments()))
         n_segmets = len(results)
         n_successful = sum(1 for r in results if r)
 
@@ -217,8 +224,7 @@ class Downloader:
             msg = f"Download of some segments failed. Successful: {n_successful:,}/{n_segmets:,} "
             raise DownloadError("HLS Seg Error", msg, media_item)
 
-        seg_paths = [m.complete_file for m in seg_media_items if m.complete_file]
-        ffmpeg_result = await self.manager.ffmpeg.concat(*seg_paths, output_file=media_item.complete_file)
+        ffmpeg_result = await self.manager.ffmpeg.concat(*sorted(segment_paths), output_file=media_item.complete_file)
 
         if not ffmpeg_result.success:
             raise DownloadError("FFmpeg Concat Error", ffmpeg_result.stderr, media_item)
