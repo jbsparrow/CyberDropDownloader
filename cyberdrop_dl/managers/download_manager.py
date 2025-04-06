@@ -24,8 +24,13 @@ class FileLocksVault:
         self._locked_files: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 
     @asynccontextmanager
-    async def get_lock(self, filename: str) -> AsyncGenerator:
-        """Get filelock for the provided filename. Creates one if none exists"""
+    async def get_lock(self, media_item: MediaItem) -> AsyncGenerator:
+        """Get filelock for the media_item. Creates one if none exists"""
+        if not media_item.file_lock_reference_name:
+            media_item.file_lock_reference_name = media_item.filename
+
+        filename = media_item.file_lock_reference_name
+
         log_debug(f"Checking lock for '{filename}'", 20)
         if filename not in self._locked_files:
             log_debug(f"Lock for '{filename}' does not exists", 20)

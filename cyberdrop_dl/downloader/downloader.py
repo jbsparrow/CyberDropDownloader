@@ -68,7 +68,7 @@ def retry(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, Coroutine[
     return wrapper
 
 
-def with_limiter(func: Callable):
+def with_limiter(func: Callable) -> Callable:
     @wraps(func)
     async def wrapper(self: Downloader, *args, **kwargs) -> Any:
         media_item = args[0]
@@ -93,8 +93,6 @@ class Downloader:
 
         self._additional_headers = {}
         self._current_attempt_filesize = {}
-        self._file_lock_vault = manager.download_manager.file_locks
-        self._ignore_history = manager.config_manager.settings_data.runtime_options.ignore_history
         self._semaphore: asyncio.Semaphore = field(init=False)
 
     @property
@@ -132,16 +130,16 @@ class Downloader:
             async with self.manager.client_manager.download_session_limit:
                 try:
                     log(f"{self.log_prefix} starting: {media_item.url}", 20)
-                    if not media_item.file_lock_reference_name:
-                        media_item.file_lock_reference_name = media_item.filename
-                    lock = self._file_lock_vault.get_lock(media_item.file_lock_reference_name)
-                    async with lock:
+                    async with self.manager.download_manager.file_locks.get_lock(media_item):
                         yield
                 finally:
                     pass
 
     def was_processed_before(self, media_item: MediaItem) -> bool:
-        if media_item.url.path in self.processed_items and not self._ignore_history:
+        if (
+            media_item.url.path in self.processed_items
+            and not self.manager.config_manager.settings_data.runtime_options.ignore_history
+        ):
             return True
         return False
 
@@ -185,10 +183,12 @@ class Downloader:
 
                 yield from get_valid_segment_lines(m3u8_lines)
 
+            segment_names = get_segment_names()
             last_segment_index = re.sub(r"\D", "", last_segment)
             padding = max(5, len(last_segment_index))
 
-            for index, name in enumerate(get_segment_names(), 1):
+            assert media_item.debrid_link is not None
+            for index, name in enumerate(segment_names, 1):
                 url = media_item.debrid_link / name
                 custom_name = f"{index:0{padding}d}.cdl_hsl"
                 yield HlsSegment(name, custom_name, url)
