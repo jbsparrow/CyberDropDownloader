@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import subprocess
 from datetime import datetime
 from functools import lru_cache
@@ -27,6 +26,7 @@ class SubProcessResult(NamedTuple):
     return_code: int | None
     stdout: str
     stderr: str
+    success: bool
     command: tuple
 
     def as_dict(self) -> dict:
@@ -34,27 +34,24 @@ class SubProcessResult(NamedTuple):
         return self._asdict() | {"command": joined_command}
 
 
-class FFmpegResult(SubProcessResult):
-    def as_dict(self) -> dict:
-        return super().as_dict() | {"ffmpeg_version": get_ffmpeg_version()}
-
-
 class FFmpeg:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
         self.cache_folder = self.manager.path_manager.cache_folder.resolve()
+        self.version = get_ffmpeg_version()
+        self.is_available = bool(self.version)
 
-    async def concat(self, *input: Path, output: Path) -> bool:
-        if not is_ffmpeg_available():
+    async def concat(self, *input_files: Path, output_file: Path) -> SubProcessResult:
+        if not self.is_available:
             raise RuntimeError("ffmpeg is not available")
         now = datetime.now().strftime("%Y%m%d_%H%M%S")
-        concat_file_name = f"{now} - {output.name[:40]}.ffmpeg_input.txt"
+        concat_file_name = f"{now} - {output_file.name[:40]}.ffmpeg_input.txt"
         concat_file_path = self.cache_folder / concat_file_name
-        await _create_concat_input_file(*input, file_path=concat_file_path)
-        success = await _concat(concat_file_path, output)
-        if success:
-            await async_delete_files(concat_file_path, *input)
-        return success
+        await _create_concat_input_file(*input_files, file_path=concat_file_path)
+        result = await _concat(concat_file_path, output_file)
+        if result.success:
+            await async_delete_files(concat_file_path, *input_files)
+        return result
 
 
 async def async_delete_files(*files: Path) -> None:
@@ -68,13 +65,12 @@ async def _create_concat_input_file(*input: Path, file_path: Path) -> None:
             await f.write(f"file '{file}'\n")
 
 
-async def _concat(concat_input_file: Path, output_file: Path) -> bool:
+async def _concat(concat_input_file: Path, output_file: Path):
     command = *FFMPEG_CALL_PREFIX, *CONCAT_INPUT_ARGS, str(concat_input_file), *CODEC_COPY, str(output_file)
-    return_code, *_ = await _run_command(command)
-    return return_code == 0
+    return await _run_command(command)
 
 
-async def _run_command(command: Sequence[str]) -> FFmpegResult:
+async def _run_command(command: Sequence[str]) -> SubProcessResult:
     joined_command = " ".join(command)
     log_debug(f"Running ffmpeg command: {joined_command}")
     process = await asyncio.create_subprocess_exec(*command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -82,13 +78,9 @@ async def _run_command(command: Sequence[str]) -> FFmpegResult:
     return_code = process.returncode
     stdout_str = stdout.decode("utf-8", errors="ignore")
     stderr_str = stderr.decode("utf-8", errors="ignore")
-    results = FFmpegResult(return_code, stdout_str, stderr_str, tuple(command))
-    log_debug(json.dumps(results.as_dict(), indent=4))
+    results = SubProcessResult(return_code, stdout_str, stderr_str, return_code == 0, tuple(command))
+    log_debug(results.as_dict())
     return results
-
-
-def is_ffmpeg_available() -> bool:
-    return bool(get_ffmpeg_version())
 
 
 @lru_cache
