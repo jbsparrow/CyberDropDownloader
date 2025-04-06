@@ -86,7 +86,7 @@ class AShemaleTubeCrawler(Crawler):
 
     async def iter_videos(self, scrape_item: ScrapeItem, videos) -> None:
         for video in videos:
-            link: URL = create_canonical_video_url(video.get("href"))
+            link: URL = self.parse_url(video.get("href"))
             new_scrape_item = scrape_item.create_child(link)
             self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.add_children()
@@ -136,10 +136,6 @@ class AShemaleTubeCrawler(Crawler):
 
 
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-
-def create_canonical_video_url(href: str) -> URL:
-    return URL(f"{PRIMARY_BASE_DOMAIN}{href}")
 
 
 def get_best_quality(info_dict: dict) -> Format:
