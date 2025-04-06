@@ -63,12 +63,14 @@ class AShemaleTubeCrawler(Crawler):
 
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem) -> None:
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, scrape_item.url)
+        if playlist_name := soup.select_one("h1"):
+            play_list_name_str = playlist_name.get_text(strip=True)
+            title = f"{play_list_name_str} [playlist]"
+            title = self.create_title(title)
+            scrape_item.setup_as_album(title)
         async for soup in self.web_pager(scrape_item):
-            if playlist_name := soup.select_one("h1"):
-                play_list_name_str = playlist_name.get_text().replace("\n", "").replace("\t", "").strip()
-                title = f"{play_list_name_str} [playlist]"
-                title = self.create_title(title)
-                scrape_item.setup_as_album(title)
             await self.iter_videos(scrape_item, soup.select(PLAYLIST_VIDEOS_SELECTOR))
 
     @error_handling_wrapper
