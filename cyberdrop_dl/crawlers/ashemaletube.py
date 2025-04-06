@@ -122,10 +122,15 @@ class AShemaleTubeCrawler(Crawler):
 
             video_id: str = scrape_item.url.parts[2]
             title: str = soup.select_one("title").text.split("- aShemaletube.com")[0].strip()
-            filename, ext = self.get_filename_and_ext(info["url"], assume_ext=".mp4")
+            link = self.parse_url(info["url"])
+            canonical_url = PRIMARY_BASE_DOMAIN / "videos" / video_id
+            scrape_item.url = canonical_url
+            filename, ext = self.get_filename_and_ext(link.name, assume_ext=".mp4")
             include_id = f"[{video_id}]" if INCLUDE_VIDEO_ID_IN_FILENAME else ""
             custom_filename = f"{title} {include_id}[{info['res']}]{ext}"
-            await self.handle_file(URL(info["url"]), scrape_item, filename, ext, custom_filename=custom_filename)
+            await self.handle_file(
+                canonical_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=link
+            )
         else:
             raise ScrapeError(422, origin=scrape_item)
 
