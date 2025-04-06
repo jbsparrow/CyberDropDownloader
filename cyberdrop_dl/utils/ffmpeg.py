@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 FFMPEG_CALL_PREFIX = "ffmpeg", "-y", "-loglevel", "error"
 CONCAT_INPUT_ARGS = "-f", "concat", "-safe", "0", "-i"
-CODEC_COPY = "-c", "-copy"
+CODEC_COPY = "-c", "copy"
 
 
 class SubProcessResult(NamedTuple):
