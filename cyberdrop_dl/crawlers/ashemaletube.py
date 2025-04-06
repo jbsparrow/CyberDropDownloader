@@ -139,10 +139,7 @@ class AShemaleTubeCrawler(Crawler):
 
 
 def get_best_quality(info_dict: dict) -> Format:
-    """Returns name and URL of the best available quality.
-
-    Returns URL as `str`"""
-
+    """Returns best available format"""
     active_url: str = ""
     active_res: str = ""
     for res in RESOLUTIONS:
