@@ -118,7 +118,8 @@ class Downloader:
         self.waiting_items += 1
         media_item.current_attempt = 0
         await self.client.mark_incomplete(media_item, self.domain)
-        self.update_queued_files()
+        if not media_item.is_segment:
+            self.update_queued_files()
         async with self._semaphore:
             await self.manager.states.RUNNING.wait()
             self.waiting_items -= 1
@@ -169,6 +170,7 @@ class Downloader:
                 segments_folder,
                 segment.name,
                 ext=media_item.ext,
+                is_segment=True,
                 # add_to_database=False,
                 # quiet=True,
                 # reference=media_item,
@@ -239,7 +241,8 @@ class Downloader:
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def start_download(self, media_item: MediaItem) -> bool:
-        log(f"{self.log_prefix} starting: {media_item.url}", 20)
+        if not media_item.is_segment:
+            log(f"{self.log_prefix} starting: {media_item.url}", 20)
         if not media_item.file_lock_reference_name:
             media_item.file_lock_reference_name = media_item.filename
         lock = self._file_lock_vault.get_lock(media_item.file_lock_reference_name)

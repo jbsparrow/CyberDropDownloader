@@ -142,12 +142,14 @@ class PathManager:
             self.pages_folder.mkdir(parents=True, exist_ok=True)
 
     def add_completed(self, media_item: MediaItem) -> None:
+        if media_item.is_segment:
+            return
         self._completed_downloads.add(media_item)
-        self._completed_downloads_paths.add(media_item.complete_file.resolve())
+        self._completed_downloads_paths.add(media_item.complete_file)
 
     def add_prev(self, media_item: MediaItem) -> None:
         self._prev_downloads.add(media_item)
-        self._prev_downloads_paths.add(media_item.complete_file.resolve())
+        self._prev_downloads_paths.add(media_item.complete_file)
 
     @property
     def completed_downloads(self) -> set[MediaItem]:

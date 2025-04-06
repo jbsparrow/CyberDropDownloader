@@ -48,6 +48,7 @@ class MediaItem:
     debrid_link: URL | None = field(default=None, hash=False, compare=False)
     duration: float | None = field(default=None, hash=False, compare=False)
     ext: str = ""
+    is_segment: bool = False
 
     # exclude from __init__
     file_lock_reference_name: str | None = field(default=None, init=False)
@@ -55,7 +56,7 @@ class MediaItem:
     filesize: int | None = field(default=None, init=False)
     current_attempt: int = field(default=0, init=False, hash=False, compare=False)
     partial_file: Path | None = field(default=None, init=False)
-    complete_file: Path | None = field(default=None, init=False)
+    complete_file: Path = field(default=None, init=False)  # type: ignore
     task_id: TaskID | None = field(default=None, init=False, hash=False, compare=False)
     hash: str | None = field(default=None, init=False, hash=False, compare=False)
     downloaded: bool = field(default=False, init=False, hash=False, compare=False)
