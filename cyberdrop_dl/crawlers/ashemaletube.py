@@ -75,11 +75,13 @@ class AShemaleTubeCrawler(Crawler):
 
     @error_handling_wrapper
     async def model(self, scrape_item: ScrapeItem) -> None:
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, scrape_item.url)
+        if model_name := soup.select_one(USER_NAME_SELECTOR):
+            title = model_name.get_text().strip()
+            title = self.create_title(title)
+            scrape_item.setup_as_profile(title)
         async for soup in self.web_pager(scrape_item):
-            if model_name := soup.select_one(USER_NAME_SELECTOR):
-                title = model_name.get_text().strip()
-                title = self.create_title(title)
-                scrape_item.setup_as_profile(title)
             await self.iter_videos(scrape_item, soup.select(PROFILE_VIDEOS_SELECTOR))
 
     async def iter_videos(self, scrape_item: ScrapeItem, videos) -> None:
