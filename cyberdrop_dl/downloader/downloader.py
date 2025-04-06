@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import re
 from dataclasses import field
 from functools import wraps
 from http import HTTPStatus
@@ -19,7 +20,7 @@ from cyberdrop_dl.clients.errors import (
     RestrictedFiletypeError,
 )
 from cyberdrop_dl.utils.constants import CustomHTTPStatus
-from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
+from cyberdrop_dl.utils.data_enums_classes.url_objects import HlsSegment, MediaItem
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -28,7 +29,6 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.clients.download_client import DownloadClient
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import HlsSegment
 
 
 KNOWN_BAD_URLS = {
@@ -128,7 +128,8 @@ class Downloader:
                 return await self.start_download(media_item)
 
     @error_handling_wrapper
-    async def download_hls(self, media_item: MediaItem, segments: Generator[HlsSegment]):
+    async def download_hls(self, media_item: MediaItem, m3u8_content: str) -> None:
+        assert media_item.debrid_link
         await self.client.mark_incomplete(media_item, self.domain)
         if not self.manager.ffmpeg.is_available:
             raise DownloadError("FFmpeg Error", "FFmpeg is required for HLS downloads but is not available", media_item)
@@ -136,8 +137,32 @@ class Downloader:
         seg_media_items: list[MediaItem] = []
         media_item.complete_file = s = media_item.download_folder / media_item.filename
         segments_folder = s.with_suffix(".cdl_hls")
+        m3u8_lines = m3u8_content.splitlines()
 
-        def make_task(segment: HlsSegment):
+        def create_segments() -> Generator[HlsSegment]:
+            def get_last_segment_line() -> str:
+                for line in reversed(m3u8_lines):
+                    if not line.startswith("#"):
+                        return line.strip()
+                raise DownloadError("Invalid M3U8", "Inable to parse m3u8 content", media_item)
+
+            def get_segment_lines() -> Generator[str]:
+                for line in m3u8_lines:
+                    segment = line.strip()
+                    if not segment or segment.startswith("#"):
+                        continue
+                    yield segment
+
+            last_segment_part = get_last_segment_line()
+            last_index_str = re.sub(r"\D", "", last_segment_part)
+            padding = max(5, len(last_index_str))
+            parts = get_segment_lines()
+            for index, part in enumerate(parts, 1):
+                url = media_item.debrid_link / part  # type: ignore
+                name = f"{index:0{padding}d}.cdl_hsl"
+                yield HlsSegment(part, name, url)
+
+        def make_download_task(segment: HlsSegment):
             seg_media_item = MediaItem(
                 segment.url,
                 media_item,
@@ -153,7 +178,7 @@ class Downloader:
             return self.run(seg_media_item)
 
         self.update_queued_files()
-        results = await asyncio.gather(*(make_task(s) for s in segments))
+        results = await asyncio.gather(*(make_download_task(s) for s in create_segments()))
         n_segmets = len(results)
         n_successful = sum(1 for r in results if r)
 

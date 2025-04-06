@@ -14,13 +14,13 @@ from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.downloader.downloader import Downloader
-from cyberdrop_dl.utils.data_enums_classes.url_objects import HlsSegment, MediaItem, ScrapeItem
+from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext, parse_url, remove_file_id
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Callable, Generator
+    from collections.abc import AsyncGenerator, Callable
 
     from bs4 import BeautifulSoup
 
@@ -129,7 +129,7 @@ class Crawler(ABC):
         *,
         custom_filename: str | None = None,
         debrid_link: URL | None = None,
-        segments: Generator[HlsSegment] | None = None,
+        m3u8_content: str = "",
     ) -> None:
         """Finishes handling the file and hands it off to the downloader."""
         await self.manager.states.RUNNING.wait()
@@ -155,8 +155,8 @@ class Crawler(ABC):
             self.manager.progress_manager.download_progress.add_skipped()
             return
 
-        if segments:
-            task = self.downloader.download_hls(media_item, segments)
+        if m3u8_content:
+            task = self.downloader.download_hls(media_item, m3u8_content)
         else:
             task = self.downloader.run(media_item)
 
