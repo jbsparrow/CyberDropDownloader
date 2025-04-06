@@ -237,13 +237,8 @@ class Downloader:
                 self.manager.progress_manager.file_progress.remove_task(media_item.task_id)
         media_item.task_id = None
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    @error_handling_wrapper
-    @retry
-    @exception_wrapper
-    async def download(self, media_item: MediaItem) -> bool:
-        """Downloads the media item."""
+    async def prepare_download(self, media_item: MediaItem) -> None:
+        """Make prechecks and set initial values before starting a download"""
         url_as_str = str(media_item.url)
         if msg := KNOWN_BAD_URLS.get(url_as_str):
             raise DownloadError(msg)
@@ -252,6 +247,15 @@ class Downloader:
         media_item.current_attempt = media_item.current_attempt or 1
         media_item.duration = await self.manager.db_manager.history_table.get_duration(self.domain, media_item)
         await self.check_file_can_download(media_item)
+
+    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+    @error_handling_wrapper
+    @retry
+    @exception_wrapper
+    async def download(self, media_item: MediaItem) -> bool:
+        """Downloads the media item."""
+        await self.prepare_download(media_item)
         downloaded = await self.client.download_file(self.manager, self.domain, media_item)
         await self.finalize_download(media_item, downloaded)
         return downloaded
@@ -260,9 +264,10 @@ class Downloader:
     @retry
     @exception_wrapper
     async def download_hls(self, media_item: MediaItem, m3u8_content: str) -> bool:
+        await self.prepare_download(media_item)
         assert media_item.debrid_link is not None
         if not self.manager.ffmpeg.is_available:
-            raise DownloadError("FFmpeg Error", "FFmpeg is required for HLS downloads but is not available", media_item)
+            raise DownloadError("FFmpeg Error", "FFmpeg is required for HLS downloads but is not installed", media_item)
 
         segment_paths: set[Path] = set()
         media_item.complete_file = s = media_item.download_folder / media_item.filename
