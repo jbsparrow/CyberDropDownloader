@@ -4,9 +4,8 @@ import asyncio
 import re
 from dataclasses import field
 from functools import wraps
-from http import HTTPStatus
 from pathlib import Path
-from typing import TYPE_CHECKING, ParamSpec, TypeVar
+from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar
 
 from aiohttp import ClientConnectorError, ClientError, ClientResponseError
 from filedate import File
@@ -18,7 +17,6 @@ from cyberdrop_dl.clients.errors import (
     InvalidContentTypeError,
     RestrictedFiletypeError,
 )
-from cyberdrop_dl.utils.constants import CustomHTTPStatus
 from cyberdrop_dl.utils.data_enums_classes.url_objects import HlsSegment, MediaItem
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -70,6 +68,16 @@ def retry(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, Coroutine[
     return wrapper
 
 
+def with_limiter(func: Callable):
+    @wraps(func)
+    async def wrapper(self: Downloader, *args, **kwargs) -> Any:
+        media_item = args[0]
+        async with self.limiter(media_item):
+            return await func(self, *args, **kwargs)
+
+    return wrapper
+
+
 GENERIC_CRAWLERS = ".", "no_crawler"
 
 
@@ -109,30 +117,48 @@ class Downloader:
         self.manager.progress_manager.download_progress.update_queued(queued_files)
         self.manager.progress_manager.download_progress.update_total(increase_total)
 
-    async def run(self, media_item: MediaItem) -> bool:
-        """Runs the download loop."""
-
-        if media_item.url.path in self.processed_items and not self._ignore_history:
-            return False
-
+    @contextlib.asynccontextmanager
+    async def limiter(self, media_item: MediaItem):
         await self.manager.states.RUNNING.wait()
         self.waiting_items += 1
         media_item.current_attempt = 0
         await self.client.mark_incomplete(media_item, self.domain)
-        if not media_item.is_segment:
-            self.update_queued_files()
+        self.update_queued_files()
         async with self._semaphore:
             await self.manager.states.RUNNING.wait()
             self.waiting_items -= 1
             self.processed_items.add(media_item.url.path)
             self.update_queued_files(increase_total=False)
             async with self.manager.client_manager.download_session_limit:
-                return await self.start_download(media_item)
+                try:
+                    log(f"{self.log_prefix} starting: {media_item.url}", 20)
+                    if not media_item.file_lock_reference_name:
+                        media_item.file_lock_reference_name = media_item.filename
+                    lock = self._file_lock_vault.get_lock(media_item.file_lock_reference_name)
+                    async with lock:
+                        yield
+                finally:
+                    pass
+
+    def was_processed_before(self, media_item: MediaItem) -> bool:
+        if media_item.url.path in self.processed_items and not self._ignore_history:
+            return True
+        return False
+
+    @with_limiter
+    async def run(self, media_item: MediaItem) -> bool:
+        """Runs the download loop."""
+        if self.was_processed_before(media_item):
+            return False
+        return bool(await self.download(media_item))
 
     @error_handling_wrapper
+    @with_limiter
     async def download_hls(self, media_item: MediaItem, m3u8_content: str) -> None:
+        if self.was_processed_before(media_item):
+            return
+
         assert media_item.debrid_link
-        await self.client.mark_incomplete(media_item, self.domain)
         if not self.manager.ffmpeg.is_available:
             raise DownloadError("FFmpeg Error", "FFmpeg is required for HLS downloads but is not available", media_item)
 
@@ -178,9 +204,8 @@ class Downloader:
                 # skip_hashing=True,
             )
             seg_media_items.append(seg_media_item)
-            return self.run(seg_media_item)
+            return self.download(seg_media_item)
 
-        self.update_queued_files()
         results = await asyncio.gather(*(make_download_task(s) for s in create_segments()))
         n_segmets = len(results)
         n_successful = sum(1 for r in results if r)
@@ -199,14 +224,6 @@ class Downloader:
         await self.client.handle_media_item_completion(media_item, downloaded=ffmpeg_result.success)
         self.finalize_download(media_item, ffmpeg_result.success)
 
-    def finalize_download(self, media_item: MediaItem, downloaded: bool) -> None:
-        if downloaded:
-            Path.chmod(media_item.complete_file, 0o666)
-            self.set_file_datetime(media_item, media_item.complete_file)
-        self.attempt_task_removal(media_item)
-        self.manager.progress_manager.download_progress.add_completed()
-        log(f"Download finished: {media_item.url}", 20)
-
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def check_file_can_download(self, media_item: MediaItem) -> None:
@@ -217,7 +234,15 @@ class Downloader:
         if not self.manager.download_manager.pre_check_duration(media_item):
             raise DurationError(origin=media_item)
 
-    def set_file_datetime(self, media_item: MediaItem, complete_file: Path) -> None:
+    def finalize_download(self, media_item: MediaItem, downloaded: bool) -> None:
+        if downloaded:
+            Path.chmod(media_item.complete_file, 0o666)
+            self.set_file_datetime(media_item)
+            self.manager.progress_manager.download_progress.add_completed()
+            log(f"Download finished: {media_item.url}", 20)
+        self.attempt_task_removal(media_item)
+
+    def set_file_datetime(self, media_item: MediaItem, complete_file: Path | None = None) -> None:
         """Sets the file's datetime."""
         if self.manager.config_manager.settings_data.download_options.disable_file_timestamps:
             return
@@ -225,12 +250,9 @@ class Downloader:
             log(f"Unable to parse upload date for {media_item.url}, using current datetime as file datetime", 30)
             return
 
+        complete_file = complete_file or media_item.complete_file
         file = File(str(complete_file))
-        file.set(
-            created=media_item.datetime,
-            modified=media_item.datetime,
-            accessed=media_item.datetime,
-        )
+        file.set(*(media_item.datetime,) * 3)  # type: ignore
 
     def attempt_task_removal(self, media_item: MediaItem) -> None:
         """Attempts to remove the task from the progress bar."""
@@ -243,15 +265,6 @@ class Downloader:
             media_item.set_task_id(None)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    async def start_download(self, media_item: MediaItem) -> bool:
-        if not media_item.is_segment:
-            log(f"{self.log_prefix} starting: {media_item.url}", 20)
-        if not media_item.file_lock_reference_name:
-            media_item.file_lock_reference_name = media_item.filename
-        lock = self._file_lock_vault.get_lock(media_item.file_lock_reference_name)
-        async with lock:
-            return bool(await self.download(media_item))
 
     @error_handling_wrapper
     @retry
@@ -266,12 +279,7 @@ class Downloader:
             media_item.duration = await self.manager.db_manager.history_table.get_duration(self.domain, media_item)
             await self.check_file_can_download(media_item)
             downloaded = await self.client.download_file(self.manager, self.domain, media_item)
-            if downloaded:
-                Path.chmod(media_item.complete_file, 0o666)
-                self.set_file_datetime(media_item, media_item.complete_file)
-                self.attempt_task_removal(media_item)
-                self.manager.progress_manager.download_progress.add_completed()
-                log(f"Download finished: {media_item.url}", 20)
+            self.finalize_download(media_item, downloaded)
             return downloaded
 
         except RestrictedFiletypeError:
@@ -311,16 +319,3 @@ class Downloader:
         await self.manager.log_manager.write_download_error_log(media_item, error_log_msg.csv_log_msg)
         self.manager.progress_manager.download_stats_progress.add_failure(error_log_msg.ui_failure)
         self.manager.progress_manager.download_progress.add_failed()
-
-    @staticmethod
-    def is_failed(status: int):
-        """NO USED"""
-        SERVER_ERRORS = (HTTPStatus.SERVICE_UNAVAILABLE, HTTPStatus.BAD_GATEWAY, CustomHTTPStatus.WEB_SERVER_IS_DOWN)
-        return any(
-            (is_4xx_client_error(status) and status != HTTPStatus.TOO_MANY_REQUESTS, status in SERVER_ERRORS),
-        )
-
-
-def is_4xx_client_error(status_code: int) -> bool:
-    """Checks whether the HTTP status code is 4xx client error."""
-    return isinstance(status_code, str) or (HTTPStatus.BAD_REQUEST <= status_code < HTTPStatus.INTERNAL_SERVER_ERROR)

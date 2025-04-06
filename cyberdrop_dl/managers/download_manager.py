@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from base64 import b64encode
+from collections import defaultdict
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
@@ -20,7 +21,7 @@ class FileLocksVault:
     """Is this necessary? No. But I want it."""
 
     def __init__(self) -> None:
-        self._locked_files: dict[str, asyncio.Lock] = {}
+        self._locked_files: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 
     @asynccontextmanager
     async def get_lock(self, filename: str) -> AsyncGenerator:
@@ -29,7 +30,6 @@ class FileLocksVault:
         if filename not in self._locked_files:
             log_debug(f"Lock for '{filename}' does not exists", 20)
 
-        self._locked_files[filename] = self._locked_files.get(filename, asyncio.Lock())
         async with self._locked_files[filename]:
             log_debug(f"Lock for '{filename}' acquired", 20)
             yield
