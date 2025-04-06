@@ -127,15 +127,21 @@ class Downloader:
             async with self.manager.client_manager.download_session_limit:
                 return await self.start_download(media_item)
 
+    @error_handling_wrapper
     async def download_hls(self, media_item: MediaItem, segments: Generator[HlsSegment]):
         await self.client.mark_incomplete(media_item, self.domain)
+        if not self.manager.ffmpeg.is_available:
+            raise DownloadError("FFmpeg Error", "FFmpeg is required for HLS downloads but is not available", media_item)
+
         seg_media_items: list[MediaItem] = []
+        media_item.complete_file = s = media_item.download_folder / media_item.filename
+        segments_folder = s.with_suffix(".cdl_hls")
 
         def make_task(segment: HlsSegment):
             seg_media_item = MediaItem(
                 segment.url,
                 media_item,
-                media_item.download_folder,
+                segments_folder,
                 segment.name,
                 ext=media_item.ext,
                 # add_to_database=False,
@@ -149,18 +155,21 @@ class Downloader:
         self.update_queued_files()
         results = await asyncio.gather(*(make_task(s) for s in segments))
         n_segmets = len(results)
-        media_item.complete_file = media_item.download_folder / media_item.filename
-        if all(results):
-            seg_paths = [m.complete_file for m in seg_media_items if m.complete_file]
-            success = await self.manager.ffmpeg.concat(*seg_paths, output=media_item.complete_file)
-            await self.client.process_completed(media_item, self.domain)
-            await self.client.handle_media_item_completion(media_item, downloaded=True)
-            self.finalize_download(media_item, success)
-            return
+        n_successful = sum(1 for r in results if r)
 
-        failed_segments = [s for s in results if not s]
-        msg = f"Download of {failed_segments} / {n_segmets} segments failed"
-        log(msg)
+        if n_successful != n_segmets:
+            msg = f"Download of some segments failed. Successful: {n_successful:,}/{n_segmets:,} "
+            raise DownloadError("HLS Seg Error", msg, media_item)
+
+        seg_paths = [m.complete_file for m in seg_media_items if m.complete_file]
+        ffmpeg_result = await self.manager.ffmpeg.concat(*seg_paths, output_file=media_item.complete_file)
+
+        if not ffmpeg_result.success:
+            raise DownloadError("FFmpeg Concat Error", ffmpeg_result.stderr, media_item)
+
+        await self.client.process_completed(media_item, self.domain)
+        await self.client.handle_media_item_completion(media_item, downloaded=ffmpeg_result.success)
+        self.finalize_download(media_item, ffmpeg_result.success)
 
     def finalize_download(self, media_item: MediaItem, downloaded: bool) -> None:
         if downloaded:
