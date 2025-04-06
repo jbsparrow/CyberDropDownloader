@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 import asyncio
+<<<<<<< HEAD
 import re
+=======
+import contextlib
+>>>>>>> bd88c7a8 (refactor: count the actual number of segments)
 from dataclasses import field
 from functools import wraps
 from pathlib import Path
@@ -163,29 +167,25 @@ class Downloader:
         segment_paths: set[Path] = set()
         media_item.complete_file = s = media_item.download_folder / media_item.filename
         segments_folder = s.with_suffix(".temp")
+        n_segments: int = 0
 
         def create_segments() -> Generator[HlsSegment]:
-            last_segment = ""
-
-            def get_segment_names() -> Generator[str]:
-                nonlocal last_segment
+            def get_segment_names() -> list[str]:
+                nonlocal n_segments
                 m3u8_lines = m3u8_content.splitlines()
 
-                def get_valid_segment_lines(lines: Iterable[str]):
+                def get_valid_segment_lines(lines: Iterable[str]) -> Generator[str]:
                     for line in lines:
                         segment_name = line.strip()
                         if segment_name or not segment_name.startswith("#"):
                             yield segment_name
 
-                for segment in get_valid_segment_lines(reversed(m3u8_lines)):
-                    last_segment = segment
-                    break
-
-                yield from get_valid_segment_lines(m3u8_lines)
+                seg_lines = list(get_valid_segment_lines(m3u8_lines))
+                n_segments = len(seg_lines)
+                return seg_lines
 
             segment_names = get_segment_names()
-            last_segment_index = re.sub(r"\D", "", last_segment)
-            padding = max(5, len(last_segment_index))
+            padding = max(5, len(str(n_segments)))
 
             assert media_item.debrid_link is not None
             for index, name in enumerate(segment_names, 1):
@@ -217,11 +217,10 @@ class Downloader:
             return download_segment()
 
         results = await asyncio.gather(*(make_download_task(segment) for segment in create_segments()))
-        n_segmets = len(results)
         n_successful = sum(1 for r in results if r)
 
-        if n_successful != n_segmets:
-            msg = f"Download of some segments failed. Successful: {n_successful:,}/{n_segmets:,} "
+        if n_successful != n_segments:
+            msg = f"Download of some segments failed. Successful: {n_successful:,}/{n_segments:,} "
             raise DownloadError("HLS Seg Error", msg, media_item)
 
         ffmpeg_result = await self.manager.ffmpeg.concat(*sorted(segment_paths), output_file=media_item.complete_file)
