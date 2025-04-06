@@ -24,6 +24,7 @@ from cyberdrop_dl.managers.storage_manager import StorageManager
 from cyberdrop_dl.ui.textual import TextualUI
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.args import ParsedArgs
+from cyberdrop_dl.utils.ffmpeg import FFmpeg
 from cyberdrop_dl.utils.logger import QueuedLogger, log
 from cyberdrop_dl.utils.transfer import transfer_v5_db_to_v6
 
@@ -57,6 +58,7 @@ class Manager:
         self.progress_manager: ProgressManager = field(init=False)
         self.live_manager: LiveManager = field(init=False)
         self.textual_log_queue: queue.Queue = field(init=False)
+        self.ffmpeg: FFmpeg = field(init=False)
         self._textual_ui: TextualUI = field(init=False)
 
         self._loaded_args_config: bool = False
@@ -153,6 +155,9 @@ class Manager:
             self.download_manager = DownloadManager(self)
         if not isinstance(self.real_debrid_manager, RealDebridManager):
             self.real_debrid_manager = RealDebridManager(self)
+
+        if not isinstance(self.ffmpeg, FFmpeg):
+            self.ffmpeg = FFmpeg(self)
 
         await self.async_db_hash_startup()
 

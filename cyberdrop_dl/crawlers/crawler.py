@@ -129,6 +129,7 @@ class Crawler(ABC):
         *,
         custom_filename: str | None = None,
         debrid_link: URL | None = None,
+        m3u8_content: str = "",
     ) -> None:
         """Finishes handling the file and hands it off to the downloader."""
         await self.manager.states.RUNNING.wait()
@@ -154,7 +155,12 @@ class Crawler(ABC):
             self.manager.progress_manager.download_progress.add_skipped()
             return
 
-        self.manager.task_group.create_task(self.downloader.run(media_item))
+        if m3u8_content:
+            task = self.downloader.download_hls(media_item, m3u8_content)
+        else:
+            task = self.downloader.run(media_item)
+
+        self.manager.task_group.create_task(task)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 

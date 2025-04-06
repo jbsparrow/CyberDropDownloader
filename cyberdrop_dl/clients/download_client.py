@@ -60,6 +60,8 @@ def limiter(func: Callable) -> Any:
 
 def check_file_duration(media_item: MediaItem, manager: Manager) -> bool:
     """Checks the file runtime against the config runtime limits."""
+    if media_item.is_segment:
+        return True
 
     is_video = media_item.ext.lower() in FILE_FORMATS["Videos"]
     is_audio = media_item.ext.lower() in FILE_FORMATS["Audio"]
@@ -305,6 +307,8 @@ class DownloadClient:
 
     async def mark_incomplete(self, media_item: MediaItem, domain: str) -> None:
         """Marks the media item as incomplete in the database."""
+        if media_item.is_segment:
+            return
         await self.manager.db_manager.history_table.insert_incompleted(domain, media_item)
 
     async def process_completed(self, media_item: MediaItem, domain: str) -> None:
