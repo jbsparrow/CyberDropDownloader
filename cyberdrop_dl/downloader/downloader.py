@@ -20,7 +20,6 @@ from cyberdrop_dl.clients.errors import (
 )
 from cyberdrop_dl.utils.constants import CustomHTTPStatus
 from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
-from cyberdrop_dl.utils.ffmpeg import FFmpeg
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -153,8 +152,7 @@ class Downloader:
         media_item.complete_file = media_item.download_folder / media_item.filename
         if all(results):
             seg_paths = [m.complete_file for m in seg_media_items if m.complete_file]
-            ffmpeg = FFmpeg(self.manager)
-            success = await ffmpeg.concat(*seg_paths, output=media_item.complete_file)
+            success = await self.manager.ffmpeg.concat(*seg_paths, output=media_item.complete_file)
             await self.client.process_completed(media_item, self.domain)
             await self.client.handle_media_item_completion(media_item, downloaded=True)
             self.finalize_download(media_item, success)
