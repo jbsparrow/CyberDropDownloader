@@ -29,7 +29,7 @@ NEXT_PAGE_SELECTOR = "a.rightKey"
 MODEL_VIDEO_SELECTOR = "a data-video-preview"
 USER_NAME_SELECTOR = "h1.username"
 PLAYLIST_VIDEOS_SELECTOR = "a.playlist-video-item__thumbnail"
-DATETIME_SELECTOR = "div.views-count-add"
+VIDEO_OBJECT_SCRIPT_SELECTOR = "script:contains('uploadDate')"
 JS_SELECTOR = "script:contains('var player = new VideoPlayer')"
 RESOLUTIONS = ["2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"]  # best to worst
 INCLUDE_VIDEO_ID_IN_FILENAME = True
@@ -117,8 +117,10 @@ class AShemaleTubeCrawler(Crawler):
             if info["hls"]:
                 raise ScrapeError(422, origin=scrape_item)
 
-            if date_added := soup.select_one(DATETIME_SELECTOR):
-                scrape_item.possible_datetime = parse_datetime(date_added.get_text(strip=True))
+            if video_object := soup.select_one(VIDEO_OBJECT_SCRIPT_SELECTOR):
+                json_data = json.loads(video_object.string.strip())
+                if "uploadDate" in json_data:
+                    scrape_item.possible_datetime = json_data["uploadDate"]
 
             video_id: str = scrape_item.url.parts[2]
             title: str = soup.select_one("title").text.split("- aShemaletube.com")[0].strip()
