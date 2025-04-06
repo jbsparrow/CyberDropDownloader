@@ -74,10 +74,6 @@ class AShemaleTubeCrawler(Crawler):
             await self.iter_videos(scrape_item, soup.select(PLAYLIST_VIDEOS_SELECTOR))
 
     @error_handling_wrapper
-    async def profile(self, scrape_item: ScrapeItem) -> None:
-        return await self.model(scrape_item)
-
-    @error_handling_wrapper
     async def model(self, scrape_item: ScrapeItem) -> None:
         async for soup in self.web_pager(scrape_item):
             if model_name := soup.select_one(USER_NAME_SELECTOR):
