@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import shutil
 import subprocess
 from datetime import datetime
 from functools import lru_cache
@@ -41,7 +42,7 @@ class FFmpeg:
         self.version = get_ffmpeg_version()
         self.is_available = bool(self.version)
 
-    async def concat(self, *input_files: Path, output_file: Path) -> SubProcessResult:
+    async def concat(self, *input_files: Path, output_file: Path, same_folder: bool = True) -> SubProcessResult:
         if not self.is_available:
             raise RuntimeError("ffmpeg is not available")
         now = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -50,7 +51,11 @@ class FFmpeg:
         await _create_concat_input_file(*input_files, file_path=concat_file_path)
         result = await _concat(concat_file_path, output_file)
         if result.success:
-            await async_delete_files(concat_file_path, *input_files)
+            if same_folder:
+                folder = input_files[0].parent
+                await asyncio.to_thread(shutil.rmtree, folder, True)
+            else:
+                await async_delete_files(concat_file_path, *input_files)
         return result
 
 
