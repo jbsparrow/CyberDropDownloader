@@ -106,6 +106,8 @@ class AShemaleTubeCrawler(Crawler):
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
+        if await self.check_complete_from_referer(scrape_item.url):
+            return
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, scrape_item.url)
         if player := soup.select_one(JS_SELECTOR):
