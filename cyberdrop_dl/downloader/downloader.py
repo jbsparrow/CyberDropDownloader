@@ -28,7 +28,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.clients.download_client import DownloadClient
     from cyberdrop_dl.managers.manager import Manager
 
-
+GENERIC_CRAWLERS = ".", "no_crawler"
 KNOWN_BAD_URLS = {
     "https://i.imgur.com/removed.png": 404,
     "https://saint2.su/assets/notfound.gif": 404,
@@ -126,9 +126,6 @@ def with_limiter(func: Callable) -> Callable:
     return wrapper
 
 
-GENERIC_CRAWLERS = ".", "no_crawler"
-
-
 class Downloader:
     def __init__(self, manager: Manager, domain: str) -> None:
         self.manager: Manager = manager
@@ -173,18 +170,13 @@ class Downloader:
                 finally:
                     pass
 
-    def was_processed_before(self, media_item: MediaItem) -> bool:
+    @with_limiter
+    async def run(self, media_item: MediaItem, m3u8_content: str = "") -> bool:
+        """Runs the download loop."""
         if (
             media_item.url.path in self.processed_items
             and not self.manager.config_manager.settings_data.runtime_options.ignore_history
         ):
-            return True
-        return False
-
-    @with_limiter
-    async def run(self, media_item: MediaItem, m3u8_content: str = "") -> bool:
-        """Runs the download loop."""
-        if self.was_processed_before(media_item):
             return False
 
         if m3u8_content:
@@ -289,7 +281,7 @@ class Downloader:
                 custom_name = f"{index:0{padding}d}.cdl_hsl"
                 yield HlsSegment(name, custom_name, url)
 
-        def make_download_task(segment: HlsSegment):
+        def create_download_task(segment: HlsSegment):
             seg_media_item = MediaItem(
                 segment.url,
                 media_item,
@@ -312,7 +304,7 @@ class Downloader:
 
             return download_segment()
 
-        results = await asyncio.gather(*(make_download_task(segment) for segment in create_segments()))
+        results = await asyncio.gather(*(create_download_task(segment) for segment in create_segments()))
         n_successful = sum(1 for r in results if r)
 
         if n_successful != n_segments:
