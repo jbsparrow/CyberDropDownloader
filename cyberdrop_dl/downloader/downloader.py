@@ -72,6 +72,48 @@ def retry(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, Coroutine[
     return wrapper
 
 
+def exception_wrapper(func: Callable):
+    """Catches and re-raises exceptions as custom CDL exceptions"""
+
+    @wraps(func)
+    async def wrapper(self: Downloader, *args, **kwargs):
+        media_item: MediaItem = args[0]
+        try:
+            return await func(*args, **kwargs)
+
+        except RestrictedFiletypeError:
+            log(f"Download skip {media_item.url} due to ignore_extension config ({media_item.ext})", 10)
+            self.manager.progress_manager.download_progress.add_skipped()
+            self.attempt_task_removal(media_item)
+
+        except (DownloadError, ClientResponseError, InvalidContentTypeError, ClientConnectorError):
+            raise
+
+        except (
+            ConnectionResetError,
+            FileNotFoundError,
+            PermissionError,
+            TimeoutError,
+            ClientError,
+        ) as e:
+            ui_message = getattr(e, "status", type(e).__name__)
+            if media_item.partial_file and media_item.partial_file.is_file():
+                size = media_item.partial_file.stat().st_size
+                if (
+                    media_item.filename in self._current_attempt_filesize
+                    and self._current_attempt_filesize[media_item.filename] >= size
+                ):
+                    raise DownloadError(ui_message, message=f"{self.log_prefix} failed", retry=True) from None
+                self._current_attempt_filesize[media_item.filename] = size
+                media_item.current_attempt = 0
+                raise DownloadError(status=999, message="Download timeout reached, retrying", retry=True) from None
+
+            message = str(e)
+            raise DownloadError(ui_message, message, retry=True) from e
+
+    return wrapper
+
+
 def with_limiter(func: Callable) -> Callable:
     @wraps(func)
     async def wrapper(self: Downloader, *args, **kwargs) -> Any:
@@ -148,18 +190,22 @@ class Downloader:
         return False
 
     @with_limiter
-    async def run(self, media_item: MediaItem) -> bool:
+    async def run(self, media_item: MediaItem, m3u8_content: str = "") -> bool:
         """Runs the download loop."""
         if self.was_processed_before(media_item):
             return False
-        return bool(await self.download(media_item))
+
+        if m3u8_content:
+            func = self.download_hls(media_item, m3u8_content)
+        else:
+            func = self.download(media_item)
+
+        return bool(await func)
 
     @error_handling_wrapper
-    @with_limiter
-    async def download_hls(self, media_item: MediaItem, m3u8_content: str) -> None:
-        if self.was_processed_before(media_item):
-            return
-
+    @retry
+    @exception_wrapper
+    async def download_hls(self, media_item: MediaItem, m3u8_content: str) -> bool:
         assert media_item.debrid_link is not None
         if not self.manager.ffmpeg.is_available:
             raise DownloadError("FFmpeg Error", "FFmpeg is required for HLS downloads but is not available", media_item)
@@ -231,6 +277,7 @@ class Downloader:
         await self.client.process_completed(media_item, self.domain)
         await self.client.handle_media_item_completion(media_item, downloaded=ffmpeg_result.success)
         self.finalize_download(media_item, ffmpeg_result.success)
+        return ffmpeg_result.success
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -276,49 +323,20 @@ class Downloader:
 
     @error_handling_wrapper
     @retry
-    async def download(self, media_item: MediaItem) -> bool | None:
+    @exception_wrapper
+    async def download(self, media_item: MediaItem) -> bool:
         """Downloads the media item."""
         url_as_str = str(media_item.url)
         if url_as_str in KNOWN_BAD_URLS:
             raise DownloadError(KNOWN_BAD_URLS[url_as_str])
-        try:
-            await self.manager.states.RUNNING.wait()
-            media_item.current_attempt = media_item.current_attempt or 1
-            media_item.duration = await self.manager.db_manager.history_table.get_duration(self.domain, media_item)
-            await self.check_file_can_download(media_item)
-            downloaded = await self.client.download_file(self.manager, self.domain, media_item)
-            self.finalize_download(media_item, downloaded)
-            return downloaded
 
-        except RestrictedFiletypeError:
-            log(f"Download skip {media_item.url} due to ignore_extension config ({media_item.ext})", 10)
-            self.manager.progress_manager.download_progress.add_skipped()
-            self.attempt_task_removal(media_item)
-
-        except (DownloadError, ClientResponseError, InvalidContentTypeError, ClientConnectorError):
-            raise
-
-        except (
-            ConnectionResetError,
-            FileNotFoundError,
-            PermissionError,
-            TimeoutError,
-            ClientError,
-        ) as e:
-            ui_message = getattr(e, "status", type(e).__name__)
-            if media_item.partial_file and media_item.partial_file.is_file():
-                size = media_item.partial_file.stat().st_size
-                if (
-                    media_item.filename in self._current_attempt_filesize
-                    and self._current_attempt_filesize[media_item.filename] >= size
-                ):
-                    raise DownloadError(ui_message, message=f"{self.log_prefix} failed", retry=True) from None
-                self._current_attempt_filesize[media_item.filename] = size
-                media_item.current_attempt = 0
-                raise DownloadError(status=999, message="Download timeout reached, retrying", retry=True) from None
-
-            message = str(e)
-            raise DownloadError(ui_message, message, retry=True) from e
+        await self.manager.states.RUNNING.wait()
+        media_item.current_attempt = media_item.current_attempt or 1
+        media_item.duration = await self.manager.db_manager.history_table.get_duration(self.domain, media_item)
+        await self.check_file_can_download(media_item)
+        downloaded = await self.client.download_file(self.manager, self.domain, media_item)
+        self.finalize_download(media_item, downloaded)
+        return downloaded
 
     async def write_download_error(self, media_item: MediaItem, error_log_msg: ErrorLogMessage, exc_info=None) -> None:
         self.attempt_task_removal(media_item)

@@ -167,11 +167,7 @@ class Crawler(ABC):
             self.manager.progress_manager.download_progress.add_skipped()
             return
 
-        if not m3u8_content:
-            self.manager.task_group.create_task(self.downloader.run(media_item))
-            return
-
-        self.manager.task_group.create_task(self.downloader.download_hls(media_item, m3u8_content))
+        self.manager.task_group.create_task(self.downloader.run(media_item, m3u8_content))
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
