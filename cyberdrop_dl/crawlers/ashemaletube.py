@@ -88,7 +88,7 @@ class AShemaleTubeCrawler(Crawler):
         for video in videos:
             link: URL = create_canonical_video_url(video.get("href"))
             new_scrape_item = scrape_item.create_child(link)
-            await self.video(new_scrape_item)
+            self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.add_children()
 
     async def web_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
