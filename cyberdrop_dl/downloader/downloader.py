@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar
 from aiohttp import ClientConnectorError, ClientError, ClientResponseError
 from filedate import File
 
+from cyberdrop_dl.clients.download_client import check_file_duration
 from cyberdrop_dl.clients.errors import (
     DownloadError,
     DurationError,
@@ -202,6 +203,59 @@ class Downloader:
 
         return bool(await func)
 
+    async def check_file_can_download(self, media_item: MediaItem) -> None:
+        """Checks if the file can be downloaded."""
+        await self.manager.storage_manager.check_free_space(media_item)
+        if not self.manager.download_manager.check_allowed_filetype(media_item):
+            raise RestrictedFiletypeError(origin=media_item)
+        if media_item.duration and not check_file_duration(media_item, self.manager):
+            raise DurationError(origin=media_item)
+
+    async def write_download_error(self, media_item: MediaItem, error_log_msg: ErrorLogMessage, exc_info=None) -> None:
+        self.attempt_task_removal(media_item)
+        full_message = f"{self.log_prefix} Failed: {media_item.url} ({error_log_msg.main_log_msg}) \n -> Referer: {media_item.referer}"
+        log(full_message, 40, exc_info=exc_info)
+        await self.manager.log_manager.write_download_error_log(media_item, error_log_msg.csv_log_msg)
+        self.manager.progress_manager.download_stats_progress.add_failure(error_log_msg.ui_failure)
+        self.manager.progress_manager.download_progress.add_failed()
+
+    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+    def finalize_download(self, media_item: MediaItem, downloaded: bool) -> None:
+        if downloaded:
+            Path.chmod(media_item.complete_file, 0o666)
+            if not self.manager.config_manager.settings_data.download_options.disable_file_timestamps:
+                set_file_datetime(media_item)
+            self.manager.progress_manager.download_progress.add_completed()
+            log(f"Download finished: {media_item.url}", 20)
+        self.attempt_task_removal(media_item)
+
+    def attempt_task_removal(self, media_item: MediaItem) -> None:
+        """Attempts to remove the task from the progress bar."""
+        if media_item.task_id is not None:
+            with contextlib.suppress(ValueError):
+                self.manager.progress_manager.file_progress.remove_task(media_item.task_id)
+        media_item.task_id = None
+
+    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+    @error_handling_wrapper
+    @retry
+    @exception_wrapper
+    async def download(self, media_item: MediaItem) -> bool:
+        """Downloads the media item."""
+        url_as_str = str(media_item.url)
+        if msg := KNOWN_BAD_URLS.get(url_as_str):
+            raise DownloadError(msg)
+
+        await self.manager.states.RUNNING.wait()
+        media_item.current_attempt = media_item.current_attempt or 1
+        media_item.duration = await self.manager.db_manager.history_table.get_duration(self.domain, media_item)
+        await self.check_file_can_download(media_item)
+        downloaded = await self.client.download_file(self.manager, self.domain, media_item)
+        self.finalize_download(media_item, downloaded)
+        return downloaded
+
     @error_handling_wrapper
     @retry
     @exception_wrapper
@@ -279,31 +333,12 @@ class Downloader:
         self.finalize_download(media_item, ffmpeg_result.success)
         return ffmpeg_result.success
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def check_file_can_download(self, media_item: MediaItem) -> None:
-        """Checks if the file can be downloaded."""
-        await self.manager.storage_manager.check_free_space(media_item)
-        if not self.manager.download_manager.check_allowed_filetype(media_item):
-            raise RestrictedFiletypeError(origin=media_item)
-        if not self.manager.download_manager.pre_check_duration(media_item):
-            raise DurationError(origin=media_item)
-
-    def finalize_download(self, media_item: MediaItem, downloaded: bool) -> None:
-        if downloaded:
-            Path.chmod(media_item.complete_file, 0o666)
-            self.set_file_datetime(media_item)
-            self.manager.progress_manager.download_progress.add_completed()
-            log(f"Download finished: {media_item.url}", 20)
-        self.attempt_task_removal(media_item)
-
-    def set_file_datetime(self, media_item: MediaItem, complete_file: Path | None = None) -> None:
-        """Sets the file's datetime."""
-        if self.manager.config_manager.settings_data.download_options.disable_file_timestamps:
-            return
-        if not media_item.datetime:
-            log(f"Unable to parse upload date for {media_item.url}, using current datetime as file datetime", 30)
-            return
+def set_file_datetime(media_item: MediaItem, complete_file: Path | None = None) -> None:
+    """Sets the file's datetime."""
+    if not media_item.datetime:
+        log(f"Unable to parse upload date for {media_item.url}, using current datetime as file datetime", 30)
+        return
 
         complete_file = complete_file or media_item.complete_file
         file = File(str(complete_file))

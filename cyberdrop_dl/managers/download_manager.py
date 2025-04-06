@@ -6,7 +6,6 @@ from collections import defaultdict
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
-from cyberdrop_dl.clients.download_client import check_file_duration
 from cyberdrop_dl.utils.constants import FILE_FORMATS
 from cyberdrop_dl.utils.logger import log_debug
 
@@ -84,10 +83,3 @@ class DownloadManager:
         if media_item.ext.lower() in FILE_FORMATS["Audio"] and ignore_options.exclude_audio:
             return False
         return not (ignore_options.exclude_other and media_item.ext.lower() not in valid_extensions)
-
-    def pre_check_duration(self, media_item: MediaItem) -> bool:
-        """Checks if the download is above the maximum runtime."""
-        if not media_item.duration:
-            return True
-
-        return check_file_duration(media_item, self.manager)
