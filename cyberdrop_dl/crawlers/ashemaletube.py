@@ -44,7 +44,7 @@ class AShemaleTubeCrawler(Crawler):
     primary_base_domain = PRIMARY_BASE_DOMAIN
 
     def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "ashemaletube", "aShemaletube")
+        super().__init__(manager, "ashemaletube", "aShemaleTube")
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
