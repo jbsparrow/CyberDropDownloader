@@ -70,12 +70,13 @@ class ThisVidCrawler(Crawler):
             await self.iter_videos(scrape_item, "private_videos")
 
     async def iter_videos(self, scrape_item: ScrapeItem, video_category: str = "") -> None:
-        category_url: URL = get_category_url(scrape_item, video_category)
+        category_url: URL = scrape_item.url / video_category
         async for soup in self.web_pager(category_url):
             if videos := soup.select(VIDEOS_SELECTOR):
                 for video in videos:
-                    new_scrape_item = scrape_item.create_child(video.get("href"), new_title_part=video_category)
-                    await self.video(new_scrape_item)
+                    link: URL = URL(video.get("href"))
+                    new_scrape_item = scrape_item.create_child(link, new_title_part=video_category)
+                    self.manager.task_group.create_task(self.run(new_scrape_item))
                     scrape_item.add_children()
 
     async def web_pager(self, category_url: URL) -> AsyncGenerator[BeautifulSoup]:
@@ -302,7 +303,3 @@ def js_to_json(code, vars={}, *, strict=False):  # noqa: B006
             code,
         )
     )
-
-
-def get_category_url(scrape_item: ScrapeItem, video_category: str) -> URL:
-    return scrape_item.url / video_category
