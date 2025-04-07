@@ -6,6 +6,7 @@ import re
 import urllib
 from typing import TYPE_CHECKING, NamedTuple
 
+from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
@@ -41,6 +42,7 @@ class ThisVidCrawler(Crawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "thisvid", "ThisVid")
+        self.request_limiter = AsyncLimiter(3, 10)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -49,9 +51,19 @@ class ThisVidCrawler(Crawler):
         """Determines where to send the scrape item based on the url."""
         if "members" in scrape_item.url.parts:
             return await self.profile(scrape_item)
+        elif "search" in scrape_item.url.parts:
+            return await self.search(scrape_item)
         elif "videos" in scrape_item.url.parts:
             return await self.video(scrape_item)
         raise ValueError
+
+    @error_handling_wrapper
+    async def search(self, scrape_item: ScrapeItem) -> None:
+        query_string: str = scrape_item.url.query_string.split("=")[1]
+        title = f"{query_string} [search]"
+        title = self.create_title(title)
+        scrape_item.setup_as_album(title)
+        await self.iter_videos(scrape_item)
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
@@ -70,8 +82,8 @@ class ThisVidCrawler(Crawler):
             await self.iter_videos(scrape_item, "private_videos")
 
     async def iter_videos(self, scrape_item: ScrapeItem, video_category: str = "") -> None:
-        category_url: URL = scrape_item.url / video_category
-        async for soup in self.web_pager(category_url):
+        url: URL = scrape_item.url / video_category if video_category else scrape_item.url
+        async for soup in self.web_pager(url):
             if videos := soup.select(VIDEOS_SELECTOR):
                 for video in videos:
                     link: URL = URL(video.get("href"))
