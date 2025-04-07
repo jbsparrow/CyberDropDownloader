@@ -296,11 +296,13 @@ class Crawler(ABC):
         self.client.client_manager.cookies.update_cookies(cookies, response_url)
 
     async def web_pager(
-        self, url: URL, next_page_selector: str | None = None, *, cffi: bool = False
+        self, url: URL, next_page_selector: str | None = None, *, cffi: bool = False, **kwargs: Any
     ) -> AsyncGenerator[BeautifulSoup]:
         """Generator of website pages.
 
-        if `next_page_selector` is `None`, `self.next_page_selector` will be used"""
+        if `next_page_selector` is `None`, `self.next_page_selector` will be used
+
+        All remaining  `**kwargs` will passed to `self.parse_url` to parse each new page"""
 
         page_url = url
         next_page_selector = next_page_selector or self.next_page_selector
@@ -314,7 +316,7 @@ class Crawler(ABC):
             page_url_str: str | None = next_page.get("href") if next_page else None  # type: ignore
             if not page_url_str:
                 break
-            page_url = self.parse_url(page_url_str)
+            page_url = self.parse_url(page_url_str, **kwargs)
 
 
 def create_task_id(func: Callable) -> Callable:
