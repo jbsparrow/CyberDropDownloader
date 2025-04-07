@@ -295,16 +295,21 @@ class Crawler(ABC):
         response_url = url or self.primary_base_domain
         self.client.client_manager.cookies.update_cookies(cookies, response_url)
 
-    async def web_pager(self, url: URL, next_page_selector: str | None = None) -> AsyncGenerator[BeautifulSoup]:
-        """Generator of website pages."""
+    async def web_pager(
+        self, url: URL, next_page_selector: str | None = None, *, cffi: bool = False
+    ) -> AsyncGenerator[BeautifulSoup]:
+        """Generator of website pages.
+
+        if `next_page_selector` is `None`, `self.next_page_selector` will be used"""
+
         page_url = url
         next_page_selector = next_page_selector or self.next_page_selector
+        assert next_page_selector
+        get_soup = self.client.get_soup_cffi if cffi else self.client.get_soup
         while True:
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url)
+                soup: BeautifulSoup = await get_soup(self.domain, page_url)
             yield soup
-            if not next_page_selector:
-                return
             next_page = soup.select_one(next_page_selector)
             page_url_str: str | None = next_page.get("href") if next_page else None  # type: ignore
             if not page_url_str:
