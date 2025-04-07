@@ -20,9 +20,9 @@ from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext, parse_url, remove_file_id
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Callable
+    from collections.abc import AsyncGenerator, Callable, Generator, Iterable
 
-    from bs4 import BeautifulSoup
+    from bs4 import BeautifulSoup, Tag
 
     from cyberdrop_dl.clients.scraper_client import ScraperClient
     from cyberdrop_dl.managers.manager import Manager
@@ -294,6 +294,26 @@ class Crawler(ABC):
         """
         response_url = url or self.primary_base_domain
         self.client.client_manager.cookies.update_cookies(cookies, response_url)
+
+    def iter_tags(self, soup_tags: Iterable[Tag], attribute: str = "href") -> Generator[tuple[URL | None, URL]]:
+        """Generates tuples with an URL from the `src` value of first image tag (if any) and the URL from the `attribute` value"""
+        for item in soup_tags:
+            thumbnail = item.select_one("img")
+            thumb_str: str | None = thumbnail["src"] if thumbnail else None  # type: ignore
+            thumb = self.parse_url(thumb_str) if thumb_str else None
+            link = self.parse_url(item[attribute])  # type: ignore
+            yield thumb, link
+
+    def iter_children(
+        self, scrape_item: ScrapeItem, soup_tags: Iterable[Tag], attribute: str = "href", **kwargs: Any
+    ) -> Generator[tuple[URL | None, ScrapeItem]]:
+        """Generates tuples with an URL from the `src` value of first image tag (if any) and a new scrape item from the `attribute` value
+
+        `**kwargs` are passed to `scrape.item.create_child`"""
+        for thumb, link in self.iter_tags(soup_tags, attribute):
+            new_scrape_item = scrape_item.create_child(link, **kwargs)
+            scrape_item.add_children()
+            yield thumb, new_scrape_item
 
     async def web_pager(
         self, url: URL, next_page_selector: str | None = None, *, cffi: bool = False, **kwargs: Any
