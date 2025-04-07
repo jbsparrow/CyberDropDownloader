@@ -62,11 +62,11 @@ class ThisVidCrawler(Crawler):
         title = self.create_title(title)
         scrape_item.setup_as_profile(title)
 
-        if _ := soup.select(PUBLIC_VIDEOS_SELECTOR):
+        if soup.select(PUBLIC_VIDEOS_SELECTOR):
             await self.iter_videos(scrape_item, "public_videos")
-        if _ := soup.select(FAVOURITE_VIDEOS_SELECTOR):
+        if soup.select(FAVOURITE_VIDEOS_SELECTOR):
             await self.iter_videos(scrape_item, "favourite_videos")
-        if _ := soup.select(PRIVATE_VIDEOS_SELECTOR):
+        if soup.select(PRIVATE_VIDEOS_SELECTOR):
             await self.iter_videos(scrape_item, "private_videos")
 
     async def iter_videos(self, scrape_item: ScrapeItem, video_category: str = "") -> None:
@@ -95,7 +95,7 @@ class ThisVidCrawler(Crawler):
     async def video(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
-        if _ := soup.select_one(UNAUTHORIZED_SELECTOR):
+        if soup.select_one(UNAUTHORIZED_SELECTOR):
             raise ScrapeError(401, origin=scrape_item)
         script = soup.select_one(JS_SELECTOR)
         if script is None:
