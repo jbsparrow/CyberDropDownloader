@@ -12,18 +12,18 @@ from typing import TYPE_CHECKING
 
 import browser_cookie3
 from pydantic import ValidationError
-from rich.console import Console
-from rich.logging import RichHandler
+from rich import print as rich_print
 
 from cyberdrop_dl import env
 from cyberdrop_dl.clients.errors import InvalidYamlError
 from cyberdrop_dl.managers.manager import Manager
-from cyberdrop_dl.scraper.scraper import ScrapeMapper
+from cyberdrop_dl.scraper.scrape_mapper import ScrapeMapper
 from cyberdrop_dl.ui.program_ui import ProgramUI
+from cyberdrop_dl.ui.textual import textual_ui
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.apprise import send_apprise_notifications
 from cyberdrop_dl.utils.dumper import Dumper
-from cyberdrop_dl.utils.logger import RedactedConsole, add_custom_log_render, log, log_spacer, log_with_color
+from cyberdrop_dl.utils.logger import LogHandler, QueuedLogger, TextualLogQueueHandler, log, log_spacer, log_with_color
 from cyberdrop_dl.utils.sorting import Sorter
 from cyberdrop_dl.utils.updates import check_latest_pypi
 from cyberdrop_dl.utils.utilities import check_partials_and_empty_folders, send_webhook_message
@@ -31,6 +31,7 @@ from cyberdrop_dl.utils.yaml import handle_validation_error
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
+
 
 startup_logger = logging.getLogger("cyberdrop_dl_startup")
 STARTUP_LOGGER_FILE = Path.cwd().joinpath("startup.log")
@@ -53,10 +54,6 @@ def startup() -> Manager:
         if not manager.parsed_args.cli_only_args.download:
             ProgramUI(manager)
 
-    except InvalidYamlError as e:
-        startup_logger.error(e.message)
-        sys.exit(1)
-
     except ValidationError as e:
         sources = {
             "GlobalSettings": manager.config_manager.global_settings,
@@ -68,21 +65,7 @@ def startup() -> Manager:
         handle_validation_error(e, file=file)
         sys.exit(1)
 
-    except KeyboardInterrupt:
-        startup_logger.info("Exiting...")
-        sys.exit(0)
-
-    except browser_cookie3.BrowserCookieError:
-        startup_logger.exception("")
-        sys.exit(1)
-
-    except Exception:
-        msg = "An error occurred, please report this to the developer with your logs file:"
-        startup_logger.exception(msg)
-        sys.exit(1)
-
-    else:
-        return manager
+    return manager
 
 
 async def runtime(manager: Manager) -> None:
@@ -90,9 +73,10 @@ async def runtime(manager: Manager) -> None:
     if manager.multiconfig and manager.config_manager.settings_data.sorting.sort_downloads:
         return
 
+    manager.states.RUNNING.set()
     with manager.live_manager.get_main_live(stop=True):
         scrape_mapper = ScrapeMapper(manager)
-        async with asyncio.TaskGroup() as task_group:
+        async with textual_ui(manager), asyncio.TaskGroup() as task_group:
             manager.task_group = task_group
             await scrape_mapper.start()
 
@@ -124,18 +108,16 @@ def setup_startup_logger(*, first_time_setup: bool = False) -> None:
         STARTUP_LOGGER_FILE.unlink(missing_ok=True)  # Only delete file once. Subsequent calls will append to file
     destroy_startup_logger()
     startup_logger.setLevel(10)
-    console_handler = RichHandler(**(constants.RICH_HANDLER_CONFIG | {"show_time": False}), level=10)
+    console_handler = LogHandler(level=10)
     startup_logger.addHandler(console_handler)
 
     file_io = STARTUP_LOGGER_FILE.open("a", encoding="utf8")
-    file_console = RedactedConsole(file=file_io, width=constants.DEFAULT_CONSOLE_WIDTH)
-    file_handler = RichHandler(**constants.RICH_HANDLER_CONFIG, console=file_console, level=10)
-    add_custom_log_render(file_handler)
+    file_handler = LogHandler(level=10, file=file_io, width=constants.DEFAULT_CONSOLE_WIDTH)
     startup_logger.addHandler(file_handler)
 
 
 def destroy_startup_logger(remove_all_handlers: bool = True) -> None:
-    handlers: list[RichHandler] = startup_logger.handlers  # type: ignore
+    handlers: list[LogHandler] = startup_logger.handlers  # type: ignore
     for handler in handlers[:]:  # create copy
         if not (handler.console._file or remove_all_handlers):
             continue
@@ -151,21 +133,46 @@ def destroy_startup_logger(remove_all_handlers: bool = True) -> None:
 
 @contextlib.contextmanager
 def startup_logging(*, first_time_setup: bool = False) -> Generator:
+    exit_code = 1
     try:
         setup_startup_logger(first_time_setup=first_time_setup)
         yield
+
+    except InvalidYamlError as e:
+        startup_logger.error(e.message)
+
+    except browser_cookie3.BrowserCookieError:
+        startup_logger.exception("")
+
+    except OSError as e:
+        startup_logger.exception(str(e))
+
+    except KeyboardInterrupt:
+        startup_logger.info("Exiting...")
+        exit_code = 0
+
+    except Exception:
+        msg = "An error occurred, please report this to the developer with your logs file:"
+        startup_logger.exception(msg)
+
+    else:
+        return
+
     finally:
         destroy_startup_logger()
+
+    sys.exit(exit_code)
 
 
 def setup_debug_logger(manager: Manager) -> Path | None:
     if not env.DEBUG_VAR:
         return
 
-    logger_debug = logging.getLogger("cyberdrop_dl_debug")
+    debug_logger = logging.getLogger("cyberdrop_dl_debug")
     log_level = 10
-    manager.config_manager.settings_data.runtime_options.log_level = log_level
-    logger_debug.setLevel(log_level)
+    settings_data = manager.config_manager.settings_data
+    settings_data.runtime_options.log_level = log_level
+    debug_logger.setLevel(log_level)
     debug_log_file_path = Path(__file__).parents[1] / "cyberdrop_dl_debug.log"
     with startup_logging():
         if env.DEBUG_LOG_FOLDER:
@@ -177,20 +184,16 @@ def setup_debug_logger(manager: Manager) -> Path | None:
                 sys.exit(1)
             date = datetime.now().strftime("%Y%m%d_%H%M%S")
             debug_log_file_path = debug_log_folder / f"cyberdrop_dl_debug_{date}.log"
-        try:
-            file_io = debug_log_file_path.open("w", encoding="utf8")
-        except OSError as e:
-            startup_logger.exception(str(e))
-            sys.exit(1)
 
-    file_console = Console(file=file_io, width=manager.config_manager.settings_data.logs.log_line_width)
-    file_handler_debug = RichHandler(**constants.RICH_HANDLER_DEBUG_CONFIG, console=file_console, level=log_level)
-    add_custom_log_render(file_handler_debug)
-    logger_debug.addHandler(file_handler_debug)
+        file_io = debug_log_file_path.open("w", encoding="utf8")
+
+    file_handler = LogHandler(level=log_level, file=file_io, width=settings_data.logs.log_line_width, debug=True)
+    queued_logger = QueuedLogger(manager, file_handler, "debug")
+    debug_logger.addHandler(queued_logger.handler)
 
     aiohttp_client_cache_logger = logging.getLogger("aiohttp_client_cache")
     aiohttp_client_cache_logger.setLevel(log_level)
-    aiohttp_client_cache_logger.addHandler(file_handler_debug)
+    aiohttp_client_cache_logger.addHandler(queued_logger.handler)
 
     # aiosqlite_log = logging.getLogger("aiosqlite")
     # aiosqlite_log.setLevel(log_level)
@@ -201,36 +204,34 @@ def setup_debug_logger(manager: Manager) -> Path | None:
 
 def setup_logger(manager: Manager, config_name: str) -> None:
     logger = logging.getLogger("cyberdrop_dl")
+    queued_logger = manager.loggers.pop("main", None)
     with startup_logging():
-        if manager.multiconfig:
-            if len(logger.handlers) > 0:
-                log("Picking new config...", 20)
-            manager.config_manager.change_config(config_name)
-            if len(logger.handlers) > 0:
-                log(f"Changing config to {config_name}...", 20)
-                old_file_handler = logger.handlers[0]
-                logger.removeHandler(logger.handlers[0])
-                old_file_handler.close()
+        if manager.multiconfig and queued_logger:
+            log(f"Picking new config: '{config_name}' ...", 20)
+            try:
+                manager.config_manager.change_config(config_name)
+                log(f"Changed config to {config_name}...", 20)
+            finally:
+                logger.removeHandler(queued_logger.handler)
+                queued_logger.stop()
 
-        try:
-            file_io = manager.path_manager.main_log.open("w", encoding="utf8")
-        except OSError as e:
-            startup_logger.exception(str(e))
-            sys.exit(1)
+        file_io = manager.path_manager.main_log.open("w", encoding="utf8")
 
-    log_level = manager.config_manager.settings_data.runtime_options.log_level
+    settings_data = manager.config_manager.settings_data
+    log_level = settings_data.runtime_options.log_level
     logger.setLevel(log_level)
 
     if not manager.parsed_args.cli_only_args.fullscreen_ui:
-        constants.CONSOLE_LEVEL = manager.config_manager.settings_data.runtime_options.console_log_level
+        constants.CONSOLE_LEVEL = settings_data.runtime_options.console_log_level
 
-    console_log_level = constants.CONSOLE_LEVEL
-    file_console = RedactedConsole(file=file_io, width=manager.config_manager.settings_data.logs.log_line_width)
-    file_handler = RichHandler(**constants.RICH_HANDLER_CONFIG, console=file_console, level=log_level)
-    console_handler = RichHandler(**(constants.RICH_HANDLER_CONFIG | {"show_time": False}), level=console_log_level)
-    add_custom_log_render(file_handler)
-    logger.addHandler(file_handler)
+    console_handler = LogHandler(level=constants.CONSOLE_LEVEL)
     logger.addHandler(console_handler)
+
+    file_handler = LogHandler(level=log_level, file=file_io, width=settings_data.logs.log_line_width)
+    queued_logger = QueuedLogger(manager, file_handler)
+    textual_log_handler = TextualLogQueueHandler(manager)
+    logger.addHandler(queued_logger.handler)
+    logger.addHandler(textual_log_handler)
 
 
 def ui_error_handling_wrapper(func: Callable) -> Callable:
@@ -251,6 +252,18 @@ def ui_error_handling_wrapper(func: Callable) -> Callable:
                 log_with_color(f"  {exc}", "bold red", 50, show_in_stats=False, exc_info=exc)
 
     return wrapper
+
+
+async def scheduler(manager: Manager) -> None:
+    for func in (runtime, post_runtime):
+        if manager.states.SHUTTING_DOWN.is_set():
+            return
+        manager.current_task = task = asyncio.create_task(func(manager))
+        try:
+            await task
+        except asyncio.CancelledError:
+            if not manager.states.SHUTTING_DOWN.is_set():
+                raise
 
 
 @ui_error_handling_wrapper
@@ -276,12 +289,12 @@ async def director(manager: Manager) -> None:
         log_spacer(10)
 
         log("Starting CDL...\n", 20)
-        await runtime(manager)
-        await post_runtime(manager)
+
+        await scheduler(manager)
 
         manager.progress_manager.print_stats(start_time)
 
-        if not configs_to_run:
+        if not configs_to_run or manager.states.SHUTTING_DOWN.is_set():
             log_spacer(20)
             log("Checking for Updates...", 20)
             check_latest_pypi()
@@ -292,6 +305,8 @@ async def director(manager: Manager) -> None:
         await send_webhook_message(manager)
         await send_apprise_notifications(manager)
         start_time = perf_counter()
+        if manager.states.SHUTTING_DOWN.is_set():
+            return
 
 
 def main(*, profiling: bool = False, ask: bool = True):
@@ -313,7 +328,7 @@ def actual_main() -> None:
             asyncio.run(director(manager))
             exit_code = 0
         except KeyboardInterrupt:
-            Console().print("Trying to Exit ...")
+            rich_print("Trying to Exit ...")
         finally:
             asyncio.run(manager.close())
     loop.close()

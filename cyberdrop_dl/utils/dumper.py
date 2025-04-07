@@ -36,7 +36,7 @@ class Dumper:
 def convert_to_dict(media_item: MediaItem) -> dict:
     date = media_item.datetime
     item = asdict(media_item)
-    if date:
+    if date and isinstance(date, int):
         item["datetime"] = datetime.datetime.fromtimestamp(date)
     for key, new_key in KEYS_TO_REPLACE.items():
         item[new_key] = item[key]

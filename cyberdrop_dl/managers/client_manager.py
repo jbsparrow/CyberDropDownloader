@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import ssl
+import time
 from dataclasses import dataclass
 from http import HTTPStatus
 from http.cookiejar import MozillaCookieJar
@@ -21,10 +22,13 @@ from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.managers.download_speed_manager import DownloadSpeedLimiter
 from cyberdrop_dl.ui.prompts.user_prompts import get_cookies_from_browsers
 from cyberdrop_dl.utils.logger import log, log_spacer
+from cyberdrop_dl.utils.utilities import get_soup_from_response
 
 if TYPE_CHECKING:
+    from curl_cffi.requests.models import Response as CurlResponse
+
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.scraper.crawler import ScrapeItem
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 DOWNLOAD_ERROR_ETAGS = {
     "d835884373f4d6c8f24742ceabe74946": "Imgur image has been removed",
@@ -85,6 +89,7 @@ class ClientManager:
             "pixeldrain": 0,
             "coomer": 0.5,
             "kemono": 0.5,
+            "nhentai.net": 1,
         }
 
         self.global_rate_limiter = AsyncLimiter(self.rate_limit, 1)
@@ -94,8 +99,8 @@ class ClientManager:
         )
 
         self.scraper_session = ScraperClient(self)
-        self.downloader_session = DownloadClient(manager, self)
         self.speed_limiter = DownloadSpeedLimiter(manager)
+        self.downloader_session = DownloadClient(manager, self)
         self.flaresolverr = Flaresolverr(self)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -107,6 +112,7 @@ class ClientManager:
         if not cookie_files:
             return
 
+        now = time.time()
         domains_seen = set()
         for file in cookie_files:
             cookie_jar = MozillaCookieJar(file)
@@ -115,7 +121,8 @@ class ClientManager:
             except OSError as e:
                 log(f"Unable to load cookies from '{file.name}':\n  {e!s}", 40)
                 continue
-            current_cookie_file_domains = set()
+            current_cookie_file_domains: set[str] = set()
+            expired_cookies_domains: set[str] = set()
             for cookie in cookie_jar:
                 simplified_domain = cookie.domain.removeprefix(".")
                 if simplified_domain not in current_cookie_file_domains:
@@ -123,8 +130,15 @@ class ClientManager:
                     current_cookie_file_domains.add(simplified_domain)
                     if simplified_domain in domains_seen:
                         log(f"Previous cookies for domain {simplified_domain} detected. They will be overwritten", 30)
+
+                if (simplified_domain not in expired_cookies_domains) and cookie.is_expired(now):  # type: ignore
+                    expired_cookies_domains.add(simplified_domain)
+
                 domains_seen.add(simplified_domain)
                 self.cookies.update_cookies({cookie.name: cookie.value}, response_url=URL(f"https://{cookie.domain}"))  # type: ignore
+
+            for simplified_domain in expired_cookies_domains:
+                log(f"Cookies for {simplified_domain} are expired", 30)
 
         log_spacer(20, log_to_console=False)
 
@@ -145,12 +159,13 @@ class ClientManager:
     @classmethod
     async def check_http_status(
         cls,
-        response: ClientResponse,
+        response: ClientResponse | CurlResponse,
         download: bool = False,
         origin: ScrapeItem | URL | None = None,
     ) -> None:
         """Checks the HTTP status code and raises an exception if it's not acceptable."""
-        status = response.status
+        is_curl = not isinstance(response, ClientResponse)
+        status = response.status_code if is_curl else response.status
         headers = response.headers
         message = None
 
@@ -172,12 +187,8 @@ class ClientManager:
                 if data and isinstance(data, dict) and "error" in data:
                     raise ScrapeError(status, data["error"], origin=origin)
 
-        response_text = None
-        with contextlib.suppress(UnicodeDecodeError):
-            response_text = await response.text()
-
-        if response_text:
-            soup = BeautifulSoup(response_text, "html.parser")
+        soup = await get_soup_from_response(response)
+        if soup:
             if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
                 raise DDOSGuardError(origin=origin)
 
@@ -190,7 +201,7 @@ class ClientManager:
 
     @staticmethod
     def check_ddos_guard(soup: BeautifulSoup) -> bool:
-        if soup.title:
+        if soup.title and soup.title.string:
             for title in DDOS_GUARD_CHALLENGE_TITLES:
                 challenge_found = title.casefold() == soup.title.string.casefold()  # type: ignore
                 if challenge_found:
@@ -205,7 +216,7 @@ class ClientManager:
 
     @staticmethod
     def check_cloudflare(soup: BeautifulSoup) -> bool:
-        if soup.title:
+        if soup.title and soup.title.string:
             for title in CLOUDFLARE_CHALLENGE_TITLES:
                 challenge_found = title.casefold() == soup.title.string.casefold()  # type: ignore
                 if challenge_found:
@@ -342,7 +353,7 @@ class Flaresolverr:
             raise DDOSGuardError(message="Failed to resolve URL with flaresolverr", origin=origin)
 
         user_agent = client_session.headers["User-Agent"].strip()
-        mismatch_msg = f"Config user_agent and flaresolverr user_agent do not match: \n  Cyberdrop-DL: {user_agent}\n  Flaresolverr: {fs_resp.user_agent}"
+        mismatch_msg = f"Config user_agent and flaresolverr user_agent do not match: \n  Cyberdrop-DL: '{user_agent}'\n  Flaresolverr: '{fs_resp.user_agent}'"
         if fs_resp.soup and (
             self.client_manager.check_ddos_guard(fs_resp.soup) or self.client_manager.check_cloudflare(fs_resp.soup)
         ):

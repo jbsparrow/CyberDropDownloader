@@ -193,7 +193,7 @@ class ProgramUI:
         self._open_in_text_editor(config_file)
 
     def _edit_urls(self) -> None:
-        self._open_in_text_editor(self.manager.path_manager.input_file)
+        self._open_in_text_editor(self.manager.path_manager.input_file, reload_config=False)
 
     def _change_default_config(self) -> None:
         configs = self.manager.config_manager.get_configs()
@@ -241,11 +241,15 @@ class ProgramUI:
 
         self.manager.cache_manager.save("simp_disclaimer_shown", True)
 
-    def _open_in_text_editor(self, file_path: Path):
+    def _open_in_text_editor(self, file_path: Path, *, reload_config: bool = True):
         try:
             open_in_text_editor(file_path)
-        except ValueError:
-            self.print_error("No default text editor found")
+        except ValueError as e:
+            self.print_error(str(e))
+            return
+        if reload_config:
+            console.print("Revalidating config, please wait..")
+            self.manager.config_manager.change_config(self.manager.config_manager.loaded_config)
 
     def _process_answer(self, answer: Any, options_map: dict) -> Choice | None:
         """Checks prompt answer and executes corresponding function."""

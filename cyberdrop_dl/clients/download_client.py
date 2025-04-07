@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import calendar
 import copy
 import itertools
 import time
@@ -11,15 +12,11 @@ from typing import TYPE_CHECKING
 import aiofiles
 import aiohttp
 from aiohttp import ClientSession
+from dateutil import parser
 from videoprops import get_audio_properties, get_video_properties
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import (
-    DownloadError,
-    InsufficientFreeSpaceError,
-    InvalidContentTypeError,
-    SlowDownloadError,
-)
+from cyberdrop_dl.clients.errors import DownloadError, InvalidContentTypeError, SlowDownloadError
 from cyberdrop_dl.utils.constants import FILE_FORMATS
 from cyberdrop_dl.utils.logger import log, log_debug
 
@@ -120,6 +117,7 @@ class DownloadClient:
         self._file_path = None
         self.slow_download_period = 10  # seconds
         self.download_speed_threshold = self.manager.config_manager.settings_data.runtime_options.slow_download_speed
+        self.chunk_size = client_manager.speed_limiter.chunk_size
         self.add_request_log_hooks()
 
     def add_request_log_hooks(self) -> None:
@@ -179,6 +177,7 @@ class DownloadClient:
         await asyncio.sleep(self.client_manager.download_delay)
 
         download_url = media_item.debrid_link or media_item.url
+        await self.manager.states.RUNNING.wait()
         async with client_session.get(
             download_url,
             headers=download_headers,
@@ -210,6 +209,11 @@ class DownloadClient:
             if resp.status != HTTPStatus.PARTIAL_CONTENT and media_item.partial_file.is_file():
                 media_item.partial_file.unlink()
 
+            if not media_item.datetime and (last_modified := get_last_modified(resp.headers)):
+                msg = f"Unable to parse upload date for {media_item.url}, using `Last-Modified` header as file datetime"
+                log(msg, 30)
+                media_item.datetime = last_modified
+
             media_item.task_id = self.manager.progress_manager.file_progress.add_task(
                 domain=domain,
                 filename=media_item.filename,
@@ -229,8 +233,9 @@ class DownloadClient:
         update_progress: partial,
     ) -> None:
         """Appends content to a file."""
-        if not self.client_manager.manager.download_manager.check_free_space(media_item.download_folder):
-            raise InsufficientFreeSpaceError(origin=media_item)
+
+        check_free_space = partial(self.manager.storage_manager.check_free_space, media_item)
+        await check_free_space()
 
         media_item.partial_file.parent.mkdir(parents=True, exist_ok=True)
         if not media_item.partial_file.is_file():
@@ -249,12 +254,15 @@ class DownloadClient:
                 raise SlowDownloadError(origin=media_item)
 
         async with aiofiles.open(media_item.partial_file, mode="ab") as f:  # type: ignore
-            async for chunk in content.iter_chunked(self.client_manager.speed_limiter.chunk_size):
+            async for chunk in content.iter_chunked(self.chunk_size):
+                await self.manager.states.RUNNING.wait()
+                await check_free_space()
                 chunk_size = len(chunk)
                 await self.client_manager.speed_limiter.acquire(chunk_size)
                 await asyncio.sleep(0)
                 await f.write(chunk)
                 update_progress(chunk_size)
+
                 if self.download_speed_threshold:
                     check_download_speed()
 
@@ -488,6 +496,12 @@ def get_content_type(ext: str, headers: CIMultiDictProxy) -> str | None:
         raise InvalidContentTypeError(message=msg)
 
     return content_type
+
+
+def get_last_modified(headers: CIMultiDictProxy) -> int | None:
+    if date_str := headers.get("Last-Modified"):
+        parsed_date = parser.parse(date_str)
+        return calendar.timegm(parsed_date.timetuple())
 
 
 def is_html_or_text(content_type: str) -> bool:

@@ -1,9 +1,73 @@
+<!-- Template
+## UNRELEASED
+
+### Added
+
+### Changed
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+### Security
+
+-->
+
 # CHANGELOG
 
 All notable changes to this project will be documented here. For more details, visit the wiki: https://script-ware.gitbook.io/cyberdrop-dl
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [6.8.0] - 2025-04-05
+
+### Added
+
+- Support share links from accounts using a SharePoint backend (OneDrive)
+- nHentai support
+- Doodstream (AKA Vidply) support
+- BestPrettyGirl.com support
+- Catbox and Litterbox support
+- Send.now support
+- PMVHaven.com support
+- Motherless support
+- xHamster support
+- Auto detect orientation
+- `generic crawler` to scrape pages from sites that are not supported. This replaces the basic `no crawler` logic
+- Save scraped pages as html with the new `--save-pages-html` option: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/files#save_pages_html
+
+### Changed
+
+- Flaresolverr is no longer required for Spankbang
+- Reduce rate limits (JPG5)
+- Config is revalidated after the user edits it from the UI
+- Warn about expired cookie files
+- Use server's `Last-Modified` header value as the file datetime if CDL could not parse a date while scraping.
+- Try to download images from any URL (twing)
+- CDL will start by default in portrait mode when running inside termux. You can override it by using `--no-portrait`
+
+### Fixed
+
+- Handle deleted videos (SpankBang)
+- `JsonDecodeError` in some videos (SpankBang)
+- Slow downloads from burger servers (Bunkr)
+- Handle single file share links (YandexDisk)
+- URL parsing (`tuple index out of range` #1) (Sex.com)
+- Handle invalid URLs (`tuple index out of range` #2) (Google Drive)
+- Handle paths with special characters (stats hyperlinks)
+- Do not crash if pages have no title (DDoS Guard check)
+- Fixed tags and category downloads (DirtyShip)
+- `Invalid Content Type` from some URLs (Bunkr)
+- jsonl timestamp serializer (`'str' object cannot be interpreted as an integer`)
+- Download profiles with more than 1k posts (RedGifs)
+- Reduce the number of requests needed (jpg5, img.kiwi, imagepond)
+- CDL filling up storage if multiple concurrent downloads where larger that `required_free_space`
+- Handle confirmation links as input URL (forums)
+- General performance improvements
+
 
 ## [6.7.0] - 2025-03-07
 

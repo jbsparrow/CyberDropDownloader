@@ -6,8 +6,11 @@ import re
 from datetime import timedelta
 from pathlib import Path
 
+import yarl
 from pydantic import AnyUrl, ByteSize, TypeAdapter
-from yarl import URL
+
+from cyberdrop_dl.clients.errors import InvalidURLError
+from cyberdrop_dl.utils.utilities import parse_url
 
 DATE_PATTERN_REGEX = r"(\d+)\s*(second|seconds|minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years)"
 DATE_PATTERN = re.compile(DATE_PATTERN_REGEX, re.IGNORECASE)
@@ -21,8 +24,11 @@ def convert_byte_size_to_str(value: ByteSize) -> str:
     return value.human_readable(decimal=True)
 
 
-def convert_to_yarl(value: AnyUrl) -> URL:
-    return URL(str(value))
+def convert_to_yarl(value: AnyUrl | str, *args, **kwargs) -> yarl.URL:
+    try:
+        return parse_url(str(value), *args, **kwargs)
+    except (InvalidURLError, TypeError) as e:
+        raise ValueError(str(e)) from e
 
 
 def change_path_suffix(value: Path, suffix: str) -> Path:

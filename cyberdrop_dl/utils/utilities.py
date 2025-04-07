@@ -5,20 +5,24 @@ import json
 import os
 import platform
 import re
+import shutil
 import subprocess
-from functools import partial, wraps
+from dataclasses import fields
+from functools import lru_cache, partial, wraps
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, ClassVar, Protocol
 
 import aiofiles
 import rich
-from aiohttp import ClientConnectorError, ClientSession, FormData
+from aiohttp import ClientConnectorError, ClientResponse, ClientSession, FormData
+from bs4 import BeautifulSoup
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import (
     CDLBaseError,
     ErrorLogMessage,
     InvalidExtensionError,
+    InvalidURLError,
     NoExtensionError,
     get_origin,
 )
@@ -28,13 +32,20 @@ from cyberdrop_dl.utils.logger import log, log_debug, log_spacer, log_with_color
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from curl_cffi.requests.models import Response as CurlResponse
     from rich.text import Text
 
+    from cyberdrop_dl.crawlers import Crawler
     from cyberdrop_dl.downloader.downloader import Downloader
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.scraper.crawler import Crawler
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
 
+
+class Dataclass(Protocol):
+    __dataclass_fields__: ClassVar[dict]
+
+
+TEXT_EDITORS = "micro", "nano", "vim"  # Ordered by preference
 
 subprocess_get_text = partial(subprocess.run, capture_output=True, text=True, check=False)
 
@@ -116,7 +127,8 @@ def truncate_str(text: str, max_length: int = 0) -> str:
 
 def get_filename_and_ext(filename: str, forum: bool = False) -> tuple[str, str]:
     """Returns the filename and extension of a given file, throws `NoExtensionError` if there is no extension."""
-    filename_as_path = Path(filename)
+    clean_filename = Path(filename).as_posix().replace("/", "-")  # remove OS separators
+    filename_as_path = Path(clean_filename)
     if not filename_as_path.suffix:
         raise NoExtensionError
     ext_no_dot = filename_as_path.suffix.split(".")[1]
@@ -178,16 +190,26 @@ def clear_term():
     os.system("cls" if os.name == "nt" else "clear")
 
 
-def parse_rich_text_by_style(text: Text, style_map: dict, default_style_map_key: str = "default") -> str:
-    """Returns `text` as a plain str, parsing each tag in text acording to `style_map`."""
-    plain_text = ""
-    for span in text.spans:
-        span_text = text.plain[span.start : span.end].rstrip("\n")
-        plain_line: str | None = style_map.get(span.style) or style_map.get(default_style_map_key)
-        if plain_line:
-            plain_text += plain_line.format(span_text) + "\n"
+def convert_text_by_diff(text: Text) -> str:
+    """Returns `rich.text` as a plain str with diff syntax."""
 
-    return plain_text
+    STYLE_TO_DIFF = {
+        "green": "+   {}",
+        "red": "-   {}",
+        "yellow": "*** {}",
+    }
+
+    diff_text = ""
+    default_format: str = "{}"
+    for line in text.split(allow_blank=True):
+        line_str = line.plain.rstrip("\n")
+        first_span = line.spans[0] if line.spans else None
+        style: str = str(first_span.style) if first_span else ""
+        color = style.split(" ")[0] or "black"  # remove console hyperlink markup (if any)
+        line_format: str = STYLE_TO_DIFF.get(color) or default_format
+        diff_text += line_format.format(line_str) + "\n"
+
+    return diff_text
 
 
 def purge_dir_tree(dirname: Path) -> None:
@@ -255,7 +277,7 @@ async def send_webhook_message(manager: Manager) -> None:
     rich.print("\nSending Webhook Notifications.. ")
     url: URL = webhook.url.get_secret_value()  # type: ignore
     text: Text = constants.LOG_OUTPUT_TEXT
-    plain_text = parse_rich_text_by_style(text, constants.STYLE_TO_DIFF_FORMAT_MAP)
+    diff_text = convert_text_by_diff(text)
     main_log = manager.path_manager.main_log
 
     form = FormData()
@@ -266,10 +288,10 @@ async def send_webhook_message(manager: Manager) -> None:
                 form.add_field("file", await f.read(), filename=main_log.name)
 
         else:
-            plain_text += "\n\nWARNING: log file too large to send as attachment\n"
+            diff_text += "\n\nWARNING: log file too large to send as attachment\n"
 
     form.add_fields(
-        ("content", f"```diff\n{plain_text}```"),
+        ("content", f"```diff\n{diff_text}```"),
         ("username", "CyberDrop-DL"),
     )
 
@@ -293,35 +315,47 @@ async def send_webhook_message(manager: Manager) -> None:
 
 def open_in_text_editor(file_path: Path) -> bool | None:
     """Opens file in OS text editor."""
-    using_desktop_enviroment = (
-        any(var in os.environ for var in ("DISPLAY", "WAYLAND_DISPLAY")) and "SSH_CONNECTION" not in os.environ
-    )
-    default_editor = os.environ.get("EDITOR")
-    if platform.system() == "Darwin":
-        subprocess.Popen(["open", "-a", "TextEdit", file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    using_ssh = "SSH_CONNECTION" in os.environ
+    using_desktop_enviroment = any(var in os.environ for var in ("DISPLAY", "WAYLAND_DISPLAY"))
+    custom_editor = os.environ.get("EDITOR")
+
+    if custom_editor:
+        path = shutil.which(custom_editor)
+        if not path:
+            msg = f"Editor '{custom_editor}' from env bar $EDITOR is not available"
+            raise ValueError(msg)
+        cmd = path, file_path
+
+    elif platform.system() == "Darwin":
+        cmd = "open", "-a", "TextEdit", file_path
 
     elif platform.system() == "Windows":
-        subprocess.Popen(["notepad.exe", file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        cmd = "notepad.exe", file_path
 
-    elif using_desktop_enviroment and set_default_app_if_none(file_path):
-        subprocess.Popen(["xdg-open", file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    elif using_desktop_enviroment and not using_ssh and set_default_app_if_none(file_path):
+        cmd = "xdg-open", file_path
 
-    elif default_editor:
-        subprocess.call([default_editor, file_path])
-
-    elif subprocess.call(["which", "micro"], stdout=subprocess.DEVNULL) == 0:
-        subprocess.call(["micro", file_path])
-
-    elif subprocess.call(["which", "nano"], stdout=subprocess.DEVNULL) == 0:
-        subprocess.call(["nano", file_path])
-
-    elif subprocess.call(["which", "vim"], stdout=subprocess.DEVNULL) == 0:
-        subprocess.call(["vim", file_path])
-
+    elif fallback_editor := get_first_available_editor():
+        cmd = fallback_editor, file_path
+        if fallback_editor.stem == "micro":
+            cmd = fallback_editor, "-keymenu", "true", file_path
     else:
-        raise ValueError
+        msg = "No default text editor found"
+        raise ValueError(msg)
+
+    rich.print(f"Opening '{file_path}' with '{cmd[0]}'...")
+    subprocess.call([*cmd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+@lru_cache
+def get_first_available_editor() -> Path | None:
+    for editor in TEXT_EDITORS:
+        path = shutil.which(editor)
+        if path:
+            return Path(path)
+
+
+@lru_cache
 def set_default_app_if_none(file_path: Path) -> bool:
     mimetype = xdg_mime_query("filetype", str(file_path))
     if not mimetype:
@@ -338,10 +372,77 @@ def set_default_app_if_none(file_path: Path) -> bool:
     return False
 
 
+def get_valid_dict(dataclass: Dataclass | type[Dataclass], info: dict[str, Any]) -> dict[str, Any]:
+    """Remove all keys that are not fields in the dataclass"""
+    return {k: v for k, v in info.items() if k in get_field_names(dataclass)}
+
+
+@lru_cache
+def get_field_names(dataclass: Dataclass | type[Dataclass]) -> list[str]:
+    return [f.name for f in fields(dataclass)]
+
+
+def get_text_between(original_text: str, start: str, end: str) -> str:
+    """Extracts the text between two strings in a larger text."""
+    start_index = original_text.index(start) + len(start)
+    end_index = original_text.index(end, start_index)
+    return original_text[start_index:end_index]
+
+
 def xdg_mime_query(*args) -> str:
     assert args
     arg_list = ["xdg-mime", "query", *args]
     return subprocess_get_text(arg_list).stdout.strip()
+
+
+def parse_url(link_str: str, relative_to: URL | None = None, *, trim: bool = True) -> URL:
+    """Parse a string into an absolute URL, handling relative URLs, encoding and optionally removes trailing slash (trimming).
+    Raises:
+        InvalidURLError: If the input string is not a valid URL or if any other error occurs during parsing.
+        TypeError: If `relative_to` is `None` and the parsed URL is relative or has no scheme.
+    """
+
+    base: URL = relative_to  # type: ignore
+
+    def fix_query_params_encoding() -> str:
+        if "?" not in link_str:
+            return link_str
+        parts, query_and_frag = link_str.split("?", 1)
+        query_and_frag = query_and_frag.replace("+", "%20")
+        return f"{parts}?{query_and_frag}"
+
+    try:
+        assert link_str, "link_str is empty"
+        assert isinstance(link_str, str), f"link_str must be a string object, got: {link_str!r}"
+        clean_link_str = fix_query_params_encoding()
+        is_encoded = "%" in clean_link_str
+        new_url = URL(clean_link_str, encoded=is_encoded)
+    except (AssertionError, AttributeError, ValueError, TypeError) as e:
+        raise InvalidURLError(str(e), url=link_str) from e
+    if not new_url.absolute:
+        new_url = base.join(new_url)
+    if not new_url.scheme:
+        new_url = new_url.with_scheme(base.scheme or "https")
+    if not trim:
+        return new_url
+    return remove_trailing_slash(new_url)
+
+
+def remove_trailing_slash(url: URL) -> URL:
+    if url.name or url.path == "/":
+        return url
+    return url.parent.with_fragment(url.fragment).with_query(url.query)
+
+
+async def get_soup_from_response(response: CurlResponse | ClientResponse) -> BeautifulSoup | None:
+    response_text = None
+    with contextlib.suppress(UnicodeDecodeError):
+        response_text = await response.text() if isinstance(response, ClientResponse) else response.text
+
+    if not response_text:
+        return
+
+    return BeautifulSoup(response_text, "html.parser")
 
 
 log_cyan = partial(log_with_color, style="cyan", level=20)

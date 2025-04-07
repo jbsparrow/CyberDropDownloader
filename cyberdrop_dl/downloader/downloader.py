@@ -15,7 +15,6 @@ from cyberdrop_dl.clients.errors import (
     DownloadError,
     DurationError,
     ErrorLogMessage,
-    InsufficientFreeSpaceError,
     InvalidContentTypeError,
     RestrictedFiletypeError,
 )
@@ -75,13 +74,16 @@ def retry(func: Callable) -> Callable:
     return wrapper
 
 
+GENERIC_CRAWLERS = ".", "no_crawler"
+
+
 class Downloader:
     def __init__(self, manager: Manager, domain: str) -> None:
         self.manager: Manager = manager
         self.domain: str = domain
 
         self.client: DownloadClient = field(init=False)
-        self.log_prefix = "Download attempt (unsupported domain)" if domain == "no_crawler" else "Download"
+        self.log_prefix = "Download attempt (unsupported domain)" if domain in GENERIC_CRAWLERS else "Download"
         self.processed_items: set = set()
         self.waiting_items = 0
 
@@ -105,29 +107,30 @@ class Downloader:
         self.manager.progress_manager.download_progress.update_queued(queued_files)
         self.manager.progress_manager.download_progress.update_total(increase_total)
 
-    async def run(self, media_item: MediaItem) -> None:
+    async def run(self, media_item: MediaItem) -> bool:
         """Runs the download loop."""
 
         if media_item.url.path in self.processed_items and not self._ignore_history:
-            return
+            return False
 
+        await self.manager.states.RUNNING.wait()
         self.waiting_items += 1
         media_item.current_attempt = 0
         await self.client.mark_incomplete(media_item, self.domain)
         self.update_queued_files()
         async with self._semaphore:
+            await self.manager.states.RUNNING.wait()
             self.waiting_items -= 1
             self.processed_items.add(media_item.url.path)
             self.update_queued_files(increase_total=False)
             async with self.manager.client_manager.download_session_limit:
-                await self.start_download(media_item)
+                return await self.start_download(media_item)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    def check_file_can_download(self, media_item: MediaItem) -> None:
+    async def check_file_can_download(self, media_item: MediaItem) -> None:
         """Checks if the file can be downloaded."""
-        if not self.manager.download_manager.check_free_space(media_item.download_folder):
-            raise InsufficientFreeSpaceError(origin=media_item)
+        await self.manager.storage_manager.check_free_space(media_item)
         if not self.manager.download_manager.check_allowed_filetype(media_item):
             raise RestrictedFiletypeError(origin=media_item)
         if not self.manager.download_manager.pre_check_duration(media_item):
@@ -157,25 +160,26 @@ class Downloader:
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def start_download(self, media_item: MediaItem) -> None:
+    async def start_download(self, media_item: MediaItem) -> bool:
         log(f"{self.log_prefix} starting: {media_item.url}", 20)
         if not media_item.file_lock_reference_name:
             media_item.file_lock_reference_name = media_item.filename
         lock = self._file_lock_vault.get_lock(media_item.file_lock_reference_name)
         async with lock:
-            await self.download(media_item)
+            return bool(await self.download(media_item))
 
     @error_handling_wrapper
     @retry
-    async def download(self, media_item: MediaItem) -> None:
+    async def download(self, media_item: MediaItem) -> bool | None:
         """Downloads the media item."""
         url_as_str = str(media_item.url)
         if url_as_str in KNOWN_BAD_URLS:
             raise DownloadError(KNOWN_BAD_URLS[url_as_str])
         try:
+            await self.manager.states.RUNNING.wait()
             media_item.current_attempt = media_item.current_attempt or 1
             media_item.duration = await self.manager.db_manager.history_table.get_duration(self.domain, media_item)
-            self.check_file_can_download(media_item)
+            await self.check_file_can_download(media_item)
             downloaded = await self.client.download_file(self.manager, self.domain, media_item)
             if downloaded:
                 Path.chmod(media_item.complete_file, 0o666)
@@ -183,6 +187,7 @@ class Downloader:
                 self.attempt_task_removal(media_item)
                 self.manager.progress_manager.download_progress.add_completed()
                 log(f"Download finished: {media_item.url}", 20)
+            return downloaded
 
         except RestrictedFiletypeError:
             log(f"Download skip {media_item.url} due to ignore_extension config ({media_item.ext})", 10)
