@@ -167,11 +167,9 @@ def domains_prompt(*, domain_message: str = "Select site(s):") -> tuple[list[str
         return [], []
 
     if domain_type == 3:
-        SUPPORTED_SITES_DOMAINS.remove(".")
         return SUPPORTED_SITES_DOMAINS, SUPPORTED_SITES_DOMAINS
 
     all_domains = list(SUPPORTED_FORUMS.values() if domain_type == DomainType.FORUM else SUPPORTED_WEBSITES.values())
-    all_domains.remove(".")
     domain_choices = [Choice(site) for site in all_domains] + [ALL_CHOICE]
 
     domains = basic_prompts.ask_choice_fuzzy(

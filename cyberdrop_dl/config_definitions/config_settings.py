@@ -156,7 +156,6 @@ class BrowserCookies(BaseModel):
     auto_import: bool = False
     browsers: list[BROWSERS] = [BROWSERS.chrome]
     sites: list[NonEmptyStr] = SUPPORTED_SITES_DOMAINS
-    sites.remove(".")
 
     @field_validator("browsers", mode="before")
     @classmethod
