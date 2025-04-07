@@ -6,6 +6,7 @@ import json
 import re
 from typing import TYPE_CHECKING, NamedTuple
 
+from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
@@ -45,6 +46,7 @@ class AShemaleTubeCrawler(Crawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "ashemaletube", "aShemaleTube")
+        self.request_limiter = AsyncLimiter(1, 10)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
