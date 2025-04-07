@@ -135,7 +135,7 @@ class AShemaleTubeCrawler(Crawler):
             scrape_item.url = canonical_url
             filename, ext = self.get_filename_and_ext(link.name, assume_ext=".mp4")
             include_id = f"[{video_id}]" if INCLUDE_VIDEO_ID_IN_FILENAME else ""
-            custom_filename = f"{title} {include_id}[{info['res']}]{ext}"
+            custom_filename = self.get_filename_and_ext(f"{title} {include_id}[{info['res']}]{ext}")
             await self.handle_file(
                 canonical_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=link
             )
