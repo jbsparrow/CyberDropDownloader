@@ -9,7 +9,7 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -56,7 +56,7 @@ class DropboxCrawler(Crawler):
         filename = item.filename or await self.get_folder_name(item.download_url)
         if not filename:
             raise ScrapeError(422)
-        filename, ext = get_filename_and_ext(filename)
+        filename, ext = self.get_filename_and_ext(filename)
         await self.handle_file(item.canonical_url, scrape_item, filename, ext, debrid_link=item.download_url)
 
     @error_handling_wrapper

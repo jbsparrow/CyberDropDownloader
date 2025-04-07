@@ -8,7 +8,7 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -59,7 +59,7 @@ class WeTransferCrawler(Crawler):
 
     @error_handling_wrapper
     async def direct_link(self, scrape_item: ScrapeItem, link: URL) -> None:
-        filename, ext = get_filename_and_ext(link.name)
+        filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 
     async def get_final_url(self, scrape_item: ScrapeItem) -> URL:

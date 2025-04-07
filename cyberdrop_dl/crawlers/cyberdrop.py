@@ -12,7 +12,7 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -89,7 +89,7 @@ class CyberdropCrawler(Crawler):
             api_url = self.api_url / "file" / "info" / scrape_item.url.path[3:]
             JSON_Resp = await self.client.get_json(self.domain, api_url, origin=scrape_item)
 
-        filename, ext = get_filename_and_ext(JSON_Resp["name"])
+        filename, ext = self.get_filename_and_ext(JSON_Resp["name"])
 
         async with self.request_limiter:
             api_url = self.api_url / "file" / "auth" / scrape_item.url.path[3:]

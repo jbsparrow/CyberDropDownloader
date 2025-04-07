@@ -8,7 +8,7 @@ from cyberdrop_dl.clients.errors import NoExtensionError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.logger import log
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -28,7 +28,7 @@ class XBunkrCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
         if "media" in scrape_item.url.host:
-            filename, ext = get_filename_and_ext(scrape_item.url.name)
+            filename, ext = self.get_filename_and_ext(scrape_item.url.name)
             await self.handle_file(scrape_item.url, scrape_item, filename, ext)
         else:
             await self.album(scrape_item)
@@ -50,7 +50,7 @@ class XBunkrCrawler(Crawler):
             assert link_str
             link = self.parse_url(link_str)
             try:
-                filename, ext = get_filename_and_ext(link.name)
+                filename, ext = self.get_filename_and_ext(link.name)
             except NoExtensionError:
                 log(f"Couldn't get extension for {link}", 40)
                 continue

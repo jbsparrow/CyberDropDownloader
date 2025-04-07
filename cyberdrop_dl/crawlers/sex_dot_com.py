@@ -8,7 +8,7 @@ from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_PROFILE, ScrapeItem
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -97,7 +97,7 @@ class SexDotComCrawler(Crawler):
             ext = "jpg"
         elif fileType.startswith("video"):
             media_url = URL(item["sources"][0]["fullPath"])
-            filename, ext = get_filename_and_ext(media_url.name)
+            filename, ext = self.get_filename_and_ext(media_url.name)
         date = self.parse_datetime(item["createdAt"])
         new_scrape_item = self.create_scrape_item(scrape_item, canonical_url, "", True, scrape_item.album_id, date)
         await self.handle_file(media_url, new_scrape_item, filename, ext)

@@ -8,7 +8,7 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -128,7 +128,7 @@ class LusciousCrawler(Crawler):
             for item in json_data["data"]["picture"]["list"]["items"]:
                 link_str: str = item["url_to_original"]
                 link = self.parse_url(link_str)
-                filename, ext = get_filename_and_ext(link.name)
+                filename, ext = self.get_filename_and_ext(link.name)
                 if not self.check_album_results(link, results):
                     await self.handle_file(link, scrape_item, filename, ext)
                 scrape_item.add_children()

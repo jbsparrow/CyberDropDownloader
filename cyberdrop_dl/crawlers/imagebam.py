@@ -7,7 +7,7 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -97,8 +97,8 @@ class ImageBamCrawler(Crawler):
         title: str = image_tag.get("alt")
         link_str: str = image_tag.get("src")
         link = self.parse_url(link_str)
-        filename, ext = get_filename_and_ext(link.name)
-        custom_filename, _ = get_filename_and_ext(title)
+        filename, ext = self.get_filename_and_ext(link.name)
+        custom_filename, _ = self.get_filename_and_ext(title)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

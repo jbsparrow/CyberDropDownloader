@@ -9,7 +9,7 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from re import Match
@@ -65,7 +65,7 @@ class SaintCrawler(Crawler):
             if not link_str:
                 continue
             link = self.parse_url(link_str)
-            filename, ext = get_filename_and_ext(link.name)
+            filename, ext = self.get_filename_and_ext(link.name)
             if not self.check_album_results(link, results):
                 await self.handle_file(link, scrape_item, filename, ext)
             scrape_item.add_children()
@@ -85,7 +85,7 @@ class SaintCrawler(Crawler):
             if is_not_found(soup):
                 raise ScrapeError(404, origin=scrape_item) from None
             raise ScrapeError(422, "Couldn't find video source", origin=scrape_item) from None
-        filename, ext = get_filename_and_ext(link.name)
+        filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 
     @error_handling_wrapper
@@ -101,7 +101,7 @@ class SaintCrawler(Crawler):
             if is_not_found(soup):
                 raise ScrapeError(404, origin=scrape_item) from None
             raise ScrapeError(422, "Couldn't find video source", origin=scrape_item) from None
-        filename, ext = get_filename_and_ext(link.name)
+        filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 
 

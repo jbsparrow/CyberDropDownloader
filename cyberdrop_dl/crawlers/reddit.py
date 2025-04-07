@@ -16,7 +16,7 @@ from cyberdrop_dl.clients.scraper_client import cache_control_manager
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
 from cyberdrop_dl.utils.logger import log, log_debug
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Generator
@@ -166,7 +166,7 @@ class RedditCrawler(Crawler):
         """Handles media links."""
         url = link or scrape_item.url
         try:
-            filename, ext = get_filename_and_ext(url.name)
+            filename, ext = self.get_filename_and_ext(url.name)
         except NoExtensionError:
             url = await self.get_final_location(url)
             scrape_item.url = url

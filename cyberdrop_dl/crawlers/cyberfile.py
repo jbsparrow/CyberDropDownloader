@@ -12,7 +12,7 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import PasswordProtectedError, ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -236,7 +236,7 @@ class CyberfileCrawler(Crawler):
         with contextlib.suppress(AttributeError):
             ajax_title = ajax_soup.select_one("div.image-name-title").text
         scrape_item.possible_datetime = uploaded_date
-        filename, ext = get_filename_and_ext(page_title or ajax_title or link.name)
+        filename, ext = self.get_filename_and_ext(page_title or ajax_title or link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

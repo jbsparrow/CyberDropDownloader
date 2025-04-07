@@ -6,7 +6,7 @@ from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -70,7 +70,7 @@ class EightMusesCrawler(Crawler):
                 await self.album(new_scrape_item)
                 continue
 
-            filename, ext = get_filename_and_ext(f"{tile_title}.jpg")
+            filename, ext = self.get_filename_and_ext(f"{tile_title}.jpg")
             image_link_str: str = image.select_one("img").get("data-src").replace("/th/", "/fm/")
             image_link = self.parse_url(image_link_str)
             if not self.check_album_results(image_link, results):

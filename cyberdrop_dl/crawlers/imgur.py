@@ -7,7 +7,7 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import LoginError, ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -102,7 +102,7 @@ class ImgurCrawler(Crawler):
     @error_handling_wrapper
     async def handle_direct(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image."""
-        filename, ext = get_filename_and_ext(scrape_item.url.name)
+        filename, ext = self.get_filename_and_ext(scrape_item.url.name)
         if ext.lower() in (".gifv", ".mp4"):
             filename = filename.replace(ext, ".mp4")
             file_id = filename.rsplit(".", 1)[0]

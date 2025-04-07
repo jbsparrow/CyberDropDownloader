@@ -10,7 +10,7 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import DownloadError, NoExtensionError, ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -55,12 +55,12 @@ class PixelDrainCrawler(Crawler):
             link = await self.create_download_link(file["id"])
             date = self.parse_datetime(file["date_upload"].replace("T", " ").split(".")[0].strip("Z"))
             try:
-                filename, ext = get_filename_and_ext(filename)
+                filename, ext = self.get_filename_and_ext(filename)
             except NoExtensionError:
                 mime_type: str = file["mime_type"]
                 if not any(media in mime_type for media in ("image", "video")):
                     raise
-                filename, ext = get_filename_and_ext(f"{filename}.{mime_type.split('/')[-1]}")
+                filename, ext = self.get_filename_and_ext(f"{filename}.{mime_type.split('/')[-1]}")
 
             new_scrape_item = self.create_scrape_item(
                 scrape_item,
@@ -93,7 +93,7 @@ class PixelDrainCrawler(Crawler):
         filename = JSON_Resp["name"]
         mime_type = JSON_Resp["mime_type"]
         try:
-            filename, ext = get_filename_and_ext(filename)
+            filename, ext = self.get_filename_and_ext(filename)
         except NoExtensionError:
             if "text/plain" in JSON_Resp["mime_type"]:
                 new_scrape_item = self.create_scrape_item(
@@ -108,7 +108,7 @@ class PixelDrainCrawler(Crawler):
             elif not any(media in mime_type for media in ("image", "video")):
                 raise
 
-            filename, ext = get_filename_and_ext(filename + "." + mime_type.split("/")[-1])
+            filename, ext = self.get_filename_and_ext(filename + "." + mime_type.split("/")[-1])
 
         new_scrape_item = self.create_scrape_item(scrape_item, link, possible_datetime=date)
         await self.handle_file(link, new_scrape_item, filename, ext)
@@ -155,7 +155,7 @@ class PixelDrainCrawler(Crawler):
         date_str: str = json_data["path"][0]["created"]
         date = self.parse_datetime(date_str.replace("T", " ").split(".")[0])
         link = self.parse_url(link_str)
-        filename, ext = get_filename_and_ext(filename)
+        filename, ext = self.get_filename_and_ext(filename)
         new_scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, possible_datetime=date)
         await self.handle_file(link, new_scrape_item, filename, ext)
 

@@ -75,7 +75,7 @@ class GenericCrawler(Crawler):
             msg = f"Received '{content_type}', was expecting other"
             raise InvalidContentTypeError(message=msg)
         fullname = Path(filename).with_suffix(ext)
-        filename, _ = get_filename_and_ext(fullname.name)
+        filename, _ = self.get_filename_and_ext(fullname.name)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
     async def get_content_type(self, url: URL) -> str:
@@ -100,9 +100,9 @@ class GenericCrawler(Crawler):
         link_str: str = video.get("src")  # type: ignore
         link = self.parse_url(link_str, scrape_item.url.with_path("/"))
         try:
-            filename, ext = get_filename_and_ext(link.name)
+            filename, ext = self.get_filename_and_ext(link.name)
         except NoExtensionError:
-            filename, ext = get_filename_and_ext(link.name + ".mp4")
+            filename, ext = self.get_filename_and_ext(link.name + ".mp4")
         await self.handle_file(link, scrape_item, filename, ext)
 
     async def log_unsupported(self, scrape_item: ScrapeItem, msg: str = "") -> None:

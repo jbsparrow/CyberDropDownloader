@@ -8,7 +8,7 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -58,7 +58,7 @@ class HotPicCrawler(Crawler):
             link_str: str = file.get("href")  # type: ignore
             link = self.parse_url(link_str)
             canonical_url = get_canonical_url(link)
-            filename, ext = get_filename_and_ext(link.name)
+            filename, ext = self.get_filename_and_ext(link.name)
             await self.handle_file(canonical_url, scrape_item, filename, ext, debrid_link=link)
             scrape_item.add_children()
 
@@ -77,14 +77,14 @@ class HotPicCrawler(Crawler):
         link_str: str = file.get("src")  # type: ignore
         link = self.parse_url(link_str)
         canonical_url = get_canonical_url(link)
-        filename, ext = get_filename_and_ext(link.name)
+        filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(canonical_url, scrape_item, filename, ext, debrid_link=link)
 
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:
         link = thumbnail_to_img(scrape_item.url)
         canonical_url = get_canonical_url(link)
-        filename, ext = get_filename_and_ext(canonical_url.name)
+        filename, ext = self.get_filename_and_ext(canonical_url.name)
         await self.handle_file(canonical_url, scrape_item, filename, ext, debrid_link=link)
 
 

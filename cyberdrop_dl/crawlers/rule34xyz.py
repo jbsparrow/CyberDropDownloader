@@ -9,12 +9,15 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.managers.manager import Manager
+
+
+CONTENT_SELECTOR = "div[class='box-grid ng-star-inserted'] a[class=boxInner]"
 
 
 class Rule34XYZCrawler(Crawler):
@@ -36,6 +39,8 @@ class Rule34XYZCrawler(Crawler):
     @error_handling_wrapper
     async def tag(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
+        # This is broke. Needs fixing
+        raise NotImplementedError
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
@@ -43,8 +48,7 @@ class Rule34XYZCrawler(Crawler):
         scrape_item.part_of_album = True
         title = self.create_title(scrape_item.url.parts[1])
 
-        content_block = soup.select_one('div[class="box-grid ng-star-inserted"]')
-        content = content_block.select("a[class=boxInner]")
+        content = soup.select(CONTENT_SELECTOR)
         if not content:
             return
 
@@ -78,7 +82,7 @@ class Rule34XYZCrawler(Crawler):
 
         link_str: str = media_tag.get("src")
         link = self.parse_url(link_str)
-        filename, ext = get_filename_and_ext(link.name)
+        filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, new_scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

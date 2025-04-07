@@ -6,7 +6,7 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -41,11 +41,11 @@ class FileditchCrawler(Crawler):
         link = self.parse_url(link_str)
         if link.path == HOMEPAGE_CATCHALL_FILE:
             raise ScrapeError(422, origin=scrape_item)
-        filename, ext = get_filename_and_ext(link.name)
+        filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 
     @error_handling_wrapper
     async def file_legacy(self, scrape_item: ScrapeItem) -> None:
         # Some old files are only direct linkable
-        filename, ext = get_filename_and_ext(scrape_item.url.path)
+        filename, ext = self.get_filename_and_ext(scrape_item.url.path)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)

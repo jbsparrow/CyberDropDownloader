@@ -10,12 +10,12 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils import javascript
-from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
+from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator
+    from collections.abc import Generator
 
     from bs4 import BeautifulSoup, Tag
 
@@ -53,6 +53,7 @@ class VideoInfo(dict): ...
 
 class Rule34VideoCrawler(Crawler):
     primary_base_domain = URL("https://rule34video.com/")
+    next_page_selector = PLAYLIST_NEXT_PAGE_SELECTOR
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "rule34video", "Rule34Video")
@@ -73,23 +74,17 @@ class Rule34VideoCrawler(Crawler):
 
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem) -> None:
-        added_title = False
-
-        async for soup in self.web_pager(scrape_item):
-            if not added_title:
-                scrape_item.part_of_album = True
-                scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
+        title: str = ""
+        async for soup in self.web_pager(scrape_item.url):
+            if not title:
                 title = get_playlist_title(soup, scrape_item.url)
                 title = self.create_title(title)
-                scrape_item.add_to_parent_title(title)
-                added_title = True
+                scrape_item.setup_as_album(title)
 
-            item_tags: list[Tag] = soup.select(PLAYLIST_ITEM_SELECTOR)
-
-            for item in item_tags:
+            for item in soup.select(PLAYLIST_ITEM_SELECTOR):
                 link_str: str = item.get("href")  # type: ignore
                 link = self.parse_url(link_str)
-                new_scrape_item = self.create_scrape_item(scrape_item, link, add_parent=scrape_item.url)
+                new_scrape_item = scrape_item.create_child(link)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
                 scrape_item.add_children()
 
@@ -122,19 +117,6 @@ class Rule34VideoCrawler(Crawler):
         custom_filename = f"{custom_filename} [{video_id}][{resolution}]{ext}"
         custom_filename, _ = self.get_filename_and_ext(custom_filename)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
-
-    async def web_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
-        """Generator of website pages."""
-        page_url = scrape_item.url
-        while True:
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url, origin=scrape_item)
-            next_page = soup.select_one(PLAYLIST_NEXT_PAGE_SELECTOR)
-            yield soup
-            page_url_str: str = next_page.get("href") if next_page else None  # type: ignore
-            if not page_url_str:
-                break
-            page_url = self.parse_url(page_url_str)
 
     def set_cookies(self) -> None:
         cookies = {"kt_rt_popAccess": 1, "kt_tcookie": 1}

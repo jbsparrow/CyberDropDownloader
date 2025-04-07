@@ -9,7 +9,7 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -57,7 +57,7 @@ class DoodStreamCrawler(Crawler):
         file_id = get_file_id(soup)
         filename = f"{file_id}.mp4"
         debrid_link = await self.get_download_url(soup)
-        filename, ext = get_filename_and_ext(filename)
+        filename, ext = self.get_filename_and_ext(filename)
         custom_filename = title + ext
         custom_filename, _ = self.get_filename_and_ext(custom_filename)
         scrape_item.url = canonical_url

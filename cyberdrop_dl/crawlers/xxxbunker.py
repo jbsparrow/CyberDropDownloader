@@ -13,7 +13,7 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.logger import log
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -120,7 +120,7 @@ class XXXBunkerCrawler(Crawler):
         # NOTE: hardcoding the extension to prevent quering the final server URL
         # final server URL is always different so it can not be saved to db.
         filename, ext = f"{video_id}.mp4", ".mp4"
-        custom_filename, _ = get_filename_and_ext(f"{title} [{video_id}]{ext}")
+        custom_filename, _ = self.get_filename_and_ext(f"{title} [{video_id}]{ext}")
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     @error_handling_wrapper

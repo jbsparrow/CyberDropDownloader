@@ -68,6 +68,8 @@ def error_handling_wrapper(func: Callable) -> Callable:
             origin = e.origin
             e_url: URL | str | None = getattr(e, "url", None)
             link_to_show = e_url or link_to_show
+        except NotImplementedError:
+            error_log_msg = ErrorLogMessage("NotImplemented")
         except TimeoutError:
             error_log_msg = ErrorLogMessage("Timeout")
         except ClientConnectorError as e:

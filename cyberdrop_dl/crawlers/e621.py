@@ -11,7 +11,7 @@ from cyberdrop_dl import __version__
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -83,7 +83,7 @@ class E621Crawler(Crawler):
                 new_scrape_item = self.create_scrape_item(
                     scrape_item, link, title, True, add_parent=scrape_item.url, possible_datetime=timestamp
                 )
-                filename, ext = get_filename_and_ext(link.name)
+                filename, ext = self.get_filename_and_ext(link.name)
                 await self.handle_file(link, new_scrape_item, filename, ext)
                 scrape_item.add_children()
 
@@ -129,7 +129,7 @@ class E621Crawler(Crawler):
             raise ScrapeError(422, origin=scrape_item)
 
         link = self.parse_url(file_url)
-        filename, ext = get_filename_and_ext(link.name)
+        filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

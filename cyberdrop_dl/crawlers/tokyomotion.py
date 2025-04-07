@@ -10,11 +10,9 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
-
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.managers.manager import Manager
@@ -25,6 +23,7 @@ DATE_PATTERN = re.compile(r"(\d+)\s*(weeks?|days?|hours?|minutes?|seconds?)", re
 
 class TokioMotionCrawler(Crawler):
     primary_base_domain = URL("https://www.tokyomotion.net")
+    next_page_selector = "a.prevnext"
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "tokyomotion", "Tokyomotion")
@@ -34,8 +33,6 @@ class TokioMotionCrawler(Crawler):
         self.image_link_selector = 'a[href^="/photo/"]'
         self.image_selector = "img[class='img-responsive-mw']"
         self.image_thumb_selector = "img[id^='album_photo_']"
-        self.next_page_attribute = "href"
-        self.next_page_selector = "a.prevnext"
         self.title_selector = "meta[property='og:title']"
         self.video_div_selector = "div[id*='video_']"
         self.video_selector = 'a[href^="/video/"]'
@@ -108,7 +105,7 @@ class TokioMotionCrawler(Crawler):
         # NOTE: hardcoding the extension to prevent quering the final server URL
         # final server URL is always diferent so it can not be saved to db.
         filename, ext = f"{video_id}.mp4", ".mp4"
-        custom_filename, _ = get_filename_and_ext(f"{title} [{video_id}]{ext}")
+        custom_filename, _ = self.get_filename_and_ext(f"{title} [{video_id}]{ext}")
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     @error_handling_wrapper
@@ -128,7 +125,7 @@ class TokioMotionCrawler(Crawler):
                 raise ScrapeError(401, "Private Photo", origin=scrape_item) from None
             raise ScrapeError(422, "Couldn't find image source", origin=scrape_item) from None
 
-        filename, ext = get_filename_and_ext(link.name)
+        filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 
     @error_handling_wrapper
@@ -152,9 +149,9 @@ class TokioMotionCrawler(Crawler):
         if title == "favorite":
             scrape_item.add_to_parent_title("photos")
 
-        async for soup in self.web_pager(scrape_item):
+        async for soup in self.web_pager(scrape_item.url):
             if "This is a private" in soup.text:
-                raise ScrapeError(401, "Private album", origin=scrape_item)
+                raise ScrapeError(401, "Private album")
             images = soup.select(self.image_div_selector)
             for image in images:
                 link_tag = image.select_one(self.image_thumb_selector)
@@ -162,7 +159,7 @@ class TokioMotionCrawler(Crawler):
                     continue
                 link_str: str = link_tag.get("src").replace("/tmb/", "/")
                 link = self.parse_url(link_str)
-                filename, ext = get_filename_and_ext(link.name)
+                filename, ext = self.get_filename_and_ext(link.name)
                 await self.handle_file(link, scrape_item, filename, ext)
 
     """------------------------------------------------------------------------------------------------------------------------"""
@@ -171,7 +168,7 @@ class TokioMotionCrawler(Crawler):
     async def albums(self, scrape_item: ScrapeItem) -> None:
         """Scrapes user albums."""
         self.add_user_title(scrape_item)
-        async for soup in self.web_pager(scrape_item):
+        async for soup in self.web_pager(scrape_item.url):
             albums = soup.select(self.album_selector)
             for album in albums:
                 link_str: str = album.get("href")
@@ -210,7 +207,7 @@ class TokioMotionCrawler(Crawler):
             selector = self.album_selector
             scraper = self.album
 
-        async for soup in self.web_pager(scrape_item):
+        async for soup in self.web_pager(scrape_item.url):
             results = soup.select(self.search_div_selector)
             for result in results:
                 link_tag = result.select_one(selector)
@@ -229,7 +226,7 @@ class TokioMotionCrawler(Crawler):
         if "favorite" in scrape_item.url.parts:
             scrape_item.add_to_parent_title("favorite")
 
-        async for soup in self.web_pager(scrape_item):
+        async for soup in self.web_pager(scrape_item.url):
             if "This is a private" in soup.text:
                 raise ScrapeError(401, "Private playlist", origin=scrape_item)
             videos = soup.select(self.video_div_selector)
@@ -253,19 +250,6 @@ class TokioMotionCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
         title_tag = soup.select_one(self.album_title_selector)
         return title_tag.get_text()
-
-    async def web_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
-        """Generator of website pages."""
-        page_url = scrape_item.url
-        while True:
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url, origin=scrape_item)
-            next_page = soup.select_one(self.next_page_selector)
-            yield soup
-            if not next_page:
-                break
-            page_url_str: str = next_page.get(self.next_page_attribute)
-            page_url = self.parse_url(page_url_str)
 
     def add_user_title(self, scrape_item: ScrapeItem) -> None:
         try:

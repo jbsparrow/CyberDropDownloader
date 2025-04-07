@@ -10,7 +10,7 @@ from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.managers.real_debrid.api import RATE_LIMIT
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM
 from cyberdrop_dl.utils.logger import log
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -95,7 +95,7 @@ class RealDebridCrawler(Crawler):
             if original_url.fragment:
                 database_url = database_url / "frag" / original_url.fragment
 
-        filename, ext = get_filename_and_ext(debrid_url.name)
+        filename, ext = self.get_filename_and_ext(debrid_url.name)
         await self.handle_file(database_url, scrape_item, filename, ext, debrid_link=debrid_url)
 
     def is_self_hosted(self, url: URL) -> bool:

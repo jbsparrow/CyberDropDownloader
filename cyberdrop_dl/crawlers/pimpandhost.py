@@ -7,17 +7,22 @@ from typing import TYPE_CHECKING
 from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
+
+ALBUM_TITLE_SELECTOR = "span[class=author-header__album-name]"
+DATE_SELECTOR = "span[class=date-time]"
+FILES_SELECTOR = 'a[class*="image-wrapper center-cropped im-wr"]'
 
 
 class PimpAndHostCrawler(Crawler):
     primary_base_domain = URL("https://pimpandhost.com/")
+    next_page_selector = "li[class=next] a"
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "pimpandhost", "PimpAndHost")
@@ -35,39 +40,24 @@ class PimpAndHostCrawler(Crawler):
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+        title: str = ""
+        async for soup in self.web_pager(scrape_item.url):
+            if not title:
+                album_id = scrape_item.url.parts[2]
+                title_portion = soup.select_one(ALBUM_TITLE_SELECTOR).get_text()  # type: ignore
+                title = self.create_title(title_portion, album_id)
+                scrape_item.setup_as_album(title, album_id=album_id)
 
-        scrape_item.album_id = scrape_item.url.parts[2]
-        scrape_item.part_of_album = True
-        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
+                if date_tag := soup.select_one(DATE_SELECTOR):
+                    date_str: str = date_tag.get("title")  # type: ignore
+                    scrape_item.possible_datetime = self.parse_datetime(date_str)
 
-        title = self.create_title(
-            soup.select_one("span[class=author-header__album-name]").get_text(), scrape_item.album_id
-        )
-        date_str: str = soup.select_one("span[class=date-time]").get("title")
-        date = self.parse_datetime(date_str)
-
-        files = soup.select('a[class*="image-wrapper center-cropped im-wr"]')
-        for file in files:
-            link_str: str = file.get("href")
-            link = self.parse_url(link_str)
-            new_scrape_item = self.create_scrape_item(
-                scrape_item,
-                link,
-                title,
-                possible_datetime=date,
-                add_parent=scrape_item.url,
-            )
-            self.manager.task_group.create_task(self.run(new_scrape_item))
-            scrape_item.add_children()
-
-        next_page = soup.select_one("li[class=next] a")
-        if next_page:
-            next_page_str: str = next_page.get("href")
-            next_page = self.parse_url(next_page_str)
-            new_scrape_item = self.create_scrape_item(scrape_item, next_page, possible_datetime=date)
-            self.manager.task_group.create_task(self.run(new_scrape_item))
+            for file in soup.select(FILES_SELECTOR):
+                link_str: str = file.get("href")  # type: ignore
+                link = self.parse_url(link_str)
+                new_scrape_item = scrape_item.create_child(link)
+                self.manager.task_group.create_task(self.run(new_scrape_item))
+                scrape_item.add_children()
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
@@ -76,13 +66,13 @@ class PimpAndHostCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
 
         link_tag = soup.select_one(".main-image-wrapper")
-        link_str: str = link_tag.get("data-src")
+        link_str: str = link_tag.get("data-src")  # type: ignore
         link = self.parse_url(link_str)
-        date_str: str = soup.select_one("span[class=date-time]").get("title")
+        date_str: str = soup.select_one("span[class=date-time]").get("title")  # type: ignore
         date = self.parse_datetime(date_str)
 
         new_scrape_item = self.create_scrape_item(scrape_item, link, possible_datetime=date)
-        filename, ext = get_filename_and_ext(link.name)
+        filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, new_scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

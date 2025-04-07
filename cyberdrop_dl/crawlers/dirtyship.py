@@ -7,7 +7,7 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -87,8 +87,8 @@ class DirtyShipCrawler(Crawler):
         res, link = sorted(formats)[-1]  # type: ignore
         res = f"{res}p" if res else "Unknown"
 
-        filename, ext = get_filename_and_ext(link.name)
-        custom_filename, _ = get_filename_and_ext(f"{title} [{res}]{link.suffix}")
+        filename, ext = self.get_filename_and_ext(link.name)
+        custom_filename, _ = self.get_filename_and_ext(f"{title} [{res}]{link.suffix}")
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

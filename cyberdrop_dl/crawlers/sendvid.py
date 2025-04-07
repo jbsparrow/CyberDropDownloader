@@ -6,7 +6,7 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -59,10 +59,10 @@ class SendVidCrawler(Crawler):
             msg = f"URL is missing some of the required parameters: {self.required_query_parameters}"
             raise ScrapeError(401, msg, origin=scrape_item)
 
-        filename, ext = get_filename_and_ext(link.name)
+        filename, ext = self.get_filename_and_ext(link.name)
         custom_filename = None
         if title:
-            custom_filename, _ = get_filename_and_ext(f"{title}{ext}")
+            custom_filename, _ = self.get_filename_and_ext(f"{title}{ext}")
         await self.handle_file(
             canonical_url, scrape_item, filename, ext, debrid_link=link, custom_filename=custom_filename
         )

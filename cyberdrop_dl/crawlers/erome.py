@@ -6,7 +6,7 @@ from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -80,7 +80,7 @@ class EromeCrawler(Crawler):
         video_links = [self.parse_url(video["src"]) for video in videos]
 
         for link in image_links + video_links:
-            filename, ext = get_filename_and_ext(link.name)
+            filename, ext = self.get_filename_and_ext(link.name)
             if not self.check_album_results(link, results):
                 await self.handle_file(link, scrape_item, filename, ext)
             scrape_item.add_children()

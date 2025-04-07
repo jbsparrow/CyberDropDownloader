@@ -8,7 +8,7 @@ from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
@@ -85,8 +85,8 @@ class EHentaiCrawler(Crawler):
         image = soup.select_one("img[id=img]")
         link_str: str = image.get("src")
         link = self.parse_url(link_str)
-        filename, ext = get_filename_and_ext(link.name)
-        custom_filename, _ = get_filename_and_ext(f"{scrape_item.url.name}{ext}")
+        filename, ext = self.get_filename_and_ext(link.name)
+        custom_filename, _ = self.get_filename_and_ext(f"{scrape_item.url.name}{ext}")
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

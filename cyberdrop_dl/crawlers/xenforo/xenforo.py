@@ -17,7 +17,7 @@ from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.scraper.filters import set_return_value
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FORUM, FORUM_POST, ScrapeItem
 from cyberdrop_dl.utils.logger import log, log_debug
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext, remove_trailing_slash
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_trailing_slash
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Sequence
@@ -363,7 +363,7 @@ class XenforoCrawler(Crawler):
             self.manager.task_group.create_task(self.run(scrape_item))
             return
 
-        filename, ext = get_filename_and_ext(scrape_item.url.name, forum=True)
+        filename, ext = self.get_filename_and_ext(scrape_item.url.name, forum=True)
         scrape_item.add_to_parent_title("Attachments")
         scrape_item.part_of_album = True
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
