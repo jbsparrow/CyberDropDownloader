@@ -28,6 +28,7 @@ USER_NAME_SELECTOR = "div.headline > h2"
 PUBLIC_VIDEOS_SELECTOR = "div#list_videos_public_videos_items"
 PRIVATE_VIDEOS_SELECTOR = "div#list_videos_private_videos_items"
 FAVOURITE_VIDEOS_SELECTOR = "div#list_videos_favourite_videos_items"
+COMMON_VIDEOS_TITLE_SELECTOR = "div#list_videos_common_videos_list"
 NEXT_PAGE_SELECTOR = "li.pagination-next > a"
 VIDEOS_SELECTOR = "a.tumbpu"
 
@@ -49,18 +50,31 @@ class ThisVidCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        if "members" in scrape_item.url.parts:
-            return await self.profile(scrape_item)
-        elif "search" in scrape_item.url.parts:
+        if any(p in scrape_item.url.parts for p in ("categories", "tags")) or scrape_item.url.query_string:
             return await self.search(scrape_item)
+        elif "members" in scrape_item.url.parts:
+            return await self.profile(scrape_item)
         elif "videos" in scrape_item.url.parts:
             return await self.video(scrape_item)
         raise ValueError
 
     @error_handling_wrapper
     async def search(self, scrape_item: ScrapeItem) -> None:
-        query_string: str = scrape_item.url.query_string.split("=")[1]
-        title = f"{query_string} [search]"
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+        title = ""
+        if not scrape_item.url.query_string:
+            if category_title := soup.select_one(COMMON_VIDEOS_TITLE_SELECTOR):
+                common_title = category_title.get_text(strip=True)
+                if common_title.startswith("New Videos Tagged"):
+                    common_title = common_title.split("Showing")[0].split("Tagged with")[1].strip()
+                    title = f"{common_title} [tag]"
+                else:
+                    common_title = category_title.get_text(strip=True).split("New Videos")[0].strip()
+                    title = f"{common_title} [category]"
+        else:
+            query_string: str = scrape_item.url.query_string.split("=")[1]
+            title = f"{query_string} [search]"
         title = self.create_title(title)
         scrape_item.setup_as_album(title)
         await self.iter_videos(scrape_item)
