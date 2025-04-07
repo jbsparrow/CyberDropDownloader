@@ -4,7 +4,7 @@ import contextlib
 import json
 import re
 import urllib
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
@@ -31,11 +31,6 @@ FAVOURITE_VIDEOS_SELECTOR = "div#list_videos_favourite_videos_items"
 COMMON_VIDEOS_TITLE_SELECTOR = "div#list_videos_common_videos_list"
 NEXT_PAGE_SELECTOR = "li.pagination-next > a"
 VIDEOS_SELECTOR = "a.tumbpu"
-
-
-class Format(NamedTuple):
-    resolution: int | None
-    url: URL
 
 
 class ThisVidCrawler(Crawler):
