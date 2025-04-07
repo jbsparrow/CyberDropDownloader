@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Protocol
 import aiofiles
 import rich
 from aiohttp import ClientConnectorError, ClientResponse, ClientSession, FormData
+from aiohttp_client_cache import CachedResponse
 from bs4 import BeautifulSoup
 from yarl import URL
 
@@ -436,15 +437,12 @@ def remove_trailing_slash(url: URL) -> URL:
     return url.parent.with_fragment(url.fragment).with_query(url.query)
 
 
-async def get_soup_from_response(response: CurlResponse | ClientResponse) -> BeautifulSoup | None:
-    response_text = None
+async def get_soup_from_response(response: CurlResponse | ClientResponse | CachedResponse) -> BeautifulSoup | None:
+    # We can't use `CurlResponse` at runtime so we check the reverse
+    is_curl = not isinstance(response, ClientResponse | CachedResponse)
     with contextlib.suppress(UnicodeDecodeError):
-        response_text = await response.text() if isinstance(response, ClientResponse) else response.text
-
-    if not response_text:
-        return
-
-    return BeautifulSoup(response_text, "html.parser")
+        response_text = response.text if is_curl else await response.text()
+        return BeautifulSoup(response_text, "html.parser")
 
 
 log_cyan = partial(log_with_color, style="cyan", level=20)
