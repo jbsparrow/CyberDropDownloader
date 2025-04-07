@@ -203,6 +203,9 @@ def get_best_resolution(url, flashvars):
     for fmt in formats:
         if fmt["format_id"] == "HQ":
             return fmt
+        elif fmt["format_id"] == "video_url":
+            fmt["format_id"] = "Unknown"
+            return fmt
         else:
             res = int(fmt["format_id"].strip("p"))
             if res > higher_res:
