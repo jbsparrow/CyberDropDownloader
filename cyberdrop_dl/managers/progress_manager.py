@@ -72,11 +72,18 @@ class ProgressManager:
 
     def pause_or_resume(self):
         if self.manager.states.RUNNING.is_set():
-            self.manager.states.RUNNING.clear()
-            self.activity.update(self.activity_task_id, description="Paused")
+            self.pause()
         else:
-            self.manager.states.RUNNING.set()
-            self.activity.update(self.activity_task_id, description="Running Cyberdrop-DL")
+            self.resume()
+
+    def pause(self, msg: str = ""):
+        self.manager.states.RUNNING.clear()
+        suffix = f" [{msg}]" if msg else ""
+        self.activity.update(self.activity_task_id, description=f"Paused{suffix}")
+
+    def resume(self):
+        self.manager.states.RUNNING.set()
+        self.activity.update(self.activity_task_id, description="Running Cyberdrop-DL")
 
     def startup(self) -> None:
         """Startup process for the progress manager."""
@@ -133,7 +140,7 @@ class ProgressManager:
             return
         end_time = time.perf_counter()
         runtime = timedelta(seconds=int(end_time - start_time))
-        data_size = ByteSize(self.file_progress.downloaded_data).human_readable(decimal=True)
+        total_data_written = ByteSize(self.manager.storage_manager.total_data_written).human_readable(decimal=True)
 
         log_spacer(20)
         log("Printing Stats...\n", 20)
@@ -148,7 +155,7 @@ class ProgressManager:
         log_yellow(f"  Input URL Groups: {self.manager.scrape_mapper.group_count:,}")
         log_concat("  Log Folder: ", log_folder_text, style="yellow")
         log_yellow(f"  Total Runtime: {runtime}")
-        log_yellow(f"  Total Downloaded Data: {data_size}")
+        log_yellow(f"  Total Downloaded Data: {total_data_written}")
 
         log_spacer(20, "")
         log_cyan("Download Stats:")

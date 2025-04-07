@@ -55,6 +55,7 @@ class TextualUI(App[int]):
         self.manager = manager
         self.queue: queue.Queue[Text] = manager.textual_log_queue
         self.auto_scroll = True
+        manager._textual_ui = self
 
     def compose(self) -> ComposeResult:
         def create_footer():

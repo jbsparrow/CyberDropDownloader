@@ -361,8 +361,8 @@ class ScraperClient:
         soup: BeautifulSoup,
         exc: Exception | None = None,
     ):
-        html_text = soup.prettify(formatter="html")  # Not sure if we should prettify
-        status_code = response.status if isinstance(response, aiohttp.ClientResponse) else response.status_code
+        html_text: str = soup.prettify(formatter="html")  # Not sure if we should prettify
+        status_code: int = response.status_code if hasattr(response, "status_code") else response.status  # type: ignore
         response_headers = dict(response.headers)
         now = datetime.now()
 

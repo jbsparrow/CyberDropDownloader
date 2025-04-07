@@ -6,7 +6,7 @@ from dataclasses import InitVar, dataclass, field
 from enum import IntEnum
 from functools import partialmethod
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from yarl import URL
 
@@ -32,16 +32,23 @@ FILE_HOST_PROFILE = ScrapeItemType.FILE_HOST_PROFILE
 FILE_HOST_ALBUM = ScrapeItemType.FILE_HOST_ALBUM
 
 
+class HlsSegment(NamedTuple):
+    part: str
+    name: str
+    url: URL
+
+
 @dataclass(unsafe_hash=True, slots=True)
 class MediaItem:
     url: URL
-    origin: InitVar[ScrapeItem]
+    origin: InitVar[ScrapeItem | MediaItem]
     download_folder: Path
     filename: str
     original_filename: str | None = None
     debrid_link: URL | None = field(default=None, hash=False, compare=False)
     duration: float | None = field(default=None, hash=False, compare=False)
     ext: str = ""
+    is_segment: bool = False
 
     # exclude from __init__
     file_lock_reference_name: str | None = field(default=None, init=False)
@@ -49,7 +56,7 @@ class MediaItem:
     filesize: int | None = field(default=None, init=False)
     current_attempt: int = field(default=0, init=False, hash=False, compare=False)
     partial_file: Path | None = field(default=None, init=False)
-    complete_file: Path | None = field(default=None, init=False)
+    complete_file: Path = field(default=None, init=False)  # type: ignore
     task_id: TaskID | None = field(default=None, init=False, hash=False, compare=False)
     hash: str | None = field(default=None, init=False, hash=False, compare=False)
     downloaded: bool = field(default=False, init=False, hash=False, compare=False)
@@ -61,13 +68,13 @@ class MediaItem:
     parents: list[URL] = field(init=False, hash=False, compare=False)
     parent_threads: set[URL] = field(init=False, hash=False, compare=False)
 
-    def __post_init__(self, origin: ScrapeItem) -> None:
+    def __post_init__(self, origin: ScrapeItem | MediaItem) -> None:
         self.referer = origin.url
         self.album_id = origin.album_id
         self.ext = self.ext or Path(self.filename).suffix
         self.original_filename = self.original_filename or self.filename
         self.parents = origin.parents.copy()
-        self.datetime = origin.possible_datetime
+        self.datetime = origin.possible_datetime if isinstance(origin, ScrapeItem) else origin.datetime
         self.parent_threads = origin.parent_threads.copy()
 
 

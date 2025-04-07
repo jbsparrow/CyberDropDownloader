@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pydantic import ByteSize
 from rich.markup import escape
 from rich.progress import (
     BarColumn,
@@ -42,7 +41,6 @@ class FileProgress(DequeProgress):
         if manager.parsed_args.cli_only_args.portrait:
             use_columns = vertical_columns
         self._progress = Progress(*use_columns)
-        self.downloaded_data = ByteSize(0)
         super().__init__("Downloads", visible_tasks_limit)
 
     def get_queue_length(self) -> int:
@@ -68,7 +66,7 @@ class FileProgress(DequeProgress):
 
     def advance_file(self, task_id: TaskID, amount: int) -> None:
         """Advances the progress of the given task by the given amount."""
-        self.downloaded_data += amount
+        self.manager.storage_manager.total_data_written += amount
         self._progress.advance(task_id, amount)
 
     def get_speed(self, task_id: TaskID) -> float:

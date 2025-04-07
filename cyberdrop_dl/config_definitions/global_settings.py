@@ -19,6 +19,7 @@ class General(BaseModel):
     proxy: HttpURL | None = None
     required_free_space: ByteSizeSerilized = DEFAULT_REQUIRED_FREE_SPACE
     user_agent: NonEmptyStr = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0"
+    pause_on_insufficient_space: bool = False
 
     @field_serializer("flaresolverr", "proxy")
     def serialize(self, value: URL | str) -> str | None:

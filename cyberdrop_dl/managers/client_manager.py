@@ -164,8 +164,7 @@ class ClientManager:
         origin: ScrapeItem | URL | None = None,
     ) -> None:
         """Checks the HTTP status code and raises an exception if it's not acceptable."""
-        is_curl = not isinstance(response, ClientResponse)
-        status = response.status_code if is_curl else response.status
+        status: int = response.status_code if hasattr(response, "status_code") else response.status  # type: ignore
         headers = response.headers
         message = None
 
@@ -353,7 +352,7 @@ class Flaresolverr:
             raise DDOSGuardError(message="Failed to resolve URL with flaresolverr", origin=origin)
 
         user_agent = client_session.headers["User-Agent"].strip()
-        mismatch_msg = f"Config user_agent and flaresolverr user_agent do not match: \n  Cyberdrop-DL: {user_agent}\n  Flaresolverr: {fs_resp.user_agent}"
+        mismatch_msg = f"Config user_agent and flaresolverr user_agent do not match: \n  Cyberdrop-DL: '{user_agent}'\n  Flaresolverr: '{fs_resp.user_agent}'"
         if fs_resp.soup and (
             self.client_manager.check_ddos_guard(fs_resp.soup) or self.client_manager.check_cloudflare(fs_resp.soup)
         ):

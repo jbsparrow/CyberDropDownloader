@@ -56,6 +56,8 @@ def error_handling_wrapper(func: Callable) -> Callable:
     @wraps(func)
     async def wrapper(self: Crawler | Downloader, *args, **kwargs):
         item: ScrapeItem | MediaItem | URL = args[0]
+        if getattr(item, "is_segment", False):
+            return
         link: URL = item if isinstance(item, URL) else item.url
         origin = exc_info = None
         link_to_show: URL | str = ""
