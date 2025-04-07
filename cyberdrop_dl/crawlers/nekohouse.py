@@ -72,7 +72,7 @@ class NekohouseCrawler(Crawler):
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile."""
-        soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+        soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
         offset, maximum_offset = await self.get_offsets(scrape_item, soup)
         service, user = self.get_service_and_user(scrape_item)
         user_str = await self.get_user_str_from_profile(soup)
@@ -81,7 +81,7 @@ class NekohouseCrawler(Crawler):
         while offset <= maximum_offset:
             async with self.request_limiter:
                 service_url = service_call.with_query({"o": offset})
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, service_url, origin=scrape_item)
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, service_url)
                 offset += 50
 
                 posts = soup.select(self.post_selector)
@@ -128,7 +128,7 @@ class NekohouseCrawler(Crawler):
 
         post_url = scrape_item.url
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, post_url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, post_url)
             data = {
                 "id": post,
                 "user": user or "Unknown",
@@ -262,7 +262,7 @@ class NekohouseCrawler(Crawler):
     async def get_user_str_from_post(self, scrape_item: ScrapeItem) -> str:
         """Gets the user string from a scrape item."""
         async with self.request_limiter:
-            soup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup = await self.client.get_soup(self.domain, scrape_item.url)
         return soup.select_one("a[class=scrape__user-name]").text
 
     @error_handling_wrapper

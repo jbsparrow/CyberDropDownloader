@@ -43,10 +43,10 @@ class ImgBoxCrawler(Crawler):
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         if "The specified gallery could not be found" in soup.text:
-            raise ScrapeError(404, origin=scrape_item)
+            raise ScrapeError(404)
 
         scrape_item.album_id = scrape_item.url.parts[2]
         scrape_item.part_of_album = True
@@ -76,7 +76,7 @@ class ImgBoxCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         link_str: str = soup.select_one("img[id=img]").get("src")
         link = self.parse_url(link_str)

@@ -46,7 +46,7 @@ class PixelDrainCrawler(Crawler):
 
         async with self.request_limiter:
             api_url = self.api_address / "list" / scrape_item.url.parts[-1]
-            JSON_Resp = await self.client.get_json(self.domain, api_url, origin=scrape_item)
+            JSON_Resp = await self.client.get_json(self.domain, api_url)
 
         title = self.create_title(JSON_Resp["title"], album_id)
 
@@ -82,7 +82,7 @@ class PixelDrainCrawler(Crawler):
         try:
             async with self.request_limiter:
                 api_url = self.api_address / "file" / scrape_item.url.parts[-1] / "info"
-                JSON_Resp = await self.client.get_json(self.domain, api_url, origin=scrape_item)
+                JSON_Resp = await self.client.get_json(self.domain, api_url)
         except DownloadError as e:
             if e.status != 404:
                 raise
@@ -116,7 +116,7 @@ class PixelDrainCrawler(Crawler):
     async def text(self, scrape_item: ScrapeItem):
         async with self.request_limiter:
             api_url = self.api_address / "file" / scrape_item.url.parts[-1]
-            text: str = await self.client.get_text(self.domain, api_url, origin=scrape_item)
+            text: str = await self.client.get_text(self.domain, api_url)
         lines = text.split("\n")
         for line in lines:
             link = self.parse_url(line)
@@ -143,7 +143,7 @@ class PixelDrainCrawler(Crawler):
             link_str = soup.select_one('meta[property="og:image"]').get("content")
 
         if not link_str or "filesystem" not in link_str:
-            raise ScrapeError(422, origin=scrape_item)
+            raise ScrapeError(422)
 
         script_tag: str = soup.select_one('script:contains("window.initial_node")').string
         start_sentence = "window.initial_node ="

@@ -84,7 +84,7 @@ class EHentaiCrawler(Crawler):
         """Sets the no warnings cookie."""
         async with self.request_limiter:
             url = scrape_item.url.update_query(nw="session")
-            await self.client.get_soup(self.domain, url, origin=scrape_item)
+            await self.client.get_soup(self.domain, url)
         self._warnings_set = True
 
     @staticmethod

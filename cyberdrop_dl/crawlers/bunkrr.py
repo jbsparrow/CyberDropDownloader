@@ -136,7 +136,7 @@ class BunkrrCrawler(Crawler):
         scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path)
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         album_id = scrape_item.url.parts[2]
         title = soup.select_one("title").text.rsplit(" | Bunkr")[0].strip()  # type: ignore
@@ -182,7 +182,7 @@ class BunkrrCrawler(Crawler):
 
         if not soup:
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         image_container = soup.select_one(IMAGE_PREVIEW_SELECTOR)
         download_link_container = soup.select_one(DOWNLOAD_BUTTON_SELECTOR)

@@ -69,7 +69,7 @@ class GoFileCrawler(Crawler):
 
         except DownloadError as e:
             if e.status != http.HTTPStatus.UNAUTHORIZED:
-                raise ScrapeError(e.status, e.message, origin=scrape_item) from e
+                raise ScrapeError(e.status, e.message) from e
             async with self.startup_lock:
                 await self.get_website_token(update=True)
             content_url = content_url.update_query({"wt": self.website_token})
@@ -99,7 +99,7 @@ class GoFileCrawler(Crawler):
     def check_json_response(self, json_resp: dict, scrape_item: ScrapeItem | None = None) -> None:
         """Parses and raises errors from json response."""
         if json_resp["status"] == "error-notFound":
-            raise ScrapeError(404, origin=scrape_item)
+            raise ScrapeError(404)
 
         data: dict = json_resp["data"]
         is_password_protected = data.get("password")
@@ -107,7 +107,7 @@ class GoFileCrawler(Crawler):
             raise PasswordProtectedError(origin=scrape_item)
 
         if not data.get("canAccess"):
-            raise ScrapeError(403, "Album is private", origin=scrape_item)
+            raise ScrapeError(403, "Album is private")
 
     async def handle_children(self, children: dict, scrape_item: ScrapeItem) -> None:
         """Sends files to downloader and adds subfolder to scrape queue."""

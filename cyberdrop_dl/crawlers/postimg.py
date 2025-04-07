@@ -44,7 +44,7 @@ class PostImgCrawler(Crawler):
         for i in itertools.count(1):
             data["page"] = i
             async with self.request_limiter:
-                JSON_Resp = await self.client.post_data(self.domain, self.api_address, data=data, origin=scrape_item)
+                JSON_Resp = await self.client.post_data(self.domain, self.api_address, data=data)
 
             scrape_item.part_of_album = True
             scrape_item.album_id = scrape_item.url.parts[2]
@@ -68,7 +68,7 @@ class PostImgCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         link_str: str = soup.select_one("a[id=download]").get("href").replace("?dl=1", "")
         link = self.parse_url(link_str)

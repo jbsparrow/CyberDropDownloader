@@ -43,7 +43,7 @@ class ImageBamCrawler(Crawler):
     @error_handling_wrapper
     async def view(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         if "Share this gallery" in soup.text:
             return await self.gallery(scrape_item, soup)
@@ -54,7 +54,7 @@ class ImageBamCrawler(Crawler):
     async def gallery(self, scrape_item: ScrapeItem, soup: BeautifulSoup | None = None) -> None:
         if not soup:
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
         gallery_name = soup.select_one("a#gallery-name").get_text()
         gallery_id = scrape_item.url.name
         title = self.create_title(gallery_name, gallery_id)
@@ -81,11 +81,11 @@ class ImageBamCrawler(Crawler):
 
         if not soup:
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         image_tag = soup.select_one("img.main-image")
         if not image_tag:
-            raise ScrapeError(422, origin=scrape_item)
+            raise ScrapeError(422)
 
         from_gallery = soup.select_one("div.view-navigation a:has(i.fas.fa-reply)")
         if from_gallery and not scrape_item.album_id:

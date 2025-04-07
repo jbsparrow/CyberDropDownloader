@@ -53,11 +53,11 @@ class StreamableCrawler(Crawler):
 
         ajax_url = AJAX_ENTRYPOINT / video_id
         async with self.request_limiter:
-            json_resp: BeautifulSoup = await self.client.get_json(self.domain, ajax_url, origin=scrape_item)
+            json_resp: BeautifulSoup = await self.client.get_json(self.domain, ajax_url)
 
         status: int = json_resp.get("status")  # type: ignore
         if status != STATUS_OK:
-            raise ScrapeError(404, VIDEO_STATUS.get(status), origin=scrape_item)
+            raise ScrapeError(404, VIDEO_STATUS.get(status))
 
         title = json_resp.get("reddit_title") or json_resp["title"]
         date: int = json_resp.get("date_added")  # type: ignore
@@ -66,7 +66,7 @@ class StreamableCrawler(Crawler):
         log_debug(json.dumps(json_resp, indent=4))
         link_str = get_best_quality(json_resp["files"])  # type: ignore
         if not link_str:
-            raise ScrapeError(422, origin=scrape_item)
+            raise ScrapeError(422)
 
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)

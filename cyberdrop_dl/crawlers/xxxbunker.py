@@ -63,10 +63,10 @@ class XXXBunkerCrawler(Crawler):
             return
 
         if not self.session_cookie:
-            raise ScrapeError(401, "No cookies provided", origin=scrape_item)
+            raise ScrapeError(401, "No cookies provided")
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         title = soup.select_one("title").text.rsplit(" : XXXBunker.com")[0].strip()
         try:
@@ -102,7 +102,7 @@ class XXXBunkerCrawler(Crawler):
             data = {"internalid": internal_id}
 
             async with self.request_limiter:
-                ajax_dict = await self.client.post_data(self.domain, self.api_download, data=data, origin=scrape_item)
+                ajax_dict = await self.client.post_data(self.domain, self.api_download, data=data)
 
             ajax_soup = BeautifulSoup(ajax_dict["floater"], "html.parser")
             link_str: str = ajax_soup.select_one("a#download-download").get("href")
@@ -110,12 +110,12 @@ class XXXBunkerCrawler(Crawler):
 
         except (AttributeError, TypeError):
             if ajax_soup and "You must be registered to download this video" in ajax_soup.text:
-                raise ScrapeError(403, "Invalid cookies, PHPSESSID", origin=scrape_item) from None
+                raise ScrapeError(403, "Invalid cookies, PHPSESSID") from None
 
             if "TRAFFIC VERIFICATION" in soup.text:
                 await self.adjust_rate_limit()
-                raise ScrapeError(429, origin=scrape_item) from None
-            raise ScrapeError(422, "Couldn't find video source", origin=scrape_item) from None
+                raise ScrapeError(429) from None
+            raise ScrapeError(422, "Couldn't find video source") from None
 
         # NOTE: hardcoding the extension to prevent quering the final server URL
         # final server URL is always different so it can not be saved to db.
@@ -127,10 +127,10 @@ class XXXBunkerCrawler(Crawler):
     async def playlist(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a playlist."""
         if not self.session_cookie:
-            raise ScrapeError(401, "No cookies provided", origin=scrape_item)
+            raise ScrapeError(401, "No cookies provided")
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         if "favoritevideos" in scrape_item.url.parts:
             title = self.create_title(f"user {scrape_item.url.parts[2]} [favorites]")
@@ -143,7 +143,7 @@ class XXXBunkerCrawler(Crawler):
 
         # Not a valid URL
         else:
-            raise ScrapeError(400, "Unsupported URL format", origin=scrape_item)
+            raise ScrapeError(400, "Unsupported URL format")
 
         scrape_item.part_of_album = True
 
@@ -180,7 +180,7 @@ class XXXBunkerCrawler(Crawler):
                 await asyncio.sleep(self.wait_time)
 
             if rate_limited:
-                raise ScrapeError(429, origin=scrape_item)
+                raise ScrapeError(429)
 
             next_page = soup.select_one("div.page-list")
             next_page = next_page.find("a", string="Next") if next_page else None

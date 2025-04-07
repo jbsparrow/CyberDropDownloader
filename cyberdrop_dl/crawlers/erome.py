@@ -58,7 +58,7 @@ class EromeCrawler(Crawler):
         results = await self.get_album_results(album_id)
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         title_portion = soup.select_one("title").text.rsplit(" - Porn")[0].strip()  # type: ignore
         if not title_portion:

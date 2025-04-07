@@ -38,7 +38,7 @@ class ToonilyCrawler(Crawler):
     async def series(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a series."""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         scrape_item.set_type(FILE_HOST_PROFILE, self.manager)
 
@@ -56,7 +56,7 @@ class ToonilyCrawler(Crawler):
     async def chapter(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image."""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
         title_parts = soup.select_one("title").get_text().split(" - ")

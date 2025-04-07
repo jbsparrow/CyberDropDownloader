@@ -88,7 +88,7 @@ class GenericCrawler(Crawler):
 
     async def try_video_from_soup(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         title: str = soup.select_one("title").text  # type: ignore
         title = title.rsplit(" - ", 1)[0].rsplit("|", 1)[0]

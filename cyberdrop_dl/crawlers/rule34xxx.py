@@ -62,10 +62,10 @@ class Rule34XXXCrawler(Crawler):
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image."""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
         media_tag = soup.select_one("img[id=image]") or soup.select_one("video source")
         if not media_tag:
-            raise ScrapeError(422, origin=scrape_item)
+            raise ScrapeError(422)
         link_str: str = media_tag.get("src")
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)

@@ -77,7 +77,7 @@ class PornPicsCrawler(Crawler):
         results = await self.get_album_results(gallery_id)
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         canonical_url = self.primary_base_domain / "galleries" / gallery_id
         scrape_item.url = canonical_url
@@ -125,13 +125,13 @@ class PornPicsCrawler(Crawler):
         offset = page_url.query.get("offset")
         if not offset:  # offset = 0 does not return JSON
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url, origin=scrape_item)
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url)
             items = soup.select(self.image_selector)
             return soup, [self.parse_url(image.get("href")) for image in items]
 
         async with self.request_limiter:
             # The response is JSON but the "content-type" is wrong so we have to request it as text
-            json_resp = await self.client.get_text(self.domain, page_url, origin=scrape_item)
+            json_resp = await self.client.get_text(self.domain, page_url)
             json_resp = json.loads(json_resp)
         return None, [self.parse_url(g["g_url"]) for g in json_resp]
 

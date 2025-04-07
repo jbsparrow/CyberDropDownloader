@@ -228,6 +228,6 @@ def asyncpraw_error_handle(scrape_item: ScrapeItem) -> Generator:
     try:
         yield
     except asyncprawcore.exceptions.Forbidden:
-        raise ScrapeError(403, origin=scrape_item) from None
+        raise ScrapeError(403) from None
     except asyncprawcore.exceptions.NotFound:
-        raise ScrapeError(404, origin=scrape_item) from None
+        raise ScrapeError(404) from None

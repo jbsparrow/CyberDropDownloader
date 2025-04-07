@@ -39,14 +39,14 @@ class SendVidCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         title = soup.select_one(self.title_selector).get_text()
         try:
             link_str: str = soup.select_one(self.video_src_selector).get("src")
             link = self.parse_url(link_str)
         except AttributeError:
-            raise ScrapeError(422, "Couldn't find video source", origin=scrape_item) from None
+            raise ScrapeError(422, "Couldn't find video source") from None
         await self.handle_direct_link(scrape_item, link, title)
 
     async def handle_direct_link(
@@ -57,7 +57,7 @@ class SendVidCrawler(Crawler):
 
         if not all(q in link.query for q in self.required_query_parameters):
             msg = f"URL is missing some of the required parameters: {self.required_query_parameters}"
-            raise ScrapeError(401, msg, origin=scrape_item)
+            raise ScrapeError(401, msg)
 
         filename, ext = self.get_filename_and_ext(link.name)
         custom_filename = None

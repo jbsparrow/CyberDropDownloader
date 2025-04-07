@@ -63,7 +63,7 @@ class PimpAndHostCrawler(Crawler):
     async def image(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image."""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         link_tag = soup.select_one(".main-image-wrapper")
         link_str: str = link_tag.get("data-src")  # type: ignore

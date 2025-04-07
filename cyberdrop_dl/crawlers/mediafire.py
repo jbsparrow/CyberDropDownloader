@@ -44,7 +44,7 @@ class MediaFireCrawler(Crawler):
         try:
             folder_details: dict[str, dict] = self.api.folder_get_info(folder_key=folder_key)
         except api.MediaFireApiError as e:
-            raise MediaFireError(status=e.code, message=e.message, origin=scrape_item) from None
+            raise MediaFireError(status=e.code, message=e.message) from None
 
         title = self.create_title(folder_details["folder_info"]["name"], folder_key)
         scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
@@ -62,7 +62,7 @@ class MediaFireCrawler(Crawler):
                     chunk_size=chunk_size,
                 )  # type: ignore
             except api.MediaFireApiError as e:
-                raise MediaFireError(status=e.code, message=e.message, origin=scrape_item) from None
+                raise MediaFireError(status=e.code, message=e.message) from None
 
             files = folder_contents["folder_content"]["files"]
 
@@ -91,13 +91,13 @@ class MediaFireCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         link_tag = soup.select_one("a[id=downloadButton]")
         if not link_tag:
             if "Something appears to be missing" in str(soup):
-                raise ScrapeError(410, origin=scrape_item)
-            raise ScrapeError(422, origin=scrape_item)
+                raise ScrapeError(410)
+            raise ScrapeError(422)
 
         date_tag = soup.select("ul[class=details] li span")
         if date_tag:

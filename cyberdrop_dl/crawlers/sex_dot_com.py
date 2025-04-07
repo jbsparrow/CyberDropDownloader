@@ -50,7 +50,7 @@ class SexDotComCrawler(Crawler):
 
             posts_api_url = posts_api_url.with_query(query)
             async with self.request_limiter:
-                json_data = await self.client.get_json(self.domain, posts_api_url, origin=scrape_item)
+                json_data = await self.client.get_json(self.domain, posts_api_url)
 
             if scrape_item.album_id is None:
                 user_id = json_data["page"]["items"][0]["media"]["user"]["userUid"]
@@ -73,7 +73,7 @@ class SexDotComCrawler(Crawler):
         }
         data_url = data_url.with_query(query)
         async with self.request_limiter:
-            json_data = await self.client.get_json(self.domain, data_url, origin=scrape_item)
+            json_data = await self.client.get_json(self.domain, data_url)
         return json_data["media"]
 
     @error_handling_wrapper

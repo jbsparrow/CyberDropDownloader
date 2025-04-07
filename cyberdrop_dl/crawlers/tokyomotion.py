@@ -83,7 +83,7 @@ class TokioMotionCrawler(Crawler):
 
         video_id = scrape_item.url.parts[2]
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         with contextlib.suppress(AttributeError):
             relative_date_str = soup.select_one(self.video_date_selector).text.strip()
@@ -97,8 +97,8 @@ class TokioMotionCrawler(Crawler):
             link = self.parse_url(link_str)
         except AttributeError:
             if "This is a private" in soup.text:
-                raise ScrapeError(401, "Private video", origin=scrape_item) from None
-            raise ScrapeError(422, "Couldn't find video source", origin=scrape_item) from None
+                raise ScrapeError(401, "Private video") from None
+            raise ScrapeError(422, "Couldn't find video source") from None
 
         title = soup.select_one("title").text.rsplit(" - TOKYO Motion")[0].strip()
 
@@ -115,15 +115,15 @@ class TokioMotionCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
         try:
             img = soup.select_one(self.image_selector)
             link_str: str = img.get("src")
             link = self.parse_url(link_str)
         except AttributeError:
             if "This is a private" in soup.text:
-                raise ScrapeError(401, "Private Photo", origin=scrape_item) from None
-            raise ScrapeError(422, "Couldn't find image source", origin=scrape_item) from None
+                raise ScrapeError(401, "Private Photo") from None
+            raise ScrapeError(422, "Couldn't find image source") from None
 
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
@@ -228,7 +228,7 @@ class TokioMotionCrawler(Crawler):
 
         async for soup in self.web_pager(scrape_item.url):
             if "This is a private" in soup.text:
-                raise ScrapeError(401, "Private playlist", origin=scrape_item)
+                raise ScrapeError(401, "Private playlist")
             videos = soup.select(self.video_div_selector)
             for video in videos:
                 link_tag = video.select_one(self.video_selector)

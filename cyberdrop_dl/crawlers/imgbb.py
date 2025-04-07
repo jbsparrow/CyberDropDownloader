@@ -85,7 +85,7 @@ class ImgBBCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         link_str: str = soup.select_one(IMAGE_SELECTOR).get("src")  # type: ignore
         link = self.parse_url(link_str)

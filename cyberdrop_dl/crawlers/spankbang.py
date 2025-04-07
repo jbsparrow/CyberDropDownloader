@@ -121,7 +121,7 @@ class SpankBangCrawler(Crawler):
 
         video_removed = soup.select_one(VIDEO_REMOVED_SELECTOR)
         if video_removed or "This video is no longer available" in str(soup):
-            raise ScrapeError(410, origin=scrape_item)
+            raise ScrapeError(410)
 
         info = get_info_dict(soup)
         canonical_url = self.primary_base_domain / info["video_id"] / "video"
@@ -131,7 +131,7 @@ class SpankBangCrawler(Crawler):
 
         v_format = get_best_quality(info)
         if not v_format:
-            raise ScrapeError(422, origin=scrape_item)
+            raise ScrapeError(422)
         resolution, link_str = v_format
         date = parse_datetime(info["uploadDate"])
         link = self.parse_url(link_str)

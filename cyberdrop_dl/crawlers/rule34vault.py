@@ -41,7 +41,7 @@ class Rule34VaultCrawler(Crawler):
         ## Broken
         raise NotImplementedError
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         title = self.create_title(scrape_item.url.parts[1])
         scrape_item.part_of_album = True
@@ -69,7 +69,7 @@ class Rule34VaultCrawler(Crawler):
     async def playlist(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a playlist."""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
         scrape_item.part_of_album = True
@@ -100,7 +100,7 @@ class Rule34VaultCrawler(Crawler):
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image."""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         date_str = soup.select_one('div[class="posted-date-full text-secondary mt-4 ng-star-inserted"]').text
         date = self.parse_datetime(date_str)

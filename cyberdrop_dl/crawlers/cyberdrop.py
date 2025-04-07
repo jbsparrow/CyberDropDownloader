@@ -45,7 +45,7 @@ class CyberdropCrawler(Crawler):
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
         scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
 
         scrape_item.album_id = scrape_item.url.parts[2]
@@ -56,7 +56,7 @@ class CyberdropCrawler(Crawler):
             title = self.create_title(soup.select_one("h1[id=title]").text, scrape_item.album_id)
         except AttributeError:
             msg = "Unable to parse album information from response content"
-            raise ScrapeError(422, msg, origin=scrape_item) from None
+            raise ScrapeError(422, msg) from None
 
         date = soup.select("p[class=title]")
         if date:
@@ -87,13 +87,13 @@ class CyberdropCrawler(Crawler):
 
         async with self.request_limiter:
             api_url = self.api_url / "file" / "info" / scrape_item.url.path[3:]
-            JSON_Resp = await self.client.get_json(self.domain, api_url, origin=scrape_item)
+            JSON_Resp = await self.client.get_json(self.domain, api_url)
 
         filename, ext = self.get_filename_and_ext(JSON_Resp["name"])
 
         async with self.request_limiter:
             api_url = self.api_url / "file" / "auth" / scrape_item.url.path[3:]
-            JSON_Resp = await self.client.get_json(self.domain, api_url, origin=scrape_item)
+            JSON_Resp = await self.client.get_json(self.domain, api_url)
 
         link_str: str = JSON_Resp["url"]
         link = self.parse_url(link_str)

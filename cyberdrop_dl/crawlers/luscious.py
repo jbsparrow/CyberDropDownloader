@@ -137,7 +137,7 @@ class LusciousCrawler(Crawler):
     async def search(self, scrape_item: ScrapeItem) -> None:
         query = scrape_item.url.query.get("tagged", "")
         if not query:
-            raise ScrapeError(400, "No search query provided.", origin=scrape_item)
+            raise ScrapeError(400, "No search query provided.")
 
         async for json_data in self.paginator(scrape_item):
             for item in json_data["data"]["album"]["list"]["items"]:

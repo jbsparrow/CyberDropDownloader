@@ -42,7 +42,7 @@ class Rule34XYZCrawler(Crawler):
         # This is broke. Needs fixing
         raise NotImplementedError
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
         scrape_item.part_of_album = True
@@ -70,7 +70,7 @@ class Rule34XYZCrawler(Crawler):
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image."""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         date_str: str = soup.select_one('div[class="posted ng-star-inserted"]').text.split("(")[1].split(")")[0]
         date = self.parse_datetime(date_str)
@@ -78,7 +78,7 @@ class Rule34XYZCrawler(Crawler):
 
         media_tag = soup.select_one("video source") or soup.select_one('img[class*="img shadow-base"]')
         if not media_tag:
-            raise ScrapeError(422, origin=scrape_item)
+            raise ScrapeError(422)
 
         link_str: str = media_tag.get("src")
         link = self.parse_url(link_str)

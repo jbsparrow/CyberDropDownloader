@@ -126,7 +126,7 @@ class E621Crawler(Crawler):
         post = response.get("post", {})
         file_url = post.get("file", {}).get("url")
         if not file_url:
-            raise ScrapeError(422, origin=scrape_item)
+            raise ScrapeError(422)
 
         link = self.parse_url(file_url)
         filename, ext = self.get_filename_and_ext(link.name)

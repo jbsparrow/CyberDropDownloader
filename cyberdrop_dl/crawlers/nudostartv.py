@@ -48,7 +48,7 @@ class NudoStarTVCrawler(Crawler):
 
             content = soup.select(self.content_selector)
             if "Last OnlyFans Updates" in title or not content:
-                raise ScrapeError(404, origin=scrape_item)
+                raise ScrapeError(404)
 
             for page in content:
                 link_str: str = page.get("href")  # type: ignore
@@ -64,7 +64,7 @@ class NudoStarTVCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
         image = soup.select_one("div[class=block-video] a img")
         link_str: str = image.get("src")  # type: ignore
         link = self.parse_url(link_str)

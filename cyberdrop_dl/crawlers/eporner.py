@@ -186,7 +186,7 @@ class EpornerCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         soup_str = str(soup)
         if "File has been removed due to copyright owner request" in soup_str:
@@ -199,14 +199,14 @@ class EpornerCrawler(Crawler):
         log_debug(json.dumps(info_dict, indent=4))
         resolution, link_str = get_best_quality(soup)
         if not link_str:
-            raise ScrapeError(422, origin=scrape_item)
+            raise ScrapeError(422)
 
         link = self.parse_url(link_str)
         date = parse_datetime(info_dict["uploadDate"])
         scrape_item.possible_datetime = date
         filename, ext = self.get_filename_and_ext(link.name)
         if ext == ".m3u8":
-            raise ScrapeError(422, origin=scrape_item)
+            raise ScrapeError(422)
         custom_filename = f"{info_dict['name']} [{video_id}][{resolution}]{ext}"
         custom_filename, _ = self.get_filename_and_ext(custom_filename)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)

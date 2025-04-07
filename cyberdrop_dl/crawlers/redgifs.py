@@ -44,7 +44,7 @@ class RedGifsCrawler(Crawler):
             async with self.request_limiter:
                 api_url = self.redgifs_api / "v2/users" / user_id / "search"
                 url = api_url.with_query(order="new", page=page)
-                json_resp = await self.client.get_json(self.domain, url, headers_inc=self.headers, origin=scrape_item)
+                json_resp = await self.client.get_json(self.domain, url, headers_inc=self.headers)
 
             gifs = json_resp["gifs"]
             if not title:
@@ -72,9 +72,7 @@ class RedGifsCrawler(Crawler):
         post_id = scrape_item.url.parts[-1].split(".")[0]
         async with self.request_limiter:
             api_url = self.redgifs_api / "v2/gifs" / post_id
-            json_resp: dict[str, dict] = await self.client.get_json(
-                self.domain, api_url, headers_inc=self.headers, origin=scrape_item
-            )
+            json_resp: dict[str, dict] = await self.client.get_json(self.domain, api_url, headers_inc=self.headers)
 
         title_part: str = json_resp["gif"].get("title") or "Loose Files"
         title = self.create_title(title_part)

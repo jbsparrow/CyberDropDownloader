@@ -40,7 +40,7 @@ class OmegaScansCrawler(Crawler):
     async def series(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
         scrape_item.part_of_album = True
@@ -53,14 +53,14 @@ class OmegaScansCrawler(Crawler):
                 break
 
         if not series_id:
-            raise ScrapeError(422, "Unable to parse series_id from html", origin=scrape_item)
+            raise ScrapeError(422, "Unable to parse series_id from html")
 
         page_number = 1
         number_per_page = 30
         while True:
             api_url = self.api_url.with_query(page=page_number, perPage=number_per_page, series_id=series_id)
             async with self.request_limiter:
-                JSON_Obj = await self.client.get_json(self.domain, api_url, origin=scrape_item)
+                JSON_Obj = await self.client.get_json(self.domain, api_url)
             if not JSON_Obj:
                 break
 
@@ -78,10 +78,10 @@ class OmegaScansCrawler(Crawler):
     async def chapter(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image."""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         if "This chapter is premium" in soup.get_text():
-            raise ScrapeError(401, "This chapter is premium", origin=scrape_item)
+            raise ScrapeError(401, "This chapter is premium")
 
         scrape_item.part_of_album = True
         title_parts = soup.select_one("title").get_text().split(" - ")

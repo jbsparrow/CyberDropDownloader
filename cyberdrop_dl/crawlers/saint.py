@@ -49,7 +49,7 @@ class SaintCrawler(Crawler):
         scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         title_portion = soup.select_one("title").text.rsplit(" - Saint Video Hosting")[0].strip()
         if not title_portion:
@@ -77,14 +77,14 @@ class SaintCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
         try:
             link_str: str = soup.select_one("video[id=main-video] source").get("src")
             link = self.parse_url(link_str)
         except AttributeError:
             if is_not_found(soup):
-                raise ScrapeError(404, origin=scrape_item) from None
-            raise ScrapeError(422, "Couldn't find video source", origin=scrape_item) from None
+                raise ScrapeError(404) from None
+            raise ScrapeError(422, "Couldn't find video source") from None
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 
@@ -92,15 +92,15 @@ class SaintCrawler(Crawler):
     async def video(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a video page."""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
         try:
             link_str: str = soup.select_one("a:contains('Download Video')").get("href")
             link = self.parse_url(link_str)
             link = get_url_from_base64(link)
         except AttributeError:
             if is_not_found(soup):
-                raise ScrapeError(404, origin=scrape_item) from None
-            raise ScrapeError(422, "Couldn't find video source", origin=scrape_item) from None
+                raise ScrapeError(404) from None
+            raise ScrapeError(422, "Couldn't find video source") from None
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 

@@ -161,7 +161,7 @@ class XenforoCrawler(Crawler):
     @error_handling_wrapper
     async def redirect(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
-            _, url = await self.client.get_soup_and_return_url(self.domain, scrape_item.url, origin=scrape_item)  # type: ignore
+            _, url = await self.client.get_soup_and_return_url(self.domain, scrape_item.url)  # type: ignore
         scrape_item.url = url
         self.manager.task_group.create_task(self.run(scrape_item))
 
@@ -268,7 +268,7 @@ class XenforoCrawler(Crawler):
         page_url = scrape_item.url
         while True:
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url, origin=scrape_item)
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url)
             next_page = soup.select_one(self.selectors.next_page.element)
             yield soup
             if not next_page:
@@ -340,7 +340,7 @@ class XenforoCrawler(Crawler):
         if not scrape_item.url or scrape_item.url == self.primary_base_domain:
             return
         if not scrape_item.url.host:
-            raise InvalidURLError("url has no host", origin=scrape_item)
+            raise InvalidURLError("url has no host")
         if self.is_attachment(scrape_item.url):
             return await self.handle_internal_link(scrape_item)
         if self.primary_base_domain.host in scrape_item.url.host and self.stop_thread_recursion(scrape_item):  # type: ignore
@@ -355,10 +355,10 @@ class XenforoCrawler(Crawler):
         scrape_item.url = remove_trailing_slash(scrape_item.url)
 
         if scrape_item.url.name.isdigit():
-            head = await self.client.get_head(self.domain, scrape_item.url, origin=scrape_item)  # type: ignore
+            head = await self.client.get_head(self.domain, scrape_item.url)  # type: ignore
             redirect = head.get("location")
             if not redirect:
-                raise ScrapeError(422, origin=scrape_item)
+                raise ScrapeError(422)
             scrape_item.url = self.parse_url(redirect)
             self.manager.task_group.create_task(self.run(scrape_item))
             return

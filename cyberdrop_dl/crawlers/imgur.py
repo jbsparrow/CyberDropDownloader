@@ -57,14 +57,14 @@ class ImgurCrawler(Crawler):
         async with self.request_limiter:
             await self.check_imgur_credits(scrape_item)
             api_url = self.imgur_api / "album" / album_id
-            JSON_Obj = await self.client.get_json(self.domain, api_url, headers_inc=self.headers, origin=scrape_item)
+            JSON_Obj = await self.client.get_json(self.domain, api_url, headers_inc=self.headers)
 
         title_part = JSON_Obj["data"].get("title", album_id)
         title = self.create_title(title_part, album_id)
 
         async with self.request_limiter:
             api_url = self.imgur_api / "album" / album_id / "images"
-            JSON_Obj = await self.client.get_json(self.domain, api_url, headers_inc=self.headers, origin=scrape_item)
+            JSON_Obj = await self.client.get_json(self.domain, api_url, headers_inc=self.headers)
 
         for image in JSON_Obj["data"]:
             link_str: str = image["link"]
@@ -91,7 +91,7 @@ class ImgurCrawler(Crawler):
         async with self.request_limiter:
             await self.check_imgur_credits(scrape_item)
             api_url = self.imgur_api / "image" / image_id
-            JSON_Obj = await self.client.get_json(self.domain, api_url, headers_inc=self.headers, origin=scrape_item)
+            JSON_Obj = await self.client.get_json(self.domain, api_url, headers_inc=self.headers)
 
         date = JSON_Obj["data"]["datetime"]
         link_str: str = JSON_Obj["data"]["link"]
@@ -117,7 +117,7 @@ class ImgurCrawler(Crawler):
     async def check_imgur_credits(self, scrape_item: ScrapeItem | None = None) -> None:
         """Checks the remaining credits."""
         credits_url = self.imgur_api / "credits"
-        credits_obj = await self.client.get_json(self.domain, credits_url, headers_inc=self.headers, origin=scrape_item)
+        credits_obj = await self.client.get_json(self.domain, credits_url, headers_inc=self.headers)
         self.imgur_client_remaining = credits_obj["data"]["ClientRemaining"]
         if self.imgur_client_remaining < 100:
-            raise ScrapeError(429, "Imgur API rate limit reached", origin=scrape_item)
+            raise ScrapeError(429, "Imgur API rate limit reached")
