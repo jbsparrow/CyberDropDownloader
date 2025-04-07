@@ -58,7 +58,7 @@ class AShemaleTubeCrawler(Crawler):
         elif "playlists" in scrape_item.url.parts:
             return await self.playlist(scrape_item)
         elif "profiles" in scrape_item.url.parts:
-            return await self.profile(scrape_item)
+            return await self.model(scrape_item)
         raise ValueError
 
     @error_handling_wrapper
