@@ -32,6 +32,7 @@ USER_NAME_SELECTOR = "h1.username"
 PLAYLIST_VIDEOS_SELECTOR = "a.playlist-video-item__thumbnail"
 VIDEO_OBJECT_SCRIPT_SELECTOR = "script:contains('uploadDate')"
 JS_SELECTOR = "script:contains('var player = new VideoPlayer')"
+LOGIN_REQUIRED_SELECTOR = "div.loginLinks:contains('To watch this video please')"
 RESOLUTIONS = ["2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"]  # best to worst
 INCLUDE_VIDEO_ID_IN_FILENAME = True
 
@@ -118,6 +119,8 @@ class AShemaleTubeCrawler(Crawler):
             return
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, scrape_item.url)
+        if soup.select_one(LOGIN_REQUIRED_SELECTOR):
+            raise ScrapeError(401, origin=scrape_item)
         if player := soup.select_one(JS_SELECTOR):
             info: dict[str, str | dict] = parse_player_info(player.text)
             if info is None:
