@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
+from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -35,7 +36,6 @@ class FapelloCrawler(Crawler):
         """Determines where to send the scrape item based on the url."""
         if scrape_item.url.name:
             scrape_item.url = scrape_item.url / ""
-
         if scrape_item.url.parts[-2].isdigit():
             return await self.post(scrape_item)
 
@@ -70,11 +70,10 @@ class FapelloCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         content = soup.select_one(POST_CONTENT_SELECTOR)
-        content_tags = content.select("img, source")  # type: ignore
+        if not content:
+            raise ScrapeError(422)
 
-        for selection in content_tags:
-            link_str: str = selection.get("src")  # type: ignore
-            link = self.parse_url(link_str)
+        for _, link in self.iter_tags(content.select("img, source"), "src"):
             filename, ext = self.get_filename_and_ext(link.name)
             await self.handle_file(link, scrape_item, filename, ext)
             scrape_item.add_children()

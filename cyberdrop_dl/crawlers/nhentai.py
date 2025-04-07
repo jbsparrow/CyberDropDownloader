@@ -24,6 +24,7 @@ EXT_MAP = {"a": ".avif", "g": ".gif", "j": ".jpg", "p": ".png", "w": ".webp"}
 COLLECTION_PARTS = "favorites", "tag", "search", "parody", "group", "character", "artist"
 ITEM_SELECTOR = "div.gallery > a"
 COLLECTION_TITLE_SELECTOR = "div#content > h1"
+LOGIN_PAGE_SELECTOR = "input.id_username_or_email"
 
 
 class NHentaiCrawler(Crawler):
@@ -47,23 +48,20 @@ class NHentaiCrawler(Crawler):
 
     @error_handling_wrapper
     async def collection(self, scrape_item: ScrapeItem) -> None:
-        collection_type = title = ""
+        title = ""
         async for soup in self.web_pager(scrape_item.url):
-            if not collection_type:
+            if not title:
                 title_tag = soup.select_one(COLLECTION_TITLE_SELECTOR)
                 if not title_tag:
                     raise ScrapeError(422)
 
-                for part in COLLECTION_PARTS:
-                    if part in scrape_item.url.parts:
-                        collection_type = part
-                        break
-
+                collection_type = next((part for part in COLLECTION_PARTS if part in scrape_item.url.parts), None)
+                assert collection_type
                 if collection_type == "favorites":
-                    if soup.select_one("input.id_username_or_email"):
+                    if soup.select_one(LOGIN_PAGE_SELECTOR):
                         raise LoginError("No cookies provided to download favorites")
 
-                    for span in soup.find_all("span"):
+                    for span in soup.select("span"):
                         span.decompose()
 
                 else:
@@ -74,12 +72,8 @@ class NHentaiCrawler(Crawler):
                 title = self.create_title(title)
                 scrape_item.setup_as_album(title)
 
-            for item in soup.select(ITEM_SELECTOR):
-                link_str: str = item.get("href")  # type: ignore
-                link = self.parse_url(link_str)
-                new_scrape_item = scrape_item.create_child(link)
+            for _, new_scrape_item in self.iter_children(scrape_item, soup.select(ITEM_SELECTOR)):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
-                scrape_item.add_children()
 
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem) -> None:

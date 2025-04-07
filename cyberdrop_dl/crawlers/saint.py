@@ -8,15 +8,20 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from re import Match
-
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
+
+
+VIDEOS_SELECTOR = "a.btn-primary.action.download"
+EMBED_SRC_SELECTOR = "video[id=main-video] source"
+DOWNLOAD_BUTTON_SELECTOR = "a:contains('Download Video')"
+NOT_FOUND_IMAGE_SELECTOR = "video#video-container img"
+URL_REGEX = re.compile(r"\('(.+?)'\)")
 
 
 class SaintCrawler(Crawler):
@@ -33,37 +38,32 @@ class SaintCrawler(Crawler):
         scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path)
 
         if "a" in scrape_item.url.parts:
-            await self.album(scrape_item)
-        elif "embed" in scrape_item.url.parts:
-            await self.embed(scrape_item)
-        else:
-            await self.video(scrape_item)
+            return await self.album(scrape_item)
+        if "embed" in scrape_item.url.parts:
+            return await self.embed(scrape_item)
+        await self.video(scrape_item)
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
         album_id = scrape_item.url.parts[2]
         results = await self.get_album_results(album_id)
-        scrape_item.album_id = album_id
-        scrape_item.part_of_album = True
-        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
-
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
-        title_portion = soup.select_one("title").text.rsplit(" - Saint Video Hosting")[0].strip()
+        title_portion = soup.select_one("title").text.rsplit(" - Saint Video Hosting")[0].strip()  # type: ignore
         if not title_portion:
             title_portion = scrape_item.url.name
         title = self.create_title(title_portion, album_id)
-        scrape_item.add_to_parent_title(title)
+        scrape_item.setup_as_album(title, album_id=album_id)
 
-        videos = soup.select("a.btn-primary.action.download")
-
-        for video in videos:
-            match: Match = re.search(r"\('(.+?)'\)", video.get("onclick"))
-            link_str = match.group(1) if match else None
-            if not link_str:
+        for video in soup.select(VIDEOS_SELECTOR):
+            on_click_text: str = video.get("onclick")  # type: ignore
+            if match := re.search(URL_REGEX, on_click_text):
+                link_str = match.group(1)
+            else:
                 continue
+
             link = self.parse_url(link_str)
             filename, ext = self.get_filename_and_ext(link.name)
             if not self.check_album_results(link, results):
@@ -79,7 +79,7 @@ class SaintCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
         try:
-            link_str: str = soup.select_one("video[id=main-video] source").get("src")
+            link_str: str = soup.select_one(EMBED_SRC_SELECTOR).get("src")  # type: ignore
             link = self.parse_url(link_str)
         except AttributeError:
             if is_not_found(soup):
@@ -94,9 +94,8 @@ class SaintCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
         try:
-            link_str: str = soup.select_one("a:contains('Download Video')").get("href")
-            link = self.parse_url(link_str)
-            link = get_url_from_base64(link)
+            link_str: str = soup.select_one(DOWNLOAD_BUTTON_SELECTOR).get("href")  # type: ignore
+            link = get_url_from_base64(self.parse_url(link_str))
         except AttributeError:
             if is_not_found(soup):
                 raise ScrapeError(404) from None
@@ -109,8 +108,10 @@ def is_not_found(soup: BeautifulSoup) -> bool:
     title = soup.title
     if title and title.text == "Video not found":
         return True
-    image = soup.select_one("video#video-container img")
-    if image and image.get("src") == "https://saint2.su/assets/notfound.gif":
+
+    if (image := soup.select_one(NOT_FOUND_IMAGE_SELECTOR)) and image.get(
+        "src"
+    ) == "https://saint2.su/assets/notfound.gif":
         return True
     if "File not found in the database" in str(soup):
         return True
@@ -118,8 +119,9 @@ def is_not_found(soup: BeautifulSoup) -> bool:
 
 
 def get_url_from_base64(link: URL) -> URL:
-    base64_str: str = link.query.get("file")
+    base64_str: str | None = link.query.get("file")
     if not base64_str:
         return link
+    assert link.host
     filename_decoded = base64.b64decode(base64_str).decode("utf-8")
-    return URL("https://some_cdn.saint2.cr/videos").with_host(link.host) / filename_decoded
+    return URL(f"https://{link.host}/videos/{filename_decoded}")

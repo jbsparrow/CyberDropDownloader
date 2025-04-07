@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 ALBUM_TITLE_SELECTOR = "span[class=author-header__album-name]"
 DATE_SELECTOR = "span[class=date-time]"
 FILES_SELECTOR = 'a[class*="image-wrapper center-cropped im-wr"]'
+IMAGE_SELECTOR = ".main-image-wrapper"
 
 
 class PimpAndHostCrawler(Crawler):
@@ -33,9 +34,8 @@ class PimpAndHostCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
         if "album" in scrape_item.url.parts:
-            await self.album(scrape_item)
-        else:
-            await self.image(scrape_item)
+            return await self.album(scrape_item)
+        await self.image(scrape_item)
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
@@ -49,15 +49,10 @@ class PimpAndHostCrawler(Crawler):
                 scrape_item.setup_as_album(title, album_id=album_id)
 
                 if date_tag := soup.select_one(DATE_SELECTOR):
-                    date_str: str = date_tag.get("title")  # type: ignore
-                    scrape_item.possible_datetime = self.parse_datetime(date_str)
+                    scrape_item.possible_datetime = self.parse_datetime(date_tag.get("title"))  # type: ignore
 
-            for file in soup.select(FILES_SELECTOR):
-                link_str: str = file.get("href")  # type: ignore
-                link = self.parse_url(link_str)
-                new_scrape_item = scrape_item.create_child(link)
+            for _, new_scrape_item in self.iter_children(scrape_item, soup.select(FILES_SELECTOR)):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
-                scrape_item.add_children()
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
@@ -65,15 +60,13 @@ class PimpAndHostCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
-        link_tag = soup.select_one(".main-image-wrapper")
+        link_tag = soup.select_one(IMAGE_SELECTOR)
         link_str: str = link_tag.get("data-src")  # type: ignore
         link = self.parse_url(link_str)
-        date_str: str = soup.select_one("span[class=date-time]").get("title")  # type: ignore
-        date = self.parse_datetime(date_str)
-
-        new_scrape_item = self.create_scrape_item(scrape_item, link, possible_datetime=date)
+        date_str: str = soup.select_one(DATE_SELECTOR).get("title")  # type: ignore
+        scrape_item.possible_datetime = self.parse_datetime(date_str)
         filename, ext = self.get_filename_and_ext(link.name)
-        await self.handle_file(link, new_scrape_item, filename, ext)
+        await self.handle_file(link, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 

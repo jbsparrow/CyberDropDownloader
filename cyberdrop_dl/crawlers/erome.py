@@ -31,9 +31,8 @@ class EromeCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
         if "a" in scrape_item.url.parts:
-            await self.album(scrape_item)
-        else:
-            await self.profile(scrape_item)
+            return await self.album(scrape_item)
+        await self.profile(scrape_item)
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
@@ -44,12 +43,8 @@ class EromeCrawler(Crawler):
                 title = self.create_title(scrape_item.url.name)
                 scrape_item.setup_as_profile(title)
 
-            for album in soup.select(ALBUM_SELECTOR):
-                link_str: str = album["href"]  # type: ignore
-                link = self.parse_url(link_str)
-                new_scrape_item = scrape_item.create_child(link)
+            for _, new_scrape_item in self.iter_children(scrape_item, soup.select(ALBUM_SELECTOR)):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
-                scrape_item.add_children()
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
@@ -66,16 +61,10 @@ class EromeCrawler(Crawler):
 
         title = self.create_title(title_portion, album_id)
         scrape_item.setup_as_album(title, album_id=album_id)
+        items = soup.select(IMAGES_SELECTOR) + soup.select(VIDEOS_SELECTOR)
 
-        images = soup.select(IMAGES_SELECTOR)
-        videos = soup.select(VIDEOS_SELECTOR)
-
-        image_links = [image["data-src"] for image in images]
-        video_links = [video["src"] for video in videos]
-
-        for link_str in image_links + video_links:
-            link = self.parse_url(link_str)  # type: ignore
-            filename, ext = self.get_filename_and_ext(link.name)
+        for _, link in self.iter_tags(items, ("data-src", "src")):
             if not self.check_album_results(link, results):
+                filename, ext = self.get_filename_and_ext(link.name)
                 await self.handle_file(link, scrape_item, filename, ext)
             scrape_item.add_children()

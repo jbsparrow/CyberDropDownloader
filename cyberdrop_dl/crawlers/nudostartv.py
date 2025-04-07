@@ -14,6 +14,9 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
+IMAGE_SELECTOR = "div[class=block-video] a img"
+CONTENT_SELECTOR = "div[id=list_videos_common_videos_list_items] div a"
+
 
 class NudoStarTVCrawler(Crawler):
     primary_base_domain = URL("https://nudostar.tv/")
@@ -21,8 +24,6 @@ class NudoStarTVCrawler(Crawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "nudostar.tv", "NudoStarTV")
-        self.next_page_attribute = "href"
-        self.content_selector = "div[id=list_videos_common_videos_list_items] div a"
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -46,16 +47,12 @@ class NudoStarTVCrawler(Crawler):
                 title = self.create_title(soup.title.text.split("/")[0])  # type: ignore
                 scrape_item.setup_as_album(title)
 
-            content = soup.select(self.content_selector)
+            content = soup.select(CONTENT_SELECTOR)
             if "Last OnlyFans Updates" in title or not content:
                 raise ScrapeError(404)
 
-            for page in content:
-                link_str: str = page.get("href")  # type: ignore
-                link = self.parse_url(link_str)
-                new_scrape_item = scrape_item.create_child(link)
+            for _, new_scrape_item in self.iter_children(scrape_item, content):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
-                scrape_item.add_children()
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
@@ -65,7 +62,7 @@ class NudoStarTVCrawler(Crawler):
 
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
-        image = soup.select_one("div[class=block-video] a img")
+        image = soup.select_one(IMAGE_SELECTOR)
         link_str: str = image.get("src")  # type: ignore
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)

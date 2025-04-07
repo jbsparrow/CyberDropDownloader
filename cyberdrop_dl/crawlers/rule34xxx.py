@@ -15,6 +15,8 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 CONTENT_SELECTOR = "div[class=image-list] span a"
+IMAGE_SELECTOR = "img[id=image]"
+VIDEO_SELECTOR = "video source"
 
 
 class Rule34XXXCrawler(Crawler):
@@ -34,11 +36,10 @@ class Rule34XXXCrawler(Crawler):
         """Determines where to send the scrape item based on the url."""
 
         if "tags" in scrape_item.url.query_string:
-            await self.tag(scrape_item)
-        elif "id" in scrape_item.url.query_string:
-            await self.file(scrape_item)
-        else:
-            raise ValueError
+            return await self.tag(scrape_item)
+        if "id" in scrape_item.url.query_string:
+            return await self.file(scrape_item)
+        raise ValueError
 
     @error_handling_wrapper
     async def tag(self, scrape_item: ScrapeItem) -> None:
@@ -50,23 +51,19 @@ class Rule34XXXCrawler(Crawler):
                 title = self.create_title(title_portion)
                 scrape_item.setup_as_album(title)
 
-            content = soup.select(CONTENT_SELECTOR)
-            for file_page in content:
-                link_str: str = file_page.get("href")  # type: ignore
-                link = self.parse_url(link_str)
-                new_scrape_item = scrape_item.create_child(link)
+            for _, new_scrape_item in self.iter_children(scrape_item, soup.select(CONTENT_SELECTOR)):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
-                scrape_item.add_children()
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
-        media_tag = soup.select_one("img[id=image]") or soup.select_one("video source")
+
+        media_tag = soup.select_one(IMAGE_SELECTOR) or soup.select_one(VIDEO_SELECTOR)
         if not media_tag:
             raise ScrapeError(422)
-        link_str: str = media_tag.get("src")
+        link_str: str = media_tag.get("src")  # type: ignore
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)

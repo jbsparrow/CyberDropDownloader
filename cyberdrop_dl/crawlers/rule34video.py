@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import calendar
-import json
 from datetime import datetime
 from typing import TYPE_CHECKING, NamedTuple
 
@@ -81,18 +80,13 @@ class Rule34VideoCrawler(Crawler):
                 title = self.create_title(title)
                 scrape_item.setup_as_album(title)
 
-            for item in soup.select(PLAYLIST_ITEM_SELECTOR):
-                link_str: str = item.get("href")  # type: ignore
-                link = self.parse_url(link_str)
-                new_scrape_item = scrape_item.create_child(link)
+            for _, new_scrape_item in self.iter_children(scrape_item, soup.select(PLAYLIST_ITEM_SELECTOR)):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
-                scrape_item.add_children()
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a video."""
-        video_id = scrape_item.url.parts[2]
-        video_name = scrape_item.url.parts[3]
+        video_id, video_name = scrape_item.url.parts[2:4]
         canonical_url = self.primary_base_domain / "video" / video_id / video_name / ""
 
         if await self.check_complete_from_referer(canonical_url):
@@ -100,7 +94,6 @@ class Rule34VideoCrawler(Crawler):
 
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
-            # soup = get_test_soup()
 
         scrape_item.url = canonical_url
         info = get_video_info(soup)
@@ -114,8 +107,7 @@ class Rule34VideoCrawler(Crawler):
         name = link.name or link.parent.name
         filename, ext = self.get_filename_and_ext(name)
         custom_filename = link.query.get("download_filename") or info["title"]
-        custom_filename = f"{custom_filename} [{video_id}][{resolution}]{ext}"
-        custom_filename, _ = self.get_filename_and_ext(custom_filename)
+        custom_filename, _ = self.get_filename_and_ext(f"{custom_filename} [{video_id}][{resolution}]{ext}")
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     def set_cookies(self) -> None:
@@ -129,13 +121,12 @@ def get_video_info(soup: BeautifulSoup) -> VideoInfo:
     info: dict[str, str | dict] = javascript.parse_json_to_dict(info_js_script.text)  # type: ignore
     info["title"] = title
     javascript.clean_dict(info)
-    log_debug(json.dumps(info, indent=4))
+    log_debug(info)
     return VideoInfo(**info)
 
 
 def get_available_formats(soup: BeautifulSoup) -> Generator[Format]:
-    downloads = soup.select(DOWNLOADS_SELECTOR)
-    for download in downloads:
+    for download in soup.select(DOWNLOADS_SELECTOR):
         link_str: str = download.get("href")  # type: ignore
         if "/tags/" in link_str or not all(p in link_str for p in REQUIRED_FORMAT_STRINGS):
             continue
@@ -147,11 +138,8 @@ def get_available_formats(soup: BeautifulSoup) -> Generator[Format]:
 
 
 def get_best_quality(soup: BeautifulSoup) -> Format | None:
-    formats_dict = {}
-    for v_format in get_available_formats(soup):
-        formats_dict[v_format.resolution] = v_format
-
-    log_debug(json.dumps(formats_dict, indent=4))
+    formats_dict = {v_format.resolution: v_format for v_format in get_available_formats(soup)}
+    log_debug(formats_dict)
     for res in RESOLUTIONS:
         v_format = formats_dict.get(res)
         if v_format:
@@ -178,10 +166,7 @@ def get_playlist_title(soup: BeautifulSoup, url: URL) -> str:
 
 
 def get_playlist_type(url: URL) -> str:
-    for name in PLAYLIST_TITLE_SELECTORS:
-        if name in url.parts:
-            return name
-    return ""
+    return next((name for name in PLAYLIST_TITLE_SELECTORS if name in url.parts), "")
 
 
 def is_playlist(url: URL) -> bool:

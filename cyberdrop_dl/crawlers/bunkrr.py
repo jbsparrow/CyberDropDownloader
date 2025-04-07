@@ -7,7 +7,6 @@ import json
 import math
 import re
 from dataclasses import dataclass
-from functools import partial
 from itertools import cycle
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, NamedTuple
@@ -18,16 +17,16 @@ from cyberdrop_dl.clients.errors import NoExtensionError, ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.constants import FILE_FORMATS
-from cyberdrop_dl.utils.utilities import error_handling_wrapper
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, parse_url
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from bs4 import BeautifulSoup, Tag
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
+
+# CDNs
 BASE_CDNS = [
     "bacon",
     "big-taco",
@@ -48,17 +47,17 @@ BASE_CDNS = [
     "wings",
     r"mlk-bk\.cdn\.gigachad-cdn",
 ]
-
-DOWNLOAD_API_ENTRYPOINT = URL("https://get.bunkrr.su/api/vs")
-DOWNLOAD_API_ENTRYPOINT = URL("https://get.bunkrr.su/api/_001")
-STREAMING_API_ENTRYPOINT = URL("https://bunkr.site/api/vs")
-
 EXTENDED_CDNS = [f"cdn-{cdn}" for cdn in BASE_CDNS]
 IMAGE_CDNS = [f"i-{cdn}" for cdn in BASE_CDNS]
 CDNS = BASE_CDNS + EXTENDED_CDNS + IMAGE_CDNS
-CDN_REGEX_STR = r"^(?:(?:(" + "|".join(CDNS) + r")[0-9]{0,2}(?:redir)?))\.bunkr?\.[a-z]{2,3}$"
-CDN_POSSIBILITIES = re.compile(CDN_REGEX_STR)
+CDN_POSSIBILITIES = re.compile(r"^(?:(?:(" + "|".join(CDNS) + r")[0-9]{0,2}(?:redir)?))\.bunkr?\.[a-z]{2,3}$")
 
+# URLs
+DOWNLOAD_API_ENTRYPOINT = URL("https://get.bunkrr.su/api/_001")
+STREAMING_API_ENTRYPOINT = URL("https://bunkr.site/api/vs")
+PRIMARY_BASE_DOMAIN = URL("https://bunkr.site")
+
+# Selectors
 ALBUM_ITEM_SELECTOR = "div[class*='relative group/item theItem']"
 ITEM_NAME_SELECTOR = "p[class*='theName']"
 ITEM_DATE_SELECTOR = 'span[class*="theDate"]'
@@ -66,6 +65,8 @@ DOWNLOAD_BUTTON_SELECTOR = "a.btn.ic-download-01"
 THUMBNAIL_SELECTOR = 'img[alt="image"]'
 IMAGE_PREVIEW_SELECTOR = "img.max-h-full.w-auto.object-cover.relative"
 VIDEO_SELECTOR = "video > source"
+JS_SLUG_SELECTOR = "script:contains('jsSlug')"
+
 VIDEO_AND_IMAGE_EXTS = FILE_FORMATS["Images"] | FILE_FORMATS["Videos"]
 
 
@@ -83,18 +84,19 @@ class AlbumItem:
     url: URL
 
     @classmethod
-    def from_tag(cls, tag: Tag, parse_url: Callable[..., URL]) -> AlbumItem:
+    def from_tag(cls, tag: Tag) -> AlbumItem:
         name = tag.select_one(ITEM_NAME_SELECTOR).text  # type: ignore
         thumbnail: str = tag.select_one(THUMBNAIL_SELECTOR).get("src")  # type: ignore
         date_str = tag.select_one(ITEM_DATE_SELECTOR).text.strip()  # type: ignore
         date = parse_datetime(date_str)
-        link_str: str = tag.find("a").get("href")  # type: ignore
-        link = parse_url(link_str)
+        link_str: str = tag.select_one("a").get("href")  # type: ignore
+        link = parse_url(link_str, relative_to=PRIMARY_BASE_DOMAIN)
         return cls(name, thumbnail, date, link)
 
-    def get_src(self, parse_url: Callable[..., URL]) -> URL:
+    @property
+    def src(self) -> URL:
         src_str = self.thumbnail.replace("/thumbs/", "/")
-        src = parse_url(src_str)
+        src = parse_url(src_str, relative_to=PRIMARY_BASE_DOMAIN)
         src = with_suffix_encoded(src, self.suffix).with_query(None)
         if src.suffix.lower() not in FILE_FORMATS["Images"]:
             src = src.with_host(src.host.replace("i-", ""))  # type: ignore
@@ -107,7 +109,7 @@ class AlbumItem:
 
 class BunkrrCrawler(Crawler):
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {"bunkrr": ["bunkrr", "bunkr"]}
-    primary_base_domain = URL("https://bunkr.site")
+    primary_base_domain = PRIMARY_BASE_DOMAIN
 
     def __init__(self, manager: Manager, site: str) -> None:
         super().__init__(manager, site, "Bunkrr")
@@ -117,16 +119,12 @@ class BunkrrCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-
         if is_reinforced_link(scrape_item.url):  #  get.bunkr.su/file/<file_id>
             return await self.reinforced_file(scrape_item)
-
         if "a" in scrape_item.url.parts:  #  bunkr.site/a/<album_id>
             return await self.album(scrape_item)
-
         if is_cdn(scrape_item.url) and not is_stream_redirect(scrape_item.url):  # kebab.bunkr.su/<uuid>
             return await self.handle_direct_link(scrape_item, scrape_item.url, fallback_filename=scrape_item.url.name)
-
         # bunkr.su/f/<filename>, bunkr.su/f/<file_slug>, bunkr.su/<short_file_id> or cdn.bunkr.su/<file_id> (stream redirect)
         await self.file(scrape_item)
 
@@ -134,45 +132,39 @@ class BunkrrCrawler(Crawler):
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
         scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path)
-
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         album_id = scrape_item.url.parts[2]
         title = soup.select_one("title").text.rsplit(" | Bunkr")[0].strip()  # type: ignore
         title = self.create_title(title, album_id)
-        scrape_item.setup_as_album(title)
-        scrape_item.album_id = album_id
+        scrape_item.setup_as_album(title, album_id=album_id)
         results = await self.get_album_results(album_id)
 
-        item_tags: list[Tag] = soup.select(ALBUM_ITEM_SELECTOR)
-        parse_url = partial(self.parse_url, relative_to=scrape_item.url.with_path("/"))
-
-        for tag in item_tags:
-            item = AlbumItem.from_tag(tag, parse_url)
+        for tag in soup.select(ALBUM_ITEM_SELECTOR):
+            item = AlbumItem.from_tag(tag)
             new_scrape_item = scrape_item.create_child(item.url, possible_datetime=item.date)
             await self.process_album_item(new_scrape_item, item, results)
             scrape_item.add_children()
 
     @error_handling_wrapper
     async def process_album_item(self, scrape_item: ScrapeItem, item: AlbumItem, results: dict) -> None:
-        link = item.get_src(self.parse_url)
+        link = item.src
         if link.suffix.lower() not in VIDEO_AND_IMAGE_EXTS or "no-image" in link.name or self.deep_scrape(link):
-            self.manager.task_group.create_task(self.file(scrape_item))
+            self.manager.task_group.create_task(self.run(scrape_item))
             return
 
-        filename, ext = self.get_filename_and_ext(link.name, assume_ext=".mp4")
-        custom_filename, _ = self.get_filename_and_ext(item.name, assume_ext=".mp4")
-        if not link.query.get("n"):
-            link = link.update_query(n=item.name)
-
         if not self.check_album_results(link, results):
+            filename, ext = self.get_filename_and_ext(link.name, assume_ext=".mp4")
+            custom_filename, _ = self.get_filename_and_ext(item.name, assume_ext=".mp4")
+            if not link.query.get("n"):
+                link = link.update_query(n=item.name)
             await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a file from a streaming URL."""
-        soup = link = date = None  # type: ignore
+        soup = link = None  # type: ignore
         if is_stream_redirect(scrape_item.url):
             soup, scrape_item.url = await self.client.get_soup_and_return_url(self.domain, scrape_item.url)
 
@@ -207,11 +199,8 @@ class BunkrrCrawler(Crawler):
         if not link:
             raise ScrapeError(422, "Could not find source")
 
-        if not scrape_item.possible_datetime:
-            date_str = soup.select_one(ITEM_DATE_SELECTOR)
-            if date_str:
-                date = parse_datetime(date_str.text.strip())
-                scrape_item.possible_datetime = date
+        if not scrape_item.possible_datetime and (date_str := soup.select_one(ITEM_DATE_SELECTOR)):
+            scrape_item.possible_datetime = parse_datetime(date_str.text.strip())
 
         title: str = soup.select_one("h1").text.strip()  # type: ignore
         await self.handle_direct_link(scrape_item, link, fallback_filename=title)
@@ -221,7 +210,9 @@ class BunkrrCrawler(Crawler):
         """Scrapes a file from a reinforced URL.
 
         Gets the filename from the soup before sending the scrape_item to `handle_direct_link`"""
-        soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         title: str = soup.select_one("h1").text.strip()  # type: ignore
         link: URL | None = await self.get_download_url_from_api(scrape_item.url)
@@ -236,7 +227,6 @@ class BunkrrCrawler(Crawler):
         `fallback_filename` will only be used if the link has no `n` query parameter"""
 
         link = url
-
         if is_reinforced_link(link):
             scrape_item.url = link
             link = await self.get_download_url_from_api(link)
@@ -245,7 +235,6 @@ class BunkrrCrawler(Crawler):
             raise ScrapeError(422)
 
         link = override_cdn(link)
-
         try:
             filename, ext = self.get_filename_and_ext(link.name)
         except NoExtensionError:
@@ -254,9 +243,7 @@ class BunkrrCrawler(Crawler):
         if not link.query.get("n"):
             link = link.update_query(n=fallback_filename)
 
-        custom_filename: str = link.query.get("n")  # type: ignore
-        custom_filename, _ = self.get_filename_and_ext(custom_filename)
-
+        custom_filename, _ = self.get_filename_and_ext(link.query.get("n"))  # type: ignore
         if is_cdn(scrape_item.url) and not is_reinforced_link(scrape_item.url):
             scrape_item.url = URL("https://get.bunkr.su/")  # Using a CDN as referer gets a 403 response
 
@@ -283,9 +270,8 @@ class BunkrrCrawler(Crawler):
         api_response = ApiResponse(**json_resp)
         link_str = decrypt_api_response(api_response)
         link = self.parse_url(link_str)
-        if link == self.primary_base_domain:
-            return
-        return link
+        if link != self.primary_base_domain:
+            return link
 
     def deep_scrape(self, url: URL) -> bool:
         assert url.host
@@ -354,10 +340,9 @@ def xor_decrypt(encrypted_data: bytearray, key: str) -> str:
 
 
 def get_slug_from_soup(soup: BeautifulSoup) -> str | None:
-    info_js = soup.select_one("script:contains('jsSlug')")
+    info_js = soup.select_one(JS_SLUG_SELECTOR)
     if not info_js:
         return
-    info_js_text: str = info_js.text  # type: ignore
-    info_js_dict = javascript.parse_js_vars(info_js_text)
+    info_js_dict = javascript.parse_js_vars(info_js.text)
     javascript.clean_dict(info_js_dict)
     return info_js_dict.get("jsSlug")

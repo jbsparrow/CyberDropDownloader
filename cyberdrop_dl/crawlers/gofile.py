@@ -19,6 +19,8 @@ if TYPE_CHECKING:
 
 
 WT_REGEX = re.compile(r'appdata\.wt\s=\s"([^"]+)"')
+API_ENTRYPOINT = URL("https://api.gofile.io")
+GLOBAL_JS_URL = URL("https://gofile.io/dist/js/global.js")
 
 
 class GoFileCrawler(Crawler):
@@ -26,8 +28,6 @@ class GoFileCrawler(Crawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "gofile", "GoFile")
-        self.api = URL("https://api.gofile.io")
-        self.js_address = URL("https://gofile.io/dist/js/global.js")
         self.api_key = manager.config_manager.authentication_data.gofile.api_key
         self.website_token = manager.cache_manager.get("gofile_website_token")
         self.headers = {}
@@ -38,7 +38,7 @@ class GoFileCrawler(Crawler):
 
     async def async_startup(self) -> None:
         get_website_token = error_handling_wrapper(self.get_website_token)
-        await self.get_account_token(self.api)
+        await self.get_account_token(API_ENTRYPOINT)
         await get_website_token(self, self.primary_base_domain)
 
     @create_task_id
@@ -52,15 +52,13 @@ class GoFileCrawler(Crawler):
         if not self.api_key or not self.website_token:
             return
         content_id = scrape_item.url.name
-        scrape_item.album_id = content_id
-        scrape_item.part_of_album = True
         password = scrape_item.url.query.get("password", "")
         scrape_item.url = scrape_item.url.with_query(None)
         if password:
             password = sha256(password.encode()).hexdigest()
 
         content_query = {"wt": self.website_token, "password": password}
-        content_url = self.api.joinpath("contents", content_id).with_query(content_query)
+        content_url = API_ENTRYPOINT.joinpath("contents", content_id).with_query(content_query)
         api_query = {"url": content_url, "headers_inc": self.headers, "origin": scrape_item}
 
         try:
@@ -72,7 +70,7 @@ class GoFileCrawler(Crawler):
                 raise ScrapeError(e.status, e.message) from e
             async with self.startup_lock:
                 await self.get_website_token(update=True)
-            content_url = content_url.update_query({"wt": self.website_token})
+            content_url = content_url.update_query(wt=self.website_token)
             api_query["url"] = content_url
             async with self.request_limiter:
                 json_resp = await self.client.get_json(self.domain, **api_query)
@@ -87,12 +85,8 @@ class GoFileCrawler(Crawler):
         else:
             scrape_item.add_to_parent_title(title)
 
-        # Do not reset children inside nested folders
-        if scrape_item.type != FILE_HOST_ALBUM:
-            scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
-
-        children = json_data["children"]
-        await self.handle_children(children, scrape_item)
+        scrape_item.setup_as_album("", album_id=content_id)
+        await self.handle_children(json_data["children"], scrape_item)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -123,14 +117,13 @@ class GoFileCrawler(Crawler):
                 link_str = child["directLink"]
 
             link = self.parse_url(link_str)
-            date = child["createTime"]
             filename, ext = self.get_filename_and_ext(link.name, assume_ext=".mp4")
-            new_scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, possible_datetime=date)
+            new_scrape_item = scrape_item.create_new(scrape_item.url, possible_datetime=child["createTime"])
             await self.handle_file(link, new_scrape_item, filename, ext)
             scrape_item.add_children()
 
         for folder_url in subfolders:
-            subfolder = self.create_scrape_item(scrape_item, url=folder_url, add_parent=scrape_item.url)
+            subfolder = scrape_item.create_child(folder_url)
             self.manager.task_group.create_task(self.run(subfolder))
 
     @error_handling_wrapper
@@ -142,7 +135,7 @@ class GoFileCrawler(Crawler):
         self.update_cookies(cookies)
 
     async def _get_new_api_key(self) -> str:
-        create_account_address = self.api / "accounts"
+        create_account_address = API_ENTRYPOINT / "accounts"
         async with self.request_limiter:
             json_resp = await self.client.post_data(self.domain, create_account_address, data={})
         if json_resp["status"] != "ok":
@@ -163,10 +156,10 @@ class GoFileCrawler(Crawler):
 
     async def _update_website_token(self) -> None:
         async with self.request_limiter:
-            text = await self.client.get_text(self.domain, self.js_address, origin=self.js_address)
+            text = await self.client.get_text(self.domain, GLOBAL_JS_URL, origin=GLOBAL_JS_URL)
         match = re.search(WT_REGEX, str(text))
         if not match:
-            raise ScrapeError(401, "Couldn't generate GoFile websiteToken", origin=self.js_address)
+            raise ScrapeError(401, "Couldn't generate GoFile websiteToken", origin=GLOBAL_JS_URL)
         self.website_token = match.group(1)
         self.manager.cache_manager.save("gofile_website_token", self.website_token)
         self._website_token_date = datetime.now(UTC)

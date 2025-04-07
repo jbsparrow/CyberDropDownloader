@@ -26,6 +26,8 @@ MIN_RATE_LIMIT = 4  # per minute
 MAX_WAIT = 120  # seconds
 MAX_RETRIES = 3
 
+PLAYLIST_ITEM_SELECTOR = "a[data-anim='4']"
+
 
 class XXXBunkerCrawler(Crawler):
     primary_base_domain = URL("https://xxxbunker.com")
@@ -145,17 +147,11 @@ class XXXBunkerCrawler(Crawler):
         else:
             raise ScrapeError(400, "Unsupported URL format")
 
-        scrape_item.part_of_album = True
+        scrape_item.setup_as_album(title)
 
         async for soup in self.web_pager(scrape_item):
-            videos = soup.select("a[data-anim='4']")
-            for video in videos:
-                link_str: str = video.get("href")
-                if not link_str:
-                    continue
-                link = self.parse_url(link_str)
-                new_scrape_item = self.create_scrape_item(scrape_item, link, title, add_parent=scrape_item.url)
-                await self.video(new_scrape_item)
+            for _, new_scrape_item in self.iter_children(scrape_item, soup.select(PLAYLIST_ITEM_SELECTOR)):
+                self.manager.task_group.create_task(self.run(new_scrape_item))
 
     async def web_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
         """Generator of website pages."""

@@ -28,17 +28,16 @@ class Rule34VaultCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
         if "post" in scrape_item.url.parts:
-            await self.file(scrape_item)
-        elif "playlists" in scrape_item.url.parts:
-            await self.playlist(scrape_item)
-        else:
-            await self.tag(scrape_item)
+            return await self.file(scrape_item)
+        if "playlists" in scrape_item.url.parts:
+            return await self.playlist(scrape_item)
+        await self.tag(scrape_item)
 
     @error_handling_wrapper
     async def tag(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
 
-        ## Broken
+        # Broken
         raise NotImplementedError
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)

@@ -60,8 +60,7 @@ class StreamableCrawler(Crawler):
             raise ScrapeError(404, VIDEO_STATUS.get(status))
 
         title = json_resp.get("reddit_title") or json_resp["title"]
-        date: int = json_resp.get("date_added")  # type: ignore
-        scrape_item.possible_datetime = date
+        scrape_item.possible_datetime = json_resp.get("date_added")  # type: ignore
 
         log_debug(json.dumps(json_resp, indent=4))
         link_str = get_best_quality(json_resp["files"])  # type: ignore
@@ -70,19 +69,18 @@ class StreamableCrawler(Crawler):
 
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
-        custom_filename = f"{title} [{video_id}]{ext}"
-        custom_filename, _ = self.get_filename_and_ext(custom_filename)
+        custom_filename, _ = self.get_filename_and_ext(f"{title} [{video_id}]{ext}")
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
 
-def get_best_quality(info_dict: dict) -> str:
+def get_best_quality(info_dict: dict[str, dict[str, str]]) -> str:
     """Returns URL of the best available quality.
 
     Returns URL as `str`"""
     default = ""
     links = {}
     for name, file in info_dict.items():
-        link_str: str = file.get("url")
+        link_str: str | None = file.get("url")
         if not link_str:
             continue
         links[name] = link_str

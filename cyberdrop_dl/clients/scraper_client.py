@@ -159,8 +159,9 @@ class ScraperClient:
         url: URL,
         impersonate: BrowserTypeLiteral | None = "chrome",
         data: dict | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> CurlResponse:
+        """**kwargs are passed to `session.post`"""
         data = data or {}
         async with self.new_curl_session(impersonate) as session:
             response: CurlResponse = await session.post(str(url), data=data, **kwargs)

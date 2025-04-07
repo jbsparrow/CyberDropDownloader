@@ -44,7 +44,7 @@ class DirtyShipCrawler(Crawler):
 
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem) -> None:
-        title = ""
+        title: str = ""
         async for soup in self.web_pager(scrape_item.url):
             if not title:
                 title: str = soup.select_one("title").text  # type: ignore
@@ -52,12 +52,8 @@ class DirtyShipCrawler(Crawler):
                 title = self.create_title(title)
                 scrape_item.setup_as_album(title)
 
-            for video in soup.select(PLAYLIST_ITEM_SELECTOR):
-                link_str: str = video.get("href")  # type: ignore
-                link = self.parse_url(link_str)
-                new_scrape_item = scrape_item.create_child(link)
+            for _, new_scrape_item in self.iter_children(scrape_item, soup.select(PLAYLIST_ITEM_SELECTOR)):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
-                scrape_item.add_children()
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
@@ -67,23 +63,24 @@ class DirtyShipCrawler(Crawler):
         title: str = soup.select_one("title").text  # type: ignore
         title = title.split(" - DirtyShip")[0]
         videos = soup.select(VIDEO_SELECTOR)
-        formats: set[Format] = set()
-        for video in videos:
-            link_str: str = video.get("src")  # type: ignore
-            if link_str.startswith("type="):
-                continue
-            res: str = video.get("title")  # type: ignore
-            link = self.parse_url(link_str)  # type: ignore
-            formats.add(Format(int(res), link))
 
+        def get_formats():
+            for video in videos:
+                link_str: str = video.get("src")  # type: ignore
+                if link_str.startswith("type="):
+                    continue
+                res: str = video.get("title")  # type: ignore
+                link = self.parse_url(link_str)  # type: ignore
+                yield (Format(int(res), link))
+
+        formats = set(get_formats())
         if not formats:
             formats = self.get_flowplayer_sources(soup)
         if not formats:
             raise ScrapeError(422, message="No video source found")
 
-        res, link = sorted(formats)[-1]  # type: ignore
+        res, link = sorted(formats)[-1]
         res = f"{res}p" if res else "Unknown"
-
         filename, ext = self.get_filename_and_ext(link.name)
         custom_filename, _ = self.get_filename_and_ext(f"{title} [{res}]{link.suffix}")
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)

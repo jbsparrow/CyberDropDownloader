@@ -85,12 +85,18 @@ class MotherlessCrawler(Crawler):
         if is_homepage or "images" in scrape_item.url.parts:
             async for soup in self.web_pager(images_url):
                 check_soup(soup)
-                await self.iter_items(scrape_item, soup, "Images")
+                for _, new_scrape_item in self.iter_children(
+                    scrape_item, soup.select(ITEM_SELECTOR), new_title_part="Images"
+                ):
+                    self.manager.task_group.create_task(self.run(new_scrape_item))
 
         if is_homepage or "videos" in scrape_item.url.parts:
             async for soup in self.web_pager(videos_url):
                 check_soup(soup)
-                await self.iter_items(scrape_item, soup, "Videos")
+                for _, new_scrape_item in self.iter_children(
+                    scrape_item, soup.select(ITEM_SELECTOR), new_title_part="Videos"
+                ):
+                    self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def collection(self, scrape_item: ScrapeItem) -> None:
@@ -128,7 +134,10 @@ class MotherlessCrawler(Crawler):
                 title = self.create_title(title, collection_id)
                 scrape_item.setup_as_album(title, album_id=collection_id)
 
-            await self.iter_items(scrape_item, soup, media_type.capitalize())
+            for _, new_scrape_item in self.iter_children(
+                scrape_item, soup.select(ITEM_SELECTOR), new_title_part=media_type.capitalize()
+            ):
+                self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def media(self, scrape_item: ScrapeItem) -> None:
@@ -186,14 +195,6 @@ class MotherlessCrawler(Crawler):
             scrape_item.add_to_parent_title(f"{media_info.type.capitalize()}s")
 
         return media_info
-
-    async def iter_items(self, scrape_item: ScrapeItem, soup: BeautifulSoup, new_title_part: str = "") -> None:
-        for item in soup.select(ITEM_SELECTOR):
-            link_str: str = item.get("href")  # type: ignore
-            link = self.parse_url(link_str)
-            new_scrape_item = scrape_item.create_child(link, new_title_part=new_title_part)
-            self.manager.task_group.create_task(self.run(new_scrape_item))
-            scrape_item.add_children()
 
 
 def check_soup(soup: BeautifulSoup) -> None:

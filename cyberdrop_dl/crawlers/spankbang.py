@@ -2,16 +2,15 @@ from __future__ import annotations
 
 import calendar
 import datetime
-import json
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils import javascript
-from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
+from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -88,23 +87,17 @@ class SpankBangCrawler(Crawler):
 
         playlist = PlaylistInfo.from_url(scrape_item.url)
         scrape_item.url = playlist.url
-        scrape_item.part_of_album = True
-        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
-        scrape_item.album_id = playlist.id_
         results = await self.get_album_results(playlist.id_)
+        title = ""
 
-        async for title, page, videos in self.web_pager(scrape_item):
-            if page == 1:
-                title = self.create_title(title, playlist.id_)
-                scrape_item.add_to_parent_title(title)
+        async for playlist_title, videos in self.web_pager(scrape_item):
+            if title:
+                title = self.create_title(playlist_title, playlist.id_)
+                scrape_item.setup_as_album(title, album_id=playlist.id_)
 
-            for video in videos:
-                link_str: str = video.get("href")  # type: ignore
-                link = self.parse_url(link_str)
-                if not self.check_album_results(link, results):
-                    new_scrape_item = self.create_scrape_item(scrape_item, link, add_parent=playlist.url)
+            for _, new_scrape_item in self.iter_children(scrape_item, videos):
+                if not self.check_album_results(new_scrape_item.url, results):
                     self.manager.task_group.create_task(self.run(new_scrape_item))
-                scrape_item.add_children()
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
@@ -119,8 +112,8 @@ class SpankBangCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, scrape_item.url)
 
-        video_removed = soup.select_one(VIDEO_REMOVED_SELECTOR)
-        if video_removed or "This video is no longer available" in str(soup):
+        was_removed = soup.select_one(VIDEO_REMOVED_SELECTOR)
+        if was_removed or "This video is no longer available" in str(soup):
             raise ScrapeError(410)
 
         info = get_info_dict(soup)
@@ -129,20 +122,18 @@ class SpankBangCrawler(Crawler):
             return
         scrape_item.url = canonical_url
 
-        v_format = get_best_quality(info)
-        if not v_format:
+        video_format = get_best_quality(info)
+        if not video_format:
             raise ScrapeError(422)
-        resolution, link_str = v_format
-        date = parse_datetime(info["uploadDate"])
-        link = self.parse_url(link_str)
-        scrape_item.possible_datetime = date
+        resolution, link_str = video_format
+        scrape_item.possible_datetime = parse_datetime(info["uploadDate"])
 
+        link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
-        custom_filename = f"{info['title']} [{resolution}]{ext}"
-        custom_filename, _ = self.get_filename_and_ext(custom_filename)
+        custom_filename, _ = self.get_filename_and_ext(f"{info['title']} [{resolution}]{ext}")
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
-    async def web_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[tuple[str, int, ResultSet[Tag]]]:
+    async def web_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[tuple[str, ResultSet[Tag]]]:
         """Generator of website pages."""
         page_url = scrape_item.url
         current_page = 1
@@ -152,7 +143,7 @@ class SpankBangCrawler(Crawler):
 
             playlist = PlaylistInfo.from_url(page_url, soup)
             videos = soup.select(PLAYLIST_ITEM_SELECTOR)
-            yield playlist.title, current_page, videos
+            yield playlist.title, videos
             if len(videos) < 100:
                 break
             current_page += 1
@@ -173,23 +164,20 @@ def get_info_dict(soup: BeautifulSoup) -> VideoInfo:
     title_tag = soup.select_one("div#video h1")
     title: str = title_tag.get("title") or title_tag.text.replace("\n", "")  # type: ignore
     del soup
-    info: dict[str, str | dict] = javascript.parse_js_vars(info_js_script_text)
-    extended_info_dict = javascript.parse_json_to_dict(extended_info_js_script_text)
-    # type: ignore
+    info: dict[str, Any] = javascript.parse_js_vars(info_js_script_text)
+    extended_info_dict: dict = javascript.parse_json_to_dict(extended_info_js_script_text)  # type: ignore
 
     info["title"] = title.strip()
     info = info | extended_info_dict
     embed_url = URL(info["embedUrl"])
     info["video_id"] = embed_url.parts[1]
     javascript.clean_dict(info, "stream_data")
-    log_debug(json.dumps(info, indent=4))
+    log_debug(info)
     return VideoInfo(**info)
 
 
 def get_best_quality(info_dict: dict) -> Format:
-    """Returns name and URL of the best available quality.
-
-    Returns URL as `str`"""
+    """Returns name and URL of the best available quality."""
     qualities: dict = info_dict["stream_data"]
     for res in RESOLUTIONS:
         value = qualities.get(res)

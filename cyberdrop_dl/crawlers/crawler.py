@@ -4,6 +4,7 @@ import asyncio
 import copy
 import re
 from abc import ABC, abstractmethod
+from collections.abc import Iterable
 from dataclasses import field
 from datetime import datetime
 from functools import wraps
@@ -17,10 +18,16 @@ from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.logger import log
-from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext, parse_url, remove_file_id
+from cyberdrop_dl.utils.utilities import (
+    error_handling_wrapper,
+    get_download_path,
+    get_filename_and_ext,
+    parse_url,
+    remove_file_id,
+)
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Callable, Generator, Iterable
+    from collections.abc import AsyncGenerator, Callable, Generator
 
     from bs4 import BeautifulSoup, Tag
 
@@ -75,13 +82,12 @@ class Crawler(ABC):
 
         Does nothing unless `ignore_options.exclude_files_with_no_extension` is `False`
         """
-        clean_filename = Path(filename).as_posix().replace("/", "-")  # remove OS separators
-        filename_as_path = Path(clean_filename)
+        filename_as_path = Path(filename)
         if assume_ext and self.allow_no_extension and not filename_as_path.suffix:
             filename_as_path = filename_as_path.with_suffix(assume_ext)
-            new_filename, ext = get_filename_and_ext(filename_as_path.name, *args, *kwargs)
+            new_filename, ext = get_filename_and_ext(str(filename_as_path), *args, *kwargs)
             return Path(new_filename).stem, ext
-        return get_filename_and_ext(clean_filename, *args, *kwargs)
+        return get_filename_and_ext(filename, *args, *kwargs)
 
     async def startup(self) -> None:
         """Starts the crawler."""
@@ -142,6 +148,11 @@ class Crawler(ABC):
 
         download_folder = get_download_path(self.manager, scrape_item, self.folder_domain)
         media_item = MediaItem(url, scrape_item, download_folder, filename, original_filename, debrid_link, ext=ext)
+
+        if media_item.datetime and not isinstance(media_item.datetime, int):
+            msg = f"Invalid datetime from '{self.folder_domain}' crawler . Got {media_item.datetime!r}, expected int. "
+            msg += "Please file a bug report at https://github.com/jbsparrow/CyberDropDownloader/issues/new/choose"
+            log(msg, 30)
 
         check_complete = await self.manager.db_manager.history_table.check_complete(self.domain, url, scrape_item.url)
         if check_complete:
@@ -295,17 +306,31 @@ class Crawler(ABC):
         response_url = url or self.primary_base_domain
         self.client.client_manager.cookies.update_cookies(cookies, response_url)
 
-    def iter_tags(self, soup_tags: Iterable[Tag], attribute: str = "href") -> Generator[tuple[URL | None, URL]]:
-        """Generates tuples with an URL from the `src` value of first image tag (if any) and the URL from the `attribute` value"""
+    def iter_tags(
+        self, soup_tags: Iterable[Tag], attributes: Iterable[str] | str = "href"
+    ) -> Generator[tuple[URL | None, URL]]:
+        """Generates tuples with an URL from the `src` value of first image tag (if any) and the URL from the first valid `attribute` value"""
+        assert attributes
+        assert isinstance(attributes, Iterable | str)
+        if isinstance(attributes, str):
+            attributes = [attributes]
+
+        def get_first_valid_attribute() -> str | None:
+            for attribute in attributes:
+                if value := item.get(attribute):
+                    return value  # type: ignore
+
         for item in soup_tags:
             thumbnail = item.select_one("img")
             thumb_str: str | None = thumbnail["src"] if thumbnail else None  # type: ignore
             thumb = self.parse_url(thumb_str) if thumb_str else None
-            link = self.parse_url(item[attribute])  # type: ignore
+            for attribute in attributes:
+                item.get(attribute)
+            link = self.parse_url(get_first_valid_attribute())  # type: ignore
             yield thumb, link
 
     def iter_children(
-        self, scrape_item: ScrapeItem, soup_tags: Iterable[Tag], attribute: str = "href", **kwargs: Any
+        self, scrape_item: ScrapeItem, soup_tags: Iterable[Tag], attribute: Iterable[str] | str = "href", **kwargs: Any
     ) -> Generator[tuple[URL | None, ScrapeItem]]:
         """Generates tuples with an URL from the `src` value of first image tag (if any) and a new scrape item from the `attribute` value
 
@@ -337,6 +362,12 @@ class Crawler(ABC):
             if not page_url_str:
                 break
             page_url = self.parse_url(page_url_str, **kwargs)
+
+    @error_handling_wrapper
+    async def direct_file(self, scrape_item: ScrapeItem, url: URL | None = None, assume_ext: str | None = None) -> None:
+        link = url or scrape_item.url
+        filename, ext = self.get_filename_and_ext(link.name, assume_ext=assume_ext)
+        await self.handle_file(link, scrape_item, filename, ext)
 
 
 def create_task_id(func: Callable) -> Callable:

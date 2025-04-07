@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from functools import cached_property
 from typing import TYPE_CHECKING
@@ -9,14 +8,11 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.utilities import error_handling_wrapper
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_from_headers
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
-
-
-BLOCK_FOLDER_DOWNLOADS = False
 
 
 class DropboxCrawler(Crawler):
@@ -69,7 +65,7 @@ class DropboxCrawler(Crawler):
         url = await self.get_redict_url(url)
         async with self.request_limiter:
             headers: dict = await self.client.get_head(self.domain, url)
-        if not are_valid_headers(headers):
+        if not ("Content-Disposition" in headers and not is_html(headers)):
             raise ScrapeError(422)
         return get_filename_from_headers(headers)
 
@@ -140,24 +136,6 @@ def get_item_info(url: URL) -> DropboxItem:
         file_id = url.parts[file_id_index]
 
     return DropboxItem(file_id, folder_tokens, url, rlkey, filename)
-
-
-FILENAME_REGEX_STR = r"filename\*=UTF-8''(.+)|.*filename=\"(.*?)\""
-FILENAME_REGEX = re.compile(FILENAME_REGEX_STR, re.IGNORECASE)
-
-
-def get_filename_from_headers(headers: dict) -> str | None:
-    content_disposition = headers.get("Content-Disposition")
-    if not content_disposition:
-        return
-    match = re.search(FILENAME_REGEX, content_disposition)
-    if match:
-        matches = match.groups()
-        return matches[0] or matches[1]
-
-
-def are_valid_headers(headers: dict):
-    return "Content-Disposition" in headers and not is_html(headers)
 
 
 def is_html(headers: dict) -> bool:

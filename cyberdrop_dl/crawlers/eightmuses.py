@@ -5,17 +5,18 @@ from typing import TYPE_CHECKING
 from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
 TILE_SELECTOR = "a[class*=c-tile]"
 IMAGE_SELECTOR = "div[class=image]"
+TITLE_PARTS_SELECTOR = "div[class=top-menu-breadcrumb] > ol > li > a"
 
 
 class EightMusesCrawler(Crawler):
@@ -29,9 +30,9 @@ class EightMusesCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        if "album" not in scrape_item.url.parts:
-            raise ValueError
-        await self.album(scrape_item)
+        if "album" in scrape_item.url.parts:
+            return await self.album(scrape_item)
+        raise ValueError
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -43,7 +44,6 @@ class EightMusesCrawler(Crawler):
 
         album_id = scrape_item.album_id
         if not album_id:
-            scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
             title_parts = get_title_parts(soup)
             album_title = title_parts[-1]
             album_id = album_title.replace(" ", "-")
@@ -53,27 +53,25 @@ class EightMusesCrawler(Crawler):
         results = await self.get_album_results(album_id)
 
         for tile in soup.select(TILE_SELECTOR):
-            tile_link_str: str = tile.get("href")  # type: ignore
-            tile_link = self.parse_url(tile_link_str)
+            tile_link = self.parse_url(tile.get("href"))  # type: ignore
             tile_title: str = tile.get("title", "")  # type: ignore
-
             image = tile.select_one(IMAGE_SELECTOR)
-            is_new_album = image.get("itemtype") == "https://schema.org/ImageGallery"  # type: ignore
+            is_new_album = image["itemtype"] == "https://schema.org/ImageGallery"  # type: ignore
             new_album_id = f"{scrape_item.album_id}/{tile_title.replace(' ', '-')}"
             new_scrape_item = scrape_item.create_child(tile_link, new_title_part=tile_title, album_id=new_album_id)
             if is_new_album:
                 await self.album(new_scrape_item)
                 continue
 
-            filename, ext = self.get_filename_and_ext(f"{tile_title}.jpg")
             image_link_str: str = image.select_one("img").get("data-src").replace("/th/", "/fm/")  # type: ignore
             image_link = self.parse_url(image_link_str)
             if not self.check_album_results(image_link, results):
+                filename, ext = self.get_filename_and_ext(f"{tile_title}.jpg")
                 await self.handle_file(image_link, new_scrape_item, filename, ext)
             scrape_item.add_children()
 
 
 def get_title_parts(soup: BeautifulSoup) -> tuple[str, ...]:
     """Gets the album title, sub-album title, and comic title."""
-    titles = soup.select("div[class=top-menu-breadcrumb] > ol > li > a")[1:]
+    titles = soup.select(TITLE_PARTS_SELECTOR)[1:]
     return [title.text for title in titles]  # type: ignore

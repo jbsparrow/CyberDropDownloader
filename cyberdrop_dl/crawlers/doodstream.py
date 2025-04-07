@@ -21,6 +21,8 @@ if TYPE_CHECKING:
 VIDEO_SELECTOR = "div#video_player video"
 API_MD5_ENTRYPOINT = URL("https://doodstream.com/pass_md5/")
 TOKEN_CHARS = string.ascii_letters + string.digits
+JS_SELECTOR = "script:contains('/pass_md5/')"
+FILE_JS_SELECTOR = "script:contains('file_id')"
 
 
 class DoodStreamCrawler(Crawler):
@@ -55,11 +57,9 @@ class DoodStreamCrawler(Crawler):
         title = title.split("- DoodStream")[0].strip()
 
         file_id = get_file_id(soup)
-        filename = f"{file_id}.mp4"
         debrid_link = await self.get_download_url(soup)
-        filename, ext = self.get_filename_and_ext(filename)
-        custom_filename = title + ext
-        custom_filename, _ = self.get_filename_and_ext(custom_filename)
+        filename, ext = self.get_filename_and_ext(f"{file_id}.mp4")
+        custom_filename, _ = self.get_filename_and_ext(f"{title}{ext}")
         scrape_item.url = canonical_url
         await self.handle_file(
             scrape_item.url, scrape_item, filename, ext, debrid_link=debrid_link, custom_filename=custom_filename
@@ -75,13 +75,12 @@ class DoodStreamCrawler(Crawler):
         text = str(new_soup).strip()
         random_padding = "".join(random.choice(TOKEN_CHARS) for _ in range(10))
         expire = int(datetime.now(UTC).timestamp() * 1000)  # remove decimals
-        link_str = text + random_padding
-        download_url = self.parse_url(link_str)
+        download_url = self.parse_url(text + random_padding)
         return download_url.with_query(token=token, expiry=expire)
 
 
 def get_md5_path(soup: BeautifulSoup) -> str:
-    js_info = soup.select_one("script:contains('/pass_md5/')")
+    js_info = soup.select_one(JS_SELECTOR)
     js_text: str = js_info.text if js_info else ""
     if not js_info:
         raise ScrapeError(422)
@@ -90,7 +89,7 @@ def get_md5_path(soup: BeautifulSoup) -> str:
 
 
 def get_file_id(soup: BeautifulSoup) -> int:
-    js_info = soup.select_one("script:contains('file_id')")
+    js_info = soup.select_one(FILE_JS_SELECTOR)
     js_text: str = js_info.text if js_info else ""
     if not js_info:
         raise ScrapeError(422)
