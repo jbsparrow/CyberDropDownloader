@@ -46,7 +46,7 @@ class AShemaleTubeCrawler(Crawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "ashemaletube", "aShemaleTube")
-        self.request_limiter = AsyncLimiter(1, 10)
+        self.request_limiter = AsyncLimiter(3, 10)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
