@@ -163,8 +163,11 @@ class ClientManager:
         response: ClientResponse | CurlResponse | CachedResponse,
         download: bool = False,
         origin: ScrapeItem | URL | None = None,
-    ) -> None:
-        """Checks the HTTP status code and raises an exception if it's not acceptable."""
+    ) -> BeautifulSoup | None:
+        """Checks the HTTP status code and raises an exception if it's not acceptable.
+
+        If the response is successful and has valid html, returns soup
+        """
         status: int = response.status_code if hasattr(response, "status_code") else response.status  # type: ignore
         headers = response.headers
         url_host: str = URL(response.url).host  # type: ignore
@@ -179,6 +182,7 @@ class ClientManager:
             if soup := await get_soup_from_response(response):
                 if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
                     raise DDOSGuardError(origin=origin)
+                return soup
 
         async def check_json_status():
             if not any(domain in url_host for domain in ("gofile", "imgur")):
