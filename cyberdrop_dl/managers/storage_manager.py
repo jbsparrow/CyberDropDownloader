@@ -6,9 +6,10 @@ from datetime import timedelta
 from functools import lru_cache
 from pathlib import Path
 from types import MappingProxyType
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING
 
 import psutil
+from psutil._common import sdiskpart
 from pydantic import ByteSize
 
 from cyberdrop_dl.clients.errors import InsufficientFreeSpaceError
@@ -33,6 +34,7 @@ class StorageManager:
         self._period: int = 2  # how often the check_free_space_loop will run (in seconds)
         self._log_period: int = 10  # log storage details every <x> loops, AKA log every 20 (2x10) seconds,
         self._timedelta_period = timedelta(seconds=self._period)
+        self._nt_network_drives: dict[Path, sdiskpart] = {}
         self._loop = asyncio.create_task(self._check_free_space_loop())
 
     def get_used_mounts_stats(self, simplified: bool = True) -> dict:
@@ -40,11 +42,12 @@ class StorageManager:
 
         If simplified is `True` (the default), all the information is flatten as a single string and mounts are converted to `str` (for logging)"""
         mounts = {}
+        partitions = get_available_partitions() | self._nt_network_drives
         for mount in self._used_mounts:
             free_space = ByteSize(self._free_space[mount])
             if simplified:
                 free_space = free_space.human_readable(decimal=True)
-            data = get_available_partitions()[mount]._asdict() | {"free_space": free_space}
+            data = partitions[mount]._asdict() | {"free_space": free_space}
             data.pop("mountpoint", None)
             mounts[mount] = data
 
@@ -90,6 +93,20 @@ class StorageManager:
     async def _has_sufficient_space(self, folder: Path) -> bool:
         """Checks if there is enough free space to download to this folder"""
 
+        async def nt_network_drive_check():
+            """Calls is_network_drive to cache the result and prevent blocking on future calls"""
+            if not psutil.WINDOWS:
+                return
+
+            folder_drive = Path(folder.drive)
+            async with self._mount_addition_locks[folder_drive]:
+                if folder_drive in self._nt_network_drives:
+                    return
+                if await asyncio.to_thread(is_network_drive, folder.drive):
+                    nw_drive = sdiskpart(folder.drive, folder.drive, "network_drive", "")
+                    self._nt_network_drives[folder_drive] = nw_drive
+
+        await nt_network_drive_check()
         mount = get_mount_point(folder)
         if not mount:
             return False
@@ -135,10 +152,16 @@ def get_mount_point(folder: Path) -> Path | None:
     assert folder.is_absolute()
     mounts = get_available_mountpoints()
     possible_mountpoints = [mount for mount in mounts if mount in folder.parents or mount == folder]
+    if not possible_mountpoints and psutil.WINDOWS:
+        # path may be a network share. See: https://github.com/jbsparrow/CyberDropDownloader/issues/860
+        # is_network_drive MUST be pre-cached to prevent blocking
+        if is_network_drive(folder.drive):
+            possible_mountpoints = [Path(folder.drive)]
+
     if not possible_mountpoints:
         # Mount point for this path does not exists
         # This will only happend on Windows, ex: an USB drive (`D:`) that is not currently available (AKA disconnected)
-        # On Unix there always at least 1 mountpoint, root (`/`)
+        # On Unix there's always at least 1 mountpoint, root (`/`)
         return
 
     # Get the closest mountpoint to the desired path
@@ -150,7 +173,7 @@ def get_mount_point(folder: Path) -> Path | None:
 
 
 @lru_cache
-def get_available_partitions() -> MappingProxyType[Path, NamedTuple]:
+def get_available_partitions() -> MappingProxyType[Path, sdiskpart]:
     """NOTE: This function is cached which means it always returns the partitions available at startup"""
 
     # all=True is required to make sure it works on most platforms. See: https://github.com/giampaolo/psutil/issues/2191
@@ -162,3 +185,24 @@ def get_available_partitions() -> MappingProxyType[Path, NamedTuple]:
 def get_available_mountpoints() -> tuple[Path, ...]:
     """NOTE: This function is cached which means it always returns the mounts available at startup"""
     return tuple(sorted(get_available_partitions().keys()))
+
+
+@lru_cache
+def is_network_drive(path_drive: str) -> bool:
+    """Determines if the drive is a Windows network drive (UNC or mapped drive) and exists.
+
+    `path_drive` MUST be the output of `pathlib.Path.drive` and the original path instance MUST be absolute
+
+    NOTE: This operation is blocking, but the function itself is cached"""
+    if not psutil.WINDOWS:
+        return False
+
+    detected_mountpoints = [p.mountpoint for p in get_available_partitions().values()]
+    is_unc_path = path_drive.startswith("\\\\")
+    is_mapped_drive = ":" in path_drive
+    is_unknown = is_mapped_drive and f"{path_drive.upper()}\\" not in detected_mountpoints
+
+    if is_unc_path or is_unknown:
+        return Path(path_drive).is_dir()
+
+    return False
