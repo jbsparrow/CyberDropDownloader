@@ -25,6 +25,7 @@ from cyberdrop_dl.utils.logger import log, log_spacer
 from cyberdrop_dl.utils.utilities import get_soup_from_response
 
 if TYPE_CHECKING:
+    from aiohttp_client_cache import CachedResponse
     from curl_cffi.requests.models import Response as CurlResponse
 
     from cyberdrop_dl.managers.manager import Manager
@@ -159,13 +160,14 @@ class ClientManager:
     @classmethod
     async def check_http_status(
         cls,
-        response: ClientResponse | CurlResponse,
+        response: ClientResponse | CurlResponse | CachedResponse,
         download: bool = False,
         origin: ScrapeItem | URL | None = None,
     ) -> None:
         """Checks the HTTP status code and raises an exception if it's not acceptable."""
         status: int = response.status_code if hasattr(response, "status_code") else response.status  # type: ignore
         headers = response.headers
+        url_host: str = URL(response.url).host  # type: ignore
         message = None
 
         e_tag = headers.get("ETag")
@@ -176,16 +178,22 @@ class ClientManager:
         if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
             return
 
-        if any(domain in response.url.host for domain in ("gofile", "imgur")):  # type: ignore
-            with contextlib.suppress(ContentTypeError):
-                JSON_Resp: dict = await response.json()
-                status: str | int = JSON_Resp.get("status")  # type: ignore
-                if status and isinstance(status, str) and "notFound" in status:
-                    raise ScrapeError(404, origin=origin)
-                data = JSON_Resp.get("data")
-                if data and isinstance(data, dict) and "error" in data:
-                    raise ScrapeError(status, data["error"], origin=origin)
+        async def check_json_status():
+            if not any(domain in url_host for domain in ("gofile", "imgur")):
+                return
 
+            with contextlib.suppress(ContentTypeError):
+                json_resp: dict[str, Any] | None = await response.json()
+                if not json_resp:
+                    return
+                json_status: str | int | None = json_resp.get("status")
+                if json_status and isinstance(status, str) and "notFound" in status:
+                    raise ScrapeError(404, origin=origin)
+
+                if (data := json_resp.get("data")) and isinstance(data, dict) and "error" in data:
+                    raise ScrapeError(json_status or status, data["error"], origin=origin)
+
+        await check_json_status()
         soup = await get_soup_from_response(response)
         if soup:
             if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
