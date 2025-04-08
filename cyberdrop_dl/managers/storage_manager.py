@@ -13,7 +13,7 @@ from psutil._common import sdiskpart
 from pydantic import ByteSize
 
 from cyberdrop_dl.clients.errors import InsufficientFreeSpaceError
-from cyberdrop_dl.utils.logger import log_debug
+from cyberdrop_dl.utils.logger import log, log_debug
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -117,6 +117,8 @@ class StorageManager:
                 result = await asyncio.to_thread(psutil.disk_usage, str(mount))
                 self._free_space[mount] = result.free
                 self._used_mounts.add(mount)
+                log(f"A new mountpoint ({mount}) will be used for '{folder}'")
+                log({"Storage status": self.get_used_mounts_stats()})
 
         return self._free_space[mount] > self.manager.config_manager.global_settings_data.general.required_free_space
 
@@ -162,6 +164,8 @@ def get_mount_point(folder: Path) -> Path | None:
         # Mount point for this path does not exists
         # This will only happend on Windows, ex: an USB drive (`D:`) that is not currently available (AKA disconnected)
         # On Unix there's always at least 1 mountpoint, root (`/`)
+        msg = f"No available mountpoint found for '{folder}'\n -> {folder.drive = } - {folder.drive = } - {folder.parents[-1] = }"
+        log(msg, 40)
         return
 
     # Get the closest mountpoint to the desired path
@@ -197,11 +201,13 @@ def is_network_drive(path_drive: str) -> bool:
     if not psutil.WINDOWS:
         return False
 
-    detected_mountpoints = [p.mountpoint for p in get_available_partitions().values()]
+    known_mounts = [p.mountpoint for p in get_available_partitions().values()]
     is_unc_path = path_drive.startswith("\\\\")
     is_mapped_drive = ":" in path_drive
-    is_unknown = is_mapped_drive and f"{path_drive.upper()}\\" not in detected_mountpoints
+    is_unknown = is_mapped_drive and f"{path_drive.upper()}\\" not in known_mounts
 
+    msg = f"checking new possible network_drive: {path_drive = } {is_unc_path  = } {is_unknown} {known_mounts!s}"
+    log_debug(msg)
     if is_unc_path or is_unknown:
         return Path(path_drive).is_dir()
 
