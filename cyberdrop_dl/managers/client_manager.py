@@ -170,13 +170,15 @@ class ClientManager:
         url_host: str = URL(response.url).host  # type: ignore
         message = None
 
-        e_tag = headers.get("ETag")
-        if download and e_tag in DOWNLOAD_ERROR_ETAGS:
-            message = DOWNLOAD_ERROR_ETAGS.get(e_tag)
-            raise DownloadError(HTTPStatus.NOT_FOUND, message=message, origin=origin)
+        def check_etag():
+            if download and (e_tag := headers.get("ETag")) in DOWNLOAD_ERROR_ETAGS:
+                message = DOWNLOAD_ERROR_ETAGS.get(e_tag)
+                raise DownloadError(HTTPStatus.NOT_FOUND, message=message, origin=origin)
 
-        if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
-            return
+        async def check_ddos_guard():
+            if soup := await get_soup_from_response(response):
+                if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
+                    raise DDOSGuardError(origin=origin)
 
         async def check_json_status():
             if not any(domain in url_host for domain in ("gofile", "imgur")):
@@ -193,12 +195,13 @@ class ClientManager:
                 if (data := json_resp.get("data")) and isinstance(data, dict) and "error" in data:
                     raise ScrapeError(json_status or status, data["error"], origin=origin)
 
-        await check_json_status()
-        soup = await get_soup_from_response(response)
-        if soup:
-            if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
-                raise DDOSGuardError(origin=origin)
+        check_etag()
+        if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
+            # check DDosGuard even on successful pages
+            return await check_ddos_guard()
 
+        await check_json_status()
+        await check_ddos_guard()
         raise DownloadError(status=status, message=message, origin=origin)
 
     @staticmethod
