@@ -36,6 +36,7 @@ from .imgur import ImgurCrawler
 from .kemono import KemonoCrawler
 from .luscious import LusciousCrawler
 from .mediafire import MediaFireCrawler
+from .missav import MissAVCrawler
 from .motherless import MotherlessCrawler
 from .nekohouse import NekohouseCrawler
 from .nhentai import NHentaiCrawler
