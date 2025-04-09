@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from functools import cached_property, partial, singledispatchmethod
 from typing import TYPE_CHECKING
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import InvalidURLError, LoginError, ScrapeError
@@ -22,17 +22,11 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_an
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Sequence
 
-    from bs4 import Tag
-
     from cyberdrop_dl.managers.manager import Manager
 
+HTTP_URL_REGEX_STR = r"https?://(www\.)?[-a-zA-Z0-9@:%._+~#=]{2,256}\.[a-z]{2,12}\b([-a-zA-Z0-9@:%_+.~#?&/=]*)"
 
-HTTP_URL_REGEX_STRS = [
-    r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,4}\\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)",
-    r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,4}\/[-a-zA-Z0-9@:%._\+~#=]*\/[-a-zA-Z0-9@:?&%._\+~#=]*",
-]
-
-HTTP_URL_PATTERNS = [re.compile(regex) for regex in HTTP_URL_REGEX_STRS]
+HTTP_URL_REGEX = re.compile(HTTP_URL_REGEX_STR)
 
 
 @dataclass(frozen=True, slots=True)
@@ -253,7 +247,7 @@ class XenforoCrawler(Crawler):
         """Scrapes embeds from a post."""
         selector = post.selectors.embeds
         embeds = post.content.select(selector.element)
-        await self.process_children(scrape_item, embeds, selector.attribute)
+        await self.process_children(scrape_item, embeds, selector.attribute, embeds=True)
 
     async def attachments(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         """Scrapes attachments from a post."""
@@ -277,17 +271,25 @@ class XenforoCrawler(Crawler):
             page_url = self.parse_url(page_url_str)
             page_url = self.pre_filter_link(page_url)
 
-    async def process_children(self, scrape_item: ScrapeItem, links: list[Tag], selector: str | None) -> None:
+    async def process_children(
+        self, scrape_item: ScrapeItem, links: list[Tag], selector: str, *, embeds: bool = False
+    ) -> None:
         for link_obj in links:
-            link_tag: Tag | str = link_obj.get(selector)  # type: ignore
-            if link_tag and not isinstance(link_tag, str):
-                parent_simp_check = link_tag.parent.get("data-simp")
-                if parent_simp_check and "init" in parent_simp_check:
+            link_tag: Tag | str | None = link_obj.get(selector)  # type: ignore
+            if isinstance(link_tag, Tag):
+                if link_tag.parent and (data_simp := link_tag.parent.get("data-simp")) and "init" in data_simp:
                     continue
 
-            link_str: str | None = link_tag or link_obj.get("href")  # type: ignore
-            if selector == self.selectors.posts.embeds.attribute:
-                link_str = self.process_embed(link_tag)
+                link_str: str | None = link_obj.get("href")  # type: ignore
+            else:
+                link_str = link_tag
+
+            if not link_str:
+                continue
+
+            assert isinstance(link_str, str)
+            if embeds:
+                link_str = self.extract_embed_url(link_str)
 
             if not link_str or link_str.startswith("data:image/svg"):
                 continue
@@ -419,12 +421,11 @@ class XenforoCrawler(Crawler):
     def is_confirmation_link(self, link: URL) -> bool:
         return any(keyword in link.path for keyword in ("link-confirmation",))
 
-    def process_embed(self, data: str) -> str | None:
-        if not data:
-            return
-        data = data.replace(r"\/\/", "https://www.").replace("\\", "")
-        embed = re.search(HTTP_URL_PATTERNS[0], data) or re.search(HTTP_URL_PATTERNS[1], data)
-        return embed.group(0).replace("www.", "") if embed else data
+    def extract_embed_url(self, embed_str: str) -> str | None:
+        embed_str = embed_str.replace(r"\/\/", "https://www.").replace("\\", "")
+        if match := re.search(HTTP_URL_REGEX, embed_str):
+            return match.group(0).replace("www.", "")
+        return embed_str
 
     def pre_filter_link(self, link: URL) -> URL:
         return link

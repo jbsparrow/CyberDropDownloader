@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from cyberdrop_dl import env
 
+from .ashemaletube import AShemaleTubeCrawler
 from .bestprettygirl import BestPrettyGirlCrawler
 from .bunkrr import BunkrrCrawler
 from .bunkrr_albums_io import BunkrAlbumsIOCrawler
@@ -35,6 +36,7 @@ from .imgur import ImgurCrawler
 from .kemono import KemonoCrawler
 from .luscious import LusciousCrawler
 from .mediafire import MediaFireCrawler
+from .missav import MissAVCrawler
 from .motherless import MotherlessCrawler
 from .nekohouse import NekohouseCrawler
 from .nhentai import NHentaiCrawler
@@ -61,6 +63,7 @@ from .sendvid import SendVidCrawler
 from .sex_dot_com import SexDotComCrawler
 from .spankbang import SpankBangCrawler
 from .streamable import StreamableCrawler
+from .thisvid import ThisVidCrawler
 from .tiktok import TikTokCrawler
 from .tokyomotion import TokioMotionCrawler
 from .toonily import ToonilyCrawler
