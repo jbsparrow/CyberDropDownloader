@@ -63,14 +63,14 @@ class ThisVidCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
         title = ""
         if not scrape_item.url.query_string:
-            if category_title := soup.select_one(COMMON_VIDEOS_TITLE_SELECTOR):
-                common_title = category_title.get_text(strip=True)
-                if common_title.startswith("New Videos Tagged"):
-                    common_title = common_title.split("Showing")[0].split("Tagged with")[1].strip()
-                    title = f"{common_title} [tag]"
-                else:
-                    common_title = category_title.get_text(strip=True).split("New Videos")[0].strip()
-                    title = f"{common_title} [category]"
+            category_title = soup.select_one(COMMON_VIDEOS_TITLE_SELECTOR)
+            common_title = category_title.get_text(strip=True)
+            if common_title.startswith("New Videos Tagged"):
+                common_title = common_title.split("Showing")[0].split("Tagged with")[1].strip()
+                title = f"{common_title} [tag]"
+            else:
+                common_title = category_title.get_text(strip=True).split("New Videos")[0].strip()
+                title = f"{common_title} [category]"
         else:
             query_string: str = scrape_item.url.query_string.split("=")[1]
             title = f"{query_string} [search]"
@@ -133,7 +133,7 @@ class ThisVidCrawler(Crawler):
         filename, ext = get_filename_and_ext(video_info["video_url"])
         video_url: URL = URL(video_info["video_url"])
         custom_filename, _ = get_filename_and_ext(
-            f"{title} [{video_url.parts[-3]}] [{video_info['video_url_text']}].{ext}"
+            f"{title} [{video_info['video_id']}] [{video_info['video_url_text']}].{ext}"
         )
         await self.handle_file(video_url, scrape_item, filename, ext, custom_filename=custom_filename)
 
