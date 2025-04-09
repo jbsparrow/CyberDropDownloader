@@ -346,7 +346,7 @@ def open_in_text_editor(file_path: Path) -> bool | None:
         raise ValueError(msg)
 
     rich.print(f"Opening '{file_path}' with '{cmd[0]}'...")
-    subprocess.call([*cmd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.call([*cmd], stderr=subprocess.DEVNULL)
 
 
 @lru_cache
