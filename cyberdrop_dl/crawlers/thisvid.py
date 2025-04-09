@@ -48,7 +48,7 @@ class ThisVidCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        if any(p in scrape_item.url.parts for p in ("categories", "tags")) or scrape_item.url.query_string:
+        if any(p in scrape_item.url.parts for p in ("categories", "tags")) or scrape_item.url.query.get("q"):
             return await self.search(scrape_item)
         elif "members" in scrape_item.url.parts:
             return await self.profile(scrape_item)
@@ -71,8 +71,7 @@ class ThisVidCrawler(Crawler):
                 common_title = category_title.get_text(strip=True).split("New Videos")[0].strip()
                 title = f"{common_title} [category]"
         else:
-            query_string: str = scrape_item.url.query_string.split("=")[1]
-            title = f"{query_string} [search]"
+            title = f"{scrape_item.url.query['q']} [search]"
         title = self.create_title(title)
         scrape_item.setup_as_album(title)
         await self.iter_videos(scrape_item)
@@ -96,12 +95,11 @@ class ThisVidCrawler(Crawler):
     async def iter_videos(self, scrape_item: ScrapeItem, video_category: str = "") -> None:
         url: URL = scrape_item.url / video_category if video_category else scrape_item.url
         async for soup in self.web_pager(url):
-            if videos := soup.select(VIDEOS_SELECTOR):
-                for video in videos:
-                    link: URL = URL(video.get("href"))
-                    new_scrape_item = scrape_item.create_child(link, new_title_part=video_category)
-                    self.manager.task_group.create_task(self.run(new_scrape_item))
-                    scrape_item.add_children()
+            for video in soup.select(VIDEOS_SELECTOR):
+                link: URL = URL(video.get("href"))
+                new_scrape_item = scrape_item.create_child(link, new_title_part=video_category)
+                self.manager.task_group.create_task(self.run(new_scrape_item))
+                scrape_item.add_children()
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
