@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import asyncio
 from base64 import b64encode
+from collections import defaultdict
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
-from cyberdrop_dl.clients.download_client import check_file_duration
 from cyberdrop_dl.utils.constants import FILE_FORMATS
 from cyberdrop_dl.utils.logger import log_debug
 
@@ -20,16 +20,20 @@ class FileLocksVault:
     """Is this necessary? No. But I want it."""
 
     def __init__(self) -> None:
-        self._locked_files: dict[str, asyncio.Lock] = {}
+        self._locked_files: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 
     @asynccontextmanager
-    async def get_lock(self, filename: str) -> AsyncGenerator:
-        """Get filelock for the provided filename. Creates one if none exists"""
+    async def get_lock(self, media_item: MediaItem) -> AsyncGenerator[None, None]:
+        """Get filelock for the media_item. Creates one if none exists"""
+        if not media_item.file_lock_reference_name:
+            media_item.file_lock_reference_name = media_item.filename
+
+        filename = media_item.file_lock_reference_name
+
         log_debug(f"Checking lock for {filename}", 20)
         if filename not in self._locked_files:
             log_debug(f"Lock for {filename} does not exists", 20)
 
-        self._locked_files[filename] = self._locked_files.get(filename, asyncio.Lock())
         async with self._locked_files[filename]:
             log_debug(f"Lock for {filename} acquired", 20)
             yield
@@ -78,10 +82,3 @@ class DownloadManager:
         if media_item.ext.lower() in FILE_FORMATS["Audio"] and ignore_options.exclude_audio:
             return False
         return not (ignore_options.exclude_other and media_item.ext.lower() not in valid_extensions)
-
-    def pre_check_duration(self, media_item: MediaItem) -> bool:
-        """Checks if the download is above the maximum runtime."""
-        if not media_item.duration:
-            return True
-
-        return check_file_duration(media_item, self.manager)
