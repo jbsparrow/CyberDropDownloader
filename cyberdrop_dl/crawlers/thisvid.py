@@ -12,8 +12,6 @@ from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
-
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.managers.manager import Manager
@@ -39,6 +37,7 @@ VIDEO_INFO_PATTTERN = re.compile(
 
 class ThisVidCrawler(Crawler):
     primary_base_domain = URL("https://thisvid.com")
+    next_page_selector = NEXT_PAGE_SELECTOR
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "thisvid", "ThisVid")
@@ -103,19 +102,6 @@ class ThisVidCrawler(Crawler):
                     new_scrape_item = scrape_item.create_child(link, new_title_part=video_category)
                     self.manager.task_group.create_task(self.run(new_scrape_item))
                     scrape_item.add_children()
-
-    async def web_pager(self, category_url: URL) -> AsyncGenerator[BeautifulSoup]:
-        """Generator of website pages."""
-        page_url: URL = category_url
-        while True:
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url)
-            next_page = soup.select_one(NEXT_PAGE_SELECTOR)
-            yield soup
-            page_url_str: str | None = next_page.get("href") if next_page else None  # type: ignore
-            if not page_url_str:
-                break
-            page_url = self.parse_url(page_url_str, self.primary_base_domain)
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
