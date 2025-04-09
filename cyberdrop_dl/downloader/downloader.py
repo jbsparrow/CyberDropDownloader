@@ -80,7 +80,7 @@ def exception_wrapper(func: Callable):
     async def wrapper(self: Downloader, *args, **kwargs):
         media_item: MediaItem = args[0]
         try:
-            return await func(*args, **kwargs)
+            return await func(self, *args, **kwargs)
 
         except RestrictedFiletypeError:
             log(f"Download skip {media_item.url} due to ignore_extension config ({media_item.ext})", 10)
@@ -184,13 +184,11 @@ class Downloader:
         return await self._run(media_item, m3u8_content)
 
     @with_limiter
-    async def _run(self, media_item: MediaItem, m3u8_content: str = ""):
+    async def _run(self, media_item: MediaItem, m3u8_content: str = "") -> bool:
         if m3u8_content:
-            func = self.download_hls(media_item, m3u8_content)
-        else:
-            func = self.download(media_item)
+            return bool(await self.download_hls(media_item, m3u8_content))
 
-        return bool(await func)
+        return bool(await self.download(media_item))
 
     async def check_file_can_download(self, media_item: MediaItem) -> None:
         """Checks if the file can be downloaded."""
@@ -305,8 +303,11 @@ class Downloader:
                 await self.download(seg_media_item)
                 # download will return False if the file already exists (ex: downloaded in a previous run)
                 # We have to manually check if the segment exists after the download
+                if not isinstance(seg_media_item.complete_file, Path):
+                    return False
+
                 segment_paths.add(seg_media_item.complete_file)
-                await asyncio.to_thread(seg_media_item.complete_file.is_file)
+                return await asyncio.to_thread(seg_media_item.complete_file.is_file)
 
             return download_segment()
 
