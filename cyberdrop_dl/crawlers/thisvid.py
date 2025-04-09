@@ -31,7 +31,7 @@ VIDEO_RESOLUTION_PATTERN = re.compile(r"video_url_text:\s*'([^']+)'")
 VIDEO_INFO_PATTTERN = re.compile(
     r"video_id:\s*'(?P<video_id>[^']+)'[^}]*?"
     r"license_code:\s*'(?P<license_code>[^']+)'[^}]*?"
-    r"video_url:\s*'(?P<video_url>[^']+)'[^}]*?",
+    r"video_url:\s*'(?P<video_url>[^']+)'[^}]*?"
 )
 
 
