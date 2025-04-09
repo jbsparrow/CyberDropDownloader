@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import itertools
 from collections import defaultdict
 from dataclasses import asdict, dataclass, field
 from datetime import timedelta
@@ -54,6 +55,7 @@ class StorageManager:
         self._timedelta_period = timedelta(seconds=self._period)
         self._partitions = [DiskPartition.from_psutil(p) for p in psutil.disk_partitions(all=True)]
         self._loop = asyncio.create_task(self._check_free_space_loop())
+        self._unavailable_mounts: set[Path] = set()
 
     @property
     def mounts(self) -> tuple[Path, ...]:
@@ -132,13 +134,15 @@ class StorageManager:
 
             folder_drive = drive_as_path(folder.drive)
             async with self._mount_addition_locks[folder_drive]:
-                if folder_drive in self.mounts:
+                if folder_drive in itertools.chain(self._unavailable_mounts, self.mounts):
                     return
                 msg = f"Checking new possible network_drive: '{folder_drive}' for folder '{folder}'"
                 log_debug(msg)
-                if await asyncio.to_thread(is_dir_cached, folder_drive):
+                if await asyncio.to_thread(folder_drive.is_dir):
                     net_drive = DiskPartition(folder_drive, folder_drive, "network_drive", "")
                     self._partitions.append(net_drive)
+                else:
+                    self._unavailable_mounts.add(folder_drive)
 
         await check_nt_network_drive()
         mount = get_mount_point(folder, self.mounts)
@@ -196,12 +200,6 @@ def get_mount_point(folder: Path, all_mounts: tuple[Path]) -> Path | None:
     msg = f"No available mountpoint found for '{folder}'"
     msg += f"\n -> drive = '{drive_as_path(folder.drive)}' , last_parent = '{folder.parents[-1]}'"
     log(msg, 40)
-
-
-@lru_cache
-def is_dir_cached(path: Path) -> bool:
-    """Cached to reduce IO calls"""
-    return path.is_dir()
 
 
 def drive_as_path(drive: str) -> Path:
