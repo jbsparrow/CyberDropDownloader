@@ -139,6 +139,7 @@ class Downloader:
         self._additional_headers = {}
         self._current_attempt_filesize = {}
         self._semaphore: asyncio.Semaphore = field(init=False)
+        self._ignore_history = self.manager.config_manager.settings_data.runtime_options.ignore_history
 
     @property
     def max_attempts(self):
@@ -176,15 +177,14 @@ class Downloader:
                 finally:
                     pass
 
-    @with_limiter
     async def run(self, media_item: MediaItem, m3u8_content: str = "") -> bool:
         """Runs the download loop."""
-        if (
-            media_item.url.path in self.processed_items
-            and not self.manager.config_manager.settings_data.runtime_options.ignore_history
-        ):
+        if media_item.url.path in self.processed_items and not self._ignore_history:
             return False
+        return await self._run(media_item, m3u8_content)
 
+    @with_limiter
+    async def _run(self, media_item: MediaItem, m3u8_content: str = ""):
         if m3u8_content:
             func = self.download_hls(media_item, m3u8_content)
         else:
