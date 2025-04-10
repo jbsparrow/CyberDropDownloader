@@ -90,7 +90,7 @@ class Manager:
             self.parsed_args = ParsedArgs.parse_args()
 
         if self.parsed_args.cli_only_args.show_supported_sites:
-            self.show_supported_sites()
+            show_supported_sites()
 
         self.path_manager = PathManager(self)
         self.path_manager.pre_startup()
@@ -311,18 +311,6 @@ class Manager:
         """
         constants.DISABLE_CACHE = self.parsed_args.cli_only_args.disable_cache
 
-    def show_supported_sites(self):
-        import sys
-
-        from cyberdrop_dl.managers.mock_manager import MockManager
-        from cyberdrop_dl.scraper import scrape_mapper
-
-        scrape_mapper.init_crawlers(MockManager())
-        for name, crawler in sorted(scrape_mapper.existing_crawlers.items()):
-            if name != ".":
-                print({name: crawler.primary_base_domain})  # noqa: T201
-        sys.exit(0)
-
 
 def get_system_information() -> str:
     system_info = {
@@ -335,3 +323,24 @@ def get_system_information() -> str:
     }
 
     return json.dumps(system_info, indent=4)
+
+
+def show_supported_sites():
+    import sys
+
+    from rich import print
+    from rich.table import Table
+
+    from cyberdrop_dl.managers.mock_manager import MockManager
+    from cyberdrop_dl.scraper import scrape_mapper
+
+    scrape_mapper.init_crawlers(MockManager())
+    table = Table(title="Cyberdrop-DL Supported Sites")
+    table.add_column("Site", no_wrap=True)
+    table.add_column("Crawler", no_wrap=True)
+    table.add_column("Primary Base Domain", no_wrap=True)
+    for name, crawler in sorted(scrape_mapper.existing_crawlers.items()):
+        if name != ".":
+            table.add_row(name, type(crawler).__name__.removesuffix("Crawler"), str(crawler.primary_base_domain))
+    print(table)
+    sys.exit(0)
