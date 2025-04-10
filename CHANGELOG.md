@@ -28,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - aShemaleTube.com support
 - Thisvid.com support
 - ePorner.com profile, photo, and gallery support
+- missav.ws support
+- HLS support
 
 ### Fixed
 - Choosing 'All Supported Websites' in cookie extraction will no longer extract all cookies from the browser
