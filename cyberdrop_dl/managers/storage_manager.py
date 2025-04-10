@@ -62,7 +62,7 @@ class StorageManager:
         return tuple(p.mountpoint for p in self._partitions)
 
     def get_used_mounts_stats(self, simplified: bool = True) -> list[dict[str, Any]] | str:
-        """Returns infomartion of every used mounts + its free space.
+        """Returns infomation of every used mounts + its free space.
 
         If `simplified` is `True` (the default), all the information is flatten as a single string (for logging)"""
         mounts: list[dict[str, Any]] = []
@@ -185,7 +185,7 @@ class StorageManager:
 
 
 @lru_cache
-def get_mount_point(folder: Path, all_mounts: tuple[Path]) -> Path | None:
+def get_mount_point(folder: Path, all_mounts: tuple[Path, ...]) -> Path | None:
     # Cached for performance.
     # It's not an expensive operation nor IO blocking, but it's very common for multiple files to share the same download folder
     # ex: HLS downloads could have over a thousand segments. All of them will go to the same folder
