@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
 
 class TitsInTopsCrawler(XenforoCrawler):
-    primary_base_domain = URL("https://titsintops.com")
+    primary_base_domain = URL("https://titsintops.com/phpBB2")
     domain = "titsintops"
     post_selectors = PostSelectors(
         images=Selector("a[class*=file-preview]", "href"),

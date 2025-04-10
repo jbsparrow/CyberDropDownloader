@@ -24,7 +24,7 @@ from cyberdrop_dl.managers.storage_manager import StorageManager
 from cyberdrop_dl.ui.textual import TextualUI
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.args import ParsedArgs
-from cyberdrop_dl.utils.ffmpeg import FFmpeg
+from cyberdrop_dl.utils.ffmpeg import FFmpeg, get_ffmpeg_version
 from cyberdrop_dl.utils.logger import QueuedLogger, log
 from cyberdrop_dl.utils.transfer import transfer_v5_db_to_v6
 
@@ -266,6 +266,7 @@ class Manager:
         log(f"Using Authentication: \n{json.dumps(auth_provided, indent=4, sort_keys=True)}")
         log(f"Using Settings: \n{config_settings}")
         log(f"Using Global Settings: \n{global_settings}")
+        log(f"Using FFmpeg version: {get_ffmpeg_version()}")
 
     async def async_db_close(self) -> None:
         "Partial shutdown for managers used for hash directory scanner"

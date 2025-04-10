@@ -176,7 +176,7 @@ class Downloader:
                 # reference=media_item,
                 # skip_hashing=True,
             )
-            seg_media_items.append(media_item)
+            seg_media_items.append(seg_media_item)
             return self.run(seg_media_item)
 
         self.update_queued_files()
