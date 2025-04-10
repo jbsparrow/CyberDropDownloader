@@ -23,18 +23,19 @@ class Mock(Any):
 
 
 class MockCacheManager(Mock):
-    def __getattribute__(self, name: str):
-        if name == "get":
-            return self.get
-        return super().__getattribute__(name)
+    def __init__(self):
+        super().__init__("cache_manager")
 
-    def get(self, _: str = "") -> None:
-        return None
+    def __getattribute__(self, name: str):
+        if name in ("get", "save"):
+            return lambda _: None
+        return super().__getattribute__(name)
 
 
 class MockManager(Mock):
     def __init__(self):
         global root_manager
+        assert root_manager is None, "A global MockManager already exists. Only 1 should be created"
         super().__init__("manager")
-        self.cache_manager = MockCacheManager
+        self.cache_manager = MockCacheManager()
         root_manager = self
