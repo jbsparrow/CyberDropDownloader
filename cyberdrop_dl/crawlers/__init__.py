@@ -39,6 +39,7 @@ from .mediafire import MediaFireCrawler
 from .motherless import MotherlessCrawler
 from .nekohouse import NekohouseCrawler
 from .nhentai import NHentaiCrawler
+from .noodle_magazine import NoodleMagazineCrawler
 from .nudostartv import NudoStarTVCrawler
 from .omegascans import OmegaScansCrawler
 from .onedrive import OneDriveCrawler
