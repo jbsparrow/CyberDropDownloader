@@ -5,6 +5,7 @@ import datetime
 import json
 from typing import TYPE_CHECKING
 
+from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
@@ -19,6 +20,8 @@ if TYPE_CHECKING:
 
 PLAYLIST_SELECTOR = "script:contains('window.playlist')"
 METADATA_SELECTOR = "script[type='application/ld+json']"
+SEARCH_STRING_SELECTOR = "div.mh_line > h1.c_title"
+VIDEOS_SELECTOR = "div#list_videos a.item_link"
 
 
 class NoodleMagazineCrawler(Crawler):
@@ -26,6 +29,7 @@ class NoodleMagazineCrawler(Crawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "noodlemagazine", "NoodleMagazine")
+        self.request_limiter = AsyncLimiter(3, 10)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -38,7 +42,20 @@ class NoodleMagazineCrawler(Crawler):
 
     @error_handling_wrapper
     async def search(self, scrape_item: ScrapeItem) -> None:
-        pass
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, scrape_item.url)
+        search_string: str = soup.select_one(SEARCH_STRING_SELECTOR).text.strip()
+        search_string = f"{search_string[: search_string.rfind(' videos')]} [search]"
+        title = self.create_title(search_string)
+        scrape_item.setup_as_album(title)
+        await self.iter_videos(scrape_item, soup)
+
+    async def iter_videos(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> None:
+        for video in soup.select(VIDEOS_SELECTOR):
+            link = self.parse_url(video.get("href"))
+            new_scrape_item = scrape_item.create_child(link)
+            self.manager.task_group.create_task(self.run(new_scrape_item))
+            scrape_item.add_children()
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
@@ -49,14 +66,15 @@ class NoodleMagazineCrawler(Crawler):
         metadata_script = soup.select_one(METADATA_SELECTOR)
         metadata = json.loads(metadata_script.text.strip())
         playlist = soup.select_one(PLAYLIST_SELECTOR)
-        script_text = playlist.text.strip()
+        script_text: str = playlist.text.strip()
         playlist_data = json.loads(script_text[script_text.find("{") : script_text.rfind(";\nwindow.ads")])
         best_source = max(playlist_data["sources"], key=lambda s: int(s["label"]))
         video_id: str = URL(metadata["contentUrl"]).parts[-1].split(".")[0]
         file_name, ext = get_filename_and_ext(metadata["contentUrl"])
         scrape_item.possible_datetime = parse_datetime(metadata["uploadDate"])
+        title: str = soup.select_one("title").text.split(" watch online")[0]
         custom_filename, _ = get_filename_and_ext(
-            f"{metadata['name']} [{video_id}] [{best_source['label']}].{best_source['type']}"
+            f"{title} [{video_id}] [{best_source['label']}].{best_source['type']}"
         )
         await self.handle_file(URL(best_source["file"]), scrape_item, file_name, ext, custom_filename=custom_filename)
 
