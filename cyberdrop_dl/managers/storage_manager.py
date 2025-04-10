@@ -75,7 +75,11 @@ class StorageManager:
             mounts.append(mount_info)
 
         if simplified:
-            return "\n".join(f"    {mount}" for mount in mounts)
+
+            def as_str(mount: dict):
+                return ", ".join(f"'{k}': '{v}'" for k, v in mount.items())
+
+            return "\n".join(f"    {as_str(mount)}" for mount in mounts)
         return mounts
 
     async def check_free_space(self, media_item: MediaItem) -> None:
