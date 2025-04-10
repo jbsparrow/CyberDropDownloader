@@ -29,15 +29,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Thisvid.com support
 - ePorner.com profile, photo, and gallery support
 - missav.ws support
-- HLS support
+- Initial HLS support (used by missav)
+
+### Changed
+- The `import cookies` menu will only display the browsers supported by the user's OS
 
 ### Fixed
 - Choosing 'All Supported Websites' in cookie extraction will no longer extract all cookies from the browser
-- The import cookies menu will now only display the browsers that the user's OS supports for cookie extraction
-- Fixed free space check when using network drives
+- Fixed free space check when using network drives (windows)
 - Fixed embed parsing on XenForo
 - Fix titsintops.com crawler
-- Cyberdrop-DL will no longer freeze when trying to open `nano` on Debian
+- Cyberdrop-DL will no longer freeze when trying to open terminal text editors
+- `TypeError: Incoming markup is of an invalid type` error
+- `CachedResponse' object has no attribute 'status_code` error
+- `404` responses when downloading albums (bunkr)
 
 
 ## [6.8.0] - 2025-04-05
