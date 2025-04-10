@@ -26,6 +26,8 @@ if TYPE_CHECKING:
     from cyberdrop_dl.crawlers import Crawler
     from cyberdrop_dl.managers.manager import Manager
 
+existing_crawlers: dict[str, Crawler] = {}
+
 
 class ScrapeMapper:
     """This class maps links to their respective handlers, or JDownloader if they are unsupported."""
@@ -48,19 +50,9 @@ class ScrapeMapper:
 
     def start_scrapers(self) -> None:
         """Starts all scrapers."""
-        for crawler in CRAWLERS:
-            if not crawler.SUPPORTED_SITES:
-                site_crawler = crawler(self.manager)  # type: ignore
-                assert site_crawler.domain not in self.existing_crawlers
-                key = site_crawler.scrape_mapper_domain or site_crawler.domain
-                self.existing_crawlers[key] = site_crawler
-                continue
-
-            for site, domains in crawler.SUPPORTED_SITES.items():
-                site_crawler = crawler(self.manager, site)
-                for domain in domains:
-                    assert domain not in self.existing_crawlers
-                    self.existing_crawlers[domain] = site_crawler
+        if not existing_crawlers:
+            init_crawlers(self.manager)
+        self.existing_crawlers = existing_crawlers
 
     def start_jdownloader(self) -> None:
         """Starts JDownloader."""
@@ -341,3 +333,23 @@ def create_item_from_entry(entry: Sequence) -> ScrapeItem:
     item.completed_at = completed_at
     item.created_at = created_at
     return item
+
+
+def init_crawlers(manager: Manager) -> None:
+    """Creates an instance of all scrapers."""
+    global existing_crawlers
+    if existing_crawlers:
+        return
+    for crawler in CRAWLERS:
+        if not crawler.SUPPORTED_SITES:
+            site_crawler = crawler(manager)  # type: ignore
+            assert site_crawler.domain not in existing_crawlers
+            key = site_crawler.scrape_mapper_domain or site_crawler.domain
+            existing_crawlers[key] = site_crawler
+            continue
+
+        for site, domains in crawler.SUPPORTED_SITES.items():
+            site_crawler = crawler(manager, site)
+            for domain in domains:
+                assert domain not in existing_crawlers
+                existing_crawlers[domain] = site_crawler
