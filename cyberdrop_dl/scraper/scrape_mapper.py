@@ -50,9 +50,7 @@ class ScrapeMapper:
 
     def start_scrapers(self) -> None:
         """Starts all scrapers."""
-        if not existing_crawlers:
-            init_crawlers(self.manager)
-        self.existing_crawlers = existing_crawlers
+        self.existing_crawlers = get_crawlers(self.manager)
 
     def start_jdownloader(self) -> None:
         """Starts JDownloader."""
@@ -335,21 +333,23 @@ def create_item_from_entry(entry: Sequence) -> ScrapeItem:
     return item
 
 
-def init_crawlers(manager: Manager) -> None:
-    """Creates an instance of all scrapers."""
-    global existing_crawlers
-    if existing_crawlers:
-        return
-    for crawler in CRAWLERS:
-        if not crawler.SUPPORTED_SITES:
-            site_crawler = crawler(manager)  # type: ignore
-            assert site_crawler.domain not in existing_crawlers
-            key = site_crawler.scrape_mapper_domain or site_crawler.domain
-            existing_crawlers[key] = site_crawler
-            continue
+def get_crawlers(manager: Manager) -> dict[str, Crawler]:
+    """Retuns a mapping with an instance of all scrapers.
 
-        for site, domains in crawler.SUPPORTED_SITES.items():
-            site_crawler = crawler(manager, site)
-            for domain in domains:
-                assert domain not in existing_crawlers
-                existing_crawlers[domain] = site_crawler
+    Crawlers are only created on the first calls. Future calls always return a reference to the same crawlers"""
+    global existing_crawlers
+    if not existing_crawlers:
+        for crawler in CRAWLERS:
+            if not crawler.SUPPORTED_SITES:
+                site_crawler = crawler(manager)  # type: ignore
+                assert site_crawler.domain not in existing_crawlers
+                key = site_crawler.scrape_mapper_domain or site_crawler.domain
+                existing_crawlers[key] = site_crawler
+                continue
+
+            for site, domains in crawler.SUPPORTED_SITES.items():
+                site_crawler = crawler(manager, site)
+                for domain in domains:
+                    assert domain not in existing_crawlers
+                    existing_crawlers[domain] = site_crawler
+    return existing_crawlers
