@@ -7,7 +7,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import timedelta
 from functools import lru_cache
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, NamedTuple
 
 import psutil
 from pydantic import ByteSize
@@ -39,6 +39,11 @@ class DiskPartition:
         return DiskPartition(mount, device, *diskpart[2:4])
 
 
+class MountStats(NamedTuple):
+    partition: DiskPartition
+    free_space: ByteSize
+
+
 class StorageManager:
     """Runs an infinite loop to keep an updated value of the available space on all storage devices."""
 
@@ -61,26 +66,25 @@ class StorageManager:
     def mounts(self) -> tuple[Path, ...]:
         return tuple(p.mountpoint for p in self._partitions)
 
-    def get_used_mounts_stats(self, simplified: bool = True) -> list[dict[str, Any]] | str:
-        """Returns infomation of every used mount + its free space.
+    @property
+    def _simplified_stats(self) -> str:
+        def simplify(mount_stats: MountStats) -> str:
+            free_space = mount_stats.free_space.human_readable(decimal=True)
+            stats_as_dict = asdict(mount_stats.partition) | {"free_space": free_space}
+            return ", ".join(f"'{k}': '{v}'" for k, v in stats_as_dict.items())
 
-        If `simplified` is `True` (the default), all the information is flattened into a single string (for logging)"""
-        mounts: list[dict[str, Any]] = []
+        stats_as_str = "\n".join(f"    {simplify(mount_stats)}" for mount_stats in self.get_used_mounts_stats())
+        return f"Storage status:\n {stats_as_str}"
+
+    def get_used_mounts_stats(self) -> list[MountStats]:
+        """Returns information of every used mount + its free space."""
+        mounts_stats: list[MountStats] = []
         for mount in self._used_mounts:
             free_space = ByteSize(self._free_space[mount])
-            if simplified:
-                free_space = free_space.human_readable(decimal=True)
             partition = next(p for p in self._partitions if p.mountpoint == mount)
-            mount_info = asdict(partition) | {"free_space": free_space}
-            mounts.append(mount_info)
+            mounts_stats.append(MountStats(partition, free_space))
 
-        if simplified:
-
-            def as_str(mount: dict):
-                return ", ".join(f"'{k}': '{v}'" for k, v in mount.items())
-
-            return "\n".join(f"    {as_str(mount)}" for mount in mounts)
-        return mounts
+        return mounts_stats
 
     async def check_free_space(self, media_item: MediaItem) -> None:
         """Checks if there is enough free space on download this item"""
@@ -160,7 +164,7 @@ class StorageManager:
                 self._free_space[mount] = result.free
                 self._used_mounts.add(mount)
                 log(f"A new mountpoint ('{mount!s}') will be used for '{folder}'")
-                log(f"Storage status:\n {self.get_used_mounts_stats()}")
+                log(self._simplified_stats)
 
         return self._free_space[mount] > self.manager.config_manager.global_settings_data.general.required_free_space
 
@@ -179,7 +183,7 @@ class StorageManager:
                 for mount, result in zip(used_mounts, results, strict=True):
                     self._free_space[mount] = result.free
                 if last_check % self._log_period == 0:
-                    log_debug(f"Storage status:\n {self.get_used_mounts_stats()}")
+                    log_debug(self._simplified_stats)
             self._updated.set()
             await asyncio.sleep(self._period)
 
