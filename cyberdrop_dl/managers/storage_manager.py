@@ -62,7 +62,7 @@ class StorageManager:
         return tuple(p.mountpoint for p in self._partitions)
 
     def get_used_mounts_stats(self, simplified: bool = True) -> list[dict[str, Any]] | str:
-        """Returns infomation of every used mounts + its free space.
+        """Returns infomation of every used mount + its free space.
 
         If `simplified` is `True` (the default), all the information is flatten as a single string (for logging)"""
         mounts: list[dict[str, Any]] = []
