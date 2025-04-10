@@ -64,7 +64,7 @@ class StorageManager:
     def get_used_mounts_stats(self, simplified: bool = True) -> list[dict[str, Any]] | str:
         """Returns infomation of every used mount + its free space.
 
-        If `simplified` is `True` (the default), all the information is flatten as a single string (for logging)"""
+        If `simplified` is `True` (the default), all the information is flattened into a single string (for logging)"""
         mounts: list[dict[str, Any]] = []
         for mount in self._used_mounts:
             free_space = ByteSize(self._free_space[mount])
