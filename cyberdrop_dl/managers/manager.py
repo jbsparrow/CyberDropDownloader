@@ -334,13 +334,11 @@ def show_supported_sites():
     from cyberdrop_dl.managers.mock_manager import MockManager
     from cyberdrop_dl.scraper import scrape_mapper
 
-    crawlers = scrape_mapper.get_crawlers(MockManager())
+    crawlers = scrape_mapper.gen_crawlers_info(scrape_mapper.get_crawlers(MockManager()))
     table = Table(title="Cyberdrop-DL Supported Sites")
-    table.add_column("Site", no_wrap=True)
-    table.add_column("Crawler", no_wrap=True)
-    table.add_column("Primary Base Domain", no_wrap=True)
-    for name, crawler in sorted(crawlers.items()):
-        if name != ".":
-            table.add_row(name, type(crawler).__name__.removesuffix("Crawler"), str(crawler.primary_base_domain))
+    for column in ("Site", "Crawler", "Primary Base Domain"):
+        table.add_column(column, no_wrap=True)
+    for crawler in crawlers:
+        table.add_row(crawler.site, crawler.name, str(crawler.primary_base_domain))
     print(table)
     sys.exit(0)

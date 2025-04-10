@@ -4,7 +4,7 @@ import re
 from dataclasses import Field
 from datetime import date, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 import aiofiles
 import arrow
@@ -353,3 +353,16 @@ def get_crawlers(manager: Manager) -> dict[str, Crawler]:
                     assert domain not in existing_crawlers
                     existing_crawlers[domain] = site_crawler
     return existing_crawlers
+
+
+def gen_crawlers_info(crawlers: dict[str, Crawler]):
+    class CrawlerInfo(NamedTuple):
+        site: str
+        name: str
+        primary_base_domain: URL
+        crawler: Crawler
+
+    for name, crawler in sorted(crawlers.items()):
+        if name == ".":
+            continue
+        yield CrawlerInfo(name, type(crawler).__name__.removesuffix("Crawler"), crawler.primary_base_domain, crawler)
