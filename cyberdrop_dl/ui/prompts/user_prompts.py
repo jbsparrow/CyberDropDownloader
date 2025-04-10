@@ -239,7 +239,11 @@ def browser_prompt() -> str:
         "Linux": {"arc", "opera_gx", "safari"},
         "Darwin": {"lynx", "w3m"},
     }.get(system(), set())
-    choices = [Choice(browser, browser.capitalize() if browser != 'opera_gx' else 'Opera GX') for browser in BROWSERS if browser not in unsupported_browsers]
+    choices = [
+        Choice(browser, browser.capitalize() if browser != "opera_gx" else "Opera GX")
+        for browser in BROWSERS
+        if browser not in unsupported_browsers
+    ]
     return basic_prompts.ask_checkbox(choices, message="Select the browser(s) for extraction:")
 
 
