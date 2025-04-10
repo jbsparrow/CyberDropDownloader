@@ -74,7 +74,7 @@ class NoodleMagazineCrawler(Crawler):
         scrape_item.possible_datetime = parse_datetime(metadata["uploadDate"])
         title: str = soup.select_one("title").text.split(" watch online")[0]
         custom_filename, _ = get_filename_and_ext(
-            f"{title} [{video_id}] [{best_source['label']}].{best_source['type']}"
+            f"{title} [{video_id}] [{best_source['label']}p].{best_source['type']}"
         )
         await self.handle_file(URL(best_source["file"]), scrape_item, file_name, ext, custom_filename=custom_filename)
 
