@@ -87,7 +87,7 @@ class StorageManager:
         return mounts_stats
 
     async def check_free_space(self, media_item: MediaItem) -> None:
-        """Checks if there is enough free space on download this item"""
+        """Checks if there is enough free space to download this item."""
 
         await self.manager.states.RUNNING.wait()
         if not await self._has_sufficient_space(media_item.download_folder):
@@ -107,7 +107,7 @@ class StorageManager:
             raise InsufficientFreeSpaceError(origin=media_item)
 
     async def reset(self):
-        # This is causing lock ups
+        # This is causing lockups
         # await self._updated.wait()  # Make sure a query is not running right now
         self.total_data_written = 0
         self._used_mounts = set()
@@ -122,17 +122,17 @@ class StorageManager:
             pass
 
     async def _has_sufficient_space(self, folder: Path) -> bool:
-        """Checks if there is enough free space to download to this folder
+        """Checks if there is enough free space to download to this folder.
 
-        `folder` should be an absolute path"""
+        `folder` must be an absolute path"""
 
         async def check_nt_network_drive():
-            """Determines if the drive is a Windows network drive (UNC or unknown mapped drive) and exists."""
+            """Checks is the drive of this folder is a Windows network drive (UNC or unknown mapped drive) and exists."""
             # See: https://github.com/jbsparrow/CyberDropDownloader/issues/860
             if not psutil.WINDOWS:
                 return
 
-            # we can discard mapped drives because they would have been converted to UNC path at startup
+            # We can discard mapped drives because they would have been converted to UNC path at startup
             # calling resolve on a mapped network drive returns its UNC path
             # it would only still be a mapped drive is the network address is not available
             is_mapped_drive = ":" in folder.drive and len(folder.drive) == 2
@@ -196,14 +196,14 @@ def get_mount_point(folder: Path, all_mounts: tuple[Path, ...]) -> Path | None:
     assert folder.is_absolute()
     possible_mountpoints = [mount for mount in all_mounts if mount in folder.parents or mount == folder]
     if possible_mountpoints:
-        # Get the closest mountpoint to the desired path
+        # Get the closest mountpoint to `folder`
         # mount_a = /home/user/  -> points to an internal SSD
         # mount_b = /home/user/USB -> points to an external USB drive
-        # If folder is `/home/user/USB/videos`, the correct mountpoint is mount_b
+        # If `folder`` is `/home/user/USB/videos`, the correct mountpoint is mount_b
         return max(possible_mountpoints, key=lambda path: len(path.parts))
 
     # Mount point for this path does not exists
-    # This will only happend on Windows, ex: an USB drive (`D:`) that is not currently available (AKA disconnected)
+    # This will only happen on Windows, ex: an USB drive (`D:`) that is not currently available (AKA disconnected)
     # On Unix there's always at least 1 mountpoint, root (`/`)
     msg = f"No available mountpoint found for '{folder}'"
     msg += f"\n -> drive = '{drive_as_path(folder.drive)}' , last_parent = '{folder.parents[-1]}'"
