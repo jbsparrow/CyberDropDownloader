@@ -89,6 +89,9 @@ class Manager:
         if isinstance(self.parsed_args, Field):
             self.parsed_args = ParsedArgs.parse_args()
 
+        if self.parsed_args.cli_only_args.show_supported_sites:
+            self.show_supported_sites()
+
         self.path_manager = PathManager(self)
         self.path_manager.pre_startup()
         self.cache_manager.startup(self.path_manager.cache_folder / "cache.yaml")
@@ -307,6 +310,18 @@ class Manager:
         rewrite constants after config/arg manager have loaded
         """
         constants.DISABLE_CACHE = self.parsed_args.cli_only_args.disable_cache
+
+    def show_supported_sites(self):
+        import sys
+
+        from cyberdrop_dl.managers.mock_manager import MockManager
+        from cyberdrop_dl.scraper import scrape_mapper
+
+        scrape_mapper.init_crawlers(MockManager())
+        for name, crawler in sorted(scrape_mapper.existing_crawlers.items()):
+            if name != ".":
+                print({name: crawler.primary_base_domain})  # noqa: T201
+        sys.exit(0)
 
 
 def get_system_information() -> str:
