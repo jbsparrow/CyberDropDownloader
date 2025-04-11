@@ -12,9 +12,10 @@ from itertools import cycle
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
+from aiohttp import ClientConnectorError
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import NoExtensionError, ScrapeError
+from cyberdrop_dl.clients.errors import DDOSGuardError, DownloadError, NoExtensionError, ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.constants import FILE_FORMATS
@@ -68,6 +69,8 @@ IMAGE_PREVIEW_SELECTOR = "img.max-h-full.w-auto.object-cover.relative"
 VIDEO_SELECTOR = "video > source"
 VIDEO_AND_IMAGE_EXTS = FILE_FORMATS["Images"] | FILE_FORMATS["Videos"]
 
+PRIMARY_HOST_OPTIONS = "bunkr.site", "bunkr.cr", "bunkr.ph", "bunkr.black"
+
 
 class ApiResponse(NamedTuple):
     encrypted: bool
@@ -107,12 +110,18 @@ class AlbumItem:
 
 class BunkrrCrawler(Crawler):
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {"bunkrr": ["bunkrr", "bunkr"]}
-    primary_base_domain = URL("https://bunkr.site")
+    DATABASE_PRIMARY_HOST: ClassVar[str] = "bunkr.site"
+    primary_base_domain: ClassVar[URL] = URL(f"https://{DATABASE_PRIMARY_HOST}")
 
     def __init__(self, manager: Manager, site: str) -> None:
         super().__init__(manager, site, "Bunkrr")
+        self.primary_host_override: str = self.DATABASE_PRIMARY_HOST
+        self.primary_host_url: URL = self.primary_base_domain
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+    async def async_startup(self) -> None:
+        await self.get_primary_host()
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
@@ -133,7 +142,7 @@ class BunkrrCrawler(Crawler):
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
-        scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path)
+        scrape_item.url = scrape_item.url.with_host(self.primary_host_override)
 
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
@@ -146,7 +155,7 @@ class BunkrrCrawler(Crawler):
         results = await self.get_album_results(album_id)
 
         item_tags: list[Tag] = soup.select(ALBUM_ITEM_SELECTOR)
-        parse_url = partial(self.parse_url, relative_to=scrape_item.url.with_path("/"))
+        parse_url = partial(self.parse_url, relative_to=self.primary_host_url)
 
         for tag in item_tags:
             item = AlbumItem.from_tag(tag, parse_url)
@@ -176,10 +185,11 @@ class BunkrrCrawler(Crawler):
         if is_stream_redirect(scrape_item.url):
             soup, scrape_item.url = await self.client.get_soup_and_return_url(self.domain, scrape_item.url)
 
-        scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path)
-        if await self.check_complete_from_referer(scrape_item):
+        db_url = scrape_item.url.with_host(self.DATABASE_PRIMARY_HOST)
+        if await self.check_complete_from_referer(db_url):
             return
 
+        scrape_item.url = scrape_item.url.with_host(self.primary_host_override)
         if not soup:
             async with self.request_limiter:
                 soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
@@ -195,7 +205,7 @@ class BunkrrCrawler(Crawler):
         # Try to get downloadd URL from streaming API. Should work for most files, even none video files
         if not link and "f" in scrape_item.url.parts:
             slug = get_slug_from_soup(soup) or scrape_item.url.name or scrape_item.url.parent.name
-            slug_url = self.primary_base_domain / "f" / slug
+            slug_url = self.primary_host_url / "f" / slug
             link = await self.get_download_url_from_api(slug_url)
 
         # Fallback for everything else, try to get the download URL. `handle_direct_link` will make the final request to the API
@@ -283,13 +293,53 @@ class BunkrrCrawler(Crawler):
         api_response = ApiResponse(**json_resp)
         link_str = decrypt_api_response(api_response)
         link = self.parse_url(link_str)
-        if link == self.primary_base_domain:
+        if link in (self.primary_base_domain, self.primary_host_url):
             return
         return link
 
     def deep_scrape(self, url: URL) -> bool:
         assert url.host
         return any(part in url.host.split(".") for part in ("burger",)) or self.manager.config_manager.deep_scrape
+
+    async def get_primary_host(self) -> None:
+        """Sets the primary host to the first host that returns a successful response"""
+
+        @error_handling_wrapper
+        async def try_request(self: BunkrrCrawler, url: URL) -> bool:
+            try:
+                async with self.request_limiter:
+                    _ = await self.client.get_soup(self.domain, url, origin=url)
+            except (ClientConnectorError, DownloadError, DDOSGuardError):
+                return False
+            else:
+                self.primary_host_override = url.host  # type: ignore
+                self.primary_host_url = url
+                return True
+
+        for host in PRIMARY_HOST_OPTIONS:
+            url = URL(f"https://{host}")
+            if await try_request(self, url):
+                return
+
+    async def handle_file(
+        self,
+        url: URL,
+        scrape_item: ScrapeItem,
+        filename: str,
+        ext: str,
+        *,
+        custom_filename: str | None = None,
+        debrid_link: URL | None = None,
+    ) -> None:
+        """Overrides primary host before before calling base crawler's `handle_file`"""
+        debrid_link = debrid_link or url
+        if url.host in PRIMARY_HOST_OPTIONS:
+            url = url.with_host(self.DATABASE_PRIMARY_HOST)
+        if scrape_item.url.host in PRIMARY_HOST_OPTIONS:
+            scrape_item.url = scrape_item.url.with_host(self.DATABASE_PRIMARY_HOST)
+        await super().handle_file(
+            url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=debrid_link
+        )
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
