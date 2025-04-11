@@ -64,11 +64,11 @@ class ImgBBCrawler(Crawler):
                 first_page_str: str = soup.select_one(FIRST_PAGE_SELECTOR).get("href")  # type: ignore
                 first_page = self.parse_url(first_page_str)
 
-            for _, sub_album in self.iter_children(scrape_item, soup.select(ALBUM_PAGE_SELECTOR)):
+            for _, sub_album in self.iter_children(scrape_item, soup, ALBUM_PAGE_SELECTOR):
                 self.manager.task_group.create_task(self.run(sub_album))
 
         async for soup in self.web_pager(first_page):
-            for _, image in self.iter_children(scrape_item, soup.select(IMAGE_PAGE_SELECTOR)):
+            for _, image in self.iter_children(scrape_item, soup, IMAGE_PAGE_SELECTOR):
                 self.manager.task_group.create_task(self.run(image))
 
     @error_handling_wrapper

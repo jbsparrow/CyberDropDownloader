@@ -82,7 +82,7 @@ class PornPicsCrawler(Crawler):
         title = self.create_title(title, gallery_id)
         scrape_item.setup_as_album(title, album_id=gallery_id)
 
-        for _, new_scrape_item in self.iter_children(scrape_item, soup.select(IMAGE_SELECTOR)):
+        for _, new_scrape_item in self.iter_children(scrape_item, soup, IMAGE_SELECTOR):
             if not self.check_album_results(new_scrape_item.url, results):
                 filename, ext = self.get_filename_and_ext(new_scrape_item.url.name)
                 await self.handle_file(new_scrape_item.url, new_scrape_item, filename, ext)

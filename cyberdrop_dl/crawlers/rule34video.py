@@ -80,7 +80,7 @@ class Rule34VideoCrawler(Crawler):
                 title = self.create_title(title)
                 scrape_item.setup_as_album(title)
 
-            for _, new_scrape_item in self.iter_children(scrape_item, soup.select(PLAYLIST_ITEM_SELECTOR)):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, PLAYLIST_ITEM_SELECTOR):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper

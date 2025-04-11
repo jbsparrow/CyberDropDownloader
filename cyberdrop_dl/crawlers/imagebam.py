@@ -58,7 +58,7 @@ class ImageBamCrawler(Crawler):
         scrape_item.setup_as_album(title, album_id=gallery_id)
         results = await self.get_album_results(gallery_id)
 
-        for _, new_scrape_item in self.iter_children(scrape_item, soup.select(IMAGES_SELECTOR)):
+        for _, new_scrape_item in self.iter_children(scrape_item, soup, IMAGES_SELECTOR):
             if not self.check_album_results(new_scrape_item.url, results):
                 self.manager.task_group.create_task(self.image(new_scrape_item))
 

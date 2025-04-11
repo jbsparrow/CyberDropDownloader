@@ -54,7 +54,7 @@ class PixHostCrawler(Crawler):
         scrape_item.setup_as_album(title, album_id=album_id)
         results = await self.get_album_results(album_id)
 
-        for thumb, link in self.iter_tags(soup.select(IMAGES_SELECTOR)):
+        for thumb, link in self.iter_tags(soup, IMAGES_SELECTOR):
             if not thumb:
                 continue
             link = get_canonical_url(link)

@@ -28,6 +28,7 @@ class XBunkrCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
+        assert scrape_item.url.host
         if "media" in scrape_item.url.host:
             await self.file(scrape_item)
         return await self.album(scrape_item)
@@ -42,7 +43,7 @@ class XBunkrCrawler(Crawler):
         title = self.create_title(soup.select_one("h1[id=title]").text, scrape_item.album_id)  # type: ignore
         scrape_item.setup_as_album(title, album_id=album_id)
 
-        for _, link in self.iter_tags(soup.select(IMAGE_SELECTOR)):
+        for _, link in self.iter_tags(soup, IMAGE_SELECTOR):
             filename, ext = self.get_filename_and_ext(link.name, assume_ext=".jpg")
             await self.handle_file(link, scrape_item, filename, ext)
 

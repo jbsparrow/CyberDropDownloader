@@ -60,7 +60,7 @@ class CyberdropCrawler(Crawler):
         if date_tags := soup.select(ALBUM_DATE_SELECTOR):
             scrape_item.possible_datetime = parse_datetime(date_tags[-1].text)
 
-        for _, new_scrape_item in self.iter_children(scrape_item, soup.select(ALBUM_ITEM_SELECTOR)):
+        for _, new_scrape_item in self.iter_children(scrape_item, soup, ALBUM_ITEM_SELECTOR):
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper

@@ -220,15 +220,17 @@ class Crawler(ABC):
             return True
         return False
 
-    async def get_album_results(self, album_id: str) -> dict[Any, Any]:
+    async def get_album_results(self, album_id: str) -> dict[str, int]:
         """Checks whether an album has completed given its domain and album id."""
         return await self.manager.db_manager.history_table.check_album(self.domain, album_id)
 
-    def check_album_results(self, url: URL, album_results: dict[Any, Any]) -> bool:
+    def check_album_results(self, url: URL, album_results: dict[str, Any]) -> bool:
         """Checks whether an album has completed given its domain and album id."""
-        url_path = get_db_path(url.with_query(""), self.domain)
-        if album_results and url_path in album_results and album_results[url_path] != 0:
-            log(f"Skipping {url} as it has already been downloaded", 10)
+        if not album_results:
+            return False
+        url_path = get_db_path(url, self.domain)
+        if url_path in album_results and album_results[url_path] != 0:
+            log(f"Skipping {url} as it has already been downloaded")
             self.manager.progress_manager.download_progress.add_previously_completed()
             return True
         return False
@@ -307,24 +309,44 @@ class Crawler(ABC):
         self.client.client_manager.cookies.update_cookies(cookies, response_url)
 
     def iter_tags(
-        self, soup: BeautifulSoup, selector: str, /, attribute: str = "href"
+        self,
+        soup: BeautifulSoup,
+        selector: str,
+        /,
+        attribute: str = "href",
+        *,
+        results: dict[str, int] | None = None,
     ) -> Generator[tuple[URL | None, URL]]:
         """Generates tuples with an URL from the `src` value of first image tag (if any) and a URL from the `attribute` value"""
+        album_results = results or {}
         css: CSS = soup.css  # type: ignore
+
         for tag in css.iselect(selector):
-            if link_str := tag.get(attribute):
-                thumb_str: str | None = t_tag["src"] if (t_tag := tag.select_one("img")) else None  # type: ignore
-                thumb = self.parse_url(thumb_str) if thumb_str else None
-                link = self.parse_url(link_str)  # type: ignore
-                yield thumb, link
+            link_str: str = tag.get(attribute)  # type: ignore
+            if not link_str:
+                continue
+            link = self.parse_url(link_str)
+            if self.check_album_results(link, album_results):
+                continue
+            thumb_str: str | None = t_tag["src"] if (t_tag := tag.select_one("img")) else None  # type: ignore
+            thumb = self.parse_url(thumb_str) if thumb_str else None
+            yield thumb, link
 
     def iter_children(
-        self, scrape_item: ScrapeItem, soup: BeautifulSoup, selector: str, /, attribute: str = "href", **kwargs: Any
+        self,
+        scrape_item: ScrapeItem,
+        soup: BeautifulSoup,
+        selector: str,
+        /,
+        attribute: str = "href",
+        *,
+        results: dict[str, int] | None = None,
+        **kwargs: Any,
     ) -> Generator[tuple[URL | None, ScrapeItem]]:
         """Generates tuples with an URL from the `src` value of first image tag (if any) and a new scrape item from the `attribute` value
 
         `**kwargs` are passed to `scrape.item.create_child`"""
-        for thumb, link in self.iter_tags(soup, selector, attribute):
+        for thumb, link in self.iter_tags(soup, selector, attribute, results=results):
             new_scrape_item = scrape_item.create_child(link, **kwargs)
             yield thumb, new_scrape_item
             scrape_item.add_children()

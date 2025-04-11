@@ -69,7 +69,7 @@ class AShemaleTubeCrawler(Crawler):
                 title = self.create_title(f"{playlist_name} [playlist]")
                 scrape_item.setup_as_album(title)
 
-            for _, new_scrape_item in self.iter_children(scrape_item, soup.select(PLAYLIST_VIDEOS_SELECTOR)):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, PLAYLIST_VIDEOS_SELECTOR):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -83,7 +83,7 @@ class AShemaleTubeCrawler(Crawler):
                 title = self.create_title(f"{title} [model]")
                 scrape_item.setup_as_profile(model_name)
 
-            for _, new_scrape_item in self.iter_children(scrape_item, soup.select(PROFILE_VIDEOS_SELECTOR)):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, PROFILE_VIDEOS_SELECTOR):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper

@@ -43,7 +43,7 @@ class BunkrAlbumsIOCrawler(Crawler):
         title = self.create_title(search_query)
         scrape_item.setup_as_profile(title)
         async for soup in self.web_pager(scrape_item):
-            for _, new_scrape_item in self.iter_children(scrape_item, soup.select(ALBUM_SELECTOR)):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, ALBUM_SELECTOR):
                 self.handle_external_links(new_scrape_item)
 
     async def web_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:

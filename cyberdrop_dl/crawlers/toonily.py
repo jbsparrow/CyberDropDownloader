@@ -47,7 +47,7 @@ class ToonilyCrawler(Crawler):
         series_name = soup.select_one(SERIES_TITLE_SELECTOR).get_text(strip=True)  # type: ignore
         series_title = self.create_title(series_name)
         scrape_item.setup_as_profile(series_title)
-        for _, new_scrape_item in self.iter_children(scrape_item, soup.select(CHAPTER_SELECTOR)):
+        for _, new_scrape_item in self.iter_children(scrape_item, soup, CHAPTER_SELECTOR):
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -69,7 +69,7 @@ class ToonilyCrawler(Crawler):
                 scrape_item.possible_datetime = self.parse_datetime(date)
                 break
 
-        for _, link in self.iter_tags(soup.select(IMAGE_SELECTOR), "data-src"):
+        for _, link in self.iter_tags(soup, IMAGE_SELECTOR, "data-src"):
             filename, ext = self.get_filename_and_ext(link.name)
             await self.handle_file(link, scrape_item, filename, ext)
 

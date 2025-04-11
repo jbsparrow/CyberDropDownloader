@@ -112,7 +112,7 @@ class EpornerCrawler(Crawler):
             part, selector = parts
             url = canonical_url / part
             async for soup in self.web_pager(url):
-                for _, new_scrape_item in self.iter_children(scrape_item, soup.select(selector), new_title_part=name):
+                for _, new_scrape_item in self.iter_children(scrape_item, soup, selector, new_title_part=name):
                     self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -129,7 +129,7 @@ class EpornerCrawler(Crawler):
                 scrape_item.setup_as_album(title)
                 added_title = True
 
-            for _, new_scrape_item in self.iter_children(scrape_item, soup.select(VIDEO_SELECTOR)):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, VIDEO_SELECTOR):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -141,7 +141,7 @@ class EpornerCrawler(Crawler):
                 title = self.create_title(title)
                 scrape_item.setup_as_album(title)
 
-            for thumb, new_scrape_item in self.iter_children(scrape_item, soup.select(PROFILE_GALLERY_SELECTOR)):
+            for thumb, new_scrape_item in self.iter_children(scrape_item, soup, PROFILE_GALLERY_SELECTOR):
                 assert thumb
                 filename = thumb.name.rsplit("-", 1)[0]
                 filename, ext = self.get_filename_and_ext(f"{filename}{thumb.suffix}")

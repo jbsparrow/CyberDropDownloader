@@ -51,7 +51,7 @@ class HotPicCrawler(Crawler):
         title = self.create_title(soup.title.text.rsplit(" - ")[0], scrape_item.album_id)  # type: ignore
         scrape_item.setup_as_profile(title, album_id=album_id)
 
-        for _, link in self.iter_tags(soup.select(ALBUM_ITEM_SELECTOR)):
+        for _, link in self.iter_tags(soup, ALBUM_ITEM_SELECTOR):
             await self.handle_direct_link(scrape_item, link)
 
     @error_handling_wrapper

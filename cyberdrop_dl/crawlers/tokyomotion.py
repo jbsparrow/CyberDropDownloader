@@ -141,7 +141,7 @@ class TokioMotionCrawler(Crawler):
         async for soup in self.web_pager(scrape_item.url):
             if "This is a private" in soup.text:
                 raise ScrapeError(401, "Private album")
-            for _, link in self.iter_tags(soup.select(self.image_thumb_selector), "src"):
+            for _, link in self.iter_tags(soup, self.image_thumb_selector, "src"):
                 link = remove_parts(link, "tmb")
                 filename, ext = self.get_filename_and_ext(link.name)
                 await self.handle_file(link, scrape_item, filename, ext)
@@ -154,7 +154,7 @@ class TokioMotionCrawler(Crawler):
         self.add_user_title(scrape_item)
         async for soup in self.web_pager(scrape_item.url):
             for _, new_scrape_item in self.iter_children(
-                scrape_item, soup.select(self.album_selector), new_title_part="albums"
+                scrape_item, soup, self.album_selector, new_title_part="albums"
             ):
                 await self.album(new_scrape_item)
 
@@ -185,7 +185,7 @@ class TokioMotionCrawler(Crawler):
         scraper = self.album if is_album else self.video
 
         async for soup in self.web_pager(scrape_item.url):
-            for _, new_scrape_item in self.iter_children(scrape_item, soup.select(selector)):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, selector):
                 await scraper(new_scrape_item)
 
     @error_handling_wrapper
@@ -201,7 +201,7 @@ class TokioMotionCrawler(Crawler):
         async for soup in self.web_pager(scrape_item.url):
             if "This is a private" in soup.text:
                 raise ScrapeError(401, "Private playlist")
-            for _, new_scrape_item in self.iter_children(scrape_item, soup.select(selector)):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, selector):
                 await self.video(new_scrape_item)
 
     """--------------------------------------------------------------------------------------------------------------------------"""

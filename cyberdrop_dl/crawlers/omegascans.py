@@ -96,9 +96,10 @@ class OmegaScansCrawler(Crawler):
             date = parse_datetime(date_str)
 
         scrape_item.possible_datetime = date
-        for _, link in self.iter_tags(soup.select(IMAGE_SELECTOR), ("src", "data-src")):
-            filename, ext = self.get_filename_and_ext(link.name)
-            await self.handle_file(link, scrape_item, filename, ext)
+        for attribute in ("src", "data-src"):
+            for _, link in self.iter_tags(soup, IMAGE_SELECTOR, attribute):
+                filename, ext = self.get_filename_and_ext(link.name)
+                await self.handle_file(link, scrape_item, filename, ext)
 
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:

@@ -63,7 +63,7 @@ class XhamsterCrawler(Crawler):
 
         async def process_children(url: URL, selector: str, name: str):
             async for soup in self.web_pager(url):
-                for _, new_scrape_item in self.iter_children(scrape_item, soup.select(selector), new_title_part=name):
+                for _, new_scrape_item in self.iter_children(scrape_item, soup, selector, new_title_part=name):
                     self.manager.task_group.create_task(self.run(new_scrape_item))
 
         if "videos" in paths_to_scrape:

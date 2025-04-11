@@ -114,7 +114,7 @@ class CheveretoCrawler(Crawler):
         scrape_item.setup_as_profile(title)
 
         async for soup in self.web_pager(get_sort_by_new_url(scrape_item.url), trim=False):
-            for thumb, new_scrape_item in self.iter_children(scrape_item, soup.select(self.item_selector)):
+            for thumb, new_scrape_item in self.iter_children(scrape_item, soup, self.item_selector):
                 # Item may be an image, a video or an album
                 # For images, we can download the file from the thumbnail
                 if any(p in new_scrape_item.url.parts for p in self.images_parts):
@@ -154,7 +154,7 @@ class CheveretoCrawler(Crawler):
         scrape_item.setup_as_album(title, album_id=album_id)
 
         async for soup in self.web_pager(get_sort_by_new_url(scrape_item.url), trim=False):
-            for thumb, new_scrape_item in self.iter_children(scrape_item, soup.select(self.item_selector)):
+            for thumb, new_scrape_item in self.iter_children(scrape_item, soup, self.item_selector):
                 assert thumb
                 if not self.check_album_results(thumb, results):
                     _, new_scrape_item.url = self.get_canonical_url(new_scrape_item, url_type="image")
@@ -164,7 +164,7 @@ class CheveretoCrawler(Crawler):
         # Using the canonical URL + 'sub' won't work because it redirects to the "homepage" of the album
         sub_album_url = original_url / "sub"
         async for soup in self.web_pager(get_sort_by_new_url(sub_album_url), trim=False):
-            for _, sub_album in self.iter_children(scrape_item, soup.select(self.item_selector)):
+            for _, sub_album in self.iter_children(scrape_item, soup, self.item_selector):
                 self.manager.task_group.create_task(self.run(sub_album))
 
     async def video(self, scrape_item: ScrapeItem) -> None:

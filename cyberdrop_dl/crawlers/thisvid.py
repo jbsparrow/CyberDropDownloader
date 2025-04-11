@@ -105,7 +105,7 @@ class ThisVidCrawler(Crawler):
     async def iter_videos(self, scrape_item: ScrapeItem, video_category: str = "") -> None:
         url: URL = scrape_item.url / video_category if video_category else scrape_item.url
         async for soup in self.web_pager(url):
-            for _, new_scrape_item in self.iter_children(scrape_item, soup.select(VIDEOS_SELECTOR)):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, VIDEOS_SELECTOR):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper

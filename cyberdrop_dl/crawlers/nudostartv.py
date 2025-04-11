@@ -47,11 +47,10 @@ class NudoStarTVCrawler(Crawler):
                 title = self.create_title(soup.title.text.split("/")[0])  # type: ignore
                 scrape_item.setup_as_album(title)
 
-            content = soup.select(CONTENT_SELECTOR)
-            if "Last OnlyFans Updates" in title or not content:
+            if "Last OnlyFans Updates" in title or not soup.select_one(CONTENT_SELECTOR):
                 raise ScrapeError(404)
 
-            for _, new_scrape_item in self.iter_children(scrape_item, content):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, CONTENT_SELECTOR):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper

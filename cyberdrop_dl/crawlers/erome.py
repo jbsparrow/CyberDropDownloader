@@ -43,7 +43,7 @@ class EromeCrawler(Crawler):
                 title = self.create_title(scrape_item.url.name)
                 scrape_item.setup_as_profile(title)
 
-            for _, new_scrape_item in self.iter_children(scrape_item, soup.select(ALBUM_SELECTOR)):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, ALBUM_SELECTOR):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -61,10 +61,11 @@ class EromeCrawler(Crawler):
 
         title = self.create_title(title_portion, album_id)
         scrape_item.setup_as_album(title, album_id=album_id)
-        items = soup.select(IMAGES_SELECTOR) + soup.select(VIDEOS_SELECTOR)
 
-        for _, link in self.iter_tags(items, ("data-src", "src")):
-            if not self.check_album_results(link, results):
-                filename, ext = self.get_filename_and_ext(link.name)
-                await self.handle_file(link, scrape_item, filename, ext)
-            scrape_item.add_children()
+        for selector in (IMAGES_SELECTOR, VIDEOS_SELECTOR):
+            # TODO Match attr to selector
+            for attribute in ("data-src", "src"):
+                for _, link in self.iter_tags(soup, selector, attribute, results=results):
+                    filename, ext = self.get_filename_and_ext(link.name)
+                    await self.handle_file(link, scrape_item, filename, ext)
+                    scrape_item.add_children()

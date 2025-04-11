@@ -71,7 +71,7 @@ class BestPrettyGirlCrawler(Crawler):
 
                 scrape_item.setup_as_album(title)
 
-            for _, new_scrape_item in self.iter_children(scrape_item, soup.select(ITEM_SELECTOR)):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, ITEM_SELECTOR):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -87,7 +87,7 @@ class BestPrettyGirlCrawler(Crawler):
         scrape_item.possible_datetime = calendar.timegm(date.timetuple())
 
         trash: str = ""
-        for _, link in self.iter_tags(soup.select(IMAGES_SELECTOR), "src"):
+        for _, link in self.iter_tags(soup, IMAGES_SELECTOR, "src"):
             if not trash:
                 trash = link.name.split("-0000", 1)[0]
             filename, ext = self.get_filename_and_ext(link.name)
@@ -95,6 +95,6 @@ class BestPrettyGirlCrawler(Crawler):
             custom_filename, _ = self.get_filename_and_ext(custom_filename)
             await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
-        for _, new_scrape_item in self.iter_children(scrape_item, soup.select(VIDEO_IFRAME_SELECTOR), "data-src"):
+        for _, new_scrape_item in self.iter_children(scrape_item, soup, VIDEO_IFRAME_SELECTOR, "data-src"):
             new_scrape_item.url = new_scrape_item.url.with_host("vidply.com")
             self.handle_external_links(new_scrape_item)

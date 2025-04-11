@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import calendar
 import datetime
+import itertools
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, NamedTuple
 
@@ -15,9 +16,7 @@ from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
-
-    from bs4 import BeautifulSoup, ResultSet, Tag
+    from bs4 import BeautifulSoup
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
@@ -28,7 +27,7 @@ DEFAULT_QUALITY = "main"
 RESOLUTIONS = ["4k", "2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"]  # best to worst
 
 VIDEO_REMOVED_SELECTOR = "[id='video_removed'], [class*='video_removed']"
-PLAYLIST_ITEM_SELECTOR = "div.video-list > div.video-item > a"
+VIDEOS_SELECTOR = "div.video-list > div.video-item > a"
 
 JS_SELECTOR = "main.main-container > script:contains('var stream_data')"
 EXTENDED_JS_SELECTOR = "main.main-container > script:contains('uploadDate')"
@@ -47,9 +46,6 @@ class PlaylistInfo:
         canonical_url = PRIMARY_BASE_DOMAIN / playlist_id / "playlist" / name
         title = soup.select_one("title").text.rsplit("Playlist -")[0].strip() if soup else ""  # type: ignore
         return cls(playlist_id, canonical_url, title)
-
-    def get_page_url(self, page: int = 1) -> URL:
-        return self.url / f"{page}"
 
 
 class Format(NamedTuple):
@@ -85,19 +81,33 @@ class SpankBangCrawler(Crawler):
     async def playlist(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a playlist."""
 
+        # Get basic playlist info from the URL
         playlist = PlaylistInfo.from_url(scrape_item.url)
         scrape_item.url = playlist.url
         results = await self.get_album_results(playlist.id_)
-        title = ""
+        page_url = scrape_item.url
+        title: str = ""
 
-        async for playlist_title, videos in self.web_pager(scrape_item):
-            if title:
-                title = self.create_title(playlist_title, playlist.id_)
+        for page in itertools.count(1):
+            async with self.request_limiter:
+                soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, page_url)
+
+            # Get full playlist info + title from the soup
+            playlist = PlaylistInfo.from_url(page_url, soup)
+            if not title:
+                title = self.create_title(playlist.title, playlist.id_)
                 scrape_item.setup_as_album(title, album_id=playlist.id_)
 
-            for _, new_scrape_item in self.iter_children(scrape_item, videos):
-                if not self.check_album_results(new_scrape_item.url, results):
-                    self.manager.task_group.create_task(self.run(new_scrape_item))
+            n_videos = 0
+
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, VIDEOS_SELECTOR, results=results):
+                n_videos += 1
+                self.manager.task_group.create_task(self.run(new_scrape_item))
+
+            if n_videos < 100:
+                break
+
+            page_url = playlist.url / f"{page + 1}"
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
@@ -132,22 +142,6 @@ class SpankBangCrawler(Crawler):
         filename, ext = self.get_filename_and_ext(link.name)
         custom_filename, _ = self.get_filename_and_ext(f"{info['title']} [{resolution}]{ext}")
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
-
-    async def web_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[tuple[str, ResultSet[Tag]]]:
-        """Generator of website pages."""
-        page_url = scrape_item.url
-        current_page = 1
-        while True:
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, page_url)
-
-            playlist = PlaylistInfo.from_url(page_url, soup)
-            videos = soup.select(PLAYLIST_ITEM_SELECTOR)
-            yield playlist.title, videos
-            if len(videos) < 100:
-                break
-            current_page += 1
-            page_url = playlist.get_page_url(current_page)
 
     def set_cookies(self) -> None:
         cookies = {"country": "US", "age_pass": 1}

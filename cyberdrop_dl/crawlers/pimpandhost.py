@@ -51,7 +51,7 @@ class PimpAndHostCrawler(Crawler):
                 if date_tag := soup.select_one(DATE_SELECTOR):
                     scrape_item.possible_datetime = self.parse_datetime(date_tag.get("title"))  # type: ignore
 
-            for _, new_scrape_item in self.iter_children(scrape_item, soup.select(FILES_SELECTOR)):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, FILES_SELECTOR):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
