@@ -1,20 +1,28 @@
 from __future__ import annotations
 
 import os
-from collections.abc import Callable
 from functools import wraps
 from http.cookiejar import CookieJar, MozillaCookieJar
 from textwrap import dedent
-from typing import TYPE_CHECKING, TypeAlias
+from typing import TYPE_CHECKING, NamedTuple
 
 import browser_cookie3
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Generator
+
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.constants import BROWSERS
 
-CookieExtractor: TypeAlias = Callable[..., CookieJar]
-COOKIE_EXTRACTORS: dict[str, CookieExtractor] = {func.__name__: func for func in browser_cookie3.all_browsers}
+
+class CookieExtractor(NamedTuple):
+    name: str
+    extract: Callable[..., CookieJar]
+
+
+COOKIE_EXTRACTORS: list[CookieExtractor] = [
+    CookieExtractor(func.__name__, func) for func in browser_cookie3.all_browsers
+]
 COOKIE_ERROR_FOOTER = "\n\nNothing has been saved."
 CHROMIUM_BROWSERS = ["chrome", "chromium", "opera", "opera_gx", "brave", "edge", "vivaldi", "arc"]
 
@@ -59,7 +67,7 @@ def get_cookies_from_browsers(
     :param browsers: list of browsers to extract from. If `None`, config `browser_cookies.browsers` will be used
     :param domains: list of domains to filter cookies. If `None`, config `browser_cookies.sites` will be used
     :return: A set with all the domains that actually had cookies
-    :raises ValueError: If `browsers` or `domains` are empty lists
+    :raises ValueError: If `browsers` or `domains` are empty lists, or none of the provided browsers is supported for extraction
     :raises UnsupportedBrowserError: If there was a decrypt error while extracting cookies from a chromium browser
     and the current OS is Windows
     :raises BrowserCookieError: For any other kind of error while extracting cookies"""
@@ -74,17 +82,23 @@ def get_cookies_from_browsers(
     extractors_to_use = list(map(str.lower, browsers_to_extract_from))
     domains_to_extract: list[str] = domains or manager.config_manager.settings_data.browser_cookies.sites
 
-    def extract_cookies():
-        for name, extractor in COOKIE_EXTRACTORS.items():
-            if name not in extractors_to_use:
+    def is_decrypt_error(msg: str) -> bool:
+        return "Unable to get key for cookie decryption" in msg
+
+    def extract_cookies() -> Generator[CookieJar]:
+        for extractor in COOKIE_EXTRACTORS:
+            if extractor.name not in extractors_to_use:
                 continue
             try:
-                yield name, extractor()
+                yield extractor.extract()
             except browser_cookie3.BrowserCookieError as e:
-                check_unsupported_browser(e, name)
+                msg = str(e)
+                if is_decrypt_error(msg) and extractor.name in CHROMIUM_BROWSERS and os.name == "nt":
+                    msg = f"Cookie extraction from {extractor.name.capitalize()} is not supported on Windows - {msg}"
+                    raise UnsupportedBrowserError(msg) from None
                 raise
 
-    extracted_cookies = [cookies_jar for _, cookies_jar in extract_cookies()]
+    extracted_cookies = list(extract_cookies())
     if not extracted_cookies:
         msg = "None of the provided browsers is supported for extraction"
         raise ValueError(msg)
@@ -115,14 +129,3 @@ def clear_cookies(manager: Manager, domains: list[str]) -> None:
         cookie_file_path = manager.path_manager.cookies_dir / f"{domain}.txt"
         cookie_jar = MozillaCookieJar(cookie_file_path)
         cookie_jar.save(ignore_discard=True, ignore_expires=True)
-
-
-def check_unsupported_browser(error: browser_cookie3.BrowserCookieError, extractor_name: str) -> None:
-    msg = str(error)
-    if is_decrypt_error(msg) and extractor_name in CHROMIUM_BROWSERS and os.name == "nt":
-        msg = f"Cookie extraction from {extractor_name.capitalize()} is not supported on Windows - {msg}"
-        raise UnsupportedBrowserError(msg)
-
-
-def is_decrypt_error(error_as_str: str) -> bool:
-    return "Unable to get key for cookie decryption" in error_as_str
