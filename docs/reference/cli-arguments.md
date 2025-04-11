@@ -74,6 +74,18 @@ Path to the CDL `settings.yaml` file to load
 If both `config` and `config-file` are supplied, `config-file` takes priority
 {% endhint %}
 
+### `disable-cache`  
+
+| Type       | Default | Action       |
+| ---------- | ------- | ------------ |
+| `BoolFlag` | `False` | `store_true` |
+
+Disables the use of the requests cache for the current run only. All config settings or arguments related to the cache (ex: `file_host_cache_expire_after`) will be ignored.
+
+{% hint style="info" %}
+This does not affect the original cache
+{% endhint %}
+
 ### `download`  
 
 | Type       | Default | Action       |
@@ -162,23 +174,13 @@ Retry failed downloads
 
 Retry download of maintenance files (bunkr). Requires files to be hashed
 
-***
-
-### `disable-cache`  
+### `show-supported-sites`  
 
 | Type       | Default | Action       |
 | ---------- | ------- | ------------ |
 | `BoolFlag` | `False` | `store_true` |
 
-Disables the use of the requests cache for the current run only
-all config settings or arguments relating to the cache expiry such as file_host_cache_expire_after will be ignored
-
-{% hint style="info" %}
-This does not affect the original cache
-{% endhint %}
-
-
-***
+Shows a list of all supported sites and exits
 
 ## Overview
 
