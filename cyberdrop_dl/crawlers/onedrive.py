@@ -15,7 +15,6 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -212,7 +211,6 @@ class OneDriveCrawler(Crawler):
         async with self.request_limiter:
             json_resp: dict = await self.client.get_json(self.domain, api_url, headers_inc=headers)
 
-        log_debug(json_resp)
         return json_resp
 
     @error_handling_wrapper
