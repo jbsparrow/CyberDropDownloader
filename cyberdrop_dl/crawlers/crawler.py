@@ -4,7 +4,6 @@ import asyncio
 import copy
 import re
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
 from dataclasses import field
 from datetime import datetime
 from functools import wraps
@@ -29,7 +28,8 @@ from cyberdrop_dl.utils.utilities import (
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable, Generator
 
-    from bs4 import BeautifulSoup, Tag
+    from bs4 import BeautifulSoup
+    from bs4.css import CSS
 
     from cyberdrop_dl.clients.scraper_client import ScraperClient
     from cyberdrop_dl.managers.manager import Manager
@@ -307,38 +307,27 @@ class Crawler(ABC):
         self.client.client_manager.cookies.update_cookies(cookies, response_url)
 
     def iter_tags(
-        self, soup_tags: Iterable[Tag], attributes: Iterable[str] | str = "href"
+        self, soup: BeautifulSoup, selector: str, /, attribute: str = "href"
     ) -> Generator[tuple[URL | None, URL]]:
-        """Generates tuples with an URL from the `src` value of first image tag (if any) and the URL from the first valid `attribute` value"""
-        assert attributes
-        assert isinstance(attributes, Iterable | str)
-        if isinstance(attributes, str):
-            attributes = [attributes]
-
-        def get_first_valid_attribute() -> str | None:
-            for attribute in attributes:
-                if value := item.get(attribute):
-                    return value  # type: ignore
-
-        for item in soup_tags:
-            thumbnail = item.select_one("img")
-            thumb_str: str | None = thumbnail["src"] if thumbnail else None  # type: ignore
-            thumb = self.parse_url(thumb_str) if thumb_str else None
-            for attribute in attributes:
-                item.get(attribute)
-            link = self.parse_url(get_first_valid_attribute())  # type: ignore
-            yield thumb, link
+        """Generates tuples with an URL from the `src` value of first image tag (if any) and a URL from the `attribute` value"""
+        css: CSS = soup.css  # type: ignore
+        for tag in css.iselect(selector):
+            if link_str := tag.get(attribute):
+                thumb_str: str | None = t_tag["src"] if (t_tag := tag.select_one("img")) else None  # type: ignore
+                thumb = self.parse_url(thumb_str) if thumb_str else None
+                link = self.parse_url(link_str)  # type: ignore
+                yield thumb, link
 
     def iter_children(
-        self, scrape_item: ScrapeItem, soup_tags: Iterable[Tag], attribute: Iterable[str] | str = "href", **kwargs: Any
+        self, scrape_item: ScrapeItem, soup: BeautifulSoup, selector: str, /, attribute: str = "href", **kwargs: Any
     ) -> Generator[tuple[URL | None, ScrapeItem]]:
         """Generates tuples with an URL from the `src` value of first image tag (if any) and a new scrape item from the `attribute` value
 
         `**kwargs` are passed to `scrape.item.create_child`"""
-        for thumb, link in self.iter_tags(soup_tags, attribute):
+        for thumb, link in self.iter_tags(soup, selector, attribute):
             new_scrape_item = scrape_item.create_child(link, **kwargs)
-            scrape_item.add_children()
             yield thumb, new_scrape_item
+            scrape_item.add_children()
 
     async def web_pager(
         self, url: URL, next_page_selector: str | None = None, *, cffi: bool = False, **kwargs: Any
@@ -350,14 +339,14 @@ class Crawler(ABC):
         All remaining  `**kwargs` will passed to `self.parse_url` to parse each new page"""
 
         page_url = url
-        next_page_selector = next_page_selector or self.next_page_selector
-        assert next_page_selector
+        selector = next_page_selector or self.next_page_selector
+        assert selector
         get_soup = self.client.get_soup_cffi if cffi else self.client.get_soup
         while True:
             async with self.request_limiter:
                 soup: BeautifulSoup = await get_soup(self.domain, page_url)
             yield soup
-            next_page = soup.select_one(next_page_selector)
+            next_page = soup.select_one(selector)
             page_url_str: str | None = next_page.get("href") if next_page else None  # type: ignore
             if not page_url_str:
                 break
