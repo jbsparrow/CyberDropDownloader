@@ -57,7 +57,7 @@ class MediaItem:
     current_attempt: int = field(default=0, init=False, hash=False, compare=False)
     partial_file: Path | None = field(default=None, init=False)
     complete_file: Path = field(default=None, init=False)  # type: ignore
-    task_id: TaskID | None = field(default=None, init=False, hash=False, compare=False)
+    task_id: TaskID = field(init=False, hash=False, compare=False)
     hash: str | None = field(default=None, init=False, hash=False, compare=False)
     downloaded: bool = field(default=False, init=False, hash=False, compare=False)
 
