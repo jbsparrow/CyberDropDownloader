@@ -1,20 +1,20 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from functools import wraps
-from http.cookiejar import MozillaCookieJar
+from http.cookiejar import CookieJar, MozillaCookieJar
 from textwrap import dedent
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeAlias
 
 import browser_cookie3
-from rich.console import Console
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.utils.constants import BROWSERS
 
-console = Console()
+CookieExtractor: TypeAlias = Callable[..., CookieJar]
+COOKIE_EXTRACTORS: dict[str, CookieExtractor] = {func.__name__: func for func in browser_cookie3.all_browsers}
 COOKIE_ERROR_FOOTER = "\n\nNothing has been saved."
 CHROMIUM_BROWSERS = ["chrome", "chromium", "opera", "opera_gx", "brave", "edge", "vivaldi", "arc"]
 
@@ -52,48 +52,55 @@ def cookie_wrapper(func: Callable) -> Callable:
 
 @cookie_wrapper
 def get_cookies_from_browsers(
-    manager: Manager, *, browsers: list[str] | None = None, domains: list[str] | None = None
+    manager: Manager, *, browsers: list[BROWSERS] | list[str] | None = None, domains: list[str] | None = None
 ) -> None:
-    if not browsers and browsers is not None:
+    if browsers == []:
         msg = "No browser selected"
         raise ValueError(msg)
-    if not domains and domains is not None:
+    if domains == []:
         msg = "No domains selected"
         raise ValueError(msg)
 
-    browsers = browsers or manager.config_manager.settings_data.browser_cookies.browsers
-    browsers = list(map(str.lower, browsers))
-    domains: list[str] = domains or manager.config_manager.settings_data.browser_cookies.sites
-    extractors = [(str(b), getattr(browser_cookie3, b)) for b in browsers if hasattr(browser_cookie3, b)]
+    browsers_to_extract_from = browsers or manager.config_manager.settings_data.browser_cookies.browsers
+    extractors_to_use = list(map(str.lower, browsers_to_extract_from))
+    domains_to_extract: list[str] = domains or manager.config_manager.settings_data.browser_cookies.sites
 
-    if not extractors:
+    def extract_cookies():
+        for name, extractor in COOKIE_EXTRACTORS.items():
+            if name not in extractors_to_use:
+                continue
+            try:
+                yield name, extractor()
+            except browser_cookie3.BrowserCookieError as e:
+                check_unsupported_browser(e, name)
+                raise
+
+    extracted_cookies = [cookies_jar for _, cookies_jar in extract_cookies()]
+    if not extracted_cookies:
         msg = "None of the provided browsers is supported for extraction"
         raise ValueError(msg)
 
-    for domain in domains:
-        cookie_jar = MozillaCookieJar()
-        for extractor_name, extractor in extractors:
-            try:
-                cookies = extractor(domain_name=domain)
-            except browser_cookie3.BrowserCookieError as e:
-                check_unsupported_browser(e, extractor_name)
-                raise
-            for cookie in cookies:
-                cookie_jar.set_cookie(cookie)
-            manager.path_manager.cookies_dir.mkdir(parents=True, exist_ok=True)
-            cookie_file_path = manager.path_manager.cookies_dir / f"{domain}.txt"
-        cookie_jar.save(cookie_file_path, ignore_discard=True, ignore_expires=True)
+    manager.path_manager.cookies_dir.mkdir(parents=True, exist_ok=True)
+    for domain in domains_to_extract:
+        cookie_file_path = manager.path_manager.cookies_dir / f"{domain}.txt"
+        cdl_cookie_jar = MozillaCookieJar(cookie_file_path)
+        for cookie_jar in extracted_cookies:
+            for cookie in cookie_jar:
+                if domain in cookie.domain:
+                    cdl_cookie_jar.set_cookie(cookie)
+
+        cdl_cookie_jar.save(ignore_discard=True, ignore_expires=True)
 
 
-def clear_cookies(manager: Manager, domains: list[str] | None = None) -> None:
-    if not domains and domains is not None:
+def clear_cookies(manager: Manager, domains: list[str]) -> None:
+    if not domains:
         raise ValueError("No domains selected")
 
+    manager.path_manager.cookies_dir.mkdir(parents=True, exist_ok=True)
     for domain in domains:
-        cookie_jar = MozillaCookieJar()
-        manager.path_manager.cookies_dir.mkdir(parents=True, exist_ok=True)
         cookie_file_path = manager.path_manager.cookies_dir / f"{domain}.txt"
-        cookie_jar.save(cookie_file_path, ignore_discard=True, ignore_expires=True)
+        cookie_jar = MozillaCookieJar(cookie_file_path)
+        cookie_jar.save(ignore_discard=True, ignore_expires=True)
 
 
 def check_unsupported_browser(error: browser_cookie3.BrowserCookieError, extractor_name: str) -> None:
