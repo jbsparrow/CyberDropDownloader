@@ -1,6 +1,6 @@
 from typing import Any
 
-root_manager = None
+MOCK_MANAGER = None
 
 
 class Mock(Any):
@@ -9,8 +9,8 @@ class Mock(Any):
         self._mock_name = name
 
     def __getattribute__(self, name: str) -> Any:
-        if name == "manager" and root_manager is not None:
-            return root_manager
+        if name == "manager" and MOCK_MANAGER is not None:
+            return MOCK_MANAGER
         try:
             return super().__getattribute__(name)
         except AttributeError:
@@ -34,8 +34,11 @@ class MockCacheManager(Mock):
 
 class MockManager(Mock):
     def __init__(self):
-        global root_manager
-        assert root_manager is None, "A global MockManager already exists. Only 1 should be created"
+        global MOCK_MANAGER
+        assert MOCK_MANAGER is None, "A global MockManager already exists. Only 1 should be created"
         super().__init__("manager")
         self.cache_manager = MockCacheManager()
-        root_manager = self
+        MOCK_MANAGER = self
+
+
+MOCK_MANAGER = MockManager()
