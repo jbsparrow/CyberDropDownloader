@@ -46,48 +46,37 @@ class Post(Protocol):
 
 class Crawler(ABC):
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {}
+    primary_base_domain: ClassVar[URL] = None  # type: ignore
+    DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date} - {number} - {title}"
+    update_unsupported: ClassVar[bool] = False
+    skip_pre_check: ClassVar[bool] = False
+    next_page_selector: ClassVar[str] = ""
+    scrape_prefix: ClassVar[str] = "Scraping:"
+    scrape_mapper_domain: ClassVar[str] = ""
     domain: str = None  # type: ignore
-    primary_base_domain: URL = None  # type: ignore
-    DEFAULT_POST_TITLE_FORMAT = "{date} - {number} - {title}"
-    update_unsupported = False
-    skip_pre_check = False
-    next_page_selector: str = ""
-    scrape_prefix = "Scraping:"
-    scrape_mapper_domain = ""
 
     def __init__(self, manager: Manager, domain: str, folder_domain: str | None = None) -> None:
         self.manager = manager
         self.downloader = field(init=False)
         self.scraping_progress = manager.progress_manager.scraping_progress
         self.client: ScraperClient = field(init=False)
-        self._semaphore = asyncio.Semaphore(20)
         self.startup_lock = asyncio.Lock()
         self.request_limiter = AsyncLimiter(10, 1)
         self.ready: bool = False
-
         self.domain = domain
         self.folder_domain = folder_domain or domain.capitalize()
-
-        self.logged_in = field(init=False)
-
+        self.logged_in: bool = False
         self.scraped_items: list = []
         self.waiting_items = 0
+        self._semaphore = asyncio.Semaphore(20)
+
+    @property
+    def name(self) -> str:
+        return self.__class__.__name__.removesuffix("Crawler")
 
     @property
     def allow_no_extension(self) -> bool:
         return not self.manager.config_manager.settings_data.ignore_options.exclude_files_with_no_extension
-
-    def get_filename_and_ext(self, filename: str, *args, assume_ext: str | None = None, **kwargs):
-        """Wrapper around `utils.get_filename_and_ext` to suppress `NoExtensionError` if `asumme_ext` is supplied.
-
-        Does nothing unless `ignore_options.exclude_files_with_no_extension` is `False`
-        """
-        filename_as_path = Path(filename)
-        if assume_ext and self.allow_no_extension and not filename_as_path.suffix:
-            filename_as_path = filename_as_path.with_suffix(assume_ext)
-            new_filename, ext = get_filename_and_ext(str(filename_as_path), *args, *kwargs)
-            return Path(new_filename).stem, ext
-        return get_filename_and_ext(filename, *args, *kwargs)
 
     async def startup(self) -> None:
         """Starts the crawler."""
@@ -176,31 +165,45 @@ class Crawler(ABC):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def check_skip_by_config(self, media_item: MediaItem) -> bool:
-        settings = self.manager.config_manager.settings_data
         if (
-            settings.download_options.skip_referer_seen_before
+            self.manager.config.download_options.skip_referer_seen_before
             and await self.manager.db_manager.temp_referer_table.check_referer(media_item.referer)
         ):
             log(f"Download skip {media_item.url} as referer has been seen before", 10)
             return True
 
         assert media_item.url.host
-        skip_hosts = settings.ignore_options.skip_hosts
-        if skip_hosts and any(host in media_item.url.host for host in skip_hosts):
+        media_host = media_item.url.host
+
+        if (hosts := self.manager.config.ignore_options.skip_hosts) and any(host in media_host for host in hosts):
             log(f"Download skip {media_item.url} due to skip_hosts config", 10)
             return True
 
-        only_hosts = settings.ignore_options.only_hosts
-        if only_hosts and not any(host in media_item.url.host for host in only_hosts):
+        if (hosts := self.manager.config.ignore_options.only_hosts) and not any(host in media_host for host in hosts):
             log(f"Download skip {media_item.url} due to only_hosts config", 10)
             return True
 
-        regex_filter = self.manager.config_manager.settings_data.ignore_options.filename_regex_filter
-        if regex_filter and re.search(regex_filter, media_item.filename):
+        if (regex := self.manager.config.ignore_options.filename_regex_filter) and re.search(
+            regex, media_item.filename
+        ):
             log(f"Download skip {media_item.url} due to filename regex filter config", 10)
             return True
 
         return False
+
+    async def check_complete_from_referer(self, scrape_item: ScrapeItem | URL) -> bool:
+        """Checks if the scrape item has already been scraped."""
+        url = scrape_item if isinstance(scrape_item, URL) else scrape_item.url
+        downloaded = await self.manager.db_manager.history_table.check_complete_by_referer(self.domain, url)
+        if downloaded:
+            log(f"Skipping {url} as it has already been downloaded", 10)
+            self.manager.progress_manager.download_progress.add_previously_completed()
+            return True
+        return False
+
+    async def get_album_results(self, album_id: str) -> dict[str, int]:
+        """Checks whether an album has completed given its domain and album id."""
+        return await self.manager.db_manager.history_table.check_album(self.domain, album_id)
 
     def handle_external_links(self, scrape_item: ScrapeItem, reset: bool = False) -> None:
         """Maps external links to the scraper class."""
@@ -210,19 +213,22 @@ class Crawler(ABC):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def check_complete_from_referer(self, scrape_item: ScrapeItem | URL) -> bool:
-        """Checks if the scrape item has already been scraped."""
-        url = scrape_item if isinstance(scrape_item, URL) else scrape_item.url
-        check_complete = await self.manager.db_manager.history_table.check_complete_by_referer(self.domain, url)
-        if check_complete:
-            log(f"Skipping {url} as it has already been downloaded", 10)
-            self.manager.progress_manager.download_progress.add_previously_completed()
-            return True
-        return False
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    async def get_album_results(self, album_id: str) -> dict[str, int]:
-        """Checks whether an album has completed given its domain and album id."""
-        return await self.manager.db_manager.history_table.check_album(self.domain, album_id)
+    def get_filename_and_ext(self, filename: str, *args, assume_ext: str | None = None, **kwargs):
+        """Wrapper around `utils.get_filename_and_ext`.
+
+        If `ignore_options.exclude_files_with_no_extension` is `True`, `assume_ext` is not None and the file has no extension,
+        The value of `assume_ext` will be used as `ext`
+
+        In any other case, it will just call `utils.get_filename_and_ext`
+        """
+        filename_as_path = Path(filename)
+        if assume_ext and self.allow_no_extension and not filename_as_path.suffix:
+            filename_as_path = filename_as_path.with_suffix(assume_ext)
+            new_filename, ext = get_filename_and_ext(str(filename_as_path), *args, *kwargs)
+            return Path(new_filename).stem, ext
+        return get_filename_and_ext(filename, *args, *kwargs)
 
     def check_album_results(self, url: URL, album_results: dict[str, Any]) -> bool:
         """Checks whether an album has completed given its domain and album id."""
@@ -259,20 +265,20 @@ class Crawler(ABC):
 
     def create_title(self, title: str, album_id: str | None = None, thread_id: int | None = None) -> str:
         """Creates the title for the scrape item."""
-        download_options = self.manager.config_manager.settings_data.download_options
         if not title:
             title = "Untitled"
 
         title = title.strip()
-        if download_options.include_album_id_in_folder_name and album_id:
+        if album_id and self.manager.config.download_options.include_album_id_in_folder_name:
             title = f"{title} {album_id}"
 
-        if download_options.include_thread_id_in_folder_name and thread_id:
+        if thread_id and self.manager.config.download_options.include_thread_id_in_folder_name:
             title = f"{title} {thread_id}"
 
-        if not download_options.remove_domains_from_folder_names:
+        if not self.manager.config.download_options.remove_domains_from_folder_names:
             title = f"{title} ({self.folder_domain})"
 
+        # Remove double spaces
         while True:
             title = title.replace("  ", " ")
             if "  " not in title:
@@ -280,14 +286,14 @@ class Crawler(ABC):
         return title
 
     def add_separate_post_title(self, scrape_item: ScrapeItem, post: Post) -> None:
-        if not self.manager.config_manager.settings_data.download_options.separate_posts:
+        if not self.manager.config.download_options.separate_posts:
             return
-        title_format = self.manager.config_manager.settings_data.download_options.separate_posts_format
+        title_format = self.manager.config.download_options.separate_posts_format
         if title_format.casefold() == "{default}":
             title_format = self.DEFAULT_POST_TITLE_FORMAT
         date = post.date
         if isinstance(post.date, int):
-            date = datetime.fromtimestamp(date)  # type: ignore
+            date = datetime.fromtimestamp(post.date)
         if isinstance(date, datetime):
             date = date.isoformat()
         id = "Unknown" if post.id is None else post.id
@@ -297,6 +303,7 @@ class Crawler(ABC):
         scrape_item.add_to_parent_title(title)
 
     def parse_url(self, link_str: str, relative_to: URL | None = None, *, trim: bool = True) -> URL:
+        """Wrapper arround `utils.parse_url` to use `self.primary_base_domain` as base"""
         base = relative_to or self.primary_base_domain
         return parse_url(link_str, base, trim=trim)
 
@@ -317,7 +324,10 @@ class Crawler(ABC):
         *,
         results: dict[str, int] | None = None,
     ) -> Generator[tuple[URL | None, URL]]:
-        """Generates tuples with an URL from the `src` value of first image tag (if any) and a URL from the `attribute` value"""
+        """Generates tuples with an URL from the `src` value of the first image tag (AKA the thumbnail) and an URL from the value of `attribute`
+
+        :param results: must be the output of `self.get_album_results`.
+        If provided, it will be used as a filter, to only yield items that has not been downloaded before"""
         album_results = results or {}
         css: CSS = soup.css  # type: ignore
 
@@ -343,9 +353,11 @@ class Crawler(ABC):
         results: dict[str, int] | None = None,
         **kwargs: Any,
     ) -> Generator[tuple[URL | None, ScrapeItem]]:
-        """Generates tuples with an URL from the `src` value of first image tag (if any) and a new scrape item from the `attribute` value
+        """Generates tuples with an URL from the `src` value of the first image tag (AKA the thumbnail) and a new scrape item from the value of `attribute`
 
-        `**kwargs` are passed to `scrape.item.create_child`"""
+        :param results: must be the output of `self.get_album_results`.
+        If provided, it will be used as a filter, to only yield items that has not been downloaded before
+        :param **kwargs: Will be forwarded to `scrape.item.create_child`"""
         for thumb, link in self.iter_tags(soup, selector, attribute, results=results):
             new_scrape_item = scrape_item.create_child(link, **kwargs)
             yield thumb, new_scrape_item
@@ -356,13 +368,13 @@ class Crawler(ABC):
     ) -> AsyncGenerator[BeautifulSoup]:
         """Generator of website pages.
 
-        if `next_page_selector` is `None`, `self.next_page_selector` will be used
-
-        All remaining  `**kwargs` will passed to `self.parse_url` to parse each new page"""
+        :param next_page_selector: If `None`, `self.next_page_selector` will be used
+        :param cffi: If `True`, uses `curl_cffi` to get the soup for each page. Otherwise, `aiohttp` will be used
+        :param **kwargs: Will be forwarded to `self.parse_url` to parse each new page"""
 
         page_url = url
         selector = next_page_selector or self.next_page_selector
-        assert selector
+        assert selector, f"No selector was provided and {self.domain} does define a next_page_selector"
         get_soup = self.client.get_soup_cffi if cffi else self.client.get_soup
         while True:
             async with self.request_limiter:
@@ -376,13 +388,14 @@ class Crawler(ABC):
 
     @error_handling_wrapper
     async def direct_file(self, scrape_item: ScrapeItem, url: URL | None = None, assume_ext: str | None = None) -> None:
+        """Download a direct link file. Filename will be extrcation for the url"""
         link = url or scrape_item.url
         filename, ext = self.get_filename_and_ext(link.name, assume_ext=assume_ext)
         await self.handle_file(link, scrape_item, filename, ext)
 
 
 def create_task_id(func: Callable) -> Callable:
-    """Wrapper handles task_id creation and removal for ScrapeItems"""
+    """Wrapper that handles `task_id` creation and removal for scrape items"""
 
     @wraps(func)
     async def wrapper(self: Crawler, *args, **kwargs):
