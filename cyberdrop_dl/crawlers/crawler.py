@@ -38,7 +38,7 @@ class Post(Protocol):
 
 
 class Crawler(ABC):
-    SUPPORTED_SITES: ClassVar[dict[str, list]] = {}
+    SUPPORTED_SITES: ClassVar[dict[str, list[str]]] = {}
     domain: str = None  # type: ignore
     primary_base_domain: URL = None  # type: ignore
     DEFAULT_POST_TITLE_FORMAT = "{date} - {number} - {title}"
