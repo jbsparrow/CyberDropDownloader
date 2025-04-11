@@ -28,8 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - aShemaleTube.com support
 - Thisvid.com support
 - ePorner.com profile, photo, and gallery support
-- New `--show-supported-sites` option: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/files#save_pages_html
-
+- New `--show-supported-sites` option: https://script-ware.gitbook.io/cyberdrop-dl/reference/cli-arguments#show-supported-sites
 ### Changed
 - The `import cookies` menu will only display the browsers supported by the user's OS
 
