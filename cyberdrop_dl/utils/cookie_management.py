@@ -84,12 +84,15 @@ def get_cookies_from_browsers(
     for domain in domains_to_extract:
         cookie_file_path = manager.path_manager.cookies_dir / f"{domain}.txt"
         cdl_cookie_jar = MozillaCookieJar(cookie_file_path)
+        found_cookies = False
         for cookie_jar in extracted_cookies:
             for cookie in cookie_jar:
                 if domain in cookie.domain:
+                    found_cookies = True
                     cdl_cookie_jar.set_cookie(cookie)
 
-        cdl_cookie_jar.save(ignore_discard=True, ignore_expires=True)
+        if found_cookies:
+            cdl_cookie_jar.save(ignore_discard=True, ignore_expires=True)
 
 
 def clear_cookies(manager: Manager, domains: list[str]) -> None:
