@@ -22,14 +22,13 @@ All notable changes to this project will be documented here. For more details, v
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [6.9.0] - 2025-04-10
+## [6.9.0] - 2025-04-13
 
 ### Added
 - aShemaleTube.com support
 - Thisvid.com support
 - ePorner.com profile, photo, and gallery support
-- missav.ws support
-- Initial HLS support (used by missav)
+- New `--show-supported-sites` option: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/files#save_pages_html
 
 ### Changed
 - The `import cookies` menu will only display the browsers supported by the user's OS
@@ -43,6 +42,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `TypeError: Incoming markup is of an invalid type` error
 - `CachedResponse' object has no attribute 'status_code` error
 - `404` responses when downloading albums (bunkr)
+
+### Deprecated
+- Importing cookies from multiple browsers at the same time is deprecated and will be removed in a future version
 
 
 ## [6.8.0] - 2025-04-05
