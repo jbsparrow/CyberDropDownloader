@@ -54,14 +54,12 @@ class AShemaleTubeCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        if "videos" in scrape_item.url.parts:
-            return await self.video(scrape_item)
-        elif "model" in scrape_item.url.parts:
+        if any(p in scrape_item.url.parts for p in ("creators", "profiles", "pornstars", "model")):
             return await self.model(scrape_item)
+        elif "videos" in scrape_item.url.parts:
+            return await self.video(scrape_item)
         elif "playlists" in scrape_item.url.parts:
             return await self.playlist(scrape_item)
-        elif "profiles" in scrape_item.url.parts:
-            return await self.model(scrape_item)
         raise ValueError
 
     @error_handling_wrapper
