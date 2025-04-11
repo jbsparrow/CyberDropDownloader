@@ -119,7 +119,9 @@ class ThisVidCrawler(Crawler):
         custom_filename, _ = get_filename_and_ext(
             f"{title} [{video_info['video_id']}] [{video_info['video_url_text']}].{ext}"
         )
-        await self.handle_file(video_url, scrape_item, filename, ext, custom_filename=custom_filename)
+        await self.handle_file(
+            scrape_item.url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=video_url
+        )
 
 
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
