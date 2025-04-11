@@ -53,7 +53,16 @@ def cookie_wrapper(func: Callable) -> Callable:
 @cookie_wrapper
 def get_cookies_from_browsers(
     manager: Manager, *, browsers: list[BROWSERS] | list[str] | None = None, domains: list[str] | None = None
-) -> None:
+) -> set[str]:
+    """Extract cookies from browsers.
+
+    :param browsers: list of browsers to extract from. If `None`, config `browser_cookies.browsers` will be used
+    :param domains: list of domains to filter cookies. If `None`, config `browser_cookies.sites` will be used
+    :return: A set with all the domains that actually had cookies
+    :raises ValueError: If `browsers` or `domains` are empty lists
+    :raises UnsupportedBrowserError: If there was a decrypt error while extracting cookies from a chromium browser
+    and the current OS is Windows
+    :raises BrowserCookieError: For any other kind of error while extracting cookies"""
     if browsers == []:
         msg = "No browser selected"
         raise ValueError(msg)
@@ -81,18 +90,20 @@ def get_cookies_from_browsers(
         raise ValueError(msg)
 
     manager.path_manager.cookies_dir.mkdir(parents=True, exist_ok=True)
+    domains_with_cookies: set[str] = set()
     for domain in domains_to_extract:
         cookie_file_path = manager.path_manager.cookies_dir / f"{domain}.txt"
         cdl_cookie_jar = MozillaCookieJar(cookie_file_path)
-        found_cookies = False
         for cookie_jar in extracted_cookies:
             for cookie in cookie_jar:
                 if domain in cookie.domain:
-                    found_cookies = True
+                    domains_with_cookies.add(domain)
                     cdl_cookie_jar.set_cookie(cookie)
 
-        if found_cookies:
+        if domain in domains_with_cookies:
             cdl_cookie_jar.save(ignore_discard=True, ignore_expires=True)
+
+    return domains_with_cookies
 
 
 def clear_cookies(manager: Manager, domains: list[str]) -> None:
