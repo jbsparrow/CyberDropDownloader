@@ -116,10 +116,14 @@ class ThisVidCrawler(Crawler):
         title: str = soup.select_one("title").text.split("- ThisVid.com")[0].strip()
         filename, ext = get_filename_and_ext(video_info["video_url"])
         video_url: URL = URL(video_info["video_url"])
+        canonical_url = self.primary_base_domain / "videos" / video_info["video_id"]
+        scrape_item.url = canonical_url
         custom_filename, _ = get_filename_and_ext(
             f"{title} [{video_info['video_id']}] [{video_info['video_url_text']}].{ext}"
         )
-        await self.handle_file(video_url, scrape_item, filename, ext, custom_filename=custom_filename)
+        await self.handle_file(
+            canonical_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=video_url
+        )
 
 
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
