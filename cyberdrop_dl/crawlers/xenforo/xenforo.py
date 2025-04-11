@@ -6,7 +6,7 @@ import asyncio
 import contextlib
 import re
 from dataclasses import dataclass
-from functools import cached_property, partial, singledispatchmethod
+from functools import cached_property, singledispatchmethod
 from typing import TYPE_CHECKING
 
 from bs4 import BeautifulSoup, Tag
@@ -195,7 +195,6 @@ class XenforoCrawler(Crawler):
 
     def process_thread_page(self, scrape_item: ScrapeItem, forum_page: ForumThreadPage) -> tuple[bool, URL]:
         continue_scraping = False
-        create = partial(self.create_scrape_item, scrape_item)
         thread = forum_page.thread
         post_url = thread.url
         for post in forum_page.posts:
@@ -205,7 +204,7 @@ class XenforoCrawler(Crawler):
             post_string = f"{self.POST_NAME}{current_post.number}"
             post_url = thread.url / post_string
             if scrape_post:
-                new_scrape_item = create(thread.url, possible_datetime=date, add_parent=post_url)
+                new_scrape_item = scrape_item.create_new(thread.url, possible_datetime=date, add_parent=post_url)
                 self.manager.task_group.create_task(self.post(new_scrape_item, current_post))
                 scrape_item.add_children()
 
@@ -302,7 +301,7 @@ class XenforoCrawler(Crawler):
         link = self.filter_link(link)
         if not link:
             return
-        new_scrape_item = self.create_scrape_item(scrape_item, link)
+        new_scrape_item = scrape_item.create_new(link)
         await self.handle_link(new_scrape_item)
         scrape_item.add_children()
 

@@ -93,7 +93,7 @@ class NekohouseCrawler(Crawler):
                     post_link = self.parse_url(post_url_str)
                     post_id = post_url_str.split("/")[-1]
                     # Call on self.post to scrape the post by creating a new scrape item
-                    new_scrape_item = self.create_scrape_item(scrape_item, post_link, add_parent=service_call)
+                    new_scrape_item = scrape_item.create_new(post_link, add_parent=service_call)
                     await self.post(new_scrape_item, post_id, user, service, user_str)
                     scrape_item.add_children()
 
@@ -222,10 +222,9 @@ class NekohouseCrawler(Crawler):
         """Creates a new scrape item with the same parent as the old scrape item."""
         post = Post(id=post_id, title=title, date=date)
         new_title = self.create_title(user)
-        new_scrape_item = self.create_scrape_item(
-            old_scrape_item,
+        new_scrape_item = old_scrape_item.create_new(
             link,
-            new_title,
+            new_title_part=new_title,
             part_of_album=True,
             possible_datetime=post.date,
             add_parent=add_parent,

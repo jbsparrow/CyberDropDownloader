@@ -98,8 +98,7 @@ class KemonoCrawler(Crawler):
                     file_url = (self.primary_base_domain / "data" / file["path"].strip("/")).with_query(
                         {"f": file["name"]}
                     )
-                    new_scrape_item = self.create_scrape_item(
-                        scrape_item,
+                    new_scrape_item = scrape_item.create_new(
                         file_url,
                         new_title,
                         part_of_album=True,
@@ -207,10 +206,9 @@ class KemonoCrawler(Crawler):
 
         post_obj = Post(id=post_id, title=title, date=date)
         new_title = self.create_title(user)
-        scrape_item = self.create_scrape_item(
-            scrape_item,
+        scrape_item = scrape_item.create_new(
             scrape_item.url,
-            new_title,
+            new_title_part=new_title,
             possible_datetime=date,
         )
         self.add_separate_post_title(scrape_item, post_obj)
@@ -228,13 +226,9 @@ class KemonoCrawler(Crawler):
                 pass
 
         for link in yarl_links:
-            if "kemono" in link.host:
+            if not link.host or "kemono" in link.host:
                 continue
-            scrape_item = self.create_scrape_item(
-                scrape_item,
-                link,
-                add_parent=scrape_item.url.joinpath("post", post_id),
-            )
+            scrape_item = scrape_item.create_new(link, add_parent=scrape_item.url.joinpath("post", post_id))
             self.handle_external_links(scrape_item)
             scrape_item.add_children()
 
@@ -264,10 +258,9 @@ class KemonoCrawler(Crawler):
 
         post = Post(id=post_id, title=title, date=date)
         new_title = self.create_title(user)
-        new_scrape_item = self.create_scrape_item(
-            old_scrape_item,
+        new_scrape_item = old_scrape_item.create_new(
             link,
-            new_title,
+            new_title_part=new_title,
             part_of_album=True,
             possible_datetime=post.date,
             add_parent=add_parent,

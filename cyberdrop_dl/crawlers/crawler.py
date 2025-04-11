@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import copy
 import re
 from abc import ABC, abstractmethod
 from dataclasses import field
@@ -240,28 +239,6 @@ class Crawler(ABC):
             self.manager.progress_manager.download_progress.add_previously_completed()
             return True
         return False
-
-    @staticmethod
-    def create_scrape_item(
-        parent_scrape_item: ScrapeItem,
-        url: URL,
-        new_title_part: str = "",
-        part_of_album: bool = False,
-        album_id: str | None = None,
-        possible_datetime: int | None = None,
-        add_parent: URL | None = None,
-    ) -> ScrapeItem:
-        """Creates a scrape item."""
-        scrape_item = copy.deepcopy(parent_scrape_item)
-        scrape_item.url = url
-        if add_parent:
-            scrape_item.parents.append(add_parent)
-        if new_title_part:
-            scrape_item.add_to_parent_title(new_title_part)
-        scrape_item.part_of_album = part_of_album or scrape_item.part_of_album
-        scrape_item.possible_datetime = possible_datetime or scrape_item.possible_datetime
-        scrape_item.album_id = album_id or scrape_item.album_id
-        return scrape_item
 
     def create_title(self, title: str, album_id: str | None = None, thread_id: int | None = None) -> str:
         """Creates the title for the scrape item."""

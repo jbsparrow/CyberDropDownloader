@@ -99,10 +99,9 @@ class CoomerCrawler(Crawler):
                     file_url = (self.primary_base_domain / "data" / file["path"].strip("/")).with_query(
                         {"f": file["name"]}
                     )
-                    new_scrape_item = self.create_scrape_item(
-                        scrape_item,
+                    new_scrape_item = scrape_item.create_new(
                         file_url,
-                        new_title,
+                        new_title_part=new_title,
                         part_of_album=True,
                         possible_datetime=date,
                     )
@@ -129,7 +128,7 @@ class CoomerCrawler(Crawler):
             id = user["id"]
             service = user["service"]
             url = self.primary_base_domain / service / "user" / id
-            new_scrape_item = self.create_scrape_item(scrape_item, url, part_of_album=True)
+            new_scrape_item = scrape_item.create_new(url, part_of_album=True)
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -237,10 +236,9 @@ class CoomerCrawler(Crawler):
         """Creates a new scrape item with the same parent as the old scrape item."""
         post = Post(id=post_id, title=title, date=date)
         new_title = self.create_title(user)
-        new_scrape_item = self.create_scrape_item(
-            old_scrape_item,
+        new_scrape_item = old_scrape_item.create_new(
             link,
-            new_title,
+            new_title_part=new_title,
             part_of_album=True,
             possible_datetime=post.date,
             add_parent=add_parent,

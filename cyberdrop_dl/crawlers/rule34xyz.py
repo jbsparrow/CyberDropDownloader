@@ -9,7 +9,7 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.utilities import error_handling_wrapper
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -18,6 +18,9 @@ if TYPE_CHECKING:
 
 
 CONTENT_SELECTOR = "div[class='box-grid ng-star-inserted'] a[class=boxInner]"
+DATE_SELECTOR = 'div[class="posted ng-star-inserted"]'
+VIDEO_SELECTOR = "video source"
+IMAGE_SELECTOR = 'img[class*="img shadow-base"]'
 
 
 class Rule34XYZCrawler(Crawler):
@@ -32,9 +35,8 @@ class Rule34XYZCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
         if "post" in scrape_item.url.parts:
-            await self.file(scrape_item)
-        else:
-            await self.tag(scrape_item)
+            return await self.file(scrape_item)
+        await self.tag(scrape_item)
 
     @error_handling_wrapper
     async def tag(self, scrape_item: ScrapeItem) -> None:
@@ -72,23 +74,22 @@ class Rule34XYZCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
-        date_str: str = soup.select_one('div[class="posted ng-star-inserted"]').text.split("(")[1].split(")")[0]
-        date = self.parse_datetime(date_str)
-        new_scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, possible_datetime=date)
+        if date_tag := soup.select_one(DATE_SELECTOR):
+            date_str = get_text_between(date_tag.text, "(", ")")
+            scrape_item.possible_datetime = parse_datetime(date_str)
 
-        media_tag = soup.select_one("video source") or soup.select_one('img[class*="img shadow-base"]')
+        media_tag = soup.select_one(VIDEO_SELECTOR) or soup.select_one(IMAGE_SELECTOR)
         if not media_tag:
             raise ScrapeError(422)
 
-        link_str: str = media_tag.get("src")
-        link = self.parse_url(link_str)
+        link = self.parse_url(media_tag["src"])  # type: ignore
         filename, ext = self.get_filename_and_ext(link.name)
-        await self.handle_file(link, new_scrape_item, filename, ext)
+        await self.handle_file(link, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @staticmethod
-    def parse_datetime(date: str) -> int:
-        """Parses a datetime string into a unix timestamp."""
-        parsed_date = datetime.datetime.strptime(date, "%b %d, %Y, %I:%M:%S %p")
-        return calendar.timegm(parsed_date.timetuple())
+
+def parse_datetime(date: str) -> int:
+    """Parses a datetime string into a unix timestamp."""
+    parsed_date = datetime.datetime.strptime(date, "%b %d, %Y, %I:%M:%S %p")
+    return calendar.timegm(parsed_date.timetuple())
