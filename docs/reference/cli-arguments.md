@@ -135,21 +135,6 @@ Disable CDL's textual UI (TUI with buttons and mouse support)
 
 Run CDL with a vertical layout
 
-### `ui`  
-
-| Type       | Default |
-| ---------- | ------- |
-| `StrEnum` | `FULLSCREEN` |
-
-UI can have 1 of these values:
-
-- `DISABLED` : no output at all
-- `ACTIVITY` : only shows a spinner with the text `running CDL`
-- `SIMPLE`: shows spinner + simplified progress bar
-- `FULLSCREEN`: shows the normal UI/progress view
-
-Values are case insensitive, ex: both `disabled` and `DISABLED` are valid
-
 ### `retry-all`
 
 | Type       | Default | Action       |
@@ -182,6 +167,21 @@ Retry download of maintenance files (bunkr). Requires files to be hashed
 
 Shows a list of all supported sites and exits
 
+### `ui`  
+
+| Type       | Default |
+| ---------- | ------- |
+| `StrEnum` | `FULLSCREEN` |
+
+UI can have 1 of these values:
+
+- `DISABLED` : no output at all
+- `ACTIVITY` : only shows a spinner with the text `running CDL`
+- `SIMPLE`: shows spinner + simplified progress bar
+- `FULLSCREEN`: shows the normal UI/progress view
+
+Values are case insensitive, ex: both `disabled` and `DISABLED` are valid
+
 ## Overview
 
 Bool arguments like options within `Download Options`, `Ignore Options`, `Runtime Options`, etc. can be prefixed with `--no-` to negate them. Ex: `--no-auto-dedupe` will disable auto dedupe, overriding whatever the config option was set to.
@@ -213,6 +213,7 @@ CLI-only options:
   --retry-all                                                                   retry all downloads
   --retry-failed                                                                retry failed downloads
   --retry-maintenance                                                           retry download of maintenance files (bunkr). Requires files to be hashed
+  --show-supported-sites                                                        shows a list of supported sites and exits
   --ui UI                                                                       DISABLED, ACTIVITY, SIMPLE or FULLSCREEN
 
 browser_cookies:
