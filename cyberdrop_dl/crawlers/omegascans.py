@@ -2,19 +2,27 @@ from __future__ import annotations
 
 import calendar
 import datetime
+import itertools
 from typing import TYPE_CHECKING
 
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
+
+
+DATE_SELECTOR = 'h2[class="font-semibold font-sans text-muted-foreground text-xs"]'
+API_ENTRYPOINT = URL("https://api.omegascans.org/chapter/query")
+JS_SELECTOR = "script:contains('series_id')"
+DATE_JS_SELECTOR = "script:contains('created')"
+IMAGE_SELECTOR = "p[class*=flex] img"
 
 
 class OmegaScansCrawler(Crawler):
@@ -22,7 +30,6 @@ class OmegaScansCrawler(Crawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "omegascans", "OmegaScans")
-        self.api_url = URL("https://api.omegascans.org/chapter/query")
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -30,106 +37,84 @@ class OmegaScansCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
         if "chapter" in scrape_item.url.name:
-            await self.chapter(scrape_item)
-        elif "series" in scrape_item.url.parts:
-            await self.series(scrape_item)
-        else:
-            await self.handle_direct_link(scrape_item)
+            return await self.chapter(scrape_item)
+        if "series" in scrape_item.url.parts:
+            return await self.series(scrape_item)
+        await self.handle_direct_link(scrape_item)
 
     @error_handling_wrapper
     async def series(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
-        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
-        scrape_item.part_of_album = True
-
-        scripts = soup.select("script")
         series_id = None
-        for script in scripts:
-            if "series_id" in script.get_text():
-                series_id = script.get_text().split('series_id\\":')[1].split(",")[0]
-                break
+        js_script = soup.select_one(JS_SELECTOR)
+        if not js_script:
+            raise ScrapeError(422, "Unable to parse series_id from html")
 
-        if not series_id:
-            raise ScrapeError(422, "Unable to parse series_id from html", origin=scrape_item)
-
-        page_number = 1
-        number_per_page = 30
-        while True:
-            api_url = self.api_url.with_query(page=page_number, perPage=number_per_page, series_id=series_id)
+        series_id = js_script.get_text().split('series_id\\":')[1].split(",")[0]
+        scrape_item.setup_as_album("", album_id=series_id)
+        # TODO: Add title
+        # title: str = ""
+        for page in itertools.count(1):
+            api_url = API_ENTRYPOINT.with_query(page=page, perPage=30, series_id=series_id)
             async with self.request_limiter:
-                JSON_Obj = await self.client.get_json(self.domain, api_url, origin=scrape_item)
-            if not JSON_Obj:
-                break
+                json_resp = await self.client.get_json(self.domain, api_url)
 
-            for chapter in JSON_Obj["data"]:
+            for chapter in json_resp["data"]:
                 chapter_url = scrape_item.url / chapter["chapter_slug"]
-                new_scrape_item = self.create_scrape_item(scrape_item, chapter_url, add_parent=scrape_item.url)
+                new_scrape_item = scrape_item.create_child(chapter_url)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
                 scrape_item.add_children()
 
-            if JSON_Obj["meta"]["current_page"] == JSON_Obj["meta"]["last_page"]:
+            if json_resp["meta"]["current_page"] == json_resp["meta"]["last_page"]:
                 break
-            page_number += 1
 
     @error_handling_wrapper
     async def chapter(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image."""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         if "This chapter is premium" in soup.get_text():
-            raise ScrapeError(401, "This chapter is premium", origin=scrape_item)
+            raise ScrapeError(401, "This chapter is premium")
 
         scrape_item.part_of_album = True
-        title_parts = soup.select_one("title").get_text().split(" - ")
-        series_name = title_parts[0]
-        chapter_title = title_parts[1]
+        title_parts = soup.select_one("title").get_text().split(" - ")  # type: ignore
+        series_name, chapter_title = title_parts[:2]
         series_title = self.create_title(series_name)
         scrape_item.add_to_parent_title(series_title)
         scrape_item.add_to_parent_title(chapter_title)
 
-        date = None
-        date_str = soup.select('h2[class="font-semibold font-sans text-muted-foreground text-xs"]')[-1].get_text()
+        date_str = soup.select(DATE_SELECTOR)[-1].get_text()
         try:
-            date = self.parse_datetime_standard(date_str)
+            date = parse_datetime(date_str)
         except ValueError:
-            scripts = soup.select("script")
-            for script in scripts:
-                if "created" in script.get_text():
-                    date_str = script.get_text().split('created_at\\":\\"')[1].split(".")[0]
-                    date = self.parse_datetime_other(date_str)
-                    break
+            script = soup.select_one(DATE_JS_SELECTOR)
+            date_str = script.get_text().split('created_at\\":\\"')[1].split(".")[0]  # type: ignore
+            date = parse_datetime(date_str)
 
-        new_scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, possible_datetime=date)
-        images = soup.select("p[class*=flex] img")
-        for image in images:
-            link_str: str = image.get("src") or image.get("data-src")
-            if not link_str:
-                continue
-            link = self.parse_url(link_str)
-            filename, ext = get_filename_and_ext(link.name)
-            await self.handle_file(link, new_scrape_item, filename, ext)
+        scrape_item.possible_datetime = date
+        for attribute in ("src", "data-src"):
+            for _, link in self.iter_tags(soup, IMAGE_SELECTOR, attribute):
+                filename, ext = self.get_filename_and_ext(link.name)
+                await self.handle_file(link, scrape_item, filename, ext)
 
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:
         """Handles a direct link."""
-        scrape_item.url = scrape_item.url.with_name(scrape_item.url.name)
-        filename, ext = get_filename_and_ext(scrape_item.url.name)
+        scrape_item.url = scrape_item.url.with_query(None)
+        filename, ext = self.get_filename_and_ext(scrape_item.url.name)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @staticmethod
-    def parse_datetime_standard(date: str) -> int:
-        """Parses a datetime string into a unix timestamp."""
-        parsed_date = datetime.datetime.strptime(date, "%m/%d/%Y")
-        return calendar.timegm(parsed_date.timetuple())
 
-    @staticmethod
-    def parse_datetime_other(date: str) -> int:
-        """Parses a datetime string into a unix timestamp."""
+def parse_datetime(date: str) -> int:
+    """Parses a datetime string into a unix timestamp."""
+    try:
+        parsed_date = datetime.datetime.strptime(date, "%m/%d/%Y")
+    except ValueError:
         parsed_date = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
-        return calendar.timegm(parsed_date.timetuple())
+    return calendar.timegm(parsed_date.timetuple())

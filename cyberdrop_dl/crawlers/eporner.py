@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import calendar
-import json
 from datetime import datetime
 from functools import cached_property
 from typing import TYPE_CHECKING, NamedTuple
@@ -31,9 +30,11 @@ DOWNLOADS_SELECTOR = "div#hd-porn-dload > div.dloaddivcol"
 PHOTO_SELECTOR = "div#gridphoto > a.photohref"
 VIDEO_SELECTOR = "div[id^='vf'] div.mbcontent a"
 NEXT_PAGE_SELECTOR = "div.numlist2 a.nmnext"
-
+H264_SELECTOR = "span.download-h264 > a"
+AV1_SELECTOR = "span.download-av1 > a"
 PROFILE_GALLERY_SELECTOR = "div[id^='pf'] a"
 PROFILE_PLAYLIST_SELECTOR = "div.streameventsday.showAll > div#pl > a"
+DATE_JS_SELECTOR = "main script:contains('uploadDate')"
 
 GALLERY_TITLE_SELECTOR = "div#galleryheader > h1"
 
@@ -111,7 +112,7 @@ class EpornerCrawler(Crawler):
             part, selector = parts
             url = canonical_url / part
             async for soup in self.web_pager(url):
-                for _, new_scrape_item in self.iter_items(scrape_item, soup.select(selector), name):
+                for _, new_scrape_item in self.iter_children(scrape_item, soup, selector, new_title_part=name):
                     self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -128,21 +129,20 @@ class EpornerCrawler(Crawler):
                 scrape_item.setup_as_album(title)
                 added_title = True
 
-            for _, new_scrape_item in self.iter_items(scrape_item, soup.select(VIDEO_SELECTOR)):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, VIDEO_SELECTOR):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem) -> None:
-        added_title = False
-
+        title: str = ""
         async for soup in self.web_pager(scrape_item.url):
-            if not added_title:
+            if not title:
                 title = soup.select_one(GALLERY_TITLE_SELECTOR).get_text(strip=True)  # type: ignore
                 title = self.create_title(title)
                 scrape_item.setup_as_album(title)
-                added_title = True
 
-            for thumb, new_scrape_item in self.iter_items(scrape_item, soup.select(PROFILE_GALLERY_SELECTOR)):
+            for thumb, new_scrape_item in self.iter_children(scrape_item, soup, PROFILE_GALLERY_SELECTOR):
+                assert thumb
                 filename = thumb.name.rsplit("-", 1)[0]
                 filename, ext = self.get_filename_and_ext(f"{filename}{thumb.suffix}")
                 link = thumb.with_name(filename)
@@ -167,28 +167,18 @@ class EpornerCrawler(Crawler):
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 
-    def iter_items(self, scrape_item: ScrapeItem, item_tags: list[Tag], new_title_part: str = ""):
-        for item in item_tags:
-            link_str: str = item.get("href")  # type: ignore
-            link = self.parse_url(link_str)
-            thumb_str: str = item.select_one("img").get("src")  # type: ignore
-            thumb = self.parse_url(thumb_str)
-            yield (thumb, scrape_item.create_child(link, new_title_part=new_title_part))
-            scrape_item.add_children()
-
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an embeded video page."""
         video_id = get_video_id(scrape_item.url)
         canonical_url = self.primary_base_domain / f"video-{video_id}"
-
         if await self.check_complete_from_referer(canonical_url):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
-        soup_str = str(soup)
+        soup_str = soup.text
         if "File has been removed due to copyright owner request" in soup_str:
             raise ScrapeError(451)
         if "Video has been deleted" in soup_str:
@@ -196,29 +186,25 @@ class EpornerCrawler(Crawler):
 
         scrape_item.url = canonical_url
         info_dict = get_info_dict(soup)
-        log_debug(json.dumps(info_dict, indent=4))
         resolution, link_str = get_best_quality(soup)
         if not link_str:
-            raise ScrapeError(422, origin=scrape_item)
+            raise ScrapeError(422)
 
         link = self.parse_url(link_str)
-        date = parse_datetime(info_dict["uploadDate"])
-        scrape_item.possible_datetime = date
+        scrape_item.possible_datetime = parse_datetime(info_dict["uploadDate"])
         filename, ext = self.get_filename_and_ext(link.name)
         if ext == ".m3u8":
-            raise ScrapeError(422, origin=scrape_item)
-        custom_filename = f"{info_dict['name']} [{video_id}][{resolution}]{ext}"
-        custom_filename, _ = self.get_filename_and_ext(custom_filename)
+            raise ScrapeError(422)
+        custom_filename, _ = self.get_filename_and_ext(f"{info_dict['name']} [{video_id}][{resolution}]{ext}")
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
 
 def get_available_resolutions(soup: BeautifulSoup) -> list[VideoInfo]:
     downloads = soup.select_one(DOWNLOADS_SELECTOR)
     assert downloads
-    formats = downloads.select("span.download-h264 > a")
+    formats = downloads.select(H264_SELECTOR)
     if ALLOW_AV1:
-        av1_formats = downloads.select("span.download-av1 > a")
-        formats.extend(av1_formats)
+        formats.extend(downloads.select(AV1_SELECTOR))
     return [VideoInfo.from_tag(tag) for tag in formats]
 
 
@@ -232,8 +218,7 @@ def get_best_quality(soup: BeautifulSoup) -> tuple[str, str]:
     for res in RESOLUTIONS:
         formats_dict[res] = sorted(f for f in formats if f.resolution == res)
 
-    log_debug(json.dumps(formats_dict, indent=4))
-
+    log_debug(formats_dict)
     for res in RESOLUTIONS:
         available_formats = formats_dict.get(res)
         if available_formats:
@@ -244,9 +229,10 @@ def get_best_quality(soup: BeautifulSoup) -> tuple[str, str]:
 
 
 def get_info_dict(soup: BeautifulSoup) -> dict:
-    info_js_script = soup.select_one("main script:contains('uploadDate')")
+    info_js_script = soup.select_one(DATE_JS_SELECTOR)
     info_dict: dict = javascript.parse_json_to_dict(info_js_script.text, use_regex=False)  # type: ignore
     javascript.clean_dict(info_dict)
+    log_debug(info_dict)
     return info_dict
 
 

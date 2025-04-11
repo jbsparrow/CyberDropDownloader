@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pathlib
 from sqlite3 import IntegrityError, Row
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from cyberdrop_dl.utils.database.table_definitions import create_fixed_history, create_history
 from cyberdrop_dl.utils.utilities import log
@@ -95,7 +95,7 @@ class HistoryTable:
             return True
         return False
 
-    async def check_album(self, domain: str, album_id: str) -> dict[Any, Any]:
+    async def check_album(self, domain: str, album_id: str) -> dict[str, int]:
         """Checks whether an album has completed given its domain and album id."""
         if self.ignore_history:
             return {}

@@ -66,12 +66,12 @@ class PMVHavenCrawler(Crawler):
         # Videos
         add_data = {"mode": "GetMoreProfileVideos", "user": username}
         async for json_resp in self.api_pager(api_url, add_data):
-            await self.iter_videos(scrape_item, json_resp["data"], "Videos")
+            await self.iter_video_info(scrape_item, json_resp["data"], "Videos")
 
         # Favorites
         add_data = {"mode": "GetMoreFavoritedVideos", "user": username, "search": None, "date": "Date", "sort": "Sort"}
         async for json_resp in self.api_pager(api_url, add_data):
-            await self.iter_videos(scrape_item, json_resp["data"], "Favorites")
+            await self.iter_video_info(scrape_item, json_resp["data"], "Favorites")
 
         # Playlist
         # TODO: add pagination support for user playlists
@@ -100,7 +100,7 @@ class PMVHavenCrawler(Crawler):
                 title = f"{playlist_name} [playlist]" if add_suffix else playlist_name
                 title = self.create_title(title, playlist_id)
                 scrape_item.setup_as_album(title, album_id=playlist_id)
-            await self.iter_videos(scrape_item, json_resp["videos"])
+            await self.iter_video_info(scrape_item, json_resp["videos"])
 
     @error_handling_wrapper
     async def model(self, scrape_item: ScrapeItem) -> None:
@@ -179,7 +179,7 @@ class PMVHavenCrawler(Crawler):
                 title = self.create_title(title)
                 scrape_item.setup_as_album(title)
 
-            await self.iter_videos(scrape_item, json_resp["data"])
+            await self.iter_video_info(scrape_item, json_resp["data"])
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -205,7 +205,7 @@ class PMVHavenCrawler(Crawler):
         custom_filename, _ = self.get_filename_and_ext(custom_filename)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
-    async def iter_videos(self, scrape_item: ScrapeItem, videos: list[dict], new_title_part: str = "") -> None:
+    async def iter_video_info(self, scrape_item: ScrapeItem, videos: list[dict], new_title_part: str = "") -> None:
         for video in videos:
             link = create_canonical_video_url(video)
             new_scrape_item = scrape_item.create_child(link, new_title_part=new_title_part)

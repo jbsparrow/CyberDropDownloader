@@ -56,7 +56,7 @@ class YandexDiskCrawler(Crawler):
 
         scrape_item.url = canonical_url
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         item_info = get_item_info(soup)
         del soup

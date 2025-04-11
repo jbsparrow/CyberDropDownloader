@@ -7,7 +7,7 @@ import platform
 import re
 import shutil
 import subprocess
-from dataclasses import fields
+from dataclasses import dataclass, fields
 from functools import lru_cache, partial, wraps
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol
@@ -31,7 +31,7 @@ from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.logger import log, log_debug, log_spacer, log_with_color
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Mapping
 
     from curl_cffi.requests.models import Response as CurlResponse
     from rich.text import Text
@@ -41,14 +41,29 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
 
+TEXT_EDITORS = "micro", "nano", "vim"  # Ordered by preference
+FILENAME_REGEX = re.compile(r"filename\*=UTF-8''(.+)|.*filename=\"(.*?)\"", re.IGNORECASE)
+subprocess_get_text = partial(subprocess.run, capture_output=True, text=True, check=False)
+
 
 class Dataclass(Protocol):
     __dataclass_fields__: ClassVar[dict]
 
 
-TEXT_EDITORS = "micro", "nano", "vim"  # Ordered by preference
+@dataclass(frozen=True, slots=True)
+class OGProperties:
+    """Open Graph properties.  Each attribute corresponds to an OG property."""
 
-subprocess_get_text = partial(subprocess.run, capture_output=True, text=True, check=False)
+    title: str = ""
+    description: str = ""
+    image: str = ""
+    url: str = ""
+    type: str = ""
+    site_name: str = ""
+    locale: str = ""
+    determiner: str = ""
+    audio: str = ""
+    video: str = ""
 
 
 def error_handling_wrapper(func: Callable) -> Callable:
@@ -67,6 +82,8 @@ def error_handling_wrapper(func: Callable) -> Callable:
             origin = e.origin
             e_url: URL | str | None = getattr(e, "url", None)
             link_to_show = e_url or link_to_show
+        except NotImplementedError:
+            error_log_msg = ErrorLogMessage("NotImplemented")
         except TimeoutError:
             error_log_msg = ErrorLogMessage("Timeout")
         except ClientConnectorError as e:
@@ -438,12 +455,39 @@ def remove_trailing_slash(url: URL) -> URL:
     return url.parent.with_fragment(url.fragment).with_query(url.query)
 
 
+def remove_parts(url: URL, *parts_to_remove: str, keep_query: bool = True, keep_fragment: bool = True) -> URL:
+    assert parts_to_remove
+    new_parts = [p for p in url.parts[1:] if p not in set(parts_to_remove)]
+    return url.with_path("/".join(new_parts), keep_fragment=keep_fragment, keep_query=keep_query)
+
+
 async def get_soup_from_response(response: CurlResponse | ClientResponse | CachedResponse) -> BeautifulSoup | None:
     # We can't use `CurlResponse` at runtime so we check the reverse
     is_curl = not isinstance(response, ClientResponse | CachedResponse)
     with contextlib.suppress(UnicodeDecodeError):
         response_text = response.text if is_curl else await response.text()
         return BeautifulSoup(response_text, "html.parser")
+
+
+def get_og_properties(soup: BeautifulSoup) -> OGProperties:
+    """Extracts Open Graph properties (og properties) from soup."""
+    og_properties: dict[str, str] = {}
+
+    for meta in soup.select('meta[property^="og:"]'):
+        property_name = meta["property"].replace("og:", "").replace(":", "_")  # type: ignore
+        og_properties[property_name] = meta["content"] or ""  # type: ignore
+
+    return OGProperties(**og_properties)
+
+
+def get_filename_from_headers(headers: Mapping[str, Any]) -> str | None:
+    """Get `filename=` value from `Content-Disposition`"""
+    content_disposition: str | None = headers.get("Content-Disposition")
+    if not content_disposition:
+        return
+    if match := re.search(FILENAME_REGEX, content_disposition):
+        matches = match.groups()
+        return matches[0] or matches[1]
 
 
 log_cyan = partial(log_with_color, style="cyan", level=20)

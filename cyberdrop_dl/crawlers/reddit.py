@@ -14,9 +14,8 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import LoginError, NoExtensionError, ScrapeError
 from cyberdrop_dl.clients.scraper_client import cache_control_manager
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
 from cyberdrop_dl.utils.logger import log, log_debug
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Generator
@@ -24,6 +23,7 @@ if TYPE_CHECKING:
     from asyncpraw.models import Redditor, Submission, Subreddit
 
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
 @dataclass
@@ -64,27 +64,25 @@ class RedditCrawler(Crawler):
             return
 
         assert scrape_item.url.host
-        async with CachedSession(
-            cache=self.manager.cache_manager.request_cache, trace_configs=self.trace_configs
-        ) as session:
-            async with cache_control_manager(session):
-                reddit = self.new_reddit_conn(session)
-                if any(part in scrape_item.url.parts for part in ("user", "u")):
-                    return await self.user(scrape_item, reddit)
-                if any(part in scrape_item.url.parts for part in ("comments", "r")):
-                    return await self.subreddit(scrape_item, reddit)
-                if "redd.it" in scrape_item.url.host:
-                    return await self.media(scrape_item, reddit)
-                raise ValueError
+        async with (
+            CachedSession(cache=self.manager.cache_manager.request_cache, trace_configs=self.trace_configs) as session,
+            cache_control_manager(session),
+        ):
+            reddit = self.new_reddit_conn(session)
+            if any(part in scrape_item.url.parts for part in ("user", "u")):
+                return await self.user(scrape_item, reddit)
+            if any(part in scrape_item.url.parts for part in ("comments", "r")):
+                return await self.subreddit(scrape_item, reddit)
+            if "redd.it" in scrape_item.url.host:
+                return await self.media(scrape_item, reddit)
+            raise ValueError
 
     @error_handling_wrapper
     async def user(self, scrape_item: ScrapeItem, reddit: Reddit) -> None:
         """Scrapes user pages."""
         username = scrape_item.url.parts[-2] if len(scrape_item.url.parts) > 3 else scrape_item.url.name
         title = self.create_title(username)
-        scrape_item.add_to_parent_title(title)
-        scrape_item.part_of_album = True
-
+        scrape_item.setup_as_profile(title)
         user: Redditor = await reddit.redditor(username)
         submissions: AsyncIterator[Submission] = user.submissions.new(limit=None)
         await self.get_posts(scrape_item, submissions, reddit)
@@ -94,20 +92,16 @@ class RedditCrawler(Crawler):
         """Scrapes subreddit pages."""
         subreddit_name: str = scrape_item.url.name or scrape_item.url.parts[-2]
         title = self.create_title(subreddit_name)
-        scrape_item.add_to_parent_title(title)
-        scrape_item.part_of_album = True
-
+        scrape_item.setup_as_profile(title)
         subreddit: Subreddit = await reddit.subreddit(subreddit_name)
         submissions: AsyncIterator[Submission] = subreddit.new(limit=None)  # type: ignore
         await self.get_posts(scrape_item, submissions, reddit)
 
     @error_handling_wrapper
     async def get_posts(self, scrape_item: ScrapeItem, submissions: AsyncIterator[Submission], reddit: Reddit) -> None:
-        scrape_item.set_type(FILE_HOST_PROFILE, self.manager)
-
-        with asyncpraw_error_handle(scrape_item):
+        with asyncpraw_error_handle():
             async for submission in submissions:
-                new_scrape_item = self.create_scrape_item(scrape_item, scrape_item.url, add_parent=scrape_item.url)
+                new_scrape_item = scrape_item.copy()
                 await self.post(new_scrape_item, submission, reddit)
                 scrape_item.add_children()
 
@@ -134,24 +128,23 @@ class RedditCrawler(Crawler):
         if "redd.it" in link.host:
             return await self.media(scrape_item, reddit, link)
 
-        new_scrape_item = self.create_scrape_item(scrape_item, link)
+        new_scrape_item = scrape_item.create_child(link)
         if "gallery" in link.parts:
             return await self.gallery(new_scrape_item, submission, reddit)
         if "reddit.com" not in link.host:
             return self.handle_external_links(new_scrape_item)
+
         origin = scrape_item.origin()
         parent = scrape_item.parent()
         msg = f"found on {parent}"
         if parent != origin:
             msg += f" from {origin}"
-        log(f"Skipping nested thread URL {link} {msg}", 10)
+        log(f"Skipping nested thread URL {link} {msg}")
 
     async def gallery(self, scrape_item: ScrapeItem, submission: Submission, reddit: Reddit) -> None:
         """Scrapes galleries."""
         if not hasattr(submission, "media_metadata") or submission.media_metadata is None:
             return
-
-        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
 
         for item in submission.media_metadata.values():
             if item["status"] != "valid":
@@ -166,11 +159,11 @@ class RedditCrawler(Crawler):
         """Handles media links."""
         url = link or scrape_item.url
         try:
-            filename, ext = get_filename_and_ext(url.name)
+            filename, ext = self.get_filename_and_ext(url.name)
         except NoExtensionError:
             url = await self.get_final_location(url)
             scrape_item.url = url
-            with asyncpraw_error_handle(scrape_item):
+            with asyncpraw_error_handle():
                 post = await reddit.submission(url=str(url))
 
             return await self.post(scrape_item, post, reddit)
@@ -224,10 +217,10 @@ class RedditCrawler(Crawler):
 
 
 @contextmanager
-def asyncpraw_error_handle(scrape_item: ScrapeItem) -> Generator:
+def asyncpraw_error_handle() -> Generator:
     try:
         yield
     except asyncprawcore.exceptions.Forbidden:
-        raise ScrapeError(403, origin=scrape_item) from None
+        raise ScrapeError(403) from None
     except asyncprawcore.exceptions.NotFound:
-        raise ScrapeError(404, origin=scrape_item) from None
+        raise ScrapeError(404) from None

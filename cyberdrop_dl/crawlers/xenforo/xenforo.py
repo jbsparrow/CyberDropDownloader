@@ -17,7 +17,7 @@ from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.scraper.filters import set_return_value
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FORUM, FORUM_POST, ScrapeItem
 from cyberdrop_dl.utils.logger import log, log_debug
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext, remove_trailing_slash
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_trailing_slash
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Sequence
@@ -155,7 +155,7 @@ class XenforoCrawler(Crawler):
     @error_handling_wrapper
     async def redirect(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
-            _, url = await self.client.get_soup_and_return_url(self.domain, scrape_item.url, origin=scrape_item)  # type: ignore
+            _, url = await self.client.get_soup_and_return_url(self.domain, scrape_item.url)  # type: ignore
         scrape_item.url = url
         self.manager.task_group.create_task(self.run(scrape_item))
 
@@ -262,7 +262,7 @@ class XenforoCrawler(Crawler):
         page_url = scrape_item.url
         while True:
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url, origin=scrape_item)
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url)
             next_page = soup.select_one(self.selectors.next_page.element)
             yield soup
             if not next_page:
@@ -342,7 +342,7 @@ class XenforoCrawler(Crawler):
         if not scrape_item.url or scrape_item.url == self.primary_base_domain:
             return
         if not scrape_item.url.host:
-            raise InvalidURLError("url has no host", origin=scrape_item)
+            raise InvalidURLError("url has no host")
         if self.is_attachment(scrape_item.url):
             return await self.handle_internal_link(scrape_item)
         if self.primary_base_domain.host in scrape_item.url.host and self.stop_thread_recursion(scrape_item):  # type: ignore
@@ -357,15 +357,15 @@ class XenforoCrawler(Crawler):
         scrape_item.url = remove_trailing_slash(scrape_item.url)
 
         if scrape_item.url.name.isdigit():
-            head = await self.client.get_head(self.domain, scrape_item.url, origin=scrape_item)  # type: ignore
+            head = await self.client.get_head(self.domain, scrape_item.url)  # type: ignore
             redirect = head.get("location")
             if not redirect:
-                raise ScrapeError(422, origin=scrape_item)
+                raise ScrapeError(422)
             scrape_item.url = self.parse_url(redirect)
             self.manager.task_group.create_task(self.run(scrape_item))
             return
 
-        filename, ext = get_filename_and_ext(scrape_item.url.name, forum=True)
+        filename, ext = self.get_filename_and_ext(scrape_item.url.name, forum=True)
         scrape_item.add_to_parent_title("Attachments")
         scrape_item.part_of_album = True
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)

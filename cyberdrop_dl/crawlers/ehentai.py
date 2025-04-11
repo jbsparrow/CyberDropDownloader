@@ -7,26 +7,27 @@ from typing import TYPE_CHECKING
 from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
-
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
+
+IMAGE_SELECTOR = "img[id=img]"
+IMAGES_SELECTOR = "div#gdt.gt200 a"
+DATE_SELECTOR = "td[class=gdt2]"
+TITLE_SELECTOR = "h1[id=gn]"
 
 
 class EHentaiCrawler(Crawler):
     primary_base_domain = URL("https://e-hentai.org/")
+    next_page_selector = "td[onclick='document.location=this.firstChild.href']:contains('>') a"
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "e-hentai", "E-Hentai")
-
         self._warnings_set = False
-        self.next_page_selector = "td[onclick='document.location=this.firstChild.href']:contains('>') a"
-        self.next_page_attribute = "href"
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -34,11 +35,10 @@ class EHentaiCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
         if "g" in scrape_item.url.parts:
-            await self.album(scrape_item)
-        elif "s" in scrape_item.url.parts:
-            await self.image(scrape_item)
-        else:
-            raise ValueError
+            return await self.album(scrape_item)
+        if "s" in scrape_item.url.parts:
+            return await self.image(scrape_item)
+        raise ValueError
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
@@ -46,32 +46,19 @@ class EHentaiCrawler(Crawler):
         if not self._warnings_set:
             await self.set_no_warnings(scrape_item)
 
-        title = date = None
-        gallery_id = scrape_item.url.parts[2]
+        title: str = ""
         scrape_item.url = scrape_item.url.with_query(None)
-        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
-
-        async for soup in self.web_pager(scrape_item):
+        async for soup in self.web_pager(scrape_item.url):
             if not title:
-                title = self.create_title(soup.select_one("h1[id=gn]").get_text())
-                date = self.parse_datetime(soup.select_one("td[class=gdt2]").get_text())
+                title = self.create_title(soup.select_one(TITLE_SELECTOR).get_text())  # type: ignore
+                date_str: str = soup.select_one(DATE_SELECTOR).get_text()  # type: ignore
+                gallery_id = scrape_item.url.parts[2]
+                title = self.create_title(title, gallery_id)
+                scrape_item.setup_as_album(title, album_id=gallery_id)
+                scrape_item.possible_datetime = self.parse_datetime(date_str)
 
-            images = soup.select("div#gdt.gt200 a")
-            for image in images:
-                link_str: str = image.get("href")
-                link = self.parse_url(link_str)
-                new_scrape_item = self.create_scrape_item(
-                    scrape_item,
-                    link,
-                    title,
-                    part_of_album=True,
-                    album_id=gallery_id,
-                    possible_datetime=date,
-                    add_parent=scrape_item.url,
-                )
-
-                await self.image(new_scrape_item)
-                scrape_item.add_children()
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, IMAGES_SELECTOR):
+                self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
@@ -80,13 +67,12 @@ class EHentaiCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
-        image = soup.select_one("img[id=img]")
-        link_str: str = image.get("src")
+        link_str: str = soup.select_one(IMAGE_SELECTOR).get("src")  # type: ignore
         link = self.parse_url(link_str)
-        filename, ext = get_filename_and_ext(link.name)
-        custom_filename, _ = get_filename_and_ext(f"{scrape_item.url.name}{ext}")
+        filename, ext = self.get_filename_and_ext(link.name)
+        custom_filename, _ = self.get_filename_and_ext(f"{scrape_item.url.name}{ext}")
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -94,9 +80,9 @@ class EHentaiCrawler(Crawler):
     @error_handling_wrapper
     async def set_no_warnings(self, scrape_item: ScrapeItem) -> None:
         """Sets the no warnings cookie."""
+        url = scrape_item.url.update_query(nw="session")
         async with self.request_limiter:
-            url = scrape_item.url.update_query(nw="session")
-            await self.client.get_soup(self.domain, url, origin=scrape_item)
+            await self.client.get_soup(self.domain, url)
         self._warnings_set = True
 
     @staticmethod
@@ -106,16 +92,3 @@ class EHentaiCrawler(Crawler):
             date = date + ":00"
         parsed_date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
         return calendar.timegm(parsed_date.timetuple())
-
-    async def web_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
-        """Generator of website pages."""
-        page_url = scrape_item.url
-        while True:
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url, origin=scrape_item)
-            next_page = soup.select_one(self.next_page_selector)
-            yield soup
-            if not next_page:
-                break
-            page_url_str: str = next_page.get(self.next_page_attribute)
-            page_url = self.parse_url(page_url_str)

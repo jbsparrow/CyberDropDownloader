@@ -9,7 +9,7 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -71,12 +71,8 @@ class BestPrettyGirlCrawler(Crawler):
 
                 scrape_item.setup_as_album(title)
 
-            for item in soup.select(ITEM_SELECTOR):
-                link_str: str = item.get("href")  # type: ignore
-                link = self.parse_url(link_str)
-                new_scrape_item = scrape_item.create_child(link)
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, ITEM_SELECTOR):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
-                scrape_item.add_children()
 
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem) -> None:
@@ -91,19 +87,14 @@ class BestPrettyGirlCrawler(Crawler):
         scrape_item.possible_datetime = calendar.timegm(date.timetuple())
 
         trash: str = ""
-        for image in soup.select(IMAGES_SELECTOR):
-            link_str: str = image.get("src")  # type: ignore
-            link = self.parse_url(link_str)
+        for _, link in self.iter_tags(soup, IMAGES_SELECTOR, "src"):
             if not trash:
                 trash = link.name.split("-0000", 1)[0]
-            filename, ext = get_filename_and_ext(link.name)
+            filename, ext = self.get_filename_and_ext(link.name)
             custom_filename = link.name.replace(trash, "").removeprefix("-")
-            custom_filename, _ = get_filename_and_ext(custom_filename)
+            custom_filename, _ = self.get_filename_and_ext(custom_filename)
             await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
-        for video_ifr in soup.select(VIDEO_IFRAME_SELECTOR):
-            link_str: str = video_ifr.get("data-src")  # type: ignore
-            link_str = link_str.replace("//dood.re/", "//vidply.com/")
-            link = self.parse_url(link_str)
-            new_scrape_item = scrape_item.create_child(link)
+        for _, new_scrape_item in self.iter_children(scrape_item, soup, VIDEO_IFRAME_SELECTOR, "data-src"):
+            new_scrape_item.url = new_scrape_item.url.with_host("vidply.com")
             self.handle_external_links(new_scrape_item)
