@@ -260,7 +260,7 @@ class ScraperClient:
         ):
             await self.client_manager.check_http_status(response, origin=origin)
             content_type = response.headers["Content-Type"].lower()
-            if "text" in content_type:
+            if "text/plain" in content_type:
                 json_resp = json.loads(await response.text())
             elif "json" in content_type:
                 json_resp = await response.json()
