@@ -259,11 +259,13 @@ class ScraperClient:
             ) as response,
         ):
             await self.client_manager.check_http_status(response, origin=origin)
-            content_type = response.headers.get("Content-Type")
-            assert content_type is not None
-            if "json" not in content_type.lower():
+            content_type = response.headers["Content-Type"].lower()
+            if "text" in content_type:
+                json_resp = json.loads(await response.text())
+            elif "json" in content_type:
+                json_resp = await response.json()
+            else:
                 raise InvalidContentTypeError(message=f"Received {content_type}, was expecting JSON", origin=origin)
-            json_resp = await response.json()
             if cache_disabled:
                 return json_resp, response  # type: ignore
             return json_resp
