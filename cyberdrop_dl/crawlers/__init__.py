@@ -24,6 +24,7 @@ from .eightmuses import EightMusesCrawler
 from .eporner import EpornerCrawler
 from .erome import EromeCrawler
 from .fapello import FapelloCrawler
+from .fikfap import FikFapCrawler
 from .fileditch import FileditchCrawler
 from .generic import GenericCrawler
 from .gofile import GoFileCrawler
