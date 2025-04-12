@@ -69,7 +69,7 @@ IMAGE_PREVIEW_SELECTOR = "img.max-h-full.w-auto.object-cover.relative"
 VIDEO_SELECTOR = "video > source"
 VIDEO_AND_IMAGE_EXTS = FILE_FORMATS["Images"] | FILE_FORMATS["Videos"]
 
-PRIMARY_HOST_OPTIONS = "bunkr.site", "bunkr.cr", "bunkr.ph", "bunkr.black"
+PRIMARY_HOST_OPTIONS = "bunkr.site", "bunkr.cr", "bunkr.ph"
 
 
 class ApiResponse(NamedTuple):
@@ -115,8 +115,8 @@ class BunkrrCrawler(Crawler):
 
     def __init__(self, manager: Manager, site: str) -> None:
         super().__init__(manager, site, "Bunkrr")
-        self.primary_host_override: str = self.DATABASE_PRIMARY_HOST
-        self.primary_host_url: URL = self.primary_base_domain
+        self.known_good_host: str = ""
+        self.known_good_host_url: URL | None = None
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -142,20 +142,16 @@ class BunkrrCrawler(Crawler):
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
-        scrape_item.url = scrape_item.url.with_host(self.primary_host_override)
-
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
-
+        soup: BeautifulSoup = await self.get_soup_lenient(scrape_item.url)
         album_id = scrape_item.url.parts[2]
         title = soup.select_one("title").text.rsplit(" | Bunkr")[0].strip()  # type: ignore
         title = self.create_title(title, album_id)
-        scrape_item.setup_as_album(title)
-        scrape_item.album_id = album_id
+        scrape_item.setup_as_album(title, album_id=album_id)
         results = await self.get_album_results(album_id)
 
         item_tags: list[Tag] = soup.select(ALBUM_ITEM_SELECTOR)
-        parse_url = partial(self.parse_url, relative_to=self.primary_host_url)
+        base = self.known_good_host_url or scrape_item.url.origin()
+        parse_url = partial(self.parse_url, relative_to=base)
 
         for tag in item_tags:
             item = AlbumItem.from_tag(tag, parse_url)
@@ -181,7 +177,7 @@ class BunkrrCrawler(Crawler):
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a file from a streaming URL."""
-        soup = link = date = None  # type: ignore
+        soup = link = None  # type: ignore
         if is_stream_redirect(scrape_item.url):
             soup, scrape_item.url = await self.client.get_soup_and_return_url(self.domain, scrape_item.url)
 
@@ -189,10 +185,8 @@ class BunkrrCrawler(Crawler):
         if await self.check_complete_from_referer(db_url):
             return
 
-        scrape_item.url = scrape_item.url.with_host(self.primary_host_override)
         if not soup:
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.get_soup_lenient(scrape_item.url)
 
         image_container = soup.select_one(IMAGE_PREVIEW_SELECTOR)
         download_link_container = soup.select_one(DOWNLOAD_BUTTON_SELECTOR)
@@ -205,7 +199,7 @@ class BunkrrCrawler(Crawler):
         # Try to get downloadd URL from streaming API. Should work for most files, even none video files
         if not link and "f" in scrape_item.url.parts:
             slug = get_slug_from_soup(soup) or scrape_item.url.name or scrape_item.url.parent.name
-            slug_url = self.primary_host_url / "f" / slug
+            slug_url = scrape_item.url.origin() / "f" / slug
             link = await self.get_download_url_from_api(slug_url)
 
         # Fallback for everything else, try to get the download URL. `handle_direct_link` will make the final request to the API
@@ -217,11 +211,8 @@ class BunkrrCrawler(Crawler):
         if not link:
             raise ScrapeError(422, "Could not find source")
 
-        if not scrape_item.possible_datetime:
-            date_str = soup.select_one(ITEM_DATE_SELECTOR)
-            if date_str:
-                date = parse_datetime(date_str.text.strip())
-                scrape_item.possible_datetime = date
+        if not scrape_item.possible_datetime and (date_str := soup.select_one(ITEM_DATE_SELECTOR)):
+            scrape_item.possible_datetime = parse_datetime(date_str.text.strip())
 
         title: str = soup.select_one("h1").text.strip()  # type: ignore
         await self.handle_direct_link(scrape_item, link, fallback_filename=title)
@@ -232,7 +223,6 @@ class BunkrrCrawler(Crawler):
 
         Gets the filename from the soup before sending the scrape_item to `handle_direct_link`"""
         soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
-
         title: str = soup.select_one("h1").text.strip()  # type: ignore
         link: URL | None = await self.get_download_url_from_api(scrape_item.url)
         if not link:
@@ -293,7 +283,7 @@ class BunkrrCrawler(Crawler):
         api_response = ApiResponse(**json_resp)
         link_str = decrypt_api_response(api_response)
         link = self.parse_url(link_str)
-        if link in (self.primary_base_domain, self.primary_host_url):
+        if link == self.primary_base_domain:  # We got an empty response
             return
         return link
 
@@ -307,13 +297,10 @@ class BunkrrCrawler(Crawler):
         @error_handling_wrapper
         async def try_request(self: BunkrrCrawler, url: URL) -> bool:
             try:
-                async with self.request_limiter:
-                    _ = await self.client.get_soup(self.domain, url, origin=url)
+                _ = await self.get_soup_lenient(url)
             except (ClientConnectorError, DownloadError, DDOSGuardError):
                 return False
             else:
-                self.primary_host_override = url.host  # type: ignore
-                self.primary_host_url = url
                 return True
 
         for host in PRIMARY_HOST_OPTIONS:
@@ -332,14 +319,26 @@ class BunkrrCrawler(Crawler):
         debrid_link: URL | None = None,
     ) -> None:
         """Overrides primary host before before calling base crawler's `handle_file`"""
-        debrid_link = debrid_link or url
-        if url.host in PRIMARY_HOST_OPTIONS:
-            url = url.with_host(self.DATABASE_PRIMARY_HOST)
-        if scrape_item.url.host in PRIMARY_HOST_OPTIONS:
+        if has_a_base_domain(scrape_item.url):
             scrape_item.url = scrape_item.url.with_host(self.DATABASE_PRIMARY_HOST)
         await super().handle_file(
             url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=debrid_link
         )
+
+    async def get_soup_lenient(self, url: URL) -> BeautifulSoup:
+        """Overrides URL in host is we know a valid host.
+
+        If we don't know a valid host but the response was successful, register the host as a valid host"""
+        is_base = has_a_base_domain(url)
+        if self.known_good_host and is_base:
+            url = url.with_host(self.known_good_host)
+        async with self.request_limiter:
+            soup = await self.client.get_soup(self.domain, url)
+            if not self.known_good_host and is_base:
+                assert url.host
+                self.known_good_host = url.host
+                self.known_good_host_url = URL(f"https://{url.host}")
+            return soup
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -411,3 +410,8 @@ def get_slug_from_soup(soup: BeautifulSoup) -> str | None:
     info_js_dict = javascript.parse_js_vars(info_js_text)
     javascript.clean_dict(info_js_dict)
     return info_js_dict.get("jsSlug")
+
+
+def has_a_base_domain(url: URL):
+    assert url.host
+    return "bunkr" in url.host and url.host.count(".") == 1
