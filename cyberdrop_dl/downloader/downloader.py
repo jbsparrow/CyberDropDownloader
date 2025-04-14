@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import re
 from dataclasses import field
 from functools import wraps
@@ -234,9 +233,12 @@ class Downloader:
     def attempt_task_removal(self, media_item: MediaItem) -> None:
         """Attempts to remove the task from the progress bar."""
         if media_item.task_id is not None:
-            with contextlib.suppress(ValueError):
+            try:
                 self.manager.progress_manager.file_progress.remove_task(media_item.task_id)
-        media_item.task_id = None
+            except ValueError:
+                pass
+
+            media_item.set_task_id(None)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 

@@ -51,15 +51,16 @@ class MediaItem:
     is_segment: bool = False
 
     # exclude from __init__
+    parent_media_item: MediaItem | None = field(init=False, default=None, hash=False, compare=False)
     file_lock_reference_name: str | None = field(default=None, init=False)
     download_filename: str | None = field(default=None, init=False)
     filesize: int | None = field(default=None, init=False)
     current_attempt: int = field(default=0, init=False, hash=False, compare=False)
     partial_file: Path | None = field(default=None, init=False)
     complete_file: Path = field(default=None, init=False)  # type: ignore
-    task_id: TaskID = field(init=False, hash=False, compare=False)
     hash: str | None = field(default=None, init=False, hash=False, compare=False)
     downloaded: bool = field(default=False, init=False, hash=False, compare=False)
+    _task_id: TaskID | None = field(default=None, init=False, hash=False, compare=False)
 
     # slots for __post_init__
     referer: URL = field(init=False)
@@ -75,7 +76,25 @@ class MediaItem:
         self.original_filename = self.original_filename or self.filename
         self.parents = origin.parents.copy()
         self.datetime = origin.possible_datetime if isinstance(origin, ScrapeItem) else origin.datetime
+        self.parent_media_item = None if isinstance(origin, ScrapeItem) else origin
         self.parent_threads = origin.parent_threads.copy()
+
+    @property
+    def task_id(self) -> TaskID | None:
+        if self.parent_media_item is not None:
+            return self.parent_media_item.task_id
+        return self._task_id
+
+    def set_task_id(self, task_id: TaskID | None) -> None:
+        if self.task_id is not None and task_id is not None:
+            # We already have a task_id; we can't replace it, only reset it.
+            # This should never happen. Calling code should always check the value before making a new task.
+            # We can't silently ignore it either because we will lose any reference to the created task.
+            raise ValueError("task_id is already set")
+        if self.parent_media_item is not None:
+            self.parent_media_item.set_task_id(task_id)
+        else:
+            self._task_id = task_id
 
 
 @dataclass(kw_only=True, slots=True)
