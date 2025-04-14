@@ -51,14 +51,8 @@ class NoodleMagazineCrawler(Crawler):
         search_string = f"{search_string.rsplit(' videos', 1)[0]} [search]"
         title = self.create_title(search_string)
         scrape_item.setup_as_album(title)
-        await self.iter_videos(scrape_item, soup)
-
-    async def iter_videos(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> None:
-        for video in soup.select(VIDEOS_SELECTOR):
-            link = self.parse_url(video.get("href"))
-            new_scrape_item = scrape_item.create_child(link)
+        for _, new_scrape_item in self.iter_children(scrape_item, soup, VIDEOS_SELECTOR):
             self.manager.task_group.create_task(self.run(new_scrape_item))
-            scrape_item.add_children()
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
