@@ -74,6 +74,18 @@ Path to the CDL `settings.yaml` file to load
 If both `config` and `config-file` are supplied, `config-file` takes priority
 {% endhint %}
 
+### `disable-cache`  
+
+| Type       | Default | Action       |
+| ---------- | ------- | ------------ |
+| `BoolFlag` | `False` | `store_true` |
+
+Disables the use of the requests cache for the current run only. All config settings or arguments related to the cache (ex: `file_host_cache_expire_after`) will be ignored.
+
+{% hint style="info" %}
+This does not affect the original cache
+{% endhint %}
+
 ### `download`  
 
 | Type       | Default | Action       |
@@ -123,21 +135,6 @@ Disable CDL's textual UI (TUI with buttons and mouse support)
 
 Run CDL with a vertical layout
 
-### `ui`  
-
-| Type       | Default |
-| ---------- | ------- |
-| `StrEnum` | `FULLSCREEN` |
-
-UI can have 1 of these values:
-
-- `DISABLED` : no output at all
-- `ACTIVITY` : only shows a spinner with the text `running CDL`
-- `SIMPLE`: shows spinner + simplified progress bar
-- `FULLSCREEN`: shows the normal UI/progress view
-
-Values are case insensitive, ex: both `disabled` and `DISABLED` are valid
-
 ### `retry-all`
 
 | Type       | Default | Action       |
@@ -162,23 +159,28 @@ Retry failed downloads
 
 Retry download of maintenance files (bunkr). Requires files to be hashed
 
-***
-
-### `disable-cache`  
+### `show-supported-sites`  
 
 | Type       | Default | Action       |
 | ---------- | ------- | ------------ |
 | `BoolFlag` | `False` | `store_true` |
 
-Disables the use of the requests cache for the current run only
-all config settings or arguments relating to the cache expiry such as file_host_cache_expire_after will be ignored
+Shows a list of all supported sites and exits
 
-{% hint style="info" %}
-This does not affect the original cache
-{% endhint %}
+### `ui`  
 
+| Type       | Default |
+| ---------- | ------- |
+| `StrEnum` | `FULLSCREEN` |
 
-***
+UI can have 1 of these values:
+
+- `DISABLED` : no output at all
+- `ACTIVITY` : only shows a spinner with the text `running CDL`
+- `SIMPLE`: shows spinner + simplified progress bar
+- `FULLSCREEN`: shows the normal UI/progress view
+
+Values are case insensitive, ex: both `disabled` and `DISABLED` are valid
 
 ## Overview
 
@@ -211,6 +213,7 @@ CLI-only options:
   --retry-all                                                                   retry all downloads
   --retry-failed                                                                retry failed downloads
   --retry-maintenance                                                           retry download of maintenance files (bunkr). Requires files to be hashed
+  --show-supported-sites                                                        shows a list of supported sites and exits
   --ui UI                                                                       DISABLED, ACTIVITY, SIMPLE or FULLSCREEN
 
 browser_cookies:
