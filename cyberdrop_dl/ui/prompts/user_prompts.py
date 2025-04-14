@@ -223,11 +223,27 @@ def extract_cookies(manager: Manager, *, dry_run: bool = False) -> None:
 def browser_prompt() -> str:
     """Asks the user to select browser(s) for cookie extraction."""
     unsupported_browsers = {
-        "Windows": {"safari"},
-        "Linux": {"safari", "edge"},
-        "Darwin": {"edge"},
+        "Windows": {
+            "arc",
+            "brave",
+            "chrome",
+            "chromium",
+            "edge",
+            "lynx",
+            "opera",
+            "opera_gx",
+            "safari",
+            "vivaldi",
+            "w3m",
+        },
+        "Linux": {"arc", "opera_gx", "safari"},
+        "Darwin": {"lynx", "w3m"},
     }.get(system(), set())
-    choices = [Choice(browser, browser.capitalize()) for browser in BROWSERS if browser not in unsupported_browsers]
+    choices = [
+        Choice(browser, browser.capitalize() if browser != "opera_gx" else "Opera GX")
+        for browser in BROWSERS
+        if browser not in unsupported_browsers
+    ]
     return basic_prompts.ask_checkbox(choices, message="Select the browser(s) for extraction:")
 
 

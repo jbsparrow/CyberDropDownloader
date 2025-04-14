@@ -56,7 +56,7 @@ class YandexDiskCrawler(Crawler):
 
         scrape_item.url = canonical_url
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         item_info = get_item_info(soup)
         del soup
@@ -124,7 +124,7 @@ class YandexDiskCrawler(Crawler):
 def get_item_info(soup: BeautifulSoup) -> dict:
     info_js_script = soup.select_one(JS_SELECTOR)
     info_js_script_text: str = info_js_script.text  # type: ignore
-    info_json: dict[str, dict[str, Any]] = javascript.parse_json_to_dict(info_js_script_text, use_regex=False)
+    info_json: dict[str, dict[str, Any]] = javascript.parse_json_to_dict(info_js_script_text, use_regex=False)  # type: ignore
     javascript.clean_dict(info_json)
     info_json = {k: v for k, v in info_json.items() if k in KEYS_TO_KEEP}
     env: dict[str, str] = info_json["environment"]

@@ -13,7 +13,7 @@ from cyberdrop_dl.clients.errors import NoExtensionError, ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
 from cyberdrop_dl.utils.logger import log
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -69,10 +69,10 @@ class CoomerCrawler(Crawler):
         query = scrape_item.url.query.get("q", "")
         if query == "":  # Don't scrape if there is no query
             msg = "No search query found in the URL"
-            raise ScrapeError(400, msg, origin=scrape_item)
+            raise ScrapeError(400, msg)
         search_url = (self.api_url / "posts").with_query({"q": query, "o": offset})
         async with self.request_limiter:
-            JSON_Resp = await self.client.get_json(self.domain, search_url, origin=scrape_item)
+            JSON_Resp = await self.client.get_json(self.domain, search_url)
         post_count = int(JSON_Resp.get("count", 0))
         if post_count == 0:
             return
@@ -81,7 +81,7 @@ class CoomerCrawler(Crawler):
         while offset <= max_offset:
             async with self.request_limiter:
                 query_url = search_url.with_query({"o": offset, "q": query})
-                JSON_Resp = await self.client.get_json(self.domain, query_url, origin=scrape_item)
+                JSON_Resp = await self.client.get_json(self.domain, query_url)
             offset += 50
             if not JSON_Resp:
                 break
@@ -99,10 +99,9 @@ class CoomerCrawler(Crawler):
                     file_url = (self.primary_base_domain / "data" / file["path"].strip("/")).with_query(
                         {"f": file["name"]}
                     )
-                    new_scrape_item = self.create_scrape_item(
-                        scrape_item,
+                    new_scrape_item = scrape_item.create_new(
                         file_url,
-                        new_title,
+                        new_title_part=new_title,
                         part_of_album=True,
                         possible_datetime=date,
                     )
@@ -113,14 +112,14 @@ class CoomerCrawler(Crawler):
         """Scrapes the users' favourites and creates scrape items for each artist found."""
         if not self.manager.config_manager.authentication_data.coomer.session:
             msg = "No session cookie found in the config file, cannot scrape favorites"
-            raise ScrapeError(401, msg, origin=scrape_item)
+            raise ScrapeError(401, msg)
 
         cookies = {"session": self.manager.config_manager.authentication_data.coomer.session}
         self.update_cookies(cookies)
 
         async with self.request_limiter:
             favourites_api_url = (self.api_url / "account/favorites").with_query({"type": "artist"})
-            JSON_Resp = await self.client.get_json(self.domain, favourites_api_url, origin=scrape_item)
+            JSON_Resp = await self.client.get_json(self.domain, favourites_api_url)
 
         cookies = {"session": ""}
         self.update_cookies(cookies)
@@ -129,7 +128,7 @@ class CoomerCrawler(Crawler):
             id = user["id"]
             service = user["service"]
             url = self.primary_base_domain / service / "user" / id
-            new_scrape_item = self.create_scrape_item(scrape_item, url, part_of_album=True)
+            new_scrape_item = scrape_item.create_new(url, part_of_album=True)
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -144,7 +143,7 @@ class CoomerCrawler(Crawler):
         while offset <= maximum_offset:
             async with self.request_limiter:
                 query_api_call = api_call.with_query({"o": offset})
-                JSON_Resp = await self.client.get_json(self.domain, query_api_call, origin=scrape_item)
+                JSON_Resp = await self.client.get_json(self.domain, query_api_call)
             offset += post_limit
             if not JSON_Resp:
                 break
@@ -165,7 +164,7 @@ class CoomerCrawler(Crawler):
         )
         api_call = self.api_url / service / "user" / user / "post" / post_id
         async with self.request_limiter:
-            post: dict = await self.client.get_json(self.domain, api_call, origin=scrape_item)
+            post: dict = await self.client.get_json(self.domain, api_call)
             post = post.get("post")
         await self.handle_post_content(scrape_item, post, user, user_str)
 
@@ -216,10 +215,10 @@ class CoomerCrawler(Crawler):
     async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:
         """Handles a direct link."""
         try:
-            filename, ext = get_filename_and_ext(scrape_item.url.query.get("f") or scrape_item.url.name)
+            filename, ext = self.get_filename_and_ext(scrape_item.url.query.get("f") or scrape_item.url.name)
         except NoExtensionError:
             # Not sure if this is necessary, is mostly just to keep it similar to kemono
-            filename, ext = get_filename_and_ext(scrape_item.url.name)
+            filename, ext = self.get_filename_and_ext(scrape_item.url.name)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -237,10 +236,9 @@ class CoomerCrawler(Crawler):
         """Creates a new scrape item with the same parent as the old scrape item."""
         post = Post(id=post_id, title=title, date=date)
         new_title = self.create_title(user)
-        new_scrape_item = self.create_scrape_item(
-            old_scrape_item,
+        new_scrape_item = old_scrape_item.create_new(
             link,
-            new_title,
+            new_title_part=new_title,
             part_of_album=True,
             possible_datetime=post.date,
             add_parent=add_parent,
@@ -259,9 +257,7 @@ class CoomerCrawler(Crawler):
 
         profile_api_url = self.api_url / service / "user" / user / "posts-legacy"
         async with self.request_limiter:
-            profile_json, resp = await self.client.get_json(
-                self.domain, profile_api_url, origin=scrape_item, cache_disabled=True
-            )
+            profile_json, resp = await self.client.get_json(self.domain, profile_api_url, cache_disabled=True)
         properties: dict = profile_json.get("props", {})
         cached_response = await self.manager.cache_manager.request_cache.get_response(str(profile_api_url))
         cached_properties = {} if not cached_response else (await cached_response.json()).get("props", {})

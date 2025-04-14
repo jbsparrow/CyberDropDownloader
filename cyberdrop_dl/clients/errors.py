@@ -144,10 +144,10 @@ class DurationError(CDLBaseError):
 
 class MediaFireError(CDLBaseError):
     def __init__(
-        self, status: str | int, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None
+        self, status: str | int | None, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None
     ) -> None:
         """This error will be thrown when a scrape fails."""
-        ui_failure = f"{status} MediaFire Error"
+        ui_failure = f"{status or ''} MediaFire Error"
         super().__init__(ui_failure, message=message, status=status, origin=origin)
 
 

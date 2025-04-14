@@ -4,7 +4,7 @@ import re
 from dataclasses import Field
 from datetime import date, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 import aiofiles
 import arrow
@@ -25,6 +25,8 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.crawlers import Crawler
     from cyberdrop_dl.managers.manager import Manager
+
+existing_crawlers: dict[str, Crawler] = {}
 
 
 class ScrapeMapper:
@@ -48,19 +50,7 @@ class ScrapeMapper:
 
     def start_scrapers(self) -> None:
         """Starts all scrapers."""
-        for crawler in CRAWLERS:
-            if not crawler.SUPPORTED_SITES:
-                site_crawler = crawler(self.manager)  # type: ignore
-                assert site_crawler.domain not in self.existing_crawlers
-                key = site_crawler.scrape_mapper_domain or site_crawler.domain
-                self.existing_crawlers[key] = site_crawler
-                continue
-
-            for site, domains in crawler.SUPPORTED_SITES.items():
-                site_crawler = crawler(self.manager, site)
-                for domain in domains:
-                    assert domain not in self.existing_crawlers
-                    self.existing_crawlers[domain] = site_crawler
+        self.existing_crawlers = get_crawlers(self.manager)
 
     def start_jdownloader(self) -> None:
         """Starts JDownloader."""
@@ -341,3 +331,46 @@ def create_item_from_entry(entry: Sequence) -> ScrapeItem:
     item.completed_at = completed_at
     item.created_at = created_at
     return item
+
+
+def get_crawlers(manager: Manager | None = None) -> dict[str, Crawler]:
+    """Retuns a mapping with an instance of all crawlers.
+
+    Crawlers are only created on the first calls. Future calls always return a reference to the same crawlers
+
+    If manager is `None`, the `MOCK_MANAGER` will be used, which means the crawlers won't be able to actually run"""
+
+    from cyberdrop_dl.managers.mock_manager import MOCK_MANAGER
+
+    manager = manager or MOCK_MANAGER
+    global existing_crawlers
+    if not existing_crawlers:
+        for crawler in CRAWLERS:
+            if not crawler.SUPPORTED_SITES:
+                site_crawler = crawler(manager)  # type: ignore
+                assert site_crawler.domain not in existing_crawlers
+                key = site_crawler.scrape_mapper_domain or site_crawler.domain
+                existing_crawlers[key] = site_crawler
+                continue
+
+            for site, domains in crawler.SUPPORTED_SITES.items():
+                site_crawler = crawler(manager, site)
+                for domain in domains:
+                    assert domain not in existing_crawlers
+                    existing_crawlers[domain] = site_crawler
+    return existing_crawlers
+
+
+def gen_crawlers_info():
+    """Yields information about every crawler as a NamedTuple"""
+
+    class CrawlerInfo(NamedTuple):
+        site: str
+        name: str
+        primary_base_domain: URL
+        crawler: Crawler
+
+    for name, crawler in sorted(get_crawlers().items()):
+        if name == ".":
+            continue
+        yield CrawlerInfo(name, type(crawler).__name__.removesuffix("Crawler"), crawler.primary_base_domain, crawler)

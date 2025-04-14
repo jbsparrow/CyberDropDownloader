@@ -201,8 +201,9 @@ class ClientManager:
 
         check_etag()
         if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
-            # check DDosGuard even on successful pages
-            return await check_ddos_guard()
+            # We need to check DDosGuard even on successful pages, but it was causing the response content to be empty
+            # await check_ddos_guard()
+            return
 
         await check_json_status()
         await check_ddos_guard()
