@@ -56,8 +56,6 @@ class AShemaleTubeCrawler(Crawler):
             return await self.video(scrape_item)
         elif "playlists" in scrape_item.url.parts:
             return await self.playlist(scrape_item)
-        elif any(p in scrape_item.url.parts for p in ("model", "profiles")):
-            return await self.model(scrape_item)
         raise ValueError
 
     @error_handling_wrapper
@@ -145,7 +143,7 @@ def get_best_quality(info_dict: dict) -> Format:
 def parse_player_info(script_text: str) -> tuple[bool, Format]:
     if match := re.search(r"hls:\s+(true|false)", script_text):
         is_hls = match.group(1) == "true"
-        urls_info = get_text_between(script_text, "[{", "}],")
+        urls_info = "[{" + get_text_between(script_text, "[{", "}],") + "}]"
         format: Format = get_best_quality(json.loads(urls_info))
         return is_hls, format
     raise ScrapeError(404)
