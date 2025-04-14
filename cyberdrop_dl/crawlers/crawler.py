@@ -27,7 +27,7 @@ from cyberdrop_dl.utils.utilities import (
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable, Generator
 
-    from bs4 import BeautifulSoup
+    from bs4 import BeautifulSoup, Tag
     from bs4.css import CSS
 
     from cyberdrop_dl.clients.scraper_client import ScraperClient
@@ -293,7 +293,7 @@ class Crawler(ABC):
 
     def iter_tags(
         self,
-        soup: BeautifulSoup,
+        soup: Tag,
         selector: str,
         /,
         attribute: str = "href",

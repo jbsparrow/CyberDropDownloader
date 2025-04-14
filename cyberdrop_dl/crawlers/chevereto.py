@@ -70,8 +70,8 @@ class CheveretoCrawler(Crawler):
 
     def __init__(self, manager: Manager, site: str) -> None:
         super().__init__(manager, site, self.FOLDER_DOMAINS.get(site, "Chevereto"))
-        self.primary_base_domain = self.PRIMARY_BASE_DOMAINS.get(site, URL(f"https://{site}"))
-        self.next_page_selector = "a[data-pagination=next]"
+        self.primary_base_domain = self.PRIMARY_BASE_DOMAINS.get(site, URL(f"https://{site}"))  # type: ignore
+        self.next_page_selector = "a[data-pagination=next]"  # type: ignore
         self.album_title_selector = "a[data-text=album-name]"
         self.item_selector = "a[class='image-container --media']"
         self.profile_title_selector = 'meta[property="og:title"]'

@@ -50,7 +50,7 @@ class CyberfileCrawler(Crawler):
 
     def __init__(self, manager: Manager, site: str) -> None:
         super().__init__(manager, site, self.FOLDER_DOMAINS.get(site, "Cyberfile"))
-        self.primary_base_domain = self.PRIMARY_BASE_DOMAINS.get(site, URL(f"https://{site}"))
+        self.primary_base_domain = self.PRIMARY_BASE_DOMAINS.get(site, URL(f"https://{site}"))  # type: ignore
         self.api_load_files = self.primary_base_domain / "account/ajax/load_files"
         self.api_details = self.primary_base_domain / "account/ajax/file_details"
         self.api_password_process = self.primary_base_domain / "ajax/folder_password_process"

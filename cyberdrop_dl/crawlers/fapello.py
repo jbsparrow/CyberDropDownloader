@@ -73,7 +73,7 @@ class FapelloCrawler(Crawler):
         if not content:
             raise ScrapeError(422)
 
-        for _, link in self.iter_tags(content.select("img, source"), "src"):
+        for _, link in self.iter_tags(soup, "img, source"):
             filename, ext = self.get_filename_and_ext(link.name)
             await self.handle_file(link, scrape_item, filename, ext)
             scrape_item.add_children()
