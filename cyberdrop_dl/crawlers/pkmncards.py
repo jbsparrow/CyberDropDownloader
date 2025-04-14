@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import calendar
+import itertools
 import json
 from dataclasses import dataclass
 from datetime import datetime
@@ -23,9 +24,11 @@ CARD_DOWNLOAD_SELECTOR = "li > a[title='Download Image']"
 TimeStamp = NewType("TimeStamp", int)
 
 
+CARD_SELECTOR = "a.card-image-link"
 CARD_PAGE_TITLE_SELECTOR = "meta[property='og:title']"
 SET_SERIES_CODE_SELECTOR = "div.card-tabs span[title='Set Series Code']"
 SET_INFO_SELECTOR = "script:contains('datePublished')"
+LAST_PAGE_SELECTOR = "a[title='Last Page (Press L)']"
 
 
 @dataclass(slots=True)
@@ -48,30 +51,33 @@ class Card:
     name: str
     number_str: str
     set: CardSet
-    hp: int = 0
-    color: str = ""
-    type: str = ""
-    text: str = ""
-    pokemons: tuple[str, ...] = ()
-    simbols: tuple[str, ...] = ()
-    ram: int = 0
-    rarity: str = ""
+    download_url: URL
+
+    @property
+    def full_name(self) -> str:
+        if self.name:
+            return f"{self.name} ({self.set.abbr}) #{self.number_str}"
+        else:
+            return f"#{self.number_str}"
+
+    # This is just for information about what other properties the card has. We don't actually use them
+    # hp: int = 0
+    # color: str = ""
+    # type: str = ""
+    # text: str = ""
+    # pokemons: tuple[str, ...] = ()
+    # simbols: tuple[str, ...] = ()
+    # ram: int = 0
+    # rarity: str = ""
 
 
 @dataclass(slots=True)
 class SimpleCard:
     # Simplified version of Card that groups the information we can get from the title of a page
-    name: str | None
+    name: str
     number_str: str  # This can actually contain letters as well, but the oficial name is `number`
     set_name: str
     set_abbr: str
-
-    @property
-    def full_name(self) -> str:
-        if self.name:
-            return f"{self.name} ({self.set_abbr}) #{self.number_str}"
-        else:
-            return f"#{self.number_str}"
 
 
 class PkmncardsCrawler(Crawler):
@@ -88,6 +94,8 @@ class PkmncardsCrawler(Crawler):
         n_parts = len(scrape_item.url.parts)
         if "card" in scrape_item.url.parts and n_parts > 2:
             return await self.card(scrape_item)
+        if "set" in scrape_item.url.parts and n_parts > 2:
+            return await self.card(scrape_item)
 
         # We can download from this URL but we can't get any metadata
         # It would be downloaded as a loose file with a random name, so i disabled it
@@ -96,27 +104,66 @@ class PkmncardsCrawler(Crawler):
         raise ValueError
 
     @error_handling_wrapper
-    async def card(self, scrape_item: ScrapeItem, card_set: CardSet | None = None) -> None:
+    async def set(self, scrape_item: ScrapeItem) -> None:
+        card_set: CardSet | None = None
+        last_page = -1
+        # This is just to set the max children limit. `handle_card` will add the actual title
+        scrape_item.setup_as_album("")
+
+        # TODO: Add proper pagination
+        for page in itertools.count(1):
+            async with self.request_limiter:
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+
+            for thumb in soup.select(CARD_SELECTOR):
+                link_str, page_url_str, title = thumb["src"], thumb["href"], thumb["title"]  # type: ignore
+                simple_card = get_card_info_from_title(title)  # type: ignore
+                page_url = self.parse_url(page_url_str)  # type: ignore
+                link = self.parse_url(link_str)  # type: ignore
+
+                if not card_set:
+                    # Make a request for the first card to get the set information
+                    async with self.request_limiter:
+                        soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url)
+                    card_set = create_set(soup, simple_card)
+
+                if last_page == 0:
+                    last_page = int(soup.select_one(LAST_PAGE_SELECTOR).text.removeprefix("/"))  # type: ignore
+
+                new_scrape_item = scrape_item.create_child(page_url)
+                card = Card(simple_card.name, simple_card.number_str, card_set, link)
+                await self.handle_card(new_scrape_item, card)
+                scrape_item.add_children()
+
+            if page >= last_page:
+                break
+
+    @error_handling_wrapper
+    async def card(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         link_str: str = soup.select_one(CARD_DOWNLOAD_SELECTOR)["href"]  # type: ignore
         link = self.parse_url(link_str)
         title: str = soup.select_one(CARD_PAGE_TITLE_SELECTOR)["content"]  # type: ignore
-        card = parse_card_info_from_title(title)
-        if not card_set:
-            card_set = create_set(soup, card)
+        simple_card = get_card_info_from_title(title)
+        card_set = create_set(soup, simple_card)
+        card = Card(simple_card.name, simple_card.number_str, card_set, link)
+        await self.handle_card(scrape_item, card)
 
-        set_title = self.create_title(f"{card_set.name} ({card_set.full_code})")
-        scrape_item.setup_as_album(set_title, album_id=card_set.abbr)
-        scrape_item.possible_datetime = card_set.release_date
-        filename, ext = self.get_filename_and_ext(link.name, assume_ext=".jpg")
-        custom_filename, _ = self.get_filename_and_ext(f"{card.full_name}{link.suffix}")
-        await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
+    async def handle_card(self, scrape_item: ScrapeItem, card: Card) -> None:
+        if not card.name:
+            raise ScrapeError(422)
+        set_title = self.create_title(f"{card.set.name} ({card.set.full_code})")
+        scrape_item.setup_as_album(set_title, album_id=card.set.abbr)
+        scrape_item.possible_datetime = card.set.release_date
+        filename, ext = self.get_filename_and_ext(card.download_url.name, assume_ext=".jpg")
+        custom_filename, _ = self.get_filename_and_ext(f"{card.full_name}{ext}")
+        await self.handle_file(card.download_url, scrape_item, filename, ext, custom_filename=custom_filename)
 
 
-def parse_card_info_from_title(title: str) -> SimpleCard:
-    """Over-complicated function to parse the information of a card from title of a page / alt-title of a thumbnail."""
+def get_card_info_from_title(title: str) -> SimpleCard:
+    """Over-complicated function to parse the information of a card from the title of a page or the alt-title of a thumbnail."""
 
     # ex: Fuecoco · Scarlet & Violet Promos (SVP) #002
     # ex: Sprigatito · Scarlet & Violet Promos (SVP) #001 ‹ PkmnCards  # noqa: RUF003
@@ -133,7 +180,7 @@ def parse_card_info_from_title(title: str) -> SimpleCard:
             else:
                 break
         set_name = card_number.removesuffix(buffer)
-        return SimpleCard(None, card_number, set_name, set_name)
+        return SimpleCard("", card_number, set_name, set_name)
 
     card_name, set_details = _rest.split("·", 1)
     set_name, set_abbr = set_details.replace(")", "").rsplit("(", 1)
@@ -151,7 +198,7 @@ def create_set(soup: BeautifulSoup, card: SimpleCard) -> CardSet:
             release_date = calendar.timegm(datetime.fromisoformat(iso_date).timetuple())
             break
 
-    if not release_date or not card.name:
+    if not release_date:
         raise ScrapeError(422)
 
     return CardSet(card.set_name, card.set_abbr, set_series_code, TimeStamp(release_date))
