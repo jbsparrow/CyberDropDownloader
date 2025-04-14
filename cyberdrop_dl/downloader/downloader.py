@@ -7,7 +7,7 @@ from dataclasses import field
 from functools import wraps
 from http import HTTPStatus
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from aiohttp import ClientConnectorError, ClientError, ClientResponseError
 from filedate import File
@@ -45,7 +45,7 @@ def retry(func: Callable) -> Callable:
     """This function is a wrapper that handles retrying for failed downloads."""
 
     @wraps(func)
-    async def wrapper(self: Downloader, *args, **kwargs) -> None:
+    async def wrapper(self: Downloader, *args, **kwargs) -> Any:
         media_item: MediaItem = args[0]
         while True:
             try:
@@ -53,24 +53,17 @@ def retry(func: Callable) -> Callable:
             except DownloadError as e:
                 if not e.retry:
                     raise
-                self.attempt_task_removal(media_item)
-                max_attempts = self.manager.config_manager.global_settings_data.rate_limiting_options.download_attempts
-                if self.manager.config_manager.settings_data.download_options.disable_download_attempt_limit:
-                    max_attempts = 1
 
+                self.attempt_task_removal(media_item)
                 if e.status != 999:
                     media_item.current_attempt += 1
 
-                error_log_msg = ErrorLogMessage(e.ui_failure, str(e))
+                log(f"{self.log_prefix} failed: {media_item.url} with error: {e!s}", 40)
+                if media_item.current_attempt >= self.max_attempts:
+                    raise
 
-                log_message = f"with error: {error_log_msg.main_log_msg}"
-                log(f"{self.log_prefix} failed: {media_item.url} {log_message}", 40)
-                if media_item.current_attempt < max_attempts:
-                    retry_msg = f"Retrying {self.log_prefix.lower()}: {media_item.url} , retry attempt: {media_item.current_attempt + 1}"
-                    log(retry_msg, 20)
-                    continue
-
-                raise
+                retry_msg = f"Retrying {self.log_prefix.lower()}: {media_item.url} , retry attempt: {media_item.current_attempt + 1}"
+                log(retry_msg, 20)
 
     return wrapper
 
@@ -93,6 +86,12 @@ class Downloader:
         self._file_lock_vault = manager.download_manager.file_locks
         self._ignore_history = manager.config_manager.settings_data.runtime_options.ignore_history
         self._semaphore: asyncio.Semaphore = field(init=False)
+
+    @property
+    def max_attempts(self):
+        if self.manager.config_manager.settings_data.download_options.disable_download_attempt_limit:
+            return 1
+        return self.manager.config_manager.global_settings_data.rate_limiting_options.download_attempts
 
     def startup(self) -> None:
         """Starts the downloader."""

@@ -57,7 +57,7 @@ class MediaItem:
     current_attempt: int = field(default=0, init=False, hash=False, compare=False)
     partial_file: Path | None = field(default=None, init=False)
     complete_file: Path = field(default=None, init=False)  # type: ignore
-    task_id: TaskID | None = field(default=None, init=False, hash=False, compare=False)
+    task_id: TaskID = field(init=False, hash=False, compare=False)
     hash: str | None = field(default=None, init=False, hash=False, compare=False)
     downloaded: bool = field(default=False, init=False, hash=False, compare=False)
 
@@ -152,7 +152,7 @@ class ScrapeItem:
         add_parent: URL | bool | None = None,
     ) -> ScrapeItem:
         """Creates a scrape item."""
-        scrape_item = copy.deepcopy(self)
+        scrape_item = self.copy()
         scrape_item.url = url
         if add_parent:
             new_parent = add_parent if isinstance(add_parent, URL) else self.url
@@ -177,3 +177,7 @@ class ScrapeItem:
     def parent(self) -> URL | None:
         if self.parents:
             return self.parents[-1]
+
+    def copy(self) -> ScrapeItem:
+        """Returns a deep copy of this scrape_item"""
+        return copy.deepcopy(self)

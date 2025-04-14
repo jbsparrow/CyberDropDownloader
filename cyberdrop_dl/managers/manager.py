@@ -76,6 +76,18 @@ class Manager:
         self.loggers: dict[str, QueuedLogger] = {}
         self.states = AsyncioEvents()
 
+    @property
+    def config(self):
+        return self.config_manager.settings_data
+
+    @property
+    def auth_config(self):
+        return self.config_manager.authentication_data
+
+    @property
+    def global_config(self):
+        return self.config_manager.global_settings_data
+
     def shutdown(self, from_user: bool = False):
         """ "Shut everything down (something failed or the user used ctrl + q)"""
         if from_user:
@@ -331,14 +343,12 @@ def show_supported_sites():
     from rich import print
     from rich.table import Table
 
-    from cyberdrop_dl.managers.mock_manager import MockManager
-    from cyberdrop_dl.scraper import scrape_mapper
+    from cyberdrop_dl.scraper.scrape_mapper import gen_crawlers_info
 
-    crawlers = scrape_mapper.gen_crawlers_info(scrape_mapper.get_crawlers(MockManager()))
     table = Table(title="Cyberdrop-DL Supported Sites")
     for column in ("Site", "Crawler", "Primary Base Domain"):
         table.add_column(column, no_wrap=True)
-    for crawler in crawlers:
+    for crawler in gen_crawlers_info():
         table.add_row(crawler.site, crawler.name, str(crawler.primary_base_domain))
     print(table)
     sys.exit(0)
