@@ -25,6 +25,7 @@ class Video(NamedTuple):
 
 
 JS_SELECTOR = "div.video-holder script:contains('var flashvars')"
+VIDEO_INFO_FIELDS_PATTERN = re.compile(r"(\w+):\s*'([^']*)'")
 
 
 class PorntrexCrawler(Crawler):
@@ -65,7 +66,7 @@ class PorntrexCrawler(Crawler):
 
         video = get_video_info(get_text_between(script.text, "var flashvars =", "var player_obj ="))
         filename, ext = self.get_filename_and_ext(video.url.name)
-        canonical_url = self.primary_base_domain / "videos" / video.id
+        canonical_url = self.primary_base_domain / "video" / video.id
         scrape_item.url = canonical_url
         custom_filename, _ = self.get_filename_and_ext(f"{video.title} [{video.id}] [{video.res}]{ext}")
         await self.handle_file(
@@ -81,8 +82,7 @@ def get_video_info(flashvars: str) -> Video:
         match = re.search(r"(\d+)", res_text)
         return int(match.group(1)) if match else 0
 
-    pattern = r"(\w+):\s*'([^']*)'"
-    video_info = dict(re.findall(pattern, flashvars))
+    video_info = dict(VIDEO_INFO_FIELDS_PATTERN.findall(flashvars))
     if video_info:
         resolutions = []
         if "video_url" in video_info and "video_url_text" in video_info:
@@ -100,5 +100,5 @@ def get_video_info(flashvars: str) -> Video:
                     resolutions.append((video_info[text_key], video_info[key]))
 
         best = max(resolutions, key=lambda x: extract_resolution(x[0]))
-        return Video(video_info["video_id"], video_info["video_title"], best[1], best[0].split()[0])
+        return Video(video_info["video_id"], video_info["video_title"], URL(best[1].strip("/")), best[0].split()[0])
     raise ScrapeError(404)
