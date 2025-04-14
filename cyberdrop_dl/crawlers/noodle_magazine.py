@@ -30,7 +30,7 @@ class NoodleMagazineCrawler(Crawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "noodlemagazine", "NoodleMagazine")
-        self.request_limiter = AsyncLimiter(1, 10)
+        self.request_limiter = AsyncLimiter(1, 3)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -39,14 +39,16 @@ class NoodleMagazineCrawler(Crawler):
         """Determines where to send the scrape item based on the url."""
         if "video" in scrape_item.url.parts:
             return await self.search(scrape_item)
-        return await self.video(scrape_item)
+        elif "watch" in scrape_item.url.parts:
+            return await self.video(scrape_item)
+        raise ValueError
 
     @error_handling_wrapper
     async def search(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, scrape_item.url)
         search_string: str = soup.select_one(SEARCH_STRING_SELECTOR).text.strip()
-        search_string = f"{search_string[: search_string.rfind(' videos')]} [search]"
+        search_string = f"{search_string.rsplit(' videos', 1)[0]} [search]"
         title = self.create_title(search_string)
         scrape_item.setup_as_album(title)
         await self.iter_videos(scrape_item, soup)
