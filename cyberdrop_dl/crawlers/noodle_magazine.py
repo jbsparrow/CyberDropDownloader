@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
+from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
@@ -66,6 +67,8 @@ class NoodleMagazineCrawler(Crawler):
         metadata_script = soup.select_one(METADATA_SELECTOR)
         metadata = json.loads(metadata_script.text.strip())
         playlist = soup.select_one(PLAYLIST_SELECTOR)
+        if not playlist:
+            raise ScrapeError(404)
         script_text: str = playlist.text.strip()
         playlist_data = json.loads(script_text[script_text.find("{") : script_text.rfind(";\nwindow.ads")])
         best_source = max(playlist_data["sources"], key=lambda s: int(s["label"]))
