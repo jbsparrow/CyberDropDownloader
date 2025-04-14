@@ -95,7 +95,7 @@ def error_handling_wrapper(func: Callable) -> Callable:
             exc_info = e
             error_log_msg = ErrorLogMessage.from_unknown_exc(e)
 
-        if getattr(item, "is_segment", False):
+        if (skip := getattr(item, "is_segment", None)) and skip is not None:
             return
 
         link_to_show = link_to_show or link

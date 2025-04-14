@@ -101,6 +101,9 @@ class Manager:
         if isinstance(self.parsed_args, Field):
             self.parsed_args = ParsedArgs.parse_args()
 
+        if self.parsed_args.cli_only_args.show_supported_sites:
+            show_supported_sites()
+
         self.path_manager = PathManager(self)
         self.path_manager.pre_startup()
         self.cache_manager.startup(self.path_manager.cache_folder / "cache.yaml")
@@ -332,3 +335,20 @@ def get_system_information() -> str:
     }
 
     return json.dumps(system_info, indent=4)
+
+
+def show_supported_sites():
+    import sys
+
+    from rich import print
+    from rich.table import Table
+
+    from cyberdrop_dl.scraper.scrape_mapper import gen_crawlers_info
+
+    table = Table(title="Cyberdrop-DL Supported Sites")
+    for column in ("Site", "Crawler", "Primary Base Domain"):
+        table.add_column(column, no_wrap=True)
+    for crawler in gen_crawlers_info():
+        table.add_row(crawler.site, crawler.name, str(crawler.primary_base_domain))
+    print(table)
+    sys.exit(0)

@@ -44,7 +44,7 @@ class Post(Protocol):
 
 
 class Crawler(ABC):
-    SUPPORTED_SITES: ClassVar[dict[str, list]] = {}
+    SUPPORTED_SITES: ClassVar[dict[str, list[str]]] = {}
     primary_base_domain: ClassVar[URL] = None  # type: ignore
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date} - {number} - {title}"
     update_unsupported: ClassVar[bool] = False
@@ -154,12 +154,11 @@ class Crawler(ABC):
             self.manager.progress_manager.download_progress.add_skipped()
             return
 
-        if m3u8_content:
-            task = self.downloader.download_hls(media_item, m3u8_content)
-        else:
-            task = self.downloader.run(media_item)
+        if not m3u8_content:
+            self.manager.task_group.create_task(self.downloader.run(media_item))
+            return
 
-        self.manager.task_group.create_task(task)
+        self.manager.task_group.create_task(self.downloader.download_hls(media_item, m3u8_content))
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 

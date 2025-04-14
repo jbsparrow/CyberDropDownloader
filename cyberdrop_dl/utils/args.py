@@ -86,6 +86,7 @@ class CommandLineOnlyArgs(BaseModel):
     retry_maintenance: bool = Field(
         False, description="retry download of maintenance files (bunkr). Requires files to be hashed"
     )
+    show_supported_sites: bool = Field(False, description="shows a list of supported sites and exits")
     ui: UIOptions = Field(UIOptions.FULLSCREEN, description="DISABLED, ACTIVITY, SIMPLE or FULLSCREEN")
 
     @property
