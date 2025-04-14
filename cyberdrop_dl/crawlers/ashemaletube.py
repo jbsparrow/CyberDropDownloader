@@ -80,8 +80,8 @@ class AShemaleTubeCrawler(Crawler):
         async for soup in self.web_pager(scrape_item.url, cffi=True):
             if not title:
                 model_name = soup.select_one(USER_NAME_SELECTOR).get_text(strip=True)  # type: ignore
-                title = self.create_title(f"{title} [model]")
-                scrape_item.setup_as_profile(model_name)
+                title = self.create_title(f"{model_name} [model]")
+                scrape_item.setup_as_profile(title)
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, PROFILE_VIDEOS_SELECTOR):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
