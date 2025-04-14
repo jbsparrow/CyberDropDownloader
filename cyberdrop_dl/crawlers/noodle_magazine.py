@@ -10,7 +10,7 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext, get_text_between
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -30,7 +30,7 @@ class NoodleMagazineCrawler(Crawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "noodlemagazine", "NoodleMagazine")
-        self.request_limiter = AsyncLimiter(3, 10)
+        self.request_limiter = AsyncLimiter(1, 10)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -69,8 +69,7 @@ class NoodleMagazineCrawler(Crawler):
         playlist = soup.select_one(PLAYLIST_SELECTOR)
         if not playlist:
             raise ScrapeError(404)
-        script_text: str = playlist.text.strip()
-        playlist_data = json.loads(script_text[script_text.find("{") : script_text.rfind(";\nwindow.ads")])
+        playlist_data = json.loads(get_text_between(playlist.text, "window.playlist = ", ";\nwindow.ads"))
         best_source = max(playlist_data["sources"], key=lambda s: int(s["label"]))
         video_id: str = URL(metadata["contentUrl"]).parts[-1].split(".")[0]
         file_name, ext = get_filename_and_ext(metadata["contentUrl"])
