@@ -46,6 +46,7 @@ from .onedrive import OneDriveCrawler
 from .pimpandhost import PimpAndHostCrawler
 from .pixeldrain import PixelDrainCrawler
 from .pixhost import PixHostCrawler
+from .pkmncards import PkmncardsCrawler
 from .pmvhaven import PMVHavenCrawler
 from .pornpics import PornPicsCrawler
 from .postimg import PostImgCrawler
