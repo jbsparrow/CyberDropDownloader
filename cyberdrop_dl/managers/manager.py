@@ -76,6 +76,18 @@ class Manager:
         self.loggers: dict[str, QueuedLogger] = {}
         self.states = AsyncioEvents()
 
+    @property
+    def config(self):
+        return self.config_manager.settings_data
+
+    @property
+    def auth_config(self):
+        return self.config_manager.authentication_data
+
+    @property
+    def global_config(self):
+        return self.config_manager.global_settings_data
+
     def shutdown(self, from_user: bool = False):
         """ "Shut everything down (something failed or the user used ctrl + q)"""
         if from_user:
