@@ -152,7 +152,7 @@ class ScrapeItem:
         add_parent: URL | bool | None = None,
     ) -> ScrapeItem:
         """Creates a scrape item."""
-        scrape_item = copy.deepcopy(self)
+        scrape_item = self.copy()
         scrape_item.url = url
         if add_parent:
             new_parent = add_parent if isinstance(add_parent, URL) else self.url
@@ -177,3 +177,7 @@ class ScrapeItem:
     def parent(self) -> URL | None:
         if self.parents:
             return self.parents[-1]
+
+    def copy(self) -> ScrapeItem:
+        """Returns a deep copy of this scrape_item"""
+        return copy.deepcopy(self)

@@ -64,13 +64,13 @@ class YouJizzCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         scrape_item.url = canonical_url
         info = get_info(soup)
         v_format = get_best_quality(info)
         if not v_format:
-            raise ScrapeError(422, origin=scrape_item)
+            raise ScrapeError(422)
 
         resolution, link_str = v_format
 
@@ -81,7 +81,7 @@ class YouJizzCrawler(Crawler):
             scrape_item.possible_datetime = date
         filename, ext = self.get_filename_and_ext(link.name)
         if ext == ".m3u8":
-            raise ScrapeError(422, origin=scrape_item)
+            raise ScrapeError(422)
         custom_filename = f"{info['title']} [{video_id}][{resolution}]{ext}"
         custom_filename, _ = self.get_filename_and_ext(custom_filename)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)

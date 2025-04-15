@@ -176,7 +176,7 @@ class DownloadClient:
             resume_point = media_item.partial_file.stat().st_size if media_item.partial_file.exists() else 0
             download_headers["Range"] = f"bytes={resume_point}-"
 
-        await asyncio.sleep(self.client_manager.download_delay)
+        await asyncio.sleep(self.manager.config_manager.global_settings_data.rate_limiting_options.total_delay)
 
         download_url = media_item.debrid_link or media_item.url
         await self.manager.states.RUNNING.wait()
