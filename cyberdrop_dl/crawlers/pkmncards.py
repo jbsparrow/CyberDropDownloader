@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import calendar
-import itertools
 import json
 from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, NewType
 
+from bs4 import BeautifulSoup
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
@@ -14,21 +14,23 @@ from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
+    from bs4 import BeautifulSoup, Tag
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
-CARD_DOWNLOAD_SELECTOR = "li > a[title='Download Image']"
 
 TimeStamp = NewType("TimeStamp", int)
 
 
+CARD_DOWNLOAD_SELECTOR = "li > a[title='Download Image']"
 CARD_SELECTOR = "a.card-image-link"
 CARD_PAGE_TITLE_SELECTOR = "meta[property='og:title']"
+CARD_FROM_FULL_SELECTOR = "article[id*='post-']"
+CARD_PAGE_URL_SELECTOR = "a[title='Permalink / Title']"
 SET_SERIES_CODE_SELECTOR = "div.card-tabs span[title='Set Series Code']"
 SET_INFO_SELECTOR = "script:contains('datePublished')"
-LAST_PAGE_SELECTOR = "a[title='Last Page (Press L)']"
+NEXT_PAGE_SELECTOR = "a[title='Next Page (Press →)']"
 
 
 @dataclass(slots=True)
@@ -40,9 +42,9 @@ class CardSet:
 
     @property
     def full_code(self) -> str:
-        if self.set_series_code:
-            return f"{self.abbr}, {self.set_series_code}"
-        return f"{self.abbr}"
+        if not self.set_series_code:
+            return f"{self.abbr}"
+        return f"{self.abbr}, {self.set_series_code}"
 
 
 # This is just for information about what properties the card has. We don't actually use this class
@@ -55,12 +57,11 @@ class Card:
 
     @property
     def full_name(self) -> str:
-        if self.name:
-            return f"{self.name} ({self.set.abbr}) #{self.number_str}"
-        else:
+        if not self.name:
             return f"#{self.number_str}"
+        return f"{self.name} ({self.set.abbr}) #{self.number_str}"
 
-    # This is just for information about what other properties the card has. We don't actually use them
+    # Other card properties that we don't use
     # hp: int = 0
     # color: str = ""
     # type: str = ""
@@ -85,6 +86,7 @@ class PkmncardsCrawler(Crawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "pkmncards", "Pkmncards")
+        self.next_page_selector = NEXT_PAGE_SELECTOR  # type: ignore
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -97,6 +99,9 @@ class PkmncardsCrawler(Crawler):
         if "set" in scrape_item.url.parts and n_parts > 2:
             return await self.card(scrape_item)
 
+        if "series" in scrape_item.url.parts and n_parts > 2:
+            return await self.series(scrape_item)
+
         # We can download from this URL but we can't get any metadata
         # It would be downloaded as a loose file with a random name, so i disabled it
         # if scrape_item.url.path.startswith("/wp-content/uploads/"):
@@ -104,50 +109,56 @@ class PkmncardsCrawler(Crawler):
         raise ValueError
 
     @error_handling_wrapper
+    async def series(self, scrape_item: ScrapeItem) -> None:
+        # This is just to set the max children limit. `handle_card` will add the actual title
+        scrape_item.setup_as_profile("")
+        page_url = self.primary_base_domain / "series" / scrape_item.url.parts[1]
+        page_url = page_url.with_query(sort="date", ord="auto", display="full")
+        async for soup in self.web_pager(page_url):
+            for card_tag in soup.select(CARD_FROM_FULL_SELECTOR):
+                card_url_str: str = soup.select_one(CARD_PAGE_URL_SELECTOR)["href"]  # type: ignore
+                new_scrape_item = scrape_item.create_child(card_url_str)
+                await self.card(new_scrape_item, card_tag)
+                scrape_item.add_children()
+
+    @error_handling_wrapper
     async def set(self, scrape_item: ScrapeItem) -> None:
         card_set: CardSet | None = None
-        last_page = -1
         # This is just to set the max children limit. `handle_card` will add the actual title
         scrape_item.setup_as_album("")
-
-        # TODO: Add proper pagination
-        for page in itertools.count(1):
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
-
+        page_url = self.primary_base_domain / "sets" / scrape_item.url.parts[1]
+        page_url = page_url.with_query(sort="date", ord="auto")
+        async for soup in self.web_pager(page_url):
             for thumb in soup.select(CARD_SELECTOR):
-                link_str, page_url_str, title = thumb["src"], thumb["href"], thumb["title"]  # type: ignore
+                link_str, card_url_str, title = thumb["src"], thumb["href"], thumb["title"]  # type: ignore
                 simple_card = get_card_info_from_title(title)  # type: ignore
-                page_url = self.parse_url(page_url_str)  # type: ignore
+                card_url = self.parse_url(card_url_str)  # type: ignore
                 link = self.parse_url(link_str)  # type: ignore
 
                 if not card_set:
                     # Make a request for the first card to get the set information
                     async with self.request_limiter:
-                        soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url)
+                        soup: BeautifulSoup = await self.client.get_soup(self.domain, card_url)
                     card_set = create_set(soup, simple_card)
 
-                if last_page == 0:
-                    last_page = int(soup.select_one(LAST_PAGE_SELECTOR).text.removeprefix("/"))  # type: ignore
-
-                new_scrape_item = scrape_item.create_child(page_url)
+                new_scrape_item = scrape_item.create_child(card_url)
                 card = Card(simple_card.name, simple_card.number_str, card_set, link)
                 await self.handle_card(new_scrape_item, card)
                 scrape_item.add_children()
 
-            if page >= last_page:
-                break
-
     @error_handling_wrapper
-    async def card(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+    async def card(self, scrape_item: ScrapeItem, card_tag: Tag | None = None) -> None:
+        if not card_tag:
+            async with self.request_limiter:
+                soup_or_tag = await self.client.get_soup(self.domain, scrape_item.url)
+        else:
+            soup_or_tag: Tag = card_tag
 
-        link_str: str = soup.select_one(CARD_DOWNLOAD_SELECTOR)["href"]  # type: ignore
+        link_str: str = card_tag.select_one(CARD_DOWNLOAD_SELECTOR)["href"]  # type: ignore
         link = self.parse_url(link_str)
-        title: str = soup.select_one(CARD_PAGE_TITLE_SELECTOR)["content"]  # type: ignore
+        title: str = card_tag.select_one(CARD_PAGE_TITLE_SELECTOR)["content"]  # type: ignore
         simple_card = get_card_info_from_title(title)
-        card_set = create_set(soup, simple_card)
+        card_set = create_set(soup_or_tag, simple_card)
         card = Card(simple_card.name, simple_card.number_str, card_set, link)
         await self.handle_card(scrape_item, card)
 
@@ -187,7 +198,7 @@ def get_card_info_from_title(title: str) -> SimpleCard:
     return SimpleCard(card_name.strip(), card_number.strip(), set_name.strip(), set_abbr.strip().upper())
 
 
-def create_set(soup: BeautifulSoup, card: SimpleCard) -> CardSet:
+def create_set(soup: Tag, card: SimpleCard) -> CardSet:
     tag = soup.select_one(SET_SERIES_CODE_SELECTOR)
     # Some sets do not have series code
     set_series_code: str | None = tag.get_text(strip=True) if tag else None  # type: ignore
