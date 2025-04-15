@@ -88,10 +88,10 @@ class CardSet:
 
 class PkmncardsCrawler(Crawler):
     primary_base_domain = URL("https://pkmncards.com")
+    next_page_selector = NEXT_PAGE_SELECTOR
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "pkmncards", "Pkmncards")
-        self.next_page_selector = NEXT_PAGE_SELECTOR  # type: ignore
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -103,7 +103,7 @@ class PkmncardsCrawler(Crawler):
             if "card" in scrape_item.url.parts:
                 return await self.card(scrape_item)
             if "set" in scrape_item.url.parts:
-                return await self.card(scrape_item)
+                return await self.card_set(scrape_item)
             if "series" in scrape_item.url.parts:
                 return await self.series(scrape_item)
 
@@ -123,16 +123,17 @@ class PkmncardsCrawler(Crawler):
         async for soup in self.web_pager(page_url):
             # Can't use `iter_children` becuase we need to pass `cart_tag` to self.card
             for card_tag in soup.select(CARD_FROM_FULL_SELECTOR):
-                card_url_str: str = soup.select_one(CARD_PAGE_URL_SELECTOR)["href"]  # type: ignore
-                new_scrape_item = scrape_item.create_child(card_url_str)
+                card_page_url_str: str = soup.select_one(CARD_PAGE_URL_SELECTOR)["href"]  # type: ignore
+                new_scrape_item = scrape_item.create_child(card_page_url_str)
                 await self.card(new_scrape_item, card_tag)
                 scrape_item.add_children()
 
     @error_handling_wrapper
-    async def set(self, scrape_item: ScrapeItem) -> None:
-        card_set: CardSet | None = None
+    async def card_set(self, scrape_item: ScrapeItem) -> None:
         # This is just to set the max children limit. `handle_card` will add the actual title
         scrape_item.setup_as_album("")
+
+        card_set: CardSet | None = None
         page_url = self.primary_base_domain / "sets" / scrape_item.url.parts[1]
         page_url = page_url.with_query(sort="date", ord="auto")
         async for soup in self.web_pager(page_url):
@@ -174,7 +175,7 @@ class PkmncardsCrawler(Crawler):
     async def handle_card(self, scrape_item: ScrapeItem, card: Card) -> None:
         if not card.name:
             raise ScrapeError(422)
-        link = card.download_url.with_suffix(".png")  # they offer both jpg and png. png is higger quality
+        link = card.download_url.with_suffix(".png")  # they offer both jpg and png. png is higher quality
         set_title = self.create_title(f"{card.set.name} ({card.set.full_code})")
         scrape_item.setup_as_album(set_title, album_id=card.set.abbr)
         scrape_item.possible_datetime = card.set.release_date
