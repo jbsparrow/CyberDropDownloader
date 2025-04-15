@@ -13,7 +13,7 @@ from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import AsyncGenerator, Generator
     from datetime import datetime
 
     from cyberdrop_dl.managers.manager import Manager
@@ -128,11 +128,17 @@ class KemonoCrawler(Crawler):
 
     async def iter_from_url(self, scrape_item: ScrapeItem, url: URL):
         async for json_resp in self.api_pager(url):
-            posts: list[dict[str, Any]] = json_resp.get("posts") or json_resp  # type: ignore
+            posts: list[dict[str, Any]] = json_resp.get("posts", [])
+            if not posts:
+                if "attachments" not in json_resp:
+                    posts = json_resp  # type: ignore
+                else:
+                    continue
+
             for post in (KemonoPost(**entry) for entry in posts):
                 await self._handle_post(scrape_item, post)
 
-    async def api_pager(self, url: URL):
+    async def api_pager(self, url: URL) -> AsyncGenerator[dict[str, Any]]:
         offset = int(url.query.get("o") or 0)
         while True:
             api_url = url.update_query(o=offset)
