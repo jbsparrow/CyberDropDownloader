@@ -9,8 +9,8 @@ from cyberdrop_dl.utils.utilities import parse_url
 
 
 class InvalidM3U8Error(DownloadError):
-    def __init__(self, msg: str | None = None) -> None:
-        message = msg or "Unable to parse m3u8 content"
+    def __init__(self) -> None:
+        message = "Unable to parse m3u8 content"
         super().__init__("Invalid M3U8", message)
 
 
@@ -35,26 +35,16 @@ class M3U8_Playlist:  # noqa: N801
 
         def get_last_part() -> str:
             for line in reversed(self._lines):
-                if not line.startswith("#") or "URI=" in line:
-                    return line.strip()
+                if part := self._clean_line(line):
+                    return part
             raise InvalidM3U8Error
 
         def get_parts() -> Generator[str]:
             for line in self._lines:
-                stripped_line = line.strip()
-                if not stripped_line:
+                part = self._clean_line(line)
+                if not part:
                     continue
-                if stripped_line.startswith("#"):
-                    # Handle audio playlist references
-                    if "URI=" in stripped_line:
-                        parts = stripped_line.split('URI="')
-                        if len(parts) <= 1:
-                            raise InvalidM3U8Error
-                        uri_part = parts[1].rsplit('"', 1)[0]
-                        yield uri_part
-                    continue
-
-                yield stripped_line
+                yield part
 
         def parse(part: str) -> URL:
             if self.base_url:
@@ -68,6 +58,20 @@ class M3U8_Playlist:  # noqa: N801
             url = parse(part)
             name = f"{index:0{padding}d}{self._suffix}"
             yield HlsSegment(part, name, url)
+
+    @staticmethod
+    def _clean_line(line: str) -> str | None:
+        stripped_line = line.strip()
+        if stripped_line.startswith("#"):
+            # Handle audio playlist references
+            if "URI=" in stripped_line:
+                parts = stripped_line.split('URI="')
+                if len(parts) <= 1:
+                    raise InvalidM3U8Error
+                uri_part = parts[1].rsplit('"', 1)[0]
+                return uri_part or None
+            return None
+        return stripped_line or None
 
     @property
     def segments(self) -> tuple[HlsSegment, ...]:
