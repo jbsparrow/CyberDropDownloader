@@ -1,5 +1,6 @@
+import asyncio
 import re
-from collections.abc import Generator
+from collections.abc import AsyncGenerator, Generator
 from typing import NamedTuple
 
 from yarl import URL
@@ -28,7 +29,7 @@ class M3U8_Playlist:  # noqa: N801
         self._suffix = ".cdl_hsl"
         self._segments: tuple[HlsSegment, ...] = ()
 
-    def gen_segments(self) -> Generator[HlsSegment]:
+    def _gen_segments(self) -> Generator[HlsSegment]:
         if self._segments:
             yield from self._segments
             return
@@ -59,6 +60,11 @@ class M3U8_Playlist:  # noqa: N801
             name = f"{index:0{padding}d}{self._suffix}"
             yield HlsSegment(part, name, url)
 
+    async def async_gen_segments(self) -> AsyncGenerator[HlsSegment]:
+        for segment in self._gen_segments():
+            yield segment
+            await asyncio.sleep(0)
+
     @staticmethod
     def _clean_line(line: str) -> str | None:
         stripped_line = line.strip()
@@ -76,5 +82,10 @@ class M3U8_Playlist:  # noqa: N801
     @property
     def segments(self) -> tuple[HlsSegment, ...]:
         if not self._segments:
-            self._segments = tuple(self.gen_segments())
+            self._segments = tuple(self._gen_segments())
+        return self._segments
+
+    async def get_segments(self) -> tuple[HlsSegment, ...]:
+        if not self._segments:
+            self._segments = tuple([seg async for seg in self.async_gen_segments()])
         return self._segments
