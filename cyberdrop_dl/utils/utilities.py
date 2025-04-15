@@ -10,6 +10,7 @@ import subprocess
 from dataclasses import dataclass, fields
 from functools import lru_cache, partial, wraps
 from pathlib import Path
+from stat import S_ISREG
 from typing import TYPE_CHECKING, Any, ClassVar, Protocol
 
 import aiofiles
@@ -488,6 +489,19 @@ def get_filename_from_headers(headers: Mapping[str, Any]) -> str | None:
     if match := re.search(FILENAME_REGEX, content_disposition):
         matches = match.groups()
         return matches[0] or matches[1]
+
+
+def get_size_or_none(path: Path) -> int | None:
+    """Checks if this is a file and returns its size with a single system call.
+
+    Returns `None` otherwise"""
+
+    try:
+        stat = path.stat()
+        if S_ISREG(stat.st_mode):
+            return stat.st_size
+    except (OSError, ValueError):
+        return None
 
 
 log_cyan = partial(log_with_color, style="cyan", level=20)
