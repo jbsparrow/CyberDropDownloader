@@ -490,6 +490,19 @@ def get_filename_from_headers(headers: Mapping[str, Any]) -> str | None:
         return matches[0] or matches[1]
 
 
+def get_size_or_none(path: Path) -> int | None:
+    """Checks if a file exists and returns its size, with a single system call.
+
+    Returns `None` otherwise"""
+
+    try:
+        return path.stat().st_size
+    except OSError:
+        return None
+    except ValueError:
+        return None
+
+
 log_cyan = partial(log_with_color, style="cyan", level=20)
 log_yellow = partial(log_with_color, style="yellow", level=20)
 log_green = partial(log_with_color, style="green", level=20)
