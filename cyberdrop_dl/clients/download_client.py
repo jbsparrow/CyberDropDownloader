@@ -16,7 +16,7 @@ from dateutil import parser
 from videoprops import get_audio_properties, get_video_properties
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import DownloadError, InvalidContentTypeError, SlowDownloadError
+from cyberdrop_dl.clients.errors import DDOSGuardError, DownloadError, InvalidContentTypeError, SlowDownloadError
 from cyberdrop_dl.utils.constants import FILE_FORMATS
 from cyberdrop_dl.utils.logger import log, log_debug
 
@@ -254,7 +254,7 @@ class DownloadClient:
 
                     await save_content(resp.content)
                     return True
-            except DownloadError:
+            except (DownloadError, DDOSGuardError):
                 if resp is None:
                     raise
                 try:
@@ -264,7 +264,13 @@ class DownloadClient:
                 else:
                     if not download_url:
                         raise
-                    log(f"Download of {media_item.url} failed, retrying with fallback URL: {download_url}", 40)
+                    if media_item.debrid_link and media_item.debrid_link == download_url:
+                        msg = f" with debrid URL {download_url} failed, retrying with fallback URL: "
+                    elif media_item.url == download_url:
+                        msg = " failed, retrying with fallback URL: "
+                    else:
+                        msg = f" with fallback URL {download_url} failed, retrying with new fallback URL: "
+                    log(f"Download of {media_item.url}{msg}{download_url}", 40)
                     continue
                 raise
 
