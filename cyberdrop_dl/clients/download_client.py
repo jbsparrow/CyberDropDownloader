@@ -201,6 +201,50 @@ class DownloadClient:
                         break
                     response = yield url
 
+        async def process_response(resp: aiohttp.ClientResponse):
+            nonlocal resume_point
+            if resp.status == HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE:
+                media_item.partial_file.unlink()
+
+            await self.client_manager.check_http_status(resp, download=True, origin=media_item.url)
+
+            _ = get_content_type(media_item.ext, resp.headers)
+
+            media_item.filesize = int(resp.headers.get("Content-Length", "0"))
+            if not media_item.complete_file:
+                proceed, skip = await self.get_final_file_info(media_item, domain)
+                self.client_manager.check_bunkr_maint(resp.headers)
+                if skip:
+                    self.manager.progress_manager.download_progress.add_skipped()
+                    return False
+                if not proceed:
+                    log(f"Skipping {media_item.url} as it has already been downloaded", 10)
+                    self.manager.progress_manager.download_progress.add_previously_completed(False)
+                    await self.process_completed(media_item, domain)
+                    await self.handle_media_item_completion(media_item, downloaded=False)
+
+                    return False
+
+            if resp.status != HTTPStatus.PARTIAL_CONTENT and media_item.partial_file.is_file():
+                media_item.partial_file.unlink()
+
+            if not media_item.datetime and (last_modified := get_last_modified(resp.headers)):
+                msg = f"Unable to parse upload date for {media_item.url}, using `Last-Modified` header as file datetime"
+                log(msg, 30)
+                media_item.datetime = last_modified
+
+            media_item.task_id = self.manager.progress_manager.file_progress.add_task(
+                domain=domain,
+                filename=media_item.filename,
+                expected_size=media_item.filesize + resume_point,
+            )
+            if media_item.partial_file.is_file():
+                resume_point = media_item.partial_file.stat().st_size
+                self.manager.progress_manager.file_progress.advance_file(media_item.task_id, resume_point)
+
+            await save_content(resp.content)
+            return True
+
         fallback_url_generator = gen_fallback()
         next(fallback_url_generator)  # Prime the generator, waiting for response
         await self.manager.states.RUNNING.wait()
@@ -213,47 +257,7 @@ class DownloadClient:
                     ssl=self.client_manager.ssl_context,
                     proxy=self.client_manager.proxy,
                 ) as resp:
-                    if resp.status == HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE:
-                        media_item.partial_file.unlink()
-
-                    await self.client_manager.check_http_status(resp, download=True, origin=media_item.url)
-
-                    _ = get_content_type(media_item.ext, resp.headers)
-
-                    media_item.filesize = int(resp.headers.get("Content-Length", "0"))
-                    if not media_item.complete_file:
-                        proceed, skip = await self.get_final_file_info(media_item, domain)
-                        self.client_manager.check_bunkr_maint(resp.headers)
-                        if skip:
-                            self.manager.progress_manager.download_progress.add_skipped()
-                            return False
-                        if not proceed:
-                            log(f"Skipping {media_item.url} as it has already been downloaded", 10)
-                            self.manager.progress_manager.download_progress.add_previously_completed(False)
-                            await self.process_completed(media_item, domain)
-                            await self.handle_media_item_completion(media_item, downloaded=False)
-
-                            return False
-
-                    if resp.status != HTTPStatus.PARTIAL_CONTENT and media_item.partial_file.is_file():
-                        media_item.partial_file.unlink()
-
-                    if not media_item.datetime and (last_modified := get_last_modified(resp.headers)):
-                        msg = f"Unable to parse upload date for {media_item.url}, using `Last-Modified` header as file datetime"
-                        log(msg, 30)
-                        media_item.datetime = last_modified
-
-                    media_item.task_id = self.manager.progress_manager.file_progress.add_task(
-                        domain=domain,
-                        filename=media_item.filename,
-                        expected_size=media_item.filesize + resume_point,
-                    )
-                    if media_item.partial_file.is_file():
-                        resume_point = media_item.partial_file.stat().st_size
-                        self.manager.progress_manager.file_progress.advance_file(media_item.task_id, resume_point)
-
-                    await save_content(resp.content)
-                    return True
+                    return await process_response(resp)
             except (DownloadError, DDOSGuardError):
                 if resp is None:
                     raise
