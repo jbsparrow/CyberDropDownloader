@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import calendar
 import datetime
+from json import dumps
 from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, ClassVar
@@ -39,7 +40,8 @@ class DiscordCrawler(Crawler):
         super().__init__(manager, "discord", "Discord")
         self.api_url = URL("https://discord.com/api/")
         self.request_limiter = AsyncLimiter(5, 2)
-        self.headers = {"Authorization": self.manager.config_manager.authentication_data.discord.token}
+        self.headers = {"Authorization": self.manager.config_manager.authentication_data.discord.token,
+                        "Content-Type": "application/json"}
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -109,7 +111,7 @@ class DiscordCrawler(Crawler):
         while True:
             async with self.request_limiter:
                 data = await self.client.post_data(
-                    self.domain, request_url, request_json, origin=scrape_item, headers_inc=self.headers
+                    self.domain, url=request_url, data=dumps(request_json), origin=scrape_item, headers_inc=self.headers
                 )
                 if "rate limited" in data.get("message", ""):
                     wait_time = data.get("retry_after", 0)
@@ -132,7 +134,7 @@ class DiscordCrawler(Crawler):
         """Gets the media from the Discord mobile app search API."""
         async for messages in self.search_media(scrape_item):
             for message in messages:
-                await self.process_attachments(message, scrape_item)
+                await self.process_attachments(message[0], scrape_item)
 
     async def process_attachments(self, message: dict, scrape_item: ScrapeItem) -> None:
         for attachment in message.get("attachments"):
@@ -148,18 +150,18 @@ class DiscordCrawler(Crawler):
             channel_id = message.get("channel_id")
             timestamp = self.parse_datetime(message.get("timestamp"))
 
-            canonical_url = await self.get_canonical_url(scrape_item)
+            canonical_url = await self.get_canonical_url(scrape_item.url)
             if await self.check_complete_from_referer(canonical_url):
                 continue
-            new_scrape_item = self.create_scrape_item(
-                parent_scrape_item=scrape_item,
-                url=canonical_url,
-                new_title_part=f"{username} ({user_id})",
-                possible_datetime=timestamp,
-            )
+            # new_scrape_item = self.create_scrape_item(
+            #     parent_scrape_item=scrape_item,
+            #     url=canonical_url,
+            #     new_title_part=f"{username} ({user_id})",
+            #     possible_datetime=timestamp,
+            # )
 
             filename, ext = get_filename_and_ext(filename)
-            await self.handle_file(url=url, scrape_item=new_scrape_item, filename=filename, ext=ext)
+            await self.handle_file(url=URL(url), scrape_item=scrape_item, filename=filename, ext=ext)
             scrape_item.add_children()
 
     @error_handling_wrapper
@@ -169,16 +171,36 @@ class DiscordCrawler(Crawler):
         if await self.check_complete_from_referer(canonical_url):
             return
 
-        new_scrape_item = self.create_scrape_item(parent_scrape_item=scrape_item, url=canonical_url)
+        # new_scrape_item = self.create_scrape_item(parent_scrape_item=scrape_item, url=canonical_url)
 
         filename, ext = get_filename_and_ext(scrape_item.url.name)
-        await self.handle_file(scrape_item.url, new_scrape_item, filename, ext)
+        await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+    async def create_new_scrape_item(
+        self,
+        link: URL,
+        old_scrape_item: ScrapeItem,
+        user: str,
+        user_id: str,
+        post_id: str,
+        date: str,
+        add_parent: URL | None = None,
+    ) -> None:
+        """Creates a new scrape item with the same parent as the old scrape item."""
+        new_title = self.create_title(user)
+        new_scrape_item = old_scrape_item.create_new(
+            link,
+            new_title_part=new_title,
+            possible_datetime=date,
+            add_parent=add_parent,
+        )
+        return new_scrape_item
 
     @staticmethod
     def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
         date = date.split("+")[0]
-        dt = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%f")
+        dt = datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%f")
         return calendar.timegm(dt.timetuple())
