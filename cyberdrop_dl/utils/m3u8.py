@@ -9,8 +9,9 @@ from cyberdrop_dl.utils.utilities import parse_url
 
 
 class InvalidM3U8Error(DownloadError):
-    def __init__(self, msg: str) -> None:
-        super().__init__("Invalid M3U8", msg)
+    def __init__(self, msg: str | None = None) -> None:
+        message = msg or "Unable to parse m3u8 content"
+        super().__init__("Invalid M3U8", message)
 
 
 class HlsSegment(NamedTuple):
@@ -21,9 +22,10 @@ class HlsSegment(NamedTuple):
 
 class M3U8_Playlist:  # noqa: N801
     def __init__(self, content: str, base_url: URL | None = None) -> None:
+        self.base_url = base_url
         self._content = content
         self._lines = content.splitlines()
-        self._base_url = base_url
+        self._suffix = ".cdl_hsl"
         self._segments: tuple[HlsSegment, ...] = ()
 
     def gen_segments(self) -> Generator[HlsSegment]:
@@ -31,33 +33,40 @@ class M3U8_Playlist:  # noqa: N801
             yield from self._segments
             return
 
-        def get_last_segment_line() -> str:
+        def get_last_part() -> str:
             for line in reversed(self._lines):
-                if not line.startswith("#"):
+                if not line.startswith("#") or "URI=" in line:
                     return line.strip()
-            raise InvalidM3U8Error("Unable to parse m3u8 content")
+            raise InvalidM3U8Error
 
-        def get_segment_lines() -> Generator[str]:
+        def get_parts() -> Generator[str]:
             for line in self._lines:
                 stripped_line = line.strip()
                 if not stripped_line:
                     continue
                 if stripped_line.startswith("#"):
+                    # Handle audio playlist references
+                    if "URI=" in stripped_line:
+                        parts = stripped_line.split('URI="')
+                        if len(parts) <= 1:
+                            raise InvalidM3U8Error
+                        uri_part = parts[1].rsplit('"', 1)[0]
+                        yield uri_part
                     continue
+
                 yield stripped_line
 
         def parse(part: str) -> URL:
-            if self._base_url:
-                return self._base_url / part
+            if self.base_url:
+                return self.base_url / part
             return parse_url(part)
 
-        last_segment_part = get_last_segment_line()
+        last_segment_part = get_last_part()
         last_index_str = re.sub(r"\D", "", last_segment_part)
         padding = max(5, len(last_index_str))
-        parts = get_segment_lines()
-        for index, part in enumerate(parts, 1):
+        for index, part in enumerate(get_parts(), 1):
             url = parse(part)
-            name = f"{index:0{padding}d}.cdl_hsl"
+            name = f"{index:0{padding}d}{self._suffix}"
             yield HlsSegment(part, name, url)
 
     @property
