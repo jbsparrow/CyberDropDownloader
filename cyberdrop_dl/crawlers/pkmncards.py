@@ -33,23 +33,11 @@ SET_INFO_SELECTOR = "script:contains('datePublished')"
 NEXT_PAGE_SELECTOR = "a[title='Next Page (Press →)']"
 
 
-@dataclass(slots=True)
-class CardSet:
-    name: str
-    abbr: str
-    set_series_code: str | None
-    release_date: TimeStamp
-
-    @property
-    def full_code(self) -> str:
-        if not self.set_series_code:
-            return f"{self.abbr}"
-        return f"{self.abbr}, {self.set_series_code}"
-
-
 # This is just for information about what properties the card has. We don't actually use this class
 @dataclass(slots=True)
 class Card:
+    """A Pokemon card"""
+
     name: str
     number_str: str
     set: CardSet
@@ -74,11 +62,28 @@ class Card:
 
 @dataclass(slots=True)
 class SimpleCard:
-    # Simplified version of Card that groups the information we can get from the title of a page
+    """Simplified version of Card that groups the information we can get from the title of a page."""
+
     name: str
     number_str: str  # This can actually contain letters as well, but the oficial name is `number`
     set_name: str
     set_abbr: str
+
+
+@dataclass(slots=True)
+class CardSet:
+    """Group of cards"""
+
+    name: str
+    abbr: str
+    set_series_code: str | None
+    release_date: TimeStamp
+
+    @property
+    def full_code(self) -> str:
+        if not self.set_series_code:
+            return f"{self.abbr}"
+        return f"{self.abbr}, {self.set_series_code}"
 
 
 class PkmncardsCrawler(Crawler):
@@ -93,14 +98,14 @@ class PkmncardsCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        n_parts = len(scrape_item.url.parts)
-        if "card" in scrape_item.url.parts and n_parts > 2:
-            return await self.card(scrape_item)
-        if "set" in scrape_item.url.parts and n_parts > 2:
-            return await self.card(scrape_item)
 
-        if "series" in scrape_item.url.parts and n_parts > 2:
-            return await self.series(scrape_item)
+        if len(scrape_item.url.parts) > 2:
+            if "card" in scrape_item.url.parts:
+                return await self.card(scrape_item)
+            if "set" in scrape_item.url.parts:
+                return await self.card(scrape_item)
+            if "series" in scrape_item.url.parts:
+                return await self.series(scrape_item)
 
         # We can download from this URL but we can't get any metadata
         # It would be downloaded as a loose file with a random name, so i disabled it
@@ -112,9 +117,11 @@ class PkmncardsCrawler(Crawler):
     async def series(self, scrape_item: ScrapeItem) -> None:
         # This is just to set the max children limit. `handle_card` will add the actual title
         scrape_item.setup_as_profile("")
+
         page_url = self.primary_base_domain / "series" / scrape_item.url.parts[1]
         page_url = page_url.with_query(sort="date", ord="auto", display="full")
         async for soup in self.web_pager(page_url):
+            # Can't use `iter_children` becuase we need to pass `cart_tag` to self.card
             for card_tag in soup.select(CARD_FROM_FULL_SELECTOR):
                 card_url_str: str = soup.select_one(CARD_PAGE_URL_SELECTOR)["href"]  # type: ignore
                 new_scrape_item = scrape_item.create_child(card_url_str)
@@ -162,6 +169,7 @@ class PkmncardsCrawler(Crawler):
         card = Card(simple_card.name, simple_card.number_str, card_set, link)
         await self.handle_card(scrape_item, card)
 
+    @error_handling_wrapper
     async def handle_card(self, scrape_item: ScrapeItem, card: Card) -> None:
         if not card.name:
             raise ScrapeError(422)
@@ -193,8 +201,8 @@ def get_card_info_from_title(title: str) -> SimpleCard:
         set_name = card_number.removesuffix(buffer)
         return SimpleCard("", card_number, set_name, set_name)
 
-    card_name, set_details = _rest.split("·", 1)
-    set_name, set_abbr = set_details.replace(")", "").rsplit("(", 1)
+    card_name, _set_details = _rest.split("·", 1)
+    set_name, set_abbr = _set_details.replace(")", "").rsplit("(", 1)
     return SimpleCard(card_name.strip(), card_number.strip(), set_name.strip(), set_abbr.strip().upper())
 
 
