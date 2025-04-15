@@ -33,7 +33,6 @@ SET_INFO_SELECTOR = "script:contains('datePublished')"
 NEXT_PAGE_SELECTOR = "a[title='Next Page (Press →)']"
 
 
-# This is just for information about what properties the card has. We don't actually use this class
 @dataclass(slots=True)
 class Card:
     """A Pokemon card"""
