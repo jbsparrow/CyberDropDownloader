@@ -87,6 +87,7 @@ class NoodleMagazineCrawler(Crawler):
             return
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, scrape_item.url)
+
         metadata_script = soup.select_one(METADATA_SELECTOR)
         metadata = json.loads(metadata_script.text.strip())  # type: ignore
         playlist = soup.select_one(PLAYLIST_SELECTOR)
@@ -102,8 +103,10 @@ class NoodleMagazineCrawler(Crawler):
         filename, ext = get_filename_and_ext(content_url.name)
         video_id = filename.removesuffix(ext)
         custom_filename, _ = get_filename_and_ext(f"{title} [{video_id}] [{best_source.resolution}p]{ext}")
-        link = self.parse_url(best_source.file)
-        await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
+        src_url = self.parse_url(best_source.file)
+        await self.handle_file(
+            content_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=src_url
+        )
 
 
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
