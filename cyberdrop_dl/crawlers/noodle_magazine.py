@@ -4,7 +4,7 @@ import calendar
 import datetime
 import itertools
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
@@ -25,6 +25,16 @@ PLAYLIST_SELECTOR = "script:contains('window.playlist')"
 METADATA_SELECTOR = "script[type='application/ld+json']"
 SEARCH_STRING_SELECTOR = "div.mh_line > h1.c_title"
 VIDEOS_SELECTOR = "div#list_videos a.item_link"
+
+
+class Source(NamedTuple):
+    resolution: int
+    file: str
+
+    @staticmethod
+    def new(source_dict: dict[str, Any]) -> Source:
+        resolution = int(source_dict["label"])
+        return Source(resolution, source_dict["file"])
 
 
 class NoodleMagazineCrawler(Crawler):
@@ -84,17 +94,15 @@ class NoodleMagazineCrawler(Crawler):
             raise ScrapeError(404)
 
         playlist_data = json.loads(get_text_between(playlist.text, "window.playlist = ", ";\nwindow.ads"))
-        best_source = max(playlist_data["sources"], key=lambda s: int(s["label"]))
+        best_source = max(Source.new(source) for source in playlist_data["sources"])
         title: str = soup.select_one("title").text.split(" watch online")[0]  # type: ignore
 
         scrape_item.possible_datetime = parse_datetime(metadata["uploadDate"])
         content_url = self.parse_url(metadata["contentUrl"])
         filename, ext = get_filename_and_ext(content_url.name)
         video_id = filename.removesuffix(ext)
-        custom_filename, _ = get_filename_and_ext(
-            f"{title} [{video_id}] [{best_source['label']}p].{best_source['type']}"
-        )
-        link = self.parse_url(best_source["file"])
+        custom_filename, _ = get_filename_and_ext(f"{title} [{video_id}] [{best_source.resolution}p]{ext}")
+        link = self.parse_url(best_source.file)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
 
