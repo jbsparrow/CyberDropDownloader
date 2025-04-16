@@ -167,7 +167,7 @@ class DiscordCrawler(Crawler):
         if await self.check_complete_from_referer(canonical_url):
             return
 
-        new_scrape_item = scrape_item.create_new(parent_scrape_item=scrape_item, url=canonical_url, add_parent=True)
+        new_scrape_item = scrape_item.create_new(url=canonical_url, add_parent=True)
 
         filename, ext = get_filename_and_ext(scrape_item.url.name)
         await self.handle_file(scrape_item.url, new_scrape_item, filename, ext)
