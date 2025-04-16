@@ -6,6 +6,7 @@ from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
+from cyberdrop_dl.crawlers.crawler import create_task_id
 from cyberdrop_dl.crawlers.kemono import KemonoCrawler, Post
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -29,6 +30,13 @@ class CoomerCrawler(KemonoCrawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    @create_task_id
+    async def fetch(self, scrape_item: ScrapeItem) -> None:
+        """Determines where to send the scrape item based on the url."""
+        if "favorites" in scrape_item.url.parts:
+            return await self.favorites(scrape_item)
+        return await self._fetch_kemono_defaults(scrape_item)
+
     @error_handling_wrapper
     async def favorites(self, scrape_item: ScrapeItem) -> None:
         """Scrapes the users' favourites and creates scrape items for each artist found."""
@@ -38,13 +46,11 @@ class CoomerCrawler(KemonoCrawler):
 
         cookies = {"session": self.session_cookie}
         self.update_cookies(cookies)
-
         title = self.create_title("My favorites")
         scrape_item.setup_as_profile(title)
-
+        api_url = self.api_entrypoint / "account/favorites"
+        favourites_api_url = api_url.with_query(type="artist")
         async with self.request_limiter:
-            api_url = self.api_entrypoint / "account/favorites"
-            favourites_api_url = api_url.with_query(type="artist")
             json_resp = await self.client.get_json(self.domain, favourites_api_url)
 
         cookies = {"session": ""}
@@ -61,10 +67,4 @@ class CoomerCrawler(KemonoCrawler):
         if "#ad" in post.content and self.manager.config_manager.settings_data.ignore_options.ignore_coomer_ads:
             return
 
-        return super()._handle_post_content(scrape_item, post)  # type: ignore
-
-    async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:
-        """Handles a direct link."""
-        if "favorites" in scrape_item.url.parts:
-            return await self.favorites(scrape_item)
-        return await super().handle_direct_link(scrape_item)
+        return super()._handle_post_content(scrape_item, post)

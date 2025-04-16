@@ -161,7 +161,9 @@ class KemonoCrawler(Crawler):
     async def _fetch_kemono_defaults(self, scrape_item: ScrapeItem) -> None:
         """Helper fetch method for subclasses.
 
-        Subclasses can override the normal `fetch` method to add their own custom filters and them call this method at the end"""
+        Subclasses can override the normal `fetch` method to add their own custom filters and them call this method at the end
+
+        Super().fetch MUST NOT be used, otherwise a new task_id will be created"""
         if "thumbnails" in scrape_item.url.parts:
             scrape_item.url = remove_parts(scrape_item.url, "thumbnails")
             return await self.handle_direct_link(scrape_item)
