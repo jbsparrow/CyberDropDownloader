@@ -165,7 +165,6 @@ class KemonoCrawler(Crawler):
 
         Super().fetch MUST NOT be used, otherwise a new task_id will be created"""
         if "thumbnails" in scrape_item.url.parts:
-            scrape_item.url = remove_parts(scrape_item.url, "thumbnails")
             return await self.handle_direct_link(scrape_item)
         if "discord" in scrape_item.url.parts:
             return await self.discord(scrape_item)
@@ -294,7 +293,14 @@ class KemonoCrawler(Crawler):
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem, url: URL | None) -> None:
         """Handles a direct link."""
-        link = url or scrape_item.url
+
+        def clean_url(og_url: URL) -> URL:
+            if "thumbnails" in og_url.parts:
+                return remove_parts(og_url, "thumbnails")
+            return og_url
+
+        scrape_item.url = clean_url(scrape_item.url)
+        link = clean_url(url or scrape_item.url)
         try:
             filename, ext = self.get_filename_and_ext(link.query.get("f") or link.name)
         except NoExtensionError:

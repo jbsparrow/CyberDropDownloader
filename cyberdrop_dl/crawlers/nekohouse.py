@@ -6,7 +6,6 @@ from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import create_task_id
 from cyberdrop_dl.crawlers.kemono import KemonoCrawler
-from cyberdrop_dl.utils.utilities import remove_parts
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
@@ -27,7 +26,6 @@ class NekohouseCrawler(KemonoCrawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
         if "thumbnails" in scrape_item.url.parts:
-            scrape_item.url = remove_parts(scrape_item.url, "thumbnails")
             return await self.handle_direct_link(scrape_item)
         if "post" in scrape_item.url.parts:
             return await self.post_w_no_api(scrape_item)
