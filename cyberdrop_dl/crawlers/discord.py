@@ -3,9 +3,9 @@ from __future__ import annotations
 import asyncio
 import calendar
 import datetime
-from json import dumps
 from dataclasses import dataclass
 from datetime import datetime
+from json import dumps
 from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
@@ -40,8 +40,10 @@ class DiscordCrawler(Crawler):
         super().__init__(manager, "discord", "Discord")
         self.api_url = URL("https://discord.com/api/")
         self.request_limiter = AsyncLimiter(5, 2)
-        self.headers = {"Authorization": self.manager.config_manager.authentication_data.discord.token,
-                        "Content-Type": "application/json"}
+        self.headers = {
+            "Authorization": self.manager.config_manager.authentication_data.discord.token,
+            "Content-Type": "application/json",
+        }
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -153,15 +155,15 @@ class DiscordCrawler(Crawler):
             canonical_url = await self.get_canonical_url(scrape_item.url)
             if await self.check_complete_from_referer(canonical_url):
                 continue
-            # new_scrape_item = self.create_scrape_item(
-            #     parent_scrape_item=scrape_item,
-            #     url=canonical_url,
-            #     new_title_part=f"{username} ({user_id})",
-            #     possible_datetime=timestamp,
-            # )
+            new_scrape_item = scrape_item.create_new(
+                url=canonical_url,
+                new_title_part=f"{username} ({user_id})",
+                possible_datetime=timestamp,
+                add_parent=True,
+            )
 
             filename, ext = get_filename_and_ext(filename)
-            await self.handle_file(url=URL(url), scrape_item=scrape_item, filename=filename, ext=ext)
+            await self.handle_file(url=URL(url), scrape_item=new_scrape_item, filename=filename, ext=ext)
             scrape_item.add_children()
 
     @error_handling_wrapper
@@ -171,32 +173,12 @@ class DiscordCrawler(Crawler):
         if await self.check_complete_from_referer(canonical_url):
             return
 
-        # new_scrape_item = self.create_scrape_item(parent_scrape_item=scrape_item, url=canonical_url)
+        new_scrape_item = scrape_item.create_new(parent_scrape_item=scrape_item, url=canonical_url, add_parent=True)
 
         filename, ext = get_filename_and_ext(scrape_item.url.name)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    async def create_new_scrape_item(
-        self,
-        link: URL,
-        old_scrape_item: ScrapeItem,
-        user: str,
-        user_id: str,
-        post_id: str,
-        date: str,
-        add_parent: URL | None = None,
-    ) -> None:
-        """Creates a new scrape item with the same parent as the old scrape item."""
-        new_title = self.create_title(user)
-        new_scrape_item = old_scrape_item.create_new(
-            link,
-            new_title_part=new_title,
-            possible_datetime=date,
-            add_parent=add_parent,
-        )
-        return new_scrape_item
 
     @staticmethod
     def parse_datetime(date: str) -> int:
