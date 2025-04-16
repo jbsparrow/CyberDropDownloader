@@ -132,7 +132,7 @@ class DiscordCrawler(Crawler):
                 if timestamp:
                     request_json["tabs"]["media"]["cursor"] = {"timestamp": timestamp, "type": "timestamp"}
 
-    @error_handling_wrapper 
+    @error_handling_wrapper
     async def scrape(self, scrape_item: ScrapeItem) -> None:
         """Gets the media from the Discord mobile app search API."""
         async for messages in self.get_media(scrape_item):
@@ -182,7 +182,7 @@ class DiscordCrawler(Crawler):
         date = date.split("+")[0]
         try:
             dt = datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%f")
-        except:
+        except ValueError:
             dt = datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
         return calendar.timegm(dt.timetuple())
 
