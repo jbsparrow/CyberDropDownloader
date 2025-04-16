@@ -4,13 +4,13 @@ from typing import TYPE_CHECKING
 
 from yarl import URL
 
+from cyberdrop_dl.crawlers.crawler import create_task_id
 from cyberdrop_dl.crawlers.kemono import KemonoCrawler
+from cyberdrop_dl.utils.utilities import remove_parts
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
-
-
-SERVICES = "fanbox", "fantia", "fantia_products", "subscribestar", "twitter"
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
 class NekohouseCrawler(KemonoCrawler):
@@ -21,6 +21,21 @@ class NekohouseCrawler(KemonoCrawler):
         super().__init__(manager)
         self.domain = "nekohouse"
         self.folder_domain = "Nekohouse"
-        self.api_entrypoint = None  # type: ignore
+        self.services = "fanbox", "fantia", "fantia_products", "subscribestar", "twitter"
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    @create_task_id
+    async def fetch(self, scrape_item: ScrapeItem) -> None:
+        """Determines where to send the scrape item based on the url."""
+        if "thumbnails" in scrape_item.url.parts:
+            scrape_item.url = remove_parts(scrape_item.url, "thumbnails")
+            return await self.handle_direct_link(scrape_item)
+        if "post" in scrape_item.url.parts:
+            return await self.post_w_no_api(scrape_item)
+        if any(x in scrape_item.url.parts for x in self.services):
+            return await self.profile_w_no_api(scrape_item)
+        if scrape_item.url.name == "posts" and scrape_item.url.query.get("q"):
+            return await self.search(scrape_item)
+        if any(x in scrape_item.url.parts for x in ("posts", "discord")):
+            raise ValueError
+
+        await self.handle_direct_link(scrape_item)
