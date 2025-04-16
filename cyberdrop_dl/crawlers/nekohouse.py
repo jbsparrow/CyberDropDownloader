@@ -31,8 +31,6 @@ class NekohouseCrawler(KemonoCrawler):
             return await self.post_w_no_api(scrape_item)
         if any(x in scrape_item.url.parts for x in self.services):
             return await self.profile_w_no_api(scrape_item)
-        if scrape_item.url.name == "posts" and scrape_item.url.query.get("q"):
-            return await self.search(scrape_item)
         if any(x in scrape_item.url.parts for x in ("posts", "discord")):
             raise ValueError
 
