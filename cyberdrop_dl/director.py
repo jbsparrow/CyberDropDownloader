@@ -337,11 +337,11 @@ class Director:
         return self._run()
 
     def _run(self) -> int:
-        exit_code = _C.OK
+        exit_code = _C.ERROR
         with contextlib.suppress(Exception):
             try:
                 asyncio.run(_run_manager(self.manager))
-                exit_code = _C.ERROR
+                exit_code = _C.OK
             except KeyboardInterrupt:
                 rich_print("Trying to Exit ...")
             finally:
