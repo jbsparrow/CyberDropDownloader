@@ -26,21 +26,47 @@ if TYPE_CHECKING:
 LINK_REGEX = re.compile(r"(?:http(?!.*\.\.)[^ ]*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]|</|'))")
 
 
+POST_SELECTOR = "article.post-card a"
+
+
+class PostSelectors:
+    FILES = "div[class*=__files]"
+    CONTENT = "div[class*=__content]"
+    ATTACHMENTS = "a[class*=__attachment-link]"
+    IMAGES = "div[class=fileThumb]"
+    VIDEOS = "video[class*=__video] source"
+    ALL_CONTENT = f"{FILES}, {CONTENT}"
+
+    DATE_PUBLISHED = "div[class*=__published] time[class=timestamp]"
+    DATE_ADDED = "div[class*=__added]"
+    DATE = f"{DATE_PUBLISHED}, {DATE_ADDED}"
+
+    TITLE = "h1[class*=__title]"
+    USERNAME = "a[class*=__user-name]"
+
+
+_POST = PostSelectors()
+
+
 class URLInfo(NamedTuple):
     service: str = "Unknown"
-    _user: str = ""
+    _user: str = ""  # the literal word "user" in the URL ex: "/user/"
     user: str = "Unknown"
-    _post: str = ""
+    _post: str = ""  # the literal word "post" in the URL ex: "/post/"
     post_id: str = "Unknown"
+
+    @staticmethod
+    def parse(url: URL) -> URLInfo:
+        return URLInfo(*url.parts[1:6])
 
 
 class UserInfo(NamedTuple):
     # Same information as URLInfo but includes the user_name.
-    # Getting the user_name requires making a new request
+    # Getting the user_name requires making a new request when using the API
     service: str
     user: str
     post_id: str | None
-    user_name: str
+    user_name: str  # The is the proper name, capitalized
 
 
 class File(TypedDict):
@@ -48,18 +74,22 @@ class File(TypedDict):
     path: str
 
 
-class KemonoPost(AliasModel):
+class Post(AliasModel):
     user: str
+    user_name: str  # The is the proper name, capitalized
     id: str
     title: str
     file: File | None = None
     content: str = ""
     attachments: list[File] = []  # noqa: RUF012
-    _published: datetime = Field(validation_alias=AliasChoices("published", "added"))
+    _published: datetime | None = Field(None, validation_alias=AliasChoices("published", "added"))
     soup_attachments: list[URL] = []  # noqa: RUF012
 
     def model_post_init(self):
-        self.date = calendar.timegm(self._published.timetuple())
+        if self._published:
+            self.date = calendar.timegm(self._published.timetuple())
+        else:
+            self.date: int | None = None
 
     @property
     def all_files(self) -> Generator[File]:
@@ -68,17 +98,24 @@ class KemonoPost(AliasModel):
         yield from self.attachments
 
 
-def get_url_info(url: URL) -> URLInfo:
-    return URLInfo(*url.parts[1:6])
+class PartialPost(NamedTuple):
+    """A simplified version of Post that we can built from a soup, for sites that do not have an API"""
 
+    title: str = ""
+    content: str = ""
+    user_name: str = ""  # The is the proper name, capitalized
+    date: str | None = None
 
-POST_SELECTOR = "article.post-card a"
-CONTENT_SELECTOR = "div[class=scrape__files], div[class=scrape__content]"
-DOWNLOAD_SELECTOR = "a[class=scrape__attachment-link]"
-IMAGES_SELECTOR = "div[class=fileThumb]"
-VIDEOS_SELECTOR = "video[class=post__video] source"
-DATE_SELECTOR = "time[class=timestamp ]"
-TITLE_SELECTOR = "h1[class=scrape__title] span"
+    @staticmethod
+    def from_soup(soup: BeautifulSoup) -> PartialPost:
+        info = {}
+        names = "title", "content", "user_name", "date"
+        selectors = (_POST.TITLE, _POST.ALL_CONTENT, _POST.USERNAME, _POST.DATE)
+        for name, selector in zip(names, selectors, strict=True):
+            if tag := soup.select_one(selector):
+                info[name] = tag.text.strip()
+
+        return PartialPost(**info)
 
 
 def fallback_if_no_api(func: Callable[..., Coroutine[None, None, Any]]) -> Callable[..., Coroutine[None, None, Any]]:
@@ -119,6 +156,12 @@ class KemonoCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
+        return await self._fetch_kemono_defaults(scrape_item)
+
+    async def _fetch_kemono_defaults(self, scrape_item: ScrapeItem) -> None:
+        """Helper fetch method for subclasses.
+
+        Subclasses can override the normal `fetch` method to add their own custom filters and them call this method at the end"""
         if "thumbnails" in scrape_item.url.parts:
             scrape_item.url = remove_parts(scrape_item.url, "thumbnails")
             return await self.handle_direct_link(scrape_item)
@@ -168,7 +211,7 @@ class KemonoCrawler(Crawler):
         async with self.request_limiter:
             json_resp: dict = await self.client.get_json(self.domain, api_url)
 
-        post = KemonoPost(**json_resp["post"])
+        post = Post(**json_resp["post"])
         await self._handle_post(scrape_item, post)
 
     async def iter_from_url(self, scrape_item: ScrapeItem, url: URL):
@@ -180,7 +223,7 @@ class KemonoCrawler(Crawler):
                 else:
                     continue
 
-            for post in (KemonoPost(**entry) for entry in posts):
+            for post in (Post(**entry) for entry in posts):
                 await self._handle_post(scrape_item, post)
 
     async def api_pager(self, url: URL) -> AsyncGenerator[dict[str, Any]]:
@@ -194,7 +237,7 @@ class KemonoCrawler(Crawler):
                 break
             offset += 50
 
-    async def _handle_post(self, scrape_item: ScrapeItem, post: KemonoPost):
+    async def _handle_post(self, scrape_item: ScrapeItem, post: Post):
         scrape_item.setup_as_album(post.title, album_id=post.id)
         scrape_item.possible_datetime = post.date
         post_title = self.create_separate_post_title(post.id, post.title, post.date)
@@ -218,7 +261,7 @@ class KemonoCrawler(Crawler):
             return query, api_url.update_query(o=offset, q=query)
         return "", api_url.update_query(o=offset)
 
-    def _handle_post_content(self, scrape_item: ScrapeItem, post: KemonoPost) -> None:
+    def _handle_post_content(self, scrape_item: ScrapeItem, post: Post) -> None:
         """Gets links out of content in post."""
         if not post.content:
             return
@@ -254,15 +297,14 @@ class KemonoCrawler(Crawler):
 
     async def get_user_info(self, scrape_item: ScrapeItem) -> UserInfo:
         """Gets the user info from a scrape item."""
-        url_info = get_url_info(scrape_item.url)
+        url_info = URLInfo.parse(scrape_item.url)
         api_url = self.api_entrypoint / url_info.service / "user" / url_info.user / "posts-legacy"
         async with self.request_limiter:
             profile_json, _ = await self.client.get_json(self.domain, api_url, cache_disabled=True)
-        properties: dict = profile_json.get("props", {})
 
-        user_str = properties.get("name", url_info.user)
-
-        return UserInfo(url_info.service, url_info.user, url_info.post_id, user_str)
+        properties: dict[str, str] = profile_json.get("props", {})
+        user_name = properties.get("name", url_info.user)
+        return UserInfo(url_info.service, url_info.user, url_info.post_id, user_name)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -278,7 +320,7 @@ class KemonoCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
-        url_info = get_url_info(scrape_item.url)
+        url_info = URLInfo.parse(scrape_item.url)
         api_url = self.primary_base_domain / url_info.service / "user" / url_info.user
         scrape_item.setup_as_profile("")
 
@@ -297,25 +339,26 @@ class KemonoCrawler(Crawler):
     async def post_w_no_api(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a post."""
 
-        url_info = get_url_info(scrape_item.url)
+        url_info = URLInfo.parse(scrape_item.url)
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
-        title: str = soup.select_one(TITLE_SELECTOR).text.strip()  # type: ignore
-        content: str = soup.select_one(CONTENT_SELECTOR).text.strip()  # type: ignore
-        published: str = soup.select_one(DATE_SELECTOR).text.strip()  # type: ignore
+        post_info = PartialPost.from_soup(soup)
+        if not post_info.title or not post_info.user_name:
+            raise ScrapeError(422)
 
         files: list[URL] = []
-        for selector in (VIDEOS_SELECTOR, IMAGES_SELECTOR, DOWNLOAD_SELECTOR):
+        for selector in (_POST.VIDEOS, _POST.IMAGES, _POST.ATTACHMENTS):
             for file in soup.select(selector):
                 files.append(self.parse_url(file["href"]))  # type: ignore
 
-        post = KemonoPost(
+        post = Post(
             user=url_info.user,
+            user_name=post_info.user_name,
             id=url_info.post_id,
-            title=title,
-            content=content,
-            _published=published,  # type: ignore
+            title=post_info.title,
+            content=post_info.content,
+            _published=post_info.date,  # type: ignore
             soup_attachments=files,
         )
         await self._handle_post(scrape_item, post)

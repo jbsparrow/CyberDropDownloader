@@ -6,7 +6,7 @@ from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
-from cyberdrop_dl.crawlers.kemono import KemonoCrawler, KemonoPost
+from cyberdrop_dl.crawlers.kemono import KemonoCrawler, Post
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -56,7 +56,7 @@ class CoomerCrawler(KemonoCrawler):
             new_scrape_item = scrape_item.create_child(url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
-    def _handle_post_content(self, scrape_item: ScrapeItem, post: KemonoPost) -> None:
+    def _handle_post_content(self, scrape_item: ScrapeItem, post: Post) -> None:
         """Handles the content of a post."""
         if "#ad" in post.content and self.manager.config_manager.settings_data.ignore_options.ignore_coomer_ads:
             return
