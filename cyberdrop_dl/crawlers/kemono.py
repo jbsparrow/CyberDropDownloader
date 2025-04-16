@@ -31,32 +31,21 @@ class URLInfo(NamedTuple):
     _user: str = ""
     user: str = "Unknown"
     _post: str = ""
-    post: str = "Unknown"
+    post_id: str = "Unknown"
 
 
-def get_url_info(url: URL) -> URLInfo:
-    return URLInfo(*url.parts[1:6])
-
-
-POST_SELECTOR = "article.post-card a"
-CONTENT_SELECTOR = "div[class=scrape__files], div[class=scrape__content]"
-DOWNLOAD_SELECTOR = "a[class=scrape__attachment-link]"
-IMAGES_SELECTOR = "div[class=fileThumb]"
-VIDEOS_SELECTOR = "video[class=post__video] source"
-DATE_SELECTOR = "time[class=timestamp ]"
-TITLE_SELECTOR = "h1[class=scrape__title] span"
+class UserInfo(NamedTuple):
+    # Same information as URLInfo but includes the user_name.
+    # Getting the user_name requires making a new request
+    service: str
+    user: str
+    post_id: str | None
+    user_name: str
 
 
 class File(TypedDict):
     name: str
     path: str
-
-
-class UserInfo(NamedTuple):
-    service: str
-    user: str
-    post: str | None
-    user_str: str
 
 
 class KemonoPost(AliasModel):
@@ -77,6 +66,19 @@ class KemonoPost(AliasModel):
         if self.file:
             yield self.file
         yield from self.attachments
+
+
+def get_url_info(url: URL) -> URLInfo:
+    return URLInfo(*url.parts[1:6])
+
+
+POST_SELECTOR = "article.post-card a"
+CONTENT_SELECTOR = "div[class=scrape__files], div[class=scrape__content]"
+DOWNLOAD_SELECTOR = "a[class=scrape__attachment-link]"
+IMAGES_SELECTOR = "div[class=fileThumb]"
+VIDEOS_SELECTOR = "video[class=post__video] source"
+DATE_SELECTOR = "time[class=timestamp ]"
+TITLE_SELECTOR = "h1[class=scrape__title] span"
 
 
 def fallback_if_no_api(func: Callable[..., Coroutine[None, None, Any]]) -> Callable[..., Coroutine[None, None, Any]]:
@@ -160,8 +162,8 @@ class KemonoCrawler(Crawler):
     async def post(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a post."""
         user_info = await self.get_user_info(scrape_item)
-        assert user_info.post
-        path = f"{user_info.service}/user/{user_info.user}/post/{user_info.post}"
+        assert user_info.post_id
+        path = f"{user_info.service}/user/{user_info.user}/post/{user_info.post_id}"
         _, api_url = self._api_w_offset(path, scrape_item.url)
         async with self.request_limiter:
             json_resp: dict = await self.client.get_json(self.domain, api_url)
@@ -260,7 +262,7 @@ class KemonoCrawler(Crawler):
 
         user_str = properties.get("name", url_info.user)
 
-        return UserInfo(url_info.service, url_info.user, url_info.post, user_str)
+        return UserInfo(url_info.service, url_info.user, url_info.post_id, user_str)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -286,10 +288,9 @@ class KemonoCrawler(Crawler):
                 soup: BeautifulSoup = await self.client.get_soup(self.domain, api_url)
 
             for post in soup.select(POST_SELECTOR):
-                post_url_str: str = post["href"]  # type: ignore
-                post_link = self.parse_url(post_url_str)
+                post_link = self.parse_url(post["href"])  # type: ignore
                 new_scrape_item = scrape_item.create_child(post_link)
-                await self.post(new_scrape_item)
+                await self.post_w_no_api(new_scrape_item)
                 scrape_item.add_children()
 
     @error_handling_wrapper
@@ -311,7 +312,7 @@ class KemonoCrawler(Crawler):
 
         post = KemonoPost(
             user=url_info.user,
-            id=url_info.post,
+            id=url_info.post_id,
             title=title,
             content=content,
             _published=published,  # type: ignore
