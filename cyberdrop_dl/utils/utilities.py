@@ -31,7 +31,7 @@ from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.logger import log, log_debug, log_spacer, log_with_color
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping
+    from collections.abc import Callable, Coroutine, Mapping
 
     from curl_cffi.requests.models import Response as CurlResponse
     from rich.text import Text
@@ -66,7 +66,9 @@ class OGProperties:
     video: str = ""
 
 
-def error_handling_wrapper(func: Callable) -> Callable:
+def error_handling_wrapper(
+    func: Callable[..., Coroutine[None, None, Any]],
+) -> Callable[..., Coroutine[None, None, Any]]:
     """Wrapper handles errors for url scraping."""
 
     @wraps(func)

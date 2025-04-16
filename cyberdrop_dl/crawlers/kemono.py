@@ -1,19 +1,20 @@
 from __future__ import annotations
 
 import calendar
+import functools
 import re
 from typing import TYPE_CHECKING, Any, NamedTuple, TypedDict
 
 from pydantic import AliasChoices, Field
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import NoExtensionError
+from cyberdrop_dl.clients.errors import NoExtensionError, ScrapeError
 from cyberdrop_dl.config_definitions.custom.types import AliasModel
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Generator
+    from collections.abc import AsyncGenerator, Callable, Coroutine, Generator
     from datetime import datetime
 
     from cyberdrop_dl.managers.manager import Manager
@@ -58,12 +59,19 @@ API_ENTRYPOINT = URL("https://kemono.su/api/v1")
 SERVICES = "afdian", "boosty", "dlsite", "fanbox", "fantia", "gumroad", "patreon", "subscribestar"
 
 
-def _api_w_offset(path: str, og_url: URL) -> tuple[str, URL]:
-    api_url = API_ENTRYPOINT / path
-    offset = int(og_url.query.get("o", 0))
-    if query := og_url.query.get("q"):
-        return query, api_url.update_query(o=offset, q=query)
-    return "", api_url.update_query(o=offset)
+def fallback_if_no_api(func: Callable[..., Coroutine[None, None, Any]]) -> Callable[..., Coroutine[None, None, Any]]:
+    """Calls a fallback method is the current instance does not define an API"""
+
+    @functools.wraps(func)
+    async def wrapper(self: KemonoCrawler, *args, **kwargs):
+        if self.api_entrypoint:
+            return await func(self, *args, **kwargs)
+        fallback_func = getattr(self, f"{func.__name__}_w_no_api", None)
+        if not fallback_func:
+            raise ScrapeError(422)
+        return await fallback_func(self, *args, **kwargs)
+
+    return wrapper
 
 
 class KemonoCrawler(Crawler):
@@ -72,6 +80,8 @@ class KemonoCrawler(Crawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "kemono", "Kemono")
+        self.api_entrypoint: URL = API_ENTRYPOINT
+        self.services: tuple[str, ...] = SERVICES
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -87,39 +97,43 @@ class KemonoCrawler(Crawler):
             return await self.post(scrape_item)
         if scrape_item.url.name == "posts" and scrape_item.url.query.get("q"):
             return await self.search(scrape_item)
-        if any(x in scrape_item.url.parts for x in SERVICES):
+        if any(x in scrape_item.url.parts for x in self.services):
             return await self.profile(scrape_item)
         await self.handle_direct_link(scrape_item)
 
     @error_handling_wrapper
+    @fallback_if_no_api
     async def search(self, scrape_item: ScrapeItem) -> None:
         """Scrapes results from a search query."""
-        query, api_url = _api_w_offset("posts", scrape_item.url)
+        query, api_url = self._api_w_offset("posts", scrape_item.url)
         title = self.create_title(f"Search - {query}")
         scrape_item.setup_as_album(title)
         await self.iter_from_url(scrape_item, api_url)
 
     @error_handling_wrapper
+    @fallback_if_no_api
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile."""
         info = await self.get_user_info(scrape_item)
-        _, api_url = _api_w_offset(f"{info.service}/user/{info.user}", scrape_item.url)
+        _, api_url = self._api_w_offset(f"{info.service}/user/{info.user}", scrape_item.url)
         await self.iter_from_url(scrape_item, api_url)
 
     @error_handling_wrapper
+    @fallback_if_no_api
     async def discord(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile."""
         channel = scrape_item.url.raw_fragment
-        _, api_url = _api_w_offset(f"discord/channel/{channel}", scrape_item.url)
+        _, api_url = self._api_w_offset(f"discord/channel/{channel}", scrape_item.url)
         await self.iter_from_url(scrape_item, api_url)
 
     @error_handling_wrapper
+    @fallback_if_no_api
     async def post(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a post."""
         user_info = await self.get_user_info(scrape_item)
         assert user_info.post
         path = f"{user_info.service}/user/{user_info.user}/post/{user_info.post}"
-        _, api_url = _api_w_offset(path, scrape_item.url)
+        _, api_url = self._api_w_offset(path, scrape_item.url)
         async with self.request_limiter:
             json_resp: dict = await self.client.get_json(self.domain, api_url)
 
@@ -163,6 +177,13 @@ class KemonoCrawler(Crawler):
     def _make_file_url(self, file: File) -> URL:
         return self.parse_url(f"/data/{file['path']}").with_query(f=file["name"])
 
+    def _api_w_offset(self, path: str, og_url: URL) -> tuple[str, URL]:
+        api_url = self.api_entrypoint / path
+        offset = int(og_url.query.get("o", 0))
+        if query := og_url.query.get("q"):
+            return query, api_url.update_query(o=offset, q=query)
+        return "", api_url.update_query(o=offset)
+
     def _handle_post_content(self, scrape_item: ScrapeItem, post: KemonoPost) -> None:
         """Gets links out of content in post."""
         if not post.content:
@@ -205,7 +226,7 @@ class KemonoCrawler(Crawler):
         except IndexError:
             post = None
 
-        api_url = API_ENTRYPOINT / service / "user" / user / "posts-legacy"
+        api_url = self.api_entrypoint / service / "user" / user / "posts-legacy"
         async with self.request_limiter:
             profile_json, _ = await self.client.get_json(self.domain, api_url, cache_disabled=True)
         properties: dict = profile_json.get("props", {})
@@ -213,3 +234,17 @@ class KemonoCrawler(Crawler):
         user_str = properties.get("name", user)
 
         return UserInfo(service, user, post, user_str)
+
+    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    async def discord_w_no_api(self, scrape_item: ScrapeItem):
+        raise NotImplementedError
+
+    async def post_w_no_api(self, scrape_item: ScrapeItem):
+        raise NotImplementedError
+
+    async def search_w_no_api(self, scrape_item: ScrapeItem):
+        raise NotImplementedError
+
+    async def profile_w_no_api(self, scrape_item: ScrapeItem):
+        raise NotImplementedError
