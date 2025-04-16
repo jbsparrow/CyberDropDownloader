@@ -56,8 +56,6 @@ class AShemaleTubeCrawler(Crawler):
             return await self.video(scrape_item)
         elif "playlists" in scrape_item.url.parts:
             return await self.playlist(scrape_item)
-        elif any(p in scrape_item.url.parts for p in ("model", "profiles")):
-            return await self.model(scrape_item)
         raise ValueError
 
     @error_handling_wrapper
@@ -82,8 +80,8 @@ class AShemaleTubeCrawler(Crawler):
         async for soup in self.web_pager(scrape_item.url, cffi=True):
             if not title:
                 model_name = soup.select_one(USER_NAME_SELECTOR).get_text(strip=True)  # type: ignore
-                title = self.create_title(f"{title} [model]")
-                scrape_item.setup_as_profile(model_name)
+                title = self.create_title(f"{model_name} [model]")
+                scrape_item.setup_as_profile(title)
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, PROFILE_VIDEOS_SELECTOR):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
@@ -145,7 +143,7 @@ def get_best_quality(info_dict: dict) -> Format:
 def parse_player_info(script_text: str) -> tuple[bool, Format]:
     if match := re.search(r"hls:\s+(true|false)", script_text):
         is_hls = match.group(1) == "true"
-        urls_info = get_text_between(script_text, "[{", "}],")
+        urls_info = "[{" + get_text_between(script_text, "[{", "}],") + "}]"
         format: Format = get_best_quality(json.loads(urls_info))
         return is_hls, format
     raise ScrapeError(404)
