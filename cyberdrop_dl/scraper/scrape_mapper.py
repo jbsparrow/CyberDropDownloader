@@ -333,10 +333,16 @@ def create_item_from_entry(entry: Sequence) -> ScrapeItem:
     return item
 
 
-def get_crawlers(manager: Manager) -> dict[str, Crawler]:
-    """Retuns a mapping with an instance of all scrapers.
+def get_crawlers(manager: Manager | None = None) -> dict[str, Crawler]:
+    """Retuns a mapping with an instance of all crawlers.
 
-    Crawlers are only created on the first calls. Future calls always return a reference to the same crawlers"""
+    Crawlers are only created on the first calls. Future calls always return a reference to the same crawlers
+
+    If manager is `None`, the `MOCK_MANAGER` will be used, which means the crawlers won't be able to actually run"""
+
+    from cyberdrop_dl.managers.mock_manager import MOCK_MANAGER
+
+    manager = manager or MOCK_MANAGER
     global existing_crawlers
     if not existing_crawlers:
         for crawler in CRAWLERS:
@@ -355,14 +361,16 @@ def get_crawlers(manager: Manager) -> dict[str, Crawler]:
     return existing_crawlers
 
 
-def gen_crawlers_info(crawlers: dict[str, Crawler]):
+def gen_crawlers_info():
+    """Yields information about every crawler as a NamedTuple"""
+
     class CrawlerInfo(NamedTuple):
         site: str
         name: str
         primary_base_domain: URL
         crawler: Crawler
 
-    for name, crawler in sorted(crawlers.items()):
+    for name, crawler in sorted(get_crawlers().items()):
         if name == ".":
             continue
         yield CrawlerInfo(name, type(crawler).__name__.removesuffix("Crawler"), crawler.primary_base_domain, crawler)
