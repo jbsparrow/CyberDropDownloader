@@ -15,10 +15,6 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
-API_ENTRYPOINT = URL("https://coomer.su/api/v1")
-SERVICES = "onlyfans", "fansly"
-
-
 class CoomerCrawler(KemonoCrawler):
     primary_base_domain = URL("https://coomer.su")
     DEFAULT_POST_TITLE_FORMAT = "{date} - {title}"
@@ -27,7 +23,10 @@ class CoomerCrawler(KemonoCrawler):
         super().__init__(manager)
         self.domain = "coomer"
         self.folder_domain = "Coomer"
+        self.api_entrypoint = URL("https://coomer.su/api/v1")
+        self.services = "onlyfans", "fansly"
         self.request_limiter = AsyncLimiter(4, 1)
+        self.session_cookie = self.manager.config_manager.authentication_data.coomer.session
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -43,7 +42,7 @@ class CoomerCrawler(KemonoCrawler):
             return await self.post(scrape_item)
         if scrape_item.url.name == "posts" and scrape_item.url.query.get("q"):
             return await self.search(scrape_item)
-        if any(x in scrape_item.url.parts for x in SERVICES):
+        if any(x in scrape_item.url.parts for x in self.services):
             return await self.profile(scrape_item)
         elif "favorites" in scrape_item.url.parts:
             await self.favorites(scrape_item)
@@ -52,25 +51,28 @@ class CoomerCrawler(KemonoCrawler):
     @error_handling_wrapper
     async def favorites(self, scrape_item: ScrapeItem) -> None:
         """Scrapes the users' favourites and creates scrape items for each artist found."""
-        if not self.manager.config_manager.authentication_data.coomer.session:
+        if not self.session_cookie:
             msg = "No session cookie found in the config file, cannot scrape favorites"
             raise ScrapeError(401, msg)
 
-        cookies = {"session": self.manager.config_manager.authentication_data.coomer.session}
+        cookies = {"session": self.session_cookie}
         self.update_cookies(cookies)
 
+        title = self.create_title("My favorites")
+        scrape_item.setup_as_profile(title)
+
         async with self.request_limiter:
-            favourites_api_url = (API_ENTRYPOINT / "account/favorites").with_query(type="artist")
-            JSON_Resp = await self.client.get_json(self.domain, favourites_api_url)
+            api_url = self.api_entrypoint / "account/favorites"
+            favourites_api_url = api_url.with_query(type="artist")
+            json_resp = await self.client.get_json(self.domain, favourites_api_url)
 
         cookies = {"session": ""}
         self.update_cookies(cookies)
 
-        for user in JSON_Resp:
-            id = user["id"]
-            service = user["service"]
+        for user in json_resp:
+            id, service = user["id"], user["service"]
             url = self.primary_base_domain / service / "user" / id
-            new_scrape_item = scrape_item.create_new(url, part_of_album=True)
+            new_scrape_item = scrape_item.create_child(url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper

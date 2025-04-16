@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import calendar
 import functools
+import itertools
 import re
 from typing import TYPE_CHECKING, Any, NamedTuple, TypedDict
 
@@ -17,11 +18,33 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable, Coroutine, Generator
     from datetime import datetime
 
+    from bs4 import BeautifulSoup
+
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
-PRIMARY_BASE_DOMAIN = URL("https://kemono.su")
 LINK_REGEX = re.compile(r"(?:http(?!.*\.\.)[^ ]*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]|</|'))")
+
+
+class URLInfo(NamedTuple):
+    service: str = "Unknown"
+    _user: str = ""
+    user: str = "Unknown"
+    _post: str = ""
+    post: str = "Unknown"
+
+
+def get_url_info(url: URL) -> URLInfo:
+    return URLInfo(*url.parts[1:6])
+
+
+POST_SELECTOR = "article.post-card a"
+CONTENT_SELECTOR = "div[class=scrape__files], div[class=scrape__content]"
+DOWNLOAD_SELECTOR = "a[class=scrape__attachment-link]"
+IMAGES_SELECTOR = "div[class=fileThumb]"
+VIDEOS_SELECTOR = "video[class=post__video] source"
+DATE_SELECTOR = "time[class=timestamp ]"
+TITLE_SELECTOR = "h1[class=scrape__title] span"
 
 
 class File(TypedDict):
@@ -44,6 +67,7 @@ class KemonoPost(AliasModel):
     content: str = ""
     attachments: list[File] = []  # noqa: RUF012
     _published: datetime = Field(validation_alias=AliasChoices("published", "added"))
+    soup_attachments: list[URL] = []  # noqa: RUF012
 
     def model_post_init(self):
         self.date = calendar.timegm(self._published.timetuple())
@@ -53,10 +77,6 @@ class KemonoPost(AliasModel):
         if self.file:
             yield self.file
         yield from self.attachments
-
-
-API_ENTRYPOINT = URL("https://kemono.su/api/v1")
-SERVICES = "afdian", "boosty", "dlsite", "fanbox", "fantia", "gumroad", "patreon", "subscribestar"
 
 
 def fallback_if_no_api(func: Callable[..., Coroutine[None, None, Any]]) -> Callable[..., Coroutine[None, None, Any]]:
@@ -80,8 +100,17 @@ class KemonoCrawler(Crawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "kemono", "Kemono")
-        self.api_entrypoint: URL = API_ENTRYPOINT
-        self.services: tuple[str, ...] = SERVICES
+        self.api_entrypoint: URL = URL("https://kemono.su/api/v1")
+        self.services: tuple[str, ...] = (
+            "afdian",
+            "boosty",
+            "dlsite",
+            "fanbox",
+            "fantia",
+            "gumroad",
+            "patreon",
+            "subscribestar",
+        )
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -172,6 +201,9 @@ class KemonoCrawler(Crawler):
             file_url = self._make_file_url(file)
             await self.handle_direct_link(scrape_item, file_url)
             scrape_item.add_children()
+        for file_url in post.soup_attachments:
+            await self.handle_direct_link(scrape_item, file_url)
+            scrape_item.add_children()
         self._handle_post_content(scrape_item, post)
 
     def _make_file_url(self, file: File) -> URL:
@@ -220,31 +252,69 @@ class KemonoCrawler(Crawler):
 
     async def get_user_info(self, scrape_item: ScrapeItem) -> UserInfo:
         """Gets the user info from a scrape item."""
-        service, _, user = scrape_item.url.parts[1:4]
-        try:
-            post = scrape_item.url.parts[5]
-        except IndexError:
-            post = None
-
-        api_url = self.api_entrypoint / service / "user" / user / "posts-legacy"
+        url_info = get_url_info(scrape_item.url)
+        api_url = self.api_entrypoint / url_info.service / "user" / url_info.user / "posts-legacy"
         async with self.request_limiter:
             profile_json, _ = await self.client.get_json(self.domain, api_url, cache_disabled=True)
         properties: dict = profile_json.get("props", {})
 
-        user_str = properties.get("name", user)
+        user_str = properties.get("name", url_info.user)
 
-        return UserInfo(service, user, post, user_str)
+        return UserInfo(url_info.service, url_info.user, url_info.post, user_str)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
     async def discord_w_no_api(self, scrape_item: ScrapeItem):
         raise NotImplementedError
 
-    async def post_w_no_api(self, scrape_item: ScrapeItem):
-        raise NotImplementedError
-
     async def search_w_no_api(self, scrape_item: ScrapeItem):
         raise NotImplementedError
 
-    async def profile_w_no_api(self, scrape_item: ScrapeItem):
-        raise NotImplementedError
+    @error_handling_wrapper
+    async def profile_w_no_api(self, scrape_item: ScrapeItem) -> None:
+        """Scrapes a profile."""
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+
+        url_info = get_url_info(scrape_item.url)
+        api_url = self.primary_base_domain / url_info.service / "user" / url_info.user
+        scrape_item.setup_as_profile("")
+
+        for offset in itertools.count(0, 50):
+            api_url = api_url.with_query(o=offset)
+            async with self.request_limiter:
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, api_url)
+
+            for post in soup.select(POST_SELECTOR):
+                post_url_str: str = post["href"]  # type: ignore
+                post_link = self.parse_url(post_url_str)
+                new_scrape_item = scrape_item.create_child(post_link)
+                await self.post(new_scrape_item)
+                scrape_item.add_children()
+
+    @error_handling_wrapper
+    async def post_w_no_api(self, scrape_item: ScrapeItem) -> None:
+        """Scrapes a post."""
+
+        url_info = get_url_info(scrape_item.url)
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+
+        title: str = soup.select_one(TITLE_SELECTOR).text.strip()  # type: ignore
+        content: str = soup.select_one(CONTENT_SELECTOR).text.strip()  # type: ignore
+        published: str = soup.select_one(DATE_SELECTOR).text.strip()  # type: ignore
+
+        files: list[URL] = []
+        for selector in (VIDEOS_SELECTOR, IMAGES_SELECTOR, DOWNLOAD_SELECTOR):
+            for file in soup.select(selector):
+                files.append(self.parse_url(file["href"]))  # type: ignore
+
+        post = KemonoPost(
+            user=url_info.user,
+            id=url_info.post,
+            title=title,
+            content=content,
+            _published=published,  # type: ignore
+            soup_attachments=files,
+        )
+        await self._handle_post(scrape_item, post)
