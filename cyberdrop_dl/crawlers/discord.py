@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import calendar
-import datetime
 from dataclasses import dataclass
 from datetime import datetime
 from json import dumps
@@ -22,7 +21,7 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True, slots=True)
-class discordURLData:
+class DiscordURLData:
     server_id: str
     channel_id: str
     message_id: str
@@ -64,7 +63,7 @@ class DiscordCrawler(Crawler):
         url.with_host("cdn.discordapp.com")
         return url
 
-    async def get_info(self, scrape_item: ScrapeItem) -> discordURLData:
+    async def get_info(self, scrape_item: ScrapeItem) -> DiscordURLData:
         """Gets the server, channel, and message IDs from the URL."""
         parts = scrape_item.url.parts
         info = (
@@ -72,7 +71,7 @@ class DiscordCrawler(Crawler):
             parts[3] if len(parts) > 3 else "",
             parts[4] if len(parts) > 4 else "",
         )
-        return discordURLData(*info)
+        return DiscordURLData(*info)
 
     async def get_search_request_data(self, scrape_item: ScrapeItem) -> tuple[dict, URL]:
         """Gets the JSON request to use for the desired search."""
@@ -140,16 +139,10 @@ class DiscordCrawler(Crawler):
 
     async def process_attachments(self, message: dict, scrape_item: ScrapeItem) -> None:
         for attachment in message.get("attachments"):
-            file_id = attachment.get("id", 0)
             url = attachment.get("url")
             filename = attachment.get("filename")
-            size = attachment.get("size", 0)
-            content_type = attachment.get("content_type")
-            width = attachment.get("width", 0)
-            height = attachment.get("height", 0)
             user_id = message.get("author", {}).get("id")
             username = message.get("author", {}).get("username")
-            channel_id = message.get("channel_id")
             timestamp = self.parse_datetime(message.get("timestamp"))
 
             canonical_url = await self.get_canonical_url(scrape_item.url)
@@ -160,7 +153,7 @@ class DiscordCrawler(Crawler):
                 new_title_part=f"{username} ({user_id})",
                 possible_datetime=timestamp,
                 add_parent=True,
-                part_of_album=True
+                part_of_album=True,
             )
 
             filename, ext = get_filename_and_ext(filename)
