@@ -38,7 +38,7 @@ class DiscordCrawler(Crawler):
     def __init__(self, manager: Manager, site: str) -> None:
         super().__init__(manager, "discord", "Discord")
         self.api_url = URL("https://discord.com/api/")
-        self.request_limiter = AsyncLimiter(5, 2)
+        self.request_limiter = AsyncLimiter(3, 2)
         self.headers = {
             "Authorization": self.manager.config_manager.authentication_data.discord.token,
             "Content-Type": "application/json",
@@ -51,29 +51,31 @@ class DiscordCrawler(Crawler):
         """Determines where to send the scrape item based on the url."""
         if "channels" in scrape_item.url.parts:
             parts = scrape_item.url.parts
-            if len(parts) > 2 and len(parts) < 5:
+            if len(parts) > 2 and len(parts) < 5:  # https://discord.com/channels/.../.../...
                 # Server/DM or Channel/Group DM
-                await self.get_media(scrape_item)
-        elif "attachments" in scrape_item.url.parts:
+                await self.scrape(scrape_item)
+            elif parts[-1] == "channels":  # https://discord.com/channels
+                # Scrape all servers
+                await self.scrape_all_servers(scrape_item)
+        elif "attachments" in scrape_item.url.parts:  # https://cdn.discordapp.com/attachments/.../.../...
             await self.file(scrape_item)
 
-    async def get_canonical_url(self, url: URL) -> URL:
-        """Gets the canonical URL for a given URL."""
-        # Normalize CDN fix URLs
-        url.with_host("cdn.discordapp.com")
-        return url
+    async def scrape_all_servers(self, scrape_item: ScrapeItem) -> None:
+        """Fetches all servers and creates scrape items for each server, then starts them."""
+        async with self.request_limiter:
+            servers_url = self.api_url / "v9" / "users" / "@me" / "guilds"
+            data = await self.client.get_json(
+                self.domain, url=servers_url, origin=scrape_item, headers_inc=self.headers
+            )
+            for server in data:
+                server_id = server.get("id")
+                server_name = server.get("name")
+                if server_id:
+                    new_url = scrape_item.url / server_id
+                    new_scrape_item = scrape_item.create_new(new_url, new_title_part=server_name, add_parent=True)
+                    self.manager.task_group.create_task(self.run(new_scrape_item))
 
-    async def get_info(self, scrape_item: ScrapeItem) -> DiscordURLData:
-        """Gets the server, channel, and message IDs from the URL."""
-        parts = scrape_item.url.parts
-        info = (
-            parts[2] if len(parts) > 2 else "",
-            parts[3] if len(parts) > 3 else "",
-            parts[4] if len(parts) > 4 else "",
-        )
-        return DiscordURLData(*info)
-
-    async def get_search_request_data(self, scrape_item: ScrapeItem) -> tuple[dict, URL]:
+    async def get_request_data(self, scrape_item: ScrapeItem) -> tuple[dict, URL]:
         """Gets the JSON request to use for the desired search."""
         data = await self.get_info(scrape_item)
 
@@ -105,9 +107,9 @@ class DiscordCrawler(Crawler):
         request_url = self.api_url / "v9" / path[0] / path[1] / "messages" / "search" / "tabs"
         return request_json, request_url
 
-    async def search_media(self, scrape_item: ScrapeItem) -> AsyncGenerator[dict, None]:
+    async def get_media(self, scrape_item: ScrapeItem) -> AsyncGenerator[dict, None]:
         """Uses the Discord mobile app search API to find media."""
-        request_json, request_url = await self.get_search_request_data(scrape_item)
+        request_json, request_url = await self.get_request_data(scrape_item)
 
         while True:
             async with self.request_limiter:
@@ -130,10 +132,10 @@ class DiscordCrawler(Crawler):
                 if timestamp:
                     request_json["tabs"]["media"]["cursor"] = {"timestamp": timestamp, "type": "timestamp"}
 
-    @error_handling_wrapper
-    async def get_media(self, scrape_item: ScrapeItem) -> None:
+    @error_handling_wrapper 
+    async def scrape(self, scrape_item: ScrapeItem) -> None:
         """Gets the media from the Discord mobile app search API."""
-        async for messages in self.search_media(scrape_item):
+        async for messages in self.get_media(scrape_item):
             for message in messages:
                 await self.process_attachments(message[0], scrape_item)
 
@@ -178,5 +180,25 @@ class DiscordCrawler(Crawler):
     def parse_datetime(date: str) -> int:
         """Parses a datetime string into a unix timestamp."""
         date = date.split("+")[0]
-        dt = datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%f")
+        try:
+            dt = datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%f")
+        except:
+            dt = datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
         return calendar.timegm(dt.timetuple())
+
+    @staticmethod
+    async def get_canonical_url(url: URL) -> URL:
+        """Normalizes CDN URLs for consistency."""
+        url.with_host("cdn.discordapp.com")
+        return url
+
+    @staticmethod
+    async def get_info(scrape_item: ScrapeItem) -> DiscordURLData:
+        """Gets the server, channel, and message IDs from the URL."""
+        parts = scrape_item.url.parts
+        info = (
+            parts[2] if len(parts) > 2 else "",
+            parts[3] if len(parts) > 3 else "",
+            parts[4] if len(parts) > 4 else "",
+        )
+        return DiscordURLData(*info)
