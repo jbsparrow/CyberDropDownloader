@@ -160,6 +160,7 @@ class DiscordCrawler(Crawler):
                 new_title_part=f"{username} ({user_id})",
                 possible_datetime=timestamp,
                 add_parent=True,
+                part_of_album=True
             )
 
             filename, ext = get_filename_and_ext(filename)
@@ -173,7 +174,7 @@ class DiscordCrawler(Crawler):
         if await self.check_complete_from_referer(canonical_url):
             return
 
-        new_scrape_item = scrape_item.create_new(parent_scrape_item=scrape_item, url=canonical_url, add_parent=True)
+        new_scrape_item = scrape_item.create_new(parent_scrape_item=scrape_item, url=canonical_url, add_parent=True, part_of_album=True)
 
         filename, ext = get_filename_and_ext(scrape_item.url.name)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
