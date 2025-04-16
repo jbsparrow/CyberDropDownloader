@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import calendar
-import datetime
 import itertools
 import json
 from typing import TYPE_CHECKING, Any, NamedTuple
@@ -12,7 +10,7 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext, get_text_between
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -98,21 +96,12 @@ class NoodleMagazineCrawler(Crawler):
         best_source = max(Source.new(source) for source in playlist_data["sources"])
         title: str = soup.select_one("title").text.split(" watch online")[0]  # type: ignore
 
-        scrape_item.possible_datetime = parse_datetime(metadata["uploadDate"])
+        scrape_item.possible_datetime = self.parse_date(metadata["uploadDate"], "%Y-%m-%d")
         content_url = self.parse_url(metadata["contentUrl"])
-        filename, ext = get_filename_and_ext(content_url.name)
+        filename, ext = self.get_filename_and_ext(content_url.name)
         video_id = filename.removesuffix(ext)
-        custom_filename, _ = get_filename_and_ext(f"{title} [{video_id}] [{best_source.resolution}p]{ext}")
+        custom_filename, _ = self.get_filename_and_ext(f"{title} [{video_id}] [{best_source.resolution}p]{ext}")
         src_url = self.parse_url(best_source.file)
         await self.handle_file(
             content_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=src_url
         )
-
-
-"""~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-
-def parse_datetime(date: str) -> int:
-    """Parses a datetime string into a unix timestamp."""
-    parsed_date = datetime.datetime.strptime(date, "%Y-%m-%d")
-    return calendar.timegm(parsed_date.timetuple())
