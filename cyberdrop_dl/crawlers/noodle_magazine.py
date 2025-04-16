@@ -78,20 +78,22 @@ class NoodleMagazineCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, scrape_item.url)
         metadata_script = soup.select_one(METADATA_SELECTOR)
-        metadata = json.loads(metadata_script.text.strip())
+        metadata = json.loads(metadata_script.text.strip())  # type: ignore
         playlist = soup.select_one(PLAYLIST_SELECTOR)
         if not playlist:
             raise ScrapeError(404)
+
         playlist_data = json.loads(get_text_between(playlist.text, "window.playlist = ", ";\nwindow.ads"))
         best_source = max(playlist_data["sources"], key=lambda s: int(s["label"]))
         video_id: str = URL(metadata["contentUrl"]).parts[-1].split(".")[0]
         file_name, ext = get_filename_and_ext(metadata["contentUrl"])
         scrape_item.possible_datetime = parse_datetime(metadata["uploadDate"])
-        title: str = soup.select_one("title").text.split(" watch online")[0]
+        title: str = soup.select_one("title").text.split(" watch online")[0]  # type: ignore
         custom_filename, _ = get_filename_and_ext(
             f"{title} [{video_id}] [{best_source['label']}p].{best_source['type']}"
         )
-        await self.handle_file(URL(best_source["file"]), scrape_item, file_name, ext, custom_filename=custom_filename)
+        link = self.parse_url(best_source["file"])
+        await self.handle_file(link, scrape_item, file_name, ext, custom_filename=custom_filename)
 
 
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
