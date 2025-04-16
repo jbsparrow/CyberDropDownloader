@@ -24,13 +24,19 @@ class Video(NamedTuple):
     res: str
 
 
+# Selectors
 JS_SELECTOR = "div.video-holder script:contains('var flashvars')"
+NEXT_PAGE_SELECTOR = "div#list_videos_videos_pagination li.next"
+USER_NAME_SELECTOR = "div.user-name"
+VIDEOS_SELECTOR = "div.video-list a.thumb"
+
+# Regex
 VIDEO_INFO_FIELDS_PATTERN = re.compile(r"(\w+):\s*'([^']*)'")
 
 
 class PorntrexCrawler(Crawler):
     primary_base_domain = URL("https://www.porntrex.com")
-    next_page_selector = "div#list_videos_videos_pagination li.next"
+    next_page_selector = NEXT_PAGE_SELECTOR
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "porntrex", "Porntrex")
@@ -53,7 +59,26 @@ class PorntrexCrawler(Crawler):
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
-        pass
+        # The ending / is necessary or we get a 404 error
+        url: URL = scrape_item.url / "videos/"
+        title_created: bool = False
+        async for soup in self.web_pager(url):
+            if not title_created:
+                user_name: str = soup.select_one(USER_NAME_SELECTOR).get_text(strip=True)
+                title = f"{user_name} [user]"
+                title = self.create_title(title)
+                scrape_item.setup_as_profile(title)
+                title_created = True
+            scrape_item.url = url
+            # Todo Write the ajax paginator
+            # last_page: str = soup.select("div.pagination-holder li.page")[-1].get_text(strip=True)
+            # url = URL(
+            #     "https://www.porntrex.com/members/5685841/videos/?mode=async&function=get_block&block_id=list_videos_uploaded_videos&is_private=0,1&sort_by=&from_uploaded_videos=664"
+            # )
+            # async with self.request_limiter:
+            #     temp_soup: BeautifulSoup = await self.client.get_soup(self.domain, url)
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, VIDEOS_SELECTOR):
+                self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
