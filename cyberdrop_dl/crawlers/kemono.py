@@ -79,7 +79,7 @@ class Post(AliasModel):
     user_name: str  # The is the proper name, capitalized
     id: str
     title: str
-    file: File | None = None
+    file: File | None = None  # TODO: Verify is a post can have more that 1 file
     content: str = ""
     attachments: list[File] = []  # noqa: RUF012
     _published: datetime | None = Field(None, validation_alias=AliasChoices("published", "added"))
@@ -237,20 +237,27 @@ class KemonoCrawler(Crawler):
             yield json_resp
             if not json_resp:
                 break
+            # TODO: Check whats the maximun offset we can user
+            # TODO: Verify if must use different max offsets for each url type / service
             offset += 50
 
     async def _handle_post(self, scrape_item: ScrapeItem, post: Post):
         scrape_item.setup_as_album(post.title, album_id=post.id)
         scrape_item.possible_datetime = post.date
-        post_title = self.create_separate_post_title(post.id, post.title, post.date)
+        post_title = self.create_separate_post_title(post.title, post.id, post.date)
         scrape_item.add_to_parent_title(post_title)
+
+        # Process files if the post was generated from an API call
         for file in post.all_files:
             file_url = self._make_file_url(file)
             await self.handle_direct_link(scrape_item, file_url)
             scrape_item.add_children()
+
+        # Process files if the posts was generated from soup
         for file_url in post.soup_attachments:
             await self.handle_direct_link(scrape_item, file_url)
             scrape_item.add_children()
+
         self._handle_post_content(scrape_item, post)
 
     def _make_file_url(self, file: File) -> URL:
@@ -264,7 +271,7 @@ class KemonoCrawler(Crawler):
         return "", api_url.update_query(o=offset)
 
     def _handle_post_content(self, scrape_item: ScrapeItem, post: Post) -> None:
-        """Gets links out of content in post."""
+        """Gets links out of content in post ans sends them to a new crawler."""
         if not post.content:
             return
 
@@ -278,7 +285,7 @@ class KemonoCrawler(Crawler):
                     pass
 
         for link in gen_yarl_urls():
-            if not link.host or "kemono" in link.host:
+            if not link.host or self.domain in link.host:
                 continue
             new_scrape_item = scrape_item.create_child(link)
             self.handle_external_links(new_scrape_item)
@@ -292,13 +299,13 @@ class KemonoCrawler(Crawler):
             filename, ext = self.get_filename_and_ext(link.query.get("f") or link.name)
         except NoExtensionError:
             # Some patreon URLs have another URL as the filename: https://kemono.su/data/7a...27ad7e40bd.jpg?f=https://www.patreon.com/media-u/Z0F..00672794_
-            filename, ext = self.get_filename_and_ext(scrape_item.url.name)
+            filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def get_user_info(self, scrape_item: ScrapeItem) -> UserInfo:
-        """Gets the user info from a scrape item."""
+        """Gets the user info, making a new API call"""
         url_info = URLInfo.parse(scrape_item.url)
         api_url = self.api_entrypoint / url_info.service / "user" / url_info.user / "posts-legacy"
         async with self.request_limiter:

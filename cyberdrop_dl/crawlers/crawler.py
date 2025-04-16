@@ -263,9 +263,10 @@ class Crawler(ABC):
 
     def create_separate_post_title(
         self,
-        id: str | None = None,
         title: str | None = None,
+        id: str | None = None,
         date: datetime | int | None = None,
+        /,
     ) -> str:
         if not self.manager.config.download_options.separate_posts:
             return ""
