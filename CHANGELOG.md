@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New `--show-supported-sites` option: https://script-ware.gitbook.io/cyberdrop-dl/reference/cli-arguments#show-supported-sites
 ### Changed
 - The `import cookies` menu will only display the browsers supported by the user's OS
+- Discord.com support
 
 ### Fixed
 - Choosing 'All Supported Websites' in cookie extraction will no longer extract all cookies from the browser
