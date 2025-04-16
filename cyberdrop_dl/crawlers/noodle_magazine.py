@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import calendar
 import datetime
+import itertools
 import json
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
+from bs4 import BeautifulSoup
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
@@ -45,14 +47,29 @@ class NoodleMagazineCrawler(Crawler):
 
     @error_handling_wrapper
     async def search(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, scrape_item.url)
-        search_string: str = soup.select_one(SEARCH_STRING_SELECTOR).text.strip()
-        search_string = f"{search_string.rsplit(' videos', 1)[0]} [search]"
-        title = self.create_title(search_string)
-        scrape_item.setup_as_album(title)
-        for _, new_scrape_item in self.iter_children(scrape_item, soup, VIDEOS_SELECTOR):
-            self.manager.task_group.create_task(self.run(new_scrape_item))
+        title: str = ""
+        init_page = int(scrape_item.url.query.get("p") or 1)
+        seen_urls: set[URL] = set()
+        for page in itertools.count(1, init_page):
+            n_videos = 0
+            page_url = scrape_item.url.with_query(p=page)
+            async with self.request_limiter:
+                soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, page_url)
+
+            if not title:
+                search_string: str = soup.select_one(SEARCH_STRING_SELECTOR).text.strip()  # type: ignore
+                title = search_string.rsplit(" videos", 1)[0]
+                title = self.create_title(f"{title} [search]")
+                scrape_item.setup_as_album(title)
+
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, VIDEOS_SELECTOR):
+                if new_scrape_item.url not in seen_urls:
+                    seen_urls.add(new_scrape_item.url)
+                    n_videos += 1
+                    self.manager.task_group.create_task(self.run(new_scrape_item))
+
+            if n_videos < 24:
+                break
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
