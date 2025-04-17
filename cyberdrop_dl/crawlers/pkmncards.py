@@ -26,8 +26,17 @@ TimeStamp = NewType("TimeStamp", int)
 CARD_DOWNLOAD_SELECTOR = "li > a[title='Download Image']"
 CARD_SELECTOR = "a.card-image-link"
 CARD_PAGE_TITLE_SELECTOR = "meta[property='og:title']"
+CARD_NAME_SELECTOR = "span[title='Name'] a"
+CARD_NUMBER_SELECTOR = "span[title='Number'] a"
+
+SET_NAME_SELECTOR = "span[title='Set'] a"
+SET_ABBR_SELECTOR = "span[title='Set Abbreviation'] a"
+SET_SERIES_CODE_SELECTOR = "span[title='Set Series Code'] a"
+
+
 CARD_FROM_FULL_SELECTOR = "article[id*='post-']"
 CARD_PAGE_URL_SELECTOR = "a[title='Permalink / Title']"
+
 SET_SERIES_CODE_SELECTOR = "div.card-tabs span[title='Set Series Code']"
 SET_INFO_SELECTOR = "script:contains('datePublished')"
 NEXT_PAGE_SELECTOR = "a[title='Next Page (Press →)']"
@@ -117,7 +126,7 @@ class PkmncardsCrawler(Crawler):
         # This is just to set the max children limit. `handle_card` will add the actual title
         scrape_item.setup_as_profile("")
 
-        page_url = self.primary_base_domain / "series" / scrape_item.url.parts[1]
+        page_url = self.primary_base_domain / "series" / scrape_item.url.parts[2]
         page_url = page_url.with_query(sort="date", ord="auto", display="full")
         async for soup in self.web_pager(page_url):
             # Can't use `iter_children` becuase we need to pass `cart_tag` to self.card
@@ -147,7 +156,7 @@ class PkmncardsCrawler(Crawler):
                     # Make a request for the first card to get the set information
                     async with self.request_limiter:
                         soup: BeautifulSoup = await self.client.get_soup(self.domain, card_page_url)
-                    card_set = create_set(soup, simple_card)
+                    card_set = create_set(soup)
 
                 new_scrape_item = scrape_item.create_child(card_page_url)
                 card = Card(simple_card.name, simple_card.number_str, card_set, download_url)
@@ -162,12 +171,12 @@ class PkmncardsCrawler(Crawler):
         else:
             soup_or_tag: Tag = card_tag
 
+        name = soup_or_tag.select_one(CARD_NAME_SELECTOR).text  # type: ignore
+        number = soup_or_tag.select_one(CARD_NUMBER_SELECTOR).text  # type: ignore
         link_str: str = soup_or_tag.select_one(CARD_DOWNLOAD_SELECTOR)["href"]  # type: ignore
         link = self.parse_url(link_str)
-        title: str = soup_or_tag.select_one(CARD_PAGE_TITLE_SELECTOR)["content"]  # type: ignore
-        simple_card = get_card_info_from_title(title)
-        card_set = create_set(soup_or_tag, simple_card)
-        card = Card(simple_card.name, simple_card.number_str, card_set, link)
+        card_set = create_set(soup_or_tag)
+        card = Card(name, number, card_set, link)
         await self.handle_card(scrape_item, card)
 
     @error_handling_wrapper
@@ -208,7 +217,7 @@ def get_card_info_from_title(title: str) -> SimpleCard:
     return SimpleCard(card_name.strip(), card_number.strip(), set_name.strip(), set_abbr.strip().upper())
 
 
-def create_set(soup: Tag, card: SimpleCard) -> CardSet:
+def create_set(soup: Tag) -> CardSet:
     tag = soup.select_one(SET_SERIES_CODE_SELECTOR)
     # Some sets do not have series code
     set_series_code: str | None = tag.get_text(strip=True) if tag else None  # type: ignore
@@ -219,7 +228,10 @@ def create_set(soup: Tag, card: SimpleCard) -> CardSet:
             release_date = calendar.timegm(datetime.fromisoformat(iso_date).timetuple())
             break
 
+    set_abbr = soup.select_one(SET_ABBR_SELECTOR).text  # type: ignore
+    set_name = soup.select_one(SET_NAME_SELECTOR).text  # type: ignore
+
     if not release_date:
         raise ScrapeError(422)
 
-    return CardSet(card.set_name, card.set_abbr, set_series_code, TimeStamp(release_date))
+    return CardSet(set_name, set_abbr, set_series_code, TimeStamp(release_date))
