@@ -210,6 +210,8 @@ class KemonoCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
+        if "discord" in scrape_item.url.parts:
+            return await self.discord(scrape_item)
         return await self._fetch_kemono_defaults(scrape_item)
 
     async def _fetch_kemono_defaults(self, scrape_item: ScrapeItem) -> None:
@@ -220,8 +222,6 @@ class KemonoCrawler(Crawler):
         Super().fetch MUST NOT be used, otherwise a new task_id will be created"""
         if "thumbnails" in scrape_item.url.parts:
             return await self.handle_direct_link(scrape_item)
-        if "discord" in scrape_item.url.parts:
-            return await self.discord(scrape_item)
         if "post" in scrape_item.url.parts:
             return await self.post(scrape_item)
         if scrape_item.url.name == "posts":
