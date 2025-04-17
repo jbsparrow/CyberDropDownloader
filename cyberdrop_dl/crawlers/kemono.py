@@ -31,6 +31,8 @@ LINK_REGEX = re.compile(r"(?:http(?!.*\.\.)[^ ]*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]
 
 POST_SELECTOR = "article.post-card a"
 
+DISCORD_SERVER_NAME_SELECTOR = "spam[class*=__profile-image] + span[itemprop='name']"
+
 
 class PostSelectors:
     FILES = "div[class*=__files]"
@@ -52,15 +54,39 @@ _POST = PostSelectors()
 
 
 class URLInfo(NamedTuple):
+    # ex: https://kemono.su/<service>/user/<user_id>/post/<post_id>
+    # ex: https://kemono.su/patreon/user/92916478/post/87864845
     service: str = "Unknown"
-    user_: str = ""  # the literal word "user" in the URL ex: "/user/"
+    user_: str = ""  # the literal word "user"
     user_id: str = "Unknown"
-    post_: str = ""  # the literal word "post" in the URL ex: "/post/"
-    post_id: str | None = None
+    post_: str = ""  # the literal word "post"
+    post_id: str | None = None  # Only present in individual posts URLs
 
     @staticmethod
     def parse(url: URL) -> URLInfo:
         return URLInfo(*url.parts[1:6])
+
+
+class DiscordURLInfo(NamedTuple):
+    # ex: https://kemono.su/discord/server/<server_id>/<channel_id>
+    # ex: https://kemono.su/discord/server/891670433978531850/892624523034255371
+    server_id: str
+    channel_id: str | None = None  # Only present for individual channels URLs
+
+    @staticmethod
+    def parse(url: URL) -> DiscordURLInfo:
+        return DiscordURLInfo(*url.parts[3:5])
+
+
+class DiscordChannel(NamedTuple):
+    name: str
+    id: str
+
+
+class DiscordServer(NamedTuple):
+    name: str
+    id: str
+    channels: tuple[DiscordChannel, ...]
 
 
 class User(NamedTuple):
@@ -74,16 +100,12 @@ class File(TypedDict):
 
 
 class Post(AliasModel):
-    service: str
-    user_id: str = Field(validation_alias="user")
     id: str
-    title: str
-    file: File | None = None  # TODO: Verify is a post can have more that 1 file
     content: str = ""
+    file: File | None = None  # TODO: Verify is a post can have more that 1 file
     attachments: list[File] = []  # noqa: RUF012
     published_or_added: datetime | None = Field(None, validation_alias=AliasChoices("published", "added"))
     soup_attachments: list[Any] = []  # noqa: RUF012, Any to skip validation, but these should be yarl.URL
-    revisions: list[Post] = Field([], validation_alias=AliasPath("props", "revisions"))
     date: int | None = None
 
     def model_post_init(self, *_) -> None:
@@ -96,12 +118,24 @@ class Post(AliasModel):
             yield self.file
         yield from self.attachments
 
+
+class UserPost(Post):
+    service: str
+    user_id: str = Field(validation_alias="user")
+    title: str
+    revisions: list[UserPost] = Field([], validation_alias=AliasPath("props", "revisions"))
+
     @property
     def user(self) -> User:
         return User(self.service, self.user_id)
 
 
-class PartialPost(NamedTuple):
+class DiscordPost(Post):
+    server_id: str = Field(validation_alias="server")
+    channel_id: str = Field(validation_alias="channel")
+
+
+class PartialUserPost(NamedTuple):
     """A simplified version of Post that we can built from a soup, for sites that do not have an API
 
     Pros: We can get the post data + user_name in a single request
@@ -114,7 +148,7 @@ class PartialPost(NamedTuple):
     date: str | None = None
 
     @staticmethod
-    def from_soup(soup: BeautifulSoup) -> PartialPost:
+    def from_soup(soup: BeautifulSoup) -> PartialUserPost:
         info = {}
         names = "title", "content", "user_name", "date"
         selectors = (_POST.TITLE, _POST.ALL_CONTENT, _POST.USERNAME, _POST.DATE)
@@ -122,7 +156,7 @@ class PartialPost(NamedTuple):
             if tag := soup.select_one(selector):
                 info[name] = tag.text.strip()
 
-        return PartialPost(**info)
+        return PartialUserPost(**info)
 
 
 def fallback_if_no_api(func: Callable[..., Coroutine[None, None, Any]]) -> Callable[..., Coroutine[None, None, Any]]:
@@ -148,7 +182,9 @@ class KemonoCrawler(Crawler):
         super().__init__(manager, "kemono", "Kemono")
         self.api_entrypoint: URL = URL("https://kemono.su/api/v1")
         self.__known_user_names: dict[User, str] = {}
+        self.__known_discord_servers: dict[str, DiscordServer] = {}
         self.__user_names_locks: dict[User, asyncio.Lock] = defaultdict(asyncio.Lock)
+        self.__discord_servers_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
         self.services: tuple[str, ...] = (
             "afdian",
             "boosty",
@@ -191,26 +227,40 @@ class KemonoCrawler(Crawler):
     @error_handling_wrapper
     async def search(self, scrape_item: ScrapeItem) -> None:
         """Scrapes results from a search query."""
-        query, api_url = self._api_w_offset("posts", scrape_item.url)
+        query = scrape_item.url.query["q"]
+        api_url = self._api_w_offset("posts", scrape_item.url)
         title = self.create_title(f"{query} [search]")
         scrape_item.setup_as_profile(title)
-        await self.iter_from_url(scrape_item, api_url)
+        await self.iter_posts_from_url(scrape_item, api_url)
 
     @fallback_if_no_api
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile."""
         url_info = URLInfo.parse(scrape_item.url)
-        _, api_url = self._api_w_offset(f"{url_info.service}/user/{url_info.user_id}", scrape_item.url)
-        await self.iter_from_url(scrape_item, api_url)
+        api_url = self._api_w_offset(f"{url_info.service}/user/{url_info.user_id}", scrape_item.url)
+        scrape_item.setup_as_profile("")  # Title will be added by self._handle_user_post
+        await self.iter_posts_from_url(scrape_item, api_url)
 
     @fallback_if_no_api
     @error_handling_wrapper
     async def discord(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile."""
-        channel = scrape_item.url.raw_fragment
-        _, api_url = self._api_w_offset(f"discord/channel/{channel}", scrape_item.url)
-        await self.iter_from_url(scrape_item, api_url)
+        url_info = DiscordURLInfo.parse(scrape_item.url)
+        if not url_info.channel_id:  # Download all channels
+            scrape_item.setup_as_forum("")
+            server = await self.get_discord_server(url_info.server_id)
+            for channel in server.channels:
+                url = self.primary_base_domain / "discord/server" / url_info.server_id / channel.id
+                new_scrape_item = scrape_item.create_child(url)
+                self.manager.task_group.create_task(self.run(new_scrape_item))
+            return
+
+        api_url = self._api_w_offset(f"discord/channel/{url_info.channel_id}", scrape_item.url)
+
+        async for json_resp in self.api_pager(api_url):
+            for post in (DiscordPost(**entry) for entry in json_resp):
+                await self._handle_discord_post(scrape_item, post)
 
     @fallback_if_no_api
     @error_handling_wrapper
@@ -219,21 +269,25 @@ class KemonoCrawler(Crawler):
         url_info = URLInfo.parse(scrape_item.url)
         assert url_info.post_id, "Individual posts must have a post_id"
         path = f"{url_info.service}/user/{url_info.user_id}/post/{url_info.post_id}"
-        _, api_url = self._api_w_offset(path, scrape_item.url)
+        api_url = self._api_w_offset(path, scrape_item.url)
         async with self.request_limiter:
             json_resp: dict[str, dict] = await self.client.get_json(self.domain, api_url)
 
         # Not used
         # revisions = json_resp["props"].get("revisions", [])
-        post = Post(**json_resp["post"])
-        await self._handle_post(scrape_item, post)
+        post = UserPost(**json_resp["post"])
+        await self._handle_user_post(scrape_item, post)
 
-    async def iter_from_url(self, scrape_item: ScrapeItem, url: URL):
+    async def iter_posts_from_url(self, scrape_item: ScrapeItem, url: URL):
         async for json_resp in self.api_pager(url):
-            posts: list[dict[str, Any]] = json_resp.get("posts") or [json_resp["post"]]
+            posts: list[dict[str, Any]] | None = json_resp.get("posts")
 
-            for post in (Post(**entry) for entry in posts):
-                await self._handle_post(scrape_item, post)
+            # Invividual post
+            if posts is None:
+                posts = [json_resp["post"]]
+
+            for post in (UserPost(**entry) for entry in posts):
+                await self._handle_user_post(scrape_item, post)
 
     async def api_pager(self, url: URL) -> AsyncGenerator[dict[str, Any]]:
         offset = int(url.query.get("o") or 0)
@@ -248,20 +302,28 @@ class KemonoCrawler(Crawler):
             # TODO: Verify if must use different max offsets for each url type / service
             offset += 50
 
-    async def _handle_post(self, scrape_item: ScrapeItem, post: Post):
-        user = post.user
-        async with self.__user_names_locks[user]:
-            user_name = self.__known_user_names.get(user)
-            if not user_name:
-                user_name = await self.get_user_name(user)
-                self.__known_user_names[user] = user_name
-
+    async def _handle_user_post(self, scrape_item: ScrapeItem, post: UserPost):
+        user_name = await self.get_user_name(post.user)
         title = self.create_title(user_name, post.user_id)
         scrape_item.setup_as_album(title, album_id=post.user_id)
         scrape_item.possible_datetime = post.date
         post_title = self.create_separate_post_title(post.title, post.id, post.date)
         scrape_item.add_to_parent_title(post_title)
 
+        await self.__handle_post(scrape_item, post)
+
+    async def _handle_discord_post(self, scrape_item: ScrapeItem, post: DiscordPost):
+        server = await self.get_discord_server(post.server_id)
+        title = self.create_title(f"{server.name} [discord]", server.id)
+        channel_name = next(p.name for p in server.channels if p.id == post.channel_id)
+        scrape_item.setup_as_album(title, album_id=server.id)
+        scrape_item.possible_datetime = post.date
+        scrape_item.add_to_parent_title(f"#{channel_name}")
+        post_title = self.create_separate_post_title(None, post.id, post.date)
+        scrape_item.add_to_parent_title(post_title)
+        await self.__handle_post(scrape_item, post)
+
+    async def __handle_post(self, scrape_item: ScrapeItem, post: Post):
         # Process files if the post was generated from an API call
         for file in post.all_files:
             file_url = self._make_file_url(file)
@@ -278,12 +340,12 @@ class KemonoCrawler(Crawler):
     def _make_file_url(self, file: File) -> URL:
         return self.parse_url(f"/data/{file['path']}").with_query(f=file["name"])
 
-    def _api_w_offset(self, path: str, og_url: URL) -> tuple[str, URL]:
+    def _api_w_offset(self, path: str, og_url: URL) -> URL:
         api_url = self.api_entrypoint / path
         offset = int(og_url.query.get("o", 0))
         if query := og_url.query.get("q"):
-            return query, api_url.update_query(o=offset, q=query)
-        return "", api_url.update_query(o=offset)
+            return api_url.update_query(o=offset, q=query)
+        return api_url.update_query(o=offset)
 
     def _handle_post_content(self, scrape_item: ScrapeItem, post: Post) -> None:
         """Gets links out of content in post ans sends them to a new crawler."""
@@ -326,13 +388,41 @@ class KemonoCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def get_user_name(self, user: User) -> str:
-        """Gets the user info, making a new API call"""
-        api_url = self.api_entrypoint / user.service / "user" / user.id / "posts-legacy"
-        async with self.request_limiter:
-            profile_json: dict = await self.client.get_json(self.domain, api_url)
+    async def get_user_name(self, user: User, default: str | None = None) -> str:
+        """Gets the user info, making a new API call if needed"""
+        async with self.__user_names_locks[user]:
+            if user_name := self.__known_user_names.get(user):
+                return user_name
 
-        return profile_json["props"]["name"]
+            if default:
+                self.__known_user_names[user] = default
+                return default
+
+            api_url = self.api_entrypoint / user.service / "user" / user.id / "posts-legacy"
+            async with self.request_limiter:
+                profile_json: dict = await self.client.get_json(self.domain, api_url)
+
+            self.__known_user_names[user] = user_name = profile_json["props"]["name"]
+            return user_name
+
+    async def get_discord_server(self, server_id: str) -> DiscordServer:
+        async with self.__discord_servers_locks[server_id]:
+            if server := self.__known_discord_servers.get(server_id):
+                return server
+
+            url = self.primary_base_domain / "discord/user" / server_id / "links"
+            async with self.request_limiter:
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, url)
+
+            name = soup.select_one(DISCORD_SERVER_NAME_SELECTOR).text  # type: ignore
+            url = self.api_entrypoint / "discord/channel/lookup" / server_id
+            async with self.request_limiter:
+                json_resp: list[dict] = await self.client.get_json(self.domain, url)
+
+            channels = tuple(DiscordChannel(channel["name"], channel["id"]) for channel in json_resp)
+            server = DiscordServer(name, server_id, channels)
+            self.__known_discord_servers[server_id] = server
+            return server
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -372,7 +462,7 @@ class KemonoCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
-        post_info = PartialPost.from_soup(soup)
+        post_info = PartialUserPost.from_soup(soup)
         if not post_info.title or not post_info.user_name:
             raise ScrapeError(422)
 
@@ -381,7 +471,7 @@ class KemonoCrawler(Crawler):
             for file in soup.select(selector):
                 files.append(self.parse_url(file["href"]))  # type: ignore
 
-        post = Post(
+        post = UserPost(
             user_id=url_info.user_id,
             service=url_info.service,
             id=url_info.post_id,
@@ -390,9 +480,7 @@ class KemonoCrawler(Crawler):
             published_or_added=post_info.date,  # type: ignore
             soup_attachments=files,
         )
-        user = post.user
-        async with self.__user_names_locks[user]:
-            if not self.__known_user_names.get(user):
-                self.__known_user_names[user] = post_info.user_name
 
-        await self._handle_post(scrape_item, post)
+        # Save the user_name to the internal dict
+        _ = await self.get_user_name(post.user, post_info.user_name)
+        await self._handle_user_post(scrape_item, post)
