@@ -133,6 +133,7 @@ class Downloader:
         if not self.manager.ffmpeg.is_available:
             raise DownloadError("FFmpeg Error", "FFmpeg is required for HLS downloads but is not available", media_item)
 
+        m3u8.check_can_download()
         seg_media_items: list[MediaItem] = []
         media_item.complete_file = s = media_item.download_folder / media_item.filename
         segments_folder = s.with_suffix(".cdl_hls")

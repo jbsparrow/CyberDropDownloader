@@ -89,6 +89,14 @@ class M3U8:
     async def get_all_segments(self) -> tuple[HlsSegment, ...]:
         return tuple([seg async for seg in self.gen_segments()])
 
+    def check_can_download(self) -> None:
+        if self.has_drm:
+            raise M3U8Error("Can not process M3U8. Content has DRM protection")
+        if self.is_encrypted:
+            raise M3U8Error("Can not process M3U8. Some segments are encrypted")
+        if self.is_live_stream:
+            raise M3U8Error("M3U8 livestreams are not supported")
+
     @staticmethod
     def _clean_line(line: str) -> str | None:
         # This is the only method that we may need to be update in the future, to be more robust and handle encryption
