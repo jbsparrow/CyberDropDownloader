@@ -4,9 +4,11 @@ import calendar
 import functools
 import itertools
 import re
-from typing import TYPE_CHECKING, Any, NamedTuple, TypedDict
+from datetime import datetime  # noqa: TC003
+from typing import TYPE_CHECKING, Any, NamedTuple
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, AliasPath, Field
+from typing_extensions import TypedDict  # Compatible with python 3.11
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import NoExtensionError, ScrapeError
@@ -16,7 +18,6 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable, Coroutine, Generator
-    from datetime import datetime
 
     from bs4 import BeautifulSoup
 
@@ -50,9 +51,9 @@ _POST = PostSelectors()
 
 class URLInfo(NamedTuple):
     service: str = "Unknown"
-    _user: str = ""  # the literal word "user" in the URL ex: "/user/"
-    user: str = "Unknown"
-    _post: str = ""  # the literal word "post" in the URL ex: "/post/"
+    user_: str = ""  # the literal word "user" in the URL ex: "/user/"
+    user_id: str = "Unknown"
+    post_: str = ""  # the literal word "post" in the URL ex: "/post/"
     post_id: str = "Unknown"
 
     @staticmethod
@@ -64,9 +65,9 @@ class UserInfo(NamedTuple):
     # Same information as URLInfo but includes the user_name.
     # Getting the user_name requires making a new request when using the API
     service: str
-    user: str
+    user_id: str
     post_id: str | None
-    user_name: str  # The is the proper name, capitalized
+    user_name: str
 
 
 class File(TypedDict):
@@ -75,21 +76,21 @@ class File(TypedDict):
 
 
 class Post(AliasModel):
-    user: str
-    user_name: str  # The is the proper name, capitalized
+    user_id: str = Field(validation_alias="user")
+    user_name: str
     id: str
     title: str
     file: File | None = None  # TODO: Verify is a post can have more that 1 file
     content: str = ""
     attachments: list[File] = []  # noqa: RUF012
-    _published: datetime | None = Field(None, validation_alias=AliasChoices("published", "added"))
-    soup_attachments: list[URL] = []  # noqa: RUF012
+    published_or_added: datetime | None = Field(None, validation_alias=AliasChoices("published", "added"))
+    soup_attachments: list[Any] = []  # noqa: RUF012, Any to skip validation, but these should be yarl.URL
+    revisions: list[Post] = Field([], validation_alias=AliasPath("props", "revisions"))
+    date: int | None = None
 
-    def model_post_init(self):
-        if self._published:
-            self.date = calendar.timegm(self._published.timetuple())
-        else:
-            self.date: int | None = None
+    def model_post_init(self, *_) -> None:
+        if self.published_or_added:
+            self.date = calendar.timegm(self.published_or_added.timetuple())
 
     @property
     def all_files(self) -> Generator[File]:
@@ -103,7 +104,7 @@ class PartialPost(NamedTuple):
 
     title: str = ""
     content: str = ""
-    user_name: str = ""  # The is the proper name, capitalized
+    user_name: str = ""
     date: str | None = None
 
     @staticmethod
@@ -190,7 +191,7 @@ class KemonoCrawler(Crawler):
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile."""
         info = await self.get_user_info(scrape_item)
-        _, api_url = self._api_w_offset(f"{info.service}/user/{info.user}", scrape_item.url)
+        _, api_url = self._api_w_offset(f"{info.service}/user/{info.user_id}", scrape_item.url)
         await self.iter_from_url(scrape_item, api_url)
 
     @error_handling_wrapper
@@ -207,12 +208,14 @@ class KemonoCrawler(Crawler):
         """Scrapes a post."""
         user_info = await self.get_user_info(scrape_item)
         assert user_info.post_id
-        path = f"{user_info.service}/user/{user_info.user}/post/{user_info.post_id}"
+        path = f"{user_info.service}/user/{user_info.user_id}/post/{user_info.post_id}"
         _, api_url = self._api_w_offset(path, scrape_item.url)
         async with self.request_limiter:
-            json_resp: dict = await self.client.get_json(self.domain, api_url)
+            json_resp: dict[str, dict] = await self.client.get_json(self.domain, api_url)
 
-        post = Post(**json_resp["post"])
+        # Not used
+        # revisions = json_resp["props"].get("revisions", [])
+        post = Post(user_name=user_info.user_name, **json_resp["post"])
         await self._handle_post(scrape_item, post)
 
     async def iter_from_url(self, scrape_item: ScrapeItem, url: URL):
@@ -241,7 +244,8 @@ class KemonoCrawler(Crawler):
             offset += 50
 
     async def _handle_post(self, scrape_item: ScrapeItem, post: Post):
-        scrape_item.setup_as_album(post.title, album_id=post.id)
+        title = self.create_title(f"{post.user_name}", post.user_id)
+        scrape_item.setup_as_album(title, album_id=post.user_id)
         scrape_item.possible_datetime = post.date
         post_title = self.create_separate_post_title(post.title, post.id, post.date)
         scrape_item.add_to_parent_title(post_title)
@@ -313,13 +317,12 @@ class KemonoCrawler(Crawler):
     async def get_user_info(self, scrape_item: ScrapeItem) -> UserInfo:
         """Gets the user info, making a new API call"""
         url_info = URLInfo.parse(scrape_item.url)
-        api_url = self.api_entrypoint / url_info.service / "user" / url_info.user / "posts-legacy"
+        api_url = self.api_entrypoint / url_info.service / "user" / url_info.user_id / "posts-legacy"
         async with self.request_limiter:
-            profile_json, _ = await self.client.get_json(self.domain, api_url, cache_disabled=True)
+            profile_json: dict = await self.client.get_json(self.domain, api_url)
 
-        properties: dict[str, str] = profile_json.get("props", {})
-        user_name = properties.get("name", url_info.user)
-        return UserInfo(url_info.service, url_info.user, url_info.post_id, user_name)
+        user_name = profile_json["props"]["name"]
+        return UserInfo(url_info.service, url_info.user_id, url_info.post_id, user_name)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -336,7 +339,7 @@ class KemonoCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         url_info = URLInfo.parse(scrape_item.url)
-        api_url = self.primary_base_domain / url_info.service / "user" / url_info.user
+        api_url = self.primary_base_domain / url_info.service / "user" / url_info.user_id
         scrape_item.setup_as_profile("")
 
         for offset in itertools.count(0, 50):
@@ -368,12 +371,12 @@ class KemonoCrawler(Crawler):
                 files.append(self.parse_url(file["href"]))  # type: ignore
 
         post = Post(
-            user=url_info.user,
+            user_id=url_info.user_id,
             user_name=post_info.user_name,
             id=url_info.post_id,
             title=post_info.title,
             content=post_info.content,
-            _published=post_info.date,  # type: ignore
+            published_or_added=post_info.date,  # type: ignore
             soup_attachments=files,
         )
         await self._handle_post(scrape_item, post)
