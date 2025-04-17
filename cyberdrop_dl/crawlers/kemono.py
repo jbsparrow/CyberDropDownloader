@@ -26,9 +26,9 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
-# TODO: Check what/s the maximun offset we can use
+# TODO: Check what's the maximun offset we can use
 # TODO: Verify if we need to use different offsets for each url type / service
-# Right now is 50 becuas ethat the max from scraping from soup, but could be higher when using an API
+# Right now is 50 becuase that's the max when scraping from the web page, but could be higher when using the API
 MAX_OFFSET_PER_CALL = 50
 LINK_REGEX = re.compile(r"(?:http(?!.*\.\.)[^ ]*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]|</|'))")
 POST_SELECTOR = "article.post-card a"
