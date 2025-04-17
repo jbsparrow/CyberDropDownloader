@@ -128,7 +128,7 @@ def fallback_if_no_api(func: Callable[..., Coroutine[None, None, Any]]) -> Calla
             return await func(self, *args, **kwargs)
         fallback_func = getattr(self, f"{func.__name__}_w_no_api", None)
         if not fallback_func:
-            raise ScrapeError(422)
+            raise ValueError
         return await fallback_func(self, *args, **kwargs)
 
     return wrapper
@@ -177,8 +177,8 @@ class KemonoCrawler(Crawler):
             return await self.profile(scrape_item)
         await self.handle_direct_link(scrape_item)
 
-    @error_handling_wrapper
     @fallback_if_no_api
+    @error_handling_wrapper
     async def search(self, scrape_item: ScrapeItem) -> None:
         """Scrapes results from a search query."""
         query, api_url = self._api_w_offset("posts", scrape_item.url)
@@ -186,24 +186,24 @@ class KemonoCrawler(Crawler):
         scrape_item.setup_as_album(title)
         await self.iter_from_url(scrape_item, api_url)
 
-    @error_handling_wrapper
     @fallback_if_no_api
+    @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile."""
         info = await self.get_user_info(scrape_item)
         _, api_url = self._api_w_offset(f"{info.service}/user/{info.user_id}", scrape_item.url)
         await self.iter_from_url(scrape_item, api_url)
 
-    @error_handling_wrapper
     @fallback_if_no_api
+    @error_handling_wrapper
     async def discord(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile."""
         channel = scrape_item.url.raw_fragment
         _, api_url = self._api_w_offset(f"discord/channel/{channel}", scrape_item.url)
         await self.iter_from_url(scrape_item, api_url)
 
-    @error_handling_wrapper
     @fallback_if_no_api
+    @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a post."""
         user_info = await self.get_user_info(scrape_item)
