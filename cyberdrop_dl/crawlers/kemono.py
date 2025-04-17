@@ -171,7 +171,9 @@ class KemonoCrawler(Crawler):
             return await self.discord(scrape_item)
         if "post" in scrape_item.url.parts:
             return await self.post(scrape_item)
-        if scrape_item.url.name == "posts" and scrape_item.url.query.get("q"):
+        if scrape_item.url.name == "posts":
+            if not scrape_item.url.query.get("q"):
+                raise ValueError
             return await self.search(scrape_item)
         if any(x in scrape_item.url.parts for x in self.services):
             return await self.profile(scrape_item)
@@ -182,8 +184,8 @@ class KemonoCrawler(Crawler):
     async def search(self, scrape_item: ScrapeItem) -> None:
         """Scrapes results from a search query."""
         query, api_url = self._api_w_offset("posts", scrape_item.url)
-        title = self.create_title(f"Search - {query}")
-        scrape_item.setup_as_album(title)
+        title = self.create_title(f"{query} [search]")
+        scrape_item.setup_as_profile(title)
         await self.iter_from_url(scrape_item, api_url)
 
     @fallback_if_no_api
@@ -220,12 +222,7 @@ class KemonoCrawler(Crawler):
 
     async def iter_from_url(self, scrape_item: ScrapeItem, url: URL):
         async for json_resp in self.api_pager(url):
-            posts: list[dict[str, Any]] = json_resp.get("posts", [])
-            if not posts:
-                if "attachments" not in json_resp:
-                    posts = json_resp  # type: ignore
-                else:
-                    continue
+            posts: list[dict[str, Any]] = json_resp.get("posts") or [json_resp["post"]]
 
             for post in (Post(**entry) for entry in posts):
                 await self._handle_post(scrape_item, post)
