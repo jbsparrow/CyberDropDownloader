@@ -133,11 +133,11 @@ class PkmncardsCrawler(Crawler):
         scrape_item.setup_as_album("")
 
         card_set: CardSet | None = None
-        page_url = self.primary_base_domain / "sets" / scrape_item.url.parts[1]
+        page_url = self.primary_base_domain / "set" / scrape_item.url.parts[2]
         page_url = page_url.with_query(sort="date", ord="auto")
         async for soup in self.web_pager(page_url):
             for thumb in soup.select(CARD_SELECTOR):
-                parts: tuple[str, str, str] = thumb["src"], thumb["href"], thumb["title"]  # type: ignore
+                parts: tuple[str, str, str] = thumb.select_one("img")["src"], thumb["href"], thumb["title"]  # type: ignore
                 link_str, card_page_url_str, title = parts
                 simple_card = get_card_info_from_title(title)
                 card_page_url = self.parse_url(card_page_url_str)
@@ -162,9 +162,9 @@ class PkmncardsCrawler(Crawler):
         else:
             soup_or_tag: Tag = card_tag
 
-        link_str: str = card_tag.select_one(CARD_DOWNLOAD_SELECTOR)["href"]  # type: ignore
+        link_str: str = soup_or_tag.select_one(CARD_DOWNLOAD_SELECTOR)["href"]  # type: ignore
         link = self.parse_url(link_str)
-        title: str = card_tag.select_one(CARD_PAGE_TITLE_SELECTOR)["content"]  # type: ignore
+        title: str = soup_or_tag.select_one(CARD_PAGE_TITLE_SELECTOR)["content"]  # type: ignore
         simple_card = get_card_info_from_title(title)
         card_set = create_set(soup_or_tag, simple_card)
         card = Card(simple_card.name, simple_card.number_str, card_set, link)
@@ -174,11 +174,11 @@ class PkmncardsCrawler(Crawler):
     async def handle_card(self, scrape_item: ScrapeItem, card: Card) -> None:
         if not card.name:
             raise ScrapeError(422)
-        link = card.download_url.with_suffix(".png")  # they offer both jpg and png. png is higher quality
+        link = card.download_url  # .with_suffix(".png")  # they offer both jpg and png. png is higher quality
         set_title = self.create_title(f"{card.set.name} ({card.set.full_code})")
         scrape_item.setup_as_album(set_title, album_id=card.set.abbr)
         scrape_item.possible_datetime = card.set.release_date
-        filename, ext = self.get_filename_and_ext(link.name, assume_ext=".png")
+        filename, ext = self.get_filename_and_ext(link.name, assume_ext=".jpg")
         custom_filename, _ = self.get_filename_and_ext(f"{card.full_name}{ext}")
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
