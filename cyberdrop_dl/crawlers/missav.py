@@ -7,7 +7,7 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.m3u8 import M3U8
-from cyberdrop_dl.utils.utilities import error_handling_wrapper
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -84,6 +84,6 @@ def get_uuid(soup: BeautifulSoup) -> str:
     if not js_text:
         raise ScrapeError(422)
 
-    uuid_joined_parts = js_text.split("m3u8|", 1)[-1].split("|com|surrit", 1)[0]
-    uuid_parts = reversed(uuid_joined_parts.split("|"))
+    uuid_reversed_parts = get_text_between(js_text, "m3u8|", "|com|surrit")
+    uuid_parts = reversed(uuid_reversed_parts.split("|"))
     return "-".join(uuid_parts)
