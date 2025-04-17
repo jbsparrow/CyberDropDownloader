@@ -23,7 +23,7 @@ class InvalidM3U8Error(M3U8Error):
 
 class HlsSegment(NamedTuple):
     index: int
-    part: str
+    name: str
     url: URL
 
 
@@ -33,8 +33,9 @@ class Format(NamedTuple):
     name: str
 
 
-# Regex patterns, from https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/downloader/hls.py
 FORMATS_REGEX = re.compile(r"RESOLUTION=(?P<resolution>\d+x\d+)\n(?P<next_line>[^\n]+)")
+
+# Custom regex patterns, from https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/downloader/hls.py
 ENCRYPTED_REGEX = re.compile(r"#EXT-X-KEY:METHOD=(?!NONE|AES-128)")
 LIVE_STREAM_REGEX = re.compile(r"(?m)#EXT-X-MEDIA-SEQUENCE:(?!0$)")
 DRM_REGEX = re.compile(
@@ -123,10 +124,10 @@ class M3U8:
                 index += 1
                 yield index, part
 
-        def parse(part: str) -> URL:
-            if self._base_url:
-                return self._base_url / part
-            return parse_url(part)
+        def parse(name: str) -> URL:
+            if self.base_url:
+                return self.base_url / name
+            return parse_url(name)
 
         last_segment_part = get_last_part()
         last_index_str = re.sub(r"\D", "", last_segment_part)
