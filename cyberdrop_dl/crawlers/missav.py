@@ -20,6 +20,7 @@ M3U8_SERVER = URL("https://surrit.com/")
 TITLE_SELECTOR = "meta [property='og:title']"
 DATE_SELECTOR = "div > span:contains('Release date:') + time"
 DVD_CODE_SELECTOR = "div > span:contains('Code:') + span"
+M3U8_SELECTOR = "script:contains('m3u8|')"
 
 
 class MissAVCrawler(Crawler):
@@ -38,27 +39,29 @@ class MissAVCrawler(Crawler):
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
         canonical_url = self.primary_base_domain / "en" / scrape_item.url.name
-        scrape_item.url = canonical_url
         if await self.check_complete_from_referer(canonical_url):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, canonical_url)
 
+        scrape_item.url = canonical_url
         title = clean_title = soup.select_one(TITLE_SELECTOR)["content"].strip()  # type: ignore
         date_tag = soup.select_one(DATE_SELECTOR)
-        dvd_code_tag = soup.select_one(DVD_CODE_SELECTOR)
+
+        # Some videos may not have it
         date_str: str = date_tag.get("datetime") if date_tag else ""  # type: ignore
         if date_str:
             scrape_item.possible_datetime = self.parse_date(date_str)
 
-        dvd_code = dvd_code_tag.text.strip().upper() if dvd_code_tag else None
+        # Some videos may not have it
+        dvd_code = tag.text.strip() if (tag := soup.select_one(DVD_CODE_SELECTOR)) else None
         if dvd_code:
-            clean_title = clean_title.replace(dvd_code.lower(), "").replace(dvd_code.upper(), "").strip()
+            for value in (dvd_code.lower(), dvd_code.upper()):
+                clean_title = clean_title.replace(value, "").strip()
             title = f"{dvd_code} {clean_title}"
 
         uuid = get_uuid(soup)
-        del soup
         m3u8_playlist_url = M3U8_SERVER / uuid / "playlist.m3u8"
 
         async with self.request_limiter:
@@ -77,8 +80,7 @@ class MissAVCrawler(Crawler):
 
 
 def get_uuid(soup: BeautifulSoup) -> str:
-    info_js_script = soup.select_one("script:contains('m3u8|')")
-    js_text = info_js_script.text if info_js_script else None
+    js_text = script.text if (script := soup.select_one(M3U8_SELECTOR)) else None
     if not js_text:
         raise ScrapeError(422)
 
