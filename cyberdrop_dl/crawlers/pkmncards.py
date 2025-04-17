@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 import calendar
 import json
+from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, NewType
@@ -76,6 +78,7 @@ class SimpleCard:
     number_str: str  # This can actually contain letters as well, but the oficial name is `number`
     set_name: str
     set_abbr: str
+    download_url: URL
 
 
 @dataclass(slots=True)
@@ -100,6 +103,8 @@ class PkmncardsCrawler(Crawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "pkmncards", "Pkmncards")
+        self.known_sets: dict[str, CardSet] = {}
+        self.set_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -136,33 +141,36 @@ class PkmncardsCrawler(Crawler):
 
     async def iter_from_url(self, scrape_item: ScrapeItem, url: URL) -> None:
         page_url = url.with_query(sort="date", ord="auto", display="images")
-        known_sets: dict[str, CardSet] = {}
         async for soup in self.web_pager(page_url):
             for thumb in soup.select(CARD_SELECTOR):
                 parts: tuple[str, str, str] = thumb.select_one("img")["src"], thumb["href"], thumb["title"]  # type: ignore
                 link_str, card_page_url_str, title = parts
-                simple_card = get_card_info_from_title(title)
                 card_page_url = self.parse_url(card_page_url_str)
                 download_url = self.parse_url(link_str)
-
-                card_set = known_sets.get(simple_card.set_abbr)
-                if not card_set:
-                    # Make a request for 1 card, to get the set information about the set
-                    card_set = await self.get_card_set(card_page_url)
-                    if not card_set:
-                        # request failed
-                        continue
-                    known_sets[simple_card.set_abbr] = card_set
-
+                simple_card = create_simple_card(title, download_url)
                 new_scrape_item = scrape_item.create_child(card_page_url)
-                card = Card(simple_card.name, simple_card.number_str, card_set, download_url)
-                await self.handle_card(new_scrape_item, card)
+                self.manager.task_group.create_task(self.handle_simple_card(new_scrape_item, simple_card))
                 scrape_item.add_children()
 
+    async def handle_simple_card(self, scrape_item: ScrapeItem, simple_card: SimpleCard):
+        async with self.set_locks[simple_card.set_abbr]:
+            card_set = self.known_sets.get(simple_card.set_abbr)
+            if not card_set:
+                # Make a request for 1 card, to get the set information about the set
+                card_set = await self.get_card_set(scrape_item)
+                if not card_set:  # Request failed
+                    return
+                self.known_sets[simple_card.set_abbr] = card_set
+
+        card = Card(simple_card.name, simple_card.number_str, card_set, simple_card.download_url)
+        await self.handle_card(scrape_item, card)
+        scrape_item.add_children()
+
+    @create_task_id
     @error_handling_wrapper
-    async def get_card_set(self, card_page_url: URL):
+    async def get_card_set(self, scrape_item: ScrapeItem):
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, card_page_url)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
         return create_set(soup)
 
     @error_handling_wrapper
@@ -191,7 +199,7 @@ class PkmncardsCrawler(Crawler):
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
 
-def get_card_info_from_title(title: str) -> SimpleCard:
+def create_simple_card(title: str, download_url: URL) -> SimpleCard:
     """Over-complicated function to parse the information of a card from the title of a page or the alt-title of a thumbnail."""
 
     # ex: Fuecoco · Scarlet & Violet Promos (SVP) #002
@@ -209,11 +217,11 @@ def get_card_info_from_title(title: str) -> SimpleCard:
             else:
                 break
         set_name = card_number.removesuffix(buffer)
-        return SimpleCard("", card_number, set_name, set_name)
+        return SimpleCard("", card_number, set_name, set_name, download_url)
 
     card_name, _set_details = _rest.split("·", 1)
     set_name, set_abbr = _set_details.replace(")", "").rsplit("(", 1)
-    return SimpleCard(card_name.strip(), card_number.strip(), set_name.strip(), set_abbr.strip().upper())
+    return SimpleCard(card_name.strip(), card_number.strip(), set_name.strip(), set_abbr.strip().upper(), download_url)
 
 
 def create_set(soup: Tag) -> CardSet:
