@@ -429,25 +429,24 @@ class KemonoCrawler(Crawler):
             return server
 
     async def __iter_user_posts_from_url(self, scrape_item: ScrapeItem, url: URL):
-        is_single_post = False
         page_generator = self.__api_pager(url)
         async for json_resp in page_generator:
             n_posts = 0
-            posts: list[dict[str, Any]] | None = json_resp.get("posts")
 
-            # Invividual post
-            if posts is None:
-                is_single_post = True
-                posts = [json_resp["post"]]
+            # From search results
+            if isinstance(json_resp, dict):
+                posts = json_resp.get("posts")  # type: ignore
+            # From profile
+            elif isinstance(json_resp, list):
+                posts: list[dict[str, Any]] = json_resp
+            else:
+                raise ScrapeError(422)
+
+            if not posts:
+                return
 
             for post in (UserPost(**entry) for entry in posts):
                 n_posts += 1
-                if is_single_post:
-                    await self._handle_user_post(scrape_item, post)
-                    continue
-
-                # Response has multiple posts, which means it comes from a profile or a search result.
-                # They need to be proccessed as children
                 link = self.parse_url(post.web_path_qs)
                 new_scrape_item = scrape_item.create_child(link)
                 await self._handle_user_post(new_scrape_item, post)
