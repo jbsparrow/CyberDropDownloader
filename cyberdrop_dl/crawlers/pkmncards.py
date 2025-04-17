@@ -131,15 +131,15 @@ class PkmncardsCrawler(Crawler):
         # This is just to set the max children limit. `handle_card` will add the actual title
         scrape_item.setup_as_profile("")
         page_url = self.primary_base_domain / "series" / scrape_item.url.parts[2]
-        await self.iter_from_url(scrape_item, page_url)
+        await self._iter_from_url(scrape_item, page_url)
 
     @error_handling_wrapper
     async def card_set(self, scrape_item: ScrapeItem) -> None:
         scrape_item.setup_as_album("")
         page_url = self.primary_base_domain / "set" / scrape_item.url.parts[2]
-        await self.iter_from_url(scrape_item, page_url)
+        await self._iter_from_url(scrape_item, page_url)
 
-    async def iter_from_url(self, scrape_item: ScrapeItem, url: URL) -> None:
+    async def _iter_from_url(self, scrape_item: ScrapeItem, url: URL) -> None:
         page_url = url.with_query(sort="date", ord="auto", display="images")
         async for soup in self.web_pager(page_url):
             for thumb in soup.select(CARD_SELECTOR):
@@ -151,27 +151,6 @@ class PkmncardsCrawler(Crawler):
                 new_scrape_item = scrape_item.create_child(card_page_url)
                 self.manager.task_group.create_task(self.handle_simple_card(new_scrape_item, simple_card))
                 scrape_item.add_children()
-
-    async def handle_simple_card(self, scrape_item: ScrapeItem, simple_card: SimpleCard):
-        async with self.set_locks[simple_card.set_abbr]:
-            card_set = self.known_sets.get(simple_card.set_abbr)
-            if not card_set:
-                # Make a request for 1 card, to get the set information about the set
-                card_set = await self.get_card_set(scrape_item)
-                if not card_set:  # Request failed
-                    return
-                self.known_sets[simple_card.set_abbr] = card_set
-
-        card = Card(simple_card.name, simple_card.number_str, card_set, simple_card.download_url)
-        await self.handle_card(scrape_item, card)
-        scrape_item.add_children()
-
-    @create_task_id
-    @error_handling_wrapper
-    async def get_card_set(self, scrape_item: ScrapeItem):
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
-        return create_set(soup)
 
     @error_handling_wrapper
     async def card(self, scrape_item: ScrapeItem) -> None:
@@ -197,6 +176,27 @@ class PkmncardsCrawler(Crawler):
         filename, ext = self.get_filename_and_ext(link.name, assume_ext=".jpg")
         custom_filename, _ = self.get_filename_and_ext(f"{card.full_name}{ext}")
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
+
+    async def handle_simple_card(self, scrape_item: ScrapeItem, simple_card: SimpleCard):
+        @create_task_id
+        @error_handling_wrapper
+        async def get_card_set(self, scrape_item: ScrapeItem):
+            async with self.request_limiter:
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            return create_set(soup)
+
+        async with self.set_locks[simple_card.set_abbr]:
+            card_set = self.known_sets.get(simple_card.set_abbr)
+            if not card_set:
+                # Make a request for 1 card, to get the set information about the set
+                card_set = await get_card_set(scrape_item)
+                if not card_set:  # Request failed
+                    return
+                self.known_sets[simple_card.set_abbr] = card_set
+
+        card = Card(simple_card.name, simple_card.number_str, card_set, simple_card.download_url)
+        await self.handle_card(scrape_item, card)
+        scrape_item.add_children()
 
 
 def create_simple_card(title: str, download_url: URL) -> SimpleCard:
