@@ -33,9 +33,8 @@ class Format(NamedTuple):
     name: str
 
 
-FORMATS_REGEX = re.compile(r"RESOLUTION=(?P<resolution>\d+x\d+)\n(?P<next_line>[^\n]+)")
-
 # Regex patterns, from https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/downloader/hls.py
+FORMATS_REGEX = re.compile(r"RESOLUTION=(?P<resolution>\d+x\d+)\n(?P<next_line>[^\n]+)")
 ENCRYPTED_REGEX = re.compile(r"#EXT-X-KEY:METHOD=(?!NONE|AES-128)")
 LIVE_STREAM_REGEX = re.compile(r"(?m)#EXT-X-MEDIA-SEQUENCE:(?!0$)")
 DRM_REGEX = re.compile(
@@ -52,49 +51,63 @@ DRM_REGEX = re.compile(
 
 class M3U8:
     def __init__(self, content: str, base_url: URL | None = None) -> None:
-        self._base_url = base_url
-        self._content = content
-        self._lines = content.splitlines()
+        self.base_url = base_url
+        self.content = content
+        self._lines = content.strip().splitlines()
         self._suffix = ".cdl_hsl"
-        self._segments: tuple[HlsSegment, ...] = ()
-
-    def new(self, base_url: URL | None = None):
-        """Creates a new playst with the same content but a new base_url"""
-        return M3U8(self._content, base_url)
-
-    @property
-    def base_url(self) -> URL | None:
-        return self._base_url
-
-    @base_url.setter
-    def base_url(self, url: URL) -> None:
-        if self._segments:
-            raise ValueError("Cannot set base. Segments were already generated. Call new() instead")
-        self._base_url = url
 
     @property
     def has_drm(self):
-        return bool(DRM_REGEX.search(self._content))
+        return bool(DRM_REGEX.search(self.content))
 
     @property
     def is_encrypted(self):
         # Encrypted streams do not necesarily have DRM
-        return bool(ENCRYPTED_REGEX.search(self._content))
+        return bool(ENCRYPTED_REGEX.search(self.content))
 
     @property
     def is_live_stream(self):
-        return bool(LIVE_STREAM_REGEX.search(self._content))
+        return bool(LIVE_STREAM_REGEX.search(self.content))
 
     @property
     def is_playlist(self):
-        return bool(FORMATS_REGEX.search(self._content))
+        return bool(FORMATS_REGEX.search(self.content))
 
-    def _gen_segments(self) -> Generator[HlsSegment]:
-        """NOTE: Calling this function directly won't update the internal segments. Acces the `segments` attribute instead"""
-        if self._segments:
-            yield from self._segments
-            return
+    @property
+    def best_format(self) -> Format:
+        try:
+            return max(self.__get_formats())
+        except ValueError:
+            raise M3U8Error("This is not a playlist") from None
 
+    async def gen_segments(self) -> AsyncGenerator[HlsSegment]:
+        for segment in self.__gen_segments():
+            yield segment
+            await asyncio.sleep(0)
+
+    async def get_all_segments(self) -> tuple[HlsSegment, ...]:
+        return tuple([seg async for seg in self.gen_segments()])
+
+    @staticmethod
+    def _clean_line(line: str) -> str | None:
+        # This is the only method that we may need to be update in the future, to be more robust and handle encryption
+        # All other methods are final
+
+        stripped_line = line.strip()
+        if stripped_line.startswith("#"):
+            # Handle audio playlist references
+            if "URI=" in stripped_line:
+                parts = stripped_line.split('URI="')
+                if len(parts) <= 1:
+                    raise InvalidM3U8Error
+                uri_part = parts[1].rsplit('"', 1)[0]
+                return uri_part or None
+            return None
+        return stripped_line or None
+
+    # ~~~~~~~~~~~~~~~~ PRIVATES ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    def __gen_segments(self) -> Generator[HlsSegment]:
         def get_last_part() -> str:
             for line in reversed(self._lines):
                 if part := self._clean_line(line):
@@ -123,47 +136,9 @@ class M3U8:
             name = f"{index:0{padding}d}{self._suffix}"
             yield HlsSegment(index, name, url)
 
-    async def _async_gen_segments(self) -> AsyncGenerator[HlsSegment]:
-        """NOTE: Calling this function directly won't update the internal segments, use `get_segments` instead"""
-        for segment in self._gen_segments():
-            yield segment
-            await asyncio.sleep(0)
-
-    @staticmethod
-    def _clean_line(line: str) -> str | None:
-        # This is the only method that may need to be updated in the future to be more robust
-        # All other methods are final
-
-        stripped_line = line.strip()
-        if stripped_line.startswith("#"):
-            # Handle audio playlist references
-            if "URI=" in stripped_line:
-                parts = stripped_line.split('URI="')
-                if len(parts) <= 1:
-                    raise InvalidM3U8Error
-                uri_part = parts[1].rsplit('"', 1)[0]
-                return uri_part or None
-            return None
-        return stripped_line or None
-
-    @property
-    def segments(self) -> tuple[HlsSegment, ...]:
-        if not self._segments:
-            self._segments = tuple(self._gen_segments())
-        return self._segments
-
-    async def get_segments(self) -> tuple[HlsSegment, ...]:
-        if not self._segments:
-            self._segments = tuple([seg async for seg in self._async_gen_segments()])
-        return self._segments
-
-    @property
-    def best_format(self) -> Format:
-        return max(self.get_formats())
-
-    def get_formats(self):
-        matches = FORMATS_REGEX.finditer(self._content)
-        for match in matches:
+    def __get_formats(self):
+        # This is very fast, does not need to be async
+        for match in FORMATS_REGEX.finditer(self.content):
             w, _, h = match.group("resolution").partition("x")
             name: str = match.group("next_line")
             yield Format(int(h), int(w), name)
