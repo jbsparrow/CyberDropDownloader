@@ -74,8 +74,6 @@ class SimpleCard:
 
     name: str
     number_str: str  # This can actually contain letters as well, but the oficial name is `number`
-    set_name: str
-    set_abbr: str
 
 
 @dataclass(slots=True)
@@ -193,7 +191,7 @@ class PkmncardsCrawler(Crawler):
 
 
 def get_card_info_from_title(title: str) -> SimpleCard:
-    """Over-complicated function to parse the information of a card from the title of a page or the alt-title of a thumbnail."""
+    """Parse the information of a card from the title of a page or the alt-title of a thumbnail."""
 
     # ex: Fuecoco · Scarlet & Violet Promos (SVP) #002
     # ex: Sprigatito · Scarlet & Violet Promos (SVP) #001 ‹ PkmnCards  # noqa: RUF003
@@ -203,18 +201,13 @@ def get_card_info_from_title(title: str) -> SimpleCard:
     _rest, card_number = clean_title.rsplit("#", 1)
     if clean_title.startswith("#"):
         # ex: #xy188 ‹ PkmnCards  # noqa: RUF003
-        buffer = ""
-        for char in reversed(card_number):
-            if char.isdigit():
-                buffer = char + buffer
-            else:
-                break
-        set_name = card_number.removesuffix(buffer)
-        return SimpleCard("", card_number, set_name, set_name)
+        return SimpleCard("", card_number.strip())
 
-    card_name, _set_details = _rest.split("·", 1)
-    set_name, set_abbr = _set_details.replace(")", "").rsplit("(", 1)
-    return SimpleCard(card_name.strip(), card_number.strip(), set_name.strip(), set_abbr.strip().upper())
+    if "·" not in _rest:
+        raise ScrapeError(422)
+
+    card_name, *_ = _rest.split("·", 1)
+    return SimpleCard(card_name.strip(), card_number.strip())
 
 
 def create_set(soup: Tag) -> CardSet:
