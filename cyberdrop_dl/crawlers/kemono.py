@@ -56,7 +56,7 @@ class URLInfo(NamedTuple):
     user_: str = ""  # the literal word "user" in the URL ex: "/user/"
     user_id: str = "Unknown"
     post_: str = ""  # the literal word "post" in the URL ex: "/post/"
-    post_id: str = "Unknown"
+    post_id: str | None = None
 
     @staticmethod
     def parse(url: URL) -> URLInfo:
@@ -368,6 +368,7 @@ class KemonoCrawler(Crawler):
         """Scrapes a post."""
 
         url_info = URLInfo.parse(scrape_item.url)
+        assert url_info.post_id, "Individual posts must have a post_id"
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
