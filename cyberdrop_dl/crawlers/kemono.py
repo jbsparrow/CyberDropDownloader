@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import calendar
 import functools
 import itertools
 import re
+from collections import defaultdict
 from datetime import datetime  # noqa: TC003
 from typing import TYPE_CHECKING, Any, NamedTuple
 
@@ -61,13 +63,9 @@ class URLInfo(NamedTuple):
         return URLInfo(*url.parts[1:6])
 
 
-class UserInfo(NamedTuple):
-    # Same information as URLInfo but includes the user_name.
-    # Getting the user_name requires making a new request when using the API
+class User(NamedTuple):
     service: str
-    user_id: str
-    post_id: str | None
-    user_name: str
+    id: str
 
 
 class File(TypedDict):
@@ -76,8 +74,8 @@ class File(TypedDict):
 
 
 class Post(AliasModel):
+    service: str
     user_id: str = Field(validation_alias="user")
-    user_name: str
     id: str
     title: str
     file: File | None = None  # TODO: Verify is a post can have more that 1 file
@@ -98,9 +96,17 @@ class Post(AliasModel):
             yield self.file
         yield from self.attachments
 
+    @property
+    def user(self) -> User:
+        return User(self.service, self.user_id)
+
 
 class PartialPost(NamedTuple):
-    """A simplified version of Post that we can built from a soup, for sites that do not have an API"""
+    """A simplified version of Post that we can built from a soup, for sites that do not have an API
+
+    Pros: We can get the post data + user_name in a single request
+
+    Cons: We need to make a request for every individual post"""
 
     title: str = ""
     content: str = ""
@@ -141,6 +147,8 @@ class KemonoCrawler(Crawler):
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "kemono", "Kemono")
         self.api_entrypoint: URL = URL("https://kemono.su/api/v1")
+        self.__known_user_names: dict[User, str] = {}
+        self.__user_names_locks: dict[User, asyncio.Lock] = defaultdict(asyncio.Lock)
         self.services: tuple[str, ...] = (
             "afdian",
             "boosty",
@@ -192,8 +200,8 @@ class KemonoCrawler(Crawler):
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile."""
-        info = await self.get_user_info(scrape_item)
-        _, api_url = self._api_w_offset(f"{info.service}/user/{info.user_id}", scrape_item.url)
+        url_info = URLInfo.parse(scrape_item.url)
+        _, api_url = self._api_w_offset(f"{url_info.service}/user/{url_info.user_id}", scrape_item.url)
         await self.iter_from_url(scrape_item, api_url)
 
     @fallback_if_no_api
@@ -208,16 +216,16 @@ class KemonoCrawler(Crawler):
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a post."""
-        user_info = await self.get_user_info(scrape_item)
-        assert user_info.post_id
-        path = f"{user_info.service}/user/{user_info.user_id}/post/{user_info.post_id}"
+        url_info = URLInfo.parse(scrape_item.url)
+        assert url_info.post_id, "Individual posts must have a post_id"
+        path = f"{url_info.service}/user/{url_info.user_id}/post/{url_info.post_id}"
         _, api_url = self._api_w_offset(path, scrape_item.url)
         async with self.request_limiter:
             json_resp: dict[str, dict] = await self.client.get_json(self.domain, api_url)
 
         # Not used
         # revisions = json_resp["props"].get("revisions", [])
-        post = Post(user_name=user_info.user_name, **json_resp["post"])
+        post = Post(**json_resp["post"])
         await self._handle_post(scrape_item, post)
 
     async def iter_from_url(self, scrape_item: ScrapeItem, url: URL):
@@ -241,7 +249,14 @@ class KemonoCrawler(Crawler):
             offset += 50
 
     async def _handle_post(self, scrape_item: ScrapeItem, post: Post):
-        title = self.create_title(f"{post.user_name}", post.user_id)
+        user = post.user
+        async with self.__user_names_locks[user]:
+            user_name = self.__known_user_names.get(user)
+            if not user_name:
+                user_name = await self.get_user_name(user)
+                self.__known_user_names[user] = user_name
+
+        title = self.create_title(user_name, post.user_id)
         scrape_item.setup_as_album(title, album_id=post.user_id)
         scrape_item.possible_datetime = post.date
         post_title = self.create_separate_post_title(post.title, post.id, post.date)
@@ -311,15 +326,13 @@ class KemonoCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    async def get_user_info(self, scrape_item: ScrapeItem) -> UserInfo:
+    async def get_user_name(self, user: User) -> str:
         """Gets the user info, making a new API call"""
-        url_info = URLInfo.parse(scrape_item.url)
-        api_url = self.api_entrypoint / url_info.service / "user" / url_info.user_id / "posts-legacy"
+        api_url = self.api_entrypoint / user.service / "user" / user.id / "posts-legacy"
         async with self.request_limiter:
             profile_json: dict = await self.client.get_json(self.domain, api_url)
 
-        user_name = profile_json["props"]["name"]
-        return UserInfo(url_info.service, url_info.user_id, url_info.post_id, user_name)
+        return profile_json["props"]["name"]
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -369,11 +382,16 @@ class KemonoCrawler(Crawler):
 
         post = Post(
             user_id=url_info.user_id,
-            user_name=post_info.user_name,
+            service=url_info.service,
             id=url_info.post_id,
             title=post_info.title,
             content=post_info.content,
             published_or_added=post_info.date,  # type: ignore
             soup_attachments=files,
         )
+        user = post.user
+        async with self.__user_names_locks[user]:
+            if not self.__known_user_names.get(user):
+                self.__known_user_names[user] = post_info.user_name
+
         await self._handle_post(scrape_item, post)
