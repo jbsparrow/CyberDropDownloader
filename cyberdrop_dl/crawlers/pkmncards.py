@@ -27,7 +27,7 @@ CARD_DOWNLOAD_SELECTOR = "li > a[title='Download Image']"
 CARD_SELECTOR = "a.card-image-link"
 CARD_PAGE_TITLE_SELECTOR = "meta[property='og:title']"
 CARD_NAME_SELECTOR = "span[title='Name'] a"
-CARD_NUMBER_SELECTOR = "span[title='Number'] a"
+CARD_NUMBER_SELECTOR = "span[class='number'] a"
 
 SET_NAME_SELECTOR = "span[title='Set'] a"
 SET_ABBR_SELECTOR = "span[title='Set Abbreviation'] a"
@@ -74,6 +74,8 @@ class SimpleCard:
 
     name: str
     number_str: str  # This can actually contain letters as well, but the oficial name is `number`
+    set_name: str
+    set_abbr: str
 
 
 @dataclass(slots=True)
@@ -125,13 +127,27 @@ class PkmncardsCrawler(Crawler):
         scrape_item.setup_as_profile("")
 
         page_url = self.primary_base_domain / "series" / scrape_item.url.parts[2]
-        page_url = page_url.with_query(sort="date", ord="auto", display="full")
+        page_url = page_url.with_query(sort="date", ord="auto")
+        known_sets: dict[str, CardSet] = {}
         async for soup in self.web_pager(page_url):
-            # Can't use `iter_children` becuase we need to pass `cart_tag` to self.card
-            for card_tag in soup.select(CARD_FROM_FULL_SELECTOR):
-                card_page_url_str: str = soup.select_one(CARD_PAGE_URL_SELECTOR)["href"]  # type: ignore
-                new_scrape_item = scrape_item.create_child(card_page_url_str)
-                await self.card(new_scrape_item, card_tag)
+            for thumb in soup.select(CARD_SELECTOR):
+                parts: tuple[str, str, str] = thumb.select_one("img")["src"], thumb["href"], thumb["title"]  # type: ignore
+                link_str, card_page_url_str, title = parts
+                simple_card = get_card_info_from_title(title)
+                card_page_url = self.parse_url(card_page_url_str)
+                download_url = self.parse_url(link_str)
+
+                card_set = known_sets.get(simple_card.set_abbr)
+                if not card_set:
+                    # Make a request for the first card to get the set information
+                    async with self.request_limiter:
+                        soup: BeautifulSoup = await self.client.get_soup(self.domain, card_page_url)
+                    card_set = create_set(soup)
+                    known_sets[simple_card.set_abbr] = card_set
+
+                new_scrape_item = scrape_item.create_child(card_page_url)
+                card = Card(simple_card.name, simple_card.number_str, card_set, download_url)
+                await self.handle_card(new_scrape_item, card)
                 scrape_item.add_children()
 
     @error_handling_wrapper
@@ -162,18 +178,15 @@ class PkmncardsCrawler(Crawler):
                 scrape_item.add_children()
 
     @error_handling_wrapper
-    async def card(self, scrape_item: ScrapeItem, card_tag: Tag | None = None) -> None:
-        if not card_tag:
-            async with self.request_limiter:
-                soup_or_tag = await self.client.get_soup(self.domain, scrape_item.url)
-        else:
-            soup_or_tag: Tag = card_tag
+    async def card(self, scrape_item: ScrapeItem) -> None:
+        async with self.request_limiter:
+            soup = await self.client.get_soup(self.domain, scrape_item.url)
 
-        name = soup_or_tag.select_one(CARD_NAME_SELECTOR).text  # type: ignore
-        number = soup_or_tag.select_one(CARD_NUMBER_SELECTOR).text  # type: ignore
-        link_str: str = soup_or_tag.select_one(CARD_DOWNLOAD_SELECTOR)["href"]  # type: ignore
+        name = soup.select_one(CARD_NAME_SELECTOR).text  # type: ignore
+        number = soup.select_one(CARD_NUMBER_SELECTOR).text  # type: ignore
+        link_str: str = soup.select_one(CARD_DOWNLOAD_SELECTOR)["href"]  # type: ignore
         link = self.parse_url(link_str)
-        card_set = create_set(soup_or_tag)
+        card_set = create_set(soup)
         card = Card(name, number, card_set, link)
         await self.handle_card(scrape_item, card)
 
@@ -191,7 +204,7 @@ class PkmncardsCrawler(Crawler):
 
 
 def get_card_info_from_title(title: str) -> SimpleCard:
-    """Parse the information of a card from the title of a page or the alt-title of a thumbnail."""
+    """Over-complicated function to parse the information of a card from the title of a page or the alt-title of a thumbnail."""
 
     # ex: Fuecoco · Scarlet & Violet Promos (SVP) #002
     # ex: Sprigatito · Scarlet & Violet Promos (SVP) #001 ‹ PkmnCards  # noqa: RUF003
@@ -201,13 +214,18 @@ def get_card_info_from_title(title: str) -> SimpleCard:
     _rest, card_number = clean_title.rsplit("#", 1)
     if clean_title.startswith("#"):
         # ex: #xy188 ‹ PkmnCards  # noqa: RUF003
-        return SimpleCard("", card_number.strip())
+        buffer = ""
+        for char in reversed(card_number):
+            if char.isdigit():
+                buffer = char + buffer
+            else:
+                break
+        set_name = card_number.removesuffix(buffer)
+        return SimpleCard("", card_number, set_name, set_name)
 
-    if "·" not in _rest:
-        raise ScrapeError(422)
-
-    card_name, *_ = _rest.split("·", 1)
-    return SimpleCard(card_name.strip(), card_number.strip())
+    card_name, _set_details = _rest.split("·", 1)
+    set_name, set_abbr = _set_details.replace(")", "").rsplit("(", 1)
+    return SimpleCard(card_name.strip(), card_number.strip(), set_name.strip(), set_abbr.strip().upper())
 
 
 def create_set(soup: Tag) -> CardSet:
