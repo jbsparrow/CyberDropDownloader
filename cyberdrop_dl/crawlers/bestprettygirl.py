@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import calendar
-from datetime import datetime
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
@@ -66,8 +64,7 @@ class BestPrettyGirlCrawler(Crawler):
                 else:
                     title: str = title_tag.get_text(strip=True)  # type: ignore
                     title = title.removeprefix("Tag:").removeprefix("Category:").strip()
-                    title = title + f" [{collection_type}]"
-                    title = self.create_title(title)
+                    title = self.create_title(f"{title} [{collection_type}]")
 
                 scrape_item.setup_as_album(title)
 
@@ -81,10 +78,9 @@ class BestPrettyGirlCrawler(Crawler):
 
         og_title: str = soup.select_one(TITLE_SELECTOR).get("content")  # type: ignore
         date_str: str = soup.select_one(DATE_SELECTOR).get("content")  # type: ignore
-        date = datetime.fromisoformat(date_str)
         title = self.create_title(og_title)
         scrape_item.setup_as_album(title)
-        scrape_item.possible_datetime = calendar.timegm(date.timetuple())
+        scrape_item.possible_datetime = self.parse_date(date_str)
 
         trash: str = ""
         for _, link in self.iter_tags(soup, IMAGES_SELECTOR, "src"):
