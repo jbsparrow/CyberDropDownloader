@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, ClassVar, NamedTuple
 from aiohttp import ClientConnectorError
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import DDOSGuardError, DownloadError, NoExtensionError, ScrapeError
+from cyberdrop_dl.clients.errors import DDOSGuardError, NoExtensionError, ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.constants import FILE_FORMATS
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, parse_url
@@ -313,7 +313,7 @@ class BunkrrCrawler(Crawler):
             global known_bad_hosts
             try:
                 soup: BeautifulSoup = await get_soup(url)
-            except (ClientConnectorError, DownloadError, DDOSGuardError):
+            except (ClientConnectorError, DDOSGuardError):
                 known_bad_hosts.add(url.host)  # type: ignore
                 if not HOST_OPTIONS - known_bad_hosts:
                     raise
