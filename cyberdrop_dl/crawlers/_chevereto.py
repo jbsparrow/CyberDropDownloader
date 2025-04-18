@@ -66,21 +66,20 @@ class CheveretoCrawler(Crawler):
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an user profile."""
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
-
-        title: str = soup.select_one(PROFILE_TITLE_SELECTOR)["content"]  # type: ignore
-        title = self.create_title(title)
-        scrape_item.setup_as_profile(title)
-
+        title: str = ""
         async for soup in self.web_pager(_sort_by_new(scrape_item.url), trim=False):
+            if not title:
+                title: str = soup.select_one(PROFILE_TITLE_SELECTOR)["content"]  # type: ignore
+                title = self.create_title(title)
+                scrape_item.setup_as_profile(title)
+
             for thumb, new_scrape_item in self.iter_children(scrape_item, soup, ITEM_SELECTOR):
                 # Item may be an image, a video or an album
                 # For images, we can download the file from the thumbnail
                 if any(p in new_scrape_item.url.parts for p in IMAGES_PARTS):
                     _, new_scrape_item.url = self.get_canonical_url(new_scrape_item, "image")
                     await self.handle_direct_link(new_scrape_item, thumb)
-                    return
+                    continue
                 # For videos and albums, we have to keep scraping
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
