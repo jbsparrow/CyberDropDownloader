@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import calendar
-import datetime
 import json
 import re
 from typing import TYPE_CHECKING, NamedTuple
@@ -104,7 +102,7 @@ class AShemaleTubeCrawler(Crawler):
         if video_object := soup.select_one(VIDEO_OBJECT_SCRIPT_SELECTOR):
             json_data = json.loads(video_object.text.strip())
             if "uploadDate" in json_data:
-                scrape_item.possible_datetime = parse_datetime(json_data["uploadDate"])
+                scrape_item.possible_datetime = self.parse_date(json_data["uploadDate"])
 
         title: str = soup.select_one("title").text.split("- aShemaletube.com")[0].strip()  # type: ignore
         link = self.parse_url(best_format.link_str)
@@ -143,9 +141,3 @@ def parse_player_info(script_text: str) -> tuple[bool, Format]:
         format: Format = get_best_quality(json.loads(urls_info))
         return is_hls, format
     raise ScrapeError(404)
-
-
-def parse_datetime(date: str) -> int:
-    """Parses a datetime string into a unix timestamp."""
-    dt = datetime.datetime.fromisoformat(date)
-    return calendar.timegm(dt.timetuple())
