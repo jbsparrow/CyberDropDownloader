@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import calendar
-import datetime
 from typing import TYPE_CHECKING
 
 from yarl import URL
@@ -55,7 +53,7 @@ class EHentaiCrawler(Crawler):
                 gallery_id = scrape_item.url.parts[2]
                 title = self.create_title(title, gallery_id)
                 scrape_item.setup_as_album(title, album_id=gallery_id)
-                scrape_item.possible_datetime = self.parse_datetime(date_str)
+                scrape_item.possible_datetime = self.parse_date(date_str)
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, IMAGES_SELECTOR):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
@@ -84,11 +82,3 @@ class EHentaiCrawler(Crawler):
         async with self.request_limiter:
             await self.client.get_soup(self.domain, url)
         self._warnings_set = True
-
-    @staticmethod
-    def parse_datetime(date: str) -> int:
-        """Parses a datetime string into a unix timestamp."""
-        if date.count(":") == 1:
-            date = date + ":00"
-        parsed_date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
-        return calendar.timegm(parsed_date.timetuple())
