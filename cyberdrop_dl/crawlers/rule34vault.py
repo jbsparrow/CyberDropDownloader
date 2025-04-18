@@ -6,17 +6,17 @@ from typing import TYPE_CHECKING
 from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
 class Selectors:
-    CONTENT = "div[class='box-grid ng-star-inserted']:first-child a[class='box ng-star-inserted']"
+    CONTENT = "div[class='box-grid ng-star-inserted'] a[class='box ng-star-inserted']"
     TITLE = "div[class*=title]"
     DATE = 'div[class="posted-date-full text-secondary mt-4 ng-star-inserted"]'
     VIDEO = 'div[class="con-video ng-star-inserted"] > video > source'
@@ -47,32 +47,22 @@ class Rule34VaultCrawler(Crawler):
     async def tag(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
 
-        # Broken
-        raise NotImplementedError
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+        init_page = int(scrape_item.url.query.get("page") or 1)
+        for page in itertools.count(init_page):
+            n_images = 0
+            url = scrape_item.url.with_query(page=page)
+            async with self.request_limiter:
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, url)
 
-        title = self.create_title(scrape_item.url.parts[1])
-        scrape_item.part_of_album = True
-        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
+            title = self.create_title(scrape_item.url.parts[1])
+            scrape_item.setup_as_album(title)
 
-        content_block = soup.select_one('div[class="box-grid ng-star-inserted"]')
-        content = content_block.select('a[class="box ng-star-inserted"]')
-        if not content:
-            return
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.CONTENT):
+                n_images += 1
+                self.manager.task_group.create_task(self.run(new_scrape_item))
 
-        for file_page in content:
-            link_str: str = file_page.get("href")
-            link = self.parse_url(link_str)
-            new_scrape_item = self.create_scrape_item(scrape_item, link, title, add_parent=scrape_item.url)
-            self.manager.task_group.create_task(self.run(new_scrape_item))
-            scrape_item.add_children()
-
-        page = scrape_item.url.query.get("page", 1)
-        page_number = int(page)
-        next_page = scrape_item.url.with_query(page=page_number + 1)
-        new_scrape_item = self.create_scrape_item(scrape_item, next_page)
-        self.manager.task_group.create_task(self.run(new_scrape_item))
+            if n_images < 30:
+                break
 
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem) -> None:
