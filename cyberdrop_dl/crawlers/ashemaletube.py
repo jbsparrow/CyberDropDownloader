@@ -50,9 +50,9 @@ class AShemaleTubeCrawler(Crawler):
         """Determines where to send the scrape item based on the url."""
         if any(p in scrape_item.url.parts for p in ("creators", "profiles", "pornstars", "model")):
             return await self.model(scrape_item)
-        elif "videos" in scrape_item.url.parts:
+        if "videos" in scrape_item.url.parts:
             return await self.video(scrape_item)
-        elif "playlists" in scrape_item.url.parts:
+        if "playlists" in scrape_item.url.parts:
             return await self.playlist(scrape_item)
         raise ValueError
 
@@ -84,7 +84,7 @@ class AShemaleTubeCrawler(Crawler):
     async def video(self, scrape_item: ScrapeItem) -> None:
         video_id: str = scrape_item.url.parts[2]
         canonical_url = self.primary_base_domain / "videos" / video_id
-        if await self.check_complete_from_referer(scrape_item.url):
+        if await self.check_complete_from_referer(canonical_url):
             return
 
         async with self.request_limiter:
