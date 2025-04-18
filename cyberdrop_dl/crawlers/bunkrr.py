@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import base64
-import calendar
-import datetime
 import json
 import math
 import re
@@ -82,7 +80,7 @@ class ApiResponse(NamedTuple):
 class AlbumItem:
     name: str
     thumbnail: str
-    date: int
+    date: str
     url: URL
 
     @classmethod
@@ -90,10 +88,9 @@ class AlbumItem:
         name = tag.select_one(ITEM_NAME_SELECTOR).text  # type: ignore
         thumbnail: str = tag.select_one(THUMBNAIL_SELECTOR).get("src")  # type: ignore
         date_str = tag.select_one(ITEM_DATE_SELECTOR).text.strip()  # type: ignore
-        date = parse_datetime(date_str)
         link_str: str = tag.find("a").get("href")  # type: ignore
         link = parse_url(link_str)
-        return cls(name, thumbnail, date, link)
+        return cls(name, thumbnail, date_str, link)
 
     def get_src(self, parse_url: Callable[..., URL]) -> URL:
         src_str = self.thumbnail.replace("/thumbs/", "/")
@@ -155,7 +152,7 @@ class BunkrrCrawler(Crawler):
 
         for tag in item_tags:
             item = AlbumItem.from_tag(tag, parse_url)
-            new_scrape_item = scrape_item.create_child(item.url, possible_datetime=item.date)
+            new_scrape_item = scrape_item.create_child(item.url, possible_datetime=self.parse_date(item.date))
             await self.process_album_item(new_scrape_item, item, results)
             scrape_item.add_children()
 
@@ -212,7 +209,7 @@ class BunkrrCrawler(Crawler):
             raise ScrapeError(422, "Could not find source")
 
         if not scrape_item.possible_datetime and (date_str := soup.select_one(ITEM_DATE_SELECTOR)):
-            scrape_item.possible_datetime = parse_datetime(date_str.text.strip())
+            scrape_item.possible_datetime = self.parse_date(date_str.text.strip())
 
         title: str = soup.select_one("h1").text.strip()  # type: ignore
         await self.handle_direct_link(scrape_item, link, fallback_filename=title)
@@ -372,13 +369,7 @@ def override_cdn(url: URL) -> URL:
 
 def is_reinforced_link(url: URL) -> bool:
     assert url.host
-    return any(part in url.host.split(".") for part in ("get",)) and "file" in url.parts
-
-
-def parse_datetime(date: str) -> int:
-    """Parses a datetime string into a unix timestamp."""
-    parsed_date = datetime.datetime.strptime(date, "%H:%M:%S %d/%m/%Y")
-    return calendar.timegm(parsed_date.timetuple())
+    return url.host.startswith("get.") and "file" in url.parts
 
 
 def with_suffix_encoded(url: URL, suffix: str) -> URL:
