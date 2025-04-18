@@ -192,7 +192,8 @@ class BunkrrCrawler(Crawler):
         # Try to get downloadd URL from streaming API. Should work for most files, even none video files
         if not link and "f" in scrape_item.url.parts:
             slug = get_slug_from_soup(soup) or scrape_item.url.name or scrape_item.url.parent.name
-            slug_url = scrape_item.url.origin() / "f" / slug
+            base = URL(f"https://{self.known_good_host}") if self.known_good_host else scrape_item.url.origin()
+            slug_url = base / "f" / slug
             link = await self.get_download_url_from_api(slug_url)
 
         # Fallback for everything else, try to get the download URL. `handle_direct_link` will make the final request to the API
