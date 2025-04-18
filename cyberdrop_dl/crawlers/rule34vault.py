@@ -39,38 +39,15 @@ class Rule34VaultCrawler(Crawler):
         """Determines where to send the scrape item based on the url."""
         if "post" in scrape_item.url.parts:
             return await self.file(scrape_item)
-        if "playlists/view" in scrape_item.url.path:
-            return await self.playlist(scrape_item)
-        await self.tag(scrape_item)
+        if "playlists" in scrape_item.url.parts and "view" not in scrape_item.url.parts:
+            raise ValueError
+        return await self.playlist_or_tag(scrape_item)
 
     @error_handling_wrapper
-    async def tag(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album."""
-
-        init_page = int(scrape_item.url.query.get("page") or 1)
-        title: str = ""
-        for page in itertools.count(init_page):
-            n_images = 0
-            url = scrape_item.url.with_query(page=page)
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, url)
-
-            if not title:
-                title = self.create_title(scrape_item.url.parts[1])
-                scrape_item.setup_as_album(title)
-
-            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.CONTENT):
-                n_images += 1
-                self.manager.task_group.create_task(self.run(new_scrape_item))
-
-            if n_images < 30:
-                break
-
-    @error_handling_wrapper
-    async def playlist(self, scrape_item: ScrapeItem) -> None:
+    async def playlist_or_tag(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a playlist."""
 
-        album_id = scrape_item.url.parts[-1]
+        is_playlist = "playlists" in scrape_item.url.parts
         init_page = int(scrape_item.url.query.get("page") or 1)
         title: str = ""
         for page in itertools.count(init_page):
@@ -80,9 +57,14 @@ class Rule34VaultCrawler(Crawler):
                 soup: BeautifulSoup = await self.client.get_soup(self.domain, url)
 
             if not title:
-                title_str: str = soup.select_one(_SELECTORS.TITLE).text  # type: ignore
-                title = self.create_title(title_str, album_id)
-                scrape_item.setup_as_album(title, album_id=album_id)
+                if is_playlist:
+                    album_id = scrape_item.url.parts[-1]
+                    title_str: str = soup.select_one(_SELECTORS.TITLE).text  # type: ignore
+                    title = self.create_title(title_str, album_id)
+                    scrape_item.setup_as_album(title, album_id=album_id)
+                else:
+                    title = self.create_title(scrape_item.url.parts[1])
+                    scrape_item.setup_as_album(title)
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.CONTENT):
                 n_images += 1
