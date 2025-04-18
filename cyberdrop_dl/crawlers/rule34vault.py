@@ -76,12 +76,18 @@ class Rule34VaultCrawler(Crawler):
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image."""
+
+        canonical_url = scrape_item.url.with_query(None)
+        if await self.check_complete_from_referer(canonical_url):
+            return
+
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         if date_tag := soup.select_one(_SELECTORS.DATE):
             scrape_item.possible_datetime = self.parse_date(date_tag.text, "%b %d, %Y, %I:%M:%S %p")
 
+        scrape_item.url = canonical_url
         media_tag = soup.select_one(_SELECTORS.VIDEO) or soup.select_one(_SELECTORS.IMAGE)
         link_str: str = media_tag["src"]  # type: ignore
         for trash in (".small", ".thumbnail", ".picsmall", ".720", ".hevc"):
