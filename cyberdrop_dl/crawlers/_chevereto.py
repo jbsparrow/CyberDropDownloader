@@ -29,14 +29,7 @@ IMAGES_PARTS = "image", "img"
 ALBUM_PARTS = "a", "album"
 VIDEO_PARTS = "video", "videos"
 DIRECT_LINK_PARTS = ("images",)
-
-
-def _clean(url: URL) -> URL:
-    return url.with_name(url.name.replace(".md.", ".").replace(".th.", "."))
-
-
-def _sort_by_new(url: URL) -> URL:
-    return url.with_query(sort="date_desc", page=1)
+PASSWORD_PROTECTED_STR = "This content is password protected"
 
 
 class Media(StrEnum):
@@ -47,6 +40,15 @@ class Media(StrEnum):
 
 VIDEO_SELECTOR = "meta[property='og:video']", "content"
 IMAGE_SELECTOR = "div[id=image-viewer] img", "src"
+
+
+def clean_name(url: URL) -> URL:
+    return url.with_name(url.name.replace(".md.", ".").replace(".th.", "."))
+
+
+def sort_by_new(url: URL) -> URL:
+    init_page = int(url.query.get("page") or 1)
+    return url.with_query(sort="date_desc", page=init_page)
 
 
 class CheveretoCrawler(Crawler):
@@ -76,7 +78,7 @@ class CheveretoCrawler(Crawler):
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an user profile."""
         title: str = ""
-        async for soup in self.web_pager(_sort_by_new(scrape_item.url), trim=False):
+        async for soup in self.web_pager(sort_by_new(scrape_item.url), trim=False):
             if not title:
                 title: str = soup.select_one(PROFILE_TITLE_SELECTOR)["content"]  # type: ignore
                 title = self.create_title(title)
@@ -99,7 +101,7 @@ class CheveretoCrawler(Crawler):
         results = await self.get_album_results(album_id)
         original_url = scrape_item.url
         title: str = ""
-        async for soup in self.web_pager(_sort_by_new(scrape_item.url), trim=False):
+        async for soup in self.web_pager(sort_by_new(scrape_item.url), trim=False):
             if not title:
                 await self.check_password_protected(soup, scrape_item.url)
                 title: str = soup.select_one(ALBUM_TITLE_SELECTOR).text  # type: ignore
@@ -117,7 +119,7 @@ class CheveretoCrawler(Crawler):
         # Sub album URL needs to be the full URL + a 'sub'
         # Using the canonical URL + 'sub' won't work because it redirects to the "homepage" of the album
         sub_album_url = original_url / "sub"
-        async for soup in self.web_pager(_sort_by_new(sub_album_url), trim=False):
+        async for soup in self.web_pager(sort_by_new(sub_album_url), trim=False):
             for _, sub_album in self.iter_children(scrape_item, soup, ITEM_SELECTOR):
                 self.manager.task_group.create_task(self.run(sub_album))
 
@@ -125,19 +127,19 @@ class CheveretoCrawler(Crawler):
         password = url.query.get("password", "")
         url = url.with_query(None)
 
-        if "This content is password protected" in soup.text and password:
+        if PASSWORD_PROTECTED_STR in soup.text and password:
             data = {"content-password": password}
             async with self.request_limiter:
                 html = await self.client.post_data(self.domain, url, data=data, raw=True)
-                soup = BeautifulSoup(html, "html.parser")
+            soup = BeautifulSoup(html, "html.parser")
 
-        if "This content is password protected" in soup.text:
+        if PASSWORD_PROTECTED_STR in soup.text:
             raise PasswordProtectedError(message="Wrong password" if password else None)
 
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem, url: URL | None = None) -> None:
         """Handles a direct link."""
-        link = _clean(url or scrape_item.url)
+        link = clean_name(url or scrape_item.url)
         link = self.parse_url(re.sub(JPG5_REPLACE_HOST_REGEX, r"host.church/", str(link)))
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
@@ -148,7 +150,7 @@ class CheveretoCrawler(Crawler):
         async with self.request_limiter:
             json_resp: dict[str, str] = await self.client.get_json(self.domain, embed_url)
 
-        link = _clean(self.parse_url(json_resp["url"]))
+        link = clean_name(self.parse_url(json_resp["url"]))
         filename = json_resp["title"] + link.suffix
         return filename, link
 
