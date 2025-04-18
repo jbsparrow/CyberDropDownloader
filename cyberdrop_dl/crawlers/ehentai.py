@@ -41,8 +41,9 @@ class EHentaiCrawler(Crawler):
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
-        if not self._warnings_set:
-            await self.set_no_warnings(scrape_item)
+        async with self.startup_lock:
+            if not self._warnings_set:
+                await self.set_no_warnings(scrape_item)
 
         title: str = ""
         scrape_item.url = scrape_item.url.with_query(None)
