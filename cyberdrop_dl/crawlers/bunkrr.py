@@ -16,9 +16,8 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import DDOSGuardError, DownloadError, NoExtensionError, ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.constants import FILE_FORMATS
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, parse_url
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, parse_url
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup, Tag
@@ -403,9 +402,7 @@ def get_slug_from_soup(soup: BeautifulSoup) -> str | None:
     info_js = soup.select_one(_SELECTORS.JS_SLUG)
     if not info_js:
         return
-    info_js_dict = javascript.parse_js_vars(info_js.text)
-    javascript.clean_dict(info_js_dict)
-    return info_js_dict.get("jsSlug")
+    return get_text_between(info_js.text, "jsSlug = '", "';")
 
 
 def is_root_domain(url: URL):
