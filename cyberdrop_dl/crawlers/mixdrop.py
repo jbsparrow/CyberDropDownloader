@@ -61,6 +61,7 @@ class MixDropCrawler(Crawler):
 
     @staticmethod
     def create_download_link(soup: BeautifulSoup) -> URL:
+        # Defined as a method to simplify subclasses calls
         js_text = soup.select_one(JS_SELECTOR).text  # type: ignore
         file_id = get_text_between(js_text, "|v2||", "|")
         parts = get_text_between(js_text, "MDCore||", "|thumbs").split("|")

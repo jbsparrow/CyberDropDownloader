@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import create_task_id
@@ -19,15 +20,19 @@ JS_SELECTOR = "script:contains('MDCore.ref')"
 VIDEO_SELECTOR = "iframe[src*=mixdrop]"
 USER_NAME_SELECTOR = "div.info a[href*='archivebate.store/profile/']"
 SITE_NAME_SELECTOR = f"{USER_NAME_SELECTOR} + p"
+NEXT_PAGE_SELECTOR = "a.page-link[rel='next']"
+PROFILE_VIDEOS_SELECTOR = "section.video_item a"
 
 
 class ArchiveBateCrawler(MixDropCrawler):
     primary_base_domain = URL("https://www.archivebate.store")
+    next_page_selector = NEXT_PAGE_SELECTOR
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager)
         self.domain = "archivebate"
         self.folder_domain = "ArchiveBate"
+        self.request_limiter = AsyncLimiter(4, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -36,7 +41,20 @@ class ArchiveBateCrawler(MixDropCrawler):
         """Determines where to send the scrape item based on the url."""
         if "watch" in scrape_item.url.parts:
             return await self.video(scrape_item)
+
+        if "profile" in scrape_item.url.parts:
+            return await self.profile(scrape_item)
+
         raise ValueError
+
+    async def profile(self, scrape_item: ScrapeItem) -> None:
+        # Not supported, video entries are dinamically generated with javascript
+        # They have an API to request them but it also returns javascript
+        raise ValueError
+        scrape_item.setup_as_profile("")
+        async for soup in self.web_pager(scrape_item.url):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, PROFILE_VIDEOS_SELECTOR):
+                self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
@@ -65,7 +83,7 @@ class ArchiveBateCrawler(MixDropCrawler):
         show_title = f"Show on {date_str}"
 
         mixdrop_url = self.parse_url(video_src)
-
+        return
         if await self.check_complete_from_referer(mixdrop_url):
             return
 
