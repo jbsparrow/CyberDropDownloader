@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from enum import StrEnum, auto
 from functools import partialmethod
-from typing import TYPE_CHECKING, Literal, TypeAlias
+from typing import TYPE_CHECKING
 
 from bs4 import BeautifulSoup
 
@@ -44,8 +44,6 @@ class Media(StrEnum):
     IMAGE = auto()
     VIDEO = auto()
 
-
-UrlType: TypeAlias = Literal["album", "image", "video"]
 
 VIDEO_SELECTOR = "meta[property='og:video']", "content"
 IMAGE_SELECTOR = "div[id=image-viewer] img", "src"
@@ -88,7 +86,7 @@ class CheveretoCrawler(Crawler):
                 # Item may be an image, a video or an album
                 # For images, we can download the file from the thumbnail
                 if any(p in new_scrape_item.url.parts for p in IMAGES_PARTS):
-                    _, new_scrape_item.url = self.get_canonical_url(new_scrape_item.url, "image")
+                    _, new_scrape_item.url = self.get_canonical_url(new_scrape_item.url, Media.IMAGE)
                     await self.handle_direct_link(new_scrape_item, thumb)
                     continue
                 # For videos and albums, we have to keep scraping
@@ -113,7 +111,7 @@ class CheveretoCrawler(Crawler):
                 assert thumb
                 if self.check_album_results(thumb, results):
                     continue
-                _, new_scrape_item.url = self.get_canonical_url(new_scrape_item.url, "image")
+                _, new_scrape_item.url = self.get_canonical_url(new_scrape_item.url, Media.IMAGE)
                 await self.handle_direct_link(new_scrape_item, thumb)
 
         # Sub album URL needs to be the full URL + a 'sub'
@@ -155,12 +153,12 @@ class CheveretoCrawler(Crawler):
         return filename, link
 
     @error_handling_wrapper
-    async def _proccess_media_item(self, scrape_item: ScrapeItem, url_type: UrlType, selector: tuple[str, str]) -> None:
+    async def _proccess_media_item(self, scrape_item: ScrapeItem, type: Media, selector: tuple[str, str]) -> None:
         """Scrapes a media item."""
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        _, canonical_url = self.get_canonical_url(scrape_item.url, url_type)
+        _, canonical_url = self.get_canonical_url(scrape_item.url, type)
         if await self.check_complete_from_referer(canonical_url):
             return
 
@@ -172,7 +170,7 @@ class CheveretoCrawler(Crawler):
             link = self.parse_url(link_str)
 
         except AttributeError:
-            raise ScrapeError(422, f"Couldn't find {url_type} source") from None
+            raise ScrapeError(422, f"Couldn't find {type} source") from None
 
         scrape_item.possible_datetime = self.parse_date(get_date_from_soup(soup))
         scrape_item.url = canonical_url
@@ -183,12 +181,12 @@ class CheveretoCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    def get_canonical_url(self, url: URL, url_type: UrlType = "album") -> tuple[str, URL]:
+    def get_canonical_url(self, url: URL, url_type: Media = Media.ALBUM) -> tuple[str, URL]:
         """Returns the id and canonical URL from a given item (album, image or video)."""
         search_parts = ALBUM_PARTS
-        if url_type == "image":
+        if url_type == Media.IMAGE:
             search_parts = IMAGES_PARTS
-        elif url_type == "video":
+        elif url_type == Media.VIDEO:
             search_parts = VIDEO_PARTS
 
         found_part = next(p for p in search_parts if p in url.parts)
