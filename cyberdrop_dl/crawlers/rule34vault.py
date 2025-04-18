@@ -39,7 +39,7 @@ class Rule34VaultCrawler(Crawler):
         """Determines where to send the scrape item based on the url."""
         if "post" in scrape_item.url.parts:
             return await self.file(scrape_item)
-        if "playlists" in scrape_item.url.parts:
+        if "playlists/view" in scrape_item.url.path:
             return await self.playlist(scrape_item)
         await self.tag(scrape_item)
 
@@ -69,24 +69,26 @@ class Rule34VaultCrawler(Crawler):
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a playlist."""
-        title: str = ""
+
         album_id = scrape_item.url.parts[-1]
-        for page in itertools.count(1):
+        init_page = int(scrape_item.url.query.get("page") or 1)
+        title: str = ""
+        for page in itertools.count(init_page):
             url = scrape_item.url.with_query(page=page)
-            has_content = False
+            n_images = 0
             async with self.request_limiter:
                 soup: BeautifulSoup = await self.client.get_soup(self.domain, url)
 
             if not title:
                 title_str: str = soup.select_one(_SELECTORS.TITLE).text  # type: ignore
                 title = self.create_title(title_str, album_id)
-                scrape_item.setup_as_album(title)
+                scrape_item.setup_as_album(title, album_id=album_id)
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.CONTENT):
-                has_content = True
+                n_images += 1
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
-            if not has_content:
+            if n_images < 30:
                 break
 
     @error_handling_wrapper
