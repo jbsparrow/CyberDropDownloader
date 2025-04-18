@@ -48,11 +48,11 @@ class CheveretoCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        assert scrape_item.url.host
-        if scrape_item.url.host.count(".") > 1:
-            return await self.handle_direct_link(scrape_item)
+        return await self._fetch_chevereto_defaults(scrape_item)
 
-        scrape_item.url = scrape_item.url.with_host(self.primary_base_domain.host)  # type: ignore
+    async def _fetch_chevereto_defaults(self, scrape_item: ScrapeItem):
+        if scrape_item.url.host.count(".") > 1:  # type: ignore
+            return await self.handle_direct_link(scrape_item)
         if any(part in scrape_item.url.parts for part in ALBUM_PARTS):
             return await self.album(scrape_item)
         if any(part in scrape_item.url.parts for part in IMAGES_PARTS):
@@ -197,7 +197,8 @@ class CheveretoCrawler(Crawler):
         return _id, self.parse_url(new_path, scrape_item.url.origin())
 
 
-def get_date_from_soup(soup: BeautifulSoup) -> str | None:
+def get_date_from_soup(soup: BeautifulSoup) -> str:
     for row in soup.select(ITEM_DESCRIPTION_SELECTOR):
         if any(text in row.text.casefold() for text in ("uploaded", "added to")):
             return row.select_one("span")["title"]  # type: ignore
+    return ""

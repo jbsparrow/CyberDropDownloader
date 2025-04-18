@@ -41,6 +41,10 @@ class JPG5Crawler(CheveretoCrawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    async def fetch(self, scrape_item: ScrapeItem):
+        scrape_item.url = scrape_item.url.with_host("jpg5.su")
+        return await self._fetch_chevereto_defaults(scrape_item)
+
     async def video(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a video."""
         raise ValueError
