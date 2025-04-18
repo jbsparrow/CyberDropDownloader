@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 from cyberdrop_dl import env
 
+from .archivebate import ArchiveBateCrawler
 from .ashemaletube import AShemaleTubeCrawler
 from .bestprettygirl import BestPrettyGirlCrawler
 from .bunkrr import BunkrrCrawler
