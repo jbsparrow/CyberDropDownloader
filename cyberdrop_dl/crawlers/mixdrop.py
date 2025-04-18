@@ -52,19 +52,19 @@ class MixDropCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, embed_url)
 
-        link = create_download_link(soup)
+        link = self.create_download_link(soup)
         filename, ext = self.get_filename_and_ext(link.name)
         custom_filename, _ = self.get_filename_and_ext(title)
         await self.handle_file(
             canonical_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=link
         )
 
-
-def create_download_link(soup: BeautifulSoup) -> URL:
-    js_text = soup.select_one(JS_SELECTOR).text  # type: ignore
-    file_id = get_text_between(js_text, "|v2||", "|")
-    parts = get_text_between(js_text, "MDCore||", "|thumbs").split("|")
-    secure_key = get_text_between(js_text, f"{file_id}|", "|")
-    timestamp = int((datetime.now() + timedelta(hours=1)).timestamp())
-    host, ext, expires = ".".join(parts[:-3]), parts[-3], parts[-1]
-    return URL(f"https://s-{host}/v2/{file_id}.{ext}").with_query(s=secure_key, e=expires, t=timestamp)
+    @staticmethod
+    def create_download_link(soup: BeautifulSoup) -> URL:
+        js_text = soup.select_one(JS_SELECTOR).text  # type: ignore
+        file_id = get_text_between(js_text, "|v2||", "|")
+        parts = get_text_between(js_text, "MDCore||", "|thumbs").split("|")
+        secure_key = get_text_between(js_text, f"{file_id}|", "|")
+        timestamp = int((datetime.now() + timedelta(hours=1)).timestamp())
+        host, ext, expires = ".".join(parts[:-3]), parts[-3], parts[-1]
+        return URL(f"https://s-{host}/v2/{file_id}.{ext}").with_query(s=secure_key, e=expires, t=timestamp)
