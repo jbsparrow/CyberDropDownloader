@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import calendar
-import datetime
 import itertools
 from typing import TYPE_CHECKING
 
@@ -106,7 +104,7 @@ class Rule34VaultCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         if date_tag := soup.select_one(_SELECTORS.DATE):
-            scrape_item.possible_datetime = parse_datetime(date_tag.text)
+            scrape_item.possible_datetime = self.parse_date(date_tag.text, "%b %d, %Y, %I:%M:%S %p")
 
         media_tag = soup.select_one(_SELECTORS.VIDEO) or soup.select_one(_SELECTORS.IMAGE)
         link_str: str = media_tag["src"]  # type: ignore
@@ -118,9 +116,3 @@ class Rule34VaultCrawler(Crawler):
         await self.handle_file(link, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-
-def parse_datetime(date: str) -> int:
-    """Parses a datetime string into a unix timestamp."""
-    parsed_date = datetime.datetime.strptime(date, "%b %d, %Y, %I:%M:%S %p")
-    return calendar.timegm(parsed_date.timetuple())
