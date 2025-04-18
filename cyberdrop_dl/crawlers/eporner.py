@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-from functools import cached_property
 from typing import TYPE_CHECKING, NamedTuple
 
-from pydantic import ByteSize
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
@@ -24,22 +22,25 @@ RESOLUTIONS = ["4k", "2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"] 
 ALLOW_AV1 = True
 
 
-DOWNLOADS_SELECTOR = "div#hd-porn-dload > div.dloaddivcol"
-PHOTO_SELECTOR = "div#gridphoto > a.photohref"
-VIDEO_SELECTOR = "div[id^='vf'] div.mbcontent a"
-NEXT_PAGE_SELECTOR = "div.numlist2 a.nmnext"
-H264_SELECTOR = "span.download-h264 > a"
-AV1_SELECTOR = "span.download-av1 > a"
-PROFILE_GALLERY_SELECTOR = "div[id^='pf'] a"
-PROFILE_PLAYLIST_SELECTOR = "div.streameventsday.showAll > div#pl > a"
-DATE_JS_SELECTOR = "main script:contains('uploadDate')"
+class Selectors:
+    DOWNLOADS = "div#hd-porn-dload > div.dloaddivcol"
+    PHOTO = "div#gridphoto > a.photohref"
+    VIDEO = "div[id^='vf'] div.mbcontent a"
+    NEXT_PAGE = "div.numlist2 a.nmnext"
+    H264 = "span.download-h264 > a"
+    AV1 = "span.download-av1 > a"
+    PROFILE_GALLERY = "div[id^='pf'] a"
+    PROFILE_PLAYLIST = "div.streameventsday.showAll > div#pl > a"
+    DATE_JS = "main script:contains('uploadDate')"
+    GALLERY_TITLE = "div#galleryheader > h1"
 
-GALLERY_TITLE_SELECTOR = "div#galleryheader > h1"
+
+_SELECTORS = Selectors()
 
 PROFILE_URL_PARTS = {
-    "pics": ("uploaded-pics", PROFILE_GALLERY_SELECTOR),
-    "videos": ("uploaded-videos", VIDEO_SELECTOR),
-    "playlists": ("playlists", PROFILE_PLAYLIST_SELECTOR),
+    "pics": ("uploaded-pics", _SELECTORS.PROFILE_GALLERY),
+    "videos": ("uploaded-videos", _SELECTORS.VIDEO),
+    "playlists": ("playlists", _SELECTORS.PROFILE_PLAYLIST),
 }
 
 
@@ -48,10 +49,6 @@ class VideoInfo(NamedTuple):
     resolution: str
     size: str
     link_str: str
-
-    @cached_property
-    def byte_size(self) -> ByteSize:
-        return ByteSize(self.size)
 
     @classmethod
     def from_tag(cls, tag: Tag) -> VideoInfo:
@@ -66,7 +63,7 @@ class VideoInfo(NamedTuple):
 
 class EpornerCrawler(Crawler):
     primary_base_domain = URL("https://www.eporner.com/")
-    next_page_selector = NEXT_PAGE_SELECTOR
+    next_page_selector = _SELECTORS.NEXT_PAGE
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "eporner", "ePorner")
@@ -127,7 +124,7 @@ class EpornerCrawler(Crawler):
                 scrape_item.setup_as_album(title)
                 added_title = True
 
-            for _, new_scrape_item in self.iter_children(scrape_item, soup, VIDEO_SELECTOR):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEO):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -135,11 +132,11 @@ class EpornerCrawler(Crawler):
         title: str = ""
         async for soup in self.web_pager(scrape_item.url):
             if not title:
-                title = soup.select_one(GALLERY_TITLE_SELECTOR).get_text(strip=True)  # type: ignore
+                title = soup.select_one(_SELECTORS.GALLERY_TITLE).get_text(strip=True)  # type: ignore
                 title = self.create_title(title)
                 scrape_item.setup_as_album(title)
 
-            for thumb, new_scrape_item in self.iter_children(scrape_item, soup, PROFILE_GALLERY_SELECTOR):
+            for thumb, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.PROFILE_GALLERY):
                 assert thumb
                 filename = thumb.name.rsplit("-", 1)[0]
                 filename, ext = self.get_filename_and_ext(f"{filename}{thumb.suffix}")
@@ -157,7 +154,7 @@ class EpornerCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         scrape_item.url = canonical_url
-        img = soup.select_one(PHOTO_SELECTOR)
+        img = soup.select_one(_SELECTORS.PHOTO)
         if not img:
             raise ScrapeError(422)
         link_str: str = img.get("href")  # type: ignore
@@ -198,11 +195,11 @@ class EpornerCrawler(Crawler):
 
 
 def get_available_resolutions(soup: BeautifulSoup) -> list[VideoInfo]:
-    downloads = soup.select_one(DOWNLOADS_SELECTOR)
+    downloads = soup.select_one(_SELECTORS.DOWNLOADS)
     assert downloads
-    formats = downloads.select(H264_SELECTOR)
+    formats = downloads.select(_SELECTORS.H264)
     if ALLOW_AV1:
-        formats.extend(downloads.select(AV1_SELECTOR))
+        formats.extend(downloads.select(_SELECTORS.AV1))
     return [VideoInfo.from_tag(tag) for tag in formats]
 
 
@@ -227,7 +224,7 @@ def get_best_quality(soup: BeautifulSoup) -> tuple[str, str]:
 
 
 def get_info_dict(soup: BeautifulSoup) -> dict:
-    info_js_script = soup.select_one(DATE_JS_SELECTOR)
+    info_js_script = soup.select_one(_SELECTORS.DATE_JS)
     info_dict: dict = javascript.parse_json_to_dict(info_js_script.text, use_regex=False)  # type: ignore
     javascript.clean_dict(info_dict)
     log_debug(info_dict)
