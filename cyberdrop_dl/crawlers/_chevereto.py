@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from enum import StrEnum, auto
 from functools import partialmethod
 from typing import TYPE_CHECKING
@@ -16,8 +15,6 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
-
-JPG5_REPLACE_HOST_REGEX = re.compile(r"(jpg\.fish/)|(jpg\.fishing/)|(jpg\.church/)")
 
 JS_SELECTOR = "script[data-cfasync='false']:contains('image_viewer_full_fix')"
 JS_CONTENT_START = "document.addEventListener('DOMContentLoaded', function(event)"
@@ -87,7 +84,7 @@ class CheveretoCrawler(Crawler):
             for thumb, new_scrape_item in self.iter_children(scrape_item, soup, ITEM_SELECTOR):
                 # Item may be an image, a video or an album
                 # For images, we can download the file from the thumbnail
-                if any(p in new_scrape_item.url.parts for p in IMAGES_PARTS):
+                if any(part in new_scrape_item.url.parts for part in IMAGES_PARTS):
                     _, new_scrape_item.url = self.get_canonical_url(new_scrape_item.url, Media.IMAGE)
                     await self.handle_direct_link(new_scrape_item, thumb)
                     continue
@@ -140,7 +137,6 @@ class CheveretoCrawler(Crawler):
     async def handle_direct_link(self, scrape_item: ScrapeItem, url: URL | None = None) -> None:
         """Handles a direct link."""
         link = clean_name(url or scrape_item.url)
-        link = self.parse_url(re.sub(JPG5_REPLACE_HOST_REGEX, r"host.church/", str(link)))
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 

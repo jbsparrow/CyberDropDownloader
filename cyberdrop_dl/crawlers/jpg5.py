@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
@@ -14,6 +15,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 PRIMARY_BASE_DOMAIN = URL("https://jpg5.su")
+JPG5_REPLACE_HOST_REGEX = re.compile(r"(jpg\.fish/)|(jpg\.fishing/)|(jpg\.church/)")
 JPG5_DOMAINS = [
     "jpg5.su",
     "jpg.homes",
@@ -32,7 +34,6 @@ JPG5_DOMAINS = [
 
 class JPG5Crawler(CheveretoCrawler):
     primary_base_domain = PRIMARY_BASE_DOMAIN
-
     SUPPORTED_SITES = {"jpg5.su": JPG5_DOMAINS}  # noqa: RUF012
 
     def __init__(self, manager: Manager, _) -> None:
@@ -55,11 +56,16 @@ class JPG5Crawler(CheveretoCrawler):
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        _, canonical_url = self.get_canonical_url(scrape_item, url_type)
+        _, canonical_url = self.get_canonical_url(scrape_item.url, url_type)
         if await self.check_complete_from_referer(canonical_url):
             return
 
         _, link = await self.get_embed_info(scrape_item.url)
-
         scrape_item.url = canonical_url
         await self.handle_direct_link(scrape_item, link)
+
+    async def handle_direct_link(self, scrape_item: ScrapeItem, url: URL | None = None) -> None:
+        """Handles a direct link."""
+        link = url or scrape_item.url
+        link = self.parse_url(re.sub(JPG5_REPLACE_HOST_REGEX, r"host.church/", str(link)))
+        super().handle_direct_link(scrape_item, link)
