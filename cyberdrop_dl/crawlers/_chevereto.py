@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import calendar
-import datetime
 import re
 from typing import TYPE_CHECKING, Literal, TypeAlias
 
@@ -158,7 +156,7 @@ class CheveretoCrawler(Crawler):
         except AttributeError:
             raise ScrapeError(422, f"Couldn't find {url_type} source") from None
 
-        add_date_from_soup(scrape_item, soup)
+        scrape_item.possible_datetime = self.parse_date(get_date_from_soup(soup))
         scrape_item.url = canonical_url
         await self.handle_direct_link(scrape_item, link)
 
@@ -199,15 +197,7 @@ class CheveretoCrawler(Crawler):
         return _id, self.parse_url(new_path, scrape_item.url.origin())
 
 
-def parse_datetime(date: str) -> int:
-    """Parses a datetime string into a unix timestamp."""
-    parsed_date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
-    return calendar.timegm(parsed_date.timetuple())
-
-
-def add_date_from_soup(scrape_item: ScrapeItem, soup: BeautifulSoup) -> None:
+def get_date_from_soup(soup: BeautifulSoup) -> str | None:
     for row in soup.select(ITEM_DESCRIPTION_SELECTOR):
         if any(text in row.text.casefold() for text in ("uploaded", "added to")):
-            date_str: str = row.select_one("span")["title"]  # type: ignore
-            scrape_item.possible_datetime = parse_datetime(date_str)
-            return
+            return row.select_one("span")["title"]  # type: ignore
