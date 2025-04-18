@@ -38,7 +38,7 @@ class Post(Protocol):
 
 
 class Crawler(ABC):
-    SUPPORTED_SITES: ClassVar[dict[str, list]] = {}
+    SUPPORTED_SITES: ClassVar[dict[str, list[str]]] = {}
     domain: str = None  # type: ignore
     primary_base_domain: URL = None  # type: ignore
     DEFAULT_POST_TITLE_FORMAT = "{date} - {number} - {title}"
@@ -129,6 +129,7 @@ class Crawler(ABC):
         *,
         custom_filename: str | None = None,
         debrid_link: URL | None = None,
+        m3u8_content: str = "",
     ) -> None:
         """Finishes handling the file and hands it off to the downloader."""
         await self.manager.states.RUNNING.wait()
@@ -154,7 +155,11 @@ class Crawler(ABC):
             self.manager.progress_manager.download_progress.add_skipped()
             return
 
-        self.manager.task_group.create_task(self.downloader.run(media_item))
+        if not m3u8_content:
+            self.manager.task_group.create_task(self.downloader.run(media_item))
+            return
+
+        self.manager.task_group.create_task(self.downloader.download_hls(media_item, m3u8_content))
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 

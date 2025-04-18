@@ -25,15 +25,15 @@ class FileLocksVault:
     @asynccontextmanager
     async def get_lock(self, filename: str) -> AsyncGenerator:
         """Get filelock for the provided filename. Creates one if none exists"""
-        log_debug(f"Checking lock for {filename}", 20)
+        log_debug(f"Checking lock for '{filename}'", 20)
         if filename not in self._locked_files:
-            log_debug(f"Lock for {filename} does not exists", 20)
+            log_debug(f"Lock for '{filename}' does not exists", 20)
 
         self._locked_files[filename] = self._locked_files.get(filename, asyncio.Lock())
         async with self._locked_files[filename]:
-            log_debug(f"Lock for {filename} acquired", 20)
+            log_debug(f"Lock for '{filename}' acquired", 20)
             yield
-            log_debug(f"Lock for {filename} released", 20)
+            log_debug(f"Lock for '{filename}' released", 20)
 
 
 class DownloadManager:

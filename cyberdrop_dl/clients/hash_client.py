@@ -56,12 +56,16 @@ class HashClient:
                 await self.update_db_and_retrive_hash(file)
 
     async def hash_item(self, media_item: MediaItem) -> None:
+        if media_item.is_segment:
+            return
         hash = await self.update_db_and_retrive_hash(
             media_item.complete_file, media_item.original_filename, media_item.referer
         )
         self.save_hash_data(media_item, hash)
 
     async def hash_item_during_download(self, media_item: MediaItem) -> None:
+        if media_item.is_segment:
+            return
         if self.manager.config_manager.settings_data.dupe_cleanup_options.hashing != Hashing.IN_PLACE:
             return
         await self.manager.states.RUNNING.wait()

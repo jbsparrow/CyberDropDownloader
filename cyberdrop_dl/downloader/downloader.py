@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
+import re
 from dataclasses import field
 from functools import wraps
 from http import HTTPStatus
@@ -19,15 +19,15 @@ from cyberdrop_dl.clients.errors import (
     RestrictedFiletypeError,
 )
 from cyberdrop_dl.utils.constants import CustomHTTPStatus
+from cyberdrop_dl.utils.data_enums_classes.url_objects import HlsSegment, MediaItem
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Generator
 
     from cyberdrop_dl.clients.download_client import DownloadClient
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
 
 KNOWN_BAD_URLS = {
@@ -117,7 +117,8 @@ class Downloader:
         self.waiting_items += 1
         media_item.current_attempt = 0
         await self.client.mark_incomplete(media_item, self.domain)
-        self.update_queued_files()
+        if not media_item.is_segment:
+            self.update_queued_files()
         async with self._semaphore:
             await self.manager.states.RUNNING.wait()
             self.waiting_items -= 1
@@ -125,6 +126,84 @@ class Downloader:
             self.update_queued_files(increase_total=False)
             async with self.manager.client_manager.download_session_limit:
                 return await self.start_download(media_item)
+
+    @error_handling_wrapper
+    async def download_hls(self, media_item: MediaItem, m3u8_content: str) -> None:
+        assert media_item.debrid_link
+        await self.client.mark_incomplete(media_item, self.domain)
+        if not self.manager.ffmpeg.is_available:
+            raise DownloadError("FFmpeg Error", "FFmpeg is required for HLS downloads but is not available", media_item)
+
+        seg_media_items: list[MediaItem] = []
+        media_item.complete_file = s = media_item.download_folder / media_item.filename
+        segments_folder = s.with_suffix(".cdl_hls")
+        m3u8_lines = m3u8_content.splitlines()
+
+        def create_segments() -> Generator[HlsSegment]:
+            def get_last_segment_line() -> str:
+                for line in reversed(m3u8_lines):
+                    if not line.startswith("#"):
+                        return line.strip()
+                raise DownloadError("Invalid M3U8", "Inable to parse m3u8 content", media_item)
+
+            def get_segment_lines() -> Generator[str]:
+                for line in m3u8_lines:
+                    segment = line.strip()
+                    if not segment or segment.startswith("#"):
+                        continue
+                    yield segment
+
+            last_segment_part = get_last_segment_line()
+            last_index_str = re.sub(r"\D", "", last_segment_part)
+            padding = max(5, len(last_index_str))
+            parts = get_segment_lines()
+            for index, part in enumerate(parts, 1):
+                url = media_item.debrid_link / part  # type: ignore
+                name = f"{index:0{padding}d}.cdl_hsl"
+                yield HlsSegment(part, name, url)
+
+        def make_download_task(segment: HlsSegment):
+            seg_media_item = MediaItem(
+                segment.url,
+                media_item,
+                segments_folder,
+                segment.name,
+                ext=media_item.ext,
+                is_segment=True,
+                # add_to_database=False,
+                # quiet=True,
+                # reference=media_item,
+                # skip_hashing=True,
+            )
+            seg_media_items.append(seg_media_item)
+            return self.run(seg_media_item)
+
+        self.update_queued_files()
+        results = await asyncio.gather(*(make_download_task(s) for s in create_segments()))
+        n_segmets = len(results)
+        n_successful = sum(1 for r in results if r)
+
+        if n_successful != n_segmets:
+            msg = f"Download of some segments failed. Successful: {n_successful:,}/{n_segmets:,} "
+            raise DownloadError("HLS Seg Error", msg, media_item)
+
+        seg_paths = [m.complete_file for m in seg_media_items if m.complete_file]
+        ffmpeg_result = await self.manager.ffmpeg.concat(*seg_paths, output_file=media_item.complete_file)
+
+        if not ffmpeg_result.success:
+            raise DownloadError("FFmpeg Concat Error", ffmpeg_result.stderr, media_item)
+
+        await self.client.process_completed(media_item, self.domain)
+        await self.client.handle_media_item_completion(media_item, downloaded=ffmpeg_result.success)
+        self.finalize_download(media_item, ffmpeg_result.success)
+
+    def finalize_download(self, media_item: MediaItem, downloaded: bool) -> None:
+        if downloaded:
+            Path.chmod(media_item.complete_file, 0o666)
+            self.set_file_datetime(media_item, media_item.complete_file)
+        self.attempt_task_removal(media_item)
+        self.manager.progress_manager.download_progress.add_completed()
+        log(f"Download finished: {media_item.url}", 20)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -154,14 +233,18 @@ class Downloader:
     def attempt_task_removal(self, media_item: MediaItem) -> None:
         """Attempts to remove the task from the progress bar."""
         if media_item.task_id is not None:
-            with contextlib.suppress(ValueError):
+            try:
                 self.manager.progress_manager.file_progress.remove_task(media_item.task_id)
-        media_item.task_id = None
+            except ValueError:
+                pass
+
+            media_item.set_task_id(None)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def start_download(self, media_item: MediaItem) -> bool:
-        log(f"{self.log_prefix} starting: {media_item.url}", 20)
+        if not media_item.is_segment:
+            log(f"{self.log_prefix} starting: {media_item.url}", 20)
         if not media_item.file_lock_reference_name:
             media_item.file_lock_reference_name = media_item.filename
         lock = self._file_lock_vault.get_lock(media_item.file_lock_reference_name)

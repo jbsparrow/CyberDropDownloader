@@ -60,6 +60,8 @@ def limiter(func: Callable) -> Any:
 
 def check_file_duration(media_item: MediaItem, manager: Manager) -> bool:
     """Checks the file runtime against the config runtime limits."""
+    if media_item.is_segment:
+        return True
 
     is_video = media_item.ext.lower() in FILE_FORMATS["Videos"]
     is_audio = media_item.ext.lower() in FILE_FORMATS["Audio"]
@@ -214,14 +216,18 @@ class DownloadClient:
                 log(msg, 30)
                 media_item.datetime = last_modified
 
-            media_item.task_id = self.manager.progress_manager.file_progress.add_task(
-                domain=domain,
-                filename=media_item.filename,
-                expected_size=media_item.filesize + resume_point,
-            )
+            task_id = media_item.task_id
+            if task_id is None:
+                task_id = self.manager.progress_manager.file_progress.add_task(
+                    domain=domain,
+                    filename=media_item.filename,
+                    expected_size=media_item.filesize + resume_point,
+                )
+                media_item.set_task_id(task_id)
+
             if media_item.partial_file.is_file():
                 resume_point = media_item.partial_file.stat().st_size
-                self.manager.progress_manager.file_progress.advance_file(media_item.task_id, resume_point)
+                self.manager.progress_manager.file_progress.advance_file(task_id, resume_point)
 
             await save_content(resp.content)
             return True
@@ -305,6 +311,8 @@ class DownloadClient:
 
     async def mark_incomplete(self, media_item: MediaItem, domain: str) -> None:
         """Marks the media item as incomplete in the database."""
+        if media_item.is_segment:
+            return
         await self.manager.db_manager.history_table.insert_incompleted(domain, media_item)
 
     async def process_completed(self, media_item: MediaItem, domain: str) -> None:

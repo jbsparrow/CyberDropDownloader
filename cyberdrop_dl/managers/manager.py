@@ -24,6 +24,7 @@ from cyberdrop_dl.managers.storage_manager import StorageManager
 from cyberdrop_dl.ui.textual import TextualUI
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.args import ParsedArgs
+from cyberdrop_dl.utils.ffmpeg import FFmpeg, get_ffmpeg_version
 from cyberdrop_dl.utils.logger import QueuedLogger, log
 from cyberdrop_dl.utils.transfer import transfer_v5_db_to_v6
 
@@ -57,6 +58,7 @@ class Manager:
         self.progress_manager: ProgressManager = field(init=False)
         self.live_manager: LiveManager = field(init=False)
         self.textual_log_queue: queue.Queue = field(init=False)
+        self.ffmpeg: FFmpeg = field(init=False)
         self._textual_ui: TextualUI = field(init=False)
 
         self._loaded_args_config: bool = False
@@ -86,6 +88,9 @@ class Manager:
 
         if isinstance(self.parsed_args, Field):
             self.parsed_args = ParsedArgs.parse_args()
+
+        if self.parsed_args.cli_only_args.show_supported_sites:
+            show_supported_sites()
 
         self.path_manager = PathManager(self)
         self.path_manager.pre_startup()
@@ -153,6 +158,9 @@ class Manager:
             self.download_manager = DownloadManager(self)
         if not isinstance(self.real_debrid_manager, RealDebridManager):
             self.real_debrid_manager = RealDebridManager(self)
+
+        if not isinstance(self.ffmpeg, FFmpeg):
+            self.ffmpeg = FFmpeg(self)
 
         await self.async_db_hash_startup()
 
@@ -261,6 +269,7 @@ class Manager:
         log(f"Using Authentication: \n{json.dumps(auth_provided, indent=4, sort_keys=True)}")
         log(f"Using Settings: \n{config_settings}")
         log(f"Using Global Settings: \n{global_settings}")
+        log(f"Using FFmpeg version: {get_ffmpeg_version()}")
 
     async def async_db_close(self) -> None:
         "Partial shutdown for managers used for hash directory scanner"
@@ -314,3 +323,20 @@ def get_system_information() -> str:
     }
 
     return json.dumps(system_info, indent=4)
+
+
+def show_supported_sites():
+    import sys
+
+    from rich import print
+    from rich.table import Table
+
+    from cyberdrop_dl.scraper.scrape_mapper import gen_crawlers_info
+
+    table = Table(title="Cyberdrop-DL Supported Sites")
+    for column in ("Site", "Crawler", "Primary Base Domain"):
+        table.add_column(column, no_wrap=True)
+    for crawler in gen_crawlers_info():
+        table.add_row(crawler.site, crawler.name, str(crawler.primary_base_domain))
+    print(table)
+    sys.exit(0)

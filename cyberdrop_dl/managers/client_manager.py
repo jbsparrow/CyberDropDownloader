@@ -25,6 +25,7 @@ from cyberdrop_dl.utils.logger import log, log_spacer
 from cyberdrop_dl.utils.utilities import get_soup_from_response
 
 if TYPE_CHECKING:
+    from aiohttp_client_cache import CachedResponse
     from curl_cffi.requests.models import Response as CurlResponse
 
     from cyberdrop_dl.managers.manager import Manager
@@ -159,39 +160,53 @@ class ClientManager:
     @classmethod
     async def check_http_status(
         cls,
-        response: ClientResponse | CurlResponse,
+        response: ClientResponse | CurlResponse | CachedResponse,
         download: bool = False,
         origin: ScrapeItem | URL | None = None,
-    ) -> None:
-        """Checks the HTTP status code and raises an exception if it's not acceptable."""
-        is_curl = not isinstance(response, ClientResponse)
-        status = response.status_code if is_curl else response.status
+    ) -> BeautifulSoup | None:
+        """Checks the HTTP status code and raises an exception if it's not acceptable.
+
+        If the response is successful and has valid html, returns soup
+        """
+        status: int = response.status_code if hasattr(response, "status_code") else response.status  # type: ignore
         headers = response.headers
+        url_host: str = URL(response.url).host  # type: ignore
         message = None
 
-        e_tag = headers.get("ETag")
-        if download and e_tag in DOWNLOAD_ERROR_ETAGS:
-            message = DOWNLOAD_ERROR_ETAGS.get(e_tag)
-            raise DownloadError(HTTPStatus.NOT_FOUND, message=message, origin=origin)
+        def check_etag():
+            if download and (e_tag := headers.get("ETag")) in DOWNLOAD_ERROR_ETAGS:
+                message = DOWNLOAD_ERROR_ETAGS.get(e_tag)
+                raise DownloadError(HTTPStatus.NOT_FOUND, message=message, origin=origin)
 
+        async def check_ddos_guard():
+            if soup := await get_soup_from_response(response):
+                if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
+                    raise DDOSGuardError(origin=origin)
+                return soup
+
+        async def check_json_status():
+            if not any(domain in url_host for domain in ("gofile", "imgur")):
+                return
+
+            with contextlib.suppress(ContentTypeError):
+                json_resp: dict[str, Any] | None = await response.json()
+                if not json_resp:
+                    return
+                json_status: str | int | None = json_resp.get("status")
+                if json_status and isinstance(status, str) and "notFound" in status:
+                    raise ScrapeError(404, origin=origin)
+
+                if (data := json_resp.get("data")) and isinstance(data, dict) and "error" in data:
+                    raise ScrapeError(json_status or status, data["error"], origin=origin)
+
+        check_etag()
         if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
+            # We need to check DDosGuard even on successful pages, but it was causing the response content to be empty
+            # await check_ddos_guard()
             return
 
-        if any(domain in response.url.host for domain in ("gofile", "imgur")):  # type: ignore
-            with contextlib.suppress(ContentTypeError):
-                JSON_Resp: dict = await response.json()
-                status: str | int = JSON_Resp.get("status")  # type: ignore
-                if status and isinstance(status, str) and "notFound" in status:
-                    raise ScrapeError(404, origin=origin)
-                data = JSON_Resp.get("data")
-                if data and isinstance(data, dict) and "error" in data:
-                    raise ScrapeError(status, data["error"], origin=origin)
-
-        soup = await get_soup_from_response(response)
-        if soup:
-            if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
-                raise DDOSGuardError(origin=origin)
-
+        await check_json_status()
+        await check_ddos_guard()
         raise DownloadError(status=status, message=message, origin=origin)
 
     @staticmethod
