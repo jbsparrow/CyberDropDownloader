@@ -8,7 +8,6 @@ from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
-from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -16,10 +15,6 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
-
-
-RESOLUTIONS = ["4k", "2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"]  # best to worst
-ALLOW_AV1 = True
 
 
 class Selectors:
@@ -37,6 +32,8 @@ class Selectors:
 
 _SELECTORS = Selectors()
 
+RESOLUTIONS = ["4k", "2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"]  # best to worst
+ALLOW_AV1 = True
 PROFILE_URL_PARTS = {
     "pics": ("uploaded-pics", _SELECTORS.PROFILE_GALLERY),
     "videos": ("uploaded-videos", _SELECTORS.VIDEO),
@@ -52,10 +49,9 @@ class VideoInfo(NamedTuple):
 
     @classmethod
     def from_tag(cls, tag: Tag) -> VideoInfo:
-        link_str: str = tag.get("href")  # type: ignore
-        name = tag.get_text()
-        name_string = name.removeprefix("Download").strip()
-        details = name_string.split("(", 1)[1].removesuffix(")").split(",")
+        link_str: str = tag["href"]  # type: ignore
+        name = tag.get_text(strip=True).removeprefix("Download")
+        details = name.split("(", 1)[1].removesuffix(")").split(",")
         res, codec, size = tuple([d.strip() for d in details])
         codec = codec.lower()
         return cls(codec, res, size, link_str)
@@ -112,17 +108,15 @@ class EpornerCrawler(Crawler):
 
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem, from_profile: bool = False) -> None:
-        added_title = False
-
+        title: str = ""
         async for soup in self.web_pager(scrape_item.url):
-            if not added_title and not from_profile:
+            if not title and not from_profile:
                 title = soup.title.text  # type: ignore
                 title_trash = "Porn Star Videos", "Porn Videos", "Videos -", "EPORNER"
                 for trash in title_trash:
                     title = title.rsplit(trash)[0].strip()
                 title = self.create_title(title)
                 scrape_item.setup_as_album(title)
-                added_title = True
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEO):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
@@ -157,7 +151,7 @@ class EpornerCrawler(Crawler):
         img = soup.select_one(_SELECTORS.PHOTO)
         if not img:
             raise ScrapeError(422)
-        link_str: str = img.get("href")  # type: ignore
+        link_str: str = img["href"]  # type: ignore
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
@@ -213,7 +207,6 @@ def get_best_quality(soup: BeautifulSoup) -> tuple[str, str]:
     for res in RESOLUTIONS:
         formats_dict[res] = sorted(f for f in formats if f.resolution == res)
 
-    log_debug(formats_dict)
     for res in RESOLUTIONS:
         available_formats = formats_dict.get(res)
         if available_formats:
@@ -227,7 +220,6 @@ def get_info_dict(soup: BeautifulSoup) -> dict:
     info_js_script = soup.select_one(_SELECTORS.DATE_JS)
     info_dict: dict = javascript.parse_json_to_dict(info_js_script.text, use_regex=False)  # type: ignore
     javascript.clean_dict(info_dict)
-    log_debug(info_dict)
     return info_dict
 
 
