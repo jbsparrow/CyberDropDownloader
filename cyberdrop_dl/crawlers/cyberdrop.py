@@ -17,9 +17,15 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 API_ENTRYPOINT = URL("https://api.cyberdrop.me/api/")
-ALBUM_TITLE_SELECTOR = "h1[id=title]"
-ALBUM_DATE_SELECTOR = "p[class=title]"
-ALBUM_ITEM_SELECTOR = "div[class*=image-container] a[class=image]"
+
+
+class Selectors:
+    ALBUM_TITLE = "h1[id=title]"
+    ALBUM_DATE = "p[class=title]"
+    ALBUM_ITEM = "div[class*=image-container] a[class=image]"
+
+
+_SELECTORS = Selectors()
 
 
 class CyberdropCrawler(Crawler):
@@ -48,17 +54,17 @@ class CyberdropCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         try:
-            title: str = soup.select_one(ALBUM_TITLE_SELECTOR).text  # type: ignore
+            title: str = soup.select_one(_SELECTORS.ALBUM_TITLE).text  # type: ignore
             title = self.create_title(title, album_id)
             scrape_item.setup_as_album(title, album_id=album_id)
         except AttributeError:
             msg = "Unable to parse album information from response content"
             raise ScrapeError(422, msg) from None
 
-        if date_tags := soup.select(ALBUM_DATE_SELECTOR):
+        if date_tags := soup.select(_SELECTORS.ALBUM_DATE):
             scrape_item.possible_datetime = self.parse_date(date_tags[-1].text, "%d.%m.%Y")
 
-        for _, new_scrape_item in self.iter_children(scrape_item, soup, ALBUM_ITEM_SELECTOR):
+        for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.ALBUM_ITEM):
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -68,7 +74,7 @@ class CyberdropCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        file_id = scrape_item.url.path[3:]
+        file_id = scrape_item.url.name
         async with self.request_limiter:
             api_url = API_ENTRYPOINT / "file" / "info" / file_id
             json_resp = await self.client.get_json(self.domain, api_url)
