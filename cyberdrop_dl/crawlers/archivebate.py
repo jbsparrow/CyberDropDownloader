@@ -16,17 +16,21 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
-JS_SELECTOR = "script:contains('MDCore.ref')"
-VIDEO_SELECTOR = "iframe[src*=mixdrop]"
-USER_NAME_SELECTOR = "div.info a[href*='archivebate.store/profile/']"
-SITE_NAME_SELECTOR = f"{USER_NAME_SELECTOR} + p"
-NEXT_PAGE_SELECTOR = "a.page-link[rel='next']"
-PROFILE_VIDEOS_SELECTOR = "section.video_item a"
+class Selectors:
+    JS = "script:contains('MDCore.ref')"
+    VIDEO = "iframe[src*=mixdrop]"
+    USER_NAME = "div.info a[href*='archivebate.store/profile/']"
+    SITE_NAME = f"{USER_NAME} + p"
+    NEXT_PAGE = "a.page-link[rel='next']"
+    PROFILE_VIDEOS = "section.video_item a"
+
+
+_SELECTORS = Selectors()
 
 
 class ArchiveBateCrawler(MixDropCrawler):
     primary_base_domain = URL("https://www.archivebate.store")
-    next_page_selector = NEXT_PAGE_SELECTOR
+    next_page = _SELECTORS.NEXT_PAGE
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager)
@@ -53,7 +57,7 @@ class ArchiveBateCrawler(MixDropCrawler):
         raise ValueError
         scrape_item.setup_as_profile("")
         async for soup in self.web_pager(scrape_item.url):
-            for _, new_scrape_item in self.iter_children(scrape_item, soup, PROFILE_VIDEOS_SELECTOR):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.PROFILE_VIDEOS):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -74,16 +78,15 @@ class ArchiveBateCrawler(MixDropCrawler):
 
         og_props = get_og_properties(soup)
         date_str: str = get_text_between(og_props.description, "show on", " - ").strip()
-        user_name: str = soup.select_one(USER_NAME_SELECTOR).text  # type: ignore
-        site_name: str = soup.select_one(SITE_NAME_SELECTOR).text  # type: ignore
-        video_src: str = soup.select_one(VIDEO_SELECTOR)["src"]  # type: ignore
+        user_name: str = soup.select_one(_SELECTORS.USER_NAME).text  # type: ignore
+        site_name: str = soup.select_one(_SELECTORS.SITE_NAME).text  # type: ignore
+        video_src: str = soup.select_one(_SELECTORS.VIDEO)["src"]  # type: ignore
         title = self.create_title(f"{user_name} [{site_name}]")
         scrape_item.setup_as_profile(title)
         scrape_item.possible_datetime = self.parse_date(date_str)
         show_title = f"Show on {date_str}"
 
         mixdrop_url = self.parse_url(video_src)
-        return
         if await self.check_complete_from_referer(mixdrop_url):
             return
 

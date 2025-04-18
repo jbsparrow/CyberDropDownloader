@@ -15,8 +15,12 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
-JS_SELECTOR = "script:contains('MDCore.ref')"
-FILE_NAME_SELECTOR = "div.tbl-c.title b"
+class Selectors:
+    JS = "script:contains('MDCore.ref')"
+    FILE_NAME = "div.tbl-c.title b"
+
+
+_SELECTOR = Selectors()
 
 
 class MixDropCrawler(Crawler):
@@ -47,7 +51,7 @@ class MixDropCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, canonical_url)
 
-        title = soup.select_one(FILE_NAME_SELECTOR).get_text(strip=True)  # type: ignore
+        title = soup.select_one(_SELECTOR.FILE_NAME).get_text(strip=True)  # type: ignore
 
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, embed_url)
@@ -62,7 +66,7 @@ class MixDropCrawler(Crawler):
     @staticmethod
     def create_download_link(soup: BeautifulSoup) -> URL:
         # Defined as a method to simplify subclasses calls
-        js_text = soup.select_one(JS_SELECTOR).text  # type: ignore
+        js_text = soup.select_one(_SELECTOR.JS).text  # type: ignore
         file_id = get_text_between(js_text, "|v2||", "|")
         parts = get_text_between(js_text, "MDCore||", "|thumbs").split("|")
         secure_key = get_text_between(js_text, f"{file_id}|", "|")
