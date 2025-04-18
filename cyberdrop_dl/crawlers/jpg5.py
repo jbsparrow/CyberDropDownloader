@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
+from cyberdrop_dl.crawlers.crawler import create_task_id
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 from ._chevereto import CheveretoCrawler
@@ -42,6 +43,7 @@ class JPG5Crawler(CheveretoCrawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
+    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem):
         scrape_item.url = scrape_item.url.with_host("jpg5.su")
         return await self._fetch_chevereto_defaults(scrape_item)
