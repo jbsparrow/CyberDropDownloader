@@ -19,6 +19,7 @@ class Selector:
     CONTENT = "div[class=image-list] span a"
     IMAGE = "img[id=image]"
     VIDEO = "video source"
+    DATE = "li:contains('Posted: ')"
 
 
 _SELECTOR = Selector()
@@ -68,6 +69,9 @@ class Rule34XXXCrawler(Crawler):
         media_tag = soup.select_one(_SELECTOR.IMAGE) or soup.select_one(_SELECTOR.VIDEO)
         if not media_tag:
             raise ScrapeError(422)
+
+        if date_tag := soup.select_one(_SELECTOR.DATE):
+            scrape_item.possible_datetime = self.parse_date(date_tag.get_text(strip=True).removeprefix("Posted: "))
         link_str: str = media_tag["src"]  # type: ignore
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
