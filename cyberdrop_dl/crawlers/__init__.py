@@ -10,7 +10,6 @@ from .bestprettygirl import BestPrettyGirlCrawler
 from .bunkrr import BunkrrCrawler
 from .bunkrr_albums_io import BunkrAlbumsIOCrawler
 from .catbox import CatboxCrawler
-from .chevereto import CheveretoCrawler
 from .coomer import CoomerCrawler
 from .crawler import Crawler
 from .cyberdrop import CyberdropCrawler
@@ -30,9 +29,11 @@ from .gofile import GoFileCrawler
 from .google_drive import GoogleDriveCrawler
 from .hotpic import HotPicCrawler
 from .imagebam import ImageBamCrawler
+from .imagepond import ImagePondCrawler
 from .imgbb import ImgBBCrawler
 from .imgbox import ImgBoxCrawler
 from .imgur import ImgurCrawler
+from .jpg5 import JPG5Crawler
 from .kemono import KemonoCrawler
 from .luscious import LusciousCrawler
 from .mediafire import MediaFireCrawler
