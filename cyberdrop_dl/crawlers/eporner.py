@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import calendar
-from datetime import datetime
 from functools import cached_property
 from typing import TYPE_CHECKING, NamedTuple
 
@@ -191,7 +189,7 @@ class EpornerCrawler(Crawler):
             raise ScrapeError(422)
 
         link = self.parse_url(link_str)
-        scrape_item.possible_datetime = parse_datetime(info_dict["uploadDate"])
+        scrape_item.possible_datetime = self.parse_date(info_dict["uploadDate"])
         filename, ext = self.get_filename_and_ext(link.name)
         if ext == ".m3u8":
             raise ScrapeError(422)
@@ -242,9 +240,3 @@ def get_video_id(url: URL) -> str:
     if any(p in url.parts for p in ("hd-porn", "embed")) and len(url.parts) > 2:
         return url.parts[2]
     return ""
-
-
-def parse_datetime(date: str) -> int:
-    """Parses a datetime string into a unix timestamp."""
-    parsed_date = datetime.fromisoformat(date)
-    return calendar.timegm(parsed_date.timetuple())
