@@ -267,6 +267,8 @@ class BunkrrCrawler(Crawler):
         else:
             data_dict = {"slug": get_part_next_to(url, "f")}
             api_url = STREAMING_API_ENTRYPOINT
+            if self.known_good_host:
+                api_url = STREAMING_API_ENTRYPOINT.with_host(self.known_good_host)
 
         data = json.dumps(data_dict)
         async with self.request_limiter:
