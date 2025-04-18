@@ -16,8 +16,6 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
-JS_SELECTOR = "script[data-cfasync='false']:contains('image_viewer_full_fix')"
-JS_CONTENT_START = "document.addEventListener('DOMContentLoaded', function(event)"
 ITEM_DESCRIPTION_SELECTOR = "p[class*=description-meta]"
 ALBUM_TITLE_SELECTOR = "a[data-text=album-name]"
 ITEM_SELECTOR = "a[class='image-container --media']"
@@ -26,17 +24,15 @@ IMAGES_PARTS = "image", "img"
 ALBUM_PARTS = "a", "album"
 VIDEO_PARTS = "video", "videos"
 DIRECT_LINK_PARTS = ("images",)
-PASSWORD_PROTECTED_STR = "This content is password protected"
+PASSWORD_PROTECTED = "This content is password protected"
+VIDEO_SELECTOR = "meta[property='og:video']", "content"
+IMAGE_SELECTOR = "div[id=image-viewer] img", "src"
 
 
 class Media(StrEnum):
     ALBUM = auto()
     IMAGE = auto()
     VIDEO = auto()
-
-
-VIDEO_SELECTOR = "meta[property='og:video']", "content"
-IMAGE_SELECTOR = "div[id=image-viewer] img", "src"
 
 
 def clean_name(url: URL) -> URL:
@@ -58,7 +54,7 @@ class CheveretoCrawler(Crawler):
         """Determines where to send the scrape item based on the url."""
         return await self._fetch_chevereto_defaults(scrape_item)
 
-    async def _fetch_chevereto_defaults(self, scrape_item: ScrapeItem):
+    async def _fetch_chevereto_defaults(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.host.count(".") > 1:  # type: ignore
             return await self.handle_direct_link(scrape_item)
         if any(part in scrape_item.url.parts for part in ALBUM_PARTS):
@@ -124,13 +120,13 @@ class CheveretoCrawler(Crawler):
         password = url.query.get("password", "")
         url = url.with_query(None)
 
-        if PASSWORD_PROTECTED_STR in soup.text and password:
+        if PASSWORD_PROTECTED in soup.text and password:
             data = {"content-password": password}
             async with self.request_limiter:
                 html = await self.client.post_data(self.domain, url, data=data, raw=True)
             soup = BeautifulSoup(html, "html.parser")
 
-        if PASSWORD_PROTECTED_STR in soup.text:
+        if PASSWORD_PROTECTED in soup.text:
             raise PasswordProtectedError(message="Wrong password" if password else None)
 
     @error_handling_wrapper
@@ -174,8 +170,8 @@ class CheveretoCrawler(Crawler):
         scrape_item.url = canonical_url
         await self.handle_direct_link(scrape_item, link)
 
-    video = partialmethod(_proccess_media_item, url_type="video", selector=VIDEO_SELECTOR)
-    image = partialmethod(_proccess_media_item, url_type="image", selector=IMAGE_SELECTOR)
+    video = partialmethod(_proccess_media_item, url_type=Media.VIDEO, selector=VIDEO_SELECTOR)
+    image = partialmethod(_proccess_media_item, url_type=Media.IMAGE, selector=IMAGE_SELECTOR)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -190,10 +186,10 @@ class CheveretoCrawler(Crawler):
         found_part = next(p for p in search_parts if p in url.parts)
         name_index = url.parts.index(found_part) + 1
         name = url.parts[name_index]
-        _id = name.rsplit(".")[-1]
-        new_parts = url.parts[1:name_index] + (_id,)
+        item_id = name.rsplit(".")[-1]
+        new_parts = url.parts[1:name_index] + (item_id,)
         new_path = "/" + "/".join(new_parts)
-        return _id, self.parse_url(new_path, url.origin())
+        return item_id, self.parse_url(new_path, url.origin())
 
 
 def get_date_from_soup(soup: BeautifulSoup) -> str:
