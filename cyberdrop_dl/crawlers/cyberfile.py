@@ -24,18 +24,22 @@ SOUP_ERRORS = {
 }
 
 
-DOWNLOAD_BUTTON_SELECTOR = 'div[class="btn-group responsiveMobileMargin"] button'
-FILE_MENU_SELECTOR = 'ul[class="dropdown-menu dropdown-info account-dropdown-resize-menu"] li a'
-FILE_NAME_SELECTOR = "div.image-name-title"
-FILE_UPLOAD_DATE_SELECTOR = 'table[class="table table-bordered table-striped"] tr td[class=responsiveTable]'
-FOLDER_ID_JS_SELECTOR = "div[class*='page-container'] script:contains('loadImages')"
-FOLDER_ID_SELECTOR = "#folderId"
-FOLDER_ITEM_SELECTOR = "div[class=fileListing] div[class*=fileItem]"
-FOLDER_N_PAGES_SELECTOR = "a[onclick*=loadImages]"
-LOGIN_FORM_SELECTOR = "form[id=form_login]"
-PASSWORD_FORM_SELECTOR = "form[method='POST']"
-SHARED_N_PAGES_SELECTOR = "input[id=rspTotalPages]"
-SHOW_FILE_INFO_JS_SELECTOR = "script:contains('showFileInformation')"
+class Selectors:
+    DOWNLOAD_BUTTON = 'div[class="btn-group responsiveMobileMargin"] button'
+    FILE_MENU = 'ul[class="dropdown-menu dropdown-info account-dropdown-resize-menu"] li a'
+    FILE_NAME = "div.image-name-title"
+    FILE_UPLOAD_DATE = 'table[class="table table-bordered table-striped"] tr td[class=responsiveTable]'
+    FOLDER_ID_JS = "div[class*='page-container'] script:contains('loadImages')"
+    FOLDER_ID = "#folderId"
+    FOLDER_ITEM = "div[class=fileListing] div[class*=fileItem]"
+    FOLDER_N_PAGES = "a[onclick*=loadImages]"
+    LOGIN_FORM = "form[id=form_login]"
+    PASSWORD_FORM = "form[method='POST']"
+    SHARED_N_PAGES = "input[id=rspTotalPages]"
+    SHOW_FILE_INFO_JS = "script:contains('showFileInformation')"
+
+
+_SELECTOR = Selectors()
 
 
 class CyberfileCrawler(Crawler):
@@ -73,10 +77,10 @@ class CyberfileCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
-        if soup.select_one(LOGIN_FORM_SELECTOR):
+        if soup.select_one(_SELECTOR.LOGIN_FORM):
             raise ScrapeError(410, "Folder has been deleted")
 
-        js_text = soup.select(FOLDER_ID_JS_SELECTOR)[-1].text
+        js_text = soup.select(_SELECTOR.FOLDER_ID_JS)[-1].text
         # ex:  loadImages('folder', '12345', 1, 0, '', {'searchTerm': "", 'filterUploadedDateRange': ""});
         js_text = get_text_between(js_text, "loadImages(", ");")
         node_id = int(js_text.split(",")[1].replace("'", ""))
@@ -89,7 +93,7 @@ class CyberfileCrawler(Crawler):
             if page == 1:
                 title = self.create_title(ajax_title, album_id)
                 scrape_item.setup_as_album(title, album_id=album_id)
-                n_pages_text: str = ajax_soup.select(FOLDER_N_PAGES_SELECTOR)[-1]["onclick"]  # type: ignore
+                n_pages_text: str = ajax_soup.select(_SELECTOR.FOLDER_N_PAGES)[-1]["onclick"]  # type: ignore
                 n_pages = int(n_pages_text.split(",")[2].split(")")[0].strip())
 
             _ = self.iter_files(scrape_item, ajax_soup)
@@ -113,7 +117,7 @@ class CyberfileCrawler(Crawler):
             if page == 1:
                 title = self.create_title(ajax_title, album_id)
                 scrape_item.setup_as_album(title, album_id=album_id)
-                n_pages = int(ajax_soup.select_one(SHARED_N_PAGES_SELECTOR)["value"])  # type: ignore
+                n_pages = int(ajax_soup.select_one(_SELECTOR.SHARED_N_PAGES)["value"])  # type: ignore
 
             subfolders.extend(self.iter_files(scrape_item, ajax_soup, iter_subfolders=False))
             page += 1
@@ -128,7 +132,7 @@ class CyberfileCrawler(Crawler):
         """Scrapes a file."""
 
         def get_content_id(soup: BeautifulSoup) -> int | None:
-            if file_info := soup.select_one(SHOW_FILE_INFO_JS_SELECTOR):
+            if file_info := soup.select_one(_SELECTOR.SHOW_FILE_INFO_JS):
                 content_id = get_text_between(file_info.text, "showFileInformation(", ");")
                 return int(content_id)
 
@@ -143,7 +147,7 @@ class CyberfileCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         if is_password_protected(soup):
-            form = soup.select_one(PASSWORD_FORM_SELECTOR)
+            form = soup.select_one(_SELECTOR.PASSWORD_FORM)
             if not form:
                 raise PasswordProtectedError("Unable to parse Password Protected File details")
 
@@ -169,7 +173,7 @@ class CyberfileCrawler(Crawler):
         ajax_soup, page_title = await self.get_soup_from_ajax(data, scrape_item, is_file=True)
 
         try:
-            file_tag = ajax_soup.select_one(FILE_MENU_SELECTOR) or ajax_soup.select(DOWNLOAD_BUTTON_SELECTOR)[-1]
+            file_tag = ajax_soup.select_one(_SELECTOR.FILE_MENU) or ajax_soup.select(_SELECTOR.DOWNLOAD_BUTTON)[-1]
             html_download_text = file_tag["onclick"]
             link_str = html_download_text.split("'")[1].strip().removesuffix("'")  # type: ignore
             link = self.parse_url(link_str)
@@ -177,10 +181,10 @@ class CyberfileCrawler(Crawler):
             check_soup_error(ajax_soup)
             raise ScrapeError(422, "Couldn't find download button") from None
 
-        if uploaded_date := ajax_soup.select_one(FILE_UPLOAD_DATE_SELECTOR):
+        if uploaded_date := ajax_soup.select_one(_SELECTOR.FILE_UPLOAD_DATE):
             scrape_item.possible_datetime = parse_datetime(uploaded_date.text.strip())
 
-        if ajax_title := ajax_soup.select_one(FILE_NAME_SELECTOR):
+        if ajax_title := ajax_soup.select_one(_SELECTOR.FILE_NAME):
             filename = ajax_title.text
         else:
             filename = page_title
@@ -193,7 +197,7 @@ class CyberfileCrawler(Crawler):
 
         Returns a list with the `folder_id` of every subfolder"""
         folder_ids = []
-        for item in soup.select(FOLDER_ITEM_SELECTOR):
+        for item in soup.select(_SELECTOR.FOLDER_ITEM):
             folder_id, file_id = item["folderid"], item["fileid"]
             if folder_id:
                 folder_ids.append(folder_ids)
@@ -231,7 +235,7 @@ class CyberfileCrawler(Crawler):
             if not password:
                 raise PasswordProtectedError
             try:
-                node_id = data.get("nodeId") or ajax_soup.select(FOLDER_ID_SELECTOR)[0]["value"]
+                node_id = data.get("nodeId") or ajax_soup.select(_SELECTOR.FOLDER_ID)[0]["value"]
             except (IndexError, AttributeError):
                 check_soup_error(ajax_soup)
                 raise ScrapeError(422, message="nodeId not found") from None
