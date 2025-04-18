@@ -48,14 +48,16 @@ class Rule34VaultCrawler(Crawler):
         """Scrapes an album."""
 
         init_page = int(scrape_item.url.query.get("page") or 1)
+        title: str = ""
         for page in itertools.count(init_page):
             n_images = 0
             url = scrape_item.url.with_query(page=page)
             async with self.request_limiter:
                 soup: BeautifulSoup = await self.client.get_soup(self.domain, url)
 
-            title = self.create_title(scrape_item.url.parts[1])
-            scrape_item.setup_as_album(title)
+            if not title:
+                title = self.create_title(scrape_item.url.parts[1])
+                scrape_item.setup_as_album(title)
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.CONTENT):
                 n_images += 1
