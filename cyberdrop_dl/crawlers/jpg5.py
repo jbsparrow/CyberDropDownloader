@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
+
 from ._chevereto import CheveretoCrawler
 
 if TYPE_CHECKING:
@@ -42,3 +44,18 @@ class JPG5Crawler(CheveretoCrawler):
     async def video(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a video."""
         raise ValueError
+
+    @error_handling_wrapper
+    async def _proccess_media_item(self, scrape_item: ScrapeItem, url_type, *_) -> None:
+        """Scrapes a media item."""
+        if await self.check_complete_from_referer(scrape_item):
+            return
+
+        _, canonical_url = self.get_canonical_url(scrape_item, url_type)
+        if await self.check_complete_from_referer(canonical_url):
+            return
+
+        _, link = await self.get_embed_info(scrape_item.url)
+
+        scrape_item.url = canonical_url
+        await self.handle_direct_link(scrape_item, link)

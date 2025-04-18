@@ -148,22 +148,17 @@ class CheveretoCrawler(Crawler):
         if await self.check_complete_from_referer(canonical_url):
             return
 
-        if self.domain == "jpg5.su":
-            _, link = await self.get_embed_info(scrape_item.url)
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
-        else:
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+        try:
+            link_str: str = soup.select_one(selector[0])[selector[1]]  # type: ignore
+            link = self.parse_url(link_str)
 
-            try:
-                link_str: str = soup.select_one(selector[0])[selector[1]]  # type: ignore
-                link = self.parse_url(link_str)
+        except AttributeError:
+            raise ScrapeError(422, f"Couldn't find {url_type} source") from None
 
-            except AttributeError:
-                raise ScrapeError(422, f"Couldn't find {url_type} source") from None
-
-            add_date_from_soup(scrape_item, soup)
-
+        add_date_from_soup(scrape_item, soup)
         scrape_item.url = canonical_url
         await self.handle_direct_link(scrape_item, link)
 
