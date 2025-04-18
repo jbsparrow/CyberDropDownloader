@@ -120,7 +120,7 @@ class CheveretoCrawler(Crawler):
                 if any(p in new_scrape_item.url.parts for p in self.images_parts):
                     _, new_scrape_item.url = self.get_canonical_url(new_scrape_item, url_type="image")
                     await self.handle_direct_link(new_scrape_item, thumb)
-                    return
+                    continue
                 # For videos and albums, we have to keep scraping
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
