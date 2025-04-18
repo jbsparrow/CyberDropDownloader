@@ -87,12 +87,13 @@ class BestPrettyGirlCrawler(Crawler):
         scrape_item.setup_as_album(title)
         scrape_item.possible_datetime = self.parse_date(date_str)
 
-        trash: str = ""
+        trash_split = "-0000-"
+        trash_len: int = 0
         for _, link in self.iter_tags(soup, _SELECTORS.IMAGES, "src"):
-            if not trash:
-                trash = link.name.split("-0000", 1)[0]
+            if not trash_len:
+                trash_len = link.name.find(trash_split) + len(trash_split)
             filename, ext = self.get_filename_and_ext(link.name)
-            custom_filename = link.name.replace(trash, "").removeprefix("-")
+            custom_filename = link.name[trash_len:]
             custom_filename, _ = self.get_filename_and_ext(custom_filename)
             await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
