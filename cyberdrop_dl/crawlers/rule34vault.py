@@ -16,11 +16,16 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.managers.manager import Manager
 
-CONTENT_SELECTOR = "div[class='box-grid ng-star-inserted']:first-child a[class='box ng-star-inserted']"
-TITLE_SELECTOR = "div[class*=title]"
-DATE_SELECTOR = 'div[class="posted-date-full text-secondary mt-4 ng-star-inserted"]'
-VIDEO_SELECTOR = 'div[class="con-video ng-star-inserted"] > video > source'
-IMAGE_SELECTOR = 'img[class*="img ng-star-inserted"]'
+
+class Selectors:
+    CONTENT = "div[class='box-grid ng-star-inserted']:first-child a[class='box ng-star-inserted']"
+    TITLE = "div[class*=title]"
+    DATE = 'div[class="posted-date-full text-secondary mt-4 ng-star-inserted"]'
+    VIDEO = 'div[class="con-video ng-star-inserted"] > video > source'
+    IMAGE = 'img[class*="img ng-star-inserted"]'
+
+
+_SELECTORS = Selectors()
 
 
 class Rule34VaultCrawler(Crawler):
@@ -83,11 +88,11 @@ class Rule34VaultCrawler(Crawler):
                 soup: BeautifulSoup = await self.client.get_soup(self.domain, url)
 
             if not title:
-                title_str: str = soup.select_one(TITLE_SELECTOR).text  # type: ignore
+                title_str: str = soup.select_one(_SELECTORS.TITLE).text  # type: ignore
                 title = self.create_title(title_str, album_id)
                 scrape_item.setup_as_album(title)
 
-            for _, new_scrape_item in self.iter_children(scrape_item, soup, CONTENT_SELECTOR):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.CONTENT):
                 has_content = True
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
@@ -100,10 +105,10 @@ class Rule34VaultCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
-        if date_tag := soup.select_one(DATE_SELECTOR):
+        if date_tag := soup.select_one(_SELECTORS.DATE):
             scrape_item.possible_datetime = parse_datetime(date_tag.text)
 
-        media_tag = soup.select_one(VIDEO_SELECTOR) or soup.select_one(IMAGE_SELECTOR)
+        media_tag = soup.select_one(_SELECTORS.VIDEO) or soup.select_one(_SELECTORS.IMAGE)
         link_str: str = media_tag["src"]  # type: ignore
         for trash in (".small", ".thumbnail", ".720", ".hevc"):
             link_str = link_str.replace(trash, "")
