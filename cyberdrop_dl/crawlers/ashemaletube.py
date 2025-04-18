@@ -60,8 +60,6 @@ class AShemaleTubeCrawler(Crawler):
 
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, scrape_item.url)
         title = ""
         async for soup in self.web_pager(scrape_item.url, cffi=True):
             if not title:
@@ -74,8 +72,6 @@ class AShemaleTubeCrawler(Crawler):
 
     @error_handling_wrapper
     async def model(self, scrape_item: ScrapeItem) -> None:
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, scrape_item.url)
         title = ""
         async for soup in self.web_pager(scrape_item.url, cffi=True):
             if not title:
