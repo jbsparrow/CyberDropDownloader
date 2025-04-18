@@ -5,7 +5,6 @@ import json
 import math
 import re
 from dataclasses import dataclass
-from functools import partial
 from itertools import cycle
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, NamedTuple
@@ -83,16 +82,15 @@ class AlbumItem:
     name: str
     thumbnail: str
     date: str
-    url: URL
+    path_qs: str
 
     @classmethod
     def from_tag(cls, tag: Tag) -> AlbumItem:
         name = tag.select_one(ITEM_NAME_SELECTOR).text  # type: ignore
-        thumbnail: str = tag.select_one(THUMBNAIL_SELECTOR).get("src")  # type: ignore
+        thumbnail: str = tag.select_one(THUMBNAIL_SELECTOR)["src"]  # type: ignore
         date_str = tag.select_one(ITEM_DATE_SELECTOR).text.strip()  # type: ignore
-        link_str: str = tag.select_one("a").get("href")  # type: ignore
-        link = parse_url(link_str, relative_to=PRIMARY_BASE_DOMAIN)
-        return cls(name, thumbnail, date_str, link)
+        path_qs: str = tag.select_one("a")["href"]  # type: ignore
+        return cls(name, thumbnail, date_str, path_qs)
 
     @property
     def src(self) -> URL:
@@ -145,13 +143,10 @@ class BunkrrCrawler(Crawler):
         scrape_item.setup_as_album(title, album_id=album_id)
         results = await self.get_album_results(album_id)
 
-        item_tags: list[Tag] = soup.select(ALBUM_ITEM_SELECTOR)
-        base = self.known_good_host_url or scrape_item.url.origin()
-        parse_url = partial(self.parse_url, relative_to=base)
-
-        for tag in item_tags:
-            item = AlbumItem.from_tag(tag, parse_url)
-            new_scrape_item = scrape_item.create_child(item.url, possible_datetime=self.parse_date(item.date))
+        for tag in soup.select(ALBUM_ITEM_SELECTOR):
+            item = AlbumItem.from_tag(tag)
+            link = self.parse_url(item.path_qs, relative_to=scrape_item.url.origin())
+            new_scrape_item = scrape_item.create_child(link, possible_datetime=self.parse_date(item.date))
             await self.process_album_item(new_scrape_item, item, results)
             scrape_item.add_children()
 
@@ -162,12 +157,13 @@ class BunkrrCrawler(Crawler):
             self.manager.task_group.create_task(self.run(scrape_item))
             return
 
-        if not self.check_album_results(link, results):
-            filename, ext = self.get_filename_and_ext(link.name, assume_ext=".mp4")
-            custom_filename, _ = self.get_filename_and_ext(item.name, assume_ext=".mp4")
-            if not link.query.get("n"):
-                link = link.update_query(n=item.name)
-            await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
+        if self.check_album_results(link, results):
+            return
+        filename, ext = self.get_filename_and_ext(link.name, assume_ext=".mp4")
+        custom_filename, _ = self.get_filename_and_ext(item.name, assume_ext=".mp4")
+        if not link.query.get("n"):
+            link = link.update_query(n=item.name)
+        await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
