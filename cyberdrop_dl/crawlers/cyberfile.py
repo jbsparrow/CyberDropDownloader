@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import calendar
-import datetime
 import itertools
 from typing import TYPE_CHECKING, ClassVar
 
@@ -55,9 +53,9 @@ class CyberfileCrawler(Crawler):
     def __init__(self, manager: Manager, site: str) -> None:
         super().__init__(manager, site, self.FOLDER_DOMAINS.get(site, "Cyberfile"))
         self.primary_base_domain = self.PRIMARY_BASE_DOMAINS.get(site, URL(f"https://{site}"))  # type: ignore
-        self.api_load_files = self.primary_base_domain / "account/ajax/load_files"
-        self.api_details = self.primary_base_domain / "account/ajax/file_details"
-        self.api_password_process = self.primary_base_domain / "ajax/folder_password_process"
+        self.folders_api_url = self.primary_base_domain / "account/ajax/load_files"
+        self.files_api_url = self.primary_base_domain / "account/ajax/file_details"
+        self.folder_password_api_url = self.primary_base_domain / "ajax/folder_password_process"
         self.request_limiter = AsyncLimiter(5, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -83,14 +81,14 @@ class CyberfileCrawler(Crawler):
         js_text = soup.select(_SELECTOR.FOLDER_ID_JS)[-1].text
         # ex:  loadImages('folder', '12345', 1, 0, '', {'searchTerm': "", 'filterUploadedDateRange': ""});
         js_text = get_text_between(js_text, "loadImages(", ");")
-        node_id = int(js_text.split(",")[1].replace("'", ""))
+        _, node_id = js_text.replace("'", "").split(",", 1)
         album_id = scrape_item.url.parts[2]
         title: str = ""
         default_data = {"pageType": "folder", "perPage": 0, "filterOrderBy": ""}
         for page in itertools.count(1):
             data = default_data | {"nodeId": node_id, "pageStart": page}
             ajax_soup, ajax_title = await self.get_soup_from_ajax(data, scrape_item)
-            if page == 1:
+            if not title:
                 title = self.create_title(ajax_title, album_id)
                 scrape_item.setup_as_album(title, album_id=album_id)
                 n_pages_text: str = ajax_soup.select(_SELECTOR.FOLDER_N_PAGES)[-1]["onclick"]  # type: ignore
@@ -182,7 +180,7 @@ class CyberfileCrawler(Crawler):
             raise ScrapeError(422, "Couldn't find download button") from None
 
         if uploaded_date := ajax_soup.select_one(_SELECTOR.FILE_UPLOAD_DATE):
-            scrape_item.possible_datetime = parse_datetime(uploaded_date.text.strip())
+            scrape_item.possible_datetime = self.parse_date(uploaded_date.text.strip(), "%d/%m/%Y %H:%M:%S")
 
         if ajax_title := ajax_soup.select_one(_SELECTOR.FILE_NAME):
             filename = ajax_title.text
@@ -229,7 +227,7 @@ class CyberfileCrawler(Crawler):
             return BeautifulSoup(html.replace("\\", ""), "html.parser"), json_resp["page_title"]
 
         password = scrape_item.url.query.get("password", "")
-        ajax_url = self.api_details if is_file else self.api_load_files
+        ajax_url = self.files_api_url if is_file else self.folders_api_url
         ajax_soup, ajax_title = await get_ajax_info()
         if is_password_protected(ajax_soup):
             if not password:
@@ -243,19 +241,13 @@ class CyberfileCrawler(Crawler):
             # Make a request with the password. Access to the file/folder will be stored in cookies
             pw_data = {"folderPassword": password, "folderId": node_id, "submitme": 1}
             async with self.request_limiter:
-                json_resp: dict = await self.client.post_data(self.domain, self.api_password_process, data=pw_data)
+                json_resp: dict = await self.client.post_data(self.domain, self.folder_password_api_url, data=pw_data)
             if not json_resp.get("success"):
                 raise PasswordProtectedError(message="Incorrect password")
 
             ajax_soup, ajax_title = await get_ajax_info()
 
         return ajax_soup, ajax_title
-
-
-def parse_datetime(date: str) -> int:
-    """Parses a datetime string into a unix timestamp."""
-    parsed_date = datetime.datetime.strptime(date, "%d/%m/%Y %H:%M:%S")
-    return calendar.timegm(parsed_date.timetuple())
 
 
 def is_password_protected(soup: BeautifulSoup) -> bool:
