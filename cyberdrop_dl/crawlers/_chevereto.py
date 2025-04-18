@@ -88,25 +88,8 @@ class CheveretoCrawler(Crawler):
         """Scrapes an album."""
         album_id, canonical_url = self.get_canonical_url(scrape_item)
         results = await self.get_album_results(album_id)
-        password = scrape_item.url.query.get("password", "")
-        scrape_item.url = scrape_item.url.with_query(None)
-        original_url = scrape_item.url
-
-        async with self.request_limiter:
-            sub_albums = scrape_item.url / "sub"
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, sub_albums)
-
-        scrape_item.url = canonical_url
-
-        if "This content is password protected" in soup.text and password:
-            data = {"content-password": password}
-            async with self.request_limiter:
-                html = await self.client.post_data(self.domain, scrape_item.url, data=data, raw=True)
-                soup = BeautifulSoup(html, "html.parser")
-
-        if "This content is password protected" in soup.text:
-            raise PasswordProtectedError(message="Wrong password" if password else None)
-
+        scrape_item.url = original_url = scrape_item.url.with_query(None)
+        soup = await self.get_soup_and_handle_password(scrape_item)
         title: str = soup.select_one(ALBUM_TITLE_SELECTOR).text  # type: ignore
         title = self.create_title(title, album_id)
         scrape_item.setup_as_album(title, album_id=album_id)
@@ -114,9 +97,10 @@ class CheveretoCrawler(Crawler):
         async for soup in self.web_pager(_sort_by_new(scrape_item.url), trim=False):
             for thumb, new_scrape_item in self.iter_children(scrape_item, soup, ITEM_SELECTOR):
                 assert thumb
-                if not self.check_album_results(thumb, results):
-                    _, new_scrape_item.url = self.get_canonical_url(new_scrape_item, "image")
-                    await self.handle_direct_link(new_scrape_item, thumb)
+                if self.check_album_results(thumb, results):
+                    continue
+                _, new_scrape_item.url = self.get_canonical_url(new_scrape_item, "image")
+                await self.handle_direct_link(new_scrape_item, thumb)
 
         # Sub album URL needs to be the full URL + a 'sub'
         # Using the canonical URL + 'sub' won't work because it redirects to the "homepage" of the album
@@ -124,6 +108,25 @@ class CheveretoCrawler(Crawler):
         async for soup in self.web_pager(_sort_by_new(sub_album_url), trim=False):
             for _, sub_album in self.iter_children(scrape_item, soup, ITEM_SELECTOR):
                 self.manager.task_group.create_task(self.run(sub_album))
+
+    async def get_soup_and_handle_password(self, scrape_item: ScrapeItem) -> BeautifulSoup:
+        password = scrape_item.url.query.get("password", "")
+        sub_albums_url = scrape_item.url / "sub"
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, sub_albums_url)
+
+        _, canonical_url = self.get_canonical_url(scrape_item)
+
+        if "This content is password protected" in soup.text and password:
+            data = {"content-password": password}
+            async with self.request_limiter:
+                html = await self.client.post_data(self.domain, canonical_url, data=data, raw=True)
+                soup = BeautifulSoup(html, "html.parser")
+
+        if "This content is password protected" in soup.text:
+            raise PasswordProtectedError(message="Wrong password" if password else None)
+
+        return soup
 
     async def video(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a video."""
