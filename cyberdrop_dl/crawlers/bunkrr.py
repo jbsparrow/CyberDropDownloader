@@ -305,11 +305,11 @@ class BunkrrCrawler(Crawler):
         If we don't know a valid host but the response was successful, register the host as a valid host"""
         assert url.host
 
-        async def get_soup(url: URL):
+        async def get_soup(url: URL) -> BeautifulSoup:
             async with self.request_limiter:
                 return await self.client.get_soup(self.domain, url)
 
-        async def get_soup_no_error(url: URL):
+        async def get_soup_no_error(url: URL) -> BeautifulSoup | None:
             global known_bad_hosts
             try:
                 soup: BeautifulSoup = await get_soup(url)
