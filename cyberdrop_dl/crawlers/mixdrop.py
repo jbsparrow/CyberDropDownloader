@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 
 JS_SELECTOR = "script:contains('MDCore.ref')"
+TITLE_SELECTOR = "div.tbl-c.title b"
 
 
 class MixDropCrawler(Crawler):
@@ -35,7 +36,7 @@ class MixDropCrawler(Crawler):
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
         file_id = scrape_item.url.name
-        canonical_url = self.primary_base_domain / "e" / file_id
+        canonical_url = self.primary_base_domain / "f" / file_id
 
         if self.check_complete_from_referer(canonical_url):
             return
@@ -44,11 +45,21 @@ class MixDropCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, canonical_url)
 
-        js_text = soup.select_one(JS_SELECTOR).text  # type: ignore
-        parts = get_text_between(js_text, "MDCore||", "|thumbs").split("|")
-        expires = parts[-1]
-        secure_key, timestamp = get_text_between(js_text, f"{file_id}|", "|_t").split("|")
-        host = ".".join(parts[:-3])
-        link = self.parse_url(f"https://s-{host}/v2/{file_id}.mp4").with_query(s=secure_key, e=expires, t=timestamp)
+        # type: ignore
+        link = create_download_link(soup)
+        title = soup.select_one(TITLE_SELECTOR).get_text(strip=True)  # type: ignore
         filename, ext = self.get_filename_and_ext(link.name)
-        await self.handle_file(canonical_url, scrape_item, filename, ext, debrid_link=link)
+        custom_filename, _ = self.get_filename_and_ext(title)
+        await self.handle_file(
+            canonical_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=link
+        )
+
+
+def create_download_link(soup: BeautifulSoup) -> URL:
+    js_text = soup.select_one(JS_SELECTOR).text  # type: ignore
+    file_id = get_text_between(js_text, "|v2||", "|")
+    parts = get_text_between(js_text, "MDCore||", "|thumbs").split("|")
+    expires = parts[-1]
+    secure_key, timestamp = get_text_between(js_text, f"{file_id}|", "|_t").split("|")
+    host, ext = ".".join(parts[:-3]), parts[-3]
+    return URL(f"https://s-{host}/v2/{file_id}.{ext}").with_query(s=secure_key, e=expires, t=timestamp)
