@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from yarl import URL
 
@@ -22,11 +22,14 @@ class Selectors:
 
 _SELECTOR = Selectors()
 
+PRIMARY_BASE_DOMAIN = URL("https://mixdrop.sb")
+
 
 class MixDropCrawler(Crawler):
-    primary_base_domain = URL("https://mixdrop.sb")
+    SUPPORTED_SITES: ClassVar[dict[str, list]] = {"mixdrop": ["mxdrop", "mixdrop"]}
+    primary_base_domain = PRIMARY_BASE_DOMAIN
 
-    def __init__(self, manager: Manager) -> None:
+    def __init__(self, manager: Manager, *_) -> None:
         super().__init__(manager, "mixdrop", "MixDrop")
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -41,15 +44,15 @@ class MixDropCrawler(Crawler):
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
         file_id = scrape_item.url.name
-        canonical_url = self.primary_base_domain / "f" / file_id
-        embed_url = self.primary_base_domain / "e" / file_id
+        video_url = self.primary_base_domain / "f" / file_id
+        embed_url = self.get_embed_url(video_url)
 
-        if await self.check_complete_from_referer(canonical_url):
+        if await self.check_complete_from_referer(embed_url):
             return
 
-        scrape_item.url = canonical_url
+        scrape_item.url = embed_url
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, canonical_url)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, video_url)
 
         title = soup.select_one(_SELECTOR.FILE_NAME).get_text(strip=True)  # type: ignore
 
@@ -59,9 +62,7 @@ class MixDropCrawler(Crawler):
         link = self.create_download_link(soup)
         filename, ext = self.get_filename_and_ext(link.name)
         custom_filename, _ = self.get_filename_and_ext(title)
-        await self.handle_file(
-            canonical_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=link
-        )
+        await self.handle_file(video_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=link)
 
     @staticmethod
     def create_download_link(soup: BeautifulSoup) -> URL:
@@ -73,3 +74,7 @@ class MixDropCrawler(Crawler):
         timestamp = int((datetime.now() + timedelta(hours=1)).timestamp())
         host, ext, expires = ".".join(parts[:-3]), parts[-3], parts[-1]
         return URL(f"https://s-{host}/v2/{file_id}.{ext}").with_query(s=secure_key, e=expires, t=timestamp)
+
+    @staticmethod
+    def get_embed_url(url: URL) -> URL:
+        return PRIMARY_BASE_DOMAIN / "e" / url.name

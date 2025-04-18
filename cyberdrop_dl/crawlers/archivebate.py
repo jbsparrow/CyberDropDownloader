@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
@@ -29,6 +29,7 @@ _SELECTORS = Selectors()
 
 
 class ArchiveBateCrawler(MixDropCrawler):
+    SUPPORTED_SITES: ClassVar[dict] = {}
     primary_base_domain = URL("https://www.archivebate.store")
     next_page = _SELECTORS.NEXT_PAGE
 
@@ -86,7 +87,8 @@ class ArchiveBateCrawler(MixDropCrawler):
         scrape_item.possible_datetime = self.parse_date(date_str)
         show_title = f"Show on {date_str}"
 
-        mixdrop_url = self.parse_url(video_src)
+        mixdrop_url = self.get_embed_url(self.parse_url(video_src))  # Override domain
+
         if await self.check_complete_from_referer(mixdrop_url):
             return
 
