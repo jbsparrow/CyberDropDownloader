@@ -62,10 +62,10 @@ class EromeCrawler(Crawler):
         title = self.create_title(title_portion, album_id)
         scrape_item.setup_as_album(title, album_id=album_id)
 
-        for selector in (IMAGES_SELECTOR, VIDEOS_SELECTOR):
-            # TODO Match attr to selector
-            for attribute in ("data-src", "src"):
-                for _, link in self.iter_tags(soup, selector, attribute, results=results):
-                    filename, ext = self.get_filename_and_ext(link.name)
-                    await self.handle_file(link, scrape_item, filename, ext)
-                    scrape_item.add_children()
+        attributes = ("data-src", "src")
+        selectors = (IMAGES_SELECTOR, VIDEOS_SELECTOR)
+        for selector, attribute in zip(selectors, attributes, strict=True):
+            for _, link in self.iter_tags(soup, selector, attribute, results=results):
+                filename, ext = self.get_filename_and_ext(link.name)
+                await self.handle_file(link, scrape_item, filename, ext)
+                scrape_item.add_children()
