@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import re
+from enum import StrEnum, auto
+from functools import partialmethod
 from typing import TYPE_CHECKING, Literal, TypeAlias
 
 from bs4 import BeautifulSoup
@@ -37,7 +39,16 @@ def _sort_by_new(url: URL) -> URL:
     return url.with_query(sort="date_desc", page=1)
 
 
+class Media(StrEnum):
+    ALBUM = auto()
+    IMAGE = auto()
+    VIDEO = auto()
+
+
 UrlType: TypeAlias = Literal["album", "image", "video"]
+
+VIDEO_SELECTOR = "meta[property='og:video']", "content"
+IMAGE_SELECTOR = "div[id=image-viewer] img", "src"
 
 
 class CheveretoCrawler(Crawler):
@@ -77,7 +88,7 @@ class CheveretoCrawler(Crawler):
                 # Item may be an image, a video or an album
                 # For images, we can download the file from the thumbnail
                 if any(p in new_scrape_item.url.parts for p in IMAGES_PARTS):
-                    _, new_scrape_item.url = self.get_canonical_url(new_scrape_item, "image")
+                    _, new_scrape_item.url = self.get_canonical_url(new_scrape_item.url, "image")
                     await self.handle_direct_link(new_scrape_item, thumb)
                     continue
                 # For videos and albums, we have to keep scraping
@@ -86,7 +97,7 @@ class CheveretoCrawler(Crawler):
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
-        album_id, canonical_url = self.get_canonical_url(scrape_item)
+        album_id, canonical_url = self.get_canonical_url(scrape_item.url)
         results = await self.get_album_results(album_id)
         original_url = scrape_item.url
         title: str = ""
@@ -102,7 +113,7 @@ class CheveretoCrawler(Crawler):
                 assert thumb
                 if self.check_album_results(thumb, results):
                     continue
-                _, new_scrape_item.url = self.get_canonical_url(new_scrape_item, "image")
+                _, new_scrape_item.url = self.get_canonical_url(new_scrape_item.url, "image")
                 await self.handle_direct_link(new_scrape_item, thumb)
 
         # Sub album URL needs to be the full URL + a 'sub'
@@ -125,40 +136,6 @@ class CheveretoCrawler(Crawler):
         if "This content is password protected" in soup.text:
             raise PasswordProtectedError(message="Wrong password" if password else None)
 
-    async def video(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a video."""
-        selector = "meta[property='og:video']", "content"
-        await self._proccess_media_item(scrape_item, "video", selector)
-
-    async def image(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an image."""
-        selector = "div[id=image-viewer] img", "src"
-        await self._proccess_media_item(scrape_item, "image", selector)
-
-    @error_handling_wrapper
-    async def _proccess_media_item(self, scrape_item: ScrapeItem, url_type: UrlType, selector: tuple[str, str]) -> None:
-        """Scrapes a media item."""
-        if await self.check_complete_from_referer(scrape_item):
-            return
-
-        _, canonical_url = self.get_canonical_url(scrape_item, url_type)
-        if await self.check_complete_from_referer(canonical_url):
-            return
-
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
-
-        try:
-            link_str: str = soup.select_one(selector[0])[selector[1]]  # type: ignore
-            link = self.parse_url(link_str)
-
-        except AttributeError:
-            raise ScrapeError(422, f"Couldn't find {url_type} source") from None
-
-        scrape_item.possible_datetime = self.parse_date(get_date_from_soup(soup))
-        scrape_item.url = canonical_url
-        await self.handle_direct_link(scrape_item, link)
-
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem, url: URL | None = None) -> None:
         """Handles a direct link."""
@@ -177,9 +154,36 @@ class CheveretoCrawler(Crawler):
         filename = json_resp["title"] + link.suffix
         return filename, link
 
+    @error_handling_wrapper
+    async def _proccess_media_item(self, scrape_item: ScrapeItem, url_type: UrlType, selector: tuple[str, str]) -> None:
+        """Scrapes a media item."""
+        if await self.check_complete_from_referer(scrape_item):
+            return
+
+        _, canonical_url = self.get_canonical_url(scrape_item.url, url_type)
+        if await self.check_complete_from_referer(canonical_url):
+            return
+
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+
+        try:
+            link_str: str = soup.select_one(selector[0])[selector[1]]  # type: ignore
+            link = self.parse_url(link_str)
+
+        except AttributeError:
+            raise ScrapeError(422, f"Couldn't find {url_type} source") from None
+
+        scrape_item.possible_datetime = self.parse_date(get_date_from_soup(soup))
+        scrape_item.url = canonical_url
+        await self.handle_direct_link(scrape_item, link)
+
+    video = partialmethod(_proccess_media_item, url_type="video", selector=VIDEO_SELECTOR)
+    image = partialmethod(_proccess_media_item, url_type="image", selector=IMAGE_SELECTOR)
+
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    def get_canonical_url(self, scrape_item: ScrapeItem, url_type: UrlType = "album") -> tuple[str, URL]:
+    def get_canonical_url(self, url: URL, url_type: UrlType = "album") -> tuple[str, URL]:
         """Returns the id and canonical URL from a given item (album, image or video)."""
         search_parts = ALBUM_PARTS
         if url_type == "image":
@@ -187,13 +191,13 @@ class CheveretoCrawler(Crawler):
         elif url_type == "video":
             search_parts = VIDEO_PARTS
 
-        found_part = next(p for p in search_parts if p in scrape_item.url.parts)
-        name_index = scrape_item.url.parts.index(found_part) + 1
-        name = scrape_item.url.parts[name_index]
+        found_part = next(p for p in search_parts if p in url.parts)
+        name_index = url.parts.index(found_part) + 1
+        name = url.parts[name_index]
         _id = name.rsplit(".")[-1]
-        new_parts = scrape_item.url.parts[1:name_index] + (_id,)
+        new_parts = url.parts[1:name_index] + (_id,)
         new_path = "/" + "/".join(new_parts)
-        return _id, self.parse_url(new_path, scrape_item.url.origin())
+        return _id, self.parse_url(new_path, url.origin())
 
 
 def get_date_from_soup(soup: BeautifulSoup) -> str:
