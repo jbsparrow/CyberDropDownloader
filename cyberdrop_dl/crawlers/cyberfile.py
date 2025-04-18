@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
@@ -41,18 +41,10 @@ _SELECTOR = Selectors()
 
 
 class CyberfileCrawler(Crawler):
-    PRIMARY_BASE_DOMAINS: ClassVar[dict[str, URL]] = {
-        "cyberfile": URL("https://cyberfile.me/"),
-        "iceyfile": URL("https://iceyfile.com/"),
-    }
+    primary_base_domain = URL("https://cyberfile.me/")
 
-    FOLDER_DOMAINS: ClassVar[dict[str, str]] = {"cyberfile": "Cyberfile", "iceyfile": "Iceyfile"}
-    SUPPORTED_SITES: ClassVar[dict[str, list]] = {"cyberfile": ["cyberfile"], "iceyfile": ["iceyfile"]}
-    update_unsupported = True
-
-    def __init__(self, manager: Manager, site: str) -> None:
-        super().__init__(manager, site, self.FOLDER_DOMAINS.get(site, "Cyberfile"))
-        self.primary_base_domain = self.PRIMARY_BASE_DOMAINS.get(site, URL(f"https://{site}"))  # type: ignore
+    def __init__(self, manager: Manager) -> None:
+        super().__init__(manager, "cyberfile", "Cyberfile")
         self.folders_api_url = self.primary_base_domain / "account/ajax/load_files"
         self.files_api_url = self.primary_base_domain / "account/ajax/file_details"
         self.folder_password_api_url = self.primary_base_domain / "ajax/folder_password_process"
