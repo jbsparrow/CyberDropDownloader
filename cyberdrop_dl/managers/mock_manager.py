@@ -1,16 +1,29 @@
+from __future__ import annotations
+
 from typing import Any
 
-root_manager = None
+MOCK_MANAGER = None
+
+
+class MockCallable:
+    def __init__(self, return_obj: Any = None) -> None:
+        self.return_obj = return_obj
+
+    def __getitem__(self, parameters: Any) -> object: ...
+    def __or__(self, other: Any) -> MockCallable: ...
+    def __ror__(self, other: Any) -> MockCallable: ...
+    def __call__(self, *args, **kwargs):
+        return self.return_obj
 
 
 class Mock(Any):
-    def __init__(self, name: str):
+    def __init__(self, name: str, /) -> None:
         self._nested_attrs: dict[str, Mock] = {}
         self._mock_name = name
 
-    def __getattribute__(self, name: str) -> Any:
-        if name == "manager" and root_manager is not None:
-            return root_manager
+    def __getattribute__(self, name: str, /) -> Any:
+        if name == "manager" and MOCK_MANAGER is not None:
+            return MOCK_MANAGER
         try:
             return super().__getattribute__(name)
         except AttributeError:
@@ -18,23 +31,20 @@ class Mock(Any):
                 raise  # Avoid infinite recursion
             return self._nested_attrs.get(name, Mock(name))
 
-    def __call__(self, *_, **__):
-        return self
-
 
 class MockCacheManager(Mock):
-    def __getattribute__(self, name: str):
-        if name == "get":
-            return self.get
-        return super().__getattribute__(name)
-
-    def get(self, _: str = "") -> None:
-        return None
+    def __init__(self) -> None:
+        self.get = self.save = MockCallable()
+        super().__init__("cache_manager")
 
 
 class MockManager(Mock):
     def __init__(self):
-        global root_manager
+        global MOCK_MANAGER
+        assert MOCK_MANAGER is None, "A global MockManager already exists. Only 1 should be created"
         super().__init__("manager")
-        self.cache_manager = MockCacheManager
-        root_manager = self
+        self.cache_manager = MockCacheManager()
+        MOCK_MANAGER = self
+
+
+MOCK_MANAGER = MockManager()

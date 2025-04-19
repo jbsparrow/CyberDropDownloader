@@ -11,7 +11,7 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import NoExtensionError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup, Tag
@@ -72,7 +72,7 @@ class NekohouseCrawler(Crawler):
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile."""
-        soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+        soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
         offset, maximum_offset = await self.get_offsets(scrape_item, soup)
         service, user = self.get_service_and_user(scrape_item)
         user_str = await self.get_user_str_from_profile(soup)
@@ -81,7 +81,7 @@ class NekohouseCrawler(Crawler):
         while offset <= maximum_offset:
             async with self.request_limiter:
                 service_url = service_call.with_query({"o": offset})
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, service_url, origin=scrape_item)
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, service_url)
                 offset += 50
 
                 posts = soup.select(self.post_selector)
@@ -93,7 +93,7 @@ class NekohouseCrawler(Crawler):
                     post_link = self.parse_url(post_url_str)
                     post_id = post_url_str.split("/")[-1]
                     # Call on self.post to scrape the post by creating a new scrape item
-                    new_scrape_item = self.create_scrape_item(scrape_item, post_link, add_parent=service_call)
+                    new_scrape_item = scrape_item.create_new(post_link, add_parent=service_call)
                     await self.post(new_scrape_item, post_id, user, service, user_str)
                     scrape_item.add_children()
 
@@ -128,7 +128,7 @@ class NekohouseCrawler(Crawler):
 
         post_url = scrape_item.url
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, post_url, origin=scrape_item)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, post_url)
             data = {
                 "id": post,
                 "user": user or "Unknown",
@@ -201,10 +201,10 @@ class NekohouseCrawler(Crawler):
     async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:
         """Handles a direct link."""
         try:
-            filename, ext = get_filename_and_ext(scrape_item.url.query.get("f") or scrape_item.url.name)
+            filename, ext = self.get_filename_and_ext(scrape_item.url.query.get("f") or scrape_item.url.name)
         except NoExtensionError:
             # Not sure if this is necessary, is mostly just to keep it similar to kemono
-            filename, ext = get_filename_and_ext(scrape_item.url.name)
+            filename, ext = self.get_filename_and_ext(scrape_item.url.name)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -222,10 +222,9 @@ class NekohouseCrawler(Crawler):
         """Creates a new scrape item with the same parent as the old scrape item."""
         post = Post(id=post_id, title=title, date=date)
         new_title = self.create_title(user)
-        new_scrape_item = self.create_scrape_item(
-            old_scrape_item,
+        new_scrape_item = old_scrape_item.create_new(
             link,
-            new_title,
+            new_title_part=new_title,
             part_of_album=True,
             possible_datetime=post.date,
             add_parent=add_parent,
@@ -262,7 +261,7 @@ class NekohouseCrawler(Crawler):
     async def get_user_str_from_post(self, scrape_item: ScrapeItem) -> str:
         """Gets the user string from a scrape item."""
         async with self.request_limiter:
-            soup = await self.client.get_soup(self.domain, scrape_item.url, origin=scrape_item)
+            soup = await self.client.get_soup(self.domain, scrape_item.url)
         return soup.select_one("a[class=scrape__user-name]").text
 
     @error_handling_wrapper
