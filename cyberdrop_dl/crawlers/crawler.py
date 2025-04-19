@@ -38,6 +38,7 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.clients.scraper_client import ScraperClient
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.utils.m3u8 import M3U8
 
 UNKNOWN_URL_PATH_MSG = "Unknown URL path"
 
@@ -132,7 +133,7 @@ class Crawler(ABC):
         *,
         custom_filename: str | None = None,
         debrid_link: URL | None = None,
-        m3u8_content: str = "",
+        m3u8: M3U8 | None = None,
     ) -> None:
         """Finishes handling the file and hands it off to the downloader."""
         await self.manager.states.RUNNING.wait()
@@ -163,11 +164,11 @@ class Crawler(ABC):
             self.manager.progress_manager.download_progress.add_skipped()
             return
 
-        if not m3u8_content:
+        if not m3u8:
             self.manager.task_group.create_task(self.downloader.run(media_item))
             return
 
-        self.manager.task_group.create_task(self.downloader.download_hls(media_item, m3u8_content))
+        self.manager.task_group.create_task(self.downloader.download_hls(media_item, m3u8))
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 

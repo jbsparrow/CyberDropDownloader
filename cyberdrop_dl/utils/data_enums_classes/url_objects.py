@@ -6,7 +6,7 @@ from dataclasses import InitVar, dataclass, field
 from enum import IntEnum
 from functools import partialmethod
 from pathlib import Path
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING
 
 from yarl import URL
 
@@ -30,12 +30,6 @@ FORUM = ScrapeItemType.FORUM
 FORUM_POST = ScrapeItemType.FORUM_POST
 FILE_HOST_PROFILE = ScrapeItemType.FILE_HOST_PROFILE
 FILE_HOST_ALBUM = ScrapeItemType.FILE_HOST_ALBUM
-
-
-class HlsSegment(NamedTuple):
-    part: str
-    name: str
-    url: URL
 
 
 @dataclass(unsafe_hash=True, slots=True)
