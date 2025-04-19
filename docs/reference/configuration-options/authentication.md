@@ -25,6 +25,12 @@ Once you have put your `session` cookie into the authentication file, you can ad
 
 <details>
 
+<summary>Discord</summary>
+
+In order to scrape media from discord, you need to provide Cyberdrop-DL with your discord `token`.
+
+<details>
+
 <summary>Forums</summary>
 
 In order to scrape links/content from forums, you need to provide Cyberdrop-DL with your login details so it can access the website. This section also includes cookies for the support forums.

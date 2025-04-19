@@ -7,6 +7,10 @@ class CoomerAuth(BaseModel):
     session: str = ""
 
 
+class DiscordAuth(BaseModel):
+    token: str = ""
+
+
 class XXXBunkerAuth(BaseModel):
     PHPSESSID: str = ""
 
@@ -40,6 +44,7 @@ class RealDebridAuth(AliasModel):
 
 class AuthSettings(AliasModel):
     coomer: CoomerAuth = Field(validation_alias="Coomer", default=CoomerAuth())
+    discord: DiscordAuth = Field(validation_alias="Discord", default=DiscordAuth())  # type: ignore
     gofile: GoFileAuth = Field(validation_alias="GoFile", default=GoFileAuth())  # type: ignore
     imgur: ImgurAuth = Field(validation_alias="Imgur", default=ImgurAuth())  # type: ignore
     jdownloader: JDownloaderAuth = Field(validation_alias="JDownloader", default=JDownloaderAuth())  # type: ignore

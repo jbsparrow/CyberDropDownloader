@@ -16,6 +16,7 @@ from .crawler import Crawler
 from .cyberdrop import CyberdropCrawler
 from .cyberfile import CyberfileCrawler
 from .dirtyship import DirtyShipCrawler
+from .discord import DiscordCrawler
 from .doodstream import DoodStreamCrawler
 from .dropbox import DropboxCrawler
 from .e621 import E621Crawler
