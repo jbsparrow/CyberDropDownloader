@@ -91,8 +91,13 @@ async def _run_command(command: Sequence[str]) -> SubProcessResult:
 @lru_cache
 def get_ffmpeg_version() -> str | None:
     try:
-        p = subprocess.run(["ffmpeg", "-version"], check=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        ffmpeg_path = shutil.which("ffmpeg")
+        if not ffmpeg_path:
+            return None
+        cmd = [ffmpeg_path, "-version"]
+        p = subprocess.run(cmd, timeout=5, check=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
         stdout = p.stdout.decode("utf-8", errors="ignore")
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired, OSError, ValueError):
+        return None
+    else:
         return stdout.split("version", 1)[-1].split("Copyright")[0].strip()
-    except subprocess.CalledProcessError:
-        return
