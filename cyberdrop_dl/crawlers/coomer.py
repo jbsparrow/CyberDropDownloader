@@ -16,6 +16,8 @@ from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
+    from aiohttp_client_cache.response import AnyResponse
+
     from cyberdrop_dl.managers.manager import Manager
 
 
@@ -60,6 +62,14 @@ class CoomerCrawler(Crawler):
             await self.search(scrape_item)
         else:
             await self.handle_direct_link(scrape_item)
+
+    async def async_startup(self) -> None:
+        def check_coomer_page(response: AnyResponse):
+            if any(p in response.url.parts for p in ("onlyfans", "fansly", "data")):
+                return False
+            return True
+
+        self.register_cache_filter(self.primary_base_domain, check_coomer_page)
 
     @error_handling_wrapper
     async def search(self, scrape_item: ScrapeItem) -> None:

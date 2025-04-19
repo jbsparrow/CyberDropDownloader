@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any
 from aiohttp_client_cache import CacheBackend, SQLiteBackend
 
 from cyberdrop_dl import __version__ as current_version
-from cyberdrop_dl.scraper.filters import filter_fn
+from cyberdrop_dl.scraper.filters import cache_filter_fn
 from cyberdrop_dl.utils import yaml
 from cyberdrop_dl.utils.data_enums_classes.supported_domains import SUPPORTED_FORUMS, SUPPORTED_WEBSITES
 
@@ -51,7 +51,7 @@ class CacheManager:
         for forum in SUPPORTED_FORUMS.values():
             urls_expire_after[forum] = rate_limiting_options.forum_cache_expire_after
         self.request_cache = SQLiteBackend(
-            cache_name=self.manager.path_manager.cache_db,
+            cache_name=self.manager.path_manager.cache_db,  # type: ignore
             autoclose=False,
             allowed_codes=(
                 HTTPStatus.OK,
@@ -62,7 +62,7 @@ class CacheManager:
             allowed_methods=["GET"],
             expire_after=timedelta(days=7),
             urls_expire_after=urls_expire_after,
-            filter_fn=filter_fn,
+            filter_fn=cache_filter_fn,
         )
 
     def get(self, key: str) -> Any:
