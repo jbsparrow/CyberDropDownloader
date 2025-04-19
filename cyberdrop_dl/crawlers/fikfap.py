@@ -3,14 +3,15 @@ from __future__ import annotations
 import calendar
 import itertools
 from datetime import datetime  # noqa: TC003
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Any
 
-from pydantic import AliasPath, Field, PlainValidator
+from m3u8 import M3U8
+from pydantic import AliasPath, Field
 from yarl import URL
 
 from cyberdrop_dl.config_definitions.custom.types import AliasModel
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, parse_url
+from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -22,8 +23,6 @@ API_ENTRYPOINT = URL("https://api.fikfap.com")
 PRIMARY_BASE_DOMAIN = URL("https://fikfak.com")
 AMOUNT_LIMIT = 40  # Requesting more posts that this will return 400 - Bad Request
 
-HttpURL = Annotated[URL, PlainValidator(parse_url)]
-
 
 class Post(AliasModel):
     label: str
@@ -31,7 +30,7 @@ class Post(AliasModel):
     user_id: str = Field(alias="userId")
     media_id: str = Field(alias="mediaId")
     created_at: datetime = Field(alias="createdAt")
-    stream_url: HttpURL = Field(alias="videoStreamUrl")
+    stream_url: str = Field(alias="videoStreamUrl")
     user: str = Field(validation_alias=AliasPath("author", "username"))
 
     @property
@@ -48,7 +47,7 @@ class FikFapCrawler(Crawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "fikfap", "FikFap")
-        self.id_token = ""
+        self.id_token = "8ba195cc-e4e7-4825-9662-884db15da9e2"
         self.headers = {"Authorization-Anonymous": self.id_token}
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -142,12 +141,37 @@ class FikFapCrawler(Crawler):
         return post.id
 
     async def handle_post(self, scrape_item: ScrapeItem, post: Post) -> None:
+        headers = {"Referer": "https://fikfap.com/", "Origin": "https://fikfap.com"}
+
+        playlist_list_link = self.parse_url(post.stream_url)
+        async with self.request_limiter:
+            playlist_list_content = await self.client.get_text(self.domain, playlist_list_link, headers)
+
+        playlist_list_m3u8 = M3U8(playlist_list_content, base_uri=str(playlist_list_link.parent))
+        all_playlists = playlist_list_m3u8.playlists
+        playlists = [p for p in all_playlists if p.stream_info.codecs and "vp09" not in p.stream_info.codecs]
+        best_video = sorted(playlists, key=lambda p: p.stream_info.resolution[1])[-1]  # type: ignore
+        audio = next(a for a in playlist_list_m3u8.media if a.group_id == best_video.stream_info.audio)
+
+        audio_link = self.parse_url(audio.absolute_uri)
+        video_link = self.parse_url(best_video.absolute_uri)
+        async with self.request_limiter:
+            audio_content = await self.client.get_text(self.domain, audio_link, headers)
+            video_content = await self.client.get_text(self.domain, video_link, headers)
+
+        video_m3u8 = M3U8(video_content, base_uri=str(video_link.parent))
+        audio_m3u8 = M3U8(audio_content, base_uri=str(audio_link.parent))
+
+        assert video_m3u8
+        assert audio_m3u8
+
         scrape_item.url = post.page_url
         scrape_item.possible_datetime = post.timestamp
         title = self.create_title(f"{post.user} [user]", post.user_id)
         scrape_item.setup_as_album(title, album_id=post.user_id)
         filename, ext = self.get_filename_and_ext(f"{post.media_id}.mp4")
         custom_filename, _ = self.get_filename_and_ext(f"{post.label} [{post.id}].mp4")
+
         await self.handle_file(
-            post.page_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=post.stream_url
+            post.page_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=playlist_list_link
         )
