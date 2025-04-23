@@ -34,6 +34,7 @@ class Selectors:
     VIDEOS_SELECTOR = "div.video-list a.thumb"
     LAST_PAGE_SELECTOR = "div.pagination-holder li.page"
     TITLE_SELECTOR = "div.headline > h1"
+    MODEL_NAME_SELECTOR = "div.name > h1"
 
 
 class Regexes:
@@ -82,9 +83,25 @@ class PorntrexCrawler(Crawler):
             return await self.profile(scrape_item)
         elif "categories" in scrape_item.url.parts:
             return await self.category(scrape_item)
+        elif "models" in scrape_item.url.parts:
+            return await self.model(scrape_item)
         elif "video" in scrape_item.url.parts:
             return await self.video(scrape_item)
         raise ValueError
+
+    @error_handling_wrapper
+    async def model(self, scrape_item: ScrapeItem) -> None:
+        title_created: bool = False
+        request_params: RequestParams = RequestParams.new(block_id="list_videos_common_videos_list_norm")
+        async for soup in self.web_pager(scrape_item.url, request_params):
+            if not title_created:
+                model_name: str = soup.select_one(_SELECTORS.MODEL_NAME_SELECTOR).get_text(strip=True)
+                title = f"{model_name} [model]"
+                title = self.create_title(title)
+                scrape_item.setup_as_album(title)
+                title_created = True
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_SELECTOR):
+                self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def category(self, scrape_item: ScrapeItem) -> None:
@@ -253,7 +270,6 @@ def get_video_info(flashvars: str) -> Video:
         resolutions = []
         if "video_url" in video_info and "video_url_text" in video_info:
             resolutions.append((video_info["video_url_text"], video_info["video_url"]))
-
         for key in video_info:
             if (
                 key.startswith("video_alt_url")
@@ -264,7 +280,13 @@ def get_video_info(flashvars: str) -> Video:
                 text_key = f"{key}_text"
                 if text_key in video_info:
                     resolutions.append((video_info[text_key], video_info[key]))
-
+        if not resolutions:
+            return Video(
+                video_info["video_id"],
+                video_info["video_title"],
+                URL(video_info["video_url"].strip("/")),
+                "Unknown",
+            )
         best = max(resolutions, key=lambda x: extract_resolution(x[0]))
         return Video(video_info["video_id"], video_info["video_title"], URL(best[1].strip("/")), best[0].split()[0])
     raise ScrapeError(404)
