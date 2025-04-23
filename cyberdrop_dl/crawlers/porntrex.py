@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import itertools
 import re
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, Any, NamedTuple
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
@@ -12,7 +12,7 @@ from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
+    from collections.abc import AsyncGenerator, Callable
 
     from bs4 import BeautifulSoup
 
@@ -91,99 +91,62 @@ class PorntrexCrawler(Crawler):
 
     @error_handling_wrapper
     async def model(self, scrape_item: ScrapeItem) -> None:
-        title_created: bool = False
-        request_params: RequestParams = RequestParams.new(block_id="list_videos_common_videos_list_norm")
-        async for soup in self.web_pager(scrape_item.url, request_params):
-            if not title_created:
-                model_name: str = soup.select_one(_SELECTORS.MODEL_NAME_SELECTOR).get_text(strip=True)
-                title = f"{model_name} [model]"
-                title = self.create_title(title)
-                scrape_item.setup_as_album(title)
-                title_created = True
-            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_SELECTOR):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+        await self._scrape_common(
+            scrape_item,
+            RequestParams.new(block_id="list_videos_common_videos_list_norm"),
+            lambda soup: f"{soup.select_one(_SELECTORS.MODEL_NAME_SELECTOR).get_text(strip=True)} [model]",
+        )
 
     @error_handling_wrapper
     async def category(self, scrape_item: ScrapeItem) -> None:
-        title_created: bool = False
-        request_params: RequestParams = RequestParams.new(block_id="list_videos_common_videos_list_norm")
         match = _REGEXES.CATEGORY_PATTERN.search(str(scrape_item.url.path))
         if not match:
             raise ValueError
         category_name = match.group(1)
-        async for soup in self.web_pager(scrape_item.url, request_params):
-            if not title_created:
-                title = f"{category_name} [category]"
-                title = self.create_title(title)
-                scrape_item.setup_as_album(title)
-                title_created = True
-            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_SELECTOR):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+        await self._scrape_common(
+            scrape_item,
+            RequestParams.new(block_id="list_videos_common_videos_list_norm"),
+            lambda soup: f"{category_name} [category]",
+        )
 
     @error_handling_wrapper
     async def search(self, scrape_item: ScrapeItem) -> None:
-        title_created: bool = False
         match = _REGEXES.SEARCH_QUERY_PATTERN.search(str(scrape_item.url.path))
         if not match:
             raise ValueError
-        search_query = " ".join(match.group(1).split("-"))
-        request_params: RequestParams = RequestParams.new(
+        search_query = match.group(1).replace("-", " ")
+        params = RequestParams.new(
             block_id="list_videos_videos",
             sort_by=get_sorted_by_search_param(scrape_item.url),
             query_string=search_query,
         )
-        async for soup in self.web_pager(scrape_item.url, request_params):
-            if not title_created:
-                title = f"{search_query} [search]"
-                title = self.create_title(title)
-                scrape_item.setup_as_album(title)
-                title_created = True
-            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_SELECTOR):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+        await self._scrape_common(scrape_item, params, lambda soup: f"{search_query} [search]")
 
     @error_handling_wrapper
     async def tag(self, scrape_item: ScrapeItem) -> None:
-        title_created: bool = False
-        request_params: RequestParams = RequestParams.new(block_id="list_videos_common_videos_list_norm")
-        async for soup in self.web_pager(scrape_item.url, request_params):
-            if not title_created:
-                tag_name: str = soup.select_one(_SELECTORS.TITLE_SELECTOR).get_text(strip=True)
-                tag_name = tag_name.split("Tagged with ")[1]
-                title = f"{tag_name} [tag]"
-                title = self.create_title(title)
-                scrape_item.setup_as_album(title)
-                title_created = True
-            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_SELECTOR):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+        await self._scrape_common(
+            scrape_item,
+            RequestParams.new(block_id="list_videos_common_videos_list_norm"),
+            lambda soup: f"{soup.select_one(_SELECTORS.TITLE_SELECTOR).get_text(strip=True).split('Tagged with ')[1]} [tag]",
+        )
 
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem) -> None:
-        title_created: bool = False
-        request_params: RequestParams = RequestParams.new(block_id="playlist_view_playlist_view_dev")
-        async for soup in self.web_pager(scrape_item.url, request_params):
-            if not title_created:
-                tag_name: str = soup.select_one(_SELECTORS.TITLE_SELECTOR).get_text(strip=True)
-                title = f"{tag_name} [playlist]"
-                title = self.create_title(title)
-                scrape_item.setup_as_album(title)
-                title_created = True
-            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_SELECTOR):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+        await self._scrape_common(
+            scrape_item,
+            RequestParams.new(block_id="playlist_view_playlist_view_dev"),
+            lambda soup: f"{soup.select_one(_SELECTORS.TITLE_SELECTOR).get_text(strip=True)} [playlist]",
+        )
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
-        root_url: URL = scrape_item.url / "videos"
-        title_created: bool = False
-        request_params: RequestParams = RequestParams.new(block_id="list_videos_uploaded_videos")
-        async for soup in self.web_pager(root_url, request_params):
-            if not title_created:
-                user_name: str = soup.select_one(_SELECTORS.USER_NAME_SELECTOR).get_text(strip=True)
-                title = f"{user_name} [user]"
-                title = self.create_title(title)
-                scrape_item.setup_as_profile(title)
-                title_created = True
-            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_SELECTOR):
-                self.manager.task_group.create_task(self.run(new_scrape_item))
+        scrape_item.url = scrape_item.url / "videos"
+        await self._scrape_common(
+            scrape_item,
+            RequestParams.new(block_id="list_videos_uploaded_videos"),
+            lambda soup: f"{soup.select_one(_SELECTORS.USER_NAME_SELECTOR).get_text(strip=True)} [user]",
+            is_profile=True,
+        )
 
     async def web_pager(self, url: URL, request_params: RequestParams) -> AsyncGenerator[BeautifulSoup]:
         # The ending slash is necessary or we get a 404 error
@@ -217,6 +180,27 @@ class PorntrexCrawler(Crawler):
         await self.handle_file(
             canonical_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=video.url
         )
+
+    async def _scrape_common(
+        self,
+        scrape_item: ScrapeItem,
+        request_params: RequestParams,
+        get_title: Callable[[Any], str],
+        is_profile: bool = False,
+    ) -> None:
+        title_created = False
+        async for soup in self.web_pager(scrape_item.url, request_params):
+            if not title_created:
+                title = get_title(soup)
+                title = self.create_title(title)
+                if is_profile:
+                    scrape_item.setup_as_profile(title)
+                else:
+                    scrape_item.setup_as_album(title)
+                title_created = True
+
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_SELECTOR):
+                self.manager.task_group.create_task(self.run(new_scrape_item))
 
 
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
