@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 import re
 from typing import TYPE_CHECKING, NamedTuple
 
@@ -11,6 +12,8 @@ from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
+
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.managers.manager import Manager
@@ -29,6 +32,7 @@ class Selectors:
     NEXT_PAGE_SELECTOR = "div#list_videos_videos_pagination li.next"
     USER_NAME_SELECTOR = "div.user-name"
     VIDEOS_SELECTOR = "div.video-list a.thumb"
+    LAST_PAGE_SELECTOR = "div.pagination-holder li.page"
 
 
 class Regexes:
@@ -65,25 +69,34 @@ class PorntrexCrawler(Crawler):
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
         # The ending / is necessary or we get a 404 error
-        url: URL = scrape_item.url / "videos/"
+        root_url: URL = scrape_item.url / "videos/"
         title_created: bool = False
-        async for soup in self.web_pager(url):
+        async for soup in self.web_pager(root_url):
             if not title_created:
                 user_name: str = soup.select_one(_SELECTORS.USER_NAME_SELECTOR).get_text(strip=True)
                 title = f"{user_name} [user]"
                 title = self.create_title(title)
                 scrape_item.setup_as_profile(title)
                 title_created = True
-            scrape_item.url = url
-            # Todo Write the ajax paginator
-            # last_page: str = soup.select("div.pagination-holder li.page")[-1].get_text(strip=True)
-            # url = URL(
-            #     "https://www.porntrex.com/members/5685841/videos/?mode=async&function=get_block&block_id=list_videos_uploaded_videos&is_private=0,1&sort_by=&from_uploaded_videos=664"
-            # )
-            # async with self.request_limiter:
-            #     temp_soup: BeautifulSoup = await self.client.get_soup(self.domain, url)
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_SELECTOR):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
+
+    async def web_pager(self, url: URL) -> AsyncGenerator[BeautifulSoup]:
+        soup = await anext(super().web_pager(url))
+        pages = soup.select(_SELECTORS.LAST_PAGE_SELECTOR)
+        yield soup
+        if pages:
+            last_page: int = int(pages[-1].get_text(strip=True))
+            for page_num in itertools.takewhile(lambda x, last_page=last_page: x <= last_page, itertools.count(2)):
+                url = URL(
+                    f"{url}/?mode=async&function=get_block"
+                    f"&block_id=list_videos_uploaded_videos"
+                    f"&is_private=0,1&sort_by="
+                    f"&from_uploaded_videos={page_num}"
+                )
+                async with self.request_limiter:
+                    soup = await self.client.get_soup(self.domain, url)
+                yield soup
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
