@@ -24,19 +24,24 @@ class Video(NamedTuple):
     res: str
 
 
-# Selectors
-JS_SELECTOR = "div.video-holder script:contains('var flashvars')"
-NEXT_PAGE_SELECTOR = "div#list_videos_videos_pagination li.next"
-USER_NAME_SELECTOR = "div.user-name"
-VIDEOS_SELECTOR = "div.video-list a.thumb"
+class Selectors:
+    JS_SELECTOR = "div.video-holder script:contains('var flashvars')"
+    NEXT_PAGE_SELECTOR = "div#list_videos_videos_pagination li.next"
+    USER_NAME_SELECTOR = "div.user-name"
+    VIDEOS_SELECTOR = "div.video-list a.thumb"
 
-# Regex
-VIDEO_INFO_FIELDS_PATTERN = re.compile(r"(\w+):\s*'([^']*)'")
+
+class Regexes:
+    VIDEO_INFO_FIELDS_PATTERN = re.compile(r"(\w+):\s*'([^']*)'")
+
+
+_SELECTORS = Selectors()
+_REGEXES = Regexes()
 
 
 class PorntrexCrawler(Crawler):
     primary_base_domain = URL("https://www.porntrex.com")
-    next_page_selector = NEXT_PAGE_SELECTOR
+    next_page_selector = _SELECTORS.NEXT_PAGE_SELECTOR
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "porntrex", "Porntrex")
@@ -64,7 +69,7 @@ class PorntrexCrawler(Crawler):
         title_created: bool = False
         async for soup in self.web_pager(url):
             if not title_created:
-                user_name: str = soup.select_one(USER_NAME_SELECTOR).get_text(strip=True)
+                user_name: str = soup.select_one(_SELECTORS.USER_NAME_SELECTOR).get_text(strip=True)
                 title = f"{user_name} [user]"
                 title = self.create_title(title)
                 scrape_item.setup_as_profile(title)
@@ -77,7 +82,7 @@ class PorntrexCrawler(Crawler):
             # )
             # async with self.request_limiter:
             #     temp_soup: BeautifulSoup = await self.client.get_soup(self.domain, url)
-            for _, new_scrape_item in self.iter_children(scrape_item, soup, VIDEOS_SELECTOR):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_SELECTOR):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -85,7 +90,7 @@ class PorntrexCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
-        script = soup.select_one(JS_SELECTOR)
+        script = soup.select_one(_SELECTORS.JS_SELECTOR)
         if not script:
             raise ScrapeError(404)
 
@@ -107,7 +112,7 @@ def get_video_info(flashvars: str) -> Video:
         match = re.search(r"(\d+)", res_text)
         return int(match.group(1)) if match else 0
 
-    video_info = dict(VIDEO_INFO_FIELDS_PATTERN.findall(flashvars))
+    video_info = dict(_REGEXES.VIDEO_INFO_FIELDS_PATTERN.findall(flashvars))
     if video_info:
         resolutions = []
         if "video_url" in video_info and "video_url_text" in video_info:
