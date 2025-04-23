@@ -38,17 +38,21 @@ class Selectors:
 
 class Regexes:
     VIDEO_INFO_FIELDS_PATTERN = re.compile(r"(\w+):\s*'([^']*)'")
+    SEARCH_QUERY_PATTERN = re.compile(r"/search/([^/]+)")
+    SORT_BY_PATTERN = re.compile(r"/search/[^/]+/([^/]+)")
 
 
 class RequestParams(NamedTuple):
     block_id: str
+    sort_by: str
     query_string: str
 
     @staticmethod
-    def new(block_id: str, query_string: str | None = None) -> RequestParams:
+    def new(block_id: str, sort_by: str = "post_date", query_string: str | None = None) -> RequestParams:
         return RequestParams(
             block_id=block_id,
             query_string=query_string if query_string else "",
+            sort_by=sort_by,
         )
 
 
@@ -82,9 +86,13 @@ class PorntrexCrawler(Crawler):
     @error_handling_wrapper
     async def search(self, scrape_item: ScrapeItem) -> None:
         title_created: bool = False
-        search_query: str = " ".join(scrape_item.url.path.split("/search/")[1].split("-"))
+        match = _REGEXES.SEARCH_QUERY_PATTERN.search(str(scrape_item.url.path))
+        if not match:
+            raise ValueError
+        search_query = " ".join(match.group(1).split("-"))
         request_params: RequestParams = RequestParams.new(
             block_id="list_videos_videos",
+            sort_by=get_sorted_by_search_param(scrape_item.url),
             query_string=search_query,
         )
         async for soup in self.web_pager(scrape_item.url, request_params):
@@ -177,14 +185,20 @@ class PorntrexCrawler(Crawler):
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
 
-def get_search_params(url: URL) -> RequestParams:
-    """Extracts the search parameters from the URL."""
-    block_id = url.query.get("block_id", "list_videos_videos")
-    sort_by = url.query.get("sort_by", "relevance")
-    from_ = int(url.query.get("from", 0))
-    q = url.query.get("q")
-    category_ids = url.query.get("category_ids")
-    return RequestParams(block_id, sort_by, from_, q, category_ids)
+def get_sorted_by_search_param(url: URL) -> str:
+    sort_by = "relevance"
+    if match := _REGEXES.SORT_BY_PATTERN.search(str(url.path)):
+        if match.group(1) == "top-rated":
+            sort_by = "rating"
+        elif match.group(1) == "most-popular":
+            sort_by = "video_viewed"
+        elif match.group(1) == "longest":
+            sort_by = "duration"
+        elif match.group(1) == "most-commented":
+            sort_by = "most-commented"
+        elif match.group(1) == "most-favourited":
+            sort_by = "most-favourited"
+    return sort_by
 
 
 def get_web_pager_request_url(url: URL, page_num: int, request_params: RequestParams) -> URL:
@@ -193,7 +207,7 @@ def get_web_pager_request_url(url: URL, page_num: int, request_params: RequestPa
         "function": "get_block",
         "block_id": request_params.block_id,
         "is_private": "0",
-        "sort_by": "post_date",
+        "sort_by": request_params.sort_by,
     }
     if request_params.block_id == "list_videos_common_videos_list_norm":
         query["from"] = page_num
@@ -203,7 +217,6 @@ def get_web_pager_request_url(url: URL, page_num: int, request_params: RequestPa
     elif request_params.block_id == "list_videos_videos":
         query["q"] = request_params.query_string
         query["category_ids"] = ""
-        query["sort_by"] = "relevance"
         query["from"] = page_num
     else:
         query["from_uploaded_videos"] = page_num
