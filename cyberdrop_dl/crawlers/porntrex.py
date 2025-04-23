@@ -33,6 +33,7 @@ class Selectors:
     USER_NAME_SELECTOR = "div.user-name"
     VIDEOS_SELECTOR = "div.video-list a.thumb"
     LAST_PAGE_SELECTOR = "div.pagination-holder li.page"
+    TAG_TITLE_SELECTOR = "div.headline > h1"
 
 
 class Regexes:
@@ -56,6 +57,8 @@ class PorntrexCrawler(Crawler):
         """Determines where to send the scrape item based on the url."""
         if "search" in scrape_item.url.parts:
             return await self.search(scrape_item)
+        elif "tags" in scrape_item.url.parts:
+            return await self.tag(scrape_item)
         elif "members" in scrape_item.url.parts:
             return await self.profile(scrape_item)
         elif "video" in scrape_item.url.parts:
@@ -67,11 +70,24 @@ class PorntrexCrawler(Crawler):
         pass
 
     @error_handling_wrapper
-    async def profile(self, scrape_item: ScrapeItem) -> None:
-        # The ending / is necessary or we get a 404 error
-        root_url: URL = scrape_item.url / "videos/"
+    async def tag(self, scrape_item: ScrapeItem) -> None:
         title_created: bool = False
-        async for soup in self.web_pager(root_url):
+        async for soup in self.web_pager(scrape_item.url, block_id="list_videos_common_videos_list_norm"):
+            if not title_created:
+                tag_name: str = soup.select_one(_SELECTORS.TAG_TITLE_SELECTOR).get_text(strip=True)
+                tag_name = tag_name.split("Tagged with ")[1]
+                title = f"{tag_name} [tag]"
+                title = self.create_title(title)
+                scrape_item.setup_as_album(title)
+                title_created = True
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_SELECTOR):
+                self.manager.task_group.create_task(self.run(new_scrape_item))
+
+    @error_handling_wrapper
+    async def profile(self, scrape_item: ScrapeItem) -> None:
+        root_url: URL = scrape_item.url / "videos"
+        title_created: bool = False
+        async for soup in self.web_pager(root_url, block_id="list_videos_uploaded_videos"):
             if not title_created:
                 user_name: str = soup.select_one(_SELECTORS.USER_NAME_SELECTOR).get_text(strip=True)
                 title = f"{user_name} [user]"
@@ -81,19 +97,17 @@ class PorntrexCrawler(Crawler):
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_SELECTOR):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
-    async def web_pager(self, url: URL) -> AsyncGenerator[BeautifulSoup]:
+    async def web_pager(self, url: URL, block_id: str) -> AsyncGenerator[BeautifulSoup]:
+        # The ending slash is necessary or we get a 404 error
+        if not str(url).endswith("/"):
+            url = url.with_path(url.path + "/")
         soup = await anext(super().web_pager(url))
         pages = soup.select(_SELECTORS.LAST_PAGE_SELECTOR)
         yield soup
         if pages:
             last_page: int = int(pages[-1].get_text(strip=True))
             for page_num in itertools.takewhile(lambda x, last_page=last_page: x <= last_page, itertools.count(2)):
-                url = URL(
-                    f"{url}/?mode=async&function=get_block"
-                    f"&block_id=list_videos_uploaded_videos"
-                    f"&is_private=0,1&sort_by="
-                    f"&from_uploaded_videos={page_num}"
-                )
+                url = get_web_pager_request_url(url, block_id, page_num)
                 async with self.request_limiter:
                     soup = await self.client.get_soup(self.domain, url)
                 yield soup
@@ -118,6 +132,21 @@ class PorntrexCrawler(Crawler):
 
 
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+
+def get_web_pager_request_url(url: URL, block_id: str, page_num: int) -> URL:
+    query: dict[str, any] = {
+        "mode": "async",
+        "function": "get_block",
+        "block_id": block_id,
+        "is_private": "0",
+        "sort_by": "post_date",
+    }
+    if block_id == "list_videos_common_videos_list_norm":
+        query["from"] = page_num
+    else:
+        query["from_uploaded_videos"] = page_num
+    return url.with_query(query)
 
 
 def get_video_info(flashvars: str) -> Video:
