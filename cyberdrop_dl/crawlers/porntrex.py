@@ -89,9 +89,7 @@ class PorntrexCrawler(Crawler):
         )
         async for soup in self.web_pager(scrape_item.url, request_params):
             if not title_created:
-                tag_name: str = soup.select_one(_SELECTORS.TITLE_SELECTOR).get_text(strip=True)
-                tag_name = tag_name.split("for: ")[1]
-                title = f"{tag_name} [search]"
+                title = f"{search_query} [search]"
                 title = self.create_title(title)
                 scrape_item.setup_as_album(title)
                 title_created = True
@@ -142,7 +140,7 @@ class PorntrexCrawler(Crawler):
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_SELECTOR):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
-    async def web_pager(self, url: URL, search_params: RequestParams = None) -> AsyncGenerator[BeautifulSoup]:
+    async def web_pager(self, url: URL, request_params: RequestParams) -> AsyncGenerator[BeautifulSoup]:
         # The ending slash is necessary or we get a 404 error
         if not str(url).endswith("/"):
             url = url.with_path(url.path + "/")
@@ -152,7 +150,7 @@ class PorntrexCrawler(Crawler):
         if pages:
             last_page: int = int(pages[-1].get_text(strip=True))
             for page_num in itertools.takewhile(lambda x, last_page=last_page: x <= last_page, itertools.count(2)):
-                url = get_web_pager_request_url(url, page_num, search_params)
+                url = get_web_pager_request_url(url, page_num, request_params)
                 async with self.request_limiter:
                     soup = await self.client.get_soup(self.domain, url)
                 yield soup
