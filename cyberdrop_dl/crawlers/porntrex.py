@@ -33,7 +33,7 @@ class Selectors:
     USER_NAME_SELECTOR = "div.user-name"
     VIDEOS_SELECTOR = "div.video-list a.thumb"
     LAST_PAGE_SELECTOR = "div.pagination-holder li.page"
-    TAG_TITLE_SELECTOR = "div.headline > h1"
+    TITLE_SELECTOR = "div.headline > h1"
 
 
 class Regexes:
@@ -59,6 +59,8 @@ class PorntrexCrawler(Crawler):
             return await self.search(scrape_item)
         elif "tags" in scrape_item.url.parts:
             return await self.tag(scrape_item)
+        elif "playlists" in scrape_item.url.parts:
+            return await self.playlist(scrape_item)
         elif "members" in scrape_item.url.parts:
             return await self.profile(scrape_item)
         elif "video" in scrape_item.url.parts:
@@ -74,9 +76,22 @@ class PorntrexCrawler(Crawler):
         title_created: bool = False
         async for soup in self.web_pager(scrape_item.url, block_id="list_videos_common_videos_list_norm"):
             if not title_created:
-                tag_name: str = soup.select_one(_SELECTORS.TAG_TITLE_SELECTOR).get_text(strip=True)
+                tag_name: str = soup.select_one(_SELECTORS.TITLE_SELECTOR).get_text(strip=True)
                 tag_name = tag_name.split("Tagged with ")[1]
                 title = f"{tag_name} [tag]"
+                title = self.create_title(title)
+                scrape_item.setup_as_album(title)
+                title_created = True
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_SELECTOR):
+                self.manager.task_group.create_task(self.run(new_scrape_item))
+
+    @error_handling_wrapper
+    async def playlist(self, scrape_item: ScrapeItem) -> None:
+        title_created: bool = False
+        async for soup in self.web_pager(scrape_item.url, block_id="playlist_view_playlist_view_dev"):
+            if not title_created:
+                tag_name: str = soup.select_one(_SELECTORS.TITLE_SELECTOR).get_text(strip=True)
+                title = f"{tag_name} [playlist]"
                 title = self.create_title(title)
                 scrape_item.setup_as_album(title)
                 title_created = True
@@ -144,6 +159,9 @@ def get_web_pager_request_url(url: URL, block_id: str, page_num: int) -> URL:
     }
     if block_id == "list_videos_common_videos_list_norm":
         query["from"] = page_num
+    elif block_id == "playlist_view_playlist_view_dev":
+        query["sort_by"] = "added2fav_date"
+        query["from1"] = page_num
     else:
         query["from_uploaded_videos"] = page_num
     return url.with_query(query)
