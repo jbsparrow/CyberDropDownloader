@@ -216,14 +216,18 @@ class DownloadClient:
                 log(msg, 30)
                 media_item.datetime = last_modified
 
-            media_item.task_id = self.manager.progress_manager.file_progress.add_task(
-                domain=domain,
-                filename=media_item.filename,
-                expected_size=media_item.filesize + resume_point,
-            )
+            task_id = media_item.task_id
+            if task_id is None:
+                task_id = self.manager.progress_manager.file_progress.add_task(
+                    domain=domain,
+                    filename=media_item.filename,
+                    expected_size=media_item.filesize + resume_point,
+                )
+                media_item.set_task_id(task_id)
+
             if media_item.partial_file.is_file():
                 resume_point = media_item.partial_file.stat().st_size
-                self.manager.progress_manager.file_progress.advance_file(media_item.task_id, resume_point)
+                self.manager.progress_manager.file_progress.advance_file(task_id, resume_point)
 
             await save_content(resp.content)
             return True
