@@ -40,6 +40,7 @@ class Regexes:
     VIDEO_INFO_FIELDS_PATTERN = re.compile(r"(\w+):\s*'([^']*)'")
     SEARCH_QUERY_PATTERN = re.compile(r"/search/([^/]+)")
     SORT_BY_PATTERN = re.compile(r"/search/[^/]+/([^/]+)")
+    CATEGORY_PATTERN = re.compile(r"/categories/([^/]+)")
 
 
 class RequestParams(NamedTuple):
@@ -79,9 +80,28 @@ class PorntrexCrawler(Crawler):
             return await self.playlist(scrape_item)
         elif "members" in scrape_item.url.parts:
             return await self.profile(scrape_item)
+        elif "categories" in scrape_item.url.parts:
+            return await self.category(scrape_item)
         elif "video" in scrape_item.url.parts:
             return await self.video(scrape_item)
         raise ValueError
+
+    @error_handling_wrapper
+    async def category(self, scrape_item: ScrapeItem) -> None:
+        title_created: bool = False
+        request_params: RequestParams = RequestParams.new(block_id="list_videos_common_videos_list_norm")
+        match = _REGEXES.CATEGORY_PATTERN.search(str(scrape_item.url.path))
+        if not match:
+            raise ValueError
+        category_name = match.group(1)
+        async for soup in self.web_pager(scrape_item.url, request_params):
+            if not title_created:
+                title = f"{category_name} [category]"
+                title = self.create_title(title)
+                scrape_item.setup_as_album(title)
+                title_created = True
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_SELECTOR):
+                self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def search(self, scrape_item: ScrapeItem) -> None:
