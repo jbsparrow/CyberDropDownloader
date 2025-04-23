@@ -40,6 +40,18 @@ class Regexes:
     VIDEO_INFO_FIELDS_PATTERN = re.compile(r"(\w+):\s*'([^']*)'")
 
 
+class RequestParams(NamedTuple):
+    block_id: str
+    query_string: str
+
+    @staticmethod
+    def new(block_id: str, query_string: str | None = None) -> RequestParams:
+        return RequestParams(
+            block_id=block_id,
+            query_string=query_string if query_string else "",
+        )
+
+
 _SELECTORS = Selectors()
 _REGEXES = Regexes()
 
@@ -69,12 +81,28 @@ class PorntrexCrawler(Crawler):
 
     @error_handling_wrapper
     async def search(self, scrape_item: ScrapeItem) -> None:
-        pass
+        title_created: bool = False
+        search_query: str = " ".join(scrape_item.url.path.split("/search/")[1].split("-"))
+        request_params: RequestParams = RequestParams.new(
+            block_id="list_videos_videos",
+            query_string=search_query,
+        )
+        async for soup in self.web_pager(scrape_item.url, request_params):
+            if not title_created:
+                tag_name: str = soup.select_one(_SELECTORS.TITLE_SELECTOR).get_text(strip=True)
+                tag_name = tag_name.split("for: ")[1]
+                title = f"{tag_name} [search]"
+                title = self.create_title(title)
+                scrape_item.setup_as_album(title)
+                title_created = True
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_SELECTOR):
+                self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def tag(self, scrape_item: ScrapeItem) -> None:
         title_created: bool = False
-        async for soup in self.web_pager(scrape_item.url, block_id="list_videos_common_videos_list_norm"):
+        request_params: RequestParams = RequestParams.new(block_id="list_videos_common_videos_list_norm")
+        async for soup in self.web_pager(scrape_item.url, request_params):
             if not title_created:
                 tag_name: str = soup.select_one(_SELECTORS.TITLE_SELECTOR).get_text(strip=True)
                 tag_name = tag_name.split("Tagged with ")[1]
@@ -88,7 +116,8 @@ class PorntrexCrawler(Crawler):
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem) -> None:
         title_created: bool = False
-        async for soup in self.web_pager(scrape_item.url, block_id="playlist_view_playlist_view_dev"):
+        request_params: RequestParams = RequestParams.new(block_id="playlist_view_playlist_view_dev")
+        async for soup in self.web_pager(scrape_item.url, request_params):
             if not title_created:
                 tag_name: str = soup.select_one(_SELECTORS.TITLE_SELECTOR).get_text(strip=True)
                 title = f"{tag_name} [playlist]"
@@ -102,7 +131,8 @@ class PorntrexCrawler(Crawler):
     async def profile(self, scrape_item: ScrapeItem) -> None:
         root_url: URL = scrape_item.url / "videos"
         title_created: bool = False
-        async for soup in self.web_pager(root_url, block_id="list_videos_uploaded_videos"):
+        request_params: RequestParams = RequestParams.new(block_id="list_videos_uploaded_videos")
+        async for soup in self.web_pager(root_url, request_params):
             if not title_created:
                 user_name: str = soup.select_one(_SELECTORS.USER_NAME_SELECTOR).get_text(strip=True)
                 title = f"{user_name} [user]"
@@ -112,7 +142,7 @@ class PorntrexCrawler(Crawler):
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_SELECTOR):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
-    async def web_pager(self, url: URL, block_id: str) -> AsyncGenerator[BeautifulSoup]:
+    async def web_pager(self, url: URL, search_params: RequestParams = None) -> AsyncGenerator[BeautifulSoup]:
         # The ending slash is necessary or we get a 404 error
         if not str(url).endswith("/"):
             url = url.with_path(url.path + "/")
@@ -122,7 +152,7 @@ class PorntrexCrawler(Crawler):
         if pages:
             last_page: int = int(pages[-1].get_text(strip=True))
             for page_num in itertools.takewhile(lambda x, last_page=last_page: x <= last_page, itertools.count(2)):
-                url = get_web_pager_request_url(url, block_id, page_num)
+                url = get_web_pager_request_url(url, page_num, search_params)
                 async with self.request_limiter:
                     soup = await self.client.get_soup(self.domain, url)
                 yield soup
@@ -149,19 +179,34 @@ class PorntrexCrawler(Crawler):
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
 
-def get_web_pager_request_url(url: URL, block_id: str, page_num: int) -> URL:
+def get_search_params(url: URL) -> RequestParams:
+    """Extracts the search parameters from the URL."""
+    block_id = url.query.get("block_id", "list_videos_videos")
+    sort_by = url.query.get("sort_by", "relevance")
+    from_ = int(url.query.get("from", 0))
+    q = url.query.get("q")
+    category_ids = url.query.get("category_ids")
+    return RequestParams(block_id, sort_by, from_, q, category_ids)
+
+
+def get_web_pager_request_url(url: URL, page_num: int, request_params: RequestParams) -> URL:
     query: dict[str, any] = {
         "mode": "async",
         "function": "get_block",
-        "block_id": block_id,
+        "block_id": request_params.block_id,
         "is_private": "0",
         "sort_by": "post_date",
     }
-    if block_id == "list_videos_common_videos_list_norm":
+    if request_params.block_id == "list_videos_common_videos_list_norm":
         query["from"] = page_num
-    elif block_id == "playlist_view_playlist_view_dev":
+    elif request_params.block_id == "playlist_view_playlist_view_dev":
         query["sort_by"] = "added2fav_date"
         query["from1"] = page_num
+    elif request_params.block_id == "list_videos_videos":
+        query["q"] = request_params.query_string
+        query["category_ids"] = ""
+        query["sort_by"] = "relevance"
+        query["from"] = page_num
     else:
         query["from_uploaded_videos"] = page_num
     return url.with_query(query)
