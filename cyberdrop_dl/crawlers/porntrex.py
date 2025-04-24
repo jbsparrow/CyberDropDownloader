@@ -114,19 +114,21 @@ class PorntrexCrawler(Crawler):
         sort_by = sort_by or scrape_item.url.query.get("sort_by") or "relevance"
         if "search" in scrape_item.url.parts:
             search_query = scrape_item.url.parts[3]  # type: ignore
+            block_id = "list_videos_videos"
 
-        if "playlists" in scrape_item.url.parts:
+        elif "playlists" in scrape_item.url.parts:
             block_id = "playlist_view_playlist_view_dev"
             from_param_name = "from1"
             sort_by = "added2fav_date"
 
-        page_url = scrape_item.url.with_query(
+        page_url = scrape_item.url.with_path("/".join(scrape_item.url.parts[1:3])) / ""
+        page_url = page_url.with_query(
             mode="async", function="get_block", block_id=block_id, is_private=0, q=search_query, sort_by=sort_by
         )
         last_page_tag = soup.select(_SELECTORS.LAST_PAGE_SELECTOR)
         last_page: int = int(last_page_tag[-1].get_text(strip=True)) if last_page_tag else 1
         for page in itertools.count(2):
-            if page >= last_page:
+            if page > last_page:
                 break
             page_url = page_url.update_query({from_param_name: page})
             async with self.request_limiter:
