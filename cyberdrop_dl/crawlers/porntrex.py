@@ -74,11 +74,7 @@ class PorntrexCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
-        script = soup.select_one(_SELECTORS.JS_SELECTOR)
-        if not script:
-            raise ScrapeError(404)
-
-        video = get_video_info(get_text_between(script.text, "var flashvars =", "var player_obj ="))
+        video = get_video_info(soup)
         filename, ext = self.get_filename_and_ext(video.url.name)
         canonical_url = self.primary_base_domain / "video" / video.id
         scrape_item.url = canonical_url
@@ -139,16 +135,23 @@ class PorntrexCrawler(Crawler):
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
 
-def get_video_info(flashvars: str) -> Video:
+def get_video_info(soup: BeautifulSoup) -> Video:
+    script = soup.select_one(_SELECTORS.JS_SELECTOR)
+    if not script:
+        raise ScrapeError(404)
+
+    flashvars = get_text_between(script.text, "var flashvars =", "var player_obj =")
+
     def extract_resolution(res_text):
         match = re.search(r"(\d+)", res_text)
         return int(match.group(1)) if match else 0
 
-    video_info = dict(VIDEO_INFO_FIELDS_PATTERN.findall(flashvars))
+    video_info: dict[str, str] = dict(VIDEO_INFO_FIELDS_PATTERN.findall(flashvars))
     if video_info:
-        resolutions = []
+        resolutions: list[tuple[str, str]] = []
         if "video_url" in video_info and "video_url_text" in video_info:
             resolutions.append((video_info["video_url_text"], video_info["video_url"]))
+
         for key in video_info:
             if (
                 key.startswith("video_alt_url")
@@ -159,13 +162,10 @@ def get_video_info(flashvars: str) -> Video:
                 text_key = f"{key}_text"
                 if text_key in video_info:
                     resolutions.append((video_info[text_key], video_info[key]))
+
         if not resolutions:
-            return Video(
-                video_info["video_id"],
-                video_info["video_title"],
-                URL(video_info["video_url"].strip("/")),
-                "Unknown",
-            )
+            resolutions.append((video_info["video_url"], "Unknown"))
+
         best = max(resolutions, key=lambda x: extract_resolution(x[0]))
         return Video(video_info["video_id"], video_info["video_title"], URL(best[1].strip("/")), best[0].split()[0])
     raise ScrapeError(404)
