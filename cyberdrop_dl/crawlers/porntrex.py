@@ -79,6 +79,9 @@ class PorntrexCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
+        if "This album is a private album" in soup.text:
+            raise ScrapeError(401, "Private album")
+
         title = soup.select_one(_SELECTORS.ALBUM_TITLE).text  # type: ignore
         title = self.create_title(title, album_id)
         scrape_item.setup_as_album(title)
