@@ -35,11 +35,13 @@ class Selectors:
     MODEL_NAME_SELECTOR = "div.name > h1"
     ALBUM_TITLE = "div.album-info p.title-video"
     IMAGES_SELECTOR = "a[rel=images].item"
+    ALBUMS_SELECTOR = "div.list-albums a"
+    VIDEOS_AND_ALBUMS = f"{VIDEOS_SELECTOR}, {ALBUMS_SELECTOR}"
 
 
 VIDEO_INFO_FIELDS_PATTERN = re.compile(r"(\w+):\s*'([^']*)'")
-COLLECTION_PARTS = "tags", "categories", "models", "playlists", "search"
-TITLE_TRASH = "Free HD", "Most Relevant", "New", "Videos", "Porn", "for:", "New Videos", "Tagged with"
+COLLECTION_PARTS = "tags", "categories", "models", "playlists", "search", "members"
+TITLE_TRASH = "Free HD ", "Most Relevant ", "New ", "Videos", "Porn", "for:", "New Videos", "Tagged with"
 _SELECTORS = Selectors()
 
 
@@ -58,14 +60,12 @@ class PorntrexCrawler(Crawler):
             scrape_item.url = scrape_item.url / ""
 
         if len(scrape_item.url.parts) > 3:
-            if "members" in scrape_item.url.parts:
-                return await self.profile(scrape_item)
-            if "albums" in scrape_item.url.parts:
-                return await self.album(scrape_item)
-            elif "video" in scrape_item.url.parts:
+            if "video" in scrape_item.url.parts:
                 return await self.video(scrape_item)
             if any(p in scrape_item.url.parts for p in COLLECTION_PARTS):
                 return await self.collection(scrape_item)
+            if "albums" in scrape_item.url.parts:
+                return await self.album(scrape_item)
 
         raise ValueError
 
@@ -117,6 +117,8 @@ class PorntrexCrawler(Crawler):
 
         if "models" in scrape_item.url.parts:
             title: str = soup.select_one(_SELECTORS.MODEL_NAME_SELECTOR).get_text(strip=True).title()  # type: ignore
+        elif "members" in scrape_item.url.parts:
+            title: str = soup.select_one(_SELECTORS.USER_NAME_SELECTOR).get_text(strip=True)  # type: ignore
         else:
             title = soup.select_one(_SELECTORS.TITLE_SELECTOR).get_text(strip=True)  # type: ignore
 
@@ -125,6 +127,8 @@ class PorntrexCrawler(Crawler):
 
         if "categories" in scrape_item.url.parts:
             collection_type = "category"
+        elif "members" in scrape_item.url.parts:
+            collection_type = "user"
         else:
             collection_type = next(p for p in COLLECTION_PARTS if p in scrape_item.url.parts).removesuffix("s")
 
@@ -134,7 +138,7 @@ class PorntrexCrawler(Crawler):
         last_page_tag = soup.select(_SELECTORS.LAST_PAGE_SELECTOR)
         last_page: int = int(last_page_tag[-1].get_text(strip=True)) if last_page_tag else 1
 
-        for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_SELECTOR):
+        for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_AND_ALBUMS):
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
         await self.proccess_additional_pages(scrape_item, last_page)
@@ -150,6 +154,8 @@ class PorntrexCrawler(Crawler):
         if "search" in scrape_item.url.parts:
             search_query = scrape_item.url.parts[3]  # type: ignore
             block_id = "list_videos_videos"
+        elif "members" in scrape_item.url.parts:
+            block_id = "list_videos_uploaded_videos"
 
         elif "playlists" in scrape_item.url.parts:
             block_id = "playlist_view_playlist_view_dev"
@@ -162,7 +168,9 @@ class PorntrexCrawler(Crawler):
         if kwargs:
             page_url.update_query(kwargs)
 
-        if "videos" not in page_url.query["block_id"]:
+        if "members" in scrape_item.url.parts:
+            from_param_name = "from_uploaded_videos"
+        elif "videos" not in page_url.query["block_id"]:
             from_param_name = "from1"
         else:
             from_param_name: str = "from"
@@ -174,7 +182,7 @@ class PorntrexCrawler(Crawler):
             async with self.request_limiter:
                 soup = await self.client.get_soup(self.domain, page_url)
 
-            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_SELECTOR):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_AND_ALBUMS):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
 
