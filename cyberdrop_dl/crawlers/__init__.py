@@ -9,6 +9,7 @@ from .ashemaletube import AShemaleTubeCrawler
 from .bestprettygirl import BestPrettyGirlCrawler
 from .bunkrr import BunkrrCrawler
 from .bunkrr_albums_io import BunkrAlbumsIOCrawler
+from .buzzheavier import BuzzHeavierCrawler
 from .catbox import CatboxCrawler
 from .chevereto import CheveretoCrawler
 from .coomer import CoomerCrawler
