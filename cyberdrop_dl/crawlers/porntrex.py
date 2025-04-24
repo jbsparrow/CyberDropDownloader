@@ -33,6 +33,8 @@ class Selectors:
     LAST_PAGE_SELECTOR = "div.pagination-holder li.page"
     TITLE_SELECTOR = "div.headline > h1"
     MODEL_NAME_SELECTOR = "div.name > h1"
+    ALBUM_TITLE = "div.album-info p.title-video"
+    IMAGES_SELECTOR = "a[rel=images].item"
 
 
 VIDEO_INFO_FIELDS_PATTERN = re.compile(r"(\w+):\s*'([^']*)'")
@@ -58,6 +60,8 @@ class PorntrexCrawler(Crawler):
         if len(scrape_item.url.parts) > 3:
             if "members" in scrape_item.url.parts:
                 return await self.profile(scrape_item)
+            if "albums" in scrape_item.url.parts:
+                return await self.album(scrape_item)
             elif "video" in scrape_item.url.parts:
                 return await self.video(scrape_item)
             if any(p in scrape_item.url.parts for p in COLLECTION_PARTS):
@@ -68,6 +72,22 @@ class PorntrexCrawler(Crawler):
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
         raise NotImplementedError
+
+    @error_handling_wrapper
+    async def album(self, scrape_item: ScrapeItem) -> None:
+        album_id = scrape_item.url.parts[2]
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+
+        title = soup.select_one(_SELECTORS.ALBUM_TITLE).text  # type: ignore
+        title = self.create_title(title, album_id)
+        scrape_item.setup_as_album(title)
+
+        for _, link in self.iter_tags(soup, _SELECTORS.IMAGES_SELECTOR):
+            filename, ext = self.get_filename_and_ext(link.name)
+            canonical_url = self.primary_base_domain / "albums" / album_id / filename
+            await self.handle_file(canonical_url, scrape_item, filename, ext, debrid_link=link)
+            scrape_item.add_children()
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
