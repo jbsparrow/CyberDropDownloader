@@ -71,12 +71,16 @@ class PorntrexCrawler(Crawler):
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
+        video_id = scrape_item.url.parts[2]
+        canonical_url = self.primary_base_domain / "video" / video_id
+        if await self.check_complete_from_referer(canonical_url):
+            return
+
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         video = get_video_info(soup)
         filename, ext = self.get_filename_and_ext(video.url.name)
-        canonical_url = self.primary_base_domain / "video" / video.id
         scrape_item.url = canonical_url
         custom_filename, _ = self.get_filename_and_ext(f"{video.title} [{video.id}] [{video.res}]{ext}")
         await self.handle_file(
