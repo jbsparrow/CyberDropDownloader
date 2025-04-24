@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import itertools
 import re
-from typing import TYPE_CHECKING, Any, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
@@ -12,8 +12,6 @@ from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Callable
-
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.managers.manager import Manager
@@ -37,29 +35,10 @@ class Selectors:
     MODEL_NAME_SELECTOR = "div.name > h1"
 
 
-class Regexes:
-    VIDEO_INFO_FIELDS_PATTERN = re.compile(r"(\w+):\s*'([^']*)'")
-    SEARCH_QUERY_PATTERN = re.compile(r"/search/([^/]+)")
-    SORT_BY_PATTERN = re.compile(r"/search/[^/]+/([^/]+)")
-    CATEGORY_PATTERN = re.compile(r"/categories/([^/]+)")
-
-
-class RequestParams(NamedTuple):
-    block_id: str
-    sort_by: str
-    query_string: str
-
-    @staticmethod
-    def new(block_id: str, sort_by: str = "post_date", query_string: str | None = None) -> RequestParams:
-        return RequestParams(
-            block_id=block_id,
-            query_string=query_string if query_string else "",
-            sort_by=sort_by,
-        )
-
-
+VIDEO_INFO_FIELDS_PATTERN = re.compile(r"(\w+):\s*'([^']*)'")
+COLLECTION_PARTS = "tags", "categories", "models", "playlists", "search"
+TITLE_TRASH = "Free HD", "Most Relevant", "New", "Videos", "Porn", "for:", "New Videos", "Tagged with"
 _SELECTORS = Selectors()
-_REGEXES = Regexes()
 
 
 class PorntrexCrawler(Crawler):
@@ -73,95 +52,22 @@ class PorntrexCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        if "search" in scrape_item.url.parts:
-            return await self.search(scrape_item)
-        elif "tags" in scrape_item.url.parts:
-            return await self.tag(scrape_item)
-        elif "playlists" in scrape_item.url.parts:
-            return await self.playlist(scrape_item)
-        elif "members" in scrape_item.url.parts:
-            return await self.profile(scrape_item)
-        elif "categories" in scrape_item.url.parts:
-            return await self.category(scrape_item)
-        elif "models" in scrape_item.url.parts:
-            return await self.model(scrape_item)
-        elif "video" in scrape_item.url.parts:
-            return await self.video(scrape_item)
+        if scrape_item.url.name:  # The ending slash is necessary or we get a 404 error
+            scrape_item.url = scrape_item.url / ""
+
+        if len(scrape_item.url.parts) > 3:
+            if "members" in scrape_item.url.parts:
+                return await self.profile(scrape_item)
+            elif "video" in scrape_item.url.parts:
+                return await self.video(scrape_item)
+            if any(p in scrape_item.url.parts for p in COLLECTION_PARTS):
+                return await self.collection(scrape_item)
+
         raise ValueError
 
     @error_handling_wrapper
-    async def model(self, scrape_item: ScrapeItem) -> None:
-        await self._scrape_common(
-            scrape_item,
-            RequestParams.new(block_id="list_videos_common_videos_list_norm"),
-            lambda soup: f"{soup.select_one(_SELECTORS.MODEL_NAME_SELECTOR).get_text(strip=True)} [model]",
-        )
-
-    @error_handling_wrapper
-    async def category(self, scrape_item: ScrapeItem) -> None:
-        match = _REGEXES.CATEGORY_PATTERN.search(str(scrape_item.url.path))
-        if not match:
-            raise ValueError
-        category_name = match.group(1)
-        await self._scrape_common(
-            scrape_item,
-            RequestParams.new(block_id="list_videos_common_videos_list_norm"),
-            lambda soup: f"{category_name} [category]",
-        )
-
-    @error_handling_wrapper
-    async def search(self, scrape_item: ScrapeItem) -> None:
-        match = _REGEXES.SEARCH_QUERY_PATTERN.search(str(scrape_item.url.path))
-        if not match:
-            raise ValueError
-        search_query = match.group(1).replace("-", " ")
-        params = RequestParams.new(
-            block_id="list_videos_videos",
-            sort_by=get_sorted_by_search_param(scrape_item.url),
-            query_string=search_query,
-        )
-        await self._scrape_common(scrape_item, params, lambda soup: f"{search_query} [search]")
-
-    @error_handling_wrapper
-    async def tag(self, scrape_item: ScrapeItem) -> None:
-        await self._scrape_common(
-            scrape_item,
-            RequestParams.new(block_id="list_videos_common_videos_list_norm"),
-            lambda soup: f"{soup.select_one(_SELECTORS.TITLE_SELECTOR).get_text(strip=True).split('Tagged with ')[1]} [tag]",
-        )
-
-    @error_handling_wrapper
-    async def playlist(self, scrape_item: ScrapeItem) -> None:
-        await self._scrape_common(
-            scrape_item,
-            RequestParams.new(block_id="playlist_view_playlist_view_dev"),
-            lambda soup: f"{soup.select_one(_SELECTORS.TITLE_SELECTOR).get_text(strip=True)} [playlist]",
-        )
-
-    @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
-        scrape_item.url = scrape_item.url / "videos"
-        await self._scrape_common(
-            scrape_item,
-            RequestParams.new(block_id="list_videos_uploaded_videos"),
-            lambda soup: f"{soup.select_one(_SELECTORS.USER_NAME_SELECTOR).get_text(strip=True)} [user]",
-            is_profile=True,
-        )
-
-    async def web_pager(self, url: URL, request_params: RequestParams) -> AsyncGenerator[BeautifulSoup]:
-        # The ending slash is necessary or we get a 404 error
-        if not str(url).endswith("/"):
-            url = url.with_path(url.path + "/")
-        soup = await anext(super().web_pager(url))
-        pages = soup.select(_SELECTORS.LAST_PAGE_SELECTOR)
-        yield soup
-        if pages:
-            last_page: int = int(pages[-1].get_text(strip=True))
-            for page_num in itertools.takewhile(lambda x, last_page=last_page: x <= last_page, itertools.count(2)):
-                url = get_web_pager_request_url(url, page_num, request_params)
-                async with self.request_limiter:
-                    soup = await self.client.get_soup(self.domain, url)
-                yield soup
+        raise NotImplementedError
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
@@ -181,23 +87,50 @@ class PorntrexCrawler(Crawler):
             canonical_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=video.url
         )
 
-    async def _scrape_common(
-        self,
-        scrape_item: ScrapeItem,
-        request_params: RequestParams,
-        get_title: Callable[[Any], str],
-        is_profile: bool = False,
-    ) -> None:
-        title_created = False
-        async for soup in self.web_pager(scrape_item.url, request_params):
-            if not title_created:
-                title = get_title(soup)
-                title = self.create_title(title)
-                if is_profile:
-                    scrape_item.setup_as_profile(title)
-                else:
-                    scrape_item.setup_as_album(title)
-                title_created = True
+    @error_handling_wrapper
+    async def collection(self, scrape_item: ScrapeItem) -> None:
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+
+        if "models" in scrape_item.url.parts:
+            title: str = soup.select_one(_SELECTORS.MODEL_NAME_SELECTOR).get_text(strip=True).title()  # type: ignore
+        else:
+            title = soup.select_one(_SELECTORS.TITLE_SELECTOR).get_text(strip=True)  # type: ignore
+
+        for trash in TITLE_TRASH:
+            title = title.replace(trash, "").strip()
+
+        if "categories" in scrape_item.url.parts:
+            collection_type = "category"
+        else:
+            collection_type = next(p for p in COLLECTION_PARTS if p in scrape_item.url.parts).removesuffix("s")
+
+        title, *_ = title.split(",Page")
+        title = self.create_title(f"{title} [{collection_type}]")
+        block_id: str = "list_videos_common_videos_list_norm"
+        from_param_name: str = "from"
+        search_query: str = ""
+        sort_by: str = scrape_item.url.parts[4] if len(scrape_item.url.parts) > 4 else ""
+        sort_by = sort_by or scrape_item.url.query.get("sort_by") or "relevance"
+        if "search" in scrape_item.url.parts:
+            search_query = scrape_item.url.parts[3]  # type: ignore
+
+        if "playlists" in scrape_item.url.parts:
+            block_id = "playlist_view_playlist_view_dev"
+            from_param_name = "from1"
+            sort_by = "added2fav_date"
+
+        page_url = scrape_item.url.with_query(
+            mode="async", function="get_block", block_id=block_id, is_private=0, q=search_query, sort_by=sort_by
+        )
+        last_page_tag = soup.select(_SELECTORS.LAST_PAGE_SELECTOR)
+        last_page: int = int(last_page_tag[-1].get_text(strip=True)) if last_page_tag else 1
+        for page in itertools.count(2):
+            if page >= last_page:
+                break
+            page_url = page_url.update_query({from_param_name: page})
+            async with self.request_limiter:
+                soup = await self.client.get_soup(self.domain, page_url)
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_SELECTOR):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
@@ -206,50 +139,12 @@ class PorntrexCrawler(Crawler):
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
 
-def get_sorted_by_search_param(url: URL) -> str:
-    sort_by = "relevance"
-    if match := _REGEXES.SORT_BY_PATTERN.search(str(url.path)):
-        if match.group(1) == "top-rated":
-            sort_by = "rating"
-        elif match.group(1) == "most-popular":
-            sort_by = "video_viewed"
-        elif match.group(1) == "longest":
-            sort_by = "duration"
-        elif match.group(1) == "most-commented":
-            sort_by = "most-commented"
-        elif match.group(1) == "most-favourited":
-            sort_by = "most-favourited"
-    return sort_by
-
-
-def get_web_pager_request_url(url: URL, page_num: int, request_params: RequestParams) -> URL:
-    query: dict[str, any] = {
-        "mode": "async",
-        "function": "get_block",
-        "block_id": request_params.block_id,
-        "is_private": "0",
-        "sort_by": request_params.sort_by,
-    }
-    if request_params.block_id == "list_videos_common_videos_list_norm":
-        query["from"] = page_num
-    elif request_params.block_id == "playlist_view_playlist_view_dev":
-        query["sort_by"] = "added2fav_date"
-        query["from1"] = page_num
-    elif request_params.block_id == "list_videos_videos":
-        query["q"] = request_params.query_string
-        query["category_ids"] = ""
-        query["from"] = page_num
-    else:
-        query["from_uploaded_videos"] = page_num
-    return url.with_query(query)
-
-
 def get_video_info(flashvars: str) -> Video:
     def extract_resolution(res_text):
         match = re.search(r"(\d+)", res_text)
         return int(match.group(1)) if match else 0
 
-    video_info = dict(_REGEXES.VIDEO_INFO_FIELDS_PATTERN.findall(flashvars))
+    video_info = dict(VIDEO_INFO_FIELDS_PATTERN.findall(flashvars))
     if video_info:
         resolutions = []
         if "video_url" in video_info and "video_url_text" in video_info:
