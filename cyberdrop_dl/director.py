@@ -9,7 +9,7 @@ from enum import IntEnum
 from functools import wraps
 from pathlib import Path
 from time import perf_counter
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
 import browser_cookie3
 from pydantic import ValidationError
@@ -31,8 +31,10 @@ from cyberdrop_dl.utils.utilities import check_partials_and_empty_folders, send_
 from cyberdrop_dl.utils.yaml import handle_validation_error
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Generator
+    from collections.abc import Callable, Coroutine, Generator
 
+P = ParamSpec("P")
+R = TypeVar("R")
 
 startup_logger = logging.getLogger("cyberdrop_dl_startup")
 STARTUP_LOGGER_FILE = Path.cwd().joinpath("startup.log")
@@ -46,11 +48,13 @@ class ExitCode(IntEnum):
 _C = ExitCode
 
 
-def _ui_error_handling_wrapper(func: Callable) -> Callable:
+def _ui_error_handling_wrapper(
+    func: Callable[P, Coroutine[None, None, R]],
+) -> Callable[P, Coroutine[None, None, R | None]]:
     """Wrapper handles errors from the main UI."""
 
     @wraps(func)
-    async def wrapper(*args, **kwargs):
+    async def wrapper(*args, **kwargs) -> R | None:
         try:
             return await func(*args, **kwargs)
         except* Exception as e:
@@ -337,11 +341,11 @@ class Director:
         return self._run()
 
     def _run(self) -> int:
-        exit_code = _C.OK
+        exit_code = _C.ERROR
         with contextlib.suppress(Exception):
             try:
                 asyncio.run(_run_manager(self.manager))
-                exit_code = _C.ERROR
+                exit_code = _C.OK
             except KeyboardInterrupt:
                 rich_print("Trying to Exit ...")
             finally:

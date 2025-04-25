@@ -35,7 +35,7 @@ description = "Bulk downloader for multiple file hosts"
 license = {text = "GPL-3.0-only"}
 readme = "README.md"
 requires-python = ">=3.11,<4"
-version = "6.9.0"
+version = "6.9.1"
 
 [project.scripts]
 cyberdrop-dl = "cyberdrop_dl.main:main"

@@ -8,13 +8,14 @@ from dataclasses import field
 from datetime import datetime
 from functools import wraps
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, NewType, Protocol
+from typing import TYPE_CHECKING, Any, ClassVar, NewType, ParamSpec, Protocol, TypeVar
 
 from aiolimiter import AsyncLimiter
 from dateutil import parser
 from yarl import URL
 
 from cyberdrop_dl.downloader.downloader import Downloader
+from cyberdrop_dl.scraper import filters
 from cyberdrop_dl.utils import utilities
 from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
@@ -29,10 +30,13 @@ from cyberdrop_dl.utils.utilities import (
 
 _NEW_ISSUE_URL = "https://github.com/jbsparrow/CyberDropDownloader/issues/new/choose"
 TimeStamp = NewType("TimeStamp", int)
+P = ParamSpec("P")
+R = TypeVar("R")
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Callable, Generator
+    from collections.abc import AsyncGenerator, Awaitable, Callable, Coroutine, Generator
 
+    from aiohttp_client_cache.response import AnyResponse
     from bs4 import BeautifulSoup, Tag
     from bs4.css import CSS
 
@@ -398,19 +402,27 @@ class Crawler(ABC):
         date_str: str = date_tag.get(attribute) if (date_tag := soup.select_one(selector)) else ""  # type: ignore
         return self.parse_date(date_str, format)
 
+    @staticmethod
+    def register_cache_filter(
+        url: URL, filter_fn: Callable[[AnyResponse], bool] | Callable[[AnyResponse], Awaitable[bool]]
+    ) -> None:
+        assert url.host
+        filters.cache_filter_functions[url.host] = filter_fn
 
-def create_task_id(func: Callable) -> Callable:
+
+def create_task_id(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, Coroutine[None, None, R | None]]:
     """Wrapper that handles `task_id` creation and removal for scrape items"""
 
     @wraps(func)
-    async def wrapper(self: Crawler, *args, **kwargs):
-        scrape_item: ScrapeItem = args[0]
+    async def wrapper(*args, **kwargs) -> R | None:
+        self: Crawler = args[0]
+        scrape_item: ScrapeItem = args[1]
         await self.manager.states.RUNNING.wait()
         task_id = self.scraping_progress.add_task(scrape_item.url)
         try:
             if not self.skip_pre_check:
                 pre_check_scrape_item(scrape_item)
-            return await func(self, *args, **kwargs)
+            return await func(*args, **kwargs)
         except ValueError:
             log(f"Scrape Failed: {UNKNOWN_URL_PATH_MSG}: {scrape_item.url}", 40)
             self.manager.progress_manager.scrape_stats_progress.add_failure(UNKNOWN_URL_PATH_MSG)
