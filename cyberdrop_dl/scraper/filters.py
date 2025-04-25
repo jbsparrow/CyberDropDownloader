@@ -1,10 +1,10 @@
 from __future__ import annotations
 
+import inspect
 from http import HTTPStatus
 from typing import TYPE_CHECKING
 
 import arrow
-from bs4 import BeautifulSoup
 from yarl import URL
 
 import cyberdrop_dl.utils.constants as constants
@@ -70,87 +70,20 @@ def has_valid_extension(url: URL, forum: bool = False) -> bool:
         return ext in MEDIA_EXTENSIONS
 
 
-async def set_return_value(url: str, value: bool, pop: bool | None = True) -> None:
-    """Sets a return value for a url"""
-    global return_values
-    return_values[url] = (value, pop)
+cache_filter_functions = {}
+HTTP_404_LIKE_STATUS = {HTTPStatus.NOT_FOUND, HTTPStatus.GONE, HTTPStatus.UNAVAILABLE_FOR_LEGAL_REASONS}
 
 
-async def get_return_value(url: URL | str) -> bool | None:
-    """Gets a return value for a url"""
-    global return_values
-    value, pop = return_values.get(url, (None, None))
-    if pop:
-        return_values.pop(url, None)
-    return value
-
-
-async def filter_fn(response: ClientResponse) -> bool:
+async def cache_filter_fn(response: ClientResponse) -> bool:
     """Filter function for aiohttp_client_cache"""
     if constants.DISABLE_CACHE:
         return False
-    HTTP_404_LIKE_STATUS = {HTTPStatus.NOT_FOUND, HTTPStatus.GONE, HTTPStatus.UNAVAILABLE_FOR_LEGAL_REASONS}
 
     if response.status in HTTP_404_LIKE_STATUS:
         return True
 
-    if response.url in return_values:
-        return get_return_value(response.url)
+    filter_fn = cache_filter_functions.get(response.url.host)
+    if filter_fn:
+        return await filter_fn(response) if inspect.iscoroutinefunction(filter_fn) else filter_fn(response)
 
-    async def check_xenforo_last_page(response: ClientResponse):
-        """Checks if the last page has been reached"""
-
-        final_page_selector = "li.pageNav-page a"
-        current_page_selector = "li.pageNav-page.pageNav-page--current a"
-
-        soup = BeautifulSoup(await response.text(), "html.parser")
-        try:
-            last_page = int(soup.select(final_page_selector)[-1].text.split("page-")[-1])
-            current_page = int(soup.select_one(current_page_selector).text.split("page-")[-1])  # type: ignore
-        except (AttributeError, IndexError):
-            return False, "Last page not found, assuming only one page"
-        return current_page != last_page, "Last page not reached" if current_page != last_page else "Last page reached"
-
-    async def check_coomer_page(response: ClientResponse):
-        """Checks if the last page has been reached"""
-        url_part_responses = {"data": "Data page", "onlyfans": "Onlyfans page", "fansly": "Fansly page"}
-        if response.url.parts[1] in url_part_responses:
-            return False, url_part_responses[response.url.parts[1]]
-
-    async def check_kemono_page(response: ClientResponse):
-        url_part_responses = {
-            "data": "Data page",
-            "afdian": "Afdian page",
-            "boosty": "Boosty page",
-            "dlsite": "Dlsite page",
-            "fanbox": "Fanbox page",
-            "fantia": "Fantia page",
-            "gumroad": "Gumroad page",
-            "patreon": "Patreon page",
-            "subscribestar": "Subscribestar page",
-            "discord": "Discord page",
-        }
-        if response.url.parts[1] in url_part_responses:
-            return False, url_part_responses[response.url.parts[1]]
-        elif "discord/channel" in response.url.parts:
-            return False, "Discord channel page"
-
-    filter_dict = {
-        "allporncomix.com": check_xenforo_last_page,
-        # "www.bellazon.com": check_xenforo_last_page,
-        "celebforum.to": check_xenforo_last_page,
-        "f95zone.to": check_xenforo_last_page,
-        "leakedmodels.com": check_xenforo_last_page,
-        "nudostar.com": check_xenforo_last_page,
-        "xbunker.nu": check_xenforo_last_page,
-        "socialmediagirls.com": check_xenforo_last_page,
-        "simpcity.su": check_xenforo_last_page,
-        "titsintops.com": check_xenforo_last_page,
-        "coomer.su": check_coomer_page,
-        "kemono.su": check_kemono_page,
-    }
-
-    filter_fn = filter_dict.get(response.url.host)  # type: ignore
-    cache_response, reason = await filter_fn(response) if filter_fn else False, "No caching manager for host"
-    del reason
-    return cache_response
+    return False
