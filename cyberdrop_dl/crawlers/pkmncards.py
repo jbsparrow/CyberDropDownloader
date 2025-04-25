@@ -33,7 +33,6 @@ CARD_NUMBER_SELECTOR = "span[class='number'] a"
 
 SET_NAME_SELECTOR = "span[title='Set'] a"
 SET_ABBR_SELECTOR = "span[title='Set Abbreviation']"
-SET_SERIES_CODE_SELECTOR = "span[title='Set Series Code']"
 
 
 CARD_FROM_FULL_SELECTOR = "article[id*='post-']"
