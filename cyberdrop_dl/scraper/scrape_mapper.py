@@ -51,6 +51,8 @@ class ScrapeMapper:
     def start_scrapers(self) -> None:
         """Starts all scrapers."""
         self.existing_crawlers = get_crawlers(self.manager)
+        if not self.manager.config_manager.global_settings_data.general.enable_generic_crawler:
+            _ = self.existing_crawlers.pop(".")
 
     def start_jdownloader(self) -> None:
         """Starts JDownloader."""
