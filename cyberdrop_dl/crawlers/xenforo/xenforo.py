@@ -14,7 +14,6 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import InvalidURLError, LoginError, ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.scraper.filters import set_return_value
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FORUM, FORUM_POST, ScrapeItem
 from cyberdrop_dl.utils.logger import log, log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_trailing_slash
@@ -22,11 +21,16 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_trailing
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Sequence
 
+    from aiohttp_client_cache.response import AnyResponse
+
     from cyberdrop_dl.managers.manager import Manager
 
 HTTP_URL_REGEX_STR = r"https?://(www\.)?[-a-zA-Z0-9@:%._+~#=]{2,256}\.[a-z]{2,12}\b([-a-zA-Z0-9@:%_+.~#?&/=]*)"
-
 HTTP_URL_REGEX = re.compile(HTTP_URL_REGEX_STR)
+
+
+FINAL_PAGE_SELECTOR = "li.pageNav-page a"
+CURRENT_PAGE_SELECTOR = "li.pageNav-page.pageNav-page--current a"
 
 
 @dataclass(frozen=True, slots=True)
@@ -131,6 +135,17 @@ class XenforoCrawler(Crawler):
         if not self.logged_in:
             login_url = self.primary_base_domain / "login"
             await self.login_setup(login_url)
+
+        async def is_not_last_page(response: AnyResponse):
+            soup = BeautifulSoup(await response.text(), "html.parser")
+            try:
+                last_page = int(soup.select(FINAL_PAGE_SELECTOR)[-1].text.split("page-")[-1])
+                current_page = int(soup.select(CURRENT_PAGE_SELECTOR)[0].text.split("page-")[-1])
+            except (AttributeError, IndexError):
+                return False
+            return current_page != last_page
+
+        self.register_cache_filter(self.primary_base_domain, is_not_last_page)
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
@@ -487,11 +502,11 @@ class XenforoCrawler(Crawler):
         while attempt < retries:
             with contextlib.suppress(TimeoutError):
                 attempt += 1
-                await set_return_value(str(login_url), False, pop=False)
-                await set_return_value(str(login_url / "login"), False, pop=False)
                 await asyncio.sleep(wait_time)
-                login_data = prepare_login_data(text)
-                await self.client.post_data(self.domain, login_url / "login", data=login_data, req_resp=False)
+                data = prepare_login_data(text)
+                await self.client.post_data(
+                    self.domain, login_url / "login", data=data, req_resp=False, cache_disabled=True
+                )
                 await asyncio.sleep(wait_time)
                 text, logged_in = await self.check_login_with_request(login_url)
                 if logged_in:
@@ -502,7 +517,7 @@ class XenforoCrawler(Crawler):
         raise LoginError(message=msg)
 
     async def check_login_with_request(self, login_url: URL) -> tuple[str, bool]:
-        text = await self.client.get_text(self.domain, login_url)
+        text = await self.client.get_text(self.domain, login_url, cache_disabled=True)
         return text, any(p in text for p in ('<span class="p-navgroup-user-linkText">', "You are already logged in."))
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
