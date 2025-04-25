@@ -5,10 +5,8 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import create_task_id
 from cyberdrop_dl.crawlers.kemono import KemonoCrawler, UserPost
-from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
