@@ -274,22 +274,32 @@ class Crawler(ABC):
                 break
         return title
 
-    def add_separate_post_title(self, scrape_item: ScrapeItem, post: Post) -> None:
+    def create_separate_post_title(
+        self,
+        title: str | None = None,
+        id: str | None = None,
+        date: datetime | int | None = None,
+        /,
+    ) -> str:
         if not self.manager.config.download_options.separate_posts:
-            return
+            return ""
         title_format = self.manager.config.download_options.separate_posts_format
-        if title_format.casefold() == "{default}":
+        if title_format.strip().casefold() == "{default}":
             title_format = self.DEFAULT_POST_TITLE_FORMAT
-        date = post.date
-        if isinstance(post.date, int):
-            date = datetime.fromtimestamp(post.date)
+        if isinstance(date, int):
+            date = datetime.fromtimestamp(date)
         if isinstance(date, datetime):
-            date = date.isoformat()
-        id = "Unknown" if post.id is None else post.id
-        title = "Untitled" if post.title is None else post.title
-        date = "NO_DATE" if date is None else date
-        title = title_format.format(id=id, number=id, date=date, title=title)
-        scrape_item.add_to_parent_title(title)
+            date_str = date.isoformat()
+        else:
+            date_str: str | None = date
+
+        def _str(default: str, value: str | None) -> str:
+            return default if value is None else value
+
+        id = _str("Unknown", id)
+        title = _str("Untitled", title)
+        date_str = _str("NO_DATE", date_str)
+        return title_format.format(id=id, date=date_str, title=title)
 
     def parse_url(self, link_str: str, relative_to: URL | None = None, *, trim: bool = True) -> URL:
         """Wrapper arround `utils.parse_url` to use `self.primary_base_domain` as base"""

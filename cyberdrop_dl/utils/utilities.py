@@ -71,7 +71,9 @@ class OGProperties:
     video: str = ""
 
 
-def error_handling_wrapper(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, Coroutine[None, None, R | None]]:
+def error_handling_wrapper(
+    func: Callable[..., Coroutine[None, None, Any]],
+) -> Callable[..., Coroutine[None, None, Any]]:
     """Wrapper handles errors for url scraping."""
 
     @wraps(func)
