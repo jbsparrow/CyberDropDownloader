@@ -27,11 +27,20 @@ class Selectors:
 _SELECTORS = Selectors()
 API_MD5_ENTRYPOINT = URL("https://doodstream.com/pass_md5/")
 TOKEN_CHARS = string.ascii_letters + string.digits
-DOOSTREAM_DOMAINS = ["vidply.com", "dood.re", "doodstream", "doodcdn", "doodstream.co", "dood.yt"]
+SUPPORTED_DOMAINS = [
+    "vidply.com",
+    "dood.re",
+    "doodstream",
+    "doodcdn",
+    "doodstream.co",
+    "dood.yt",
+    "do7go.com",
+    "all3do.com",
+]
 
 
 class DoodStreamCrawler(Crawler):
-    SUPPORTED_SITES: ClassVar[dict[str, list]] = {"doodstream": DOOSTREAM_DOMAINS}
+    SUPPORTED_SITES: ClassVar[dict[str, list]] = {"doodstream": SUPPORTED_DOMAINS}
     primary_base_domain = URL("https://doodstream.com/")
     update_unsupported = True
 
@@ -60,7 +69,8 @@ class DoodStreamCrawler(Crawler):
         title = title.split("- DoodStream")[0].strip()
 
         file_id = get_file_id(soup)
-        debrid_link = await self.get_download_url(soup)
+        assert scrape_item.url.host
+        debrid_link = await self.get_download_url(scrape_item.url.host, soup)
         filename, ext = self.get_filename_and_ext(f"{file_id}.mp4")
         custom_filename, _ = self.get_filename_and_ext(f"{title}{ext}")
         scrape_item.url = canonical_url
@@ -68,12 +78,12 @@ class DoodStreamCrawler(Crawler):
             scrape_item.url, scrape_item, filename, ext, debrid_link=debrid_link, custom_filename=custom_filename
         )
 
-    async def get_download_url(self, soup: BeautifulSoup) -> URL:
+    async def get_download_url(self, host: str, soup: BeautifulSoup) -> URL:
         md5_path = get_md5_path(soup)
         api_url = API_MD5_ENTRYPOINT / md5_path
         token = api_url.name
         async with self.request_limiter:
-            new_soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, api_url)
+            new_soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, api_url.with_host(host))
 
         text = new_soup.get_text(strip=True)
         random_padding = "".join(random.choice(TOKEN_CHARS) for _ in range(10))
