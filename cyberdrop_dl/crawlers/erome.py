@@ -13,14 +13,20 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
-ALBUM_SELECTOR = "a[class=album-link]"
-IMAGES_SELECTOR = 'img[class="img-front lasyload"]'
-VIDEOS_SELECTOR = "div[class=media-group] div[class=video-lg] video source"
+
+class Selectors:
+    ALBUM = "a[class=album-link]"
+    IMAGES = 'img[class="img-front lasyload"]'
+    VIDEOS = "div[class=media-group] div[class=video-lg] video source"
+    NEXT_PAGE = 'a[rel="next"]'
+
+
+_SELECTORS = Selectors()
 
 
 class EromeCrawler(Crawler):
     primary_base_domain = URL("https://www.erome.com")
-    next_page_selector = 'a[rel="next"]'
+    next_page_selector = _SELECTORS.NEXT_PAGE
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "erome", "Erome")
@@ -43,7 +49,7 @@ class EromeCrawler(Crawler):
                 title = self.create_title(scrape_item.url.name)
                 scrape_item.setup_as_profile(title)
 
-            for _, new_scrape_item in self.iter_children(scrape_item, soup, ALBUM_SELECTOR):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.ALBUM):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -62,10 +68,10 @@ class EromeCrawler(Crawler):
         title = self.create_title(title_portion, album_id)
         scrape_item.setup_as_album(title, album_id=album_id)
 
-        for selector in (IMAGES_SELECTOR, VIDEOS_SELECTOR):
-            # TODO Match attr to selector
-            for attribute in ("data-src", "src"):
-                for _, link in self.iter_tags(soup, selector, attribute, results=results):
-                    filename, ext = self.get_filename_and_ext(link.name)
-                    await self.handle_file(link, scrape_item, filename, ext)
-                    scrape_item.add_children()
+        attributes = ("data-src", "src")
+        selectors = (_SELECTORS.IMAGES, _SELECTORS.VIDEOS)
+        for selector, attribute in zip(selectors, attributes, strict=True):
+            for _, link in self.iter_tags(soup, selector, attribute, results=results):
+                filename, ext = self.get_filename_and_ext(link.name)
+                await self.handle_file(link, scrape_item, filename, ext)
+                scrape_item.add_children()

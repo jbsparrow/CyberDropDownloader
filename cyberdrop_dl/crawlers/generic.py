@@ -4,7 +4,7 @@ import mimetypes
 from dataclasses import dataclass
 from functools import wraps
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
 from cyberdrop_dl.clients.errors import InvalidContentTypeError, NoExtensionError, ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
@@ -13,7 +13,7 @@ from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Coroutine
 
     from bs4 import BeautifulSoup
     from yarl import URL
@@ -22,14 +22,21 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
+P = ParamSpec("P")
+R = TypeVar("R")
+
 VIDEO_SELECTOR = "video > source"
 
 
-def log_unsupported_wrapper(func: Callable) -> Callable:
+def log_unsupported_wrapper(
+    func: Callable[P, Coroutine[None, None, R]],
+) -> Callable[P, Coroutine[None, None, R | None]]:
     @wraps(func)
-    async def wrapper(self: GenericCrawler, item: ScrapeItem, *args, **kwargs):
+    async def wrapper(*args, **kwargs):
+        self: GenericCrawler = args[0]
+        item: ScrapeItem = args[1]
         try:
-            return await func(self, item, *args, **kwargs)
+            return await func(*args, **kwargs)
         except (InvalidContentTypeError, ScrapeError) as e:
             await self.log_unsupported(item, f"({e})")
         except Exception:

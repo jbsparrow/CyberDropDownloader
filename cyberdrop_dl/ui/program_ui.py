@@ -5,7 +5,7 @@ import sqlite3
 import sys
 from functools import wraps
 from textwrap import dedent
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar
 
 import browser_cookie3
 from requests import request
@@ -23,20 +23,23 @@ from cyberdrop_dl.utils.updates import check_latest_pypi
 from cyberdrop_dl.utils.utilities import clear_term, open_in_text_editor
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
     from InquirerPy.base.control import Choice
 
     from cyberdrop_dl.managers.manager import Manager
 
+P = ParamSpec("P")
+R = TypeVar("R")
 
 console = Console()
 ERROR_PREFIX = Text("ERROR: ", style="bold red")
 
 
-def repeat_until_done(func):
+def repeat_until_done(func: Callable[P, R]) -> Callable[P, R]:
     @wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args, **kwargs) -> R:
         done = False
         while not done:
             done = func(*args, **kwargs)

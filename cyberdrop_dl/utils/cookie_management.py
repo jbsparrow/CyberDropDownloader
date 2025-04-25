@@ -4,7 +4,7 @@ import os
 from functools import wraps
 from http.cookiejar import CookieJar, MozillaCookieJar
 from textwrap import dedent
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple, ParamSpec, TypeVar
 
 import browser_cookie3
 
@@ -13,6 +13,9 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.constants import BROWSERS
+
+P = ParamSpec("P")
+R = TypeVar("R")
 
 
 class CookieExtractor(NamedTuple):
@@ -28,11 +31,11 @@ COOKIE_ERROR_FOOTER = "\n\nNothing has been saved."
 CHROMIUM_BROWSERS = ["chrome", "chromium", "opera", "opera_gx", "brave", "edge", "vivaldi", "arc"]
 
 
-def cookie_wrapper(func: Callable) -> Callable:
+def cookie_wrapper(func: Callable[P, R]) -> Callable[P, R]:
     """Wrapper handles errors for cookie extraction."""
 
     @wraps(func)
-    def wrapper(*args, **kwargs) -> None:
+    def wrapper(*args, **kwargs) -> R:
         try:
             return func(*args, **kwargs)
         except PermissionError as e:

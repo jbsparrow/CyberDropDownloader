@@ -1,7 +1,6 @@
 import sys
 
 from cyberdrop_dl import env
-from cyberdrop_dl.director import Director
 
 
 def main(*, profiling: bool = False, ask: bool = True):
@@ -13,8 +12,13 @@ def main(*, profiling: bool = False, ask: bool = True):
 
 
 def run() -> None:
-    director = Director()
-    sys.exit(director.run())
+    try:
+        from cyberdrop_dl.director import Director
+
+        director = Director()
+        sys.exit(director.run())
+    except KeyboardInterrupt:
+        sys.exit("\nKeyboardInterrupt")
 
 
 if __name__ == "__main__":

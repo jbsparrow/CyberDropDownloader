@@ -295,6 +295,8 @@ class Manager:
         """Closes the manager."""
         self.states.RUNNING.clear()
         if not isinstance(self.client_manager, Field):
+            if not isinstance(self.client_manager.scraper_session, Field):
+                await self.client_manager.scraper_session.close()
             await self.client_manager.close()
 
         await self.async_db_close()
