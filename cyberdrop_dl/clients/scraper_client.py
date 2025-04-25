@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 from contextlib import asynccontextmanager
+from dataclasses import field
 from datetime import datetime
 from functools import wraps
 from pathlib import Path
@@ -58,16 +59,8 @@ def limiter(func: Callable) -> Any:
                 kwargs.pop("client_session", None)
                 return await func(self, *args, **kwargs)
 
-            async with CachedSession(
-                headers=self._headers,
-                raise_for_status=False,
-                cookie_jar=self.client_manager.cookies,
-                timeout=self._timeouts,
-                trace_configs=self.trace_configs,
-                cache=self.client_manager.manager.cache_manager.request_cache,
-            ) as client:
-                kwargs["client_session"] = client
-                return await func(self, *args, **kwargs)
+            kwargs["client_session"] = self._session
+            return await func(self, *args, **kwargs)
 
     return wrapper
 
@@ -94,7 +87,21 @@ class ScraperClient:
         # folder len + date_prefix len + 10 [suffix (.html) + 1 OS separator + 4 (padding)]
         min_html_file_path_len = len(str(self.pages_folder)) + len(constants.STARTUP_TIME_STR) + 10
         self.max_html_stem_len = 245 - min_html_file_path_len
+        self._session: CachedSession = field(init=False)
+
+    def startup(self):
         self.add_request_log_hooks()
+        self._session = CachedSession(
+            headers=self._headers,
+            raise_for_status=False,
+            cookie_jar=self.client_manager.cookies,
+            timeout=self._timeouts,
+            trace_configs=self.trace_configs,
+            cache=self.client_manager.manager.cache_manager.request_cache,
+        )
+
+    async def close(self):
+        await self._session.close()
 
     @asynccontextmanager
     async def write_soup_on_error(self, domain: str, url, response: CurlResponse | aiohttp.ClientResponse):
