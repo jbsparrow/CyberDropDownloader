@@ -8,7 +8,7 @@ from dataclasses import field
 from datetime import datetime
 from functools import wraps
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, NewType, Protocol
+from typing import TYPE_CHECKING, Any, ClassVar, NewType, ParamSpec, Protocol, TypeVar
 
 from aiolimiter import AsyncLimiter
 from dateutil import parser
@@ -29,9 +29,11 @@ from cyberdrop_dl.utils.utilities import (
 
 _NEW_ISSUE_URL = "https://github.com/jbsparrow/CyberDropDownloader/issues/new/choose"
 TimeStamp = NewType("TimeStamp", int)
+P = ParamSpec("P")
+R = TypeVar("R")
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Callable, Generator
+    from collections.abc import AsyncGenerator, Callable, Coroutine, Generator
 
     from bs4 import BeautifulSoup, Tag
     from bs4.css import CSS
@@ -399,18 +401,19 @@ class Crawler(ABC):
         return self.parse_date(date_str, format)
 
 
-def create_task_id(func: Callable) -> Callable:
+def create_task_id(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, Coroutine[None, None, R | None]]:
     """Wrapper that handles `task_id` creation and removal for scrape items"""
 
     @wraps(func)
-    async def wrapper(self: Crawler, *args, **kwargs):
-        scrape_item: ScrapeItem = args[0]
+    async def wrapper(*args, **kwargs) -> R | None:
+        self: Crawler = args[0]
+        scrape_item: ScrapeItem = args[1]
         await self.manager.states.RUNNING.wait()
         task_id = self.scraping_progress.add_task(scrape_item.url)
         try:
             if not self.skip_pre_check:
                 pre_check_scrape_item(scrape_item)
-            return await func(self, *args, **kwargs)
+            return await func(*args, **kwargs)
         except ValueError:
             log(f"Scrape Failed: {UNKNOWN_URL_PATH_MSG}: {scrape_item.url}", 40)
             self.manager.progress_manager.scrape_stats_progress.add_failure(UNKNOWN_URL_PATH_MSG)

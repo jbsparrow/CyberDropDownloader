@@ -10,7 +10,7 @@ import subprocess
 from dataclasses import dataclass, fields
 from functools import lru_cache, partial, wraps
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, Protocol
+from typing import TYPE_CHECKING, Any, ClassVar, ParamSpec, Protocol, TypeVar
 
 import aiofiles
 import rich
@@ -31,7 +31,7 @@ from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.logger import log, log_debug, log_spacer, log_with_color
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping
+    from collections.abc import Callable, Coroutine, Mapping
 
     from curl_cffi.requests.models import Response as CurlResponse
     from rich.text import Text
@@ -40,6 +40,11 @@ if TYPE_CHECKING:
     from cyberdrop_dl.downloader.downloader import Downloader
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
+
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
 
 TEXT_EDITORS = "micro", "nano", "vim"  # Ordered by preference
 FILENAME_REGEX = re.compile(r"filename\*=UTF-8''(.+)|.*filename=\"(.*?)\"", re.IGNORECASE)
@@ -66,17 +71,18 @@ class OGProperties:
     video: str = ""
 
 
-def error_handling_wrapper(func: Callable) -> Callable:
+def error_handling_wrapper(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, Coroutine[None, None, R | None]]:
     """Wrapper handles errors for url scraping."""
 
     @wraps(func)
-    async def wrapper(self: Crawler | Downloader, *args, **kwargs):
-        item: ScrapeItem | MediaItem | URL = args[0]
+    async def wrapper(*args, **kwargs) -> R | None:
+        self: Crawler | Downloader = args[0]
+        item: ScrapeItem | MediaItem | URL = args[1]
         link: URL = item if isinstance(item, URL) else item.url
         origin = exc_info = None
         link_to_show: URL | str = ""
         try:
-            return await func(self, *args, **kwargs)
+            return await func(*args, **kwargs)
         except CDLBaseError as e:
             error_log_msg = ErrorLogMessage(e.ui_failure, str(e))
             origin = e.origin
