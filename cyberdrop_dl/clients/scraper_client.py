@@ -87,10 +87,10 @@ class ScraperClient:
         # folder len + date_prefix len + 10 [suffix (.html) + 1 OS separator + 4 (padding)]
         min_html_file_path_len = len(str(self.pages_folder)) + len(constants.STARTUP_TIME_STR) + 10
         self.max_html_stem_len = 245 - min_html_file_path_len
-        self.add_request_log_hooks()
         self._session: CachedSession = field(init=False)
 
     def startup(self):
+        self.add_request_log_hooks()
         self._session = CachedSession(
             headers=self._headers,
             raise_for_status=False,
