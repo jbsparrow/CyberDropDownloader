@@ -17,7 +17,7 @@ from cyberdrop_dl.clients.errors import NoExtensionError, ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.constants import FILE_FORMATS
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, parse_url
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_og_properties, parse_url
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup, Tag
@@ -155,10 +155,17 @@ class BunkrrCrawler(Crawler):
             return
 
         if not self.check_album_results(link, results):
-            filename, ext = self.get_filename_and_ext(link.name, assume_ext=".mp4")
-            custom_filename, _ = self.get_filename_and_ext(item.name, assume_ext=".mp4")
             if not link.query.get("n"):
                 link = link.update_query(n=item.name)
+
+            custom_filename, ext = self.get_filename_and_ext(link.query["n"], assume_ext=".mp4")
+
+            try:
+                filename, ext = self.get_filename_and_ext(link.name)
+            except NoExtensionError:
+                # custom_filename did not raise an exception, so we ignore here as well
+                filename, ext = self.get_filename_and_ext(str(Path(link.name).with_suffix(ext)))
+
             await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     @error_handling_wrapper
@@ -202,7 +209,7 @@ class BunkrrCrawler(Crawler):
         if not scrape_item.possible_datetime and (date_str := soup.select_one(ITEM_DATE_SELECTOR)):
             scrape_item.possible_datetime = parse_datetime(date_str.text.strip())
 
-        title: str = soup.select_one("h1").text.strip()  # type: ignore
+        title: str = get_og_properties(soup).title  # See: https://github.com/jbsparrow/CyberDropDownloader/issues/929
         await self.handle_direct_link(scrape_item, link, fallback_filename=title)
 
     @error_handling_wrapper
@@ -235,15 +242,17 @@ class BunkrrCrawler(Crawler):
             raise ScrapeError(422)
 
         link = override_cdn(link)
-        try:
-            filename, ext = self.get_filename_and_ext(link.name)
-        except NoExtensionError:
-            filename, ext = self.get_filename_and_ext(scrape_item.url.name, assume_ext=".mp4")
 
         if not link.query.get("n"):
             link = link.update_query(n=fallback_filename)
 
-        custom_filename, _ = self.get_filename_and_ext(link.query.get("n"))  # type: ignore
+        custom_filename, ext = self.get_filename_and_ext(link.query["n"], assume_ext=".mp4")
+        try:
+            filename, ext = self.get_filename_and_ext(link.name)
+        except NoExtensionError:
+            # custom_filename did not raise an exception, so we ignore here as well
+            filename, ext = self.get_filename_and_ext(str(Path(link.name).with_suffix(ext)))
+
         if is_cdn(scrape_item.url) and not is_reinforced_link(scrape_item.url):
             scrape_item.url = URL("https://get.bunkr.su/")  # Using a CDN as referer gets a 403 response
 

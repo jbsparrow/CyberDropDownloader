@@ -76,8 +76,8 @@ class GoogleDriveCrawler(Crawler):
         if is_folder(scrape_item.url):
             return await self.folder(scrape_item)
 
-        if bool(get_file_id(scrape_item.url)):
-            await self.file(scrape_item)
+        if file_id := get_file_id(scrape_item.url):
+            return await self.file(scrape_item, file_id)
 
         raise ValueError
 
@@ -258,7 +258,7 @@ def get_canonical_url(item_id: str, folder: bool = False) -> URL:
 def get_download_url(item_id: str, folder: bool = False) -> URL:
     if folder:
         return URL(f"https://drive.google.com/embeddedfolderview?id={item_id}")
-    return URL(f"https://drive.google.com/uc?id={item_id}")
+    return URL(f"https://drive.google.com/uc?export=download&id={item_id}")
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

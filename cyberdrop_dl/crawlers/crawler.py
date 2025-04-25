@@ -15,6 +15,7 @@ from dateutil import parser
 from yarl import URL
 
 from cyberdrop_dl.downloader.downloader import Downloader
+from cyberdrop_dl.scraper import filters
 from cyberdrop_dl.utils import utilities
 from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
@@ -33,8 +34,9 @@ P = ParamSpec("P")
 R = TypeVar("R")
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Callable, Coroutine, Generator
+    from collections.abc import AsyncGenerator, Awaitable, Callable, Coroutine, Generator
 
+    from aiohttp_client_cache.response import AnyResponse
     from bs4 import BeautifulSoup, Tag
     from bs4.css import CSS
 
@@ -399,6 +401,13 @@ class Crawler(ABC):
     def parse_soup_date(self, soup: Tag, selector: str, attribute: str, format: str | None = None, /):
         date_str: str = date_tag.get(attribute) if (date_tag := soup.select_one(selector)) else ""  # type: ignore
         return self.parse_date(date_str, format)
+
+    @staticmethod
+    def register_cache_filter(
+        url: URL, filter_fn: Callable[[AnyResponse], bool] | Callable[[AnyResponse], Awaitable[bool]]
+    ) -> None:
+        assert url.host
+        filters.cache_filter_functions[url.host] = filter_fn
 
 
 def create_task_id(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, Coroutine[None, None, R | None]]:
