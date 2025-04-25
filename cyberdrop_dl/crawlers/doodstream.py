@@ -9,7 +9,7 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.utilities import error_handling_wrapper
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -18,13 +18,15 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
-VIDEO_SELECTOR = "div#video_player video"
+class Selectors:
+    VIDEO = "div#video_player video"
+    MD5_JS = "script:contains('/pass_md5/')"
+    FILE_ID_JS = "script:contains('file_id')"
+
+
+_SELECTORS = Selectors()
 API_MD5_ENTRYPOINT = URL("https://doodstream.com/pass_md5/")
 TOKEN_CHARS = string.ascii_letters + string.digits
-JS_SELECTOR = "script:contains('/pass_md5/')"
-FILE_JS_SELECTOR = "script:contains('file_id')"
-
-
 SUPPORTED_DOMAINS = [
     "vidply.com",
     "dood.re",
@@ -83,7 +85,7 @@ class DoodStreamCrawler(Crawler):
         async with self.request_limiter:
             new_soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, api_url.with_host(host))
 
-        text = str(new_soup).strip()
+        text = new_soup.get_text(strip=True)
         random_padding = "".join(random.choice(TOKEN_CHARS) for _ in range(10))
         expire = int(datetime.now(UTC).timestamp() * 1000)  # remove decimals
         download_url = self.parse_url(text + random_padding)
@@ -91,19 +93,17 @@ class DoodStreamCrawler(Crawler):
 
 
 def get_md5_path(soup: BeautifulSoup) -> str:
-    js_info = soup.select_one(JS_SELECTOR)
-    js_text: str = js_info.text if js_info else ""
+    js_text: str = js_info.text if (js_info := soup.select_one(_SELECTORS.MD5_JS)) else ""
     if not js_info:
         raise ScrapeError(422)
 
-    return js_text.split("/pass_md5/")[-1].split("'", 1)[0]
+    return get_text_between(js_text, "/pass_md5/", "'")
 
 
-def get_file_id(soup: BeautifulSoup) -> int:
-    js_info = soup.select_one(FILE_JS_SELECTOR)
-    js_text: str = js_info.text if js_info else ""
+def get_file_id(soup: BeautifulSoup) -> str:
+    js_text: str = js_info.text if (js_info := soup.select_one(_SELECTORS.FILE_ID_JS)) else ""
     if not js_info:
         raise ScrapeError(422)
 
     _, file_id, _ = js_text.split("'file_id'")[-1].split("'", 2)
-    return int(file_id)
+    return file_id
