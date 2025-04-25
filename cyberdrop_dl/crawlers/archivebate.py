@@ -53,7 +53,7 @@ class ArchiveBateCrawler(MixDropCrawler):
         raise ValueError
 
     async def profile(self, scrape_item: ScrapeItem) -> None:
-        # Not supported, video entries are dinamically generated with javascript
+        # Not supported, video entries are dynamically generated with javascript
         # They have an API to request them but it also returns javascript
         raise ValueError
         scrape_item.setup_as_profile("")
