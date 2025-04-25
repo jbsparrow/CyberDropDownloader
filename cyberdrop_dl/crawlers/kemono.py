@@ -204,6 +204,7 @@ class KemonoCrawler(Crawler):
             "patreon",
             "subscribestar",
         )
+        self.session_cookie = self.manager.config_manager.authentication_data.kemono.session
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -230,6 +231,8 @@ class KemonoCrawler(Crawler):
             return await self.search(scrape_item)
         if any(x in scrape_item.url.parts for x in self.services):
             return await self.profile(scrape_item)
+        if "favorites" in scrape_item.url.parts:
+            return await self.favorites(scrape_item)
         await self.handle_direct_link(scrape_item)
 
     @fallback_if_no_api
@@ -311,6 +314,36 @@ class KemonoCrawler(Crawler):
             # Some patreon URLs have another URL as the filename: https://kemono.su/data/7a...27ad7e40bd.jpg?f=https://www.patreon.com/media-u/Z0F..00672794_
             filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
+
+    @error_handling_wrapper
+    async def favorites(self, scrape_item: ScrapeItem) -> None:
+        """Scrapes the user's favorite artists or posts and enqueues them for processing."""
+        if not self.session_cookie:
+            raise ScrapeError(401, "No session cookie found in the config file, cannot scrape favorites")
+
+        is_post = scrape_item.url.query.get("type") == "post"
+        title = "My favorite posts" if is_post else "My favorite artists"
+        scrape_item.setup_as_profile(self.create_title(title))
+
+        self.update_cookies({"session": self.session_cookie})
+        api_url = self.api_entrypoint / "account/favorites"
+        query_url = api_url.with_query(type="post" if is_post else "artist")
+
+        async with self.request_limiter:
+            json_resp = await self.client.get_json(self.domain, query_url)
+
+        self.update_cookies({"session": ""})
+
+        for item in json_resp:
+            if is_post:
+                post_id, user_id, service = item["id"], item["user"], item["service"]
+                url = self.primary_base_domain / service / "user" / user_id / "post" / post_id
+            else:
+                user_id, service = item["id"], item["service"]
+                url = self.primary_base_domain / service / "user" / user_id
+
+            new_scrape_item = scrape_item.create_child(url)
+            self.manager.task_group.create_task(self.run(new_scrape_item))
 
     # ~~~~~~~~ INTERNAL METHODS, not expected to be overriden, but could be ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

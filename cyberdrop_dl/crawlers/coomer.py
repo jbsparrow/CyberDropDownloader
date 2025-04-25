@@ -33,34 +33,7 @@ class CoomerCrawler(KemonoCrawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        if "favorites" in scrape_item.url.parts:
-            return await self.favorites(scrape_item)
         return await self._fetch_kemono_defaults(scrape_item)
-
-    @error_handling_wrapper
-    async def favorites(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes the users' favourites and creates scrape items for each artist found."""
-        if not self.session_cookie:
-            msg = "No session cookie found in the config file, cannot scrape favorites"
-            raise ScrapeError(401, msg)
-
-        cookies = {"session": self.session_cookie}
-        self.update_cookies(cookies)
-        title = self.create_title("My favorites")
-        scrape_item.setup_as_profile(title)
-        api_url = self.api_entrypoint / "account/favorites"
-        favourites_api_url = api_url.with_query(type="artist")
-        async with self.request_limiter:
-            json_resp = await self.client.get_json(self.domain, favourites_api_url)
-
-        cookies = {"session": ""}
-        self.update_cookies(cookies)
-
-        for user in json_resp:
-            id, service = user["id"], user["service"]
-            url = self.primary_base_domain / service / "user" / id
-            new_scrape_item = scrape_item.create_child(url)
-            self.manager.task_group.create_task(self.run(new_scrape_item))
 
     def _handle_post_content(self, scrape_item: ScrapeItem, post: UserPost) -> None:
         """Handles the content of a post."""
