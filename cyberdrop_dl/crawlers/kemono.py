@@ -21,6 +21,7 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Callable, Coroutine, Generator
 
+    from aiohttp_client_cache.response import AnyResponse
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.managers.manager import Manager
@@ -205,6 +206,16 @@ class KemonoCrawler(Crawler):
             "subscribestar",
         )
         self.session_cookie = self.manager.config_manager.authentication_data.kemono.session
+
+    async def async_startup(self) -> None:
+        def check_kemono_page(response: AnyResponse):
+            if any(x in response.url.parts for x in self.services):
+                return False
+            if "discord/channel" in response.url.path:
+                return False
+            return True
+
+        self.register_cache_filter(self.primary_base_domain, check_kemono_page)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
