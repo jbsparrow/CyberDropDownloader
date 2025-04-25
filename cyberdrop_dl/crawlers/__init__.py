@@ -29,6 +29,7 @@ from .generic import GenericCrawler
 from .gofile import GoFileCrawler
 from .google_drive import GoogleDriveCrawler
 from .hotpic import HotPicCrawler
+from .iceyfile import IceyFileCrawler
 from .imagebam import ImageBamCrawler
 from .imgbb import ImgBBCrawler
 from .imgbox import ImgBoxCrawler
