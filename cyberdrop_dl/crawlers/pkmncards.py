@@ -25,22 +25,23 @@ if TYPE_CHECKING:
 TimeStamp = NewType("TimeStamp", int)
 
 
-CARD_DOWNLOAD_SELECTOR = "li > a[title='Download Image']"
-CARD_SELECTOR = "a.card-image-link"
-CARD_PAGE_TITLE_SELECTOR = "meta[property='og:title']"
-CARD_NAME_SELECTOR = "span[title='Name'] a"
-CARD_NUMBER_SELECTOR = "span[class='number'] a"
+class Selectors:
+    CARD = "a.card-image-link"
+    CARD_DOWNLOAD = "li > a[title='Download Image']"
+    CARD_PAGE_TITLE = "meta[property='og:title']"
+    CARD_NAME = "span[title='Name'] a"
+    CARD_NUMBER = "span[class='number'] a"
+    CARD_FROM_FULL = "article[id*='post-']"
+    CARD_PAGE_URL = "a[title='Permalink / Title']"
 
-SET_NAME_SELECTOR = "span[title='Set'] a"
-SET_ABBR_SELECTOR = "span[title='Set Abbreviation']"
+    SET_NAME = "span[title='Set'] a"
+    SET_ABBR = "span[title='Set Abbreviation']"
+    SET_SERIES_CODE = "div.card-tabs span[title='Set Series Code']"
+    SET_INFO = "script:contains('datePublished')"
+    NEXT_PAGE = "li[title='Next Page (Press →)'] a"
 
 
-CARD_FROM_FULL_SELECTOR = "article[id*='post-']"
-CARD_PAGE_URL_SELECTOR = "a[title='Permalink / Title']"
-
-SET_SERIES_CODE_SELECTOR = "div.card-tabs span[title='Set Series Code']"
-SET_INFO_SELECTOR = "script:contains('datePublished')"
-NEXT_PAGE_SELECTOR = "li[title='Next Page (Press →)'] a"
+_SELECTORS = Selectors()
 
 
 @dataclass(slots=True)
@@ -98,7 +99,7 @@ class CardSet:
 
 class PkmncardsCrawler(Crawler):
     primary_base_domain = URL("https://pkmncards.com")
-    next_page_selector = NEXT_PAGE_SELECTOR
+    next_page_selector = _SELECTORS.NEXT_PAGE
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "pkmncards", "Pkmncards")
@@ -141,7 +142,7 @@ class PkmncardsCrawler(Crawler):
     async def _iter_from_url(self, scrape_item: ScrapeItem, url: URL) -> None:
         page_url = url.with_query(sort="date", ord="auto", display="images")
         async for soup in self.web_pager(page_url):
-            for thumb in soup.select(CARD_SELECTOR):
+            for thumb in soup.select(_SELECTORS.CARD):
                 parts: tuple[str, str, str] = thumb.select_one("img")["src"], thumb["href"], thumb["title"]  # type: ignore
                 link_str, card_page_url_str, title = parts
                 card_page_url = self.parse_url(card_page_url_str)
@@ -156,9 +157,9 @@ class PkmncardsCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
-        name = soup.select_one(CARD_NAME_SELECTOR).text  # type: ignore
-        number = soup.select_one(CARD_NUMBER_SELECTOR).text  # type: ignore
-        link_str: str = soup.select_one(CARD_DOWNLOAD_SELECTOR)["href"]  # type: ignore
+        name = soup.select_one(_SELECTORS.CARD_NAME).text  # type: ignore
+        number = soup.select_one(_SELECTORS.CARD_NUMBER).text  # type: ignore
+        link_str: str = soup.select_one(_SELECTORS.CARD_DOWNLOAD)["href"]  # type: ignore
         link = self.parse_url(link_str)
         card_set = create_set(soup)
         card = Card(name, number, card_set, link)
@@ -188,7 +189,7 @@ class PkmncardsCrawler(Crawler):
             card_set = self.known_sets.get(simple_card.set_abbr)
             if not card_set:
                 # Make a request for 1 card, to get the set information about the set
-                card_set = await get_card_set(scrape_item)
+                card_set = await get_card_set(self, scrape_item)
                 if not card_set:  # Request failed
                     return
                 self.known_sets[simple_card.set_abbr] = card_set
@@ -224,18 +225,18 @@ def create_simple_card(title: str, download_url: URL) -> SimpleCard:
 
 
 def create_set(soup: Tag) -> CardSet:
-    tag = soup.select_one(SET_SERIES_CODE_SELECTOR)
+    tag = soup.select_one(_SELECTORS.SET_SERIES_CODE)
     # Some sets do not have series code
     set_series_code: str | None = tag.get_text(strip=True) if tag else None  # type: ignore
-    set_info: dict[str, list[dict]] = json.loads(soup.select_one(SET_INFO_SELECTOR).text)  # type: ignore
+    set_info: dict[str, list[dict]] = json.loads(soup.select_one(_SELECTORS.SET_INFO).text)  # type: ignore
     release_date: int | None = None
     for item in set_info["@graph"]:
         if iso_date := item.get("datePublished"):
             release_date = calendar.timegm(datetime.fromisoformat(iso_date).timetuple())
             break
 
-    set_abbr = soup.select_one(SET_ABBR_SELECTOR).text  # type: ignore
-    set_name = soup.select_one(SET_NAME_SELECTOR).text  # type: ignore
+    set_abbr = soup.select_one(_SELECTORS.SET_ABBR).text  # type: ignore
+    set_name = soup.select_one(_SELECTORS.SET_NAME).text  # type: ignore
 
     if not release_date:
         raise ScrapeError(422)
