@@ -14,9 +14,15 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
-CONTENT_SELECTOR = "div[class=image-list] span a"
-IMAGE_SELECTOR = "img[id=image]"
-VIDEO_SELECTOR = "video source"
+
+class Selector:
+    CONTENT = "div[class=image-list] span a"
+    IMAGE = "img[id=image]"
+    VIDEO = "video source"
+    DATE = "li:contains('Posted: ')"
+
+
+_SELECTOR = Selector()
 
 
 class Rule34XXXCrawler(Crawler):
@@ -35,9 +41,9 @@ class Rule34XXXCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
 
-        if "tags" in scrape_item.url.query_string:
+        if scrape_item.url.query.get("tags"):
             return await self.tag(scrape_item)
-        if "id" in scrape_item.url.query_string:
+        if scrape_item.url.query.get("id"):
             return await self.file(scrape_item)
         raise ValueError
 
@@ -51,7 +57,7 @@ class Rule34XXXCrawler(Crawler):
                 title = self.create_title(title_portion)
                 scrape_item.setup_as_album(title)
 
-            for _, new_scrape_item in self.iter_children(scrape_item, soup, CONTENT_SELECTOR):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTOR.CONTENT):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -60,10 +66,13 @@ class Rule34XXXCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
-        media_tag = soup.select_one(IMAGE_SELECTOR) or soup.select_one(VIDEO_SELECTOR)
+        media_tag = soup.select_one(_SELECTOR.IMAGE) or soup.select_one(_SELECTOR.VIDEO)
         if not media_tag:
             raise ScrapeError(422)
-        link_str: str = media_tag.get("src")  # type: ignore
+
+        if date_tag := soup.select_one(_SELECTOR.DATE):
+            scrape_item.possible_datetime = self.parse_date(date_tag.get_text(strip=True).removeprefix("Posted: "))
+        link_str: str = media_tag["src"]  # type: ignore
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)

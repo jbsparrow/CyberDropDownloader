@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import re
 from dataclasses import field
 from functools import wraps
 from http import HTTPStatus
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
 from aiohttp import ClientConnectorError, ClientError, ClientResponseError
 from filedate import File
@@ -25,11 +24,13 @@ from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Generator
+    from collections.abc import Callable, Coroutine, Generator
 
     from cyberdrop_dl.clients.download_client import DownloadClient
     from cyberdrop_dl.managers.manager import Manager
 
+P = ParamSpec("P")
+R = TypeVar("R")
 
 KNOWN_BAD_URLS = {
     "https://i.imgur.com/removed.png": 404,
@@ -41,15 +42,16 @@ KNOWN_BAD_URLS = {
 }
 
 
-def retry(func: Callable) -> Callable:
+def retry(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, Coroutine[None, None, R]]:
     """This function is a wrapper that handles retrying for failed downloads."""
 
     @wraps(func)
-    async def wrapper(self: Downloader, *args, **kwargs) -> Any:
-        media_item: MediaItem = args[0]
+    async def wrapper(*args, **kwargs) -> R:
+        self: Downloader = args[0]
+        media_item: MediaItem = args[1]
         while True:
             try:
-                return await func(self, *args, **kwargs)
+                return await func(*args, **kwargs)
             except DownloadError as e:
                 if not e.retry:
                     raise
@@ -233,9 +235,12 @@ class Downloader:
     def attempt_task_removal(self, media_item: MediaItem) -> None:
         """Attempts to remove the task from the progress bar."""
         if media_item.task_id is not None:
-            with contextlib.suppress(ValueError):
+            try:
                 self.manager.progress_manager.file_progress.remove_task(media_item.task_id)
-        media_item.task_id = None
+            except ValueError:
+                pass
+
+            media_item.set_task_id(None)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
