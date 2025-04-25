@@ -25,6 +25,7 @@ from .eporner import EpornerCrawler
 from .erome import EromeCrawler
 from .fapello import FapelloCrawler
 from .fileditch import FileditchCrawler
+from .files_vc import FilesVcCrawler
 from .generic import GenericCrawler
 from .gofile import GoFileCrawler
 from .google_drive import GoogleDriveCrawler
