@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import json
 import os
@@ -312,8 +313,8 @@ async def send_webhook_message(manager: Manager) -> None:
 
     form = FormData()
 
-    if "attach_logs" in webhook.tags and main_log.is_file():
-        if main_log.stat().st_size <= 25 * 1024 * 1024:
+    if "attach_logs" in webhook.tags and (size := await asyncio.to_thread(get_size_or_none, main_log)):
+        if size <= 25 * 1024 * 1024:  # 25MB
             async with aiofiles.open(main_log, "rb") as f:
                 form.add_field("file", await f.read(), filename=main_log.name)
 

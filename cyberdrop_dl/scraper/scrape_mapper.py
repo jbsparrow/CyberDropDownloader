@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import re
 from dataclasses import Field
 from datetime import date, datetime
@@ -114,6 +115,10 @@ class ScrapeMapper:
     async def parse_input_file_groups(self) -> AsyncGenerator[tuple[str, list[URL]]]:
         """Split URLs from input file by their groups."""
         input_file = self.manager.path_manager.input_file
+        if not await asyncio.to_thread(input_file.is_file):
+            yield ("", [])
+            return
+
         block_quote = False
         current_group_name = ""
         async with aiofiles.open(input_file, encoding="utf8") as f:
@@ -136,10 +141,6 @@ class ScrapeMapper:
 
     async def load_links(self) -> AsyncGenerator[ScrapeItem]:
         """Loads links from args / input file."""
-        input_file = self.manager.path_manager.input_file
-        # we need to touch the file just in case, purge_tree deletes it
-        if not input_file.is_file():
-            input_file.touch(exist_ok=True)
 
         if not self.manager.parsed_args.cli_only_args.links:
             self.using_input_file = True
