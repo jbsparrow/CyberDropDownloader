@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import re
+import sys
 from dataclasses import field
 from functools import wraps
 from http import HTTPStatus
@@ -9,7 +11,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
 from aiohttp import ClientConnectorError, ClientError, ClientResponseError
-from filedate import File
 
 from cyberdrop_dl.clients.errors import (
     DownloadError,
@@ -22,6 +23,13 @@ from cyberdrop_dl.utils.constants import CustomHTTPStatus
 from cyberdrop_dl.utils.data_enums_classes.url_objects import HlsSegment, MediaItem
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
+
+if sys.platform == "win32":
+    from ctypes import byref, win32con, windll, wintypes
+
+    # Offset for file datetimes.
+    # Windows epoch is January 1, 1601. Unix epoch is January 1, 1970
+    WIN_EPOCH_OFFSET = 116444736e9
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine, Generator
@@ -225,12 +233,53 @@ class Downloader:
             log(f"Unable to parse upload date for {media_item.url}, using current datetime as file datetime", 30)
             return
 
-        file = File(str(complete_file))
-        file.set(
-            created=media_item.datetime,
-            modified=media_item.datetime,
-            accessed=media_item.datetime,
-        )
+        # TODO: Make this entire method async (run in another thread)
+
+        # 1. try setting creation date
+        try:
+            if sys.platform == "win32":
+                nano_ts: float = media_item.datetime * 1e7  # Windows uses nano seconds for dates
+                timestamp = int(nano_ts + WIN_EPOCH_OFFSET)
+
+                # Windows dates are 64bits, split into 2 32bits unsigned ints (dwHighDateTime , dwLowDateTime)
+                # XOR to get the date as bytes, then shift to get the last 32 bits (dwLowDateTime)
+                ctime = wintypes.FILETIME(timestamp & 0xFFFFFFFF, timestamp >> 32)
+                access_mode = win32con.GENERIC_WRITE
+                sharing_mode = win32con.FILE_SHARE_READ | win32con.FILE_SHARE_WRITE | win32con.FILE_SHARE_DELETE
+                security_mode = None  # Use default security attributes
+                creation_disposition = win32con.OPEN_EXISTING
+                flags = (
+                    win32con.FILE_ATTRIBUTE_NORMAL,
+                    win32con.FILE_FLAG_BACKUP_SEMANTICS,  # (allows folder access)
+                )
+                temp_file = None
+
+                params = (
+                    access_mode,
+                    sharing_mode,
+                    security_mode,
+                    creation_disposition,
+                    flags[0] | flags[1],
+                    temp_file,
+                )
+
+                handle = windll.kernel32.CreateFileW(complete_file, *params)
+                windll.kernel32.SetFileTime(
+                    handle,
+                    byref(ctime),  # Creation time, byref to make it relative to the current dwHighDateTime
+                    None,  # Access time
+                    None,  # Modification time
+                )
+                windll.kernel32.CloseHandle(handle)
+
+        except OSError:
+            pass
+
+        # 2. try setting modification and access date
+        try:
+            os.utime(complete_file, (media_item.datetime, media_item.datetime))
+        except OSError:
+            pass
 
     def attempt_task_removal(self, media_item: MediaItem) -> None:
         """Attempts to remove the task from the progress bar."""
