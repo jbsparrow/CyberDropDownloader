@@ -70,17 +70,12 @@ def limiter(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, Coroutin
 
 
 def copy_signature(target: Callable[P, R]) -> Callable[[Callable[..., T]], Callable[P, T]]:
-    """
-    Decorator to make a function mimic the signature of another function,
-    but preserve the return type of the decorated function.
-    """
+    """Decorator to make a function mimic the signature of another function,
+    but preserve the return type of the decorated function."""
 
     def decorator(func: Callable[..., T]) -> Callable[P, T]:
-        """The actual decorator."""
-
         @functools.wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-            """The wrapper function."""
             return func(*args, **kwargs)
 
         wrapper.__signature__ = inspect.signature(target).replace(  # type: ignore
@@ -356,6 +351,7 @@ class ScraperClient:
         soup: BeautifulSoup,
         exc: Exception | None = None,
     ):
+        """Writes html to a file."""
         html_text: str = soup.prettify(formatter="html")  # type: ignore # Not sure if we should prettify
         status_code: int = response.status_code if hasattr(response, "status_code") else response.status  # type: ignore
         response_headers = dict(response.headers)
