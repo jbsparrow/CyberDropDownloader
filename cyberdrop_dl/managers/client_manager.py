@@ -22,7 +22,7 @@ from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.managers.download_speed_manager import DownloadSpeedLimiter
 from cyberdrop_dl.ui.prompts.user_prompts import get_cookies_from_browsers
 from cyberdrop_dl.utils.logger import log, log_spacer
-from cyberdrop_dl.utils.utilities import get_soup_from_response
+from cyberdrop_dl.utils.utilities import get_soup_no_error
 
 if TYPE_CHECKING:
     from aiohttp_client_cache import CachedResponse
@@ -179,7 +179,7 @@ class ClientManager:
                 raise DownloadError(HTTPStatus.NOT_FOUND, message=message, origin=origin)
 
         async def check_ddos_guard():
-            if soup := await get_soup_from_response(response):
+            if soup := await get_soup_no_error(response):
                 if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
                     raise DDOSGuardError(origin=origin)
                 return soup

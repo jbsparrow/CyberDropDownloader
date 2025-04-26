@@ -14,8 +14,8 @@ from typing import TYPE_CHECKING, Any, ClassVar, ParamSpec, Protocol, TypeVar
 
 import aiofiles
 import rich
-from aiohttp import ClientConnectorError, ClientResponse, ClientSession, FormData
-from aiohttp_client_cache import CachedResponse
+from aiohttp import ClientConnectorError, ClientSession, FormData
+from aiohttp_client_cache.response import AnyResponse
 from bs4 import BeautifulSoup
 from yarl import URL
 
@@ -469,12 +469,14 @@ def remove_parts(url: URL, *parts_to_remove: str, keep_query: bool = True, keep_
     return url.with_path("/".join(new_parts), keep_fragment=keep_fragment, keep_query=keep_query)
 
 
-async def get_soup_from_response(response: CurlResponse | ClientResponse | CachedResponse) -> BeautifulSoup | None:
+async def get_soup_no_error(response: CurlResponse | AnyResponse) -> BeautifulSoup | None:
     # We can't use `CurlResponse` at runtime so we check the reverse
-    is_curl = not isinstance(response, ClientResponse | CachedResponse)
     with contextlib.suppress(UnicodeDecodeError):
-        response_text = response.text if is_curl else await response.text()
-        return BeautifulSoup(response_text, "html.parser")
+        if isinstance(response, AnyResponse):
+            content = await response.read()  # aiohttp
+        else:
+            content = response.content  # curl response
+        return BeautifulSoup(content, "html.parser")
 
 
 def get_og_properties(soup: BeautifulSoup) -> OGProperties:
