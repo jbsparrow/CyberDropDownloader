@@ -273,8 +273,18 @@ class ScraperClient:
         return soup
 
     @copy_signature(_get_response_and_soup)
-    async def get_json(self, *args, **kwargs) -> dict[str, Any]:
-        response, _ = await self._get_response_and_soup(*args, **kwargs)
+    async def get_json(
+        self,
+        domain: str,
+        url: URL,
+        headers: dict[str, str] | None = None,
+        *,
+        cache_disabled: bool = False,
+        **request_params: Any,
+    ) -> dict[str, Any]:
+        headers = self._headers | (headers or {})
+        async with cache_control_manager(self._session, disabled=cache_disabled):
+            response = await self._session.get(url, headers=headers, **request_params)
         return await response_to_json(response)
 
     @copy_signature(_get_response_and_soup)
@@ -295,7 +305,7 @@ class ScraperClient:
         json: dict[str, Any] | None = None,
         *,
         cache_disabled: bool = False,
-        **kwargs: Any,
+        **request_params: Any,
     ) -> aiohttp.ClientResponse:
         """Makes a post request using aiohtttp
 
@@ -309,7 +319,7 @@ class ScraperClient:
         """
         headers = self._headers | {"Accept-Encoding": "identity"} | (headers or {})
         async with cache_control_manager(self._session, disabled=cache_disabled):
-            response = await self._session.post(url, headers=headers, data=data, json=json, **kwargs)
+            response = await self._session.post(url, headers=headers, data=data, json=json, **request_params)
         await self.client_manager.check_http_status(response)
         return response
 
