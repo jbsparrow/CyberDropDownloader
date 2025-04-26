@@ -3,8 +3,8 @@ name = "cyberdrop-dl-patched"
 authors = [{name = "Jacob B", email = "admin@script-ware.net"}]
 dependencies = [
     "aiofiles (>=24.1.0,<25.0.0)",
-    "aiohttp (>=3.11.12,<4.0.0)",
-    "aiohttp-client-cache (>=0.12.4,<0.13.0)",
+    "aiohttp (>=3.11.18,<4.0.0)",
+    "aiohttp-client-cache (>=0.13.0,<0.14.0)",
     "aiolimiter (>=1.2.1,<2.0.0)",
     "aiosqlite==0.17.0",
     "apprise (>=1.9.2,<2.0.0)",
@@ -12,7 +12,7 @@ dependencies = [
     "asyncpraw (>=7.8.1,<8.0.0)",
     "beautifulsoup4 (>=4.13.3,<5.0.0)",
     "browser-cookie3 (>=0.20.1,<0.21.0)",
-    "certifi (>=2025.1.31,<2026.0.0)",
+    "certifi (>=2025.4.26,<2026.0.0)",
     "curl-cffi (>=0.9.0,<0.10.0)",
     "filedate (>=3.0,<4.0)",
     "get-video-properties (>=0.1.1,<0.2.0)",
