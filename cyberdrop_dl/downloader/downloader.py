@@ -1,11 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-<<<<<<< HEAD
-import re
-=======
 import contextlib
->>>>>>> bd88c7a8 (refactor: count the actual number of segments)
 from dataclasses import field
 from functools import wraps
 from pathlib import Path
@@ -338,8 +334,8 @@ async def set_file_datetime(media_item: MediaItem, file_path: Path | None = None
         file_path = file_path or media_item.complete_file
 
     def set_date():
-            file = File(str(file_path))
-            file.set(*(media_item.datetime,) * 3)  # type: ignore
+        file = File(str(file_path))
+        file.set(*(media_item.datetime,) * 3)  # type: ignore
 
     await asyncio.to_thread(set_date)
 
