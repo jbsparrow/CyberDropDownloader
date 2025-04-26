@@ -359,7 +359,12 @@ def open_in_text_editor(file_path: Path) -> bool | None:
         cmd = "open", "-a", "TextEdit", file_path
 
     elif platform.system() == "Windows":
-        cmd = "notepad.exe", file_path
+        try:
+            os.startfile(file_path)
+        except OSError:
+            cmd = ("cmd", "/c", "start", "", str(file_path))
+        else:
+            return True
 
     elif using_desktop_enviroment and not using_ssh and set_default_app_if_none(file_path):
         cmd = "xdg-open", file_path
