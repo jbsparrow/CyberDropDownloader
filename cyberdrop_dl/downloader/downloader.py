@@ -24,12 +24,14 @@ from cyberdrop_dl.utils.data_enums_classes.url_objects import HlsSegment, MediaI
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
+# Windows epoch is January 1, 1601. Unix epoch is January 1, 1970
+WIN_EPOCH_OFFSET = 116444736e9
+
 if sys.platform == "win32":
     from ctypes import byref, win32con, windll, wintypes
 
     # Offset for file datetimes.
-    # Windows epoch is January 1, 1601. Unix epoch is January 1, 1970
-    WIN_EPOCH_OFFSET = 116444736e9
+
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine, Generator
@@ -205,12 +207,12 @@ class Downloader:
 
         await self.client.process_completed(media_item, self.domain)
         await self.client.handle_media_item_completion(media_item, downloaded=ffmpeg_result.success)
-        self.finalize_download(media_item, ffmpeg_result.success)
+        await self.finalize_download(media_item, ffmpeg_result.success)
 
-    def finalize_download(self, media_item: MediaItem, downloaded: bool) -> None:
+    async def finalize_download(self, media_item: MediaItem, downloaded: bool) -> None:
         if downloaded:
-            Path.chmod(media_item.complete_file, 0o666)
-            self.set_file_datetime(media_item, media_item.complete_file)
+            await asyncio.to_thread(Path.chmod, media_item.complete_file, 0o666)
+            await self.set_file_datetime(media_item, media_item.complete_file)
         self.attempt_task_removal(media_item)
         self.manager.progress_manager.download_progress.add_completed()
         log(f"Download finished: {media_item.url}", 20)
@@ -225,7 +227,7 @@ class Downloader:
         if not self.manager.download_manager.pre_check_duration(media_item):
             raise DurationError(origin=media_item)
 
-    def set_file_datetime(self, media_item: MediaItem, complete_file: Path) -> None:
+    async def set_file_datetime(self, media_item: MediaItem, complete_file: Path) -> None:
         """Sets the file's datetime."""
         if self.manager.config_manager.settings_data.download_options.disable_file_timestamps:
             return
@@ -238,46 +240,50 @@ class Downloader:
         # 1. try setting creation date
         try:
             if sys.platform == "win32":
-                nano_ts: float = media_item.datetime * 1e7  # Windows uses nano seconds for dates
-                timestamp = int(nano_ts + WIN_EPOCH_OFFSET)
 
-                # Windows dates are 64bits, split into 2 32bits unsigned ints (dwHighDateTime , dwLowDateTime)
-                # XOR to get the date as bytes, then shift to get the last 32 bits (dwLowDateTime)
-                ctime = wintypes.FILETIME(timestamp & 0xFFFFFFFF, timestamp >> 32)
-                access_mode = win32con.GENERIC_WRITE
-                sharing_mode = win32con.FILE_SHARE_READ | win32con.FILE_SHARE_WRITE | win32con.FILE_SHARE_DELETE
-                security_mode = None  # Use default security attributes
-                creation_disposition = win32con.OPEN_EXISTING
-                flags = (
-                    win32con.FILE_ATTRIBUTE_NORMAL,
-                    win32con.FILE_FLAG_BACKUP_SEMANTICS,  # (allows folder access)
-                )
-                temp_file = None
+                def set_win_time():
+                    nano_ts: float = media_item.datetime * 1e7  # Windows uses nano seconds for dates
+                    timestamp = int(nano_ts + WIN_EPOCH_OFFSET)
 
-                params = (
-                    access_mode,
-                    sharing_mode,
-                    security_mode,
-                    creation_disposition,
-                    flags[0] | flags[1],
-                    temp_file,
-                )
+                    # Windows dates are 64bits, split into 2 32bits unsigned ints (dwHighDateTime , dwLowDateTime)
+                    # XOR to get the date as bytes, then shift to get the last 32 bits (dwLowDateTime)
+                    ctime = wintypes.FILETIME(timestamp & 0xFFFFFFFF, timestamp >> 32)
+                    access_mode = win32con.GENERIC_WRITE
+                    sharing_mode = win32con.FILE_SHARE_READ | win32con.FILE_SHARE_WRITE | win32con.FILE_SHARE_DELETE
+                    security_mode = None  # Use default security attributes
+                    creation_disposition = win32con.OPEN_EXISTING
+                    flags = (
+                        win32con.FILE_ATTRIBUTE_NORMAL,
+                        win32con.FILE_FLAG_BACKUP_SEMANTICS,  # (allows folder access)
+                    )
+                    temp_file = None
 
-                handle = windll.kernel32.CreateFileW(complete_file, *params)
-                windll.kernel32.SetFileTime(
-                    handle,
-                    byref(ctime),  # Creation time, byref to make it relative to the current dwHighDateTime
-                    None,  # Access time
-                    None,  # Modification time
-                )
-                windll.kernel32.CloseHandle(handle)
+                    params = (
+                        access_mode,
+                        sharing_mode,
+                        security_mode,
+                        creation_disposition,
+                        flags[0] | flags[1],
+                        temp_file,
+                    )
+
+                    handle = windll.kernel32.CreateFileW(complete_file, *params)
+                    windll.kernel32.SetFileTime(
+                        handle,
+                        byref(ctime),  # Creation time, byref to make it relative to the current dwHighDateTime
+                        None,  # Access time
+                        None,  # Modification time
+                    )
+                    windll.kernel32.CloseHandle(handle)
+
+                await asyncio.to_thread(set_win_time)
 
         except OSError:
             pass
 
         # 2. try setting modification and access date
         try:
-            os.utime(complete_file, (media_item.datetime, media_item.datetime))
+            await asyncio.to_thread(os.utime, complete_file, (media_item.datetime, media_item.datetime))
         except OSError:
             pass
 
@@ -316,8 +322,8 @@ class Downloader:
             await self.check_file_can_download(media_item)
             downloaded = await self.client.download_file(self.manager, self.domain, media_item)
             if downloaded:
-                Path.chmod(media_item.complete_file, 0o666)
-                self.set_file_datetime(media_item, media_item.complete_file)
+                await asyncio.to_thread(Path.chmod, media_item.complete_file, 0o666)
+                await self.set_file_datetime(media_item, media_item.complete_file)
                 self.attempt_task_removal(media_item)
                 self.manager.progress_manager.download_progress.add_completed()
                 log(f"Download finished: {media_item.url}", 20)
