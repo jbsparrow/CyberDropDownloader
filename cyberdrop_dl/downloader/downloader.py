@@ -3,8 +3,11 @@ from __future__ import annotations
 import asyncio
 import os
 import re
+import shutil
+import subprocess
 import sys
 from dataclasses import field
+from datetime import datetime
 from functools import wraps
 from http import HTTPStatus
 from pathlib import Path
@@ -26,11 +29,16 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 # Windows epoch is January 1, 1601. Unix epoch is January 1, 1970
 WIN_EPOCH_OFFSET = 116444736e9
+MAC_OS_SET_FILE = None
 
 if sys.platform == "win32":
     from ctypes import byref, win32con, windll, wintypes
 
     # Offset for file datetimes.
+
+elif sys.platform == "darwin":
+    # SetFile is non standard in macOS. Only users that have xcode installed will have SetFile
+    MAC_OS_SET_FILE = shutil.which("SetFile") or None
 
 
 if TYPE_CHECKING:
@@ -278,7 +286,14 @@ class Downloader:
 
                 await asyncio.to_thread(set_win_time)
 
-        except OSError:
+            elif sys.platform == "darwin" and MAC_OS_SET_FILE:
+                date_string = datetime.fromtimestamp(media_item.datetime).strftime("%m/%d/%Y %H:%M:%S")
+                cmd = ["-d", date_string, complete_file]
+                await asyncio.subprocess.create_subprocess_exec(
+                    MAC_OS_SET_FILE, *cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                )
+
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError, ValueError):
             pass
 
         # 2. try setting modification and access date
