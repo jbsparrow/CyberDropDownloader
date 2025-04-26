@@ -7,7 +7,7 @@ import itertools
 import time
 from functools import partial, wraps
 from http import HTTPStatus
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
 import aiofiles
 import aiohttp
@@ -32,16 +32,21 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
 
+P = ParamSpec("P")
+R = TypeVar("R")
+
 CONTENT_TYPES_OVERRIDES = {"text/vnd.trolltech.linguist": "video/MP2T"}
 
 
-def limiter(func: Callable) -> Any:
+def limiter(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, Coroutine[None, None, R]]:
     """Wrapper handles limits for download session."""
 
     @wraps(func)
-    async def wrapper(self: DownloadClient, *args, **kwargs) -> Any:
-        domain_limiter = await self.client_manager.get_rate_limiter(args[0])
-        await asyncio.sleep(await self.client_manager.get_downloader_spacer(args[0]))
+    async def wrapper(*args, **kwargs) -> R:
+        self: DownloadClient = args[0]
+        domain: str = args[1]
+        domain_limiter = await self.client_manager.get_rate_limiter(domain)
+        await asyncio.sleep(await self.client_manager.get_downloader_spacer(domain))
         await self._global_limiter.acquire()
         await domain_limiter.acquire()
 
@@ -53,7 +58,7 @@ def limiter(func: Callable) -> Any:
             trace_configs=self.trace_configs,
         ) as client:
             kwargs["client_session"] = client
-            return await func(self, *args, **kwargs)
+            return await func(*args, **kwargs)
 
     return wrapper
 

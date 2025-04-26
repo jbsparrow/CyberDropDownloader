@@ -14,6 +14,7 @@ DEFAULT_REQUIRED_FREE_SPACE = convert_to_byte_size("5GB")
 
 class General(BaseModel):
     allow_insecure_connections: bool = False
+    enable_generic_crawler: bool = True
     flaresolverr: HttpURL | None = None
     max_file_name_length: PositiveInt = 95
     max_folder_name_length: PositiveInt = 60

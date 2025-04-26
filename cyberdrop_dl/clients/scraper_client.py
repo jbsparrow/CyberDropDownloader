@@ -3,10 +3,11 @@ from __future__ import annotations
 import asyncio
 import json
 from contextlib import asynccontextmanager
+from dataclasses import field
 from datetime import datetime
 from functools import wraps
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar
 
 import aiohttp
 from aiohttp_client_cache import CachedSession
@@ -26,7 +27,7 @@ except ImportError as e:
     curl_import_error = e
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Coroutine
 
     from curl_cffi.requests.impersonate import BrowserTypeLiteral
     from curl_cffi.requests.models import Response as CurlResponse
@@ -37,12 +38,17 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
-def limiter(func: Callable) -> Any:
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+def limiter(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, Coroutine[None, None, R]]:
     """Wrapper handles limits for scrape session."""
 
     @wraps(func)
-    async def wrapper(self: ScraperClient, *args, **kwargs) -> Any:
-        domain = args[0]
+    async def wrapper(*args, **kwargs) -> R:
+        self: ScraperClient = args[0]
+        domain: str = args[1]
         domain_limiter = await self.client_manager.get_rate_limiter(domain)
         async with self.client_manager.session_limit:
             await self._global_limiter.acquire()
@@ -56,18 +62,10 @@ def limiter(func: Callable) -> Any:
                     msg += f"See: https://github.com/lexiforest/curl_cffi/issues/74#issuecomment-1849365636\n{curl_import_error!r}"
                     raise ScrapeError("Missing Dependency", msg)
                 kwargs.pop("client_session", None)
-                return await func(self, *args, **kwargs)
+                return await func(*args, **kwargs)
 
-            async with CachedSession(
-                headers=self._headers,
-                raise_for_status=False,
-                cookie_jar=self.client_manager.cookies,
-                timeout=self._timeouts,
-                trace_configs=self.trace_configs,
-                cache=self.client_manager.manager.cache_manager.request_cache,
-            ) as client:
-                kwargs["client_session"] = client
-                return await func(self, *args, **kwargs)
+            kwargs["client_session"] = self._session
+            return await func(*args, **kwargs)
 
     return wrapper
 
@@ -94,7 +92,21 @@ class ScraperClient:
         # folder len + date_prefix len + 10 [suffix (.html) + 1 OS separator + 4 (padding)]
         min_html_file_path_len = len(str(self.pages_folder)) + len(constants.STARTUP_TIME_STR) + 10
         self.max_html_stem_len = 245 - min_html_file_path_len
+        self._session: CachedSession = field(init=False)
+
+    def startup(self):
         self.add_request_log_hooks()
+        self._session = CachedSession(
+            headers=self._headers,
+            raise_for_status=False,
+            cookie_jar=self.client_manager.cookies,
+            timeout=self._timeouts,
+            trace_configs=self.trace_configs,
+            cache=self.client_manager.manager.cache_manager.request_cache,
+        )
+
+    async def close(self):
+        await self._session.close()
 
     @asynccontextmanager
     async def write_soup_on_error(self, domain: str, url, response: CurlResponse | aiohttp.ClientResponse):
