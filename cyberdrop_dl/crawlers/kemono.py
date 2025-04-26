@@ -1,33 +1,187 @@
 from __future__ import annotations
 
+import asyncio
 import calendar
-import datetime
-import json
+import functools
+import itertools
 import re
-from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from collections import defaultdict
+from datetime import datetime  # noqa: TC003
+from typing import TYPE_CHECKING, Any, NamedTuple
 
+from pydantic import AliasChoices, AliasPath, Field
+from typing_extensions import TypedDict  # Compatible with python 3.11
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import NoExtensionError, ScrapeError
+from cyberdrop_dl.config_definitions.custom.types import AliasModel
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, FILE_HOST_PROFILE, ScrapeItem
-from cyberdrop_dl.utils.logger import log
-from cyberdrop_dl.utils.utilities import error_handling_wrapper
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator, Callable, Coroutine, Generator
+
+    from aiohttp_client_cache.response import AnyResponse
+    from bs4 import BeautifulSoup
+
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
+
+# TODO: Check what's the maximun offset we can use
+# TODO: Verify if we need to use different offsets for each url type / service
+# Right now is 50 becuase that's the max when scraping from the web page, but could be higher when using the API
+MAX_OFFSET_PER_CALL = 50
+LINK_REGEX = re.compile(r"(?:http(?!.*\.\.)[^ ]*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]|</|'))")
+POST_SELECTOR = "article.post-card a"
+DISCORD_SERVER_NAME_SELECTOR = "spam[class*=__profile-image] + span[itemprop='name']"
 
 
-@dataclass
-class Post:
-    id: int
-    title: str
-    date: int
+class PostSelectors:
+    FILES = "div[class*=__files]"
+    CONTENT = "div[class*=__content]"
+    ATTACHMENTS = "a[class*=__attachment-link]"
+    IMAGES = "div[class=fileThumb]"
+    VIDEOS = "video[class*=__video] source"
+    ALL_CONTENT = f"{FILES}, {CONTENT}"
+
+    DATE_PUBLISHED = "div[class*=__published] time[class=timestamp]"
+    DATE_ADDED = "div[class*=__added]"
+    DATE = f"{DATE_PUBLISHED}, {DATE_ADDED}"
+
+    TITLE = "h1[class*=__title]"
+    USERNAME = "a[class*=__user-name]"
+
+
+_POST = PostSelectors()
+
+
+class URLInfo(NamedTuple):
+    # format: https://kemono.su/<service>/user/<user_id>/post/<post_id>
+    # ex: https://kemono.su/patreon/user/92916478/post/87864845
+    service: str = "Unknown"
+    user_: str = ""  # the literal word "user"
+    user_id: str = "Unknown"
+    post_: str = ""  # the literal word "post"
+    post_id: str | None = None  # Only present in individual posts URLs
+
+    @staticmethod
+    def parse(url: URL) -> URLInfo:
+        return URLInfo(*url.parts[1:6])
+
+
+class DiscordURLInfo(NamedTuple):
+    # format: https://kemono.su/discord/server/<server_id>/<channel_id>
+    # ex: https://kemono.su/discord/server/891670433978531850/892624523034255371
+    server_id: str
+    channel_id: str | None = None  # Only present for individual channels URLs
+
+    @staticmethod
+    def parse(url: URL) -> DiscordURLInfo:
+        return DiscordURLInfo(*url.parts[3:5])
+
+
+class DiscordChannel(NamedTuple):
+    name: str
+    id: str
+
+
+class DiscordServer(NamedTuple):
+    name: str
+    id: str
+    channels: tuple[DiscordChannel, ...]
+
+
+class User(NamedTuple):
+    service: str
+    id: str
+
+
+class File(TypedDict):
+    name: str
+    path: str
+
+
+class Post(AliasModel):
+    id: str
+    content: str = ""
+    file: File | None = None  # TODO: Verify is a post can have more that 1 file
+    attachments: list[File] = []  # noqa: RUF012
+    published_or_added: datetime | None = Field(None, validation_alias=AliasChoices("published", "added"))
+    soup_attachments: list[Any] = []  # noqa: RUF012, `Any` to skip validation, but these are `yarl.URL`. We generate them internally so no validation is needed
+    date: int | None = None
+
+    def model_post_init(self, *_) -> None:
+        if self.published_or_added:
+            self.date = calendar.timegm(self.published_or_added.timetuple())
 
     @property
-    def number(self):
-        return self.id
+    def all_files(self) -> Generator[File]:
+        if self.file:
+            yield self.file
+        yield from self.attachments
+
+
+class UserPost(Post):
+    service: str
+    user_id: str = Field(validation_alias="user")
+    title: str
+    revisions: list[UserPost] = Field([], validation_alias=AliasPath("props", "revisions"))  # Not used
+
+    @property
+    def user(self) -> User:
+        return User(self.service, self.user_id)
+
+    @property
+    def web_path_qs(self):
+        return f"{self.service}/user/{self.user_id}/post/{self.id}"
+
+
+class DiscordPost(Post):
+    server_id: str = Field(validation_alias="server")
+    channel_id: str = Field(validation_alias="channel")
+
+    @property
+    def web_path_qs(self):
+        return f"discord/server/{self.server_id}/{self.channel_id}#{self.id}"
+
+
+class PartialUserPost(NamedTuple):
+    """A simplified version of Post that we can built from a soup, for sites that do not have an API
+
+    Pros: We can get the post data + user_name in a single request
+
+    Cons: We need to make a request for every individual post"""
+
+    title: str = ""
+    content: str = ""
+    user_name: str = ""
+    date: str | None = None
+
+    @staticmethod
+    def from_soup(soup: BeautifulSoup) -> PartialUserPost:
+        info = {}
+        names = "title", "content", "user_name", "date"
+        selectors = (_POST.TITLE, _POST.ALL_CONTENT, _POST.USERNAME, _POST.DATE)
+        for name, selector in zip(names, selectors, strict=True):
+            if tag := soup.select_one(selector):
+                info[name] = tag.text.strip()
+
+        return PartialUserPost(**info)
+
+
+def fallback_if_no_api(func: Callable[..., Coroutine[None, None, Any]]) -> Callable[..., Coroutine[None, None, Any]]:
+    """Calls a fallback method is the current instance does not define an API"""
+
+    @functools.wraps(func)
+    async def wrapper(self: KemonoCrawler, *args, **kwargs):
+        if self.api_entrypoint:
+            return await func(self, *args, **kwargs)
+        fallback_func = getattr(self, f"{func.__name__}_w_no_api", None)
+        if not fallback_func:
+            raise ValueError
+        return await fallback_func(self, *args, **kwargs)
+
+    return wrapper
 
 
 class KemonoCrawler(Crawler):
@@ -36,366 +190,388 @@ class KemonoCrawler(Crawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "kemono", "Kemono")
-        self.api_url = URL("https://kemono.su/api/v1")
-        self.services = ["afdian", "boosty", "dlsite", "fanbox", "fantia", "gumroad", "patreon", "subscribestar"]
+        self.api_entrypoint: URL = URL("https://kemono.su/api/v1")
+        self.__known_user_names: dict[User, str] = {}
+        self.__known_discord_servers: dict[str, DiscordServer] = {}
+        self.__user_names_locks: dict[User, asyncio.Lock] = defaultdict(asyncio.Lock)
+        self.__discord_servers_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
+        self.services: tuple[str, ...] = (
+            "afdian",
+            "boosty",
+            "dlsite",
+            "fanbox",
+            "fantia",
+            "gumroad",
+            "patreon",
+            "subscribestar",
+        )
+        self.session_cookie = self.manager.config_manager.authentication_data.kemono.session
+
+    async def async_startup(self) -> None:
+        def check_kemono_page(response: AnyResponse):
+            if any(x in response.url.parts for x in self.services):
+                return False
+            if "discord/channel" in response.url.path:
+                return False
+            return True
+
+        self.register_cache_filter(self.primary_base_domain, check_kemono_page)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        if "thumbnails" in scrape_item.url.parts:
-            parts = [x for x in scrape_item.url.parts if x not in ("thumbnail", "/")]
-            new_path = "/".join(parts)
-            scrape_item.url = scrape_item.url.with_path(new_path)
-            await self.handle_direct_link(scrape_item)
-        elif "discord" in scrape_item.url.parts:
-            await self.discord(scrape_item)
-        elif "post" in scrape_item.url.parts:
-            await self.post(scrape_item)
-        elif scrape_item.url.parts[-1] == "posts":
-            await self.search(scrape_item)
-        elif any(x in scrape_item.url.parts for x in self.services):
-            await self.profile(scrape_item)
-        else:
-            await self.handle_direct_link(scrape_item)
+        if "discord" in scrape_item.url.parts:
+            return await self.discord(scrape_item)
+        return await self._fetch_kemono_defaults(scrape_item)
 
+    async def _fetch_kemono_defaults(self, scrape_item: ScrapeItem) -> None:
+        """Helper fetch method for subclasses.
+
+        Subclasses can override the normal `fetch` method to add their own custom filters and them call this method at the end
+
+        Super().fetch MUST NOT be used, otherwise a new task_id will be created"""
+        if "thumbnails" in scrape_item.url.parts:
+            return await self.handle_direct_link(scrape_item)
+        if "post" in scrape_item.url.parts:
+            return await self.post(scrape_item)
+        if scrape_item.url.name == "posts":
+            if not scrape_item.url.query.get("q"):
+                raise ValueError
+            return await self.search(scrape_item)
+        if any(x in scrape_item.url.parts for x in self.services):
+            return await self.profile(scrape_item)
+        if "favorites" in scrape_item.url.parts:
+            return await self.favorites(scrape_item)
+        await self.handle_direct_link(scrape_item)
+
+    @fallback_if_no_api
     @error_handling_wrapper
     async def search(self, scrape_item: ScrapeItem) -> None:
         """Scrapes results from a search query."""
-        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
-        offset = int(scrape_item.url.query.get("o", 0))
-        query = scrape_item.url.query.get("q", "")
-        if query == "":  # Don't scrape if there is no query
-            msg = "No search query found in the URL"
-            raise ScrapeError(400, msg)
-        search_url = (self.api_url / "posts").with_query({"q": query, "o": offset})
-        async with self.request_limiter:
-            JSON_Resp = await self.client.get_json(self.domain, search_url)
-        post_count = int(JSON_Resp.get("count", 0))
-        if post_count == 0:
-            return
-        max_offset = (post_count // 50) * 50
+        query = scrape_item.url.query["q"]
+        api_url = self.__make_api_url_w_offset("posts", scrape_item.url)
+        title = self.create_title(f"{query} [search]")
+        scrape_item.setup_as_profile(title)
+        await self.__iter_user_posts_from_url(scrape_item, api_url)
 
-        while offset <= max_offset:
-            async with self.request_limiter:
-                query_url = search_url.with_query({"o": offset, "q": query})
-                JSON_Resp = await self.client.get_json(self.domain, query_url)
-            offset += 50
-            if not JSON_Resp:
-                break
-
-            for post in JSON_Resp.get("posts", []):
-                date_str = post.get("published")
-                date = date_str.replace("T", " ")
-                new_title = self.create_title(f"Search - {query}")
-                files = []
-                if post.get("file"):
-                    files.append(post["file"])
-                if post.get("attachments"):
-                    files.extend(post["attachments"])
-                for file in files:
-                    file_url = (self.primary_base_domain / "data" / file["path"].strip("/")).with_query(
-                        {"f": file["name"]}
-                    )
-                    new_scrape_item = scrape_item.create_new(
-                        file_url,
-                        new_title,
-                        part_of_album=True,
-                        possible_datetime=date,
-                    )
-                    await self.handle_direct_link(new_scrape_item)
-
+    @fallback_if_no_api
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a profile."""
-        user_info: dict[str, str] = await self.get_user_info(scrape_item)
-        service, user, user_str = user_info["service"], user_info["user"], user_info["user_str"]
-        offset, maximum_offset, post_limit = user_info["offset"], user_info["maximum_offset"], user_info["limit"]
-        api_call = self.api_url / service / "user" / user
-        scrape_item.set_type(FILE_HOST_PROFILE, self.manager)
+        url_info = URLInfo.parse(scrape_item.url)
+        api_url = self.__make_api_url_w_offset(f"{url_info.service}/user/{url_info.user_id}", scrape_item.url)
+        scrape_item.setup_as_profile("")  # Title will be added by self._handle_user_post
+        await self.__iter_user_posts_from_url(scrape_item, api_url)
 
-        while offset <= maximum_offset:
-            async with self.request_limiter:
-                query_api_call = api_call.with_query({"o": offset})
-                JSON_Resp = await self.client.get_json(self.domain, query_api_call)
-            offset += post_limit
-            if not JSON_Resp:
-                break
-
-            for post in JSON_Resp:
-                await self.handle_post_content(scrape_item, post, user, user_str)
-                scrape_item.add_children()
-
+    @fallback_if_no_api
     @error_handling_wrapper
     async def discord(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a profile."""
-        offset = 0
-        channel = scrape_item.url.raw_fragment
-        api_call = self.api_url / "discord/channel" / channel
-        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
+        """Scrapes a discord server or channel."""
+        url_info = DiscordURLInfo.parse(scrape_item.url)
+        if not url_info.channel_id:  # Download all channels
+            scrape_item.setup_as_forum("")  # Title will be added by self._handle_discord_post
+            server = await self.__get_discord_server(url_info.server_id)
+            for channel in server.channels:
+                url = self.primary_base_domain / "discord/server" / url_info.server_id / channel.id
+                new_scrape_item = scrape_item.create_child(url)
+                self.manager.task_group.create_task(self.run(new_scrape_item))
+            return
 
-        while True:
-            async with self.request_limiter:
-                query_api_call = api_call.with_query({"o": offset})
-                JSON_Resp = await self.client.get_json(self.domain, query_api_call)
-            offset += 150
-            if not JSON_Resp:
-                break
-
-            for post in JSON_Resp:
-                await self.handle_post_content(scrape_item, post, channel, channel)
+        api_url = self.__make_api_url_w_offset(f"discord/channel/{url_info.channel_id}", scrape_item.url)
+        scrape_item.setup_as_profile("")
+        page_generator = self.__api_pager(api_url)
+        async for json_resp in page_generator:
+            n_posts = 0
+            for post in (DiscordPost(**entry) for entry in json_resp):  # type: ignore
+                n_posts += 1
+                link = self.parse_url(post.web_path_qs)
+                new_scrape_item = scrape_item.create_child(link)
+                await self._handle_discord_post(new_scrape_item, post)
                 scrape_item.add_children()
+            await page_generator.asend(n_posts)
 
+    @fallback_if_no_api
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a post."""
-        user_info = await self.get_user_info(scrape_item)
-        service, user, user_str, post_id = (
-            user_info["service"],
-            user_info["user"],
-            user_info["user_str"],
-            user_info["post"],
-        )
-        scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
-        api_call = self.api_url / service / "user" / user / "post" / post_id
+        """Scrapes an user post."""
+        url_info = URLInfo.parse(scrape_item.url)
+        assert url_info.post_id, "Individual posts must have a post_id"
+        path = f"{url_info.service}/user/{url_info.user_id}/post/{url_info.post_id}"
+        api_url = self.__make_api_url_w_offset(path, scrape_item.url)
         async with self.request_limiter:
-            post: dict = await self.client.get_json(self.domain, api_call)
-            post = post.get("post")
-        await self.handle_post_content(scrape_item, post, user, user_str)
+            json_resp: dict[str, dict] = await self.client.get_json(self.domain, api_url)
+
+        # Not used
+        # revisions = json_resp["props"].get("revisions", [])
+        post = UserPost(**json_resp["post"])
+        await self._handle_user_post(scrape_item, post)
 
     @error_handling_wrapper
-    async def handle_post_content(self, scrape_item: ScrapeItem, post: dict, user: str, user_str: str) -> None:
-        """Handles the content of a post."""
-
-        date: str = post.get("published") or post.get("added")
-        date = date.replace("T", " ")
-        post_id = post["id"]
-        post_title = post.get("title", "")
-
-        scrape_item.album_id = post_id
-        scrape_item.part_of_album = True
-        await self.get_content_links(scrape_item, post, user_str)
-
-        async def handle_file(file_obj: dict):
-            link = self.primary_base_domain / ("data" + file_obj["path"])
-            link = link.with_query({"f": file_obj["name"]})
-            await self.create_new_scrape_item(link, scrape_item, user_str, post_title, post_id, date)
-
-        files = []
-        if post.get("file"):
-            files.append(post["file"])
-
-        if post.get("attachments"):
-            files.extend(post["attachments"])
-
-        for file in files:
-            await handle_file(file)
-            scrape_item.add_children()
-
-    async def get_content_links(self, scrape_item: ScrapeItem, post: dict, user: str) -> None:
-        """Gets links out of content in post."""
-        content = post.get("content", "")
-        if not content:
-            return
-
-        date_str = post["published"].replace("T", " ")
-        date = self.parse_datetime(date_str)
-        post_id = post["id"]
-        title = post.get("title", "")
-
-        post_obj = Post(id=post_id, title=title, date=date)
-        new_title = self.create_title(user)
-        scrape_item = scrape_item.create_new(
-            scrape_item.url,
-            new_title_part=new_title,
-            possible_datetime=date,
-        )
-        self.add_separate_post_title(scrape_item, post_obj)
-        scrape_item.add_to_parent_title("Loose Files")
-
-        yarl_links: list[URL] = []
-        LINK_REGEX = r"(?:http(?!.*\.\.)[^ ]*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]|</|'))"
-        all_links = [x.group().replace(".md.", ".") for x in re.finditer(LINK_REGEX, content)]
-
-        for link in all_links:
-            try:
-                url = self.parse_url(link)
-                yarl_links.append(url)
-            except ValueError:
-                pass
-
-        for link in yarl_links:
-            if not link.host or "kemono" in link.host:
-                continue
-            scrape_item = scrape_item.create_new(link, add_parent=scrape_item.url.joinpath("post", post_id))
-            self.handle_external_links(scrape_item)
-            scrape_item.add_children()
-
-    @error_handling_wrapper
-    async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:
+    async def handle_direct_link(self, scrape_item: ScrapeItem, url: URL | None) -> None:
         """Handles a direct link."""
+
+        def clean_url(og_url: URL) -> URL:
+            if "thumbnails" in og_url.parts:
+                return remove_parts(og_url, "thumbnails")
+            return og_url
+
+        scrape_item.url = clean_url(scrape_item.url)
+        link = clean_url(url or scrape_item.url)
         try:
-            filename, ext = self.get_filename_and_ext(scrape_item.url.query.get("f") or scrape_item.url.name)
+            filename, ext = self.get_filename_and_ext(link.query.get("f") or link.name)
         except NoExtensionError:
             # Some patreon URLs have another URL as the filename: https://kemono.su/data/7a...27ad7e40bd.jpg?f=https://www.patreon.com/media-u/Z0F..00672794_
-            filename, ext = self.get_filename_and_ext(scrape_item.url.name)
-        await self.handle_file(scrape_item.url, scrape_item, filename, ext)
+            filename, ext = self.get_filename_and_ext(link.name)
+        await self.handle_file(link, scrape_item, filename, ext)
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    @error_handling_wrapper
+    async def favorites(self, scrape_item: ScrapeItem) -> None:
+        """Scrapes the user's favorite artists or posts and enqueues them for processing."""
+        if not self.session_cookie:
+            raise ScrapeError(401, "No session cookie found in the config file, cannot scrape favorites")
 
-    async def create_new_scrape_item(
-        self,
-        link: URL,
-        old_scrape_item: ScrapeItem,
-        user: str,
-        title: str,
-        post_id: str,
-        date: str,
-        add_parent: URL | None = None,
-    ) -> None:
-        """Creates a new scrape item with the same parent as the old scrape item."""
+        is_post = scrape_item.url.query.get("type") == "post"
+        title = "My favorite posts" if is_post else "My favorite artists"
+        scrape_item.setup_as_profile(self.create_title(title))
 
-        post = Post(id=post_id, title=title, date=date)
-        new_title = self.create_title(user)
-        new_scrape_item = old_scrape_item.create_new(
-            link,
-            new_title_part=new_title,
-            part_of_album=True,
-            possible_datetime=post.date,
-            add_parent=add_parent,
-        )
-        self.add_separate_post_title(new_scrape_item, post)
-        await self.handle_direct_link(new_scrape_item)
+        self.update_cookies({"session": self.session_cookie})
+        api_url = self.api_entrypoint / "account/favorites"
+        query_url = api_url.with_query(type="post" if is_post else "artist")
 
-    async def get_user_info(self, scrape_item: ScrapeItem) -> dict:
-        """Gets the user info from a scrape item."""
-        user = scrape_item.url.parts[3]
-        service = scrape_item.url.parts[1]
-        try:
-            post = scrape_item.url.parts[5]
-        except IndexError:
-            post = None
-
-        profile_api_url = self.api_url / service / "user" / user / "posts-legacy"
         async with self.request_limiter:
-            profile_json, resp = await self.client.get_json(self.domain, profile_api_url, cache_disabled=True)
-        properties: dict = profile_json.get("props", {})
-        cached_response = await self.manager.cache_manager.request_cache.get_response(str(profile_api_url))
-        cached_properties = {} if not cached_response else (await cached_response.json()).get("props", {})
+            json_resp = await self.client.get_json(self.domain, query_url)
 
-        # Shift cache offsets if necessary
-        await self.shift_offsets(profile_api_url, properties, cached_properties, resp)
+        self.update_cookies({"session": ""})
 
-        limit = properties.get("limit", 50)
-        user_str = properties.get("name", user)
-        if post:
-            offset, maximum_offset = None, None
-        else:
-            offset = int(scrape_item.url.query.get("o", 0))
-            maximum_offset = (int(properties.get("count", 0)) // limit) * limit
+        for item in json_resp:
+            if is_post:
+                post_id, user_id, service = item["id"], item["user"], item["service"]
+                url = self.primary_base_domain / service / "user" / user_id / "post" / post_id
+            else:
+                user_id, service = item["id"], item["service"]
+                url = self.primary_base_domain / service / "user" / user_id
 
-        return {
-            "service": service,
-            "user": user,
-            "post": post,
-            "user_str": user_str,
-            "offset": offset,
-            "maximum_offset": maximum_offset,
-            "limit": limit,
-        }
+            new_scrape_item = scrape_item.create_child(url)
+            self.manager.task_group.create_task(self.run(new_scrape_item))
 
-    async def shift_offsets(self, api_url: URL, new_properties: dict, cached_properties: dict, response) -> None:
-        """
-        Adjust cached responses for shifted offsets based on the difference in the number of posts.
+    # ~~~~~~~~ INTERNAL METHODS, not expected to be overriden, but could be ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-        Args:
-            api_url (URL): The legacy API URL.
-            new_properties (dict): Properties from the current response.
-            cached_properties (dict): Properties from the cached response.
-            response: The latest HTTP response to save to the cache.
+    async def _handle_user_post(self, scrape_item: ScrapeItem, post: UserPost):
+        user_name = await self.__get_user_name(post.user)
+        title = self.create_title(user_name, post.user_id)
+        scrape_item.setup_as_album(title, album_id=post.user_id)
+        scrape_item.possible_datetime = post.date
+        post_title = self.create_separate_post_title(post.title, post.id, post.date)
+        scrape_item.add_to_parent_title(post_title)
 
-        Returns:
-            int: The updated maximum offset.
-        """
-        user_str = new_properties.get("name", "Unknown")
-        new_count = int(new_properties.get("count", 0))
-        cached_count = int(cached_properties.get("count", 0))
-        if cached_count == 0:
+        await self.__handle_post(scrape_item, post)
+
+    async def _handle_discord_post(self, scrape_item: ScrapeItem, post: DiscordPost):
+        server = await self.__get_discord_server(post.server_id)
+        title = self.create_title(f"{server.name} [discord]", server.id)
+        channel_name = next(c.name for c in server.channels if c.id == post.channel_id)
+        scrape_item.setup_as_album(title, album_id=server.id)
+        scrape_item.possible_datetime = post.date
+        scrape_item.add_to_parent_title(f"#{channel_name}")
+
+        post_title = self.create_separate_post_title(None, post.id, post.date)
+        scrape_item.add_to_parent_title(post_title)
+
+        await self.__handle_post(scrape_item, post)
+
+    def _handle_post_content(self, scrape_item: ScrapeItem, post: Post) -> None:
+        """Gets links out of content in post ans sends them to a new crawler."""
+        if not post.content:
             return
-        post_limit = int(new_properties.get("limit", 50))
-        shift = new_count - cached_count
 
-        if shift > 0:
-            log(f"{shift} new posts detected for {user_str} (Kemono). Adjusting cache...", 20)
+        def gen_yarl_urls():
+            for match in re.finditer(LINK_REGEX, post.content):
+                link = match.group().replace(".md.", ".")
+                try:
+                    url = self.parse_url(link)
+                    yield url
+                except ValueError:
+                    pass
 
-            cached_posts = []
-            offset = 0
-            invalidate = False
-            max_offset = (new_count // post_limit) * post_limit
-            for offset in range(0, max_offset + 1, post_limit):
-                paginated_api_url = api_url.with_query({"o": offset})
-                cache_key = self.manager.cache_manager.request_cache.create_key("GET", paginated_api_url)
-                cached_response = await self.manager.cache_manager.request_cache.get_response(cache_key)
+        for link in gen_yarl_urls():
+            if not link.host or self.domain in link.host:
+                continue
+            new_scrape_item = scrape_item.create_child(link)
+            self.handle_external_links(new_scrape_item)
+            scrape_item.add_children()
 
-                if not cached_response:
-                    invalidate = True
-                    continue
-                else:
-                    cached_json = await cached_response.json()
-                    if len(cached_json) < post_limit and offset != max_offset:
-                        invalidate = True
+    async def _register_user_name(self, user: User, user_name: str) -> None:
+        """Save the user_name to the internal dict
 
-                if invalidate:
-                    await self.manager.cache_manager.request_cache.delete_url(cache_key)
-                    log(f"Invalidated cached page: {paginated_api_url}", 20)
-                    continue
+        NOTE: This should never be overriden.
+        It's defined as internal to allow subclasses to override `post_w_no_api` and still be able to modify the private self.__known_user_names
+        """
 
-                cached_json = await cached_response.json()
-                cached_posts.extend(cached_json)
+        async with self.__user_names_locks[user]:
+            if self.__known_user_names.get(user):
+                return
+            self.__known_user_names[user] = user_name
 
-            all_posts = ["placeholder"] * shift + cached_posts
-            new_pages = [all_posts[i : i + post_limit] for i in range(0, len(all_posts), post_limit)]
+    """~~~~~~~~  PRIVATE METHODS, should never be overriden ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-            for page_index, page_posts in enumerate(new_pages):
-                offset = page_index * post_limit
-                paginated_api_url = api_url.with_query({"o": offset})
-                cache_key = self.manager.cache_manager.request_cache.create_key("GET", paginated_api_url)
+    async def __handle_post(self, scrape_item: ScrapeItem, post: Post):
+        # Process files if the post was generated from an API call
+        for file in post.all_files:
+            file_url = self.__make_file_url(file)
+            await self.handle_direct_link(scrape_item, file_url)
+            scrape_item.add_children()
 
-                if "placeholder" in page_posts:
-                    # Invalidate cache for this page
-                    await self.manager.cache_manager.request_cache.delete_url(cache_key)
-                    log(f"Invalidated cached page: {paginated_api_url}", 20)
-                else:
-                    cached_response = await self.manager.cache_manager.request_cache.get_response(cache_key)
-                    if cached_response:
-                        # Update the cached response
-                        adjusted_content = json.dumps(page_posts).encode("utf-8")
-                        cached_response._body = adjusted_content
-                        cached_response.reset()
+        # Process files if the post was generated from soup
+        for file_url in post.soup_attachments:
+            await self.handle_direct_link(scrape_item, file_url)
+            scrape_item.add_children()
 
-                        await self.manager.cache_manager.request_cache.save_response(
-                            cached_response,
-                            cache_key,
-                            datetime.datetime.now()
-                            + self.manager.config_manager.global_settings_data.rate_limiting_options.file_host_cache_expire_after,
-                        )
+        self._handle_post_content(scrape_item, post)
 
-            legacy_cache_key = self.manager.cache_manager.request_cache.create_key("GET", api_url)
-            await self.manager.cache_manager.request_cache.save_response(
-                response,
-                legacy_cache_key,
-                datetime.datetime.now()
-                + self.manager.config_manager.global_settings_data.rate_limiting_options.file_host_cache_expire_after,
-            )
+    def __make_file_url(self, file: File) -> URL:
+        return self.parse_url(f"/data/{file['path']}").with_query(f=file["name"])
 
-        return
+    def __make_api_url_w_offset(self, path: str, og_url: URL) -> URL:
+        api_url = self.api_entrypoint / path
+        offset = int(og_url.query.get("o", 0))
+        if query := og_url.query.get("q"):
+            return api_url.update_query(o=offset, q=query)
+        return api_url.update_query(o=offset)
 
-    @staticmethod
-    def parse_datetime(date: str) -> int:
-        """Parses a datetime string into a unix timestamp."""
-        try:
-            parsed_date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S")
-        except ValueError:
-            parsed_date = datetime.datetime.strptime(date, "%Y-%m-%d %H:%M:%S.%f")
-        return calendar.timegm(parsed_date.timetuple())
+    async def __get_user_name(self, user: User) -> str:
+        """Gets the user name, making a new API call if needed"""
+        async with self.__user_names_locks[user]:
+            if user_name := self.__known_user_names.get(user):
+                return user_name
+
+            api_url = self.api_entrypoint / user.service / "user" / user.id / "posts-legacy"
+            async with self.request_limiter:
+                profile_json: dict = await self.client.get_json(self.domain, api_url)
+
+            self.__known_user_names[user] = user_name = profile_json["props"]["name"]
+            return user_name
+
+    async def __get_discord_server(self, server_id: str) -> DiscordServer:
+        """Get discord server information, making a new api call if needed"""
+        async with self.__discord_servers_locks[server_id]:
+            if server := self.__known_discord_servers.get(server_id):
+                return server
+
+            url = self.primary_base_domain / "discord/user" / server_id / "links"
+            async with self.request_limiter:
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, url)
+
+            name = soup.select_one(DISCORD_SERVER_NAME_SELECTOR).text  # type: ignore
+            url = self.api_entrypoint / "discord/channel/lookup" / server_id
+            async with self.request_limiter:
+                json_resp: list[dict] = await self.client.get_json(self.domain, url)
+
+            channels = tuple(DiscordChannel(channel["name"], channel["id"]) for channel in json_resp)
+            self.__known_discord_servers[server_id] = server = DiscordServer(name, server_id, channels)
+            return server
+
+    async def __iter_user_posts_from_url(self, scrape_item: ScrapeItem, url: URL):
+        page_generator = self.__api_pager(url)
+        async for json_resp in page_generator:
+            n_posts = 0
+
+            # From search results
+            if isinstance(json_resp, dict):
+                posts = json_resp.get("posts")  # type: ignore
+            # From profile
+            elif isinstance(json_resp, list):
+                posts: list[dict[str, Any]] = json_resp
+            else:
+                raise ScrapeError(422)
+
+            if not posts:
+                return
+
+            for post in (UserPost(**entry) for entry in posts):
+                n_posts += 1
+                link = self.parse_url(post.web_path_qs)
+                new_scrape_item = scrape_item.create_child(link)
+                await self._handle_user_post(new_scrape_item, post)
+                scrape_item.add_children()
+
+            await page_generator.asend(n_posts)
+
+    async def __api_pager(self, url: URL) -> AsyncGenerator[dict[str, Any], int]:
+        """Yields jsons response from api calls, with increments of `MAX_OFFSET_PER_CALL`
+
+        Receive number of proccesed posts (n_posts) from the response. Stops when `n_posts` < MAX_OFFSET_PER_CALL`"""
+        init_offset = int(url.query.get("o") or 0)
+        for offset in itertools.count(init_offset, MAX_OFFSET_PER_CALL):
+            api_url = url.update_query(o=offset)
+            async with self.request_limiter:
+                json_resp: dict = await self.client.get_json(self.domain, api_url)
+            n_post = yield json_resp
+            if not n_post < MAX_OFFSET_PER_CALL:
+                break
+
+    # ~~~~~~~~~~ NO API METHODS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    async def discord_w_no_api(self, scrape_item: ScrapeItem):
+        raise NotImplementedError
+
+    async def search_w_no_api(self, scrape_item: ScrapeItem):
+        raise NotImplementedError
+
+    @error_handling_wrapper
+    async def profile_w_no_api(self, scrape_item: ScrapeItem) -> None:
+        """Scrapes an user profile."""
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+
+        url_info = URLInfo.parse(scrape_item.url)
+        api_url = self.primary_base_domain / url_info.service / "user" / url_info.user_id
+        scrape_item.setup_as_profile("")
+        init_offset = int(scrape_item.url.query.get("o") or 0)
+        for offset in itertools.count(init_offset, MAX_OFFSET_PER_CALL):
+            n_posts = 0
+            api_url = api_url.with_query(o=offset)
+            async with self.request_limiter:
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, api_url)
+
+            for post in soup.select(POST_SELECTOR):
+                n_posts += 1
+                link = self.parse_url(post["href"])  # type: ignore
+                new_scrape_item = scrape_item.create_child(link)
+                await self.post_w_no_api(new_scrape_item)
+                scrape_item.add_children()
+
+            if n_posts < MAX_OFFSET_PER_CALL:
+                break
+
+    @error_handling_wrapper
+    async def post_w_no_api(self, scrape_item: ScrapeItem) -> None:
+        """Scrapes an user post."""
+
+        url_info = URLInfo.parse(scrape_item.url)
+        assert url_info.post_id, "Individual posts must have a post_id"
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+
+        post_info = PartialUserPost.from_soup(soup)
+        if not post_info.title or not post_info.user_name:
+            raise ScrapeError(422)
+
+        files: list[URL] = []
+        for selector in (_POST.VIDEOS, _POST.IMAGES, _POST.ATTACHMENTS):
+            for file in soup.select(selector):
+                files.append(self.parse_url(file["href"]))  # type: ignore
+
+        post = UserPost(
+            user_id=url_info.user_id,
+            service=url_info.service,
+            id=url_info.post_id,
+            title=post_info.title,
+            content=post_info.content,
+            published_or_added=post_info.date,  # type: ignore
+            soup_attachments=files,
+        )
+
+        await self._register_user_name(post.user, post_info.user_name)
+        await self._handle_user_post(scrape_item, post)
