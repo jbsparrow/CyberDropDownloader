@@ -72,8 +72,8 @@ class OGProperties:
 
 
 def error_handling_wrapper(
-    func: Callable[..., Coroutine[None, None, Any]],
-) -> Callable[..., Coroutine[None, None, Any]]:
+    func: Callable[..., Coroutine[None, None, R]],
+) -> Callable[..., Coroutine[None, None, R | None]]:
     """Wrapper handles errors for url scraping."""
 
     @wraps(func)
