@@ -289,9 +289,10 @@ class Downloader:
             elif sys.platform == "darwin" and MAC_OS_SET_FILE:
                 date_string = datetime.fromtimestamp(media_item.datetime).strftime("%m/%d/%Y %H:%M:%S")
                 cmd = ["-d", date_string, complete_file]
-                await asyncio.subprocess.create_subprocess_exec(
+                process = await asyncio.subprocess.create_subprocess_exec(
                     MAC_OS_SET_FILE, *cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
                 )
+                _ = await process.wait()
 
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError, ValueError):
             pass
