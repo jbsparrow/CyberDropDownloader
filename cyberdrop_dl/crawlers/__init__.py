@@ -40,6 +40,7 @@ from .jpg5 import JPG5Crawler
 from .kemono import KemonoCrawler
 from .luscious import LusciousCrawler
 from .mediafire import MediaFireCrawler
+from .mega_nz import MegaNzCrawler
 from .missav import MissAVCrawler
 from .mixdrop import MixDropCrawler
 from .motherless import MotherlessCrawler
@@ -96,7 +97,7 @@ from .youjizz import YouJizzCrawler
 
 ALL_CRAWLERS: set[type[Crawler]] = {crawler for name, crawler in globals().items() if name.endswith("Crawler")}
 ALL_CRAWLERS = ALL_CRAWLERS - {Crawler}
-DEBUG_CRAWLERS = {SimpCityCrawler, BunkrAlbumsIOCrawler, MissAVCrawler}
+DEBUG_CRAWLERS = {SimpCityCrawler, BunkrAlbumsIOCrawler, MissAVCrawler, MegaNzCrawler}
 CRAWLERS = ALL_CRAWLERS - DEBUG_CRAWLERS
 
 if env.ENABLE_DEBUG_CRAWLERS == "d396ab8c85fcb1fecd22c8d9b58acf944a44e6d35014e9dd39e42c9a64091eda":
