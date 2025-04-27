@@ -49,6 +49,20 @@ R = TypeVar("R")
 
 
 TEXT_EDITORS = "micro", "nano", "vim"  # Ordered by preference
+
+TEXT_EDITORS_WINDOWS = (
+    ("notepad.exe",),
+    ("notepad++.exe",),
+    ("akelpad.exe",),
+    ("Code.exe", "--wait"),
+    ("subl.exe", "--wait"),
+    ("sublime_text.exe", "--wait"),
+    ("atom.exe", "--wait"),
+    ("gvim.exe",),
+    ("vim.exe",),
+    ("nano.exe",),
+)
+
 FILENAME_REGEX = re.compile(r"filename\*=UTF-8''(.+)|.*filename=\"(.*?)\"", re.IGNORECASE)
 subprocess_get_text = partial(subprocess.run, capture_output=True, text=True, check=False)
 
@@ -361,12 +375,18 @@ def open_in_text_editor(file_path: Path) -> bool | None:
         cmd = "open", "-a", "TextEdit", file_path
 
     elif platform.system() == "Windows":
-        try:
-            os.startfile(file_path)
-        except OSError:
-            cmd = ("cmd", "/c", "start", "", str(file_path))
+        for exe, *flags in TEXT_EDITORS_WINDOWS:
+            editor_path = shutil.which(exe)
+            if editor_path:
+                cmd = (editor_path, *flags, file_path)
+                break
         else:
-            return True
+            raise ValueError(
+            "No default text editor found."
+            "Please install one of the following editors or add it to your PATH:"
+            "Notepad / Notepad++ / VSCode / Sublime Text / Atom / etc."
+            "Alternatively, set the env var $EDITOR to point to your preferred editor."
+        )
 
     elif using_desktop_enviroment and not using_ssh and set_default_app_if_none(file_path):
         cmd = "xdg-open", file_path
