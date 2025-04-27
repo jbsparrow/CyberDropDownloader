@@ -21,7 +21,7 @@ from cyberdrop_dl.clients.errors import (
 from cyberdrop_dl.utils.constants import CustomHTTPStatus
 from cyberdrop_dl.utils.data_enums_classes.url_objects import HlsSegment, MediaItem
 from cyberdrop_dl.utils.logger import log
-from cyberdrop_dl.utils.utilities import error_handling_wrapper
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_size_or_none
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine, Generator
@@ -290,8 +290,7 @@ class Downloader:
             ClientError,
         ) as e:
             ui_message = getattr(e, "status", type(e).__name__)
-            if media_item.partial_file and media_item.partial_file.is_file():
-                size = media_item.partial_file.stat().st_size
+            if size := await asyncio.to_thread(get_size_or_none, media_item.partial_file):
                 if (
                     media_item.filename in self._current_attempt_filesize
                     and self._current_attempt_filesize[media_item.filename] >= size

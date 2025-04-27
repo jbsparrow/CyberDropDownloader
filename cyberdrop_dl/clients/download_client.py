@@ -230,8 +230,8 @@ class DownloadClient:
 
                     return False
 
-            if resp.status != HTTPStatus.PARTIAL_CONTENT and media_item.partial_file.is_file():
-                media_item.partial_file.unlink()
+            if resp.status != HTTPStatus.PARTIAL_CONTENT:
+                await asyncio.to_thread(media_item.partial_file.unlink, missing_ok=True)
 
             if not media_item.datetime and (last_modified := get_last_modified(resp.headers)):
                 msg = f"Unable to parse upload date for {media_item.url}, using `Last-Modified` header as file datetime"
@@ -298,9 +298,12 @@ class DownloadClient:
         check_free_space = partial(self.manager.storage_manager.check_free_space, media_item)
         await check_free_space()
 
-        media_item.partial_file.parent.mkdir(parents=True, exist_ok=True)
-        if not media_item.partial_file.is_file():
-            media_item.partial_file.touch()
+        def prepare():
+            media_item.partial_file.parent.mkdir(parents=True, exist_ok=True)
+            if not media_item.partial_file.is_file():
+                media_item.partial_file.touch()
+
+        await asyncio.to_thread(prepare)
 
         last_slow_speed_read = None
 
@@ -381,7 +384,7 @@ class DownloadClient:
     async def add_file_size(self, domain: str, media_item: MediaItem) -> None:
         if not media_item.complete_file:
             media_item.complete_file = self.get_file_location(media_item)
-        if media_item.complete_file.is_file():
+        if await asyncio.to_thread(media_item.complete_file.is_file):
             await self.manager.db_manager.history_table.add_filesize(domain, media_item)
 
     async def handle_media_item_completion(self, media_item: MediaItem, downloaded: bool = False) -> None:

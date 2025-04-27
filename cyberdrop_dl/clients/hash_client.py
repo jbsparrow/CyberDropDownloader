@@ -12,6 +12,7 @@ from send2trash import send2trash
 from cyberdrop_dl.ui.prompts.basic_prompts import enter_to_continue
 from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
 from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.utilities import get_size_or_none
 
 if TYPE_CHECKING:
     from yarl import URL
@@ -50,7 +51,7 @@ class HashClient:
     async def hash_directory(self, path: Path) -> None:
         path = Path(path)
         with self.manager.live_manager.get_hash_live(stop=True):
-            if not path.is_dir():
+            if not await asyncio.to_thread(path.is_dir):
                 raise NotADirectoryError
             for file in path.rglob("*"):
                 await self.update_db_and_retrive_hash(file)
@@ -61,7 +62,7 @@ class HashClient:
         hash = await self.update_db_and_retrive_hash(
             media_item.complete_file, media_item.original_filename, media_item.referer
         )
-        self.save_hash_data(media_item, hash)
+        await self.save_hash_data(media_item, hash)
 
     async def hash_item_during_download(self, media_item: MediaItem) -> None:
         if media_item.is_segment:
@@ -73,7 +74,7 @@ class HashClient:
             hash = await self.update_db_and_retrive_hash(
                 media_item.complete_file, media_item.original_filename, media_item.referer
             )
-            self.save_hash_data(media_item, hash)
+            await self.save_hash_data(media_item, hash)
         except Exception as e:
             log(f"After hash processing failed: {media_item.complete_file} with error {e}", 40, exc_info=True)
 
@@ -81,11 +82,9 @@ class HashClient:
         self, file: Path | str, original_filename: str | None = None, referer: URL | None = None
     ):
         file = Path(file)
-        if not file.is_file():
+        if file.suffix == ".part":
             return
-        elif file.stat().st_size == 0:
-            return
-        elif file.suffix == ".part":
+        if not await asyncio.to_thread(get_size_or_none, file):
             return
         hash = await self._update_db_and_retrive_hash_helper(file, original_filename, referer, hash_type=self.xxhash)
         if self.manager.config_manager.settings_data.dupe_cleanup_options.add_md5_hash:
@@ -128,9 +127,10 @@ class HashClient:
             log(f"Error hashing {file} : {e}", 40, exc_info=True)
         return hash
 
-    def save_hash_data(self, media_item: MediaItem, hash: str):
-        absolute_path = media_item.complete_file.resolve()
-        size = media_item.complete_file.stat().st_size
+    async def save_hash_data(self, media_item: MediaItem, hash: str):
+        absolute_path = await asyncio.to_thread(media_item.complete_file.resolve)
+        size = await asyncio.to_thread(get_size_or_none, media_item.complete_file)
+        assert size
         self.hashed_media_items.add(media_item)
         if hash:
             media_item.hash = hash
