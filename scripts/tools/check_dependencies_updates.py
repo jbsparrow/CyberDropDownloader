@@ -2,7 +2,7 @@
 # requires-python = ">=3.11"
 # dependencies = [
 #     "aiohttp",
-#     "dateutil",
+#     "python-dateutil",
 #     "packaging",
 #     "rich",
 #     "yarl",
@@ -12,6 +12,7 @@ import asyncio
 import csv
 import json
 import subprocess
+from collections.abc import Generator
 from pathlib import Path
 from typing import Any, NamedTuple
 
@@ -59,10 +60,26 @@ async def fetch_package_info(session: aiohttp.ClientSession, package: dict[str, 
     return PackageInfo(name, current_version, latest_version, release_date, update_available)
 
 
+def get_direct_dependencies() -> Generator[str]:
+    pyproject_toml = Path(__file__).parents[2] / "pyproject.toml"
+    with pyproject_toml.open(encoding="utf-8") as file:
+        content = file.read()
+        start_index = content.index("dependencies = [") + len("dependencies = [")
+        end_index = content.index("]", start_index)
+        dependencies = content[start_index:end_index]
+        for dep in dependencies.splitlines():
+            name = dep.replace('"', "").strip()
+            for separator in " (>=":
+                name = name.split(separator)[0].strip()
+            if name:
+                yield name
+
+
 async def get_all_package_info() -> list[PackageInfo]:
     try:
+        direct_dependencies: set[str] = set(get_direct_dependencies())
         pip_output: str = subprocess.check_output(["pip", "list", "--format", "json"], text=True)  # noqa : ASYNC221
-        installed_packages: list[dict] = json.loads(pip_output)
+        installed_packages: list[dict] = [p for p in json.loads(pip_output) if p["name"] in direct_dependencies]
         total_packages: int = len(installed_packages)
 
         all_packages: list[PackageInfo] = []
