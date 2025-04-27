@@ -1,15 +1,19 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import re
+import shutil
+import subprocess
+import sys
 from dataclasses import field
+from datetime import datetime
 from functools import wraps
 from http import HTTPStatus
 from pathlib import Path
 from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
 from aiohttp import ClientConnectorError, ClientError, ClientResponseError
-from filedate import File
 
 from cyberdrop_dl.clients.errors import (
     DownloadError,
@@ -21,7 +25,21 @@ from cyberdrop_dl.clients.errors import (
 from cyberdrop_dl.utils.constants import CustomHTTPStatus
 from cyberdrop_dl.utils.data_enums_classes.url_objects import HlsSegment, MediaItem
 from cyberdrop_dl.utils.logger import log
-from cyberdrop_dl.utils.utilities import error_handling_wrapper
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_size_or_none
+
+# Windows epoch is January 1, 1601. Unix epoch is January 1, 1970
+WIN_EPOCH_OFFSET = 116444736e9
+MAC_OS_SET_FILE = None
+
+if sys.platform == "win32":
+    from ctypes import byref, windll, wintypes
+
+    import win32con
+
+elif sys.platform == "darwin":
+    # SetFile is non standard in macOS. Only users that have xcode installed will have SetFile
+    MAC_OS_SET_FILE = shutil.which("SetFile")
+
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Coroutine, Generator
@@ -197,12 +215,12 @@ class Downloader:
 
         await self.client.process_completed(media_item, self.domain)
         await self.client.handle_media_item_completion(media_item, downloaded=ffmpeg_result.success)
-        self.finalize_download(media_item, ffmpeg_result.success)
+        await self.finalize_download(media_item, ffmpeg_result.success)
 
-    def finalize_download(self, media_item: MediaItem, downloaded: bool) -> None:
+    async def finalize_download(self, media_item: MediaItem, downloaded: bool) -> None:
         if downloaded:
-            Path.chmod(media_item.complete_file, 0o666)
-            self.set_file_datetime(media_item, media_item.complete_file)
+            await asyncio.to_thread(Path.chmod, media_item.complete_file, 0o666)
+            await self.set_file_datetime(media_item, media_item.complete_file)
         self.attempt_task_removal(media_item)
         self.manager.progress_manager.download_progress.add_completed()
         log(f"Download finished: {media_item.url}", 20)
@@ -217,7 +235,7 @@ class Downloader:
         if not self.manager.download_manager.pre_check_duration(media_item):
             raise DurationError(origin=media_item)
 
-    def set_file_datetime(self, media_item: MediaItem, complete_file: Path) -> None:
+    async def set_file_datetime(self, media_item: MediaItem, complete_file: Path) -> None:
         """Sets the file's datetime."""
         if self.manager.config_manager.settings_data.download_options.disable_file_timestamps:
             return
@@ -225,12 +243,64 @@ class Downloader:
             log(f"Unable to parse upload date for {media_item.url}, using current datetime as file datetime", 30)
             return
 
-        file = File(str(complete_file))
-        file.set(
-            created=media_item.datetime,
-            modified=media_item.datetime,
-            accessed=media_item.datetime,
-        )
+        # TODO: Make this entire method async (run in another thread)
+
+        # 1. try setting creation date
+        try:
+            if sys.platform == "win32":
+
+                def set_win_time():
+                    nano_ts: float = media_item.datetime * 1e7  # Windows uses nano seconds for dates
+                    timestamp = int(nano_ts + WIN_EPOCH_OFFSET)
+
+                    # Windows dates are 64bits, split into 2 32bits unsigned ints (dwHighDateTime , dwLowDateTime)
+                    # XOR to get the date as bytes, then shift to get the first 32 bits (dwHighDateTime)
+                    ctime = wintypes.FILETIME(timestamp & 0xFFFFFFFF, timestamp >> 32)
+                    access_mode = 256  # FILE_WRITE_ATTRIBUTES
+                    sharing_mode = 0  # Exclusive access
+                    security_mode = None  # Use default security attributes
+                    creation_disposition = win32con.OPEN_EXISTING
+
+                    # FILE_FLAG_BACKUP_SEMANTICS allows access to directories
+                    flags = win32con.FILE_ATTRIBUTE_NORMAL | win32con.FILE_FLAG_BACKUP_SEMANTICS
+                    template_file = None
+
+                    params = (
+                        access_mode,
+                        sharing_mode,
+                        security_mode,
+                        creation_disposition,
+                        flags,
+                        template_file,
+                    )
+
+                    handle = windll.kernel32.CreateFileW(complete_file, *params)
+                    windll.kernel32.SetFileTime(
+                        handle,
+                        byref(ctime),  # Creation time
+                        None,  # Access time
+                        None,  # Modification time
+                    )
+                    windll.kernel32.CloseHandle(handle)
+
+                await asyncio.to_thread(set_win_time)
+
+            elif sys.platform == "darwin" and MAC_OS_SET_FILE:
+                date_string = datetime.fromtimestamp(media_item.datetime).strftime("%m/%d/%Y %H:%M:%S")
+                cmd = ["-d", date_string, complete_file]
+                process = await asyncio.subprocess.create_subprocess_exec(
+                    MAC_OS_SET_FILE, *cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                )
+                _ = await process.wait()
+
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError, ValueError):
+            pass
+
+        # 2. try setting modification and access date
+        try:
+            await asyncio.to_thread(os.utime, complete_file, (media_item.datetime, media_item.datetime))
+        except OSError:
+            pass
 
     def attempt_task_removal(self, media_item: MediaItem) -> None:
         """Attempts to remove the task from the progress bar."""
@@ -267,8 +337,8 @@ class Downloader:
             await self.check_file_can_download(media_item)
             downloaded = await self.client.download_file(self.manager, self.domain, media_item)
             if downloaded:
-                Path.chmod(media_item.complete_file, 0o666)
-                self.set_file_datetime(media_item, media_item.complete_file)
+                await asyncio.to_thread(Path.chmod, media_item.complete_file, 0o666)
+                await self.set_file_datetime(media_item, media_item.complete_file)
                 self.attempt_task_removal(media_item)
                 self.manager.progress_manager.download_progress.add_completed()
                 log(f"Download finished: {media_item.url}", 20)
@@ -290,8 +360,7 @@ class Downloader:
             ClientError,
         ) as e:
             ui_message = getattr(e, "status", type(e).__name__)
-            if media_item.partial_file and media_item.partial_file.is_file():
-                size = media_item.partial_file.stat().st_size
+            if size := await asyncio.to_thread(get_size_or_none, media_item.partial_file):
                 if (
                     media_item.filename in self._current_attempt_filesize
                     and self._current_attempt_filesize[media_item.filename] >= size
