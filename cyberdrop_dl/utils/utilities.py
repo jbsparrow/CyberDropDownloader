@@ -76,28 +76,29 @@ class OGProperties:
 
 class TextEditorsCMDs:
     # Commands are sorted by preference
-    MACOS = (
+    MACOS: tuple[CMD, ...] = (
         ("open", "-t", "--new", "--wait-apps"),  # Opens default text editor
     )
 
-    LINUX_W_DE = (
+    LINUX_W_DE: tuple[CMD, ...] = (
         ("xdg-open",),  # Opens default text editor
         ("gedit", "-s"),
         ("geany", "-imnst"),
     )
 
-    LINUX_TERMINAL = (
+    LINUX_TERMINAL: tuple[CMD, ...] = (
         ("micro", "-keymenu", "true"),
         ("nano",),
         ("vim",),
     )
 
-    WINDOWS = (
-        ("notepad",),
+    WINDOWS: tuple[CMD, ...] = (
         ("notepad++.exe", "-multiInst", "-notabbar", "-nosession", "-noPlugin"),
-        ("sublime_text.exe", "--wait", "new_window"),
+        ("sublime_text.exe", "--wait", "--new-window"),
+        ("notepad",),
+        ("akelpad.exe",),
     )
-    MULTI_OS = (
+    MULTI_OS: tuple[CMD, ...] = (
         ("code", "--wait", "--new-window"),  # VS code
         ("subl", "--wait", "--new-window"),  # Sublime text
     )
