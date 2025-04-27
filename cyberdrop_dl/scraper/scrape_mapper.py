@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import re
 from dataclasses import Field
 from datetime import date, datetime
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 import aiofiles
 import arrow
@@ -13,24 +14,20 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import JDownloaderError, NoExtensionError
 from cyberdrop_dl.crawlers import CRAWLERS
 from cyberdrop_dl.downloader.downloader import Downloader
-from cyberdrop_dl.scraper.filters import (
-    has_valid_extension,
-    is_in_domain_list,
-    is_outside_date_range,
-    is_valid_url,
-    remove_trailing_slash,
-)
+from cyberdrop_dl.scraper.filters import has_valid_extension, is_in_domain_list, is_outside_date_range, is_valid_url
 from cyberdrop_dl.scraper.jdownloader import JDownloader
 from cyberdrop_dl.utils.constants import BLOCKED_DOMAINS, REGEX_LINKS
 from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.utils.logger import log
-from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import get_download_path, get_filename_and_ext, remove_trailing_slash
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Sequence
 
     from cyberdrop_dl.crawlers import Crawler
     from cyberdrop_dl.managers.manager import Manager
+
+existing_crawlers: dict[str, Crawler] = {}
 
 
 class ScrapeMapper:
@@ -54,19 +51,9 @@ class ScrapeMapper:
 
     def start_scrapers(self) -> None:
         """Starts all scrapers."""
-        for crawler in CRAWLERS:
-            if not crawler.SUPPORTED_SITES:
-                site_crawler = crawler(self.manager)  # type: ignore
-                assert site_crawler.domain not in self.existing_crawlers
-                key = site_crawler.scrape_mapper_domain or site_crawler.domain
-                self.existing_crawlers[key] = site_crawler
-                continue
-
-            for site, domains in crawler.SUPPORTED_SITES.items():
-                site_crawler = crawler(self.manager, site)
-                for domain in domains:
-                    assert domain not in self.existing_crawlers
-                    self.existing_crawlers[domain] = site_crawler
+        self.existing_crawlers = get_crawlers(self.manager)
+        if not self.manager.config_manager.global_settings_data.general.enable_generic_crawler:
+            _ = self.existing_crawlers.pop(".")
 
     def start_jdownloader(self) -> None:
         """Starts JDownloader."""
@@ -88,6 +75,7 @@ class ScrapeMapper:
         """Starts the orchestra."""
         self.manager.scrape_mapper = self
         self.manager.client_manager.load_cookie_files()
+        self.manager.client_manager.scraper_session.startup()
         self.start_scrapers()
         await self.manager.db_manager.history_table.update_previously_unsupported(self.existing_crawlers)
         self.start_jdownloader()
@@ -111,6 +99,7 @@ class ScrapeMapper:
             items_generator = self.load_links()
 
         async for item in items_generator:
+            await self.manager.states.RUNNING.wait()
             item.children_limits = self.manager.config_manager.settings_data.download_options.maximum_number_of_children
             if self.filter_items(item):
                 if item_limit and self.count >= item_limit:
@@ -126,6 +115,10 @@ class ScrapeMapper:
     async def parse_input_file_groups(self) -> AsyncGenerator[tuple[str, list[URL]]]:
         """Split URLs from input file by their groups."""
         input_file = self.manager.path_manager.input_file
+        if not await asyncio.to_thread(input_file.is_file):
+            yield ("", [])
+            return
+
         block_quote = False
         current_group_name = ""
         async with aiofiles.open(input_file, encoding="utf8") as f:
@@ -148,10 +141,6 @@ class ScrapeMapper:
 
     async def load_links(self) -> AsyncGenerator[ScrapeItem]:
         """Loads links from args / input file."""
-        input_file = self.manager.path_manager.input_file
-        # we need to touch the file just in case, purge_tree deletes it
-        if not input_file.is_file():
-            input_file.touch(exist_ok=True)
 
         if not self.manager.parsed_args.cli_only_args.links:
             self.using_input_file = True
@@ -204,17 +193,18 @@ class ScrapeMapper:
         """Maps URLs to their respective handlers."""
         scrape_item.url = remove_trailing_slash(scrape_item.url)
         supported_domain = [key for key in self.existing_crawlers if key in scrape_item.url.host]  # type: ignore
+        is_generic = supported_domain == ["."]
         jdownloader_whitelisted = True
         if self.jdownloader_whitelist:
             jdownloader_whitelisted = any(domain in scrape_item.url.host for domain in self.jdownloader_whitelist)  # type: ignore
 
-        if supported_domain:
+        if supported_domain and not is_generic:
             # get most restrictive domain if multiple domain matches
             supported_domain = max(supported_domain, key=len)
-            scraper = self.existing_crawlers[supported_domain]
-            if not scraper.ready:
-                await scraper.startup()
-            self.manager.task_group.create_task(scraper.run(scrape_item))
+            generic_crawler = self.existing_crawlers[supported_domain]
+            if not generic_crawler.ready:
+                await generic_crawler.startup()
+            self.manager.task_group.create_task(generic_crawler.run(scrape_item))
             return
 
         if self.manager.real_debrid_manager.enabled and self.manager.real_debrid_manager.is_supported(
@@ -258,6 +248,13 @@ class ScrapeMapper:
                     scrape_item.parents[0] if scrape_item.parents else None,
                 )
             self.manager.progress_manager.scrape_stats_progress.add_unsupported(sent_to_jdownloader=success)
+            return
+
+        if is_generic:
+            generic_crawler = self.existing_crawlers["."]
+            if not generic_crawler.ready:
+                await generic_crawler.startup()
+            self.manager.task_group.create_task(generic_crawler.run(scrape_item))
             return
 
         log(f"Unsupported URL: {scrape_item.url}", 30)
@@ -346,3 +343,46 @@ def create_item_from_entry(entry: Sequence) -> ScrapeItem:
     item.completed_at = completed_at
     item.created_at = created_at
     return item
+
+
+def get_crawlers(manager: Manager | None = None) -> dict[str, Crawler]:
+    """Retuns a mapping with an instance of all crawlers.
+
+    Crawlers are only created on the first calls. Future calls always return a reference to the same crawlers
+
+    If manager is `None`, the `MOCK_MANAGER` will be used, which means the crawlers won't be able to actually run"""
+
+    from cyberdrop_dl.managers.mock_manager import MOCK_MANAGER
+
+    manager = manager or MOCK_MANAGER
+    global existing_crawlers
+    if not existing_crawlers:
+        for crawler in CRAWLERS:
+            if not crawler.SUPPORTED_SITES:
+                site_crawler = crawler(manager)  # type: ignore
+                assert site_crawler.domain not in existing_crawlers
+                key = site_crawler.scrape_mapper_domain or site_crawler.domain
+                existing_crawlers[key] = site_crawler
+                continue
+
+            for site, domains in crawler.SUPPORTED_SITES.items():
+                site_crawler = crawler(manager, site)
+                for domain in domains:
+                    assert domain not in existing_crawlers
+                    existing_crawlers[domain] = site_crawler
+    return existing_crawlers
+
+
+def gen_crawlers_info():
+    """Yields information about every crawler as a NamedTuple"""
+
+    class CrawlerInfo(NamedTuple):
+        site: str
+        name: str
+        primary_base_domain: URL
+        crawler: Crawler
+
+    for name, crawler in sorted(get_crawlers().items()):
+        if name == ".":
+            continue
+        yield CrawlerInfo(name, type(crawler).__name__.removesuffix("Crawler"), crawler.primary_base_domain, crawler)

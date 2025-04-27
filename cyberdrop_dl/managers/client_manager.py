@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import ssl
+import time
 from dataclasses import dataclass
 from http import HTTPStatus
 from http.cookiejar import MozillaCookieJar
@@ -13,7 +14,6 @@ import certifi
 from aiohttp import ClientResponse, ClientSession, ContentTypeError
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
-from curl_cffi.requests.models import Response as CurlResponse
 from yarl import URL
 
 from cyberdrop_dl.clients.download_client import DownloadClient
@@ -22,8 +22,12 @@ from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.managers.download_speed_manager import DownloadSpeedLimiter
 from cyberdrop_dl.ui.prompts.user_prompts import get_cookies_from_browsers
 from cyberdrop_dl.utils.logger import log, log_spacer
+from cyberdrop_dl.utils.utilities import get_soup_from_response
 
 if TYPE_CHECKING:
+    from aiohttp_client_cache import CachedResponse
+    from curl_cffi.requests.models import Response as CurlResponse
+
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
@@ -96,8 +100,8 @@ class ClientManager:
         )
 
         self.scraper_session = ScraperClient(self)
-        self.downloader_session = DownloadClient(manager, self)
         self.speed_limiter = DownloadSpeedLimiter(manager)
+        self.downloader_session = DownloadClient(manager, self)
         self.flaresolverr = Flaresolverr(self)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -109,6 +113,7 @@ class ClientManager:
         if not cookie_files:
             return
 
+        now = time.time()
         domains_seen = set()
         for file in cookie_files:
             cookie_jar = MozillaCookieJar(file)
@@ -117,7 +122,8 @@ class ClientManager:
             except OSError as e:
                 log(f"Unable to load cookies from '{file.name}':\n  {e!s}", 40)
                 continue
-            current_cookie_file_domains = set()
+            current_cookie_file_domains: set[str] = set()
+            expired_cookies_domains: set[str] = set()
             for cookie in cookie_jar:
                 simplified_domain = cookie.domain.removeprefix(".")
                 if simplified_domain not in current_cookie_file_domains:
@@ -125,8 +131,15 @@ class ClientManager:
                     current_cookie_file_domains.add(simplified_domain)
                     if simplified_domain in domains_seen:
                         log(f"Previous cookies for domain {simplified_domain} detected. They will be overwritten", 30)
+
+                if (simplified_domain not in expired_cookies_domains) and cookie.is_expired(now):  # type: ignore
+                    expired_cookies_domains.add(simplified_domain)
+
                 domains_seen.add(simplified_domain)
                 self.cookies.update_cookies({cookie.name: cookie.value}, response_url=URL(f"https://{cookie.domain}"))  # type: ignore
+
+            for simplified_domain in expired_cookies_domains:
+                log(f"Cookies for {simplified_domain} are expired", 30)
 
         log_spacer(20, log_to_console=False)
 
@@ -147,43 +160,53 @@ class ClientManager:
     @classmethod
     async def check_http_status(
         cls,
-        response: ClientResponse | CurlResponse,
+        response: ClientResponse | CurlResponse | CachedResponse,
         download: bool = False,
         origin: ScrapeItem | URL | None = None,
-    ) -> None:
-        """Checks the HTTP status code and raises an exception if it's not acceptable."""
-        is_curl = isinstance(response, CurlResponse)
-        status = response.status_code if is_curl else response.status
+    ) -> BeautifulSoup | None:
+        """Checks the HTTP status code and raises an exception if it's not acceptable.
+
+        If the response is successful and has valid html, returns soup
+        """
+        status: int = response.status_code if hasattr(response, "status_code") else response.status  # type: ignore
         headers = response.headers
+        url_host: str = URL(response.url).host  # type: ignore
         message = None
 
-        e_tag = headers.get("ETag")
-        if download and e_tag in DOWNLOAD_ERROR_ETAGS:
-            message = DOWNLOAD_ERROR_ETAGS.get(e_tag)
-            raise DownloadError(HTTPStatus.NOT_FOUND, message=message, origin=origin)
+        def check_etag():
+            if download and (e_tag := headers.get("ETag")) in DOWNLOAD_ERROR_ETAGS:
+                message = DOWNLOAD_ERROR_ETAGS.get(e_tag)
+                raise DownloadError(HTTPStatus.NOT_FOUND, message=message, origin=origin)
 
+        async def check_ddos_guard():
+            if soup := await get_soup_from_response(response):
+                if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
+                    raise DDOSGuardError(origin=origin)
+                return soup
+
+        async def check_json_status():
+            if not any(domain in url_host for domain in ("gofile", "imgur")):
+                return
+
+            with contextlib.suppress(ContentTypeError):
+                json_resp: dict[str, Any] | None = await response.json()
+                if not json_resp:
+                    return
+                json_status: str | int | None = json_resp.get("status")
+                if json_status and isinstance(status, str) and "notFound" in status:
+                    raise ScrapeError(404, origin=origin)
+
+                if (data := json_resp.get("data")) and isinstance(data, dict) and "error" in data:
+                    raise ScrapeError(json_status or status, data["error"], origin=origin)
+
+        check_etag()
         if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
+            # We need to check DDosGuard even on successful pages, but it was causing the response content to be empty
+            # await check_ddos_guard()
             return
 
-        if any(domain in response.url.host for domain in ("gofile", "imgur")):  # type: ignore
-            with contextlib.suppress(ContentTypeError):
-                JSON_Resp: dict = await response.json()
-                status: str | int = JSON_Resp.get("status")  # type: ignore
-                if status and isinstance(status, str) and "notFound" in status:
-                    raise ScrapeError(404, origin=origin)
-                data = JSON_Resp.get("data")
-                if data and isinstance(data, dict) and "error" in data:
-                    raise ScrapeError(status, data["error"], origin=origin)
-
-        response_text = None
-        with contextlib.suppress(UnicodeDecodeError):
-            response_text = response.text if is_curl else await response.text()
-
-        if response_text:
-            soup = BeautifulSoup(response_text, "html.parser")
-            if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
-                raise DDOSGuardError(origin=origin)
-
+        await check_json_status()
+        await check_ddos_guard()
         raise DownloadError(status=status, message=message, origin=origin)
 
     @staticmethod
@@ -345,7 +368,7 @@ class Flaresolverr:
             raise DDOSGuardError(message="Failed to resolve URL with flaresolverr", origin=origin)
 
         user_agent = client_session.headers["User-Agent"].strip()
-        mismatch_msg = f"Config user_agent and flaresolverr user_agent do not match: \n  Cyberdrop-DL: {user_agent}\n  Flaresolverr: {fs_resp.user_agent}"
+        mismatch_msg = f"Config user_agent and flaresolverr user_agent do not match: \n  Cyberdrop-DL: '{user_agent}'\n  Flaresolverr: '{fs_resp.user_agent}'"
         if fs_resp.soup and (
             self.client_manager.check_ddos_guard(fs_resp.soup) or self.client_manager.check_cloudflare(fs_resp.soup)
         ):

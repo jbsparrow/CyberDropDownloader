@@ -22,18 +22,20 @@ dependencies = [
     "packaging (>=24.2)",
     "pillow (>=11.1.0,<12.0.0)",
     "platformdirs (>=4.3.6,<5.0.0)",
+    "psutil (>=7.0.0,<8.0.0)",
     "pydantic (>=2.10.6,<3.0.0)",
     "pywin32>=308 ; sys_platform == 'win32'",
     "pyyaml (>=6.0.2,<7.0.0)",
     "rich (>=13.9.4,<14.0.0)",
     "send2trash (>=1.8.3,<2.0.0)",
+    "textual (>=2.1.2,<3.0.0)",
     "xxhash (>=3.5.0,<4.0.0)"
 ]
 description = "Bulk downloader for multiple file hosts"
 license = {text = "GPL-3.0-only"}
 readme = "README.md"
 requires-python = ">=3.11,<4"
-version = "6.7.0"
+version = "6.9.1"
 
 [project.scripts]
 cyberdrop-dl = "cyberdrop_dl.main:main"

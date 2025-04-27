@@ -1,22 +1,33 @@
 from __future__ import annotations
 
+import asyncio
 import json
 from contextlib import asynccontextmanager
+from dataclasses import field
+from datetime import datetime
 from functools import wraps
-from typing import TYPE_CHECKING, Any
+from pathlib import Path
+from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar
 
 import aiohttp
 from aiohttp_client_cache import CachedSession
 from aiohttp_client_cache.response import CachedStreamReader
 from bs4 import BeautifulSoup
-from curl_cffi.requests import AsyncSession
 
 import cyberdrop_dl.utils.constants as constants
-from cyberdrop_dl.clients.errors import DDOSGuardError, InvalidContentTypeError, ScrapeError
+from cyberdrop_dl import env
+from cyberdrop_dl.clients.errors import DDOSGuardError, DownloadError, InvalidContentTypeError, ScrapeError
 from cyberdrop_dl.utils.logger import log_debug
+from cyberdrop_dl.utils.utilities import get_soup_from_response, sanitize_filename
+
+curl_import_error = None
+try:
+    from curl_cffi.requests import AsyncSession
+except ImportError as e:
+    curl_import_error = e
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Coroutine
 
     from curl_cffi.requests.impersonate import BrowserTypeLiteral
     from curl_cffi.requests.models import Response as CurlResponse
@@ -27,30 +38,34 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
-def limiter(func: Callable) -> Any:
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+def limiter(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, Coroutine[None, None, R]]:
     """Wrapper handles limits for scrape session."""
 
     @wraps(func)
-    async def wrapper(self: ScraperClient, *args, **kwargs) -> Any:
-        domain_limiter = await self.client_manager.get_rate_limiter(args[0])
+    async def wrapper(*args, **kwargs) -> R:
+        self: ScraperClient = args[0]
+        domain: str = args[1]
+        domain_limiter = await self.client_manager.get_rate_limiter(domain)
         async with self.client_manager.session_limit:
             await self._global_limiter.acquire()
             await domain_limiter.acquire()
+            await self.client_manager.manager.states.RUNNING.wait()
 
             if "cffi" in func.__name__:
+                if curl_import_error is not None:
+                    system = "Android" if env.RUNNING_IN_TERMUX else "the system"
+                    msg = f"curl_cffi is required to scrape URLs from {domain}, but a dependency it's not available on {system}.\n"
+                    msg += f"See: https://github.com/lexiforest/curl_cffi/issues/74#issuecomment-1849365636\n{curl_import_error!r}"
+                    raise ScrapeError("Missing Dependency", msg)
                 kwargs.pop("client_session", None)
-                return await func(self, *args[1:], **kwargs)  # remove domain por params
+                return await func(*args, **kwargs)
 
-            async with CachedSession(
-                headers=self._headers,
-                raise_for_status=False,
-                cookie_jar=self.client_manager.cookies,
-                timeout=self._timeouts,
-                trace_configs=self.trace_configs,
-                cache=self.client_manager.manager.cache_manager.request_cache,
-            ) as client:
-                kwargs["client_session"] = client
-                return await func(self, *args, **kwargs)
+            kwargs["client_session"] = self._session
+            return await func(*args, **kwargs)
 
     return wrapper
 
@@ -72,7 +87,35 @@ class ScraperClient:
         self._timeouts = aiohttp.ClientTimeout(*self._timeout_tuple)
         self._global_limiter = self.client_manager.global_rate_limiter
         self.trace_configs = []
+        self.save_pages_html = client_manager.manager.config_manager.settings_data.files.save_pages_html
+        self.pages_folder = self.client_manager.manager.path_manager.pages_folder
+        # folder len + date_prefix len + 10 [suffix (.html) + 1 OS separator + 4 (padding)]
+        min_html_file_path_len = len(str(self.pages_folder)) + len(constants.STARTUP_TIME_STR) + 10
+        self.max_html_stem_len = 245 - min_html_file_path_len
+        self._session: CachedSession = field(init=False)
+
+    def startup(self):
         self.add_request_log_hooks()
+        self._session = CachedSession(
+            headers=self._headers,
+            raise_for_status=False,
+            cookie_jar=self.client_manager.cookies,
+            timeout=self._timeouts,
+            trace_configs=self.trace_configs,
+            cache=self.client_manager.manager.cache_manager.request_cache,
+        )
+
+    async def close(self):
+        await self._session.close()
+
+    @asynccontextmanager
+    async def write_soup_on_error(self, domain: str, url, response: CurlResponse | aiohttp.ClientResponse):
+        try:
+            yield
+        except (DDOSGuardError, DownloadError) as e:
+            if self.save_pages_html and (soup := await get_soup_from_response(response)):
+                await self.write_soup_to_disk(domain, url, response, soup, exc=e)
+            raise
 
     @asynccontextmanager
     async def new_curl_session(self, impersonate):
@@ -104,21 +147,33 @@ class ScraperClient:
         self.trace_configs.append(trace_config)
 
     @limiter
-    async def get_soup_cffi(self, url: URL, impersonate: BrowserTypeLiteral | None = "chrome", **_) -> BeautifulSoup:
+    async def get_soup_cffi(
+        self, domain: str, url: URL, impersonate: BrowserTypeLiteral | None = "chrome", **_
+    ) -> BeautifulSoup:
         async with self.new_curl_session(impersonate) as session:
             response: CurlResponse = await session.get(str(url))
-            await self.client_manager.check_http_status(response)
-            content_type: str = response.headers.get("Content-Type")
-            assert content_type is not None
-            if not any(s in content_type.lower() for s in ("html", "text")):
-                raise InvalidContentTypeError(message=f"Received {content_type}, was expecting text")
-            self.client_manager.cookies.update_cookies(session.cookies, url)
-            return BeautifulSoup(response.content, "html.parser")
+            async with self.write_soup_on_error(domain, url, response):
+                await self.client_manager.check_http_status(response)
+                content_type: str = response.headers.get("Content-Type")
+                assert content_type is not None
+                if not any(s in content_type.lower() for s in ("html", "text")):
+                    raise InvalidContentTypeError(message=f"Received {content_type}, was expecting text")
+                self.client_manager.cookies.update_cookies(session.cookies, url)
+                soup = BeautifulSoup(response.content, "html.parser")
+                if self.save_pages_html:
+                    await self.write_soup_to_disk(domain, url, response, soup)
+                return soup
 
     @limiter
     async def post_data_cffi(
-        self, url: URL, impersonate: BrowserTypeLiteral | None = "chrome", data: dict | None = None, **kwargs
+        self,
+        domain: str,
+        url: URL,
+        impersonate: BrowserTypeLiteral | None = "chrome",
+        data: dict | None = None,
+        **kwargs: Any,
     ) -> CurlResponse:
+        """**kwargs are passed to `session.post`"""
         data = data or {}
         async with self.new_curl_session(impersonate) as session:
             response: CurlResponse = await session.post(str(url), data=data, **kwargs)
@@ -144,6 +199,7 @@ class ScraperClient:
             client_session.get(
                 url, headers=self._headers, ssl=self.client_manager.ssl_context, proxy=self.client_manager.proxy
             ) as response,
+            self.write_soup_on_error(domain, url, response),
         ):
             try:
                 await self.client_manager.check_http_status(response, origin=origin)
@@ -179,9 +235,12 @@ class ScraperClient:
             if not any(s in content_type.lower() for s in ("html", "text")):
                 raise InvalidContentTypeError(message=f"Received {content_type}, was expecting text", origin=origin)
             text = await CachedStreamReader(await response.read()).read()
+            soup = BeautifulSoup(text, "html.parser")
+            if self.save_pages_html:
+                await self.write_soup_to_disk(domain, url, response, soup)
             if with_response_url:
-                return BeautifulSoup(text, "html.parser"), response.url
-            return BeautifulSoup(text, "html.parser")
+                return soup, response.url
+            return soup
 
     async def get_soup_and_return_url(
         self, domain: str, url: URL, origin: ScrapeItem | URL | None = None, **kwargs
@@ -196,7 +255,7 @@ class ScraperClient:
         url: URL,
         params: dict | None = None,
         headers_inc: dict | None = None,
-        client_session: CachedSession = None,
+        client_session: CachedSession = None,  # type: ignore
         origin: ScrapeItem | URL | None = None,
         cache_disabled: bool = False,
     ) -> dict:
@@ -219,7 +278,7 @@ class ScraperClient:
                 raise InvalidContentTypeError(message=f"Received {content_type}, was expecting JSON", origin=origin)
             json_resp = await response.json()
             if cache_disabled:
-                return json_resp, response
+                return json_resp, response  # type: ignore
             return json_resp
 
     @limiter
@@ -306,3 +365,40 @@ class ScraperClient:
         ) as response:
             await self.client_manager.check_http_status(response, origin=origin)
             return response.headers
+
+    async def write_soup_to_disk(
+        self,
+        domain: str,
+        url: URL,
+        response: CurlResponse | aiohttp.ClientResponse,
+        soup: BeautifulSoup,
+        exc: Exception | None = None,
+    ):
+        html_text: str = soup.prettify(formatter="html")  # Not sure if we should prettify
+        status_code: int = response.status_code if hasattr(response, "status_code") else response.status  # type: ignore
+        response_headers = dict(response.headers)
+        now = datetime.now()
+
+        # The date is not really relevant in the filename and makes them longer, potencially truncating the URL part
+        # But it garanties the filename will be unique
+        log_date = now.strftime(constants.LOGS_DATETIME_FORMAT)
+        url_str = str(url)
+        response_url_str = str(response.url)
+        clean_url = sanitize_filename(Path(url_str).as_posix().replace("/", "-"))
+        filename = f"{clean_url[: self.max_html_stem_len]}_{log_date}.html"
+        file_path = self.pages_folder / filename
+        info = {
+            "crawler": domain,
+            "url": url_str,
+            "response_url": response_url_str,
+            "status_code": status_code,
+            "datetime": now.isoformat(),
+            "response_headers": response_headers,
+        }
+        if exc:
+            info = info | {"error": str(exc), "exception": repr(exc)}
+        text = f"<!-- cyberdrop-dl scraping result\n{json.dumps(info, indent=4, ensure_ascii=False)}\n-->\n{html_text}"
+        try:
+            await asyncio.to_thread(file_path.write_text, text, "utf8")
+        except OSError:
+            pass

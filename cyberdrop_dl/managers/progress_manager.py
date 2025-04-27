@@ -11,7 +11,7 @@ from pydantic import ByteSize
 from rich.columns import Columns
 from rich.console import Group
 from rich.layout import Layout
-from rich.progress import Progress, SpinnerColumn, TaskID, TextColumn
+from rich.progress import Progress, SpinnerColumn, TaskID
 from rich.text import Text
 from yarl import URL
 
@@ -70,19 +70,34 @@ class ProgressManager:
         finally:
             self.status_message.update(self.status_message_task_id, visible=False)
 
+    def pause_or_resume(self):
+        if self.manager.states.RUNNING.is_set():
+            self.pause()
+        else:
+            self.resume()
+
+    def pause(self, msg: str = ""):
+        self.manager.states.RUNNING.clear()
+        suffix = f" [{msg}]" if msg else ""
+        self.activity.update(self.activity_task_id, description=f"Paused{suffix}")
+
+    def resume(self):
+        self.manager.states.RUNNING.set()
+        self.activity.update(self.activity_task_id, description="Running Cyberdrop-DL")
+
     def startup(self) -> None:
         """Startup process for the progress manager."""
         spinner = SpinnerColumn(style="green", spinner_name="dots")
-        text_placeholder = TextColumn("Running Cyberdrop-DL")
-        activity_placeholder = Progress(spinner, text_placeholder)
-        activity_placeholder.add_task("running with no UI", total=100, completed=0)
+        activity = Progress(spinner, "[progress.description]{task.description}")
         self.status_message = Progress(spinner, "[progress.description]{task.description}")
 
         self.status_message_task_id = self.status_message.add_task("", total=100, completed=0, visible=False)
+        self.activity_task_id = activity.add_task("Running Cyberdrop-DL", total=100, completed=0)
+        self.activity = activity
 
-        simple_layout = Group(activity_placeholder, self.download_progress.simple_progress)
+        simple_layout = Group(activity, self.download_progress.simple_progress)
 
-        status_message_columns = Columns([activity_placeholder, self.status_message], expand=False)
+        status_message_columns = Columns([activity, self.status_message], expand=False)
 
         horizontal_layout = Layout()
         vertical_layout = Layout()
@@ -107,7 +122,7 @@ class ProgressManager:
 
         self.horizontal_layout = horizontal_layout
         self.vertical_layout = vertical_layout
-        self.activity_layout = activity_placeholder
+        self.activity_layout = activity
         self.simple_layout = simple_layout
         self.hash_remove_layout = self.hash_progress.get_removed_progress()
         self.hash_layout = self.hash_progress.get_renderable()
@@ -125,7 +140,7 @@ class ProgressManager:
             return
         end_time = time.perf_counter()
         runtime = timedelta(seconds=int(end_time - start_time))
-        data_size = ByteSize(self.file_progress.downloaded_data).human_readable(decimal=True)
+        total_data_written = ByteSize(self.manager.storage_manager.total_data_written).human_readable(decimal=True)
 
         log_spacer(20)
         log("Printing Stats...\n", 20)
@@ -140,7 +155,7 @@ class ProgressManager:
         log_yellow(f"  Input URL Groups: {self.manager.scrape_mapper.group_count:,}")
         log_concat("  Log Folder: ", log_folder_text, style="yellow")
         log_yellow(f"  Total Runtime: {runtime}")
-        log_yellow(f"  Total Downloaded Data: {data_size}")
+        log_yellow(f"  Total Downloaded Data: {total_data_written}")
 
         log_spacer(20, "")
         log_cyan("Download Stats:")
@@ -200,7 +215,7 @@ def get_input(manager: Manager) -> Text | str:
 
 
 def get_console_hyperlink(file_path: Path, text: str = "") -> Text:
-    full_path = file_path.resolve()
+    full_path = file_path
     show_text = text or full_path
     file_url = URL(full_path.as_posix()).with_scheme("file")
     return Text(str(show_text), style=f"link {file_url}")

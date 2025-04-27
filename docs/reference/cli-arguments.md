@@ -74,6 +74,18 @@ Path to the CDL `settings.yaml` file to load
 If both `config` and `config-file` are supplied, `config-file` takes priority
 {% endhint %}
 
+### `disable-cache`  
+
+| Type       | Default | Action       |
+| ---------- | ------- | ------------ |
+| `BoolFlag` | `False` | `store_true` |
+
+Disables the use of the requests cache for the current run only. All config settings or arguments related to the cache (ex: `file_host_cache_expire_after`) will be ignored.
+
+{% hint style="info" %}
+This does not affect the original cache
+{% endhint %}
+
 ### `download`  
 
 | Type       | Default | Action       |
@@ -107,6 +119,14 @@ Download TikTok audios from posts and save them as separate files
 
 Max number of links to retry. Using `0` means no limit
 
+### `no-textual-ui`
+
+| Type       | Default | Action       |
+| ---------- | ------- | ------------ |
+| `BoolFlag` | `False` | `store_true` |
+
+Disable CDL's textual UI (TUI with buttons and mouse support)
+
 ### `portrait`
 
 | Type       | Default | Action       |
@@ -114,21 +134,6 @@ Max number of links to retry. Using `0` means no limit
 | `BoolFlag` | `False` | `store_true` |
 
 Run CDL with a vertical layout
-
-### `ui`  
-
-| Type       | Default |
-| ---------- | ------- |
-| `StrEnum` | `FULLSCREEN` |
-
-UI can have 1 of these values:
-
-- `DISABLED` : no output at all
-- `ACTIVITY` : only shows a spinner with the text `running CDL`
-- `SIMPLE`: shows spinner + simplified progress bar
-- `FULLSCREEN`: shows the normal UI/progress view
-
-Values are case insensitive, ex: both `disabled` and `DISABLED` are valid
 
 ### `retry-all`
 
@@ -154,23 +159,28 @@ Retry failed downloads
 
 Retry download of maintenance files (bunkr). Requires files to be hashed
 
-***
-
-### `disable-cache`  
+### `show-supported-sites`  
 
 | Type       | Default | Action       |
 | ---------- | ------- | ------------ |
 | `BoolFlag` | `False` | `store_true` |
 
-Disables the use of the requests cache for the current run only
-all config settings or arguments relating to the cache expiry such as file_host_cache_expire_after will be ignored
+Shows a list of all supported sites and exits
 
-{% hint style="info" %}
-This does not affect the original cache
-{% endhint %}
+### `ui`  
 
+| Type       | Default |
+| ---------- | ------- |
+| `StrEnum` | `FULLSCREEN` |
 
-***
+UI can have 1 of these values:
+
+- `DISABLED` : no output at all
+- `ACTIVITY` : only shows a spinner with the text `running CDL`
+- `SIMPLE`: shows spinner + simplified progress bar
+- `FULLSCREEN`: shows the normal UI/progress view
+
+Values are case insensitive, ex: both `disabled` and `DISABLED` are valid
 
 ## Overview
 
@@ -192,17 +202,19 @@ CLI-only options:
   --completed-before COMPLETED_BEFORE                                           only download completed downloads at or before this date
   --config CONFIG                                                               name of config to load
   --config-file CONFIG_FILE                                                     path to the CDL settings.yaml file to load
+  --disable-cache                                                               Temporarily disable the requests cache
   --download                                                                    skips UI, start download immediatly
+  --download-dropbox-folders-as-zip                                             download Dropbox folder without api key as zip
+  --download-tiktok-audios                                                      download TikTok audios
   --max-items-retry MAX_ITEMS_RETRY                                             max number of links to retry
+  --no-textual-ui                                                               Disable textual UI (TUI with mouse support)
+  --portrait                                                                    show UI in a portrait layout
+  --print-stats                                                                 Show stats report at the end of a run
   --retry-all                                                                   retry all downloads
   --retry-failed                                                                retry failed downloads
   --retry-maintenance                                                           retry download of maintenance files (bunkr). Requires files to be hashed
-  --download-dropbox-folders-as-zip                                             download Dropbox folder without api key as zip
-  --download-tiktok-audios                                                      download TikTok audios
-  --print-stats                                                                 Show stats report at the end of a run
+  --show-supported-sites                                                        shows a list of supported sites and exits
   --ui UI                                                                       DISABLED, ACTIVITY, SIMPLE or FULLSCREEN
-  --portrait                                                                    show UI in a portrait layout
-  --disable-cache                                                               Temporarily disable the requests cache
 
 browser_cookies:
   --auto-import, --no-auto-import
@@ -248,8 +260,9 @@ media_duration_limits:
 
 files:
   -d DOWNLOAD_FOLDER, --download-folder DOWNLOAD_FOLDER
-  -i INPUT_FILE, --input-file INPUT_FILE
   -j, --dump-json, --no-dump-json
+  -i INPUT_FILE, --input-file INPUT_FILE
+  --save-pages-html, --no-save-pages-html
 
 ignore_options:
   --exclude-audio, --no-exclude-audio
@@ -307,6 +320,7 @@ general:
   --proxy PROXY
   --required-free-space REQUIRED_FREE_SPACE
   --user-agent USER_AGENT
+  --pause-on-insufficient-space, --no-pause-on-insufficient-space
 
 rate_limiting_options:
   --connection-timeout CONNECTION_TIMEOUT

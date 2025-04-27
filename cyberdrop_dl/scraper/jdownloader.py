@@ -2,8 +2,7 @@ from __future__ import annotations
 
 from dataclasses import field
 from functools import wraps
-from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
 from myjdapi import myjdapi
 
@@ -12,19 +11,24 @@ from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from pathlib import Path
 
     from yarl import URL
 
     from cyberdrop_dl.managers.manager import Manager
 
+P = ParamSpec("P")
+R = TypeVar("R")
 
-def error_wrapper(func: Callable) -> Callable:
+
+def error_wrapper(func: Callable[P, R]) -> Callable[P, R | None]:
     """Wrapper handles limits for scrape session."""
 
     @wraps(func)
-    def wrapper(self: JDownloader, *args, **kwargs) -> None:
+    def wrapper(*args, **kwargs) -> R | None:
+        self: JDownloader = args[0]
         try:
-            return func(self, *args, **kwargs)
+            return func(*args, **kwargs)
         except JDownloaderError as e:
             msg = e.message
 
@@ -53,7 +57,7 @@ class JDownloader:
         self.jdownloader_autostart = manager.config_manager.settings_data.runtime_options.jdownloader_autostart
         if not self.jdownloader_download_dir:
             self.jdownloader_download_dir = manager.path_manager.download_folder
-        self.jdownloader_download_dir = Path(self.jdownloader_download_dir)
+        self.jdownloader_download_dir = self.jdownloader_download_dir.resolve()
         self.jdownloader_agent = field(init=False)
 
     @error_wrapper

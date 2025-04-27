@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import json
 import os
@@ -7,19 +8,24 @@ import platform
 import re
 import shutil
 import subprocess
+from dataclasses import dataclass, fields
 from functools import lru_cache, partial, wraps
 from pathlib import Path
-from typing import TYPE_CHECKING
+from stat import S_ISREG
+from typing import TYPE_CHECKING, Any, ClassVar, ParamSpec, Protocol, TypeVar
 
 import aiofiles
 import rich
-from aiohttp import ClientConnectorError, ClientSession, FormData
+from aiohttp import ClientConnectorError, ClientResponse, ClientSession, FormData
+from aiohttp_client_cache import CachedResponse
+from bs4 import BeautifulSoup
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import (
     CDLBaseError,
     ErrorLogMessage,
     InvalidExtensionError,
+    InvalidURLError,
     NoExtensionError,
     get_origin,
 )
@@ -27,8 +33,9 @@ from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.logger import log, log_debug, log_spacer, log_with_color
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Coroutine, Mapping
 
+    from curl_cffi.requests.models import Response as CurlResponse
     from rich.text import Text
 
     from cyberdrop_dl.crawlers import Crawler
@@ -37,27 +44,56 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
 
 
-TEXT_EDITORS = "micro", "nano", "vim"  # Ordered by preference
+P = ParamSpec("P")
+R = TypeVar("R")
 
+
+TEXT_EDITORS = "micro", "nano", "vim"  # Ordered by preference
+FILENAME_REGEX = re.compile(r"filename\*=UTF-8''(.+)|.*filename=\"(.*?)\"", re.IGNORECASE)
 subprocess_get_text = partial(subprocess.run, capture_output=True, text=True, check=False)
 
 
-def error_handling_wrapper(func: Callable) -> Callable:
+class Dataclass(Protocol):
+    __dataclass_fields__: ClassVar[dict]
+
+
+@dataclass(frozen=True, slots=True)
+class OGProperties:
+    """Open Graph properties.  Each attribute corresponds to an OG property."""
+
+    title: str = ""
+    description: str = ""
+    image: str = ""
+    url: str = ""
+    type: str = ""
+    site_name: str = ""
+    locale: str = ""
+    determiner: str = ""
+    audio: str = ""
+    video: str = ""
+
+
+def error_handling_wrapper(
+    func: Callable[..., Coroutine[None, None, Any]],
+) -> Callable[..., Coroutine[None, None, Any]]:
     """Wrapper handles errors for url scraping."""
 
     @wraps(func)
-    async def wrapper(self: Crawler | Downloader, *args, **kwargs):
-        item: ScrapeItem | MediaItem | URL = args[0]
+    async def wrapper(*args, **kwargs) -> R | None:
+        self: Crawler | Downloader = args[0]
+        item: ScrapeItem | MediaItem | URL = args[1]
         link: URL = item if isinstance(item, URL) else item.url
         origin = exc_info = None
         link_to_show: URL | str = ""
         try:
-            return await func(self, *args, **kwargs)
+            return await func(*args, **kwargs)
         except CDLBaseError as e:
             error_log_msg = ErrorLogMessage(e.ui_failure, str(e))
             origin = e.origin
             e_url: URL | str | None = getattr(e, "url", None)
             link_to_show = e_url or link_to_show
+        except NotImplementedError:
+            error_log_msg = ErrorLogMessage("NotImplemented")
         except TimeoutError:
             error_log_msg = ErrorLogMessage("Timeout")
         except ClientConnectorError as e:
@@ -68,6 +104,9 @@ def error_handling_wrapper(func: Callable) -> Callable:
         except Exception as e:
             exc_info = e
             error_log_msg = ErrorLogMessage.from_unknown_exc(e)
+
+        if (skip := getattr(item, "is_segment", None)) and skip is not None:
+            return
 
         link_to_show = link_to_show or link
         origin = origin or get_origin(item)
@@ -274,8 +313,8 @@ async def send_webhook_message(manager: Manager) -> None:
 
     form = FormData()
 
-    if "attach_logs" in webhook.tags and main_log.is_file():
-        if main_log.stat().st_size <= 25 * 1024 * 1024:
+    if "attach_logs" in webhook.tags and (size := await asyncio.to_thread(get_size_or_none, main_log)):
+        if size <= 25 * 1024 * 1024:  # 25MB
             async with aiofiles.open(main_log, "rb") as f:
                 form.add_field("file", await f.read(), filename=main_log.name)
 
@@ -336,7 +375,7 @@ def open_in_text_editor(file_path: Path) -> bool | None:
         raise ValueError(msg)
 
     rich.print(f"Opening '{file_path}' with '{cmd[0]}'...")
-    subprocess.call([*cmd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.call([*cmd], stderr=subprocess.DEVNULL)
 
 
 @lru_cache
@@ -364,10 +403,114 @@ def set_default_app_if_none(file_path: Path) -> bool:
     return False
 
 
+def get_valid_dict(dataclass: Dataclass | type[Dataclass], info: dict[str, Any]) -> dict[str, Any]:
+    """Remove all keys that are not fields in the dataclass"""
+    return {k: v for k, v in info.items() if k in get_field_names(dataclass)}
+
+
+@lru_cache
+def get_field_names(dataclass: Dataclass | type[Dataclass]) -> list[str]:
+    return [f.name for f in fields(dataclass)]
+
+
+def get_text_between(original_text: str, start: str, end: str) -> str:
+    """Extracts the text between two strings in a larger text."""
+    start_index = original_text.index(start) + len(start)
+    end_index = original_text.index(end, start_index)
+    return original_text[start_index:end_index]
+
+
 def xdg_mime_query(*args) -> str:
     assert args
     arg_list = ["xdg-mime", "query", *args]
     return subprocess_get_text(arg_list).stdout.strip()
+
+
+def parse_url(link_str: str, relative_to: URL | None = None, *, trim: bool = True) -> URL:
+    """Parse a string into an absolute URL, handling relative URLs, encoding and optionally removes trailing slash (trimming).
+    Raises:
+        InvalidURLError: If the input string is not a valid URL or if any other error occurs during parsing.
+        TypeError: If `relative_to` is `None` and the parsed URL is relative or has no scheme.
+    """
+
+    base: URL = relative_to  # type: ignore
+
+    def fix_query_params_encoding() -> str:
+        if "?" not in link_str:
+            return link_str
+        parts, query_and_frag = link_str.split("?", 1)
+        query_and_frag = query_and_frag.replace("+", "%20")
+        return f"{parts}?{query_and_frag}"
+
+    try:
+        assert link_str, "link_str is empty"
+        assert isinstance(link_str, str), f"link_str must be a string object, got: {link_str!r}"
+        clean_link_str = fix_query_params_encoding()
+        is_encoded = "%" in clean_link_str
+        new_url = URL(clean_link_str, encoded=is_encoded)
+    except (AssertionError, AttributeError, ValueError, TypeError) as e:
+        raise InvalidURLError(str(e), url=link_str) from e
+    if not new_url.absolute:
+        new_url = base.join(new_url)
+    if not new_url.scheme:
+        new_url = new_url.with_scheme(base.scheme or "https")
+    if not trim:
+        return new_url
+    return remove_trailing_slash(new_url)
+
+
+def remove_trailing_slash(url: URL) -> URL:
+    if url.name or url.path == "/":
+        return url
+    return url.parent.with_fragment(url.fragment).with_query(url.query)
+
+
+def remove_parts(url: URL, *parts_to_remove: str, keep_query: bool = True, keep_fragment: bool = True) -> URL:
+    assert parts_to_remove
+    new_parts = [p for p in url.parts[1:] if p not in set(parts_to_remove)]
+    return url.with_path("/".join(new_parts), keep_fragment=keep_fragment, keep_query=keep_query)
+
+
+async def get_soup_from_response(response: CurlResponse | ClientResponse | CachedResponse) -> BeautifulSoup | None:
+    # We can't use `CurlResponse` at runtime so we check the reverse
+    is_curl = not isinstance(response, ClientResponse | CachedResponse)
+    with contextlib.suppress(UnicodeDecodeError):
+        response_text = response.text if is_curl else await response.text()
+        return BeautifulSoup(response_text, "html.parser")
+
+
+def get_og_properties(soup: BeautifulSoup) -> OGProperties:
+    """Extracts Open Graph properties (og properties) from soup."""
+    og_properties: dict[str, str] = {}
+
+    for meta in soup.select('meta[property^="og:"]'):
+        property_name = meta["property"].replace("og:", "").replace(":", "_")  # type: ignore
+        og_properties[property_name] = meta["content"] or ""  # type: ignore
+
+    return OGProperties(**og_properties)
+
+
+def get_filename_from_headers(headers: Mapping[str, Any]) -> str | None:
+    """Get `filename=` value from `Content-Disposition`"""
+    content_disposition: str | None = headers.get("Content-Disposition")
+    if not content_disposition:
+        return
+    if match := re.search(FILENAME_REGEX, content_disposition):
+        matches = match.groups()
+        return matches[0] or matches[1]
+
+
+def get_size_or_none(path: Path) -> int | None:
+    """Checks if this is a file and returns its size with a single system call.
+
+    Returns `None` otherwise"""
+
+    try:
+        stat = path.stat()
+        if S_ISREG(stat.st_mode):
+            return stat.st_size
+    except (OSError, ValueError):
+        return None
 
 
 log_cyan = partial(log_with_color, style="cyan", level=20)

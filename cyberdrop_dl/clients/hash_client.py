@@ -6,11 +6,13 @@ from collections import defaultdict
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import aiofiles.os
 from send2trash import send2trash
 
 from cyberdrop_dl.ui.prompts.basic_prompts import enter_to_continue
 from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
 from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.utilities import get_size_or_none
 
 if TYPE_CHECKING:
     from yarl import URL
@@ -49,25 +51,30 @@ class HashClient:
     async def hash_directory(self, path: Path) -> None:
         path = Path(path)
         with self.manager.live_manager.get_hash_live(stop=True):
-            if not path.is_dir():
+            if not await asyncio.to_thread(path.is_dir):
                 raise NotADirectoryError
             for file in path.rglob("*"):
                 await self.update_db_and_retrive_hash(file)
 
     async def hash_item(self, media_item: MediaItem) -> None:
+        if media_item.is_segment:
+            return
         hash = await self.update_db_and_retrive_hash(
             media_item.complete_file, media_item.original_filename, media_item.referer
         )
-        self.save_hash_data(media_item, hash)
+        await self.save_hash_data(media_item, hash)
 
     async def hash_item_during_download(self, media_item: MediaItem) -> None:
+        if media_item.is_segment:
+            return
         if self.manager.config_manager.settings_data.dupe_cleanup_options.hashing != Hashing.IN_PLACE:
             return
+        await self.manager.states.RUNNING.wait()
         try:
             hash = await self.update_db_and_retrive_hash(
                 media_item.complete_file, media_item.original_filename, media_item.referer
             )
-            self.save_hash_data(media_item, hash)
+            await self.save_hash_data(media_item, hash)
         except Exception as e:
             log(f"After hash processing failed: {media_item.complete_file} with error {e}", 40, exc_info=True)
 
@@ -75,11 +82,9 @@ class HashClient:
         self, file: Path | str, original_filename: str | None = None, referer: URL | None = None
     ):
         file = Path(file)
-        if not file.is_file():
+        if file.suffix == ".part":
             return
-        elif file.stat().st_size == 0:
-            return
-        elif file.suffix == ".part":
+        if not await asyncio.to_thread(get_size_or_none, file):
             return
         hash = await self._update_db_and_retrive_hash_helper(file, original_filename, referer, hash_type=self.xxhash)
         if self.manager.config_manager.settings_data.dupe_cleanup_options.add_md5_hash:
@@ -122,9 +127,10 @@ class HashClient:
             log(f"Error hashing {file} : {e}", 40, exc_info=True)
         return hash
 
-    def save_hash_data(self, media_item: MediaItem, hash: str):
-        absolute_path = media_item.complete_file.resolve()
-        size = media_item.complete_file.stat().st_size
+    async def save_hash_data(self, media_item: MediaItem, hash: str):
+        absolute_path = await asyncio.to_thread(media_item.complete_file.resolve)
+        size = await asyncio.to_thread(get_size_or_none, media_item.complete_file)
+        assert size
         self.hashed_media_items.add(media_item)
         if hash:
             media_item.hash = hash
@@ -144,43 +150,70 @@ class HashClient:
 
     async def final_dupe_cleanup(self, final_dict: dict[str, dict]) -> None:
         """cleanup files based on dedupe setting"""
+        to_trash = self.manager.config_manager.settings_data.dupe_cleanup_options.send_deleted_to_trash
+        suffix = "Sent to trash " if to_trash else "Permanently deleted"
+
+        async def delete_and_log(file: Path):
+            try:
+                deleted = await delete_file(file, to_trash)
+                if deleted:
+                    log(f"Removed new download '{file}' with hash {hash} [{suffix}]", 10)
+                    self.manager.progress_manager.hash_progress.add_removed_file()
+
+            except OSError as e:
+                log(f"Unable to remove '{file}' with hash {hash}: {e}", 40)
+
+        tasks = []
+        get_matches = self.manager.db_manager.hash_table.get_files_with_hash_matches
         for hash, size_dict in final_dict.items():
             for size in size_dict:
-                # Get all matches from the database
-                db_matches = await self.manager.db_manager.hash_table.get_files_with_hash_matches(
-                    hash, size, self.xxhash
-                )
-                all_matches = [Path(*match[:2]) for match in db_matches]
-                for file in all_matches[1:]:
-                    if not file.is_file():
-                        continue
-                    try:
-                        self.delete_file(file)
-                        log(f"Removed new download: {file} with hash {hash}", 10)
-                        self.manager.progress_manager.hash_progress.add_removed_file()
-                    except OSError as e:
-                        log(f"Unable to remove {file = } with hash {hash} : {e}", 40)
+                db_matches = await get_matches(hash, size, self.xxhash)
+                for match in db_matches[1:]:
+                    file = Path(*match[:2])
+                    tasks.append(delete_and_log(file))
+
+        await asyncio.gather(*tasks)
 
     async def get_file_hashes_dict(self) -> dict:
-        """
-        get a dictionary of files based on matching file hashes and file size
-        """
+        """Get a dictionary of files based on matching file hashes and file size."""
         downloads = self.manager.path_manager.completed_downloads - self.hashed_media_items
-        for media_item in downloads:
-            if not media_item.complete_file.is_file():
+
+        async def exists(item: MediaItem) -> MediaItem | None:
+            if await asyncio.to_thread(item.complete_file.is_file):
+                return item
+
+        results = await asyncio.gather(*(exists(item) for item in downloads))
+        for media_item in results:
+            if media_item is None:
                 continue
             try:
                 await self.hash_item(media_item)
             except Exception as e:
-                msg = f"Unable to hash file = {media_item.complete_file.resolve()}: {e}"
+                msg = f"Unable to hash file = {media_item.complete_file}: {e}"
                 log(msg, 40)
         return self.hashes_dict
 
-    def delete_file(self, path: Path) -> None:
-        if self.manager.config_manager.settings_data.dupe_cleanup_options.send_deleted_to_trash:
-            send2trash(path)
-            log(f"sent file at{path} to trash", 10)
-            return
 
-        Path(path).unlink(missing_ok=True)
-        log(f"permanently deleted file at {path}", 10)
+async def delete_file(path: Path, to_trash: bool = True) -> bool:
+    """Deletes a file and return `True` on success, `False` is the file was not found.
+
+    Any other exception is propagated"""
+
+    if to_trash:
+        coro = asyncio.to_thread(send2trash, path)
+    else:
+        coro = aiofiles.os.unlink(Path(path))
+
+    try:
+        await coro
+    except FileNotFoundError:
+        pass
+    except OSError as e:
+        # send2trash raises everything as a bare OSError. We should only ignore FileNotFound and raise everything else
+        msg = str(e)
+        if "File not found" not in msg:
+            raise
+    else:
+        return True
+
+    return False

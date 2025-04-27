@@ -6,33 +6,31 @@ import asyncio
 import contextlib
 import re
 from dataclasses import dataclass
-from functools import cached_property, partial, singledispatchmethod
+from functools import cached_property, singledispatchmethod
 from typing import TYPE_CHECKING
 
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, Tag
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import InvalidURLError, LoginError, ScrapeError
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id, remove_trailing_slash
-from cyberdrop_dl.scraper.filters import set_return_value
+from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.data_enums_classes.url_objects import FORUM, FORUM_POST, ScrapeItem
 from cyberdrop_dl.utils.logger import log, log_debug
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_trailing_slash
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Sequence
 
-    from bs4 import Tag
+    from aiohttp_client_cache.response import AnyResponse
 
     from cyberdrop_dl.managers.manager import Manager
 
+HTTP_URL_REGEX_STR = r"https?://(www\.)?[-a-zA-Z0-9@:%._+~#=]{2,256}\.[a-z]{2,12}\b([-a-zA-Z0-9@:%_+.~#?&/=]*)"
+HTTP_URL_REGEX = re.compile(HTTP_URL_REGEX_STR)
 
-HTTP_URL_REGEX_STRS = [
-    r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,4}\\b([-a-zA-Z0-9@:%_\+.~#?&//=]*)",
-    r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,4}\/[-a-zA-Z0-9@:%._\+~#=]*\/[-a-zA-Z0-9@:?&%._\+~#=]*",
-]
 
-HTTP_URL_PATTERNS = [re.compile(regex) for regex in HTTP_URL_REGEX_STRS]
+FINAL_PAGE_SELECTOR = "li.pageNav-page a"
+CURRENT_PAGE_SELECTOR = "li.pageNav-page.pageNav-page--current a"
 
 
 @dataclass(frozen=True, slots=True)
@@ -138,6 +136,17 @@ class XenforoCrawler(Crawler):
             login_url = self.primary_base_domain / "login"
             await self.login_setup(login_url)
 
+        async def is_not_last_page(response: AnyResponse):
+            soup = BeautifulSoup(await response.text(), "html.parser")
+            try:
+                last_page = int(soup.select(FINAL_PAGE_SELECTOR)[-1].text.split("page-")[-1])
+                current_page = int(soup.select(CURRENT_PAGE_SELECTOR)[0].text.split("page-")[-1])
+            except (AttributeError, IndexError):
+                return False
+            return current_page != last_page
+
+        self.register_cache_filter(self.primary_base_domain, is_not_last_page)
+
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
@@ -145,18 +154,23 @@ class XenforoCrawler(Crawler):
             return
         scrape_item.url = self.pre_filter_link(scrape_item.url)
         if self.is_attachment(scrape_item.url):
-            await self.handle_internal_link(scrape_item)
-        elif self.thread_url_part in scrape_item.url.parts:
-            await self.thread(scrape_item)
-        elif any(p in scrape_item.url.parts for p in ("goto", "posts")):
-            await self.redirect(scrape_item)
-        else:
-            raise ValueError
+            return await self.handle_internal_link(scrape_item)
+        if self.thread_url_part in scrape_item.url.parts:
+            return await self.thread(scrape_item)
+        if self.is_confirmation_link(scrape_item.url):
+            scrape_item.url = await self.handle_confirmation_link(scrape_item.url)
+            if scrape_item.url:  # If there was an error, this will be None
+                # This could end up back in here if the URL goes to another thread
+                return self.handle_external_links(scrape_item)
+        if any(p in scrape_item.url.parts for p in ("goto", "posts")):
+            return await self.redirect(scrape_item)
+
+        raise ValueError
 
     @error_handling_wrapper
     async def redirect(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
-            _, url = await self.client.get_soup_and_return_url(self.domain, scrape_item.url, origin=scrape_item)  # type: ignore
+            _, url = await self.client.get_soup_and_return_url(self.domain, scrape_item.url)  # type: ignore
         scrape_item.url = url
         self.manager.task_group.create_task(self.run(scrape_item))
 
@@ -196,7 +210,6 @@ class XenforoCrawler(Crawler):
 
     def process_thread_page(self, scrape_item: ScrapeItem, forum_page: ForumThreadPage) -> tuple[bool, URL]:
         continue_scraping = False
-        create = partial(self.create_scrape_item, scrape_item)
         thread = forum_page.thread
         post_url = thread.url
         for post in forum_page.posts:
@@ -206,7 +219,7 @@ class XenforoCrawler(Crawler):
             post_string = f"{self.POST_NAME}{current_post.number}"
             post_url = thread.url / post_string
             if scrape_post:
-                new_scrape_item = create(thread.url, possible_datetime=date, add_parent=post_url)
+                new_scrape_item = scrape_item.create_new(thread.url, possible_datetime=date, add_parent=post_url)
                 self.manager.task_group.create_task(self.post(new_scrape_item, current_post))
                 scrape_item.add_children()
 
@@ -248,7 +261,7 @@ class XenforoCrawler(Crawler):
         """Scrapes embeds from a post."""
         selector = post.selectors.embeds
         embeds = post.content.select(selector.element)
-        await self.process_children(scrape_item, embeds, selector.attribute)
+        await self.process_children(scrape_item, embeds, selector.attribute, embeds=True)
 
     async def attachments(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         """Scrapes attachments from a post."""
@@ -263,7 +276,7 @@ class XenforoCrawler(Crawler):
         page_url = scrape_item.url
         while True:
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url, origin=scrape_item)
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url)
             next_page = soup.select_one(self.selectors.next_page.element)
             yield soup
             if not next_page:
@@ -272,17 +285,25 @@ class XenforoCrawler(Crawler):
             page_url = self.parse_url(page_url_str)
             page_url = self.pre_filter_link(page_url)
 
-    async def process_children(self, scrape_item: ScrapeItem, links: list[Tag], selector: str | None) -> None:
+    async def process_children(
+        self, scrape_item: ScrapeItem, links: list[Tag], selector: str, *, embeds: bool = False
+    ) -> None:
         for link_obj in links:
-            link_tag: Tag | str = link_obj.get(selector)  # type: ignore
-            if link_tag and not isinstance(link_tag, str):
-                parent_simp_check = link_tag.parent.get("data-simp")
-                if parent_simp_check and "init" in parent_simp_check:
+            link_tag: Tag | str | None = link_obj.get(selector)  # type: ignore
+            if isinstance(link_tag, Tag):
+                if link_tag.parent and (data_simp := link_tag.parent.get("data-simp")) and "init" in data_simp:
                     continue
 
-            link_str: str | None = link_tag or link_obj.get("href")  # type: ignore
-            if selector == self.selectors.posts.embeds.attribute:
-                link_str = self.process_embed(link_tag)
+                link_str: str | None = link_obj.get("href")  # type: ignore
+            else:
+                link_str = link_tag
+
+            if not link_str:
+                continue
+
+            assert isinstance(link_str, str)
+            if embeds:
+                link_str = self.extract_embed_url(link_str)
 
             if not link_str or link_str.startswith("data:image/svg"):
                 continue
@@ -295,7 +316,7 @@ class XenforoCrawler(Crawler):
         link = self.filter_link(link)
         if not link:
             return
-        new_scrape_item = self.create_scrape_item(scrape_item, link)
+        new_scrape_item = scrape_item.create_new(link)
         await self.handle_link(new_scrape_item)
         scrape_item.add_children()
 
@@ -335,7 +356,7 @@ class XenforoCrawler(Crawler):
         if not scrape_item.url or scrape_item.url == self.primary_base_domain:
             return
         if not scrape_item.url.host:
-            raise InvalidURLError("url has no host", origin=scrape_item)
+            raise InvalidURLError("url has no host")
         if self.is_attachment(scrape_item.url):
             return await self.handle_internal_link(scrape_item)
         if self.primary_base_domain.host in scrape_item.url.host and self.stop_thread_recursion(scrape_item):  # type: ignore
@@ -350,15 +371,15 @@ class XenforoCrawler(Crawler):
         scrape_item.url = remove_trailing_slash(scrape_item.url)
 
         if scrape_item.url.name.isdigit():
-            head = await self.client.get_head(self.domain, scrape_item.url, origin=scrape_item)  # type: ignore
+            head = await self.client.get_head(self.domain, scrape_item.url)  # type: ignore
             redirect = head.get("location")
             if not redirect:
-                raise ScrapeError(422, origin=scrape_item)
+                raise ScrapeError(422)
             scrape_item.url = self.parse_url(redirect)
             self.manager.task_group.create_task(self.run(scrape_item))
             return
 
-        filename, ext = get_filename_and_ext(scrape_item.url.name, forum=True)
+        filename, ext = self.get_filename_and_ext(scrape_item.url.name, forum=True)
         scrape_item.add_to_parent_title("Attachments")
         scrape_item.part_of_album = True
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
@@ -414,12 +435,11 @@ class XenforoCrawler(Crawler):
     def is_confirmation_link(self, link: URL) -> bool:
         return any(keyword in link.path for keyword in ("link-confirmation",))
 
-    def process_embed(self, data: str) -> str | None:
-        if not data:
-            return
-        data = data.replace(r"\/\/", "https://www.").replace("\\", "")
-        embed = re.search(HTTP_URL_PATTERNS[0], data) or re.search(HTTP_URL_PATTERNS[1], data)
-        return embed.group(0).replace("www.", "") if embed else data
+    def extract_embed_url(self, embed_str: str) -> str | None:
+        embed_str = embed_str.replace(r"\/\/", "https://www.").replace("\\", "")
+        if match := re.search(HTTP_URL_REGEX, embed_str):
+            return match.group(0).replace("www.", "")
+        return embed_str
 
     def pre_filter_link(self, link: URL) -> URL:
         return link
@@ -482,11 +502,11 @@ class XenforoCrawler(Crawler):
         while attempt < retries:
             with contextlib.suppress(TimeoutError):
                 attempt += 1
-                await set_return_value(str(login_url), False, pop=False)
-                await set_return_value(str(login_url / "login"), False, pop=False)
                 await asyncio.sleep(wait_time)
-                login_data = prepare_login_data(text)
-                await self.client.post_data(self.domain, login_url / "login", data=login_data, req_resp=False)
+                data = prepare_login_data(text)
+                await self.client.post_data(
+                    self.domain, login_url / "login", data=data, req_resp=False, cache_disabled=True
+                )
                 await asyncio.sleep(wait_time)
                 text, logged_in = await self.check_login_with_request(login_url)
                 if logged_in:
@@ -497,7 +517,7 @@ class XenforoCrawler(Crawler):
         raise LoginError(message=msg)
 
     async def check_login_with_request(self, login_url: URL) -> tuple[str, bool]:
-        text = await self.client.get_text(self.domain, login_url)
+        text = await self.client.get_text(self.domain, login_url, cache_disabled=True)
         return text, any(p in text for p in ('<span class="p-navgroup-user-linkText">', "You are already logged in."))
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

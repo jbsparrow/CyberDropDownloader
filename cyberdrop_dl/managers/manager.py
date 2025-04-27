@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import platform
 from dataclasses import Field, field
 from time import perf_counter
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, NamedTuple
 
 from cyberdrop_dl import __version__
 from cyberdrop_dl.config_definitions import ConfigSettings, GlobalSettings
@@ -19,15 +20,24 @@ from cyberdrop_dl.managers.log_manager import LogManager
 from cyberdrop_dl.managers.path_manager import PathManager
 from cyberdrop_dl.managers.progress_manager import ProgressManager
 from cyberdrop_dl.managers.realdebrid_manager import RealDebridManager
+from cyberdrop_dl.managers.storage_manager import StorageManager
+from cyberdrop_dl.ui.textual import TextualUI
 from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.args import ParsedArgs
-from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.ffmpeg import FFmpeg, get_ffmpeg_version
+from cyberdrop_dl.utils.logger import QueuedLogger, log
 from cyberdrop_dl.utils.transfer import transfer_v5_db_to_v6
 
 if TYPE_CHECKING:
+    import queue
     from asyncio import TaskGroup
 
     from cyberdrop_dl.scraper.scrape_mapper import ScrapeMapper
+
+
+class AsyncioEvents(NamedTuple):
+    SHUTTING_DOWN: asyncio.Event = asyncio.Event()
+    RUNNING: asyncio.Event = asyncio.Event()
 
 
 class Manager:
@@ -42,10 +52,14 @@ class Manager:
         self.log_manager: LogManager = field(init=False)
         self.db_manager: DBManager = field(init=False)
         self.client_manager: ClientManager = field(init=False)
+        self.storage_manager: StorageManager = field(init=False)
 
         self.download_manager: DownloadManager = field(init=False)
         self.progress_manager: ProgressManager = field(init=False)
         self.live_manager: LiveManager = field(init=False)
+        self.textual_log_queue: queue.Queue = field(init=False)
+        self.ffmpeg: FFmpeg = field(init=False)
+        self._textual_ui: TextualUI = field(init=False)
 
         self._loaded_args_config: bool = False
         self._made_portable: bool = False
@@ -53,17 +67,42 @@ class Manager:
         self.task_group: TaskGroup = field(init=False)
         self.task_list: list = []
         self.scrape_mapper: ScrapeMapper = field(init=False)
+        self.current_task: asyncio.Task = field(init=False)
 
         self.vi_mode: bool = False
         self.start_time: float = perf_counter()
         self.downloaded_data: int = 0
         self.multiconfig: bool = False
+        self.loggers: dict[str, QueuedLogger] = {}
+        self.states = AsyncioEvents()
+
+    @property
+    def config(self):
+        return self.config_manager.settings_data
+
+    @property
+    def auth_config(self):
+        return self.config_manager.authentication_data
+
+    @property
+    def global_config(self):
+        return self.config_manager.global_settings_data
+
+    def shutdown(self, from_user: bool = False):
+        """ "Shut everything down (something failed or the user used ctrl + q)"""
+        if from_user:
+            log("Received keyboard interrupt, shutting down...", 30)
+        self.states.SHUTTING_DOWN.set()
+        self.current_task.cancel()
 
     def startup(self) -> None:
         """Startup process for the manager."""
 
         if isinstance(self.parsed_args, Field):
             self.parsed_args = ParsedArgs.parse_args()
+
+        if self.parsed_args.cli_only_args.show_supported_sites:
+            show_supported_sites()
 
         self.path_manager = PathManager(self)
         self.path_manager.pre_startup()
@@ -81,6 +120,19 @@ class Manager:
         if self.config_manager.loaded_config.casefold() == "all" or self.parsed_args.cli_only_args.multiconfig:
             self.multiconfig = True
         self.set_constants()
+
+    def notify(
+        self,
+        msg: str,
+        title: str = "",
+        severity: Literal["information", "warning", "error"] = "information",
+        timeout: float | None = None,
+    ):
+        """Wrapper around textual.app.notify
+
+        Does nothing if CDL is not using textual (`--no-textual-ui`)"""
+        if isinstance(self._textual_ui, TextualUI):
+            self._textual_ui.notify(msg, title=title, severity=severity, timeout=timeout)
 
     def adjust_for_simpcity(self) -> None:
         """Adjusts settings for SimpCity update."""
@@ -108,10 +160,20 @@ class Manager:
 
         if not isinstance(self.client_manager, ClientManager):
             self.client_manager = ClientManager(self)
+        if not isinstance(self.storage_manager, StorageManager):
+            self.storage_manager = StorageManager(self)
+
+        elif self.states.RUNNING.is_set():
+            await self.storage_manager.reset()  # Reset total downloaded data if running multiple configs
+
         if not isinstance(self.download_manager, DownloadManager):
             self.download_manager = DownloadManager(self)
         if not isinstance(self.real_debrid_manager, RealDebridManager):
             self.real_debrid_manager = RealDebridManager(self)
+
+        if not isinstance(self.ffmpeg, FFmpeg):
+            self.ffmpeg = FFmpeg(self)
+
         await self.async_db_hash_startup()
 
         constants.MAX_NAME_LENGTHS["FILE"] = self.config_manager.global_settings_data.general.max_file_name_length
@@ -211,14 +273,15 @@ class Manager:
         log(f"Running Version: {__version__}")
         log(f"System Info:{system_info}")
         log(f"Using Config: {self.config_manager.loaded_config}")
-        log(f"Using Config File: {self.config_manager.settings.resolve()}")
-        log(f"Using Input File: {self.path_manager.input_file.resolve()}")
-        log(f"Using Download Folder: {self.path_manager.download_folder.resolve()}")
-        log(f"Using Database File: {self.path_manager.history_db.resolve()}")
+        log(f"Using Config File: {self.config_manager.settings}")
+        log(f"Using Input File: {self.path_manager.input_file}")
+        log(f"Using Download Folder: {self.path_manager.download_folder}")
+        log(f"Using Database File: {self.path_manager.history_db}")
         log(f"Using CLI only options: {cli_only_args}")
         log(f"Using Authentication: \n{json.dumps(auth_provided, indent=4, sort_keys=True)}")
         log(f"Using Settings: \n{config_settings}")
         log(f"Using Global Settings: \n{global_settings}")
+        log(f"Using FFmpeg version: {get_ffmpeg_version()}")
 
     async def async_db_close(self) -> None:
         "Partial shutdown for managers used for hash directory scanner"
@@ -230,11 +293,21 @@ class Manager:
 
     async def close(self) -> None:
         """Closes the manager."""
+        self.states.RUNNING.clear()
         if not isinstance(self.client_manager, Field):
+            if not isinstance(self.client_manager.scraper_session, Field):
+                await self.client_manager.scraper_session.close()
             await self.client_manager.close()
+
         await self.async_db_close()
         await self.cache_manager.close()
+        await self.storage_manager.close()
+
         self.cache_manager.close_sync()
+        while self.loggers:
+            _, queued_logger = self.loggers.popitem()
+            queued_logger.stop()
+
         self.cache_manager: CacheManager = field(init=False)
         self.hash_manager: HashManager = field(init=False)
 
@@ -264,3 +337,20 @@ def get_system_information() -> str:
     }
 
     return json.dumps(system_info, indent=4)
+
+
+def show_supported_sites():
+    import sys
+
+    from rich import print
+    from rich.table import Table
+
+    from cyberdrop_dl.scraper.scrape_mapper import gen_crawlers_info
+
+    table = Table(title="Cyberdrop-DL Supported Sites")
+    for column in ("Site", "Crawler", "Primary Base Domain"):
+        table.add_column(column, no_wrap=True)
+    for crawler in gen_crawlers_info():
+        table.add_row(crawler.site, crawler.name, str(crawler.primary_base_domain))
+    print(table)
+    sys.exit(0)

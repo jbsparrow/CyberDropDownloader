@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import json
 import logging
+import queue
+from logging.handlers import QueueHandler, QueueListener
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import IO, TYPE_CHECKING
 
 from rich._log_render import LogRender
 from rich.console import Console, Group
 from rich.containers import Lines, Renderables
+from rich.logging import RichHandler
 from rich.measure import Measurement
 from rich.padding import Padding
 from rich.text import Text, TextType
@@ -28,10 +31,86 @@ if TYPE_CHECKING:
     from datetime import datetime
 
     from rich.console import ConsoleRenderable
-    from rich.logging import RichHandler
+
+    from cyberdrop_dl.managers.manager import Manager
 
 
 EXCLUDE_PATH_LOGGING_FROM = "logger.py", "base.py", "session.py", "cache_control.py"
+
+
+def get_log_level_text(name: str, color: str) -> Text:
+    #  From markup to prevent applying the color to the entire line
+    return Text.from_markup(f"[{color}]{name}[/{color}]") if color else Text(name)
+
+
+RICH_LOG_LEVELS = {
+    10: get_log_level_text("DEBUG    ", "cyan"),
+    20: get_log_level_text("INFO     ", ""),
+    30: get_log_level_text("WARNING  ", "yellow"),
+    40: get_log_level_text("ERROR    ", "bold red"),
+    50: get_log_level_text("CRITICAL ", "bold red"),
+}
+
+
+class LogHandler(RichHandler):
+    """Rich Handler with default settings, automatic console creation and custom log render to remove padding in files."""
+
+    def __init__(
+        self, level: int = 10, file: IO[str] | None = None, width: int | None = None, debug: bool = False, **kwargs
+    ) -> None:
+        is_file: bool = file is not None
+        redacted: bool = is_file and not debug
+        console_cls = RedactedConsole if redacted else Console
+        console = console_cls(file=file, width=width)
+        options = constants.RICH_HANDLER_DEBUG_CONFIG if debug else constants.RICH_HANDLER_CONFIG
+        options = options | kwargs
+        super().__init__(level, console, show_time=is_file, **options)
+        if is_file:
+            self._log_render = NoPaddingLogRender(show_level=True)
+
+
+class BareQueueHandler(QueueHandler):
+    """Sends the log record to the queue as is.
+
+    The base class formats the record by merging the message and arguments.
+    It also removes all other attributes of the record, just in case they have not pickleable objects.
+
+    This made tracebacks render improperly because when the rich handler picks the log record from the queue, it has no traceback.
+    The original traceback was being formatted as normal text and included as part of the message.
+
+    Having not pickleable objects is only an issue in multi-processing operations (multiprocessing.Queue)
+    """
+
+    def prepare(self, record: logging.LogRecord) -> logging.LogRecord:
+        return record
+
+
+class TextualLogQueueHandler(QueueHandler):
+    """Auto queue and format the log record as a rich text before sending it to the queue"""
+
+    def __init__(self, manager: Manager):
+        manager.textual_log_queue = q = queue.Queue()
+        super().__init__(q)
+
+    def prepare(self, record: logging.LogRecord) -> Text:
+        return create_rich_log_msg(record.getMessage(), record.levelno)
+
+
+class QueuedLogger:
+    """A helper class to setup a queue handler + listener."""
+
+    def __init__(self, manager: Manager, split_handler: LogHandler, name: str = "main") -> None:
+        assert name not in manager.loggers, f"A logger with the name '{name}' already exists"
+        log_queue = queue.Queue()
+        self.handler = BareQueueHandler(log_queue)
+        self.listener = QueueListener(log_queue, split_handler, respect_handler_level=True)
+        self.listener.start()
+        manager.loggers[name] = self
+
+    def stop(self) -> None:
+        """This asks the thread to terminate, and waits until all pending messages are processed."""
+        self.listener.stop()
+        self.handler.close()
 
 
 class NoPaddingLogRender(LogRender):
@@ -93,8 +172,7 @@ class NoPaddingLogRender(LogRender):
                 continue
             padded_lines.append(Padding(renderable, (0, 0, 0, self.cdl_padding), expand=False))
 
-        output = Group(output, *padded_lines)
-        return output
+        return Group(output, *padded_lines)
 
 
 def get_renderable_length(renderable) -> int:
@@ -117,16 +195,19 @@ def indent_text(text: Text, console: Console, indent: int = 30) -> Text:
     return first_line.append(new_text)
 
 
-def add_custom_log_render(rich_handler: RichHandler) -> None:
-    rich_handler._log_render = NoPaddingLogRender(
-        omit_repeated_times=True,
-        show_time=True,
-        show_level=True,
-        show_path=True,
-    )
+def indent_string(text: str, indent_level: int = 9) -> str:
+    """Indents each line of a string object except the first one."""
+    indentation = " " * indent_level
+    lines = text.splitlines()
+    if len(lines) <= 1:
+        return text
+    indented_lines = [lines[0]] + [indentation + line for line in lines[1:]]
+    return "\n".join(indented_lines)
 
 
 class RedactedConsole(Console):
+    """Custom console to remove username from logs"""
+
     def _render_buffer(self, buffer) -> str:
         output: str = super()._render_buffer(buffer)
         return _redact_message(output)
@@ -136,6 +217,12 @@ def process_log_msg(message: dict | Exception | str) -> str:
     if isinstance(message, dict):
         return json.dumps(message, indent=4, ensure_ascii=False)
     return str(message)
+
+
+def create_rich_log_msg(msg: str, level: int = 10) -> Text:
+    """Create a rich text where the level has color"""
+    rich_level = RICH_LOG_LEVELS.get(level) or RICH_LOG_LEVELS[10]
+    return rich_level + indent_string(msg)
 
 
 def log(message: dict | Exception | str, level: int = 10, **kwargs) -> None:

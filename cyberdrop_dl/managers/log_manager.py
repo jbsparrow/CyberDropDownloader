@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import csv
 from asyncio import Lock
 from pathlib import Path
@@ -38,7 +39,7 @@ class LogManager:
         """Write to the specified csv file. kwargs are columns for the CSV."""
         self._csv_locks[file] = self._csv_locks.get(file, Lock())
         async with self._csv_locks[file]:
-            write_headers = not file.is_file()
+            write_headers = not await asyncio.to_thread(file.is_file)
             async with aiofiles.open(file, "a", encoding="utf8", newline="") as csv_file:
                 writer = csv.DictWriter(
                     csv_file, fieldnames=kwargs.keys(), delimiter=CSV_DELIMITER, quoting=csv.QUOTE_ALL
@@ -71,7 +72,11 @@ class LogManager:
     async def update_last_forum_post(self) -> None:
         """Updates the last forum post."""
         input_file = self.manager.path_manager.input_file
-        if not input_file.is_file() or not self.last_post_log.is_file():
+
+        def proceed():
+            return input_file.is_file() or self.last_post_log.is_file()
+
+        if not await asyncio.to_thread(proceed):
             return
 
         log_spacer(20)
