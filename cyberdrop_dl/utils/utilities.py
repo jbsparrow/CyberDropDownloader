@@ -387,7 +387,7 @@ def open_in_text_editor(file_path: Path) -> None:
         if platform.system() == "windows":
             error_msg += (
                 "Please install one of the following editors or add it to your PATH:\n"
-                "Notepad / Notepad++ / VSCode / Sublime Text / Atom."
+                "Notepad / Notepad++ / VSCode / Sublime Text."
             )
         error_msg += "\nYou can set the env var $EDITOR to point to your preferred editor."
         raise ValueError(error_msg)
