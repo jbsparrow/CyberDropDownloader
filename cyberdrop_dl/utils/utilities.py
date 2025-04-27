@@ -6,13 +6,15 @@ import json
 import os
 import platform
 import re
+import shlex
 import shutil
 import subprocess
+from collections.abc import Generator, Sequence
 from dataclasses import dataclass, fields
 from functools import lru_cache, partial, wraps
 from pathlib import Path
 from stat import S_ISREG
-from typing import TYPE_CHECKING, Any, ClassVar, ParamSpec, Protocol, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, ParamSpec, Protocol, TypeAlias, TypeVar
 
 import aiofiles
 import rich
@@ -46,9 +48,8 @@ if TYPE_CHECKING:
 
 P = ParamSpec("P")
 R = TypeVar("R")
+CMD: TypeAlias = Sequence[str]
 
-
-TEXT_EDITORS = "micro", "nano", "vim"  # Ordered by preference
 FILENAME_REGEX = re.compile(r"filename\*=UTF-8''(.+)|.*filename=\"(.*?)\"", re.IGNORECASE)
 subprocess_get_text = partial(subprocess.run, capture_output=True, text=True, check=False)
 
@@ -71,6 +72,38 @@ class OGProperties:
     determiner: str = ""
     audio: str = ""
     video: str = ""
+
+
+class TextEditorsCMDs:
+    # Commands are sorted by preference
+    MACOS = (
+        ("open", "-t", "--new", "--wait-apps"),  # Opens default text editor
+    )
+
+    LINUX_W_DE = (
+        ("xdg-open",),  # Opens default text editor
+        ("gedit", "-s"),
+        ("geany", "-imnst"),
+    )
+
+    LINUX_TERMINAL = (
+        ("micro", "-keymenu", "true"),
+        ("nano",),
+        ("vim",),
+    )
+
+    WINDOWS = (
+        ("notepad",),
+        ("notepad++.exe", "-multiInst", "-notabbar", "-nosession", "-noPlugin"),
+        ("sublime_text.exe", "--wait", "new_window"),
+    )
+    MULTI_OS = (
+        ("code", "--wait", "--new-window"),  # VS code
+        ("subl", "--wait", "--new-window"),  # Sublime text
+    )
+
+
+ALL_EDITORS = TextEditorsCMDs()
 
 
 def error_handling_wrapper(
@@ -344,68 +377,85 @@ async def send_webhook_message(manager: Manager) -> None:
         logger(f"Webhook Notifications Results: {result_to_log}")
 
 
-def open_in_text_editor(file_path: Path) -> bool | None:
+def open_in_text_editor(file_path: Path) -> None:
     """Opens file in OS text editor."""
-    using_ssh = "SSH_CONNECTION" in os.environ
-    using_desktop_enviroment = any(var in os.environ for var in ("DISPLAY", "WAYLAND_DISPLAY"))
-    custom_editor = os.environ.get("EDITOR")
 
-    if custom_editor:
-        path = shutil.which(custom_editor)
-        if not path:
-            msg = f"Editor '{custom_editor}' from env bar $EDITOR is not available"
+    text_editor: CMD | None = get_text_editor()
+    if not text_editor:
+        error_msg = "No default text editor found"
+        if platform.system() == "windows":
+            error_msg += (
+                "Please install one of the following editors or add it to your PATH:\n"
+                "Notepad / Notepad++ / VSCode / Sublime Text / Atom."
+            )
+        error_msg += "\nYou can set the env var $EDITOR to point to your preferred editor."
+        raise ValueError(error_msg)
+
+    rich.print(f"Opening '{file_path}' with '{text_editor[0]}'...")
+    try:
+        subprocess.call([*text_editor, file_path], stderr=subprocess.DEVNULL)
+    except (subprocess.CalledProcessError, OSError, ValueError) as e:
+        error_msg = f"Unable to open a text editor: {e!r}"
+        raise ValueError(error_msg) from None
+
+
+@lru_cache
+def get_text_editor() -> CMD | None:
+    for cmd in get_posible_text_editors():
+        if cmd[0] == "xdg_open":
+            set_default_yaml_editor()
+        if shutil.which(cmd[0]):
+            return cmd
+
+
+def get_posible_text_editors() -> Generator[CMD]:
+    is_ssh = "SSH_CONNECTION" in os.environ
+    has_desktop_enviroment = any(var in os.environ for var in ("DISPLAY", "WAYLAND_DISPLAY"))
+
+    # Fail fast if EDITOR is set but is not available
+    if custom_editor := os.environ.get("EDITOR"):
+        cmd: list[str] = shlex.split(custom_editor)
+        bin_path = shutil.which(cmd[0])
+        if not bin_path:
+            msg = f"Editor '{cmd[0]}' from env bar $EDITOR is not available"
             raise ValueError(msg)
-        cmd = path, file_path
+        yield cmd
 
-    elif platform.system() == "Darwin":
-        cmd = "open", "-a", "TextEdit", file_path
+    if platform.system() == "Darwin":
+        yield from ALL_EDITORS.MACOS
 
     elif platform.system() == "Windows":
-        try:
-            os.startfile(file_path)
-        except OSError:
-            cmd = ("cmd", "/c", "start", "", str(file_path))
-        else:
-            return True
+        yield from ALL_EDITORS.WINDOWS
 
-    elif using_desktop_enviroment and not using_ssh and set_default_app_if_none(file_path):
-        cmd = "xdg-open", file_path
+    elif has_desktop_enviroment and not is_ssh:
+        yield from ALL_EDITORS.LINUX_W_DE
 
-    elif fallback_editor := get_first_available_editor():
-        cmd = fallback_editor, file_path
-        if fallback_editor.stem == "micro":
-            cmd = fallback_editor, "-keymenu", "true", file_path
     else:
-        msg = "No default text editor found"
-        raise ValueError(msg)
+        yield from ALL_EDITORS.LINUX_TERMINAL
+        return  # Do not yield multi OS text editors (all of them require a DE)
 
-    rich.print(f"Opening '{file_path}' with '{cmd[0]}'...")
-    subprocess.call([*cmd], stderr=subprocess.DEVNULL)
-
-
-@lru_cache
-def get_first_available_editor() -> Path | None:
-    for editor in TEXT_EDITORS:
-        path = shutil.which(editor)
-        if path:
-            return Path(path)
+    yield from ALL_EDITORS.MULTI_OS
 
 
-@lru_cache
-def set_default_app_if_none(file_path: Path) -> bool:
-    mimetype = xdg_mime_query("filetype", str(file_path))
-    if not mimetype:
-        return False
+@lru_cache  # cached to only do it once
+def set_default_yaml_editor() -> None:
+    if not (shutil.which("xdg-mime") and shutil.which("xdg-open")):
+        return
 
-    default_app = xdg_mime_query("default", mimetype)
-    if default_app:
-        return True
+    def xdg_mime_query(*args) -> str:
+        arg_list = ["xdg-mime", "query", *args]
+        return subprocess_get_text(arg_list).stdout.strip()
 
-    text_default = xdg_mime_query("default", "text/plain")
-    if text_default:
-        return subprocess.call(["xdg-mime", "default", text_default, mimetype]) == 0
+    default_text_editor = xdg_mime_query("default", "text/plain")
+    if not default_text_editor:
+        return
 
-    return False
+    for mimetype in ("application/yaml", "text/yaml", "application/x-yaml", "text/x-yaml"):
+        if xdg_mime_query("default", mimetype):
+            # already has a default app, do not override it
+            continue
+
+        _ = subprocess.call(["xdg-mime", "default", default_text_editor, mimetype])
 
 
 def get_valid_dict(dataclass: Dataclass | type[Dataclass], info: dict[str, Any]) -> dict[str, Any]:
@@ -423,12 +473,6 @@ def get_text_between(original_text: str, start: str, end: str) -> str:
     start_index = original_text.index(start) + len(start)
     end_index = original_text.index(end, start_index)
     return original_text[start_index:end_index]
-
-
-def xdg_mime_query(*args) -> str:
-    assert args
-    arg_list = ["xdg-mime", "query", *args]
-    return subprocess_get_text(arg_list).stdout.strip()
 
 
 def parse_url(link_str: str, relative_to: URL | None = None, *, trim: bool = True) -> URL:
