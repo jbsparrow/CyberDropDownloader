@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import json
 import os
@@ -10,7 +11,8 @@ import subprocess
 from dataclasses import dataclass, fields
 from functools import lru_cache, partial, wraps
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, Protocol
+from stat import S_ISREG
+from typing import TYPE_CHECKING, Any, ClassVar, ParamSpec, Protocol, TypeVar
 
 import aiofiles
 import rich
@@ -31,7 +33,7 @@ from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.logger import log, log_debug, log_spacer, log_with_color
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Mapping
+    from collections.abc import Callable, Coroutine, Mapping
 
     from curl_cffi.requests.models import Response as CurlResponse
     from rich.text import Text
@@ -40,6 +42,11 @@ if TYPE_CHECKING:
     from cyberdrop_dl.downloader.downloader import Downloader
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
+
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
 
 TEXT_EDITORS = "micro", "nano", "vim"  # Ordered by preference
 FILENAME_REGEX = re.compile(r"filename\*=UTF-8''(.+)|.*filename=\"(.*?)\"", re.IGNORECASE)
@@ -66,17 +73,20 @@ class OGProperties:
     video: str = ""
 
 
-def error_handling_wrapper(func: Callable) -> Callable:
+def error_handling_wrapper(
+    func: Callable[..., Coroutine[None, None, Any]],
+) -> Callable[..., Coroutine[None, None, Any]]:
     """Wrapper handles errors for url scraping."""
 
     @wraps(func)
-    async def wrapper(self: Crawler | Downloader, *args, **kwargs):
-        item: ScrapeItem | MediaItem | URL = args[0]
+    async def wrapper(*args, **kwargs) -> R | None:
+        self: Crawler | Downloader = args[0]
+        item: ScrapeItem | MediaItem | URL = args[1]
         link: URL = item if isinstance(item, URL) else item.url
         origin = exc_info = None
         link_to_show: URL | str = ""
         try:
-            return await func(self, *args, **kwargs)
+            return await func(*args, **kwargs)
         except CDLBaseError as e:
             error_log_msg = ErrorLogMessage(e.ui_failure, str(e))
             origin = e.origin
@@ -303,8 +313,8 @@ async def send_webhook_message(manager: Manager) -> None:
 
     form = FormData()
 
-    if "attach_logs" in webhook.tags and main_log.is_file():
-        if main_log.stat().st_size <= 25 * 1024 * 1024:
+    if "attach_logs" in webhook.tags and (size := await asyncio.to_thread(get_size_or_none, main_log)):
+        if size <= 25 * 1024 * 1024:  # 25MB
             async with aiofiles.open(main_log, "rb") as f:
                 form.add_field("file", await f.read(), filename=main_log.name)
 
@@ -488,6 +498,19 @@ def get_filename_from_headers(headers: Mapping[str, Any]) -> str | None:
     if match := re.search(FILENAME_REGEX, content_disposition):
         matches = match.groups()
         return matches[0] or matches[1]
+
+
+def get_size_or_none(path: Path) -> int | None:
+    """Checks if this is a file and returns its size with a single system call.
+
+    Returns `None` otherwise"""
+
+    try:
+        stat = path.stat()
+        if S_ISREG(stat.st_mode):
+            return stat.st_size
+    except (OSError, ValueError):
+        return None
 
 
 log_cyan = partial(log_with_color, style="cyan", level=20)

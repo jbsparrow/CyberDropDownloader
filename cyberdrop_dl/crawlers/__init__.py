@@ -5,12 +5,12 @@ from typing import TYPE_CHECKING
 
 from cyberdrop_dl import env
 
+from .archivebate import ArchiveBateCrawler
 from .ashemaletube import AShemaleTubeCrawler
 from .bestprettygirl import BestPrettyGirlCrawler
 from .bunkrr import BunkrrCrawler
 from .bunkrr_albums_io import BunkrAlbumsIOCrawler
 from .catbox import CatboxCrawler
-from .chevereto import CheveretoCrawler
 from .coomer import CoomerCrawler
 from .crawler import Crawler
 from .cyberdrop import CyberdropCrawler
@@ -25,19 +25,24 @@ from .eporner import EpornerCrawler
 from .erome import EromeCrawler
 from .fapello import FapelloCrawler
 from .fileditch import FileditchCrawler
+from .files_vc import FilesVcCrawler
 from .generic import GenericCrawler
 from .gofile import GoFileCrawler
 from .google_drive import GoogleDriveCrawler
 from .hotpic import HotPicCrawler
+from .iceyfile import IceyFileCrawler
 from .imagebam import ImageBamCrawler
+from .imagepond import ImagePondCrawler
 from .imgbb import ImgBBCrawler
 from .imgbox import ImgBoxCrawler
 from .imgur import ImgurCrawler
+from .jpg5 import JPG5Crawler
 from .kemono import KemonoCrawler
 from .luscious import LusciousCrawler
 from .mediafire import MediaFireCrawler
 from .mega_nz import MegaNzCrawler
 from .missav import MissAVCrawler
+from .mixdrop import MixDropCrawler
 from .motherless import MotherlessCrawler
 from .nekohouse import NekohouseCrawler
 from .nhentai import NHentaiCrawler
@@ -48,6 +53,7 @@ from .onedrive import OneDriveCrawler
 from .pimpandhost import PimpAndHostCrawler
 from .pixeldrain import PixelDrainCrawler
 from .pixhost import PixHostCrawler
+from .pkmncards import PkmncardsCrawler
 from .pmvhaven import PMVHavenCrawler
 from .pornpics import PornPicsCrawler
 from .postimg import PostImgCrawler

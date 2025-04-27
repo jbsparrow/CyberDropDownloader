@@ -732,20 +732,6 @@ files = [
 ]
 
 [[package]]
-name = "filedate"
-version = "3.0"
-description = ""
-optional = false
-python-versions = ">=3.4"
-groups = ["main"]
-files = [
-    {file = "filedate-3.0-py3-none-any.whl", hash = "sha256:10af3be124bc17c041a4fb0381f7ab6761384be8f455e785936c9a8cf614dedb"},
-]
-
-[package.dependencies]
-python-dateutil = "*"
-
-[[package]]
 name = "filelock"
 version = "3.18.0"
 description = "A platform independent file lock."
@@ -2675,4 +2661,4 @@ propcache = ">=0.2.0"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4"
-content-hash = "9c656f1b51a3b5d438450245fc66a62151c013a48a936eb35485f776e16b9cfd"
+content-hash = "a47a76bece39df8b7fbf7c9fc53421daee7155ba89b2aec16a6ce3fe6495b339"

@@ -26,6 +26,10 @@ class JDownloaderAuth(AliasModel):
     device: str = Field("", validation_alias="jdownloader_device")
 
 
+class KemonoAuth(AliasModel):
+    session: str = ""
+
+
 class RedditAuth(AliasModel):
     personal_use_script: str = Field("", validation_alias="reddit_personal_use_script")
     secret: str = Field("", validation_alias="reddit_secret")
@@ -48,6 +52,7 @@ class AuthSettings(AliasModel):
     gofile: GoFileAuth = Field(validation_alias="GoFile", default=GoFileAuth())  # type: ignore
     imgur: ImgurAuth = Field(validation_alias="Imgur", default=ImgurAuth())  # type: ignore
     jdownloader: JDownloaderAuth = Field(validation_alias="JDownloader", default=JDownloaderAuth())  # type: ignore
+    kemono: KemonoAuth = Field(validation_alias="Kemono", default=KemonoAuth())  # type: ignore
     meganz: MegaNzAuth = Field(validation_alias="MegaNz", default=MegaNzAuth())  # type: ignore
     pixeldrain: PixeldrainAuth = Field(validation_alias="PixelDrain", default=PixeldrainAuth())  # type: ignore
     realdebrid: RealDebridAuth = Field(validation_alias="RealDebrid", default=RealDebridAuth())  # type: ignore
