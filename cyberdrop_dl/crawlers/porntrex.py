@@ -142,6 +142,15 @@ class PorntrexCrawler(Crawler):
         if "models" in scrape_item.url.parts:
             await self.proccess_additional_pages(scrape_item, last_page, block_id="list_albums_common_albums_list")
 
+        elif "members" in scrape_item.url.parts:
+            albums_url = scrape_item.url / "albums"
+            async with self.request_limiter:
+                soup: BeautifulSoup = await self.client.get_soup(self.domain, albums_url)
+
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.ALBUMS):
+                new_scrape_item.add_to_parent_title("albums")
+                self.manager.task_group.create_task(self.run(new_scrape_item))
+
     async def proccess_additional_pages(self, scrape_item: ScrapeItem, last_page: int, **kwargs: str) -> None:
         block_id: str = "list_videos_common_videos_list_norm"
         from_param_name: str = "from"
