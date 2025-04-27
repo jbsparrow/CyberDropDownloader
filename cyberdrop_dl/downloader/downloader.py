@@ -38,7 +38,7 @@ if sys.platform == "win32":
 
 elif sys.platform == "darwin":
     # SetFile is non standard in macOS. Only users that have xcode installed will have SetFile
-    MAC_OS_SET_FILE = shutil.which("SetFile") or None
+    MAC_OS_SET_FILE = shutil.which("SetFile")
 
 
 if TYPE_CHECKING:
@@ -256,23 +256,22 @@ class Downloader:
                     # Windows dates are 64bits, split into 2 32bits unsigned ints (dwHighDateTime , dwLowDateTime)
                     # XOR to get the date as bytes, then shift to get the first 32 bits (dwHighDateTime)
                     ctime = wintypes.FILETIME(timestamp & 0xFFFFFFFF, timestamp >> 32)
-                    access_mode = win32con.GENERIC_WRITE
-                    sharing_mode = win32con.FILE_SHARE_READ | win32con.FILE_SHARE_WRITE | win32con.FILE_SHARE_DELETE
+                    access_mode = 256  # FILE_WRITE_ATTRIBUTES
+                    sharing_mode = 0  # Exclusive access
                     security_mode = None  # Use default security attributes
                     creation_disposition = win32con.OPEN_EXISTING
-                    flags = (
-                        win32con.FILE_ATTRIBUTE_NORMAL,
-                        win32con.FILE_FLAG_BACKUP_SEMANTICS,  # (allows folder access)
-                    )
-                    temp_file = None
+
+                    # FILE_FLAG_BACKUP_SEMANTICS allows access to directories
+                    flags = win32con.FILE_ATTRIBUTE_NORMAL | win32con.FILE_FLAG_BACKUP_SEMANTICS
+                    template_file = None
 
                     params = (
                         access_mode,
                         sharing_mode,
                         security_mode,
                         creation_disposition,
-                        flags[0] | flags[1],
-                        temp_file,
+                        flags,
+                        template_file,
                     )
 
                     handle = windll.kernel32.CreateFileW(complete_file, *params)
