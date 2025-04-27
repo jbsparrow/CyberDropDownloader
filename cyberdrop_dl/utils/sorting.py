@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import itertools
 from fractions import Fraction
@@ -17,6 +18,7 @@ from cyberdrop_dl.utils.logger import log_with_color
 from cyberdrop_dl.utils.utilities import purge_dir_tree
 
 if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
     from datetime import datetime
 
     from cyberdrop_dl.managers.manager import Manager
@@ -40,9 +42,16 @@ class Sorter:
         self.video_format: str | None = settings.sorted_video
         self.other_format: str | None = settings.sorted_other
 
-    def _get_files(self, directory: Path) -> list[Path]:
+    async def _get_files(self, directory: Path) -> AsyncGenerator[Path]:
         """Finds all files in a directory and returns them in a list."""
-        return [file.resolve() for file in directory.rglob("*") if file.is_file()]
+
+        def resolve_if_file(path: Path) -> Path | None:
+            if path.is_file():
+                return path.resolve()
+
+        for file in directory.rglob("*"):
+            if file := await asyncio.to_thread(resolve_if_file, file):
+                yield file
 
     def _move_file(self, old_path: Path, new_path: Path) -> bool:
         """Moves a file to a destination folder."""
@@ -74,19 +83,20 @@ class Sorter:
 
     async def run(self) -> None:
         """Sorts the files in the download directory into their respective folders."""
-        if not self.download_folder.is_dir():
+        if not asyncio.to_thread(self.download_folder.is_dir):
             log_with_color(f"Download directory ({self.download_folder}) does not exist", "red", 40)
             return
 
         log_with_color("\nSorting downloads, please wait", "cyan", 20)
-        self.sorted_folder.mkdir(parents=True, exist_ok=True)
+        await asyncio.to_thread(self.sorted_folder.mkdir, parents=True, exist_ok=True)
 
         files_to_sort: dict[str, list[Path]] = {}
 
         with self.manager.live_manager.get_sort_live(stop=True):
-            subfolders = [f for f in self.download_folder.iterdir() if f.is_dir()]
-            for folder in subfolders:
-                files_to_sort[folder.name] = self._get_files(folder)
+            for subfolder in self.download_folder.iterdir():
+                if not await asyncio.to_thread(subfolder.is_dir):
+                    continue
+                files_to_sort[subfolder.name] = [file async for file in self._get_files(subfolder)]
             await self._sort_files(files_to_sort)
             log_with_color("DONE!", "green", 20)
 

@@ -134,13 +134,14 @@ class ThisVidCrawler(Crawler):
 
 
 def get_video_info(flashvars: str) -> Video:
-    if (match_id := VIDEO_INFO_PATTTERN.search(flashvars)) and (
-        match_res := VIDEO_RESOLUTION_PATTERN.search(flashvars)
-    ):
-        id, license_code, url = match_id.groups()
+    if match_id := VIDEO_INFO_PATTTERN.search(flashvars):
+        video_id, license_code, url = match_id.groups()
         real_url = kvs_get_real_url(url, license_code)
-        resolution = match_res.group(1)
-        return Video(id, real_url, resolution)
+        if match_res := VIDEO_RESOLUTION_PATTERN.search(flashvars):
+            resolution = match_res.group(1)
+        else:
+            resolution = "Unknown"
+        return Video(video_id, real_url, resolution)
     raise ScrapeError(404)
 
 

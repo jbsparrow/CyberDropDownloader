@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import re
 from dataclasses import Field
 from datetime import date, datetime
@@ -51,6 +52,8 @@ class ScrapeMapper:
     def start_scrapers(self) -> None:
         """Starts all scrapers."""
         self.existing_crawlers = get_crawlers(self.manager)
+        if not self.manager.config_manager.global_settings_data.general.enable_generic_crawler:
+            _ = self.existing_crawlers.pop(".")
 
     def start_jdownloader(self) -> None:
         """Starts JDownloader."""
@@ -72,6 +75,7 @@ class ScrapeMapper:
         """Starts the orchestra."""
         self.manager.scrape_mapper = self
         self.manager.client_manager.load_cookie_files()
+        self.manager.client_manager.scraper_session.startup()
         self.start_scrapers()
         await self.manager.db_manager.history_table.update_previously_unsupported(self.existing_crawlers)
         self.start_jdownloader()
@@ -111,6 +115,10 @@ class ScrapeMapper:
     async def parse_input_file_groups(self) -> AsyncGenerator[tuple[str, list[URL]]]:
         """Split URLs from input file by their groups."""
         input_file = self.manager.path_manager.input_file
+        if not await asyncio.to_thread(input_file.is_file):
+            yield ("", [])
+            return
+
         block_quote = False
         current_group_name = ""
         async with aiofiles.open(input_file, encoding="utf8") as f:
@@ -133,10 +141,6 @@ class ScrapeMapper:
 
     async def load_links(self) -> AsyncGenerator[ScrapeItem]:
         """Loads links from args / input file."""
-        input_file = self.manager.path_manager.input_file
-        # we need to touch the file just in case, purge_tree deletes it
-        if not input_file.is_file():
-            input_file.touch(exist_ok=True)
 
         if not self.manager.parsed_args.cli_only_args.links:
             self.using_input_file = True
@@ -189,17 +193,18 @@ class ScrapeMapper:
         """Maps URLs to their respective handlers."""
         scrape_item.url = remove_trailing_slash(scrape_item.url)
         supported_domain = [key for key in self.existing_crawlers if key in scrape_item.url.host]  # type: ignore
+        is_generic = supported_domain == ["."]
         jdownloader_whitelisted = True
         if self.jdownloader_whitelist:
             jdownloader_whitelisted = any(domain in scrape_item.url.host for domain in self.jdownloader_whitelist)  # type: ignore
 
-        if supported_domain:
+        if supported_domain and not is_generic:
             # get most restrictive domain if multiple domain matches
             supported_domain = max(supported_domain, key=len)
-            scraper = self.existing_crawlers[supported_domain]
-            if not scraper.ready:
-                await scraper.startup()
-            self.manager.task_group.create_task(scraper.run(scrape_item))
+            generic_crawler = self.existing_crawlers[supported_domain]
+            if not generic_crawler.ready:
+                await generic_crawler.startup()
+            self.manager.task_group.create_task(generic_crawler.run(scrape_item))
             return
 
         if self.manager.real_debrid_manager.enabled and self.manager.real_debrid_manager.is_supported(
@@ -243,6 +248,13 @@ class ScrapeMapper:
                     scrape_item.parents[0] if scrape_item.parents else None,
                 )
             self.manager.progress_manager.scrape_stats_progress.add_unsupported(sent_to_jdownloader=success)
+            return
+
+        if is_generic:
+            generic_crawler = self.existing_crawlers["."]
+            if not generic_crawler.ready:
+                await generic_crawler.startup()
+            self.manager.task_group.create_task(generic_crawler.run(scrape_item))
             return
 
         log(f"Unsupported URL: {scrape_item.url}", 30)

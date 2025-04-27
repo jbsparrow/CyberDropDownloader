@@ -7,7 +7,7 @@ import itertools
 import time
 from functools import partial, wraps
 from http import HTTPStatus
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
 import aiofiles
 import aiohttp
@@ -16,12 +16,12 @@ from dateutil import parser
 from videoprops import get_audio_properties, get_video_properties
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import DownloadError, InvalidContentTypeError, SlowDownloadError
+from cyberdrop_dl.clients.errors import DDOSGuardError, DownloadError, InvalidContentTypeError, SlowDownloadError
 from cyberdrop_dl.utils.constants import FILE_FORMATS
 from cyberdrop_dl.utils.logger import log, log_debug
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Coroutine
+    from collections.abc import Callable, Coroutine, Generator
     from pathlib import Path
     from typing import Any
 
@@ -32,16 +32,21 @@ if TYPE_CHECKING:
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
 
+P = ParamSpec("P")
+R = TypeVar("R")
+
 CONTENT_TYPES_OVERRIDES = {"text/vnd.trolltech.linguist": "video/MP2T"}
 
 
-def limiter(func: Callable) -> Any:
+def limiter(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, Coroutine[None, None, R]]:
     """Wrapper handles limits for download session."""
 
     @wraps(func)
-    async def wrapper(self: DownloadClient, *args, **kwargs) -> Any:
-        domain_limiter = await self.client_manager.get_rate_limiter(args[0])
-        await asyncio.sleep(await self.client_manager.get_downloader_spacer(args[0]))
+    async def wrapper(*args, **kwargs) -> R:
+        self: DownloadClient = args[0]
+        domain: str = args[1]
+        domain_limiter = await self.client_manager.get_rate_limiter(domain)
+        await asyncio.sleep(await self.client_manager.get_downloader_spacer(domain))
         await self._global_limiter.acquire()
         await domain_limiter.acquire()
 
@@ -53,7 +58,7 @@ def limiter(func: Callable) -> Any:
             trace_configs=self.trace_configs,
         ) as client:
             kwargs["client_session"] = client
-            return await func(self, *args, **kwargs)
+            return await func(*args, **kwargs)
 
     return wrapper
 
@@ -179,13 +184,30 @@ class DownloadClient:
         await asyncio.sleep(self.manager.config_manager.global_settings_data.rate_limiting_options.total_delay)
 
         download_url = media_item.debrid_link or media_item.url
-        await self.manager.states.RUNNING.wait()
-        async with client_session.get(
-            download_url,
-            headers=download_headers,
-            ssl=self.client_manager.ssl_context,
-            proxy=self.client_manager.proxy,
-        ) as resp:
+        gen: Callable[..., URL] | list[URL] | None = media_item.fallbacks
+        fallback_urls = fallback_call = None
+        if gen is not None:
+            if isinstance(gen, list):
+                fallback_urls: list[URL] | None = gen
+            else:
+                fallback_call: Callable[..., URL] | None = gen
+
+        def gen_fallback() -> Generator[URL | None, aiohttp.ClientResponse, None]:
+            response = yield
+            if fallback_urls is not None:
+                yield from fallback_urls
+
+            elif fallback_call is not None:
+                for retry in itertools.count(1):
+                    if not response:
+                        break
+                    url = fallback_call(response, retry)
+                    if not url:
+                        break
+                    response = yield url
+
+        async def process_response(resp: aiohttp.ClientResponse):
+            nonlocal resume_point
             if resp.status == HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE:
                 media_item.partial_file.unlink()
 
@@ -208,8 +230,8 @@ class DownloadClient:
 
                     return False
 
-            if resp.status != HTTPStatus.PARTIAL_CONTENT and media_item.partial_file.is_file():
-                media_item.partial_file.unlink()
+            if resp.status != HTTPStatus.PARTIAL_CONTENT:
+                await asyncio.to_thread(media_item.partial_file.unlink, missing_ok=True)
 
             if not media_item.datetime and (last_modified := get_last_modified(resp.headers)):
                 msg = f"Unable to parse upload date for {media_item.url}, using `Last-Modified` header as file datetime"
@@ -232,6 +254,39 @@ class DownloadClient:
             await save_content(resp.content)
             return True
 
+        fallback_url_generator = gen_fallback()
+        next(fallback_url_generator)  # Prime the generator, waiting for response
+        await self.manager.states.RUNNING.wait()
+        while True:
+            resp = None
+            try:
+                async with client_session.get(
+                    download_url,
+                    headers=download_headers,
+                    ssl=self.client_manager.ssl_context,
+                    proxy=self.client_manager.proxy,
+                ) as resp:
+                    return await process_response(resp)
+            except (DownloadError, DDOSGuardError):
+                if resp is None:
+                    raise
+                try:
+                    download_url = fallback_url_generator.send(resp)
+                except StopIteration:
+                    pass
+                else:
+                    if not download_url:
+                        raise
+                    if media_item.debrid_link and media_item.debrid_link == download_url:
+                        msg = f" with debrid URL {download_url} failed, retrying with fallback URL: "
+                    elif media_item.url == download_url:
+                        msg = " failed, retrying with fallback URL: "
+                    else:
+                        msg = f" with fallback URL {download_url} failed, retrying with new fallback URL: "
+                    log(f"Download of {media_item.url}{msg}{download_url}", 40)
+                    continue
+                raise
+
     async def _append_content(
         self,
         media_item: MediaItem,
@@ -243,9 +298,12 @@ class DownloadClient:
         check_free_space = partial(self.manager.storage_manager.check_free_space, media_item)
         await check_free_space()
 
-        media_item.partial_file.parent.mkdir(parents=True, exist_ok=True)
-        if not media_item.partial_file.is_file():
-            media_item.partial_file.touch()
+        def prepare():
+            media_item.partial_file.parent.mkdir(parents=True, exist_ok=True)
+            if not media_item.partial_file.is_file():
+                media_item.partial_file.touch()
+
+        await asyncio.to_thread(prepare)
 
         last_slow_speed_read = None
 
@@ -326,7 +384,7 @@ class DownloadClient:
     async def add_file_size(self, domain: str, media_item: MediaItem) -> None:
         if not media_item.complete_file:
             media_item.complete_file = self.get_file_location(media_item)
-        if media_item.complete_file.is_file():
+        if await asyncio.to_thread(media_item.complete_file.is_file):
             await self.manager.db_manager.history_table.add_filesize(domain, media_item)
 
     async def handle_media_item_completion(self, media_item: MediaItem, downloaded: bool = False) -> None:
