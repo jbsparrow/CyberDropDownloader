@@ -14,6 +14,8 @@ from cyberdrop_dl.clients.errors import MaxChildrenError
 from cyberdrop_dl.utils.utilities import sanitize_folder
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from rich.progress import TaskID
 
     from cyberdrop_dl.managers.manager import Manager
@@ -49,6 +51,7 @@ class MediaItem:
     duration: float | None = field(default=None, hash=False, compare=False)
     ext: str = ""
     is_segment: bool = False
+    fallbacks: Callable[..., URL] | list[URL] | None = field(default=None, hash=False, compare=False)
 
     # exclude from __init__
     parent_media_item: MediaItem | None = field(init=False, default=None, hash=False, compare=False)

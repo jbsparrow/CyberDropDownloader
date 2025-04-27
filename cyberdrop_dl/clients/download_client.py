@@ -16,12 +16,12 @@ from dateutil import parser
 from videoprops import get_audio_properties, get_video_properties
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import DownloadError, InvalidContentTypeError, SlowDownloadError
+from cyberdrop_dl.clients.errors import DDOSGuardError, DownloadError, InvalidContentTypeError, SlowDownloadError
 from cyberdrop_dl.utils.constants import FILE_FORMATS
 from cyberdrop_dl.utils.logger import log, log_debug
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Coroutine
+    from collections.abc import Callable, Coroutine, Generator
     from pathlib import Path
     from typing import Any
 
@@ -184,13 +184,30 @@ class DownloadClient:
         await asyncio.sleep(self.manager.config_manager.global_settings_data.rate_limiting_options.total_delay)
 
         download_url = media_item.debrid_link or media_item.url
-        await self.manager.states.RUNNING.wait()
-        async with client_session.get(
-            download_url,
-            headers=download_headers,
-            ssl=self.client_manager.ssl_context,
-            proxy=self.client_manager.proxy,
-        ) as resp:
+        gen: Callable[..., URL] | list[URL] | None = media_item.fallbacks
+        fallback_urls = fallback_call = None
+        if gen is not None:
+            if isinstance(gen, list):
+                fallback_urls: list[URL] | None = gen
+            else:
+                fallback_call: Callable[..., URL] | None = gen
+
+        def gen_fallback() -> Generator[URL | None, aiohttp.ClientResponse, None]:
+            response = yield
+            if fallback_urls is not None:
+                yield from fallback_urls
+
+            elif fallback_call is not None:
+                for retry in itertools.count(1):
+                    if not response:
+                        break
+                    url = fallback_call(response, retry)
+                    if not url:
+                        break
+                    response = yield url
+
+        async def process_response(resp: aiohttp.ClientResponse):
+            nonlocal resume_point
             if resp.status == HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE:
                 media_item.partial_file.unlink()
 
@@ -236,6 +253,39 @@ class DownloadClient:
 
             await save_content(resp.content)
             return True
+
+        fallback_url_generator = gen_fallback()
+        next(fallback_url_generator)  # Prime the generator, waiting for response
+        await self.manager.states.RUNNING.wait()
+        while True:
+            resp = None
+            try:
+                async with client_session.get(
+                    download_url,
+                    headers=download_headers,
+                    ssl=self.client_manager.ssl_context,
+                    proxy=self.client_manager.proxy,
+                ) as resp:
+                    return await process_response(resp)
+            except (DownloadError, DDOSGuardError):
+                if resp is None:
+                    raise
+                try:
+                    download_url = fallback_url_generator.send(resp)
+                except StopIteration:
+                    pass
+                else:
+                    if not download_url:
+                        raise
+                    if media_item.debrid_link and media_item.debrid_link == download_url:
+                        msg = f" with debrid URL {download_url} failed, retrying with fallback URL: "
+                    elif media_item.url == download_url:
+                        msg = " failed, retrying with fallback URL: "
+                    else:
+                        msg = f" with fallback URL {download_url} failed, retrying with new fallback URL: "
+                    log(f"Download of {media_item.url}{msg}{download_url}", 40)
+                    continue
+                raise
 
     async def _append_content(
         self,
