@@ -32,9 +32,9 @@ WIN_EPOCH_OFFSET = 116444736e9
 MAC_OS_SET_FILE = None
 
 if sys.platform == "win32":
-    from ctypes import byref, win32con, windll, wintypes
+    from ctypes import byref, windll, wintypes
 
-    # Offset for file datetimes.
+    import win32con
 
 elif sys.platform == "darwin":
     # SetFile is non standard in macOS. Only users that have xcode installed will have SetFile
@@ -254,7 +254,7 @@ class Downloader:
                     timestamp = int(nano_ts + WIN_EPOCH_OFFSET)
 
                     # Windows dates are 64bits, split into 2 32bits unsigned ints (dwHighDateTime , dwLowDateTime)
-                    # XOR to get the date as bytes, then shift to get the last 32 bits (dwLowDateTime)
+                    # XOR to get the date as bytes, then shift to get the first 32 bits (dwHighDateTime)
                     ctime = wintypes.FILETIME(timestamp & 0xFFFFFFFF, timestamp >> 32)
                     access_mode = win32con.GENERIC_WRITE
                     sharing_mode = win32con.FILE_SHARE_READ | win32con.FILE_SHARE_WRITE | win32con.FILE_SHARE_DELETE
@@ -278,7 +278,7 @@ class Downloader:
                     handle = windll.kernel32.CreateFileW(complete_file, *params)
                     windll.kernel32.SetFileTime(
                         handle,
-                        byref(ctime),  # Creation time, byref to make it relative to the current dwHighDateTime
+                        byref(ctime),  # Creation time
                         None,  # Access time
                         None,  # Modification time
                     )
