@@ -31,7 +31,6 @@ VIDEOS_SELECTOR = "a.tumbpu"
 
 # Regex
 VIDEO_RESOLUTION_PATTERN = re.compile(r"video_url_text:\s*'([^']+)'")
-PICTURE_URL_PATTERN = re.compile(r"albums/[^/]+/image\d+")
 VIDEO_INFO_PATTTERN = re.compile(
     r"video_id:\s*'(?P<video_id>[^']+)'[^}]*?"
     r"license_code:\s*'(?P<license_code>[^']+)'[^}]*?"
@@ -62,14 +61,14 @@ class ThisVidCrawler(Crawler):
         """Determines where to send the scrape item based on the url."""
         if any(p in scrape_item.url.parts for p in ("categories", "tags")) or scrape_item.url.query.get("q"):
             return await self.search(scrape_item)
-        elif "members" in scrape_item.url.parts:
+        if "members" in scrape_item.url.parts:
             return await self.profile(scrape_item)
-        elif "videos" in scrape_item.url.parts:
+        if "videos" in scrape_item.url.parts:
             return await self.video(scrape_item)
-        elif "albums" in scrape_item.url.parts and not PICTURE_URL_PATTERN.search(str(scrape_item.url)):
+        if "albums" in scrape_item.url.parts:
+            if len(scrape_item.url.parts) >= 3:
+                return await self.picture(scrape_item)
             return await self.album(scrape_item)
-        elif PICTURE_URL_PATTERN.search(str(scrape_item.url)):
-            return await self.picture(scrape_item)
         raise ValueError
 
     @error_handling_wrapper
