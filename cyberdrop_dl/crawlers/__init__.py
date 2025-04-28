@@ -56,6 +56,7 @@ from .pixhost import PixHostCrawler
 from .pkmncards import PkmncardsCrawler
 from .pmvhaven import PMVHavenCrawler
 from .pornpics import PornPicsCrawler
+from .porntrex import PorntrexCrawler
 from .postimg import PostImgCrawler
 from .realbooru import RealBooruCrawler
 from .reddit import RedditCrawler
