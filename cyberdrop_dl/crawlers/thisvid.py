@@ -148,9 +148,12 @@ class ThisVidCrawler(Crawler):
 
     @error_handling_wrapper
     async def picture(self, scrape_item: ScrapeItem) -> None:
+        if await self.check_complete_from_referer(scrape_item):
+            return
+
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
-        url: URL = URL(soup.select_one(PICTURE_SELECTOR)["src"])  # type: ignore
+        url: URL = self.parse_url(soup.select_one(PICTURE_SELECTOR)["src"])  # type: ignore
         filename, ext = self.get_filename_and_ext(url.name)
         await self.handle_file(url, scrape_item, filename, ext)
 
