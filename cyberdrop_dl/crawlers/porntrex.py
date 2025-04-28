@@ -40,7 +40,17 @@ class Selectors:
 
 
 VIDEO_INFO_FIELDS_PATTERN = re.compile(r"(\w+):\s*'([^']*)'")
-COLLECTION_PARTS = "tags", "categories", "models", "playlists", "search", "members"
+COLLECTION_PARTS = (
+    "tags",
+    "categories",
+    "models",
+    "playlists",
+    "search",
+    "members",
+    "latest-updates",
+    "top-rated",
+    "most-popular",
+)
 TITLE_TRASH = "Free HD ", "Most Relevant ", "New ", "Videos", "Porn", "for:", "New Videos", "Tagged with"
 _SELECTORS = Selectors()
 
@@ -59,7 +69,7 @@ class PorntrexCrawler(Crawler):
         if scrape_item.url.name:  # The ending slash is necessary or we get a 404 error
             scrape_item.url = scrape_item.url / ""
 
-        if len(scrape_item.url.parts) > 3:
+        if len(scrape_item.url.parts) >= 3:
             if "video" in scrape_item.url.parts:
                 return await self.video(scrape_item)
             if any(p in scrape_item.url.parts for p in COLLECTION_PARTS):
