@@ -9,7 +9,7 @@ from collections import defaultdict
 from datetime import datetime  # noqa: TC003
 from typing import TYPE_CHECKING, Any, NamedTuple
 
-from pydantic import AliasChoices, AliasPath, Field
+from pydantic import AliasChoices, Field
 from typing_extensions import TypedDict  # Compatible with python 3.11
 from yarl import URL
 
@@ -125,7 +125,6 @@ class UserPost(Post):
     service: str
     user_id: str = Field(validation_alias="user")
     title: str
-    revisions: list[UserPost] = Field([], validation_alias=AliasPath("props", "revisions"))  # Not used
 
     @property
     def user(self) -> User:
@@ -303,8 +302,6 @@ class KemonoCrawler(Crawler):
         async with self.request_limiter:
             json_resp: dict[str, dict] = await self.client.get_json(self.domain, api_url)
 
-        # Not used
-        # revisions = json_resp["props"].get("revisions", [])
         post = UserPost(**json_resp["post"])
         await self._handle_user_post(scrape_item, post)
 
