@@ -125,6 +125,8 @@ class PorntrexCrawler(Crawler):
             title: str = soup.select_one(_SELECTORS.MODEL_NAME).get_text(strip=True).title()  # type: ignore
         elif "members" in scrape_item.url.parts:
             title: str = soup.select_one(_SELECTORS.USER_NAME).get_text(strip=True)  # type: ignore
+        elif "latest-updates" in scrape_item.url.parts:
+            title: str = "Latest Updates"
         else:
             title = soup.select_one(_SELECTORS.TITLE).get_text(strip=True)  # type: ignore
 
