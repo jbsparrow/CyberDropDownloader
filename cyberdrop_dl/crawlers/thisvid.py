@@ -20,6 +20,9 @@ if TYPE_CHECKING:
 UNAUTHORIZED_SELECTOR = "div.video-holder:contains('This video is a private video')"
 JS_SELECTOR = "div.video-holder > script:contains('var flashvars')"
 USER_NAME_SELECTOR = "div.headline > h2"
+ALBUM_NAME_SELECTOR = "div.headline > h1"
+ALBUM_PICTURES_SELECTOR = "div.album-list > a"
+PICTURE_SELECTOR = "div.photo-holder > img"
 PUBLIC_VIDEOS_SELECTOR = "div#list_videos_public_videos_items"
 PRIVATE_VIDEOS_SELECTOR = "div#list_videos_private_videos_items"
 FAVOURITE_VIDEOS_SELECTOR = "div#list_videos_favourite_videos_items"
@@ -28,6 +31,7 @@ VIDEOS_SELECTOR = "a.tumbpu"
 
 # Regex
 VIDEO_RESOLUTION_PATTERN = re.compile(r"video_url_text:\s*'([^']+)'")
+PICTURE_URL_PATTERN = re.compile(r"albums/[^/]+/image\d+")
 VIDEO_INFO_PATTTERN = re.compile(
     r"video_id:\s*'(?P<video_id>[^']+)'[^}]*?"
     r"license_code:\s*'(?P<license_code>[^']+)'[^}]*?"
@@ -62,6 +66,10 @@ class ThisVidCrawler(Crawler):
             return await self.profile(scrape_item)
         elif "videos" in scrape_item.url.parts:
             return await self.video(scrape_item)
+        elif "albums" in scrape_item.url.parts and not PICTURE_URL_PATTERN.search(str(scrape_item.url)):
+            return await self.album(scrape_item)
+        elif PICTURE_URL_PATTERN.search(str(scrape_item.url)):
+            return await self.picture(scrape_item)
         raise ValueError
 
     @error_handling_wrapper
@@ -128,6 +136,24 @@ class ThisVidCrawler(Crawler):
         await self.handle_file(
             canonical_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=video.url
         )
+
+    @error_handling_wrapper
+    async def album(self, scrape_item: ScrapeItem) -> None:
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+        title: str = soup.select_one(ALBUM_NAME_SELECTOR).text.strip()  # type: ignore
+        title = self.create_title(f"{title} [album]")
+        scrape_item.setup_as_album(title)
+        for _, new_scrape_item in self.iter_children(scrape_item, soup, ALBUM_PICTURES_SELECTOR):
+            self.manager.task_group.create_task(self.run(new_scrape_item))
+
+    @error_handling_wrapper
+    async def picture(self, scrape_item: ScrapeItem) -> None:
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+        url: URL = URL(soup.select_one(PICTURE_SELECTOR)["src"])  # type: ignore
+        filename, ext = self.get_filename_and_ext(url.name)
+        await self.handle_file(url, scrape_item, filename, ext)
 
 
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
