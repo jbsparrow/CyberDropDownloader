@@ -8,7 +8,7 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.utilities import error_handling_wrapper
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
@@ -28,6 +28,7 @@ PRIVATE_VIDEOS_SELECTOR = "div#list_videos_private_videos_items"
 FAVOURITE_VIDEOS_SELECTOR = "div#list_videos_favourite_videos_items"
 COMMON_VIDEOS_TITLE_SELECTOR = "div#list_videos_common_videos_list"
 VIDEOS_SELECTOR = "a.tumbpu"
+ALBUM_ID_SELECTOR = "script:contains('album_id')"
 
 # Regex
 VIDEO_RESOLUTION_PATTERN = re.compile(r"video_url_text:\s*'([^']+)'")
@@ -66,7 +67,7 @@ class ThisVidCrawler(Crawler):
         if "videos" in scrape_item.url.parts:
             return await self.video(scrape_item)
         if "albums" in scrape_item.url.parts:
-            if len(scrape_item.url.parts) >= 3:
+            if len(scrape_item.url.parts) > 3:
                 return await self.picture(scrape_item)
             return await self.album(scrape_item)
         raise ValueError
@@ -140,10 +141,14 @@ class ThisVidCrawler(Crawler):
     async def album(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
-        title: str = soup.select_one(ALBUM_NAME_SELECTOR).text.strip()  # type: ignore
-        title = self.create_title(f"{title} [album]")
-        scrape_item.setup_as_album(title)
-        for _, new_scrape_item in self.iter_children(scrape_item, soup, ALBUM_PICTURES_SELECTOR):
+
+        js_text: str = soup.select_one(ALBUM_ID_SELECTOR).text  # type: ignore
+        album_id: str = get_text_between(js_text, "params['album_id'] =", ";").strip()
+        results = await self.get_album_results(album_id)
+        title: str = soup.select_one(ALBUM_NAME_SELECTOR).get_text(strip=True)  # type: ignore
+        title = self.create_title(f"{title} [album]", album_id)
+        scrape_item.setup_as_album(title, album_id=album_id)
+        for _, new_scrape_item in self.iter_children(scrape_item, soup, ALBUM_PICTURES_SELECTOR, results=results):
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
