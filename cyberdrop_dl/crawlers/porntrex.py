@@ -40,17 +40,7 @@ class Selectors:
 
 
 VIDEO_INFO_FIELDS_PATTERN = re.compile(r"(\w+):\s*'([^']*)'")
-COLLECTION_PARTS = (
-    "tags",
-    "categories",
-    "models",
-    "playlists",
-    "search",
-    "members",
-    "latest-updates",
-    "top-rated",
-    "most-popular",
-)
+COLLECTION_PARTS = ("tags", "categories", "models", "playlists", "search", "members")
 TITLE_TRASH = "Free HD ", "Most Relevant ", "New ", "Videos", "Porn", "for:", "New Videos", "Tagged with"
 _SELECTORS = Selectors()
 
@@ -94,8 +84,9 @@ class PorntrexCrawler(Crawler):
 
         for _, link in self.iter_tags(soup, _SELECTORS.IMAGES):
             filename, ext = self.get_filename_and_ext(link.name)
+            debrid_link = link / ""  # iter_tags always trims URLs
             canonical_url = self.primary_base_domain / "albums" / album_id / filename
-            await self.handle_file(canonical_url, scrape_item, filename, ext, debrid_link=force_ending_slash(link))
+            await self.handle_file(canonical_url, scrape_item, filename, ext, debrid_link=debrid_link)
             scrape_item.add_children()
 
     @error_handling_wrapper
@@ -203,12 +194,6 @@ class PorntrexCrawler(Crawler):
 
 
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-
-def force_ending_slash(url: URL) -> URL:
-    if url.name[-1] != "/":
-        return url / ""
-    return url
 
 
 def get_video_info(soup: BeautifulSoup) -> Video:
