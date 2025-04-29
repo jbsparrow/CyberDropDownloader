@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Mixdrop support
 - pkmncards.com support
 - Porntrex
-- Archibate support (individual videos only)
+- Archivebate support (individual videos only)
 - Albums support (ThisVid)
 - Parse upload date of files (rule34xxx)
 - Add a config option to disable the generic crawler:
