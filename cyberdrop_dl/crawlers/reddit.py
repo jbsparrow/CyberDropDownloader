@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar
 
 import aiohttp
@@ -24,17 +23,6 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
-
-
-@dataclass
-class Post:
-    title: str
-    date: int
-    id: int = None  # type: ignore
-
-    @property
-    def number(self) -> int:
-        return self.id
 
 
 class RedditCrawler(Crawler):
@@ -108,8 +96,6 @@ class RedditCrawler(Crawler):
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem, submission: Submission, reddit: Reddit) -> None:
         """Scrapes posts."""
-        title = submission.title
-        date = int(str(submission.created_utc).split(".")[0])
 
         try:
             link_str: str = submission.media["reddit_video"]["fallback_url"]
@@ -117,9 +103,11 @@ class RedditCrawler(Crawler):
             link_str = submission.url
 
         link = self.parse_url(link_str)
+        date = int(str(submission.created_utc).split(".")[0])
         scrape_item.possible_datetime = date
-        post = Post(title=title, date=date)
-        self.add_separate_post_title(scrape_item, post)  # type: ignore
+        scrape_item.setup_as_post("")
+        post_title = self.create_separate_post_title(submission.title, submission.id, date)
+        scrape_item.add_to_parent_title(post_title)
         await self.process_item(scrape_item, submission, reddit, link)
 
     @error_handling_wrapper
