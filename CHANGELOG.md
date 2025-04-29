@@ -32,17 +32,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Archivebate support (individual videos only)
 - Albums support (ThisVid)
 - Parse upload date of files (rule34xxx)
-- Add a config option to disable the generic crawler:
+- Add a config option to disable the generic crawler: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/global-settings/general#enable_generic_crawler
 - Auto switch primary host if the default host is blocked on the current network (bunkr)
 - Download entire discord server (Kemono)
 - Download favorites (Kemono)
-- `jitter` option to wait a random extra number of seconds in between downloads:
+- `jitter` option to wait a random extra number of seconds in between downloads: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/global-settings/rate-limiting-options#jitter
 
 ### Changed
 
 - Coomer/Kemono caching support has been temporarily removed
 - Cookies are only extracted once per browser
-- Prioritize real debrid and jdownloader over the generic crawler
+- Prioritize Real-Debrid and Jdownloader over the generic crawler
 - Improve DDosGuard detection
 - General performance improvements
 
@@ -52,11 +52,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Filename parsing (bestprettygirls)
-- Images download (erome)
-- Use canonical URL to check previously downloaded files (ashemaletube)
-- Only 1 file being downloaded from chevereto profiles (imagepong, jpg5.su)
-- Playlists and tags support (rule34xyz , rule34vault)
+- Filename parsing (BestPrettyGirls)
+- Images downloads (Erome)
+- Use canonical URL to check previously downloaded files (Ashemaletube)
+- Only 1 file being downloaded from chevereto profiles (Imagepond, JPG5.su)
+- Playlists and tags support (Rule34xyz , Rule34vault)
 - `NoExtensionError` even when `--exclude-files-with-no-extension` was `false` (bunkr)
 - Parsing of filenames with `@` in it (bunkr)
 - Do not crash if a mountpoint is not available (Windows BitLocker)
