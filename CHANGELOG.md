@@ -52,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Individual file downloads (Google Drive)
 - Filename parsing (BestPrettyGirls)
 - Images downloads (Erome)
 - Use canonical URL to check previously downloaded files (Ashemaletube)
