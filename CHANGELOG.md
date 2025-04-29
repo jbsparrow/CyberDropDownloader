@@ -25,16 +25,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [6.10.0] - 2025-05-03
 
 ### Added
+- NoodleMagazine support
+- Mixdrop support
+- pkmncards.com support
+- Porntrex
+- Archibate support (individual videos only)
+- Albums support (ThisVid)
+- Parse upload date of files (rule34xxx)
+- Add a config option to disable the generic crawler:
+- Auto switch primary host if the default host is blocked on the current network (bunkr)
+- Download entire discord server (Kemono)
+- Download favorites (Kemono)
+- `jitter` option to wait a random extra number of seconds in between downloads:
 
 ### Changed
 
-### Deprecated
+- Coomer/Kemono caching support has been temporarily removed
+- Cookies are only extracted once per browser
+- Prioritize real debrid and jdownloader over the generic crawler
+- Improve DDosGuard detection
+- General performance improvements
 
 ### Removed
 
+- Support for img.kiwi (site no longer exists)
+
 ### Fixed
 
-### Security
+- Filename parsing (bestprettygirls)
+- Images download (erome)
+- Use canonical URL to check previously downloaded files (ashemaletube)
+- Only 1 file being downloaded from chevereto profiles (imagepong, jpg5.su)
+- Playlists and tags support (rule34xyz , rule34vault)
+- `NoExtensionError` even when `--exclude-files-with-no-extension` was `false` (bunkr)
+- Parsing of filenames with `@` in it (bunkr)
+- Do not crash if a mountpoint is not available (Windows BitLocker)
+- Handle videos with unknown resolution (ThisVid)
+- Discord channel download (Kemono)
+
 
 ## [6.9.1] - 2025-04-20
 
