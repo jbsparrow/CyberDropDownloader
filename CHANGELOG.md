@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - NoodleMagazine support
+- Files.vc support
 - Mixdrop support
 - pkmncards.com support
 - Porntrex
@@ -45,6 +46,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Prioritize Real-Debrid and Jdownloader over the generic crawler
 - Improve DDosGuard detection
 - General performance improvements
+- Try to set creation time of files in macOS
 
 ### Removed
 
