@@ -44,22 +44,27 @@ class Format(NamedTuple):
 
 
 class CollectionType(Enum):
-    PLAYLIST = "playlist"
     ALBUM = "album"
     MODEL = "model"
+    PLAYLIST = "playlist"
+    SEARCH = "search"
 
 
 MEDIA_SELECTOR_MAP = {
     CollectionType.ALBUM: _SELECTORS.ALBUM_IMAGES_SELECTOR,
-    CollectionType.PLAYLIST: _SELECTORS.PLAYLIST_VIDEOS,
     CollectionType.MODEL: _SELECTORS.PROFILE_VIDEOS,
+    CollectionType.PLAYLIST: _SELECTORS.PLAYLIST_VIDEOS,
+    CollectionType.SEARCH: _SELECTORS.PROFILE_VIDEOS,
 }
 
 TITLE_SELECTOR_MAP = {
     CollectionType.ALBUM: _SELECTORS.ALBUM_TITLE_SELECTOR,
-    CollectionType.PLAYLIST: "h1",
     CollectionType.MODEL: _SELECTORS.USER_NAME,
+    CollectionType.PLAYLIST: "h1",
+    CollectionType.SEARCH: "h1",
 }
+
+TITLE_TRASH = "Shemale Porn Videos - Trending"
 
 
 class AShemaleTubeCrawler(Crawler):
@@ -81,12 +86,20 @@ class AShemaleTubeCrawler(Crawler):
             return await self.video(scrape_item)
         if "playlists" in scrape_item.url.parts:
             return await self.collection(scrape_item, CollectionType.PLAYLIST)
+        if "search" in scrape_item.url.parts:
+            return await self.collection(scrape_item, CollectionType.SEARCH)
         if "pics" in scrape_item.url.parts:
             if len(scrape_item.url.parts) >= 5:
                 return await self.image(scrape_item)
             else:
                 return await self.collection(scrape_item, CollectionType.ALBUM)
+        if "cam" in scrape_item.url.parts:
+            return await self.cam(scrape_item)
         raise ValueError
+
+    @error_handling_wrapper
+    async def cam(self, scrape_item: ScrapeItem) -> None:
+        raise ScrapeError(422)
 
     @error_handling_wrapper
     async def collection(self, scrape_item: ScrapeItem, collection_type: CollectionType) -> None:
@@ -97,6 +110,7 @@ class AShemaleTubeCrawler(Crawler):
                 if not title_elem:
                     raise ScrapeError(401)
                 collection_title = title_elem.get_text(strip=True)  # type: ignore
+                collection_title = collection_title.replace(TITLE_TRASH, "").strip()
                 collection_title = self.create_title(f"{collection_title} [{collection_type.value}]")
                 if collection_type == CollectionType.MODEL:
                     scrape_item.setup_as_profile(collection_title)
