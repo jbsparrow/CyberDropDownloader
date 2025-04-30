@@ -27,6 +27,7 @@ class Selectors:
     VIDEO_PROPS_JS = "script:contains('uploadDate')"
     JS_PLAYER = "script:contains('var player = new VideoPlayer')"
     LOGIN_REQUIRED = "div.loginLinks:contains('To watch this video please')"
+    IMAGE_ITEM_SELECTOR = "div.imgItem"
 
 
 _SELECTORS = Selectors()
@@ -58,6 +59,8 @@ class AShemaleTubeCrawler(Crawler):
             return await self.video(scrape_item)
         if "playlists" in scrape_item.url.parts:
             return await self.playlist(scrape_item)
+        if "pics" in scrape_item.url.parts:
+            return await self.image(scrape_item)
         raise ValueError
 
     @error_handling_wrapper
@@ -71,6 +74,20 @@ class AShemaleTubeCrawler(Crawler):
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.PLAYLIST_VIDEOS):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
+
+    @error_handling_wrapper
+    async def image(self, scrape_item: ScrapeItem) -> None:
+        if await self.check_complete_from_referer(scrape_item.url):
+            return
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, scrape_item.url)
+        img_item = soup.select_one(_SELECTORS.IMAGE_ITEM_SELECTOR)
+        if not img_item:
+            raise ScrapeError(404)
+        image_id: str = img_item["data-image-id"]
+        filename, ext = self.get_filename_and_ext(f"{image_id}.jpg")
+        url: URL = URL(img_item.select_one("img")["src"])
+        await self.handle_file(url, scrape_item, filename, ext)
 
     @error_handling_wrapper
     async def model(self, scrape_item: ScrapeItem) -> None:
