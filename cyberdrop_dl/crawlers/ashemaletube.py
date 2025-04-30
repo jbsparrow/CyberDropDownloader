@@ -93,7 +93,10 @@ class AShemaleTubeCrawler(Crawler):
         collection_title = ""
         async for soup in self.web_pager(scrape_item.url, cffi=True):
             if not collection_title:
-                collection_title = soup.select_one(TITLE_SELECTOR_MAP[collection_type]).get_text(strip=True)  # type: ignore
+                title_elem = soup.select_one(TITLE_SELECTOR_MAP[collection_type])
+                if not title_elem:
+                    raise ScrapeError(401)
+                collection_title = title_elem.get_text(strip=True)  # type: ignore
                 collection_title = self.create_title(f"{collection_title} [{collection_type.value}]")
                 if collection_type == CollectionType.MODEL:
                     scrape_item.setup_as_profile(collection_title)
