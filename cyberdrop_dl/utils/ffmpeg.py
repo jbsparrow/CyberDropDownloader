@@ -118,8 +118,7 @@ class Duration(NamedTuple):
     days: int = 0
     hours: int = 0
     minutes: int = 0
-    seconds: int = 0
-    microseconds: int = 0
+    seconds: float = 0
 
     @staticmethod
     def parse(duration: float | str) -> float:
@@ -131,17 +130,15 @@ class Duration(NamedTuple):
             pass
         days, _, other_parts = duration.partition(" ")
         if days:
-            days = "".join(c for c in days if c.isdigit())
+            days = "".join(char for char in days if char.isdigit())
         else:
             days = "0"
 
         time_parts = other_parts.split(":")
         missing_parts = [0 for _ in range(3 - len(time_parts))]
-        seconds = time_parts.pop(-1)
-        seconds, _, microseconds = seconds.partition(".")
-        time_parts.extend([seconds, microseconds or "0"])
-        all_parts = map(int, (days, *missing_parts, *time_parts))
-        return Duration(*all_parts).as_timedelta().total_seconds()
+        seconds = float(Fraction(time_parts.pop(-1)))
+        int_parts = map(int, (days, *missing_parts, *time_parts))
+        return Duration(*int_parts, seconds=seconds).as_timedelta().total_seconds()
 
     def as_timedelta(self) -> timedelta:
         return timedelta(**self._asdict())
