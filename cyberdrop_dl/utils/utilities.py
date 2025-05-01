@@ -403,7 +403,7 @@ def set_default_app_if_none(file_path: Path) -> bool:
     return False
 
 
-def get_valid_dict(dataclass: Dataclass | type[Dataclass], info: dict[str, Any]) -> dict[str, Any]:
+def get_valid_dict(dataclass: Dataclass | type[Dataclass], info: Mapping[str, Any]) -> dict[str, Any]:
     """Remove all keys that are not fields in the dataclass"""
     return {k: v for k, v in info.items() if k in get_field_names(dataclass)}
 
