@@ -155,7 +155,7 @@ class DownloadClient:
             )
         elif domain == "gofile":
             gofile_cookies = self.client_manager.cookies.filter_cookies(URL("https://gofile.io"))
-            api_key = gofile_cookies.get("accountToken", "")
+            api_key = gofile_cookies.get("accountToken")
             if api_key:
                 download_headers["Authorization"] = f"Bearer {api_key.value}"
         return download_headers
@@ -309,6 +309,7 @@ class DownloadClient:
 
         def check_download_speed():
             nonlocal last_slow_speed_read
+            assert media_item.task_id
             speed = self.manager.progress_manager.file_progress.get_speed(media_item.task_id)
             if speed > self.download_speed_threshold:
                 last_slow_speed_read = None
@@ -498,9 +499,8 @@ class DownloadClient:
         await self.manager.db_manager.history_table.add_download_filename(domain, media_item)
         return proceed, skip
 
-    async def iterate_filename(self, complete_file: Path, media_item: MediaItem) -> tuple[Path, Path | None]:
+    async def iterate_filename(self, complete_file: Path, media_item: MediaItem) -> tuple[Path, Path]:
         """Iterates the filename until it is unique."""
-        partial_file = None
         for iteration in itertools.count(1):
             filename = f"{complete_file.stem} ({iteration}){complete_file.suffix}"
             temp_complete_file = media_item.download_folder / filename
@@ -510,8 +510,8 @@ class DownloadClient:
             ):
                 media_item.filename = filename
                 complete_file = media_item.download_folder / media_item.filename
-                partial_file = complete_file.with_suffix(complete_file.suffix + ".part")
                 break
+        partial_file = complete_file.with_suffix(complete_file.suffix + ".part")
         return complete_file, partial_file
 
     def check_filesize_limits(self, media: MediaItem) -> bool:

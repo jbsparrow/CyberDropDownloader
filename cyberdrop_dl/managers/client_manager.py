@@ -25,6 +25,8 @@ from cyberdrop_dl.utils.logger import log, log_spacer
 from cyberdrop_dl.utils.utilities import get_soup_from_response
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from aiohttp_client_cache import CachedResponse
     from curl_cffi.requests.models import Response as CurlResponse
 
@@ -210,7 +212,7 @@ class ClientManager:
         raise DownloadError(status=status, message=message, origin=origin)
 
     @staticmethod
-    def check_bunkr_maint(headers: dict):
+    def check_bunkr_maint(headers: Mapping[str, Any]) -> None:
         if headers.get("Content-Length") == "322509" and headers.get("Content-Type") == "video/mp4":
             raise DownloadError(status="Bunkr Maintenance", message="Bunkr under maintenance")
 
