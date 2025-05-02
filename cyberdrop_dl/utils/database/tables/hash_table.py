@@ -21,11 +21,11 @@ FileEntry: TypeAlias = tuple[str, str, int]  # folder, filename and date
 
 
 @contextlib.contextmanager
-def log_execute_error(msg: str):
+def log_execute_error(message: str):
     try:
         yield
     except Exception as e:
-        log(f"{msg}: {e!r}", 40)
+        log(f"{message}: {e!r}", 40)
 
 
 class HashTable:
@@ -41,19 +41,19 @@ class HashTable:
         await self.db_conn.execute(create_hash)
         await self.db_conn.commit()
 
-    async def get_file_hash_exists(self, path: Path, hash_type: HashType) -> HashValue | None:
+    async def get_file_hash_if_exists(self, file: Path, hash_type: HashType) -> HashValue | None:
         """Gets the hash from a file if it exists in the database.
 
         :param path: Path to the file to check.
         :param hash_type: The type of hash to retrieve.
         :return: The hash value if a hash for that file exists in the database, otherwise `None`.
         """
+        query = "SELECT hash FROM hash WHERE folder=? AND download_filename=? AND hash_type=? AND hash IS NOT NULL"
+        folder = str(file.parent)
+
         with log_execute_error("Error checking file"):
-            folder = str(path.parent)
-            filename = path.name
             cursor = await self.db_conn.cursor()
-            query = "SELECT hash FROM hash WHERE folder=? AND download_filename=? AND hash_type=? AND hash IS NOT NULL"
-            await cursor.execute(query, (folder, filename, hash_type))
+            await cursor.execute(query, (folder, file.name, hash_type))
             result = await cursor.fetchone()
             if result:
                 return HashValue(result[0])
@@ -110,12 +110,11 @@ class HashTable:
         INSERT INTO hash (hash, hash_type, folder, download_filename)
         VALUES (?, ?, ?, ?)
         ON CONFLICT(download_filename, folder, hash_type) DO UPDATE SET hash = ?"""
+        folder = str(file.parent)
 
         with log_execute_error("Error inserting/updating record"):
-            download_filename = str(file.name)
-            folder = str(file.parent)
             cursor = await self.db_conn.cursor()
-            await cursor.execute(query, (hash_value, hash_type, folder, download_filename, hash_value))
+            await cursor.execute(query, (hash_value, hash_type, folder, file.name, hash_value))
             await self.db_conn.commit()
             return True
         return False
@@ -133,21 +132,20 @@ class HashTable:
         VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(download_filename, folder) DO UPDATE
         SET original_filename = ?, file_size = ?, referer = ?, date = ?
         """
+        referer_str = str(referer) if referer else None
+        file_stat = await asyncio.to_thread(file.stat)
+        file_size = int(file_stat.st_size)
+        file_date = int(file_stat.st_mtime)
+        folder = str(file.parent)
 
         with log_execute_error("Error inserting/updating record"):
-            referer_str = str(referer) if referer else None
-            file_stat = await asyncio.to_thread(file.stat)
-            file_size = int(file_stat.st_size)
-            file_date = int(file_stat.st_mtime)
-            download_filename = file.name
-            folder = str(file.parent)
             cursor = await self.db_conn.cursor()
             await cursor.execute(
                 query,
                 (
                     folder,
                     original_filename,
-                    download_filename,
+                    file.name,
                     file_size,
                     referer_str,
                     file_date,
@@ -162,7 +160,7 @@ class HashTable:
 
         return False
 
-    async def get_all_unique_hashes(self, hash_type: HashType) -> set[str]:
+    async def get_all_unique_hashes(self, hash_type: HashType) -> set[HashValue]:
         """Retrieves a list of unique hashes from the database.
 
         :param hash_type: The type of hash to filter by (optional).

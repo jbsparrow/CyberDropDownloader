@@ -141,16 +141,16 @@ def sanitize_folder(title: str) -> str:
 
     if all(char in title for char in ("(", ")")):
         new_title, domain_part = title.rsplit("(", 1)
-        new_title = truncate_str(new_title, constants.MAX_NAME_LENGTHS["FOLDER"])
+        new_title = truncate_str(new_title, constants.MAX_FOLDER_LENGTH)
         return f"{new_title} ({domain_part.strip()}"
-    return truncate_str(title, constants.MAX_NAME_LENGTHS["FOLDER"])
+    return truncate_str(title, constants.MAX_FOLDER_LENGTH)
 
 
 def truncate_str(text: str, max_length: int = 0) -> str:
     """Truncates and strip strings to the desired len.
 
     If `max_length` is 0, uses `constants.MAX_NAME_LENGTHS["FILE"]`"""
-    truncate_to = max_length or constants.MAX_NAME_LENGTHS["FILE"]
+    truncate_to = max_length or constants.MAX_FILENAME_LENGTH
     if len(text) > truncate_to:
         return text[:truncate_to].strip()
     return text.strip()

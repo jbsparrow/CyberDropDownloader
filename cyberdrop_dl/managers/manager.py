@@ -176,8 +176,8 @@ class Manager:
 
         await self.async_db_hash_startup()
 
-        constants.MAX_NAME_LENGTHS["FILE"] = self.config_manager.global_settings_data.general.max_file_name_length
-        constants.MAX_NAME_LENGTHS["FOLDER"] = self.config_manager.global_settings_data.general.max_folder_name_length
+        constants.MAX_FILENAME_LENGTH = self.config_manager.global_settings_data.general.max_file_name_length
+        constants.MAX_FOLDER_LENGTH = self.config_manager.global_settings_data.general.max_folder_name_length
 
     async def async_db_hash_startup(self) -> None:
         if not isinstance(self.db_manager, DBManager):

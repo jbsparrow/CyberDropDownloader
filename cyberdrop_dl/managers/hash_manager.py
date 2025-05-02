@@ -132,7 +132,7 @@ class HashManager:
     ) -> HashValue:
         """Generates hash of a file."""
         self.manager.progress_manager.hash_progress.update_currently_hashing(file)
-        hash = await self.manager.db_manager.hash_table.get_file_hash_exists(file, hash_type)
+        hash = await self.manager.db_manager.hash_table.get_file_hash_if_exists(file, hash_type)
         if hash:
             self.manager.progress_manager.hash_progress.add_prev_hash()
         else:
