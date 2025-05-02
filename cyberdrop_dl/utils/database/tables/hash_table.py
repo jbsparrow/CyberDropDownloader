@@ -96,7 +96,7 @@ class HashTable:
             return []
 
     async def insert_or_update_hash_db(
-        self, hash_value: str, hash_type: HashType, file: Path, original_filename: str | None, referer: URL | None
+        self, file: Path, original_filename: str | None, referer: URL | None, hash_type: HashType, hash_value: str
     ) -> bool:
         """Inserts or updates a record in the specified SQLite database.
 
@@ -111,11 +111,11 @@ class HashTable:
             True if all the record was inserted or updated successfully, False otherwise.
         """
 
-        hash = await self.insert_or_update_hashes(hash_value, hash_type, file)
+        hash = await self.insert_or_update_hashes(file, hash_type, hash_value)
         updated = await self.insert_or_update_file(file, original_filename, referer)
         return updated and hash
 
-    async def insert_or_update_hashes(self, hash_value: str, hash_type: HashType, file: Path):
+    async def insert_or_update_hashes(self, file: Path, hash_type: HashType, hash_value: str) -> bool:
         try:
             full_path = file.absolute()
             download_filename = str(full_path.name)
