@@ -19,9 +19,9 @@ from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import get_size_or_none
 
 try:
-    from xxhash import xxh128 as xxhasher
+    from xxhash import xxh128 as xxh128_hasher
 except ImportError:
-    xxhasher = None
+    xxh128_hasher = None
 
 
 if TYPE_CHECKING:
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
-CHUNK_SIZE = 1024 * 1024  # 1MB
+CHUNK_SIZE = 1024 * 1024  # 5MB
 Xxh128HashValue = NewType("Xxh128HashValue", HashValue)
 DedupeMapping = Mapping[HashValue, Mapping[int, set[Path]]]
 
@@ -43,7 +43,7 @@ class Hasher(Protocol):
 
 
 HASHER_MAP: dict[str, Callable[..., Hasher]] = {
-    HashType.xxh128: xxhasher,  # type: ignore
+    HashType.xxh128: xxh128_hasher,  # type: ignore
     HashType.md5: md5_hasher,
     HashType.sha256: sha256_hasher,
 }
@@ -63,14 +63,20 @@ class HashManager:
         yield HashType.xxh128
 
     async def hash_file(self, filename: Path, hash_type: HashType) -> HashValue:
-        if hash_type == HashType.xxh128 and not xxhasher:
+        """Calculates the hash of a file asynchronously.
+
+        :param filename: The path to the file to hash.
+        :param hash_type: The type of hash to calculate (e.g., MD5, SHA1, xxH128).
+        :return: The calculated hash value as a HashValue object.
+        """
+        if hash_type == HashType.xxh128 and not xxh128_hasher:
             raise RuntimeError("xxhash module is not installed")
         file_path = Path.cwd() / filename
         async with aiofiles.open(file_path, "rb") as file_io:
             data = await file_io.read(CHUNK_SIZE)
             current_hasher = HASHER_MAP[hash_type]()
             while data:
-                current_hasher.update(data)
+                await asyncio.to_thread(current_hasher.update, data)
                 data = await file_io.read(CHUNK_SIZE)
             return HashValue(current_hasher.hexdigest())
 
@@ -175,7 +181,7 @@ class HashManager:
         tasks = []
         for hash, size_dict in final_dict.items():
             for size in size_dict:
-                params = hash, size, HashType.xxh128
+                params = hash, HashType.xxh128, size
                 db_matches = await self.manager.db_manager.hash_table.get_files_with_hash_matches(*params)
                 if not db_matches or len(db_matches) < 2:
                     continue

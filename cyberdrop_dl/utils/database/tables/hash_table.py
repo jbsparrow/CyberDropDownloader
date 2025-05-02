@@ -59,7 +59,7 @@ class HashTable:
                 return HashValue(result[0])
 
     async def get_files_with_hash_matches(
-        self, hash_value: HashValue, size: int, hash_type: HashType
+        self, hash_value: HashValue, hash_type: HashType, size: int
     ) -> list[FileEntry]:
         """Retrieves a list of (folder, filename, date) tuples based on a given hash.
 
