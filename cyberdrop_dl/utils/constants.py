@@ -1,4 +1,6 @@
 import re
+import string
+import sys
 from datetime import UTC, datetime
 from enum import Enum, IntEnum, StrEnum, auto
 from pathlib import Path
@@ -35,9 +37,32 @@ VALIDATION_ERROR_FOOTER = """Please delete the file or fix the errors. Read the 
 CLI_VALIDATION_ERROR_FOOTER = """Please read the documentation to learn about the expected values: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options
 \nThis is not a bug. Do not open issues related to this"""
 
+
+NOT_PRINTABLE_ASCII_CHARS = "".join(char for c in range(128) if (char := chr(c)) not in string.printable)
+INVALID_UNIX_FILENAME_CHARS = NOT_PRINTABLE_ASCII_CHARS + "/"
+INVALID_WIN_FILENAME_CHARS = INVALID_UNIX_FILENAME_CHARS + ':*?"<>|\t\n\r\x0b\x0c\\'
+RESERVED_WIN_NAMES = ["CON", "PRN", "AUX", "NUL", "COM1"]
+RESERVED_WIN_NAMES.extend([f"COM{i}" for i in range(10)])
+RESERVED_WIN_NAMES.extend([f"LPT{i}" for i in range(10)])
+
+IS_WINDOWS = IS_MACOS = IS_LINUX = False
+if sys.platform == "win32":
+    IS_WINDOWS = True
+    MAX_PATH_LEN = 255
+
+elif sys.platform == "darwin":
+    IS_MACOS = True
+    MAX_PATH_LEN = 1024
+else:
+    IS_LINUX = True
+    MAX_PATH_LEN = 4096
+
 # regex
+if IS_WINDOWS:
+    SANITIZE_FILENAME_PATTERN = re.compile(INVALID_WIN_FILENAME_CHARS)
+else:
+    SANITIZE_FILENAME_PATTERN = re.compile(INVALID_UNIX_FILENAME_CHARS)
 RAR_MULTIPART_PATTERN = re.compile(r"^part\d+")
-SANITIZE_FILENAME_PATTERN = re.compile(r'[<>:"/\\|?*\']')
 REGEX_LINKS = re.compile(r"(?:http.*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]))")
 
 

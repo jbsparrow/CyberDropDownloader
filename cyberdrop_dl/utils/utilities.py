@@ -24,6 +24,7 @@ from yarl import URL
 from cyberdrop_dl.clients.errors import (
     CDLBaseError,
     ErrorLogMessage,
+    InvalidDownloadPathError,
     InvalidExtensionError,
     InvalidURLError,
     NoExtensionError,
@@ -125,9 +126,12 @@ def error_handling_wrapper(
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
 
-def sanitize_filename(name: str) -> str:
+def sanitize_filename(name: str, replace_with: str = "") -> str:
     """Simple sanitization to remove illegal characters from filename."""
-    return re.sub(constants.SANITIZE_FILENAME_PATTERN, "", name).strip()
+    name = re.sub(constants.SANITIZE_FILENAME_PATTERN, replace_with, name).strip()
+    if constants.IS_WINDOWS and name in constants.RESERVED_WIN_NAMES:
+        raise InvalidDownloadPathError("Restricted OS Path Name", message=f"{name} is a reserved name in Windows")
+    return name
 
 
 def sanitize_folder(title: str) -> str:
@@ -135,7 +139,7 @@ def sanitize_folder(title: str) -> str:
     title = title.replace("\n", "").strip()
     title = title.replace("\t", "").strip()
     title = re.sub(" +", " ", title)
-    title = re.sub(r'[\\*?:"<>|/]', "-", title)
+    title = sanitize_filename(title, "-")
     title = re.sub(r"\.{2,}", ".", title)
     title = title.rstrip(".").strip()
 

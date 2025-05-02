@@ -61,11 +61,14 @@ class InvalidContentTypeError(CDLBaseError):
         super().__init__(ui_failure, message=message, origin=origin)
 
 
-class NoExtensionError(CDLBaseError):
+class InvalidDownloadPathError(CDLBaseError): ...
+
+
+class NoExtensionError(InvalidDownloadPathError):
     def __init__(self, *, message: str | None = None, origin: ScrapeItem | MediaItem | URL | None = None) -> None:
         """This error will be thrown when no extension is given for a file."""
-        ui_failure = "No File Extension"
-        super().__init__(ui_failure, message=message, origin=origin)
+        super().__init__(message=message, origin=origin)
+        self.ui_failure = "No File Extension"
 
 
 class InvalidExtensionError(NoExtensionError):
