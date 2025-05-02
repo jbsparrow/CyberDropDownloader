@@ -3,8 +3,6 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING, cast
 
-from rich.console import Console
-
 from cyberdrop_dl.utils.database.table_definitions import create_files, create_hash
 from cyberdrop_dl.utils.logger import log
 
@@ -16,8 +14,6 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.utils.constants import HashType
-
-console = Console()
 
 
 class HashTable:
@@ -127,7 +123,7 @@ class HashTable:
             await cursor.execute(insert_query, (hash_value, hash_type, folder, download_filename, hash_value))
             await self.db_conn.commit()
         except Exception as e:
-            console.print(f"Error inserting/updating record: {e}")
+            log(f"Error inserting/updating record: {e}", 40)
             return False
         return True
 

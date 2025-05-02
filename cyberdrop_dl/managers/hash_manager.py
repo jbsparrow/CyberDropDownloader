@@ -1,9 +1,17 @@
 from __future__ import annotations
 
+import asyncio
+import time
+from collections import defaultdict
+from collections.abc import Mapping
+from hashlib import md5 as md5_hasher
+from hashlib import sha256 as sha256_hasher
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, NewType, Protocol
 
 import aiofiles
+import aiofiles.os
+from send2trash import send2trash
 from typing_extensions import Buffer
 
 from cyberdrop_dl.utils.constants import HashType
@@ -12,15 +20,6 @@ try:
     from xxhash import xxh128 as xxhasher
 except ImportError:
     xxhasher = None
-import asyncio
-import time
-from collections import defaultdict
-from hashlib import md5 as md5_hasher
-from hashlib import sha256 as sha256_hasher
-from typing import NewType
-
-import aiofiles.os
-from send2trash import send2trash
 
 from cyberdrop_dl.ui.prompts.basic_prompts import enter_to_continue
 from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
@@ -37,8 +36,8 @@ if TYPE_CHECKING:
 
 
 HashValue = NewType("HashValue", str)
-
 Xxh128HashValue = NewType("Xxh128HashValue", HashValue)
+DedupeMapping = Mapping[str, Mapping[int, set[Path]]]
 
 
 class Hasher(Protocol):
@@ -57,7 +56,14 @@ class HashManager:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
         self.hashed_media_items: set[MediaItem] = set()
-        self.hashes_dict: defaultdict[str, defaultdict[int, set[Path]]] = defaultdict(lambda: defaultdict(set))
+        self.hashes_dict: DedupeMapping = defaultdict(lambda: defaultdict(set))
+
+    def _hashers_to_use(self):
+        if self.manager.config_manager.settings_data.dupe_cleanup_options.add_md5_hash:
+            yield HashType.md5
+        if self.manager.config_manager.settings_data.dupe_cleanup_options.add_sha256_hash:
+            yield HashType.sha256
+        yield HashType.xxh128
 
     async def hash_file(self, filename: Path, hash_type: HashType) -> str:
         file_path = Path.cwd() / filename
@@ -83,23 +89,19 @@ class HashManager:
         if media_item.is_segment:
             return
 
-        if hash := await self.hash_and_update_db(*hash_props(media_item)):
-            await self.save_hash_data(media_item, hash)
+        if hash := await self.hash_and_update_db(*get_hash_props(media_item)):
+            size = await asyncio.to_thread(get_size_or_none, media_item.complete_file)
+            assert size
+            self.hashed_media_items.add(media_item)
+            media_item.hash = hash
+            self.hashes_dict[hash][size].add(media_item.complete_file)
 
     async def hash_item_during_download(self, media_item: MediaItem) -> None:
-        if media_item.is_segment:
-            return
         if self.manager.config_manager.settings_data.dupe_cleanup_options.hashing != Hashing.IN_PLACE:
             return
 
         await self.manager.states.RUNNING.wait()
-        try:
-            hash = await self.hash_and_update_db(*hash_props(media_item))
-            assert hash
-            await self.save_hash_data(media_item, hash)
-        except Exception as e:
-            msg = f"After hash processing failed: {media_item.complete_file} with error {e}"
-            log(msg, 40, exc_info=True)
+        await self.hash_item(media_item)
 
     async def hash_and_update_db(
         self, file: Path, original_filename: str | None = None, referer: URL | None = None
@@ -109,19 +111,14 @@ class HashManager:
 
         if not await asyncio.to_thread(get_size_or_none, file):
             return
-        hash = await self._hash_and_update_db(file, original_filename, referer, hash_type=HashType.xxh128)
-        if self.manager.config_manager.settings_data.dupe_cleanup_options.add_md5_hash:
-            _ = await self._hash_and_update_db(file, original_filename, referer, hash_type=HashType.md5)
-        if self.manager.config_manager.settings_data.dupe_cleanup_options.add_sha256_hash:
-            _ = await self._hash_and_update_db(file, original_filename, referer, hash_type=HashType.sha256)
 
-        hash: str = ""
-        for hash_type in (HashType.md5, HashType.sha256, HashType.xxh128):
+        for hash_type in self._hashers_to_use():
             try:
                 hash = await self._hash_and_update_db(file, original_filename, referer, hash_type)
+                if hash_type == HashType.xxh128:
+                    return Xxh128HashValue(hash)
             except Exception as e:
                 log(f"Error hashing {file} : {e}", 40, exc_info=True)
-        return Xxh128HashValue(hash)  # type: ignore
 
     async def _hash_and_update_db(
         self, file: Path, original_filename: str | None, referer: URL | None, hash_type: HashType
@@ -129,25 +126,17 @@ class HashManager:
         """Generates hash of a file."""
         self.manager.progress_manager.hash_progress.update_currently_hashing(file)
         hash = await self.manager.db_manager.hash_table.get_file_hash_exists(file, hash_type)
-        if not hash:
+        if hash:
+            self.manager.progress_manager.hash_progress.add_prev_hash()
+        else:
             hash = await self.manager.hash_manager.hash_file(file, hash_type)
             self.manager.progress_manager.hash_progress.add_new_completed_hash()
-        else:
-            self.manager.progress_manager.hash_progress.add_prev_hash()
 
         await self.manager.db_manager.hash_table.insert_or_update_hash_db(
             file, original_filename, referer, hash_type, hash
         )
 
         return HashValue(hash)
-
-    async def save_hash_data(self, media_item: MediaItem, hash: HashValue) -> None:
-        absolute_path = await asyncio.to_thread(media_item.complete_file.resolve)
-        size = await asyncio.to_thread(get_size_or_none, media_item.complete_file)
-        assert size
-        self.hashed_media_items.add(media_item)
-        media_item.hash = hash
-        self.hashes_dict[hash][size].add(absolute_path)
 
     async def cleanup_dupes_after_download(self) -> None:
         if self.manager.config_manager.settings_data.dupe_cleanup_options.hashing == Hashing.OFF:
@@ -161,11 +150,10 @@ class HashManager:
         with self.manager.live_manager.get_remove_file_via_hash_live(stop=True):
             await self.final_dupe_cleanup(file_hashes_dict)
 
-    async def final_dupe_cleanup(self, final_dict: dict[str, dict]) -> None:
+    async def final_dupe_cleanup(self, final_dict: DedupeMapping) -> None:
         """cleanup files based on dedupe setting"""
         to_trash = self.manager.config_manager.settings_data.dupe_cleanup_options.send_deleted_to_trash
         suffix = "Sent to trash " if to_trash else "Permanently deleted"
-
         log("Starting autodedupe...")
 
         async def delete_and_log(file: Path):
@@ -203,7 +191,7 @@ class HashManager:
         await asyncio.gather(*tasks)
         log("Finished autodedupe")
 
-    async def get_file_hashes_dict(self) -> dict:
+    async def get_file_hashes_dict(self) -> DedupeMapping:
         """Get a dictionary of files based on matching file hashes and file size."""
         downloads = self.manager.path_manager.completed_downloads - self.hashed_media_items
 
@@ -248,7 +236,7 @@ async def delete_file(path: Path, to_trash: bool = True) -> bool:
     return False
 
 
-def hash_props(media_item: MediaItem) -> tuple[Path, str | None, URL]:
+def get_hash_props(media_item: MediaItem) -> tuple[Path, str | None, URL]:
     return media_item.complete_file, media_item.original_filename, media_item.referer
 
 
