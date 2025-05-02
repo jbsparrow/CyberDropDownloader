@@ -12,17 +12,12 @@ from typing import TYPE_CHECKING, NewType, Protocol
 import aiofiles
 from send2trash import send2trash
 from typing_extensions import Buffer
+from xxhash import xxh128 as xxh128_hasher
 
 from cyberdrop_dl.ui.prompts.basic_prompts import enter_to_continue
 from cyberdrop_dl.utils.constants import Hashing, HashType, HashValue
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import get_size_or_none
-
-try:
-    from xxhash import xxh128 as xxh128_hasher
-except ImportError:
-    xxh128_hasher = None
-
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -70,8 +65,6 @@ class HashManager:
         :param hash_type: The type of hash to calculate (e.g., MD5, SHA1, xxH128).
         :return: The calculated hash value as a HashValue object.
         """
-        if hash_type == HashType.xxh128 and not xxh128_hasher:
-            raise RuntimeError("xxhash module is not installed")
         file_path = Path.cwd() / filename
         async with self._semaphore, aiofiles.open(file_path, "rb") as file_io:
             data = await file_io.read(CHUNK_SIZE)
