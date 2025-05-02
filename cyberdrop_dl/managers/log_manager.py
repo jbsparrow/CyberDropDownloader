@@ -27,6 +27,7 @@ class LogManager:
         self.unsupported_urls_log: Path = manager.path_manager.unsupported_urls_log
         self.download_error_log: Path = manager.path_manager.download_error_urls_log
         self.scrape_error_log: Path = manager.path_manager.scrape_error_urls_log
+        self.dedupe_log: Path = manager.path_manager.dedupe_log
         self._csv_locks = {}
 
     def startup(self) -> None:
@@ -68,6 +69,10 @@ class LogManager:
     ) -> None:
         """Writes to the scrape error log."""
         await self.write_to_csv(self.scrape_error_log, url=url, error=error_message, origin=origin)
+
+    async def write_dedupe_log(self, og_file: Path, hash: str, removed_file: Path) -> None:
+        """Writes to the dedupe log."""
+        await self.write_to_csv(self.scrape_error_log, original_file=og_file, hash=hash, removed_file=removed_file)
 
     async def update_last_forum_post(self) -> None:
         """Updates the last forum post."""

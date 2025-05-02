@@ -170,6 +170,7 @@ class HashManager:
 
                     log(msg, 10)
                     self.manager.progress_manager.hash_progress.add_removed_file()
+                    await self.manager.log_manager.write_dedupe_log(og_file, hash, file)
 
             except OSError as e:
                 log(f"Unable to remove '{file}' with hash {hash}: {e}", 40)

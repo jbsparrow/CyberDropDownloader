@@ -7,7 +7,6 @@ from cyberdrop_dl.utils.database.table_definitions import create_files, create_h
 from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable, Sequence
     from pathlib import Path
 
     import aiosqlite
@@ -61,7 +60,7 @@ class HashTable:
 
     async def get_files_with_hash_matches(
         self, hash_value: str, size: int, hash_type: HashType | None = None
-    ) -> list[Sequence[str]]:
+    ) -> list[aiosqlite.Row]:
         """Retrieves a list of (folder, filename) tuples based on a given hash.
 
         Args:
@@ -166,7 +165,7 @@ class HashTable:
         else:
             return True
 
-    async def get_all_unique_hashes(self, hash_type: HashType | None = None) -> Iterable[Sequence[str]]:
+    async def get_all_unique_hashes(self, hash_type: HashType | None = None) -> list[aiosqlite.Row]:
         """Retrieves a list of hashes
 
         Args:
@@ -180,10 +179,7 @@ class HashTable:
             cursor = await self.db_conn.cursor()
 
             if hash_type:
-                await cursor.execute(
-                    "SELECT DISTINCT hash FROM hash WHERE hash_type =?",
-                    (hash_type,),
-                )
+                await cursor.execute("SELECT DISTINCT hash FROM hash WHERE hash_type =?", (hash_type,))
             else:
                 await cursor.execute("SELECT DISTINCT hash FROM hash")
             results = await cursor.fetchall()

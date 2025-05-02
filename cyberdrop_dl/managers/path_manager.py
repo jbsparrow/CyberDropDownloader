@@ -47,9 +47,11 @@ class PathManager:
         self.unsupported_urls_log: Path = field(init=False)
         self.download_error_urls_log: Path = field(init=False)
         self.scrape_error_urls_log: Path = field(init=False)
+        self.dedupe_log: Path = field(init=False)
         self.pages_folder: Path = field(init=False)
 
         self._logs_model_names = [
+            "dedupe",
             "main_log",
             "last_forum_post",
             "unsupported_urls",
@@ -102,8 +104,8 @@ class PathManager:
         self.history_db.touch(exist_ok=True)
 
     def _set_output_filenames(self, now: datetime) -> None:
-        current_time_file_iso: str = now.strftime("%Y%m%d_%H%M%S")
-        current_time_folder_iso: str = now.strftime("%Y_%m_%d")
+        current_time_file_iso: str = now.strftime(constants.LOGS_DATETIME_FORMAT)
+        current_time_folder_iso: str = now.strftime(constants.LOGS_DATE_FORMAT)
         log_settings_config = self.manager.config_manager.settings_data.logs
         log_files: dict[str, Path] = log_settings_config.model_dump()
 

@@ -50,6 +50,7 @@ class Files(AliasModel):
 
 
 class Logs(AliasModel):
+    dedupe: LogPath = Path("dedupe.csv")
     download_error_urls: LogPath = Field(default=Path("Download_Error_URLs.csv"), validation_alias="download_error_urls_filename")  # fmt: skip
     last_forum_post: LogPath = Field(default=Path("Last_Scraped_Forum_Posts.csv"), validation_alias="last_forum_post_filename")  # fmt: skip
     log_folder: Path = APP_STORAGE / "Configs" / "{config}" / "Logs"
