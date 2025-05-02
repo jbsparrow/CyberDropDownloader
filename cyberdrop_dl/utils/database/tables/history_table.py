@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import pathlib
+import asyncio
 from sqlite3 import IntegrityError, Row
 from typing import TYPE_CHECKING
 
 from cyberdrop_dl.utils.database.table_definitions import create_fixed_history, create_history
-from cyberdrop_dl.utils.utilities import log
+from cyberdrop_dl.utils.utilities import get_size_or_none, log
 
 if TYPE_CHECKING:
     import datetime
@@ -179,12 +179,12 @@ class HistoryTable:
     async def add_filesize(self, domain: str, media_item: MediaItem) -> None:
         """Add the file size to the db."""
 
+        file_size = await asyncio.to_thread(get_size_or_none, media_item.complete_file)
+        if not file_size:
+            return
         url_path = get_db_path(media_item.url, str(media_item.referer))
-        file_size = pathlib.Path(media_item.complete_file).stat().st_size
-        await self.db_conn.execute(
-            """UPDATE media SET file_size=? WHERE domain = ? and url_path = ?""",
-            (file_size, domain, url_path),
-        )
+        query = """UPDATE media SET file_size=? WHERE domain = ? and url_path = ?"""
+        await self.db_conn.execute(query, (file_size, domain, url_path))
         await self.db_conn.commit()
 
     async def add_duration(self, domain: str, media_item: MediaItem) -> None:
