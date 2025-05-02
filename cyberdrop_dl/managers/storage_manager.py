@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple
 
 import psutil
+from multidict import CIMultiDict
 from pydantic import ByteSize
 
 from cyberdrop_dl.clients.errors import InsufficientFreeSpaceError
@@ -20,6 +21,20 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
+
+FILESYSTEM_PATH_LEN_LIMITS = CIMultiDict(
+    {
+        "NTFS": 255,
+        "FAT32": 255,
+        "exFAT": 255,
+        "ext3": 4096,
+        "ext4": 4096,
+        "XFS": 4096,
+        "Btrfs": 4096,
+        "APFS": 1024,
+        "HFS+": 1024,
+    }
+)
 
 
 @dataclass(frozen=True, slots=True, order=True)
@@ -58,7 +73,7 @@ class StorageManager:
         self._period: int = 2  # how often the check_free_space_loop will run (in seconds)
         self._log_period: int = 10  # log storage details every <x> loops, AKA log every 20 (2x10) seconds,
         self._timedelta_period = timedelta(seconds=self._period)
-        self._partitions = []
+        self._partitions: list[DiskPartition] = []
         for p in psutil.disk_partitions(all=True):
             try:
                 part = DiskPartition.from_psutil(p)
@@ -129,6 +144,11 @@ class StorageManager:
             await self._loop
         except asyncio.CancelledError:
             pass
+
+    def get_fs_path_limit(self, path: Path) -> int:
+        mount = get_mount_point(path, self.mounts)
+        fstype = next((p.fstype for p in self._partitions if p.mountpoint == mount), "other")
+        return FILESYSTEM_PATH_LEN_LIMITS.get(fstype, 255)
 
     async def _has_sufficient_space(self, folder: Path) -> bool:
         """Checks if there is enough free space to download to this folder.

@@ -225,7 +225,7 @@ class HistoryTable:
         sql_file_check = await result.fetchone()
         return sql_file_check == 1
 
-    async def get_downloaded_filename(self, domain: str, media_item: MediaItem) -> str:
+    async def get_downloaded_filename(self, domain: str, media_item: MediaItem) -> str | None:
         """Returns the downloaded filename from the database."""
 
         url_path = get_db_path(media_item.url, str(media_item.referer))
