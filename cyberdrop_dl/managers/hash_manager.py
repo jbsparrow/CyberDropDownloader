@@ -3,28 +3,26 @@ from __future__ import annotations
 import asyncio
 import time
 from collections import defaultdict
-from collections.abc import Mapping
+from collections.abc import Generator, Mapping
 from hashlib import md5 as md5_hasher
 from hashlib import sha256 as sha256_hasher
 from pathlib import Path
 from typing import TYPE_CHECKING, NewType, Protocol
 
 import aiofiles
-import aiofiles.os
 from send2trash import send2trash
 from typing_extensions import Buffer
 
-from cyberdrop_dl.utils.constants import HashType
+from cyberdrop_dl.ui.prompts.basic_prompts import enter_to_continue
+from cyberdrop_dl.utils.constants import Hashing, HashType
+from cyberdrop_dl.utils.logger import log
+from cyberdrop_dl.utils.utilities import get_size_or_none
 
 try:
     from xxhash import xxh128 as xxhasher
 except ImportError:
     xxhasher = None
 
-from cyberdrop_dl.ui.prompts.basic_prompts import enter_to_continue
-from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
-from cyberdrop_dl.utils.logger import log
-from cyberdrop_dl.utils.utilities import get_size_or_none
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -45,7 +43,7 @@ class Hasher(Protocol):
     def update(self, obj: Buffer, /) -> None: ...
 
 
-HASHERS: dict[str, Callable[..., Hasher]] = {
+HASHER_MAP: dict[str, Callable[..., Hasher]] = {
     HashType.xxh128: xxhasher,  # type: ignore
     HashType.md5: md5_hasher,
     HashType.sha256: sha256_hasher,
@@ -58,7 +56,7 @@ class HashManager:
         self.hashed_media_items: set[MediaItem] = set()
         self.hashes_dict: DedupeMapping = defaultdict(lambda: defaultdict(set))
 
-    def _hashers_to_use(self):
+    def _hashers_to_use(self) -> Generator[HashType]:
         if self.manager.config_manager.settings_data.dupe_cleanup_options.add_md5_hash:
             yield HashType.md5
         if self.manager.config_manager.settings_data.dupe_cleanup_options.add_sha256_hash:
@@ -71,8 +69,8 @@ class HashManager:
             CHUNK_SIZE = 1024 * 1024  # 1MB
             filedata = await file_io.read(CHUNK_SIZE)
             if hash_type == HashType.xxh128 and not xxhasher:
-                raise ImportError("xxhash module is not installed")
-            current_hasher = HASHERS[hash_type]()
+                raise RuntimeError("xxhash module is not installed")
+            current_hasher = HASHER_MAP[hash_type]()
             while filedata:
                 current_hasher.update(filedata)
                 filedata = await file_io.read(CHUNK_SIZE)
@@ -156,7 +154,7 @@ class HashManager:
         suffix = "Sent to trash " if to_trash else "Permanently deleted"
         log("Starting autodedupe...")
 
-        async def delete_and_log(file: Path):
+        async def delete_and_log(file: Path) -> None:
             nonlocal hash, suffix, og_file
             reason = "duplicate of file downloaded before"
             try:
@@ -219,7 +217,7 @@ async def delete_file(path: Path, to_trash: bool = True) -> bool:
     if to_trash:
         coro = asyncio.to_thread(send2trash, path)
     else:
-        coro = aiofiles.os.unlink(Path(path))
+        coro = asyncio.to_thread(path.unlink)
 
     try:
         await coro
@@ -227,8 +225,7 @@ async def delete_file(path: Path, to_trash: bool = True) -> bool:
         pass
     except OSError as e:
         # send2trash raises everything as a bare OSError. We should only ignore FileNotFound and raise everything else
-        msg = str(e)
-        if "File not found" not in msg:
+        if "File not found" not in str(e):
             raise
     else:
         return True
