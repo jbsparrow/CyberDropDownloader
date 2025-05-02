@@ -2,7 +2,7 @@ import re
 from datetime import UTC, datetime
 from enum import Enum, IntEnum, StrEnum, auto
 from pathlib import Path
-from typing import Any
+from typing import Any, NewType
 
 from rich.text import Text
 
@@ -59,6 +59,9 @@ class HashType(StrEnum):
     md5 = "md5"
     sha256 = "sha256"
     xxh128 = "xxh128"
+
+
+HashValue = NewType("HashValue", str)
 
 
 class Hashing(StrEnum):

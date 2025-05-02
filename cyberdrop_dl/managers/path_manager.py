@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import itertools
 from dataclasses import field
 from datetime import datetime
 from pathlib import Path
@@ -127,8 +128,8 @@ class PathManager:
 
     def _delete_logs_and_folders(self, now: datetime):
         if self.manager.config_manager.settings_data.logs.logs_expire_after:
-            for file in set(self.log_folder.rglob("*.log")) | set(self.log_folder.rglob("*.csv")):
-                file_date = Path(file).stat().st_ctime
+            for file in itertools.chain(self.log_folder.rglob("*.log"), self.log_folder.rglob("*.csv")):
+                file_date = file.stat().st_ctime
                 t_delta = now - datetime.fromtimestamp(file_date)
                 if t_delta > self.manager.config_manager.settings_data.logs.logs_expire_after:
                     file.unlink(missing_ok=True)

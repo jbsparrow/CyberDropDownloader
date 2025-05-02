@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import asyncio
-from typing import TYPE_CHECKING, cast
+import contextlib
+from typing import TYPE_CHECKING, TypeAlias, cast
 
+from cyberdrop_dl.utils.constants import HashValue
 from cyberdrop_dl.utils.database.table_definitions import create_files, create_hash
 from cyberdrop_dl.utils.logger import log
 
@@ -13,6 +15,17 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.utils.constants import HashType
+
+
+FileEntry: TypeAlias = tuple[str, str, int]  # folder, filename and date
+
+
+@contextlib.contextmanager
+def log_execute_error(msg: str):
+    try:
+        yield
+    except Exception as e:
+        log(f"{msg}: {e!r}", 40)
 
 
 class HashTable:
@@ -28,123 +41,109 @@ class HashTable:
         await self.db_conn.execute(create_hash)
         await self.db_conn.commit()
 
-    async def get_file_hash_exists(self, full_path: Path, hash_type: HashType) -> str | None:
-        """gets the hash from a complete file path
+    async def get_file_hash_exists(self, path: Path, hash_type: HashType) -> HashValue | None:
+        """Gets the hash from a file if it exists in the database.
 
-        Args:
-            full_path: Full path to the file to check.
-
-        Returns:
-            hash if exists
+        :param path: Path to the file to check.
+        :param hash_type: The type of hash to retrieve.
+        :return: The hash value if a hash for that file exists in the database, otherwise `None`.
         """
-        try:
-            # Extract folder, filename, and size from the full pathg
-            path = full_path.absolute()
+        with log_execute_error("Error checking file"):
             folder = str(path.parent)
             filename = path.name
-
-            # Connect to the database
             cursor = await self.db_conn.cursor()
-
-            # Check if the file exists with matching folder, filename, and size
-            await cursor.execute(
-                "SELECT hash FROM hash WHERE folder=? AND download_filename=? AND hash_type=? AND hash IS NOT NULL",
-                (folder, filename, hash_type),
-            )
+            query = "SELECT hash FROM hash WHERE folder=? AND download_filename=? AND hash_type=? AND hash IS NOT NULL"
+            await cursor.execute(query, (folder, filename, hash_type))
             result = await cursor.fetchone()
             if result:
-                return result[0]
-        except Exception as e:
-            log(f"Error checking file: {e}", 40)
-        return None
+                return HashValue(result[0])
 
     async def get_files_with_hash_matches(
-        self, hash_value: str, size: int, hash_type: HashType | None = None
-    ) -> list[aiosqlite.Row]:
-        """Retrieves a list of (folder, filename) tuples based on a given hash.
+        self, hash_value: HashValue, size: int, hash_type: HashType
+    ) -> list[FileEntry]:
+        """Retrieves a list of (folder, filename, date) tuples based on a given hash.
 
-        Args:
-            hash_value: The hash value to search for.
-            size: file size
-
-        Returns:
-            A list of (folder, filename) tuples, or an empty list if no matches found.
+        :param hash_value: The hash value to search for.
+        :param size: file size
+        :param hash_type: The type of hash being used (e.g., MD5, SHA1).
+        :return: A list of (folder, filename, date) tuples, or an empty list if no matches found.
         """
 
-        try:
-            cursor = await self.db_conn.cursor()
-            if hash_type:
-                await cursor.execute(
-                    "SELECT files.folder, files.download_filename,files.date FROM hash JOIN files ON hash.folder = files.folder AND hash.download_filename = files.download_filename WHERE hash.hash = ? AND files.file_size = ? AND hash.hash_type = ?;",
-                    (hash_value, size, hash_type),
-                )
-                return cast("list", await cursor.fetchall())
-            else:
-                await cursor.execute(
-                    "SELECT files.folder, files.download_filename FROM hash JOIN files ON hash.folder = files.folder AND hash.download_filename = files.download_filename WHERE hash.hash = ? AND files.file_size = ? AND hash.hash_type = ?;",
-                    (hash_value, size, hash_type),
-                )
-                return cast("list", await cursor.fetchall())
+        query = """
+        SELECT files.folder, files.download_filename, files.date
+        FROM hash JOIN files ON hash.folder = files.folder AND hash.download_filename = files.download_filename
+        WHERE hash.hash = ? AND files.file_size = ? AND hash.hash_type = ?;"""
 
-        except Exception as e:
-            log(f"Error retrieving folder and filename: {e}", 40)
-            return []
+        with log_execute_error("Error retrieving folder, filename and date"):
+            cursor = await self.db_conn.cursor()
+            await cursor.execute(query, (hash_value, size, hash_type))
+            return cast("list[FileEntry]", await cursor.fetchall())
+
+        return []
 
     async def insert_or_update_hash_db(
-        self, file: Path, original_filename: str | None, referer: URL | None, hash_type: HashType, hash_value: str
+        self, file: Path, original_filename: str | None, referer: URL | None, hash_type: HashType, hash_value: HashValue
     ) -> bool:
         """Inserts or updates a record in the specified SQLite database.
 
-        Args:
-            hash_value: The calculated hash of the file.
-            file: The file path
-            original_filename: The name original name of the file.
-            referer: referer URL
-            hash_type: The hash type (e.g., md5, sha256)
-
-        Returns:
-            True if all the record was inserted or updated successfully, False otherwise.
+        :param file: The file path.
+        :param original_filename: The original name of the file (optional).
+        :param referer: The referer URL (optional).
+        :param hash_type: The hash type (e.g., md5, sha256).
+        :param hash_value: The calculated hash of the file.
+        :return: `True` if the record was inserted or updated successfully, `False` otherwise.
         """
 
-        hash = await self.insert_or_update_hashes(file, hash_type, hash_value)
-        updated = await self.insert_or_update_file(file, original_filename, referer)
-        return updated and hash
+        hash_success = await self.insert_or_update_hashes(file, hash_type, hash_value)
+        file_success = await self.insert_or_update_file(file, original_filename, referer)
+        return file_success and hash_success
 
-    async def insert_or_update_hashes(self, file: Path, hash_type: HashType, hash_value: str) -> bool:
-        try:
-            full_path = file.absolute()
-            download_filename = str(full_path.name)
-            folder = str(full_path.parent)
+    async def insert_or_update_hashes(self, file: Path, hash_type: HashType, hash_value: HashValue) -> bool:
+        """Inserts or updates the hash information for a specific file.
+
+        :param file: The path to the file.
+        :param hash_type: The type of hash (e.g., md5, sha256).
+        :param hash_value: The calculated hash value for the file.
+        :return: `True` if the hash information was successfully inserted or updated, `False` otherwise.
+        """
+        query = """
+        INSERT INTO hash (hash, hash_type, folder, download_filename)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(download_filename, folder, hash_type) DO UPDATE SET hash = ?"""
+
+        with log_execute_error("Error inserting/updating record"):
+            download_filename = str(file.name)
+            folder = str(file.parent)
             cursor = await self.db_conn.cursor()
-            insert_query = """INSERT INTO hash (hash, hash_type, folder, download_filename)
-            VALUES (?, ?, ?, ?)
-            ON CONFLICT(download_filename, folder, hash_type) DO UPDATE SET hash = ?"""
-            await cursor.execute(insert_query, (hash_value, hash_type, folder, download_filename, hash_value))
+            await cursor.execute(query, (hash_value, hash_type, folder, download_filename, hash_value))
             await self.db_conn.commit()
-        except Exception as e:
-            log(f"Error inserting/updating record: {e}", 40)
-            return False
-        return True
+            return True
+        return False
 
     async def insert_or_update_file(self, file: Path, original_filename: str | None, referer: URL | None) -> bool:
-        try:
+        """Inserts or updates a file record in the database.
+
+        :param file: The path to the file.
+        :param original_filename: The original name of the file (optional).
+        :param referer: The referer URL associated with the file (optional).
+        :return: `Tru`e if the file record was successfully inserted or updated, `False` otherwise.
+        """
+        query = """
+        INSERT INTO files (folder, original_filename, download_filename, file_size, referer, date)
+        VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(download_filename, folder) DO UPDATE
+        SET original_filename = ?, file_size = ?, referer = ?, date = ?
+        """
+
+        with log_execute_error("Error inserting/updating record"):
             referer_str = str(referer) if referer else None
-            full_path = file.absolute()
-            file_stat = await asyncio.to_thread(full_path.stat)
+            file_stat = await asyncio.to_thread(file.stat)
             file_size = int(file_stat.st_size)
             file_date = int(file_stat.st_mtime)
-            download_filename = full_path.name
-            folder = str(full_path.parent)
-
+            download_filename = file.name
+            folder = str(file.parent)
             cursor = await self.db_conn.cursor()
-            insert_query = """INSERT INTO files (folder, original_filename, download_filename, file_size, referer, date)
-            VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(download_filename, folder) DO UPDATE
-            SET original_filename = ?, file_size = ?, referer = ?, date = ?
-            """
-
             await cursor.execute(
-                insert_query,
+                query,
                 (
                     folder,
                     original_filename,
@@ -159,31 +158,20 @@ class HashTable:
                 ),
             )
             await self.db_conn.commit()
-        except Exception as e:
-            log(f"Error inserting/updating record: {e}", 40)
-            return False
-        else:
             return True
 
-    async def get_all_unique_hashes(self, hash_type: HashType | None = None) -> list[aiosqlite.Row]:
-        """Retrieves a list of hashes
+        return False
 
-        Args:
-            hash_value: The hash value to search for.
-            hash_type: The type of hash[optional]
+    async def get_all_unique_hashes(self, hash_type: HashType) -> set[str]:
+        """Retrieves a list of unique hashes from the database.
 
-        Returns:
-            A list of (folder, filename) tuples, or an empty list if no matches found.
+        :param hash_type: The type of hash to filter by (optional).
+        :return: A set with each unique hash and its associated data.
         """
-        try:
+        query = "SELECT DISTINCT hash FROM hash WHERE hash_type =?"
+        with log_execute_error(f"Error retrieving all {hash_type} hashes"):
             cursor = await self.db_conn.cursor()
-
-            if hash_type:
-                await cursor.execute("SELECT DISTINCT hash FROM hash WHERE hash_type =?", (hash_type,))
-            else:
-                await cursor.execute("SELECT DISTINCT hash FROM hash")
+            await cursor.execute(query, (hash_type,))
             results = await cursor.fetchall()
-            return [x[0] for x in results]
-        except Exception as e:
-            log(f"Error retrieving folder and filename: {e}", 40)
-            return []
+            return {x[0] for x in results}
+        return set()

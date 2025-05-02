@@ -14,7 +14,7 @@ from send2trash import send2trash
 from typing_extensions import Buffer
 
 from cyberdrop_dl.ui.prompts.basic_prompts import enter_to_continue
-from cyberdrop_dl.utils.constants import Hashing, HashType
+from cyberdrop_dl.utils.constants import Hashing, HashType, HashValue
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import get_size_or_none
 
@@ -32,10 +32,9 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
-
-HashValue = NewType("HashValue", str)
+CHUNK_SIZE = 1024 * 1024  # 1MB
 Xxh128HashValue = NewType("Xxh128HashValue", HashValue)
-DedupeMapping = Mapping[str, Mapping[int, set[Path]]]
+DedupeMapping = Mapping[HashValue, Mapping[int, set[Path]]]
 
 
 class Hasher(Protocol):
@@ -63,25 +62,24 @@ class HashManager:
             yield HashType.sha256
         yield HashType.xxh128
 
-    async def hash_file(self, filename: Path, hash_type: HashType) -> str:
+    async def hash_file(self, filename: Path, hash_type: HashType) -> HashValue:
+        if hash_type == HashType.xxh128 and not xxhasher:
+            raise RuntimeError("xxhash module is not installed")
         file_path = Path.cwd() / filename
         async with aiofiles.open(file_path, "rb") as file_io:
-            CHUNK_SIZE = 1024 * 1024  # 1MB
-            filedata = await file_io.read(CHUNK_SIZE)
-            if hash_type == HashType.xxh128 and not xxhasher:
-                raise RuntimeError("xxhash module is not installed")
+            data = await file_io.read(CHUNK_SIZE)
             current_hasher = HASHER_MAP[hash_type]()
-            while filedata:
-                current_hasher.update(filedata)
-                filedata = await file_io.read(CHUNK_SIZE)
-            return current_hasher.hexdigest()
+            while data:
+                current_hasher.update(data)
+                data = await file_io.read(CHUNK_SIZE)
+            return HashValue(current_hasher.hexdigest())
 
     async def hash_directory(self, path: Path) -> None:
         with self.manager.live_manager.get_hash_live(stop=True):
             if not await asyncio.to_thread(path.is_dir):
                 raise NotADirectoryError
             for file in path.rglob("*"):
-                await self.hash_and_update_db(file)
+                _ = await self.hash_and_update_db(file)
 
     async def hash_item(self, media_item: MediaItem) -> None:
         if media_item.is_segment:
@@ -154,8 +152,7 @@ class HashManager:
         suffix = "Sent to trash " if to_trash else "Permanently deleted"
         log("Starting autodedupe...")
 
-        async def delete_and_log(file: Path) -> None:
-            nonlocal hash, suffix, og_file
+        async def delete_and_log(file: Path, hash: str, og_file: Path) -> None:
             reason = "duplicate of file downloaded before"
             try:
                 deleted = await delete_file(file, to_trash)
@@ -176,16 +173,16 @@ class HashManager:
                 log(f"Unable to remove '{file}' with hash {hash}: {e}", 40)
 
         tasks = []
-        get_matches = self.manager.db_manager.hash_table.get_files_with_hash_matches
         for hash, size_dict in final_dict.items():
             for size in size_dict:
-                db_matches = await get_matches(hash, size, HashType.xxh128)
+                params = hash, size, HashType.xxh128
+                db_matches = await self.manager.db_manager.hash_table.get_files_with_hash_matches(*params)
                 if not db_matches or len(db_matches) < 2:
                     continue
-                og_file = file = Path(*db_matches[0][:2])
+                og_file = Path(*db_matches[0][:2])
                 for match in db_matches[1:]:
                     file = Path(*match[:2])
-                    tasks.append(delete_and_log(file))
+                    tasks.append(delete_and_log(file, hash, og_file))
 
         await asyncio.gather(*tasks)
         log("Finished autodedupe")
