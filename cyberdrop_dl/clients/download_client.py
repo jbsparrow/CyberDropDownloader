@@ -391,7 +391,7 @@ class DownloadClient:
         """Sends to hash client to handle hashing and marks as completed/current download."""
         try:
             media_item.downloaded = downloaded
-            await self.manager.hash_manager.hash_client.hash_item_during_download(media_item)
+            await self.manager.hash_manager.hash_item_during_download(media_item)
             self.manager.path_manager.add_completed(media_item)
         except Exception:
             log(f"Error handling media item completion of: {media_item.complete_file}", 10, exc_info=True)

@@ -146,7 +146,7 @@ async def _post_runtime(manager: Manager) -> None:
     log_with_color(msg, "green", 20)
     # checking and removing dupes
     if not (manager.multiconfig and manager.config_manager.settings_data.sorting.sort_downloads):
-        await manager.hash_manager.hash_client.cleanup_dupes_after_download()
+        await manager.hash_manager.cleanup_dupes_after_download()
     if manager.config_manager.settings_data.sorting.sort_downloads and not manager.parsed_args.cli_only_args.retry_any:
         sorter = Sorter(manager)
         await sorter.run()
