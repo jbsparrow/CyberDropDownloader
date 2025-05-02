@@ -7,7 +7,7 @@ from collections.abc import Generator, Mapping
 from hashlib import md5 as md5_hasher
 from hashlib import sha256 as sha256_hasher
 from pathlib import Path
-from typing import TYPE_CHECKING, NewType, Protocol
+from typing import TYPE_CHECKING, NewType, Protocol, overload
 
 import aiofiles
 from send2trash import send2trash
@@ -85,7 +85,7 @@ class HashManager:
         if media_item.is_segment:
             return
 
-        if hash := await self.hash_and_update_db(*get_hash_props(media_item)):
+        if hash := await self.hash_and_update_db(media_item):
             size = await asyncio.to_thread(get_size_or_none, media_item.complete_file)
             assert size
             self.hashed_media_items.add(media_item)
@@ -99,9 +99,20 @@ class HashManager:
         await self.manager.states.RUNNING.wait()
         await self.hash_item(media_item)
 
+    @overload
+    async def hash_and_update_db(self, file: MediaItem) -> Xxh128HashValue | None: ...
+
+    @overload
     async def hash_and_update_db(
         self, file: Path, original_filename: str | None = None, referer: URL | None = None
+    ) -> Xxh128HashValue | None: ...
+
+    async def hash_and_update_db(
+        self, file: Path | MediaItem, original_filename: str | None = None, referer: URL | None = None
     ) -> Xxh128HashValue | None:
+        if not isinstance(file, Path):
+            return await self.hash_and_update_db(file.complete_file, file.original_filename, file.referer)
+
         if file.suffix == ".part":
             return
 
@@ -229,10 +240,6 @@ async def delete_file(path: Path, to_trash: bool = True) -> bool:
         return True
 
     return False
-
-
-def get_hash_props(media_item: MediaItem) -> tuple[Path, str | None, URL]:
-    return media_item.complete_file, media_item.original_filename, media_item.referer
 
 
 def hash_directory_scanner(manager: Manager, path: Path) -> None:
