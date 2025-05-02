@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
-CHUNK_SIZE = 1024 * 1024  # 5MB
+CHUNK_SIZE = 1024 * 1024 * 5  # 5MB
 Xxh128HashValue = NewType("Xxh128HashValue", HashValue)
 DedupeMapping = Mapping[HashValue, Mapping[int, set[Path]]]
 
@@ -54,6 +54,7 @@ class HashManager:
         self.manager = manager
         self.hashed_media_items: set[MediaItem] = set()
         self.hashes_dict: DedupeMapping = defaultdict(lambda: defaultdict(set))
+        self._semaphore = asyncio.Semaphore(4)
 
     def _hashers_to_use(self) -> Generator[HashType]:
         if self.manager.config_manager.settings_data.dupe_cleanup_options.add_md5_hash:
@@ -72,7 +73,7 @@ class HashManager:
         if hash_type == HashType.xxh128 and not xxh128_hasher:
             raise RuntimeError("xxhash module is not installed")
         file_path = Path.cwd() / filename
-        async with aiofiles.open(file_path, "rb") as file_io:
+        async with self._semaphore, aiofiles.open(file_path, "rb") as file_io:
             data = await file_io.read(CHUNK_SIZE)
             current_hasher = HASHER_MAP[hash_type]()
             while data:
@@ -120,7 +121,7 @@ class HashManager:
                 if hash_type == HashType.xxh128:
                     return Xxh128HashValue(hash)
             except Exception as e:
-                log(f"Error hashing {file} : {e}", 40, exc_info=True)
+                log(f"Error hashing '{file}': {e}", 40, exc_info=True)
 
     async def _hash_and_update_db(
         self, file: Path, original_filename: str | None, referer: URL | None, hash_type: HashType
