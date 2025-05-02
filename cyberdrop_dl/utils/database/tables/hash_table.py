@@ -1,15 +1,21 @@
 from __future__ import annotations
 
-from pathlib import Path
-from typing import TYPE_CHECKING
+import asyncio
+from typing import TYPE_CHECKING, cast
 
 from rich.console import Console
 
 from cyberdrop_dl.utils.database.table_definitions import create_files, create_hash
+from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
+    from pathlib import Path
+
     import aiosqlite
     from yarl import URL
+
+    from cyberdrop_dl.utils.constants import HashType
 
 console = Console()
 
@@ -22,25 +28,25 @@ class HashTable:
         """Startup process for the HistoryTable."""
         await self.create_hash_tables()
 
-    async def create_hash_tables(self):
+    async def create_hash_tables(self) -> None:
         await self.db_conn.execute(create_files)
         await self.db_conn.execute(create_hash)
         await self.db_conn.commit()
 
-    async def get_file_hash_exists(self, full_path: Path | str, hash_type: str) -> str | None:
+    async def get_file_hash_exists(self, full_path: Path, hash_type: HashType) -> str | None:
         """gets the hash from a complete file path
 
         Args:
             full_path: Full path to the file to check.
 
         Returns:
-            hash if  exists
+            hash if exists
         """
         try:
             # Extract folder, filename, and size from the full pathg
-            path = Path(full_path).absolute()
+            path = full_path.absolute()
             folder = str(path.parent)
-            filename = str(path.name)
+            filename = path.name
 
             # Connect to the database
             cursor = await self.db_conn.cursor()
@@ -54,10 +60,12 @@ class HashTable:
             if result:
                 return result[0]
         except Exception as e:
-            console.print(f"Error checking file: {e}")
+            log(f"Error checking file: {e}", 40)
         return None
 
-    async def get_files_with_hash_matches(self, hash_value: str, size: int, hash_type: str | None = None) -> list:
+    async def get_files_with_hash_matches(
+        self, hash_value: str, size: int, hash_type: HashType | None = None
+    ) -> list[Sequence[str]]:
         """Retrieves a list of (folder, filename) tuples based on a given hash.
 
         Args:
@@ -75,20 +83,20 @@ class HashTable:
                     "SELECT files.folder, files.download_filename,files.date FROM hash JOIN files ON hash.folder = files.folder AND hash.download_filename = files.download_filename WHERE hash.hash = ? AND files.file_size = ? AND hash.hash_type = ?;",
                     (hash_value, size, hash_type),
                 )
-                return await cursor.fetchall()
+                return cast("list", await cursor.fetchall())
             else:
                 await cursor.execute(
                     "SELECT files.folder, files.download_filename FROM hash JOIN files ON hash.folder = files.folder AND hash.download_filename = files.download_filename WHERE hash.hash = ? AND files.file_size = ? AND hash.hash_type = ?;",
                     (hash_value, size, hash_type),
                 )
-                return await cursor.fetchall()
+                return cast("list", await cursor.fetchall())
 
         except Exception as e:
-            console.print(f"Error retrieving folder and filename: {e}")
+            log(f"Error retrieving folder and filename: {e}", 40)
             return []
 
     async def insert_or_update_hash_db(
-        self, hash_value: str, hash_type: str, file: str, original_filename: str, referer: URL
+        self, hash_value: str, hash_type: HashType, file: Path, original_filename: str | None, referer: URL | None
     ) -> bool:
         """Inserts or updates a record in the specified SQLite database.
 
@@ -104,12 +112,12 @@ class HashTable:
         """
 
         hash = await self.insert_or_update_hashes(hash_value, hash_type, file)
-        file = await self.insert_or_update_file(original_filename, referer, file)
-        return file and hash
+        updated = await self.insert_or_update_file(file, original_filename, referer)
+        return updated and hash
 
-    async def insert_or_update_hashes(self, hash_value, hash_type, file):
+    async def insert_or_update_hashes(self, hash_value: str, hash_type: HashType, file: Path):
         try:
-            full_path = Path(file).absolute()
+            full_path = file.absolute()
             download_filename = str(full_path.name)
             folder = str(full_path.parent)
             cursor = await self.db_conn.cursor()
@@ -123,13 +131,14 @@ class HashTable:
             return False
         return True
 
-    async def insert_or_update_file(self, original_filename, referer, file):
+    async def insert_or_update_file(self, file: Path, original_filename: str | None, referer: URL | None) -> bool:
         try:
-            referer = str(referer)
-            full_path = Path(file).absolute()
-            file_size = int(full_path.stat().st_size)
-            file_date = int(full_path.stat().st_mtime)
-            download_filename = str(full_path.name)
+            referer_str = str(referer) if referer else None
+            full_path = file.absolute()
+            file_stat = await asyncio.to_thread(full_path.stat)
+            file_size = int(file_stat.st_size)
+            file_date = int(file_stat.st_mtime)
+            download_filename = full_path.name
             folder = str(full_path.parent)
 
             cursor = await self.db_conn.cursor()
@@ -146,21 +155,22 @@ class HashTable:
                     original_filename,
                     download_filename,
                     file_size,
-                    referer,
+                    referer_str,
                     file_date,
                     original_filename,
                     file_size,
-                    referer,
+                    referer_str,
                     file_date,
                 ),
             )
             await self.db_conn.commit()
         except Exception as e:
-            console.print(f"Error inserting/updating record: {e}")
+            log(f"Error inserting/updating record: {e}", 40)
             return False
-        return True
+        else:
+            return True
 
-    async def get_all_unique_hashes(self, hash_type=None) -> list:
+    async def get_all_unique_hashes(self, hash_type: HashType | None = None) -> Iterable[Sequence[str]]:
         """Retrieves a list of hashes
 
         Args:
@@ -183,5 +193,5 @@ class HashTable:
             results = await cursor.fetchall()
             return [x[0] for x in results]
         except Exception as e:
-            console.print(f"Error retrieving folder and filename: {e}")
+            log(f"Error retrieving folder and filename: {e}", 40)
             return []

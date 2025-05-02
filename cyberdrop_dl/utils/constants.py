@@ -55,6 +55,12 @@ DOWNLOAD_STORAGE = Path("./Downloads")
 RESERVED_CONFIG_NAMES = ["all", "default"]
 
 
+class HashType(StrEnum):
+    md5 = "md5"
+    sha256 = "sha256"
+    xxh128 = "xxh128"
+
+
 class BROWSERS(StrEnum):
     chrome = auto()
     firefox = auto()
