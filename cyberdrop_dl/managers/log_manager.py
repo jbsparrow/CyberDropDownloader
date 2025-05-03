@@ -74,7 +74,7 @@ class LogManager:
         input_file = self.manager.path_manager.input_file
 
         def proceed():
-            return input_file.is_file() or self.last_post_log.is_file()
+            return input_file.is_file() and self.last_post_log.is_file()
 
         if not await asyncio.to_thread(proceed):
             return

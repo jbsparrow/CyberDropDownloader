@@ -230,7 +230,6 @@ class XenforoCrawler(Crawler):
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         """Scrapes a post."""
-        self.add_separate_post_title(scrape_item, post)  # type: ignore
         scrape_item.set_type(FORUM_POST, self.manager)
         posts_scrapers = [self.attachments, self.embeds, self.images, self.links, self.videos]
         for scraper in posts_scrapers:

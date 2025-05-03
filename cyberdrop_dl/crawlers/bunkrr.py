@@ -29,10 +29,12 @@ if TYPE_CHECKING:
 # CDNs
 BASE_CDNS = [
     "bacon",
+    "beer",
     "big-taco",
     "burger",
     "c",
     "cdn",
+    "cheese",
     "fries",
     "kebab",
     "meatballs",
@@ -41,7 +43,9 @@ BASE_CDNS = [
     "nugget",
     "pizza",
     "ramen",
+    "rice",
     "soup",
+    "sushi",
     "taquito",
     "wiener",
     "wings",
