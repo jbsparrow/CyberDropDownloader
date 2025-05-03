@@ -9,7 +9,7 @@ from collections import defaultdict
 from datetime import datetime  # noqa: TC003
 from typing import TYPE_CHECKING, Annotated, Any, NamedTuple
 
-from pydantic import AliasChoices, AliasPath, BeforeValidator, Field
+from pydantic import AliasChoices, BeforeValidator, Field
 from typing_extensions import TypedDict  # Compatible with python 3.11
 from yarl import URL
 
