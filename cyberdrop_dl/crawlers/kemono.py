@@ -7,14 +7,15 @@ import itertools
 import re
 from collections import defaultdict
 from datetime import datetime  # noqa: TC003
-from typing import TYPE_CHECKING, Any, NamedTuple
+from typing import TYPE_CHECKING, Annotated, Any, NamedTuple
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, BeforeValidator, Field
 from typing_extensions import TypedDict  # Compatible with python 3.11
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import NoExtensionError, ScrapeError
 from cyberdrop_dl.config_definitions.custom.types import AliasModel
+from cyberdrop_dl.config_definitions.custom.validators import parse_falsy_as_none
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
 
@@ -101,10 +102,13 @@ class File(TypedDict):
     path: str
 
 
+FileOrNone = Annotated[File | None, BeforeValidator(parse_falsy_as_none)]
+
+
 class Post(AliasModel):
     id: str
     content: str = ""
-    file: File | None = None  # TODO: Verify is a post can have more that 1 file
+    file: FileOrNone = None
     attachments: list[File] = []  # noqa: RUF012
     published_or_added: datetime | None = Field(None, validation_alias=AliasChoices("published", "added"))
     soup_attachments: list[Any] = []  # noqa: RUF012, `Any` to skip validation, but these are `yarl.URL`. We generate them internally so no validation is needed
