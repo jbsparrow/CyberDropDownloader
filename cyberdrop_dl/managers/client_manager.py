@@ -325,16 +325,16 @@ class Flaresolverr:
         async with (
             self.request_lock,
             self.client_manager.manager.progress_manager.show_status_msg(msg),
-            client_session.post(
+        ):
+            response = await client_session.post(
                 self.flaresolverr_host / "v1",
                 headers=headers,
                 ssl=self.client_manager.ssl_context,
                 proxy=self.client_manager.proxy,
                 json=data,
                 timeout=timeout,
-            ) as response,
-        ):
-            json_obj: dict = await response.json()  # type: ignore
+            )
+            json_obj: dict[str, Any] = await response.json()
 
         return json_obj
 
