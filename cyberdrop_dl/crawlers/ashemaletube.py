@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 
 class Selectors:
-    PROFILE_VIDEOS = "div.media-item__inner a[data-video-preview]"
+    PROFILE_VIDEOS = "div.main-content div.media-item__inner a[data-video-preview]"
     MODEL_VIDEO = "a data-video-preview"
     USER_NAME = "h1.username"
     PLAYLIST_VIDEOS = "a.playlist-video-item__thumbnail"
