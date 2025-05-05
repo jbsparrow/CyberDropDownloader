@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import re
-from enum import Enum
+from enum import StrEnum
 from typing import TYPE_CHECKING, NamedTuple
 
 from aiolimiter import AsyncLimiter
@@ -43,7 +43,7 @@ class Format(NamedTuple):
     link_str: str
 
 
-class CollectionType(Enum):
+class CollectionType(StrEnum):
     ALBUM = "album"
     MODEL = "model"
     PLAYLIST = "playlist"
@@ -94,12 +94,8 @@ class AShemaleTubeCrawler(Crawler):
             else:
                 return await self.collection(scrape_item, CollectionType.ALBUM)
         if "cam" in scrape_item.url.parts:
-            return await self.cam(scrape_item)
+            return await ValueError
         raise ValueError
-
-    @error_handling_wrapper
-    async def cam(self, scrape_item: ScrapeItem) -> None:
-        raise ScrapeError(422)
 
     @error_handling_wrapper
     async def collection(self, scrape_item: ScrapeItem, collection_type: CollectionType) -> None:
@@ -111,7 +107,7 @@ class AShemaleTubeCrawler(Crawler):
                     raise ScrapeError(401)
                 collection_title = title_elem.get_text(strip=True)  # type: ignore
                 collection_title = collection_title.replace(TITLE_TRASH, "").strip()
-                collection_title = self.create_title(f"{collection_title} [{collection_type.value}]")
+                collection_title = self.create_title(f"{collection_title} [{collection_type}]")
                 if collection_type == CollectionType.MODEL:
                     scrape_item.setup_as_profile(collection_title)
                 else:
@@ -129,9 +125,10 @@ class AShemaleTubeCrawler(Crawler):
         img_item = soup.select_one(_SELECTORS.IMAGE_ITEM_SELECTOR)
         if not img_item:
             raise ScrapeError(404)
-        filename, ext = self.get_filename_and_ext(f"{img_item['data-image-id']}.jpg")
-        url: URL = URL(img_item.select_one("img")["src"])
-        await self.handle_file(url, scrape_item, filename, ext)
+        url: URL = self.parse_url(img_item.select_one("img")["src"])
+        filename, ext = self.get_filename_and_ext(url.name)
+        custom_name, _ = self.get_filename_and_ext(f"{img_item['data-image-id']}.jpg")
+        await self.handle_file(url, scrape_item, filename, ext, custom_filename=custom_name)
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
