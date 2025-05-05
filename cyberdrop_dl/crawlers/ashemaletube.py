@@ -28,7 +28,7 @@ class Selectors:
     JS_PLAYER = "script:contains('var player = new VideoPlayer')"
     LOGIN_REQUIRED = "div.loginLinks:contains('To watch this video please')"
     IMAGE_ITEM_SELECTOR = "div.imgItem"
-    ALBUM_IMAGES_SELECTOR = "div.gallery-detail div.thumb > a"
+    ALBUM_IMAGES_SELECTOR = "div.gallery-detail div.thumb"
     ALBUM_TITLE_SELECTOR = "div.prepositions-wrapper h1"
     NEXT_PAGE_SELECTOR = "a.rightKey"
 
@@ -36,6 +36,7 @@ class Selectors:
 _SELECTORS = Selectors()
 RESOLUTIONS = ["2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"]  # best to worst
 INCLUDE_VIDEO_ID_IN_FILENAME = True
+IMAGE_URL = re.compile(r"url\('([^']+)'\)")
 
 
 class Format(NamedTuple):
@@ -92,10 +93,29 @@ class AShemaleTubeCrawler(Crawler):
             if len(scrape_item.url.parts) >= 5:
                 return await self.image(scrape_item)
             else:
-                return await self.collection(scrape_item, CollectionType.ALBUM)
+                return await self.album(scrape_item)
         if "cam" in scrape_item.url.parts:
             return await ValueError
         raise ValueError
+
+    @error_handling_wrapper
+    async def album(self, scrape_item: ScrapeItem) -> None:
+        album_title = ""
+        async for soup in self.web_pager(scrape_item.url, cffi=True):
+            if not album_title:
+                title_elem = soup.select_one(TITLE_SELECTOR_MAP[CollectionType.ALBUM])
+                if not title_elem:
+                    raise ScrapeError(401)
+                album_title = title_elem.get_text(strip=True)  # type: ignore
+                album_title = album_title.replace(TITLE_TRASH, "").strip()
+                album_title = self.create_title(f"{album_title} [album]")
+                scrape_item.setup_as_album(album_title)
+            for thumb in soup.select(MEDIA_SELECTOR_MAP[CollectionType.ALBUM]):
+                custom_filename, _ = self.get_filename_and_ext(f"{thumb['data-image-id']}.jpg")
+                link = thumb.select_one("a")
+                url = self.parse_url(IMAGE_URL.search(link["style"]).group(1).split("?")[0])
+                filename, ext = self.get_filename_and_ext(url.name)
+                await self.handle_file(url, scrape_item, filename, ext, custom_filename=custom_filename)
 
     @error_handling_wrapper
     async def collection(self, scrape_item: ScrapeItem, collection_type: CollectionType) -> None:
@@ -127,8 +147,8 @@ class AShemaleTubeCrawler(Crawler):
             raise ScrapeError(404)
         url: URL = self.parse_url(img_item.select_one("img")["src"]).with_query(None)
         filename, ext = self.get_filename_and_ext(url.name)
-        custom_name, _ = self.get_filename_and_ext(f"{img_item['data-image-id']}.jpg")
-        await self.handle_file(url, scrape_item, filename, ext, custom_filename=custom_name)
+        custom_filename, _ = self.get_filename_and_ext(f"{img_item['data-image-id']}.jpg")
+        await self.handle_file(url, scrape_item, filename, ext, custom_filename=custom_filename)
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
