@@ -30,6 +30,7 @@ class Selectors:
     IMAGE_ITEM_SELECTOR = "div.imgItem"
     ALBUM_IMAGES_SELECTOR = "div.gallery-detail div.thumb"
     ALBUM_TITLE_SELECTOR = "div.prepositions-wrapper h1"
+    GALLERY_ALBUM_SELECTOR = "div.profile-content div.galItem > a"
     NEXT_PAGE_SELECTOR = "a.rightKey"
 
 
@@ -82,6 +83,8 @@ class AShemaleTubeCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
         if any(p in scrape_item.url.parts for p in ("creators", "profiles", "pornstars", "model")):
+            if "galleries" in scrape_item.url.parts:
+                return await self.gallery(scrape_item)
             return await self.collection(scrape_item, CollectionType.MODEL)
         if "videos" in scrape_item.url.parts:
             return await self.video(scrape_item)
@@ -97,6 +100,12 @@ class AShemaleTubeCrawler(Crawler):
         if "cam" in scrape_item.url.parts:
             raise ValueError
         raise ValueError
+
+    @error_handling_wrapper
+    async def gallery(self, scrape_item: ScrapeItem) -> None:
+        async for soup in self.web_pager(scrape_item.url, cffi=True):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.GALLERY_ALBUM_SELECTOR):
+                self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
