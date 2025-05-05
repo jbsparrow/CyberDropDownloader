@@ -32,7 +32,9 @@ You can use the [Config Options page](reference/configuration-options/README.md)
 
 ## Import V5 config to V6
 
-Good news! If you have a v5 config, no action is required. The program will automatically detect the config in the current folder and handle the migration process for you.
+Good news! If you have a v5 config, CDL can import it. The program will automatically detect the config in the current folder and handle the migration process for you.
+
+All you have to do is replace the v5 start script (for Windows, that's the `.bat` file) with the v6 start script. If CDL does not update automatically to v6, delete the `.venv` folder inside CDL's folder and run the start script again.
 
 Please note that after the migration is complete, you may still need to manually adjust some values in the config.
 
@@ -53,9 +55,9 @@ pip install cyberdrop-dl-patched==6.5.0
 
 Built into Cyberdrop-DL is a tool that allows you to import both your configs and your history DB from a v4 version of Cyberdrop-DL. You can use it by selecting "Import V4 Items".
 
-### Importing previous configs</a>
+### How to importing v4 configs</a>
 
-The config will be located in the folder that you were previously running Cyberdrop-DL in.
+The config files will be located in the folder that you were previously running Cyberdrop-DL in. Start CDL, choose the option `Import v4 config` and follow the on screen instructions
 
 {% hint style="info" %}
 If you weren't using the config previously, you don't need to import it.
@@ -65,7 +67,7 @@ However, if you were primarily using CLI Arguments with V4, some of the argument
 
 If you don't end up using the import feature, make sure you also change the default config in the program if that's something you want to do.
 
-### Importing the old History DB</a>
+### How to importing v4 history database</a>
 
 For a lot of people, the `download_history.sqlite` file will be in the same folder as your start file (or wherever you are running Cyberdrop-DL).
 
@@ -85,6 +87,8 @@ Linux:
 ```shell
 /home/<USER>/.local/share/Cyberdrop-DL/Cyberdrop-DL/download_history.sqlite
 ```
+
+To import it, start CDL, choose the option `Import v4 database` and follow the on screen instructions
 
 {% hint style="info" %}
 The old `download_history.sqlite` file is no longer used by Cyberdrop-DL. After you import it, you can delete the old one.
