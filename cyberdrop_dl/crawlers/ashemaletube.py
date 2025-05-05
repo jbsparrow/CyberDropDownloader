@@ -125,7 +125,7 @@ class AShemaleTubeCrawler(Crawler):
         img_item = soup.select_one(_SELECTORS.IMAGE_ITEM_SELECTOR)
         if not img_item:
             raise ScrapeError(404)
-        url: URL = self.parse_url(img_item.select_one("img")["src"])
+        url: URL = self.parse_url(img_item.select_one("img")["src"]).with_query(None)
         filename, ext = self.get_filename_and_ext(url.name)
         custom_name, _ = self.get_filename_and_ext(f"{img_item['data-image-id']}.jpg")
         await self.handle_file(url, scrape_item, filename, ext, custom_filename=custom_name)
