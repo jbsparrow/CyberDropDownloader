@@ -71,11 +71,11 @@ TITLE_TRASH = "Shemale Porn Videos - Trending"
 
 class AShemaleTubeCrawler(Crawler):
     primary_base_domain = URL("https://www.ashemaletube.com")
+    next_page_selector = _SELECTORS.NEXT_PAGE_SELECTOR
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "ashemaletube", "aShemaleTube")
         self.request_limiter = AsyncLimiter(3, 10)
-        self.next_page_selector = _SELECTORS.NEXT_PAGE_SELECTOR
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
