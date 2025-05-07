@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import field
+from dataclasses import Field, field
 from datetime import timedelta
 from http import HTTPStatus
 from typing import TYPE_CHECKING, Any
@@ -86,7 +86,6 @@ class CacheManager:
             yaml.save(self.cache_file, self._cache)
 
     async def close(self):
-        await self.request_cache.close()
-
-    def close_sync(self):
+        if not isinstance(self.request_cache, Field):
+            await self.request_cache.close()
         self.save("version", current_version)

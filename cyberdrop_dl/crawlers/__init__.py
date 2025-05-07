@@ -8,6 +8,7 @@ from cyberdrop_dl import env
 from .archivebate import ArchiveBateCrawler
 from .ashemaletube import AShemaleTubeCrawler
 from .bestprettygirl import BestPrettyGirlCrawler
+from .box_dot_com import BoxDotComCrawler
 from .bunkrr import BunkrrCrawler
 from .bunkrr_albums_io import BunkrAlbumsIOCrawler
 from .catbox import CatboxCrawler
@@ -56,6 +57,7 @@ from .pixhost import PixHostCrawler
 from .pkmncards import PkmncardsCrawler
 from .pmvhaven import PMVHavenCrawler
 from .pornpics import PornPicsCrawler
+from .porntrex import PorntrexCrawler
 from .postimg import PostImgCrawler
 from .realbooru import RealBooruCrawler
 from .reddit import RedditCrawler
