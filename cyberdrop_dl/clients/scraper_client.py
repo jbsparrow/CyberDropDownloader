@@ -158,7 +158,7 @@ class ScraperClient:
         url: URL,
         headers: dict[str, str] | None = None,
         impersonate: BrowserTarget | None = "chrome",
-        **request_params: Any,
+        request_params: dict[str, Any] | None = None,
     ) -> BeautifulSoup:
         """Makes a GET request using curl-cffi and creates a soup.
 
@@ -166,8 +166,9 @@ class ScraperClient:
         :param url: The URL to fetch.
         :param headers: Optional headers to include in the request. Will be added to session's default headers.
         :param impersonate: Optional browser target to impersonate. Defaults to `chrome`.
-        :param **request_params: Additional keyword arguments to pass to `curl_session.get` (e.g., `timeout`).
+        :param request_params: Additional keyword arguments to pass to `curl_session.get` (e.g., `timeout`).
         """
+        request_params = request_params or {}
         headers = self._headers | (headers or {})
         response: CurlResponse = await self._curl_session.get(
             str(url), impersonate=impersonate, headers=headers, **request_params
@@ -191,7 +192,7 @@ class ScraperClient:
         impersonate: BrowserTarget | None = "chrome",
         data: dict[str, Any] | None = None,
         json: dict[str, Any] | None = None,
-        **request_params: Any,
+        request_params: dict[str, Any] | None = None,
     ) -> CurlResponse:
         """Makes a POST request using curl-cffi
 
@@ -201,8 +202,9 @@ class ScraperClient:
         :param impersonate: Optional browser target to impersonate. Defaults to `chrome`.
         :param data: Data to include in the requests. Will be sent as is (FormData).
         :param json: JSON data to include in the request. This will be serialized into a JSON string, and the `Content-Type` header will be set to `application/json`.
-        :param **request_params: Additional keyword arguments to pass to `curl_session.post` (e.g., `timeout`).
+        :param request_params: Additional keyword arguments to pass to `curl_session.post` (e.g., `timeout`).
         """
+        request_params = request_params or {}
         headers = self._headers | (headers or {})
         response: CurlResponse = await self._curl_session.post(
             str(url), data=data, json=json, impersonate=impersonate, headers=headers, **request_params
@@ -212,10 +214,13 @@ class ScraperClient:
 
     # ~~~~~~~~~~~~~ AIOHTTP ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    async def _resilient_get(self, url: URL, **request_params: Any) -> tuple[AnyResponse, BeautifulSoup | None]:
+    async def _resilient_get(
+        self, url: URL, headers: dict[str, str], request_params: dict[str, Any] | None = None
+    ) -> tuple[AnyResponse, BeautifulSoup | None]:
         """Makes a GET request and automatically retries it with flaresolverr (if needed)"""
+        request_params = request_params or {}
         for retry in range(2):
-            response = await self._session.get(url, **request_params)
+            response = await self._session.get(url, headers=headers, **request_params)
             async with self.write_soup_on_error(url, response):
                 try:
                     await self.client_manager.check_http_status(response)
@@ -242,9 +247,9 @@ class ScraperClient:
         domain: str,
         url: URL,
         headers: dict[str, str] | None = None,
+        request_params: dict[str, Any] | None = None,
         *,
         cache_disabled: bool = False,
-        **request_params: Any,
     ) -> tuple[AnyResponse, BeautifulSoup]:
         """
         Makes a GET request using aiohttp and creates a soup.
@@ -252,9 +257,10 @@ class ScraperClient:
         :param domain: The crawler's domain (for rate limiting)
         :param url: The URL to fetch.
         :param headers:  Optional headers to include in the request. Will be added to session's default headers.
+        :param request_params: Additional keyword arguments to pass to `session.get` (e.g., `timeout`).
         :param cache_disabled: Whether to disable caching for this request. Defaults to `False`.
-        :param **request_params: Additional keyword arguments to pass to `session.get` (e.g., `timeout`).
         """
+        request_params = request_params or {}
         headers = self._headers | (headers or {})
         async with cache_control_manager(self._session, disabled=cache_disabled):
             response, soup_or_none = await self._resilient_get(url, headers=headers, **request_params)
@@ -278,10 +284,11 @@ class ScraperClient:
         domain: str,
         url: URL,
         headers: dict[str, str] | None = None,
+        request_params: dict[str, Any] | None = None,
         *,
         cache_disabled: bool = False,
-        **request_params: Any,
     ) -> dict[str, Any]:
+        request_params = request_params or {}
         headers = self._headers | (headers or {})
         async with cache_control_manager(self._session, disabled=cache_disabled):
             response = await self._session.get(url, headers=headers, **request_params)
@@ -303,9 +310,9 @@ class ScraperClient:
         headers: dict[str, str] | None = None,
         data: dict[str, Any] | None = None,
         json: dict[str, Any] | None = None,
+        request_params: dict[str, Any] | None = None,
         *,
         cache_disabled: bool = False,
-        **request_params: Any,
     ) -> aiohttp.ClientResponse:
         """Makes a post request using aiohtttp
 
@@ -314,9 +321,10 @@ class ScraperClient:
         :param headers: Optional headers to include in the request. Will be added to session's default headers.
         :param data: Data to include in the requests. Will be sent as is (FormData).
         :param json: JSON data to include in the request. This will be serialized into a JSON string, and the `Content-Type` header will be set to `application/json`.
+        :param request_params: Additional keyword arguments to pass to `session.post` (e.g., `timeout`).
         :param cache_disabled: Whether to disable caching for this request. Defaults to `False`.
-        :param **request_params: Additional keyword arguments to pass to `session.post` (e.g., `timeout`).
         """
+        request_params = request_params or {}
         headers = self._headers | {"Accept-Encoding": "identity"} | (headers or {})
         async with cache_control_manager(self._session, disabled=cache_disabled):
             response = await self._session.post(url, headers=headers, data=data, json=json, **request_params)
@@ -331,7 +339,7 @@ class ScraperClient:
         return await response.read()
 
     @copy_signature(_post_data)
-    async def post_data(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
+    async def post_data(self, *args: Any, **kwargs: Any) -> Any:
         content = await self.post_data_raw(*args, **kwargs)
         return json_loads(content)
 
@@ -341,9 +349,9 @@ class ScraperClient:
         domain: str,
         url: URL,
         headers: dict[str, str] | None = None,
+        request_params: dict[str, Any] | None = None,
         *,
         cache_disabled: bool = False,
-        **request_params: Any,
     ) -> CIMultiDictProxy[str]:
         """
         Makes a GET request to an URL and returns its headers
@@ -351,9 +359,10 @@ class ScraperClient:
         :param domain: The crawler's domain (for rate limiting)
         :param url: The URL to fetch.
         :param headers:  Optional headers to include in the request. Will be added to session's default headers.
+        :param request_params: Additional keyword arguments to pass to `session.head` (e.g., `timeout`).
         :param cache_disabled: Whether to disable caching for this request. Defaults to `False`.
-        :param **request_params: Additional keyword arguments to pass to `session.head` (e.g., `timeout`).
         """
+        request_params = request_params or {}
         headers = self._headers | {"Accept-Encoding": "identity"} | (headers or {})
         async with cache_control_manager(self._session, disabled=cache_disabled):
             response = await self._session.head(url, headers=headers, **request_params)
