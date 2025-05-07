@@ -27,7 +27,7 @@ dependencies = [
     "pyyaml >=6.0.2",
     "rich >=13.9.4",
     "send2trash >=1.8.3",
-    "textual >=2.1.2",
+    "textual >=3.2.0",
     "xxhash >=3.5.0"
 ]
 description = "Bulk downloader for multiple file hosts"
