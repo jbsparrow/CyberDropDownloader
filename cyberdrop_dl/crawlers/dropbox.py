@@ -27,9 +27,10 @@ class DropboxCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        scrape_item.url = await self.get_share_url(scrape_item)
-        if not scrape_item.url:
+        url = await self.get_share_url(scrape_item)
+        if not url:
             return
+        scrape_item.url = url
 
         if any(p in scrape_item.url.path for p in ("/scl/fi/", "/scl/fo/")):
             return await self.file(scrape_item)

@@ -123,7 +123,7 @@ class CheveretoCrawler(Crawler):
         if PASSWORD_PROTECTED in soup.text and password:
             data = {"content-password": password}
             async with self.request_limiter:
-                html = await self.client.post_data(self.domain, url, data=data, raw=True)
+                html = await self.client.post_data_raw(self.domain, url, data=data)
             soup = BeautifulSoup(html, "html.parser")
 
         if PASSWORD_PROTECTED in soup.text:

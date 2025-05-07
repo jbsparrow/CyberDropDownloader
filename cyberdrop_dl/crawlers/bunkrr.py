@@ -285,7 +285,7 @@ class BunkrrCrawler(Crawler):
 
         data = json.dumps(data_dict)
         async with self.request_limiter:
-            json_resp: dict = await self.client.post_data(self.domain, api_url, data=data, headers_inc=headers)
+            json_resp: dict = await self.client.post_data(self.domain, api_url, data=data, headers=headers)
 
         api_response = ApiResponse(**json_resp)
         link_str = decrypt_api_response(api_response)

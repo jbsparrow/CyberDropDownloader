@@ -97,7 +97,7 @@ class YandexDiskCrawler(Crawler):
         }
         async with self.request_limiter:
             json_resp: dict[str, Any] = await self.client.post_data(
-                self.domain, DOWNLOAD_API_ENTRYPOINT, data=file.post_data, headers_inc=headers
+                self.domain, DOWNLOAD_API_ENTRYPOINT, data=file.post_data, headers=headers
             )
 
         new_sk = json_resp.get("new_sk")
