@@ -35,7 +35,7 @@ class BuzzHeavierCrawler(Crawler):
         url = scrape_item.url / "download"
         headers = {"HX-Current-URL": str(scrape_item.url), "HX-Request": "true"}
         async with self.request_limiter:
-            headers = await self.client.get_head(self.domain, url, headers_inc=headers)
+            headers = await self.client.get_head(self.domain, url, headers=headers)
             redirect = headers["hx-redirect"]
             filename = get_filename_from_headers(headers)
 
