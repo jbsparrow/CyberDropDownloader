@@ -85,7 +85,7 @@ class ConfigManager:
 
     def _load_authentication_config(self) -> None:
         """Verifies the authentication config file and creates it if it doesn't exist."""
-        needs_update = is_in_file("jdownloader_username:", self.authentication_settings)
+        needs_update = is_in_file("socialmediagirls_username:", self.authentication_settings)
         posible_fields = self.get_model_fields(AuthSettings(), exclude_unset=False)
         if self.authentication_settings.is_file():
             self.authentication_data = AuthSettings.model_validate(yaml.load(self.authentication_settings))
