@@ -20,8 +20,8 @@ if TYPE_CHECKING:
 
 
 class Selectors:
-    PROFILE_VIDEOS = "div.main-content div.media-item__inner a[data-video-preview]"
-    MODEL_VIDEO = "a data-video-preview"
+    PROFILE_VIDEOS = "div.sub-content div.media-item__inner > a[data-video-preview]"
+    SEARCH_VIDEOS = "div.main-content div.media-item__inner > a[data-video-preview]"
     USER_NAME = "h1.username"
     PLAYLIST_VIDEOS = "a.playlist-video-item__thumbnail"
     VIDEO_PROPS_JS = "script:contains('uploadDate')"
@@ -49,14 +49,14 @@ class CollectionType(StrEnum):
     MODEL = "model"
     PLAYLIST = "playlist"
     SEARCH = "search"
-    PROFILE = "user"
+    PROFILE = "profile"
 
 
 MEDIA_SELECTOR_MAP = {
     CollectionType.ALBUM: _SELECTORS.ALBUM_IMAGES,
     CollectionType.MODEL: _SELECTORS.PROFILE_VIDEOS,
     CollectionType.PLAYLIST: _SELECTORS.PLAYLIST_VIDEOS,
-    CollectionType.SEARCH: _SELECTORS.PROFILE_VIDEOS,
+    CollectionType.SEARCH: _SELECTORS.SEARCH_VIDEOS,
     CollectionType.PROFILE: _SELECTORS.ALBUM_IMAGES,
 }
 
@@ -87,8 +87,7 @@ class AShemaleTubeCrawler(Crawler):
         if any(p in scrape_item.url.parts for p in ("creators", "profiles", "pornstars", "model")):
             if "galleries" in scrape_item.url.parts:
                 return await self.gallery(scrape_item)
-            collection_type = CollectionType.PROFILE if "profiles" in scrape_item.url.parts else CollectionType.MODEL
-            return await self.collection(scrape_item, collection_type)
+            return await self.collection(scrape_item, CollectionType.MODEL)
         if "videos" in scrape_item.url.parts:
             return await self.video(scrape_item)
         if "playlists" in scrape_item.url.parts:
@@ -118,7 +117,7 @@ class AShemaleTubeCrawler(Crawler):
                 scrape_item.setup_as_album(album_title)
 
             for thumb in soup.select(MEDIA_SELECTOR_MAP[CollectionType.ALBUM]):
-                await self.proccess_image(self, scrape_item, thumb)
+                await self.proccess_image(scrape_item, thumb)
 
     @error_handling_wrapper
     async def collection(self, scrape_item: ScrapeItem, collection_type: CollectionType) -> None:
@@ -151,7 +150,7 @@ class AShemaleTubeCrawler(Crawler):
         img_item = soup.select_one(_SELECTORS.IMAGE_ITEM)
         if not img_item:
             raise ScrapeError(404)
-        await self.proccess_image(self, scrape_item, img_item)
+        await self.proccess_image(scrape_item, img_item)
 
     @error_handling_wrapper
     async def proccess_image(self, scrape_item: ScrapeItem, img_tag: Tag) -> None:
