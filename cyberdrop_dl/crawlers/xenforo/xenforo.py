@@ -14,7 +14,7 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import InvalidURLError, LoginError, ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.data_enums_classes.url_objects import FORUM, FORUM_POST, ScrapeItem
+from cyberdrop_dl.utils.data_enums_classes.url_objects import FORUM, ScrapeItem
 from cyberdrop_dl.utils.logger import log, log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_trailing_slash
 
@@ -67,7 +67,6 @@ class XenforoSelectors:
 class ForumPost:
     soup: Tag
     selectors: PostSelectors
-    title: str | None = None
     post_name: str = "post-"
 
     @cached_property
@@ -91,10 +90,6 @@ class ForumPost:
         number_tag = self.soup.select_one(self.selectors.number.element)
         number_str: str = number_tag.get(self.selectors.number.attribute)  # type: ignore
         return int(number_str.split("/")[-1].split(self.post_name)[-1])
-
-    @cached_property
-    def id(self) -> int:
-        return self.number
 
 
 @dataclass(frozen=True, slots=True)
@@ -230,7 +225,9 @@ class XenforoCrawler(Crawler):
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         """Scrapes a post."""
-        scrape_item.set_type(FORUM_POST, self.manager)
+        scrape_item.setup_as_post("")
+        post_title = self.create_separate_post_title(None, str(post.number), post.date)
+        scrape_item.add_to_parent_title(post_title)
         posts_scrapers = [self.attachments, self.embeds, self.images, self.links, self.videos]
         for scraper in posts_scrapers:
             await scraper(scrape_item, post)

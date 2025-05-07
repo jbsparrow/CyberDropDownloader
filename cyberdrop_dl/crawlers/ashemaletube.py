@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from enum import StrEnum
 from typing import TYPE_CHECKING, NamedTuple
 
 from aiolimiter import AsyncLimiter
@@ -9,24 +10,28 @@ from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
+    from bs4 import BeautifulSoup, Tag
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
 class Selectors:
-    PROFILE_VIDEOS = "div.media-item__inner a[data-video-preview]"
+    PROFILE_VIDEOS = "div.main-content div.media-item__inner a[data-video-preview]"
     MODEL_VIDEO = "a data-video-preview"
     USER_NAME = "h1.username"
     PLAYLIST_VIDEOS = "a.playlist-video-item__thumbnail"
     VIDEO_PROPS_JS = "script:contains('uploadDate')"
     JS_PLAYER = "script:contains('var player = new VideoPlayer')"
     LOGIN_REQUIRED = "div.loginLinks:contains('To watch this video please')"
+    IMAGE_ITEM = "div.imgItem"
+    ALBUM_IMAGES = "div.gallery-detail div.thumb"
+    ALBUM_TITLE = "div.prepositions-wrapper h1"
+    GALLERY_ALBUM = "div.profile-content div.galItem > a"
+    NEXT_PAGE = "a.rightKey"
 
 
 _SELECTORS = Selectors()
@@ -39,9 +44,36 @@ class Format(NamedTuple):
     link_str: str
 
 
+class CollectionType(StrEnum):
+    ALBUM = "album"
+    MODEL = "model"
+    PLAYLIST = "playlist"
+    SEARCH = "search"
+    PROFILE = "user"
+
+
+MEDIA_SELECTOR_MAP = {
+    CollectionType.ALBUM: _SELECTORS.ALBUM_IMAGES,
+    CollectionType.MODEL: _SELECTORS.PROFILE_VIDEOS,
+    CollectionType.PLAYLIST: _SELECTORS.PLAYLIST_VIDEOS,
+    CollectionType.SEARCH: _SELECTORS.PROFILE_VIDEOS,
+    CollectionType.PROFILE: _SELECTORS.ALBUM_IMAGES,
+}
+
+TITLE_SELECTOR_MAP = {
+    CollectionType.ALBUM: _SELECTORS.ALBUM_TITLE,
+    CollectionType.MODEL: _SELECTORS.USER_NAME,
+    CollectionType.PLAYLIST: "h1",
+    CollectionType.SEARCH: "h1",
+    CollectionType.PROFILE: _SELECTORS.USER_NAME,
+}
+
+TITLE_TRASH = "Shemale Porn Videos - Trending"
+
+
 class AShemaleTubeCrawler(Crawler):
     primary_base_domain = URL("https://www.ashemaletube.com")
-    next_page = "a.rightKey"
+    next_page_selector = _SELECTORS.NEXT_PAGE
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "ashemaletube", "aShemaleTube")
@@ -53,36 +85,85 @@ class AShemaleTubeCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
         if any(p in scrape_item.url.parts for p in ("creators", "profiles", "pornstars", "model")):
-            return await self.model(scrape_item)
+            if "galleries" in scrape_item.url.parts:
+                return await self.gallery(scrape_item)
+            collection_type = CollectionType.PROFILE if "profiles" in scrape_item.url.parts else CollectionType.MODEL
+            return await self.collection(scrape_item, collection_type)
         if "videos" in scrape_item.url.parts:
             return await self.video(scrape_item)
         if "playlists" in scrape_item.url.parts:
-            return await self.playlist(scrape_item)
+            return await self.collection(scrape_item, CollectionType.PLAYLIST)
+        if "search" in scrape_item.url.parts:
+            return await self.collection(scrape_item, CollectionType.SEARCH)
+        if "pics" in scrape_item.url.parts:
+            if len(scrape_item.url.parts) >= 5:
+                return await self.image(scrape_item)
+            return await self.album(scrape_item)
+        if "cam" in scrape_item.url.parts:
+            raise ValueError
         raise ValueError
 
     @error_handling_wrapper
-    async def playlist(self, scrape_item: ScrapeItem) -> None:
-        title = ""
+    async def gallery(self, scrape_item: ScrapeItem) -> None:
         async for soup in self.web_pager(scrape_item.url, cffi=True):
-            if not title:
-                playlist_name = soup.select_one("h1").get_text(strip=True)  # type: ignore
-                title = self.create_title(f"{playlist_name} [playlist]")
-                scrape_item.setup_as_album(title)
-
-            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.PLAYLIST_VIDEOS):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.GALLERY_ALBUM):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
-    async def model(self, scrape_item: ScrapeItem) -> None:
-        title = ""
+    async def album(self, scrape_item: ScrapeItem) -> None:
+        album_title = ""
         async for soup in self.web_pager(scrape_item.url, cffi=True):
-            if not title:
-                model_name = soup.select_one(_SELECTORS.USER_NAME).get_text(strip=True)  # type: ignore
-                title = self.create_title(f"{model_name} [model]")
-                scrape_item.setup_as_profile(title)
+            if not album_title:
+                album_title = self.create_collection_title(soup, CollectionType.ALBUM)
+                scrape_item.setup_as_album(album_title)
 
-            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.PROFILE_VIDEOS):
+            for thumb in soup.select(MEDIA_SELECTOR_MAP[CollectionType.ALBUM]):
+                await self.proccess_image(self, scrape_item, thumb)
+
+    @error_handling_wrapper
+    async def collection(self, scrape_item: ScrapeItem, collection_type: CollectionType) -> None:
+        collection_title = ""
+        async for soup in self.web_pager(scrape_item.url, cffi=True):
+            if not collection_title:
+                collection_title = self.create_collection_title(soup, collection_type)
+                if collection_type == CollectionType.MODEL:
+                    scrape_item.setup_as_profile(collection_title)
+                else:
+                    scrape_item.setup_as_album(collection_title)
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, MEDIA_SELECTOR_MAP[collection_type]):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
+
+    def create_collection_title(self, soup: BeautifulSoup, collection_type: CollectionType):
+        title_elem = soup.select_one(TITLE_SELECTOR_MAP[collection_type])
+        if not title_elem:
+            raise ScrapeError(401)
+        collection_title: str = title_elem.get_text(strip=True)  # type: ignore
+        collection_title = collection_title.replace(TITLE_TRASH, "").strip()
+        collection_title = self.create_title(f"{collection_title} [{collection_type}]")
+        return collection_title
+
+    @error_handling_wrapper
+    async def image(self, scrape_item: ScrapeItem) -> None:
+        if await self.check_complete_from_referer(scrape_item.url):
+            return
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, scrape_item.url)
+        img_item = soup.select_one(_SELECTORS.IMAGE_ITEM)
+        if not img_item:
+            raise ScrapeError(404)
+        await self.proccess_image(self, scrape_item, img_item)
+
+    @error_handling_wrapper
+    async def proccess_image(self, scrape_item: ScrapeItem, img_tag: Tag) -> None:
+        if image := img_tag.select_one("img"):
+            link_str: str = image["src"]  # type: ignore
+        else:
+            style: str = img_tag.select_one("a")["style"]  # type: ignore
+            link_str = get_text_between(style, "url('", "');")
+        url = self.parse_url(link_str).with_query(None)
+        filename, ext = self.get_filename_and_ext(url.name)
+        custom_filename, _ = self.get_filename_and_ext(f"{img_tag['data-image-id']}{ext}")
+        await self.handle_file(url, scrape_item, filename, ext, custom_filename=custom_filename)
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
