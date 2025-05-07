@@ -190,8 +190,8 @@ class ScraperClient:
         url: URL,
         headers: dict[str, str] | None = None,
         impersonate: BrowserTarget | None = "chrome",
-        data: dict[str, Any] | None = None,
-        json: dict[str, Any] | None = None,
+        data: Any = None,
+        json: Any = None,
         request_params: dict[str, Any] | None = None,
     ) -> CurlResponse:
         """Makes a POST request using curl-cffi
@@ -287,7 +287,7 @@ class ScraperClient:
         request_params: dict[str, Any] | None = None,
         *,
         cache_disabled: bool = False,
-    ) -> dict[str, Any]:
+    ) -> Any:
         request_params = request_params or {}
         headers = self._headers | (headers or {})
         async with cache_control_manager(self._session, disabled=cache_disabled):
@@ -308,8 +308,8 @@ class ScraperClient:
         domain: str,
         url: URL,
         headers: dict[str, str] | None = None,
-        data: dict[str, Any] | None = None,
-        json: dict[str, Any] | None = None,
+        data: Any = None,
+        json: Any = None,
         request_params: dict[str, Any] | None = None,
         *,
         cache_disabled: bool = False,
@@ -420,12 +420,12 @@ async def response_to_soup(response: AnyResponse | CurlResponse) -> BeautifulSou
     return BeautifulSoup(content, "html.parser")
 
 
-async def response_to_json(response: AnyResponse) -> dict[str, Any]:
+async def response_to_json(response: AnyResponse) -> Any:
     content_type: str = response.headers["Content-Type"].lower()
     if "text/plain" in content_type:
         return json_loads(await response.text())
     elif "json" in content_type:
-        return await response.json() or {}
+        return await response.json()
     else:
         raise InvalidContentTypeError(message=f"Received {content_type}, was expecting JSON")
 
