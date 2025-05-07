@@ -118,7 +118,7 @@ class AShemaleTubeCrawler(Crawler):
                 scrape_item.setup_as_album(album_title)
 
             for thumb in soup.select(MEDIA_SELECTOR_MAP[CollectionType.ALBUM]):
-                await self.proccess_image(self, scrape_item, thumb)
+                await self.proccess_image(scrape_item, thumb)
 
     @error_handling_wrapper
     async def collection(self, scrape_item: ScrapeItem, collection_type: CollectionType) -> None:
@@ -151,7 +151,7 @@ class AShemaleTubeCrawler(Crawler):
         img_item = soup.select_one(_SELECTORS.IMAGE_ITEM)
         if not img_item:
             raise ScrapeError(404)
-        await self.proccess_image(self, scrape_item, img_item)
+        await self.proccess_image(scrape_item, img_item)
 
     @error_handling_wrapper
     async def proccess_image(self, scrape_item: ScrapeItem, img_tag: Tag) -> None:
