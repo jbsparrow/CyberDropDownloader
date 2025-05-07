@@ -4,7 +4,7 @@ import asyncio
 import contextlib
 import ssl
 import time
-from dataclasses import dataclass
+from dataclasses import Field, dataclass
 from http import HTTPStatus
 from http.cookiejar import MozillaCookieJar
 from typing import TYPE_CHECKING, Any
@@ -251,6 +251,8 @@ class ClientManager:
 
     async def close(self) -> None:
         await self.flaresolverr._destroy_session()
+        if not isinstance(self.scraper_session, Field):
+            await self.scraper_session.close()
 
 
 @dataclass(frozen=True, slots=True)
