@@ -49,6 +49,7 @@ class CollectionType(StrEnum):
     MODEL = "model"
     PLAYLIST = "playlist"
     SEARCH = "search"
+    PROFILE = "user"
 
 
 MEDIA_SELECTOR_MAP = {
@@ -56,6 +57,7 @@ MEDIA_SELECTOR_MAP = {
     CollectionType.MODEL: _SELECTORS.PROFILE_VIDEOS,
     CollectionType.PLAYLIST: _SELECTORS.PLAYLIST_VIDEOS,
     CollectionType.SEARCH: _SELECTORS.PROFILE_VIDEOS,
+    CollectionType.PROFILE: _SELECTORS.ALBUM_IMAGES_SELECTOR,
 }
 
 TITLE_SELECTOR_MAP = {
@@ -63,6 +65,7 @@ TITLE_SELECTOR_MAP = {
     CollectionType.MODEL: _SELECTORS.USER_NAME,
     CollectionType.PLAYLIST: "h1",
     CollectionType.SEARCH: "h1",
+    CollectionType.PROFILE: _SELECTORS.USER_NAME,
 }
 
 TITLE_TRASH = "Shemale Porn Videos - Trending"
@@ -84,7 +87,8 @@ class AShemaleTubeCrawler(Crawler):
         if any(p in scrape_item.url.parts for p in ("creators", "profiles", "pornstars", "model")):
             if "galleries" in scrape_item.url.parts:
                 return await self.gallery(scrape_item)
-            return await self.collection(scrape_item, CollectionType.MODEL)
+            collection_type = CollectionType.PROFILE if "profiles" in scrape_item.url.parts else CollectionType.MODEL
+            return await self.collection(scrape_item, collection_type)
         if "videos" in scrape_item.url.parts:
             return await self.video(scrape_item)
         if "playlists" in scrape_item.url.parts:
