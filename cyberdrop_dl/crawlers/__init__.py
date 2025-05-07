@@ -8,8 +8,10 @@ from cyberdrop_dl import env
 from .archivebate import ArchiveBateCrawler
 from .ashemaletube import AShemaleTubeCrawler
 from .bestprettygirl import BestPrettyGirlCrawler
+from .box_dot_com import BoxDotComCrawler
 from .bunkrr import BunkrrCrawler
 from .bunkrr_albums_io import BunkrAlbumsIOCrawler
+from .buzzheavier import BuzzHeavierCrawler
 from .catbox import CatboxCrawler
 from .coomer import CoomerCrawler
 from .crawler import Crawler

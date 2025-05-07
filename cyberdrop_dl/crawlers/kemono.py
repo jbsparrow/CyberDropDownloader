@@ -7,14 +7,15 @@ import itertools
 import re
 from collections import defaultdict
 from datetime import datetime  # noqa: TC003
-from typing import TYPE_CHECKING, Any, NamedTuple
+from typing import TYPE_CHECKING, Annotated, Any, NamedTuple, NotRequired
 
-from pydantic import AliasChoices, AliasPath, Field
+from pydantic import AliasChoices, BeforeValidator, Field
 from typing_extensions import TypedDict  # Compatible with python 3.11
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import NoExtensionError, ScrapeError
 from cyberdrop_dl.config_definitions.custom.types import AliasModel
+from cyberdrop_dl.config_definitions.custom.validators import parse_falsy_as_none
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
 
@@ -99,12 +100,16 @@ class User(NamedTuple):
 class File(TypedDict):
     name: str
     path: str
+    server: NotRequired[str]  # Sometimes present in attachments
+
+
+FileOrNone = Annotated[File | None, BeforeValidator(parse_falsy_as_none)]
 
 
 class Post(AliasModel):
     id: str
     content: str = ""
-    file: File | None = None  # TODO: Verify is a post can have more that 1 file
+    file: FileOrNone = None
     attachments: list[File] = []  # noqa: RUF012
     published_or_added: datetime | None = Field(None, validation_alias=AliasChoices("published", "added"))
     soup_attachments: list[Any] = []  # noqa: RUF012, `Any` to skip validation, but these are `yarl.URL`. We generate them internally so no validation is needed
@@ -125,7 +130,6 @@ class UserPost(Post):
     service: str
     user_id: str = Field(validation_alias="user")
     title: str
-    revisions: list[UserPost] = Field([], validation_alias=AliasPath("props", "revisions"))  # Not used
 
     @property
     def user(self) -> User:
@@ -193,6 +197,7 @@ class KemonoCrawler(Crawler):
         self.api_entrypoint: URL = URL("https://kemono.su/api/v1")
         self.__known_user_names: dict[User, str] = {}
         self.__known_discord_servers: dict[str, DiscordServer] = {}
+        self.__known_attachment_servers: dict[str, str] = {}
         self.__user_names_locks: dict[User, asyncio.Lock] = defaultdict(asyncio.Lock)
         self.__discord_servers_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
         self.services: tuple[str, ...] = (
@@ -303,10 +308,20 @@ class KemonoCrawler(Crawler):
         async with self.request_limiter:
             json_resp: dict[str, dict] = await self.client.get_json(self.domain, api_url)
 
-        # Not used
-        # revisions = json_resp["props"].get("revisions", [])
         post = UserPost(**json_resp["post"])
+        self._register_attachments_servers(json_resp["attachments"])  # type: ignore
         await self._handle_user_post(scrape_item, post)
+
+    def _register_attachments_servers(self, attachments: list[File]) -> None:
+        for attach in attachments:
+            if server := attach.get("server"):
+                path = attach["path"]
+                if previous_server := self.__known_attachment_servers.get(path):
+                    if previous_server != server:
+                        msg = f"[{self.name}] {path} found with multiple diferent servers: {server = } {previous_server = } "
+                        self.log_debug(msg)
+                    continue
+                self.__known_attachment_servers[path] = server
 
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem, url: URL | None) -> None:
@@ -431,7 +446,9 @@ class KemonoCrawler(Crawler):
         self._handle_post_content(scrape_item, post)
 
     def __make_file_url(self, file: File) -> URL:
-        return self.parse_url(f"/data/{file['path']}").with_query(f=file["name"])
+        server = self.__known_attachment_servers.get(file["path"], "")
+        url = server + f"/data{file['path']}"
+        return self.parse_url(url).with_query(f=file["name"])
 
     def __make_api_url_w_offset(self, path: str, og_url: URL) -> URL:
         api_url = self.api_entrypoint / path

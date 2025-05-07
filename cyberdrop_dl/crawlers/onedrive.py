@@ -26,6 +26,7 @@ API_ENTRYPOINT = URL("https://api.onedrive.com/v1.0/drives/")
 PERSONAL_API_ENTRYPOINT = URL("https://my.microsoftpersonalcontent.com/_api/v2.0/shares/")
 BADGER_URL = URL("https://api-badgerp.svc.ms/v1.0/token")
 SHARE_LINK_HOST = "1drv.ms"
+SHARE_LINK_PARTS = "f", "t", "u", "b"
 
 # Default app details used in browsers by unautenticated sessions
 APP_ID = "1141147648"
@@ -231,7 +232,7 @@ class OneDriveCrawler(Crawler):
 
 
 def is_share_link(url: URL) -> bool:
-    return bool(url.host and url.host == SHARE_LINK_HOST) and any(p in url.parts for p in ("f", "t", "u"))
+    return bool(url.host and url.host == SHARE_LINK_HOST) and any(p in url.parts for p in SHARE_LINK_PARTS)
 
 
 def is_folder(json_resp: dict[str, Any]) -> bool:

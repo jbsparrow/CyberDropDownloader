@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import signal
 import sys
 from datetime import datetime
 from enum import IntEnum
@@ -115,10 +116,19 @@ async def _run_manager(manager: Manager) -> None:
 
 
 async def _scheduler(manager: Manager) -> None:
+    loop = asyncio.get_running_loop()
+
+    def shutdown() -> None:
+        log("Received keyboard interrupt, shutting down...", 30)
+        manager.states.SHUTTING_DOWN.set()
+        manager.current_task.cancel()
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
+
     for func in (_runtime, _post_runtime):
         if manager.states.SHUTTING_DOWN.is_set():
             return
         manager.current_task = task = asyncio.create_task(func(manager))
+        loop.add_signal_handler(signal.SIGINT, shutdown)
         try:
             await task
         except asyncio.CancelledError:
