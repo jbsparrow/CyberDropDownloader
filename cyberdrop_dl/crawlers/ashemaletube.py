@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 
 class Selectors:
-    PROFILE_VIDEOS = "div.main-content div.media-item__inner a[data-video-preview]"
+    PROFILE_VIDEOS = "div.sub-content div.media-item__inner > a[data-video-preview]"
     MODEL_VIDEO = "a data-video-preview"
     USER_NAME = "h1.username"
     PLAYLIST_VIDEOS = "a.playlist-video-item__thumbnail"
@@ -49,7 +49,7 @@ class CollectionType(StrEnum):
     MODEL = "model"
     PLAYLIST = "playlist"
     SEARCH = "search"
-    PROFILE = "user"
+    PROFILE = "profile"
 
 
 MEDIA_SELECTOR_MAP = {
@@ -87,8 +87,7 @@ class AShemaleTubeCrawler(Crawler):
         if any(p in scrape_item.url.parts for p in ("creators", "profiles", "pornstars", "model")):
             if "galleries" in scrape_item.url.parts:
                 return await self.gallery(scrape_item)
-            collection_type = CollectionType.PROFILE if "profiles" in scrape_item.url.parts else CollectionType.MODEL
-            return await self.collection(scrape_item, collection_type)
+            return await self.collection(scrape_item, CollectionType.MODEL)
         if "videos" in scrape_item.url.parts:
             return await self.video(scrape_item)
         if "playlists" in scrape_item.url.parts:
