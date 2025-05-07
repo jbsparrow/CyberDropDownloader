@@ -55,7 +55,7 @@ pip install cyberdrop-dl-patched==6.5.0
 
 Built into Cyberdrop-DL is a tool that allows you to import both your configs and your history DB from a v4 version of Cyberdrop-DL. You can use it by selecting "Import V4 Items".
 
-### How to importing v4 configs</a>
+### Import Your V4 Configs</a>
 
 The config files will be located in the folder that you were previously running Cyberdrop-DL in. Start CDL, choose the option `Import v4 config` and follow the on screen instructions
 
