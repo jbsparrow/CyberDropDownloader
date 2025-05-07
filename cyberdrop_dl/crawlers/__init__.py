@@ -26,6 +26,7 @@ from .erome import EromeCrawler
 from .fapello import FapelloCrawler
 from .fileditch import FileditchCrawler
 from .files_vc import FilesVcCrawler
+from .fourchan import FourChanCrawler
 from .generic import GenericCrawler
 from .gofile import GoFileCrawler
 from .google_drive import GoogleDriveCrawler
