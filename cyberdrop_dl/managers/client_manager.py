@@ -51,6 +51,8 @@ DDOS_GUARD_CHALLENGE_SELECTORS = [
 
 CLOUDFLARE_CHALLENGE_TITLES = ["Simpcity Cuck Detection", "Attention Required! | Cloudflare"]
 CLOUDFLARE_CHALLENGE_SELECTORS = ["captchawrapper", "cf-turnstile"]
+CLOUDFLARE_CHALLENGE_JS_SELECTOR = "script[src*='challenges.cloudflare.com/turnstile']"
+CLOUDFLARE_NO_SNIFF_JS_SELECTOR = "script:contains('Dont open Developer Tools')"
 
 
 class ClientManager:
@@ -242,6 +244,9 @@ class ClientManager:
             if challenge_found:
                 return True
 
+        if soup.select_one(CLOUDFLARE_CHALLENGE_JS_SELECTOR) and soup.select_one(CLOUDFLARE_NO_SNIFF_JS_SELECTOR):
+            return True
+
         return False
 
     async def close(self) -> None:
@@ -320,16 +325,16 @@ class Flaresolverr:
         async with (
             self.request_lock,
             self.client_manager.manager.progress_manager.show_status_msg(msg),
-            client_session.post(
+        ):
+            response = await client_session.post(
                 self.flaresolverr_host / "v1",
                 headers=headers,
                 ssl=self.client_manager.ssl_context,
                 proxy=self.client_manager.proxy,
                 json=data,
                 timeout=timeout,
-            ) as response,
-        ):
-            json_obj: dict = await response.json()  # type: ignore
+            )
+            json_obj: dict[str, Any] = await response.json()
 
         return json_obj
 
