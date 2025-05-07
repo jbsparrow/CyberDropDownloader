@@ -14,8 +14,8 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar
 
 import aiohttp
-from aiohttp_client_cache import CachedSession
 from aiohttp_client_cache.response import AnyResponse
+from aiohttp_client_cache.session import CachedSession
 from bs4 import BeautifulSoup
 
 import cyberdrop_dl.utils.constants as constants
@@ -337,7 +337,13 @@ class ScraperClient:
 
     @limiter
     async def get_head(
-        self, domain: str, url: URL, headers: dict | None = None, *, cache_disabled: bool = False, **request_params: Any
+        self,
+        domain: str,
+        url: URL,
+        headers: dict[str, str] | None = None,
+        *,
+        cache_disabled: bool = False,
+        **request_params: Any,
     ) -> CIMultiDictProxy[str]:
         """
         Makes a GET request to an URL and returns its headers
