@@ -34,7 +34,6 @@ class RedditCrawler(Crawler):
         self.reddit_secret = self.manager.config_manager.authentication_data.reddit.secret
         self.request_limiter = AsyncLimiter(5, 1)
         self.logged_in = False
-        self._reddit: Reddit = field(init=False)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -163,7 +162,7 @@ class RedditCrawler(Crawler):
         await self.handle_file(url, scrape_item, filename, ext)
 
     async def get_final_location(self, url) -> URL:
-        headers = await self.client.get_head(self.domain, url)
+        headers: dict[str, str] = await self.client.get_head(self.domain, url)
         content_type = headers.get("Content-Type", "")
         if any(s in content_type.lower() for s in ("html", "text")):
             _, url = await self.client.get_soup_and_return_url(self.domain, url)
