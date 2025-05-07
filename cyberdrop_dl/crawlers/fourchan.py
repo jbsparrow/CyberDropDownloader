@@ -55,6 +55,7 @@ class FourChanCrawler(Crawler):
                 filename, ext = self.get_filename_and_ext(f"{post['filename']}{post['ext']}")
                 custom_filename, _ = self.get_filename_and_ext(f"{file_id}{ext}")
                 url = URL(f"https://i.4cdn.org/{board}/{file_id}{ext}")
+                scrape_item.possible_datetime = self.parse_date(post["now"], "%m/%d/%y(%a)%H:%M:%S")
                 if await self.check_complete_from_referer(url):
                     continue
                 await self.handle_file(url, scrape_item, filename, ext, custom_filename=custom_filename)
