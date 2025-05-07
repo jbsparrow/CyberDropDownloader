@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, NotRequired, TypedDict
 
 import asyncprawcore
 from aiolimiter import AsyncLimiter
@@ -21,6 +21,26 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
+
+
+class MediaFile(TypedDict):
+    y: int  # Height
+    x: int  # Width
+    u: str  # URL
+
+
+class MediaSource(MediaFile):
+    u: NotRequired[str]  # URL
+    gif: NotRequired[str]  # URL
+    mp4: NotRequired[str]  # URL
+
+
+class MediaMetadata(TypedDict):
+    status: str
+    m: str  # mimetype
+    p: list[MediaFile]  # Previews
+    o: list[MediaFile]  # Originals? Options?
+    s: MediaSource  # Source
 
 
 class RedditCrawler(Crawler):
@@ -134,13 +154,18 @@ class RedditCrawler(Crawler):
 
     async def gallery(self, scrape_item: ScrapeItem, submission: Submission) -> None:
         """Scrapes galleries."""
-        if not hasattr(submission, "media_metadata") or submission.media_metadata is None:
+        media_metadata: dict[str, MediaMetadata] = getattr(submission, "media_metadata", {})
+        if not media_metadata:
             return
 
-        for item in submission.media_metadata.values():
+        for item in media_metadata.values():
             if item["status"] != "valid":
                 continue
-            link_str = item["s"]["u"]
+            source = item["s"]
+            link_str = source.get("u") or source.get("gif") or source.get("mp4")
+            if not link_str:
+                # TODO: Move this logic to its own method so we can raise an error on each individual link
+                continue
             link = self.parse_url(link_str).with_host("i.redd.it").with_query(None)
             await self.media(scrape_item, link)
             scrape_item.add_children()
