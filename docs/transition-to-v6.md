@@ -67,7 +67,7 @@ However, if you were primarily using CLI Arguments with V4, some of the argument
 
 If you don't end up using the import feature, make sure you also change the default config in the program if that's something you want to do.
 
-### How to importing v4 history database</a>
+### Import Your V4 Database</a>
 
 For a lot of people, the `download_history.sqlite` file will be in the same folder as your start file (or wherever you are running Cyberdrop-DL).
 
