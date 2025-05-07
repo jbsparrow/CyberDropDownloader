@@ -27,11 +27,11 @@ class Selectors:
     VIDEO_PROPS_JS = "script:contains('uploadDate')"
     JS_PLAYER = "script:contains('var player = new VideoPlayer')"
     LOGIN_REQUIRED = "div.loginLinks:contains('To watch this video please')"
-    IMAGE_ITEM_SELECTOR = "div.imgItem"
-    ALBUM_IMAGES_SELECTOR = "div.gallery-detail div.thumb"
-    ALBUM_TITLE_SELECTOR = "div.prepositions-wrapper h1"
-    GALLERY_ALBUM_SELECTOR = "div.profile-content div.galItem > a"
-    NEXT_PAGE_SELECTOR = "a.rightKey"
+    IMAGE_ITEM = "div.imgItem"
+    ALBUM_IMAGES = "div.gallery-detail div.thumb"
+    ALBUM_TITLE = "div.prepositions-wrapper h1"
+    GALLERY_ALBUM = "div.profile-content div.galItem > a"
+    NEXT_PAGE = "a.rightKey"
 
 
 _SELECTORS = Selectors()
@@ -53,15 +53,15 @@ class CollectionType(StrEnum):
 
 
 MEDIA_SELECTOR_MAP = {
-    CollectionType.ALBUM: _SELECTORS.ALBUM_IMAGES_SELECTOR,
+    CollectionType.ALBUM: _SELECTORS.ALBUM_IMAGES,
     CollectionType.MODEL: _SELECTORS.PROFILE_VIDEOS,
     CollectionType.PLAYLIST: _SELECTORS.PLAYLIST_VIDEOS,
     CollectionType.SEARCH: _SELECTORS.PROFILE_VIDEOS,
-    CollectionType.PROFILE: _SELECTORS.ALBUM_IMAGES_SELECTOR,
+    CollectionType.PROFILE: _SELECTORS.ALBUM_IMAGES,
 }
 
 TITLE_SELECTOR_MAP = {
-    CollectionType.ALBUM: _SELECTORS.ALBUM_TITLE_SELECTOR,
+    CollectionType.ALBUM: _SELECTORS.ALBUM_TITLE,
     CollectionType.MODEL: _SELECTORS.USER_NAME,
     CollectionType.PLAYLIST: "h1",
     CollectionType.SEARCH: "h1",
@@ -73,7 +73,7 @@ TITLE_TRASH = "Shemale Porn Videos - Trending"
 
 class AShemaleTubeCrawler(Crawler):
     primary_base_domain = URL("https://www.ashemaletube.com")
-    next_page_selector = _SELECTORS.NEXT_PAGE_SELECTOR
+    next_page_selector = _SELECTORS.NEXT_PAGE
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "ashemaletube", "aShemaleTube")
@@ -106,7 +106,7 @@ class AShemaleTubeCrawler(Crawler):
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem) -> None:
         async for soup in self.web_pager(scrape_item.url, cffi=True):
-            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.GALLERY_ALBUM_SELECTOR):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.GALLERY_ALBUM):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -114,7 +114,7 @@ class AShemaleTubeCrawler(Crawler):
         album_title = ""
         async for soup in self.web_pager(scrape_item.url, cffi=True):
             if not album_title:
-                album_title = self.create_collection_title(scrape_item, CollectionType.ALBUM, soup)
+                album_title = self.create_collection_title(soup, CollectionType.ALBUM)
                 scrape_item.setup_as_album(album_title)
 
             for thumb in soup.select(MEDIA_SELECTOR_MAP[CollectionType.ALBUM]):
@@ -125,7 +125,7 @@ class AShemaleTubeCrawler(Crawler):
         collection_title = ""
         async for soup in self.web_pager(scrape_item.url, cffi=True):
             if not collection_title:
-                collection_title = self.create_collection_title(scrape_item, collection_type, soup)
+                collection_title = self.create_collection_title(soup, collection_type)
                 if collection_type == CollectionType.MODEL:
                     scrape_item.setup_as_profile(collection_title)
                 else:
@@ -133,7 +133,7 @@ class AShemaleTubeCrawler(Crawler):
             for _, new_scrape_item in self.iter_children(scrape_item, soup, MEDIA_SELECTOR_MAP[collection_type]):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
-    def create_collection_title(self, scrape_item: ScrapeItem, collection_type: CollectionType, soup: BeautifulSoup):
+    def create_collection_title(self, soup: BeautifulSoup, collection_type: CollectionType):
         title_elem = soup.select_one(TITLE_SELECTOR_MAP[collection_type])
         if not title_elem:
             raise ScrapeError(401)
@@ -148,7 +148,7 @@ class AShemaleTubeCrawler(Crawler):
             return
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, scrape_item.url)
-        img_item = soup.select_one(_SELECTORS.IMAGE_ITEM_SELECTOR)
+        img_item = soup.select_one(_SELECTORS.IMAGE_ITEM)
         if not img_item:
             raise ScrapeError(404)
         await self.proccess_image(self, scrape_item, img_item)
@@ -162,7 +162,7 @@ class AShemaleTubeCrawler(Crawler):
             link_str = get_text_between(style, "url('", "');")
         url = self.parse_url(link_str).with_query(None)
         filename, ext = self.get_filename_and_ext(url.name)
-        custom_filename, _ = self.get_filename_and_ext(f"{img_tag['data-image-id']}.jpg")
+        custom_filename, _ = self.get_filename_and_ext(f"{img_tag['data-image-id']}{ext}")
         await self.handle_file(url, scrape_item, filename, ext, custom_filename=custom_filename)
 
     @error_handling_wrapper
