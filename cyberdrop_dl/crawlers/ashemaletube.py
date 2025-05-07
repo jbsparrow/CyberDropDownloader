@@ -13,7 +13,7 @@ from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
+    from bs4 import BeautifulSoup, Tag
 
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
@@ -118,12 +118,7 @@ class AShemaleTubeCrawler(Crawler):
                 scrape_item.setup_as_album(album_title)
 
             for thumb in soup.select(MEDIA_SELECTOR_MAP[CollectionType.ALBUM]):
-                style: str = thumb.select_one("a")["style"]  # type: ignore
-                link_str = get_text_between(style, "url('", "');")
-                url = self.parse_url(link_str).with_query(None)
-                filename, ext = self.get_filename_and_ext(url.name)
-                custom_filename, _ = self.get_filename_and_ext(f"{thumb['data-image-id']}.jpg")
-                await self.handle_file(url, scrape_item, filename, ext, custom_filename=custom_filename)
+                await self.proccess_image(self, scrape_item, thumb)
 
     @error_handling_wrapper
     async def collection(self, scrape_item: ScrapeItem, collection_type: CollectionType) -> None:
@@ -156,9 +151,18 @@ class AShemaleTubeCrawler(Crawler):
         img_item = soup.select_one(_SELECTORS.IMAGE_ITEM_SELECTOR)
         if not img_item:
             raise ScrapeError(404)
-        url: URL = self.parse_url(img_item.select_one("img")["src"]).with_query(None)
+        await self.proccess_image(self, scrape_item, img_item)
+
+    @error_handling_wrapper
+    async def proccess_image(self, scrape_item: ScrapeItem, img_tag: Tag) -> None:
+        if image := img_tag.select_one("img"):
+            link_str: str = image["src"]  # type: ignore
+        else:
+            style: str = img_tag.select_one("a")["style"]  # type: ignore
+            link_str = get_text_between(style, "url('", "');")
+        url = self.parse_url(link_str).with_query(None)
         filename, ext = self.get_filename_and_ext(url.name)
-        custom_filename, _ = self.get_filename_and_ext(f"{img_item['data-image-id']}.jpg")
+        custom_filename, _ = self.get_filename_and_ext(f"{img_tag['data-image-id']}.jpg")
         await self.handle_file(url, scrape_item, filename, ext, custom_filename=custom_filename)
 
     @error_handling_wrapper
