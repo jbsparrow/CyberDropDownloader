@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 
 class Selectors:
     PROFILE_VIDEOS = "div.sub-content div.media-item__inner > a[data-video-preview]"
+    SEARCH_VIDEOS = "div.main-content div.media-item__inner > a[data-video-preview]"
     MODEL_VIDEO = "a data-video-preview"
     USER_NAME = "h1.username"
     PLAYLIST_VIDEOS = "a.playlist-video-item__thumbnail"
@@ -56,7 +57,7 @@ MEDIA_SELECTOR_MAP = {
     CollectionType.ALBUM: _SELECTORS.ALBUM_IMAGES,
     CollectionType.MODEL: _SELECTORS.PROFILE_VIDEOS,
     CollectionType.PLAYLIST: _SELECTORS.PLAYLIST_VIDEOS,
-    CollectionType.SEARCH: _SELECTORS.PROFILE_VIDEOS,
+    CollectionType.SEARCH: _SELECTORS.SEARCH_VIDEOS,
     CollectionType.PROFILE: _SELECTORS.ALBUM_IMAGES,
 }
 
