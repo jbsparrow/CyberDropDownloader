@@ -25,19 +25,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [6.10.0] - 2025-05-03
 
 ### Added
+
 - NoodleMagazine support
 - Files.vc support
+- Box.com support
 - Mixdrop support
-- pkmncards.com support
-- Porntrex
+- Pkmncards.com support
+- Porntrex support
+- Buzzheavier support
 - Archivebate support (individual videos only)
 - Albums support (ThisVid)
 - Parse upload date of files (rule34xxx)
+- Support for albums and searches (ashemaletube)
 - Add a config option to disable the generic crawler: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/global-settings/general#enable_generic_crawler
 - Auto switch primary host if the default host is blocked on the current network (bunkr)
 - Download entire discord server (Kemono)
 - Download favorites (Kemono)
 - `jitter` option to wait a random extra number of seconds in between downloads: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/global-settings/rate-limiting-options#jitter
+- Graceful shutdown: Pressing `Ctrl` + `C` will cancel scraping, print stats and send notifications instead of just quitting
 
 ### Changed
 
@@ -45,8 +50,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Cookies are only extracted once per browser
 - Prioritize Real-Debrid and Jdownloader over the generic crawler
 - Improve DDosGuard detection
-- General performance improvements
 - Try to set creation time of files in macOS
+- Check DDoS-Guard even on successful pages
+- Try to use original server (kemono, coomer, nekohouse)
+- Improve cloudflare captcha detection
+- General performance improvements
+
 
 ### Removed
 
@@ -65,7 +74,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Do not crash if a mountpoint is not available (Windows BitLocker)
 - Handle videos with unknown resolution (ThisVid)
 - Discord channel download (Kemono)
-
+- Gif downloads (reddit)
 
 ## [6.9.1] - 2025-04-20
 
@@ -76,14 +85,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [6.9.0] - 2025-04-17
 
 ### Added
+
 - aShemaleTube.com support
 - Thisvid.com support
 - ePorner.com profile, photo, and gallery support
 - New `--show-supported-sites` option: https://script-ware.gitbook.io/cyberdrop-dl/reference/cli-arguments#show-supported-sites
+
 ### Changed
+
 - The `import cookies` menu will only display the browsers supported by the user's OS
 
 ### Fixed
+
 - Choosing 'All Supported Websites' in cookie extraction will no longer extract all cookies from the browser
 - Fixed free space check when using network drives (windows)
 - Fixed embed parsing on XenForo
