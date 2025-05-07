@@ -37,7 +37,6 @@ class Selectors:
 _SELECTORS = Selectors()
 RESOLUTIONS = ["2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"]  # best to worst
 INCLUDE_VIDEO_ID_IN_FILENAME = True
-IMAGE_URL = re.compile(r"url\('([^']+)'\)")
 
 
 class Format(NamedTuple):
@@ -95,8 +94,7 @@ class AShemaleTubeCrawler(Crawler):
         if "pics" in scrape_item.url.parts:
             if len(scrape_item.url.parts) >= 5:
                 return await self.image(scrape_item)
-            else:
-                return await self.album(scrape_item)
+            return await self.album(scrape_item)
         if "cam" in scrape_item.url.parts:
             raise ValueError
         raise ValueError
@@ -116,10 +114,11 @@ class AShemaleTubeCrawler(Crawler):
                     scrape_item, CollectionType.ALBUM, TITLE_SELECTOR_MAP[CollectionType.ALBUM], soup
                 )
             for thumb in soup.select(MEDIA_SELECTOR_MAP[CollectionType.ALBUM]):
-                custom_filename, _ = self.get_filename_and_ext(f"{thumb['data-image-id']}.jpg")
-                link = thumb.select_one("a")
-                url = self.parse_url(IMAGE_URL.search(link["style"]).group(1).split("?")[0])
+                style: str = thumb.select_one("a")["style"]  # type: ignore
+                link_str = get_text_between(style, "url('", "');")
+                url = self.parse_url(link_str).with_query(None)
                 filename, ext = self.get_filename_and_ext(url.name)
+                custom_filename, _ = self.get_filename_and_ext(f"{thumb['data-image-id']}.jpg")
                 await self.handle_file(url, scrape_item, filename, ext, custom_filename=custom_filename)
 
     @error_handling_wrapper
@@ -130,7 +129,7 @@ class AShemaleTubeCrawler(Crawler):
                 collection_title = self.create_collection_title(
                     scrape_item, collection_type, TITLE_SELECTOR_MAP[collection_type], soup
                 )
-            for _, new_scrape_item in self.iter_children(scrape_item, soup, MEDIA_SELECTOR_MAP.get(collection_type)):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, MEDIA_SELECTOR_MAP[collection_type]):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
     def create_collection_title(self, scrape_item: ScrapeItem, collection_type, title_selector, soup):
