@@ -110,9 +110,9 @@ class AShemaleTubeCrawler(Crawler):
         album_title = ""
         async for soup in self.web_pager(scrape_item.url, cffi=True):
             if not album_title:
-                album_title = self.create_collection_title(
-                    scrape_item, CollectionType.ALBUM, TITLE_SELECTOR_MAP[CollectionType.ALBUM], soup
-                )
+                album_title = self.create_collection_title(scrape_item, CollectionType.ALBUM, soup)
+                scrape_item.setup_as_album(album_title)
+
             for thumb in soup.select(MEDIA_SELECTOR_MAP[CollectionType.ALBUM]):
                 style: str = thumb.select_one("a")["style"]  # type: ignore
                 link_str = get_text_between(style, "url('", "');")
@@ -126,23 +126,21 @@ class AShemaleTubeCrawler(Crawler):
         collection_title = ""
         async for soup in self.web_pager(scrape_item.url, cffi=True):
             if not collection_title:
-                collection_title = self.create_collection_title(
-                    scrape_item, collection_type, TITLE_SELECTOR_MAP[collection_type], soup
-                )
+                collection_title = self.create_collection_title(scrape_item, collection_type, soup)
+                if collection_type == CollectionType.MODEL:
+                    scrape_item.setup_as_profile(collection_title)
+                else:
+                    scrape_item.setup_as_album(collection_title)
             for _, new_scrape_item in self.iter_children(scrape_item, soup, MEDIA_SELECTOR_MAP[collection_type]):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
-    def create_collection_title(self, scrape_item: ScrapeItem, collection_type, title_selector, soup):
-        title_elem = soup.select_one(title_selector)
+    def create_collection_title(self, scrape_item: ScrapeItem, collection_type: CollectionType, soup: BeautifulSoup):
+        title_elem = soup.select_one(TITLE_SELECTOR_MAP[collection_type])
         if not title_elem:
             raise ScrapeError(401)
-        collection_title = title_elem.get_text(strip=True)  # type: ignore
+        collection_title: str = title_elem.get_text(strip=True)  # type: ignore
         collection_title = collection_title.replace(TITLE_TRASH, "").strip()
         collection_title = self.create_title(f"{collection_title} [{collection_type}]")
-        if collection_type == CollectionType.MODEL:
-            scrape_item.setup_as_profile(collection_title)
-        else:
-            scrape_item.setup_as_album(collection_title)
         return collection_title
 
     @error_handling_wrapper
