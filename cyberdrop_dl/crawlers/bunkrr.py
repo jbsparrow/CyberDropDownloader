@@ -183,7 +183,9 @@ class BunkrrCrawler(Crawler):
         link: URL | None = None
         soup: BeautifulSoup | None = None
         if is_stream_redirect(scrape_item.url):
-            soup, scrape_item.url = await self.client.get_soup_and_return_url(self.domain, scrape_item.url)
+            response, soup = await self.client._get_response_and_soup(self.domain, scrape_item.url)
+            scrape_item.url = response.url
+            del response
 
         database_url = scrape_item.url.with_host(self.DATABASE_PRIMARY_HOST)
         if await self.check_complete_from_referer(database_url):

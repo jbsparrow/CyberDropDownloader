@@ -11,6 +11,8 @@ from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_from_headers
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
@@ -65,14 +67,14 @@ class DropboxCrawler(Crawler):
     async def get_folder_name(self, url: URL) -> str | None:
         url = await self.get_redict_url(url)
         async with self.request_limiter:
-            headers: dict = await self.client.get_head(self.domain, url)
+            headers = await self.client.get_head(self.domain, url)
         if not ("Content-Disposition" in headers and not is_html(headers)):
             raise ScrapeError(422)
         return get_filename_from_headers(headers)
 
     async def get_redict_url(self, url: URL) -> URL:
         async with self.request_limiter:
-            headers: dict = await self.client.get_head(self.domain, url)
+            headers = await self.client.get_head(self.domain, url)
         location = headers.get("location")
         if not location:
             raise ScrapeError(400)
@@ -139,6 +141,6 @@ def get_item_info(url: URL) -> DropboxItem:
     return DropboxItem(file_id, folder_tokens, url, rlkey, filename)
 
 
-def is_html(headers: dict) -> bool:
+def is_html(headers: Mapping[str, str]) -> bool:
     content_type: str = headers.get("Content-Type", "").lower()
     return any(s in content_type for s in ("html", "text"))
