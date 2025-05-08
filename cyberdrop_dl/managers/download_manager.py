@@ -48,6 +48,7 @@ class DownloadManager:
             "cyberdrop": 1,
             "cyberfile": 1,
             "noodlemagazine": 2,
+            "4chan": 1,
             "pixeldrain": 2,
             "xxxbunker": 2,
         }
