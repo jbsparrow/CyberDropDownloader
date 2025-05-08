@@ -26,14 +26,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- NoodleMagazine support
-- Files.vc support
+- 4chan support
+- Archivebate support (individual videos only)
 - Box.com support
+- Buzzheavier support
+- Files.vc support
 - Mixdrop support
+- NoodleMagazine support
 - Pkmncards.com support
 - Porntrex support
-- Buzzheavier support
-- Archivebate support (individual videos only)
 - Albums support (ThisVid)
 - Parse upload date of files (rule34xxx)
 - Support for albums and searches (ashemaletube)
