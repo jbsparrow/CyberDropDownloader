@@ -4,7 +4,7 @@ import asyncio
 import contextlib
 import ssl
 import time
-from dataclasses import dataclass
+from dataclasses import Field, dataclass
 from http import HTTPStatus
 from http.cookiejar import MozillaCookieJar
 from typing import TYPE_CHECKING, Any
@@ -22,7 +22,7 @@ from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.managers.download_speed_manager import DownloadSpeedLimiter
 from cyberdrop_dl.ui.prompts.user_prompts import get_cookies_from_browsers
 from cyberdrop_dl.utils.logger import log, log_spacer
-from cyberdrop_dl.utils.utilities import get_soup_from_response
+from cyberdrop_dl.utils.utilities import get_soup_no_error
 
 if TYPE_CHECKING:
     from aiohttp_client_cache import CachedResponse
@@ -181,7 +181,7 @@ class ClientManager:
                 raise DownloadError(HTTPStatus.NOT_FOUND, message=message, origin=origin)
 
         async def check_ddos_guard():
-            if soup := await get_soup_from_response(response):
+            if soup := await get_soup_no_error(response):
                 if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
                     raise DDOSGuardError(origin=origin)
                 return soup
@@ -203,8 +203,8 @@ class ClientManager:
 
         check_etag()
         if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
-            # We need to check DDosGuard even on successful pages, but it was causing the response content to be empty
-            # await check_ddos_guard()
+            # Check DDosGuard even on successful pages
+            await check_ddos_guard()
             return
 
         await check_json_status()
@@ -251,6 +251,8 @@ class ClientManager:
 
     async def close(self) -> None:
         await self.flaresolverr._destroy_session()
+        if not isinstance(self.scraper_session, Field):
+            await self.scraper_session.close()
 
 
 @dataclass(frozen=True, slots=True)

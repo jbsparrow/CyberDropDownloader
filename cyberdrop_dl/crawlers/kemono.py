@@ -7,7 +7,7 @@ import itertools
 import re
 from collections import defaultdict
 from datetime import datetime  # noqa: TC003
-from typing import TYPE_CHECKING, Annotated, Any, NamedTuple
+from typing import TYPE_CHECKING, Annotated, Any, NamedTuple, NotRequired
 
 from pydantic import AliasChoices, BeforeValidator, Field
 from typing_extensions import TypedDict  # Compatible with python 3.11
@@ -100,6 +100,7 @@ class User(NamedTuple):
 class File(TypedDict):
     name: str
     path: str
+    server: NotRequired[str]  # Sometimes present in attachments
 
 
 FileOrNone = Annotated[File | None, BeforeValidator(parse_falsy_as_none)]
@@ -196,6 +197,7 @@ class KemonoCrawler(Crawler):
         self.api_entrypoint: URL = URL("https://kemono.su/api/v1")
         self.__known_user_names: dict[User, str] = {}
         self.__known_discord_servers: dict[str, DiscordServer] = {}
+        self.__known_attachment_servers: dict[str, str] = {}
         self.__user_names_locks: dict[User, asyncio.Lock] = defaultdict(asyncio.Lock)
         self.__discord_servers_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
         self.services: tuple[str, ...] = (
@@ -307,7 +309,19 @@ class KemonoCrawler(Crawler):
             json_resp: dict[str, dict] = await self.client.get_json(self.domain, api_url)
 
         post = UserPost(**json_resp["post"])
+        self._register_attachments_servers(json_resp["attachments"])  # type: ignore
         await self._handle_user_post(scrape_item, post)
+
+    def _register_attachments_servers(self, attachments: list[File]) -> None:
+        for attach in attachments:
+            if server := attach.get("server"):
+                path = attach["path"]
+                if previous_server := self.__known_attachment_servers.get(path):
+                    if previous_server != server:
+                        msg = f"[{self.name}] {path} found with multiple diferent servers: {server = } {previous_server = } "
+                        self.log_debug(msg)
+                    continue
+                self.__known_attachment_servers[path] = server
 
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem, url: URL | None) -> None:
@@ -432,7 +446,9 @@ class KemonoCrawler(Crawler):
         self._handle_post_content(scrape_item, post)
 
     def __make_file_url(self, file: File) -> URL:
-        return self.parse_url(f"/data/{file['path']}").with_query(f=file["name"])
+        server = self.__known_attachment_servers.get(file["path"], "")
+        url = server + f"/data{file['path']}"
+        return self.parse_url(url).with_query(f=file["name"])
 
     def __make_api_url_w_offset(self, path: str, og_url: URL) -> URL:
         api_url = self.api_entrypoint / path
