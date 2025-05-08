@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NotRequired, TypedDict, cast
 
 from aiolimiter import AsyncLimiter
+from bs4 import BeautifulSoup
 from yarl import URL
 
 from cyberdrop_dl.clients.errors import ScrapeError
@@ -14,10 +14,21 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
-HTML_RE = re.compile("<[^>]+>")
 API_ENTRYPOINT = URL("https://a.4cdn.org/")
 FILES_BASE_URL = URL("https://i.4cdn.org/")
 BOARDS_BASE_URL = URL("https://boards.4chan.org/")
+
+
+class Post(TypedDict):
+    sub: NotRequired[str]  # Subject
+    com: NotRequired[str]  # Comment
+    time: int  # Unix timestamp
+
+
+class ImagePost(Post):
+    filename: str  # File stem
+    ext: str
+    tim: int  # Unix timestamp + microtime that the image was uploaded
 
 
 class FourChanCrawler(Crawler):
@@ -44,23 +55,30 @@ class FourChanCrawler(Crawler):
         thread_id = scrape_item.url.parts[-2]
         api_url = API_ENTRYPOINT / board / "thread" / f"{thread_id}.json"
         async with self.request_limiter:
-            response: dict[str, list[dict]] = await self.client.get_json(self.domain, api_url, cache_disabled=True)
+            response: dict[str, list[Post]] = await self.client.get_json(self.domain, api_url, cache_disabled=True)
         if not response:
             raise ScrapeError(404)
 
-        title = response["posts"][0].get("sub") or remove_html(response["posts"][0].get("com"))
+        original_post = response["posts"][0]
+        if subject := original_post.get("sub"):
+            title: str = subject
+        elif comment := original_post.get("com"):
+            title = BeautifulSoup(comment).get_text(strip=True)
+        else:
+            title = f"#{thread_id}"
         title = self.create_title(f"{title} [thread]", thread_id)
         scrape_item.setup_as_album(title, album_id=thread_id)
         results = await self.get_album_results(thread_id)
 
         for post in response["posts"]:
-            if filename := post.get("filename"):
-                file_id, ext = post["tim"], post["ext"]
-                url = FILES_BASE_URL / board / f"{file_id}{ext}"
+            if file_stem := post.get("filename"):
+                post = cast("ImagePost", post)
+                file_micro_timestamp, ext = post["tim"], post["ext"]
+                url = FILES_BASE_URL / board / f"{file_micro_timestamp}{ext}"
                 if self.check_album_results(url, results):
                     continue
 
-                filename, ext = self.get_filename_and_ext(f"{filename}{ext}")
+                filename, ext = self.get_filename_and_ext(f"{file_stem}{ext}")
                 custom_filename, _ = self.get_filename_and_ext(url.name)
                 scrape_item.possible_datetime = post["time"]
                 await self.handle_file(url, scrape_item, filename, ext, custom_filename=custom_filename)
@@ -80,17 +98,3 @@ class FourChanCrawler(Crawler):
                 new_scrape_item = scrape_item.create_child(url)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
                 scrape_item.add_children()
-
-
-"""~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-
-def remove_html(txt, repl=" ", sep=" "):
-    """Remove html-tags from a string"""
-    try:
-        txt = HTML_RE.sub(repl, txt)
-    except TypeError:
-        return ""
-    if sep:
-        return sep.join(txt.split())
-    return txt.strip()
