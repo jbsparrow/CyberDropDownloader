@@ -40,7 +40,9 @@ class FourChanCrawler(Crawler):
         board = scrape_item.url.parts[1]
         thread = scrape_item.url.parts[-2]
         async with self.request_limiter:
-            response = await self.client.get_json(self.domain, f"https://a.4cdn.org/{board}/thread/{thread}.json")
+            response = await self.client.get_json(
+                self.domain, f"https://a.4cdn.org/{board}/thread/{thread}.json", cache_disabled=True
+            )
             if not response:
                 raise ScrapeError(404)
 
@@ -64,7 +66,9 @@ class FourChanCrawler(Crawler):
     async def board(self, scrape_item: ScrapeItem) -> None:
         board: str = scrape_item.url.parts[-1]
         async with self.request_limiter:
-            threads = await self.client.get_json(self.domain, f"https://a.4cdn.org/{board}/threads.json")
+            threads = await self.client.get_json(
+                self.domain, f"https://a.4cdn.org/{board}/threads.json", cache_disabled=True
+            )
 
         for page in threads:
             for thread in page["threads"]:
