@@ -152,14 +152,14 @@ class ScraperClient:
             raise
 
     @limiter
-    async def get_soup_cffi(
+    async def _get_response_and_soup_cffi(
         self,
         domain: str,
         url: URL,
         headers: dict[str, str] | None = None,
         impersonate: BrowserTarget | None = "chrome",
         request_params: dict[str, Any] | None = None,
-    ) -> BeautifulSoup:
+    ) -> tuple[CurlResponse, BeautifulSoup]:
         """Makes a GET request using curl-cffi and creates a soup.
 
         :param domain: The crawler's domain (for rate limiting)
@@ -181,6 +181,11 @@ class ScraperClient:
         if self._save_pages_html:
             await self.write_soup_to_disk(url, response, soup)
         self.client_manager.cookies.update_cookies(self._curl_session.cookies, url)
+        return response, soup
+
+    @copy_signature(_get_response_and_soup_cffi)
+    async def get_soup_cffi(self, *args, **kwargs) -> BeautifulSoup:
+        _, soup = await self._get_response_and_soup_cffi(*args, **kwargs)
         return soup
 
     @limiter
