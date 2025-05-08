@@ -28,7 +28,7 @@ class Post(TypedDict):
 class ImagePost(Post):
     filename: str  # File stem
     ext: str
-    tim: int  # Unix timestamp + microtime that the image was uploaded
+    tim: int  # Unix timestamp + microtime of uploaded image
 
 
 class FourChanCrawler(Crawler):
@@ -80,8 +80,9 @@ class FourChanCrawler(Crawler):
 
                 filename, ext = self.get_filename_and_ext(f"{file_stem}{ext}")
                 custom_filename, _ = self.get_filename_and_ext(url.name)
-                scrape_item.possible_datetime = post["time"]
-                await self.handle_file(url, scrape_item, filename, ext, custom_filename=custom_filename)
+                new_scrape_item = scrape_item.copy()
+                new_scrape_item.possible_datetime = post["time"]
+                await self.handle_file(url, new_scrape_item, filename, ext, custom_filename=custom_filename)
                 scrape_item.add_children()
 
     @error_handling_wrapper
