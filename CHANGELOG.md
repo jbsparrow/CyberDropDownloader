@@ -76,13 +76,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Discord channel download (Kemono)
 - Gif downloads (reddit)
 
-## [6.9.1] - 2025-04-20
+## [6.9.1] - 2025-04-18
 
 ### Fixes
 
 - Do not crash if `ffmpeg` is not installed
 
-## [6.9.0] - 2025-04-17
+## [6.9.0] - 2025-04-18
 
 ### Added
 
@@ -111,7 +111,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Importing cookies from multiple browsers at the same time is deprecated and will be removed in a future version
 
-## [6.8.0] - 2025-04-05
+## [6.8.0] - 2025-04-07
 
 ### Added
 
@@ -157,7 +157,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Handle confirmation links as input URL (forums)
 - General performance improvements
 
-## [6.7.0] - 2025-03-07
+## [6.7.0] - 2025-03-10
 
 ### Added
 
@@ -221,7 +221,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Show `--links (CLI args)` as input (if they were used)
 - Paths printed to the stats will have hyperlinks to their location (when supported by the terminal)
 
-## [6.6.0] - 2025-02-23
+## [6.6.0] - 2025-02-24
 
 ### Added
 
@@ -459,28 +459,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ⚠️**BREAKING CHANGES**
 
-> 1. Stricter config validation logic. CDL will verify that every config value and CLI argument is valid before running
+1. Stricter config validation logic. CDL will verify that every config value and CLI argument is valid before running
 
-> 2. All dedupe and hashing functions has been replaced.
->
-> - `xxh128` is now the default hashing algorithm, replacing `md5`
-> - By default, all v5 hashes will be ignored for deduplication matches. You can re-enable md5 with `--add-md5-hash`
-> - It's no longer possible to keep the newest file while deduplicating.
-> - Every file previously downloaded is taken into account for deduplication. Files no longer need to currently exists on disk
+2. All dedupe and hashing functions has been replaced.
 
-> 3. Removed `--sort-cdl-only` option
+   - `xxh128` is now the default hashing algorithm, replacing `md5`
+   - By default, all v5 hashes will be ignored for deduplication matches. You can re-enable md5 with `--add-md5-hash`
+   - It's no longer possible to keep the newest file while deduplicating.
+   - Every file previously downloaded is taken into account for deduplication. Files no longer need to currently exists on disk
 
-> 4. The following arguments are deprecated and will be removed in a future version:
->
-> - `--output-folder`
-> - `--download-all-configs`
-> - `--sort-all-configs`
-> - `--sort-all-downloads`
-> - `--main-log-filename`
-> - `--last-forum-post-filename`
-> - `--unsupported-urls-filename`
-> - `--download-error-urls-filename`
-> - `--scrape-error-urls-filename`
+3. Removed `--sort-cdl-only` option
+
+4. The following arguments are deprecated and will be removed in a future version:
+
+   - `--output-folder`
+   - `--download-all-configs`
+   - `--sort-all-configs`
+   - `--sort-all-downloads`
+   - `--main-log-filename`
+   - `--last-forum-post-filename`
+   - `--unsupported-urls-filename`
+   - `--download-error-urls-filename`
+   - `--scrape-error-urls-filename`
 
 This update introduces the following changes:
 
@@ -509,7 +509,7 @@ This update introduces the following changes:
 5. Rework entire TUI user input options
 6. General logging improvements and bug fixes
 
-#### Details
+### Details
 
 - User can import cookies from their browser. CDL will use these cookies to login to websites and pass Cloudflare DDoS challenges. For more information on cookies extraction and configuration, visit: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/browser_cookies>
 - When using flaresolverr, CDL will try to apply the cookies from the response and make a new request if necessary.
@@ -537,7 +537,7 @@ This update introduces the following changes:
 10. Add support for `%` encoded URLs in the input file
 11. General logging improvements and bug fixes
 
-#### Details
+### Details
 
 - Users can limit the number of items to scrape by type, using the `--maximum-number-of-children` parameter. For more details on how to use this feature, visit the wiki: <https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options/settings/download_options>
 - Add support for scraping a users' coomer favorites by allowing the user to pass the coomer favorites page URL as an input URL (<https://coomer.su/favorites>). This requires them to have their coomer session token in the `authentication.yaml` file.
@@ -565,7 +565,7 @@ This update introduces the following changes:
 10. Add a "Check for Updates" UI option
 11. General bug fixes
 
-#### Details
+### Details
 
 - Add option to rotate log file names. If enabled, current `date-time` will be used as a suffix for each log file, in the format `YYMMDD_HHMMSS`. This will prevent overriding old log files
 - Refactor hashing functions and logic
@@ -591,7 +591,7 @@ This update introduces the following changes:
 
 1. Fix error on some bunkr videos
 
-#### Details
+### Details
 
 - Fix error when downloading videos with no thumbnail (bunkr)
 - Update possible CDNs (bunkr)
@@ -603,7 +603,7 @@ This update introduces the following changes:
 
 1. Update bunkr crawler
 
-#### Details
+### Details
 
 - Update bunkr crawler to work on the new site design
 
@@ -613,7 +613,7 @@ This update introduces the following changes:
 
 1. Fix scan_folder saved as invalid value
 
-#### Details
+### Details
 
 - Fixes issue that causes the config file to be corrupted with an invalid scan_folder value.
 
@@ -624,7 +624,7 @@ This update introduces the following changes:
 1. Skip file download by referer
 2. Fixes album_id not been saved to database
 
-#### Details
+### Details
 
 - Using the flag `--skip-referer-seen-before` will skip downloading files from any referer that have been scraped before. The file (s) will always be skipped regardless of whether the referer was successfully scraped or not
 - Fixes album_id property not being saved to database on supported crawlers
@@ -635,7 +635,7 @@ This update introduces the following changes:
 
 1. Support for password protected GoFile links
 
-#### Details
+### Details
 
 1. Users can include the password as a query parameter in the input URL, adding `?password=<URL_PASSWORD>` to it.
  Example: <https://gofile.io/d/xUprGg?password=1234>
@@ -646,7 +646,7 @@ This update introduces the following changes:
 
 1. Update True/False CLI arguments to integrate better with the config file.
 
-#### Details
+### Details
 
 - CLI arguments that toggle settings to `True` or `False` can now be passed as either `--arg` or `--no-arg` to set the value to `True` or `False` respectively.
 - This also solves an issue where CLI arguments that toggle settings would override config file settings even if the CLI argument was never passed.
@@ -657,7 +657,7 @@ This update introduces the following changes:
 
 1. Filter final URL with `--skip-hosts` and `--only-hosts` arguments
 
-#### Details
+### Details
 
 - This allows the user to skip or only download from specific bunkr hosts
 
@@ -669,7 +669,7 @@ This update introduces the following changes:
 2. Display new changelog if an update is available
 3. Updated supported sites in Wiki
 
-#### Details
+### Details
 
 - Fixes crash if an unsupported url have no parents
 - Always display an updated changelog if a new version has been released on pypi
@@ -681,7 +681,7 @@ This update introduces the following changes:
 
 1. Fixes empty folder cleanup
 
-#### Details
+### Details
 
 - Fix incorrect path objects on post-runtime folder cleanup
 
@@ -691,7 +691,7 @@ This update introduces the following changes:
 
 1. Add external CHANGELOG file
 
-#### Details
+### Details
 
 - Project changes will documented on <https://github.com/jbsparrow/CyberDropDownloader/blob/master/CHANGELOG.md> for better tracking
 - Built-in viewer will fetch CHANGELOG history on first use
@@ -702,7 +702,7 @@ This update introduces the following changes:
 
 1. Fix `scrape_items` creation for Kemono and coomer links
 
-#### Details
+### Details
 
 - Fixes parents tracking for Kemono and coomer links
 
@@ -712,7 +712,7 @@ This update introduces the following changes:
 
 1. Fixes empty folder cleanup on python 3.11
 
-#### Details
+### Details
 
 - Fixes logic by walking the directory tree using `os.walk` to remain compatibility with python 3.11
 
@@ -723,7 +723,7 @@ This update introduces the following changes:
 1. Delete empty files after a successful run.
 2. Added a feature to save the origin of unsupported URLs
 
-#### Details
+### Details
 
 - Empty files (0 bytes) inside download_dir will be deleted alongside empty folders after a successful run
 - Each unsupported URL will now be saved alongside the URL of the original item they came from (`Unsupported_URLs.txt`)
@@ -735,7 +735,7 @@ This update introduces the following changes:
 
 1. Small fixes for sorting system
 
-#### Details
+### Details
 
 - Fixes `scan_dir` selection logic
 
@@ -745,7 +745,7 @@ This update introduces the following changes:
 
 1. Added a feature to fix the names of multipart archives.
 
-#### Details
+### Details
 
 - Multipart archives will be renamed to have the proper naming format when the `--remove-generated-id-from-filenames` argument is passed.
 
@@ -756,7 +756,7 @@ This update introduces the following changes:
 1. Fix issues with checking how much free space is available on the disk.
 2. Skip clearing the console when running with the `--no-ui` flag.
 
-#### Details
+### Details
 
 - Fixed an issue with free space not being properly checked when running with the `--retry-failed` flag.
 - Made error output more clear when there is not enough free space to download a file.
@@ -768,7 +768,7 @@ This update introduces the following changes:
 
 1. Add new URLs categorization feature for the URLs.txt file.
 
-#### Details
+### Details
 
 - You can now group links under one download folder by adding a category name above the links in the `URLs.txt` file.
 - The category name must be prefixed by three dashes (`---`) and must be on a new line.
@@ -790,7 +790,7 @@ This update introduces the following changes:
 
 1. Ability to scrape URLs from PixelDrain text post
 
-#### Details
+### Details
 
 - Cyberdrop-DL will now scrape URLs from PixelDrain text posts and make a folder for all the URLs within the post, reducing clutter.
 
@@ -800,7 +800,7 @@ This update introduces the following changes:
 
 1. Per-config authentication settings
 
-#### Details
+### Details
 
 - If an `authentication.yaml` file is placed within your config directory, it will be used instead of the global authentication values.
 
@@ -810,7 +810,7 @@ This update introduces the following changes:
 
 1. Reformat code and organize imports
 
-#### Details
+### Details
 
 - Reformatted code to be more readable and removed unused imports.
 
@@ -820,7 +820,7 @@ This update introduces the following changes:
 
 1. Detect and raise an error for private GoFile folders
 
-#### Details
+### Details
 
 - Private GoFile folders will now raise an error when attempting to download them instead of crashing CDL
 
@@ -831,7 +831,7 @@ This update introduces the following changes:
 1. Fixes issue with `--sort-all-downloads`
 2. Improves sort status visibility
 
-#### Details
+### Details
 
 - The sort status is now display under hash, along with other statuses
 - `--sort-all-downloads` is disabled by default, thus only cdl downloads are sorted without the flag
@@ -844,7 +844,7 @@ This update introduces the following changes:
 1. Updated the sorting progress UI to display more information.
 2. Removed unused functions from progress bars.
 
-#### Details
+### Details
 
 - The sorting UI now displays the progress of each folder as it is being processed, including the number of files that have been sorted and the percentage of the folder that has been processed.
 - The sorting UI now also shows what folders are in the queue to be sorted.
@@ -855,7 +855,7 @@ This update introduces the following changes:
 
 1. Small fixes for sorting system
 
-#### Details
+### Details
 
 - use `-` instead of `_` for new arguments
 - fix bug where `purge_dir` is called for each file, instead of each directory when done
@@ -868,7 +868,7 @@ This update introduces the following changes:
 2. add scanning directory for sorting
 3. adds progress bar for sorting
 
-#### Details
+### Details
 
 - skips need to scan database if `sort_cdl_only` is false
 - progress bar for current progress of sorting files, incremented for each folder
