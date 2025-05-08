@@ -59,8 +59,7 @@ class FourChanCrawler(Crawler):
 
     @error_handling_wrapper
     async def thread(self, scrape_item: ScrapeItem) -> None:
-        board = scrape_item.url.parts[1]
-        thread_id = scrape_item.url.parts[-2]
+        board, _, thread_id = scrape_item.url.parts[1:4]
         api_url = API_ENTRYPOINT / board / f"thread/{thread_id}.json"
         async with self.request_limiter:
             response: dict[str, list[Post]] = await self.client.get_json(self.domain, api_url, cache_disabled=True)
