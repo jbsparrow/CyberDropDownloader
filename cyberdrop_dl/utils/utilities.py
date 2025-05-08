@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import json
 import os
@@ -10,12 +11,13 @@ import subprocess
 from dataclasses import dataclass, fields
 from functools import lru_cache, partial, wraps
 from pathlib import Path
+from stat import S_ISREG
 from typing import TYPE_CHECKING, Any, ClassVar, ParamSpec, Protocol, TypeVar
 
 import aiofiles
 import rich
-from aiohttp import ClientConnectorError, ClientResponse, ClientSession, FormData
-from aiohttp_client_cache import CachedResponse
+from aiohttp import ClientConnectorError, ClientSession, FormData
+from aiohttp_client_cache.response import AnyResponse
 from bs4 import BeautifulSoup
 from yarl import URL
 
@@ -72,8 +74,8 @@ class OGProperties:
 
 
 def error_handling_wrapper(
-    func: Callable[..., Coroutine[None, None, Any]],
-) -> Callable[..., Coroutine[None, None, Any]]:
+    func: Callable[..., Coroutine[None, None, R]],
+) -> Callable[..., Coroutine[None, None, R | None]]:
     """Wrapper handles errors for url scraping."""
 
     @wraps(func)
@@ -311,8 +313,8 @@ async def send_webhook_message(manager: Manager) -> None:
 
     form = FormData()
 
-    if "attach_logs" in webhook.tags and main_log.is_file():
-        if main_log.stat().st_size <= 25 * 1024 * 1024:
+    if "attach_logs" in webhook.tags and (size := await asyncio.to_thread(get_size_or_none, main_log)):
+        if size <= 25 * 1024 * 1024:  # 25MB
             async with aiofiles.open(main_log, "rb") as f:
                 form.add_field("file", await f.read(), filename=main_log.name)
 
@@ -469,12 +471,14 @@ def remove_parts(url: URL, *parts_to_remove: str, keep_query: bool = True, keep_
     return url.with_path("/".join(new_parts), keep_fragment=keep_fragment, keep_query=keep_query)
 
 
-async def get_soup_from_response(response: CurlResponse | ClientResponse | CachedResponse) -> BeautifulSoup | None:
+async def get_soup_no_error(response: CurlResponse | AnyResponse) -> BeautifulSoup | None:
     # We can't use `CurlResponse` at runtime so we check the reverse
-    is_curl = not isinstance(response, ClientResponse | CachedResponse)
     with contextlib.suppress(UnicodeDecodeError):
-        response_text = response.text if is_curl else await response.text()
-        return BeautifulSoup(response_text, "html.parser")
+        if isinstance(response, AnyResponse):
+            content = await response.read()  # aiohttp
+        else:
+            content = response.content  # curl response
+        return BeautifulSoup(content, "html.parser")
 
 
 def get_og_properties(soup: BeautifulSoup) -> OGProperties:
@@ -496,6 +500,19 @@ def get_filename_from_headers(headers: Mapping[str, Any]) -> str | None:
     if match := re.search(FILENAME_REGEX, content_disposition):
         matches = match.groups()
         return matches[0] or matches[1]
+
+
+def get_size_or_none(path: Path) -> int | None:
+    """Checks if this is a file and returns its size with a single system call.
+
+    Returns `None` otherwise"""
+
+    try:
+        stat = path.stat()
+        if S_ISREG(stat.st_mode):
+            return stat.st_size
+    except (OSError, ValueError):
+        return None
 
 
 log_cyan = partial(log_with_color, style="cyan", level=20)

@@ -1,24 +1,38 @@
 from __future__ import annotations
 
 import asyncio
-import json
+import functools
+import inspect
+from collections.abc import Callable
 from contextlib import asynccontextmanager
-from dataclasses import field
+from dataclasses import Field, field
 from datetime import datetime
 from functools import wraps
+from json import dumps as json_dumps
+from json import loads as json_loads
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar
 
 import aiohttp
-from aiohttp_client_cache import CachedSession
-from aiohttp_client_cache.response import CachedStreamReader
+from aiohttp_client_cache.response import AnyResponse
+from aiohttp_client_cache.session import CachedSession
 from bs4 import BeautifulSoup
 
 import cyberdrop_dl.utils.constants as constants
 from cyberdrop_dl import env
 from cyberdrop_dl.clients.errors import DDOSGuardError, DownloadError, InvalidContentTypeError, ScrapeError
 from cyberdrop_dl.utils.logger import log_debug
-from cyberdrop_dl.utils.utilities import get_soup_from_response, sanitize_filename
+from cyberdrop_dl.utils.utilities import get_soup_no_error, sanitize_filename
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Coroutine
+
+    from curl_cffi.requests.impersonate import BrowserTypeLiteral as BrowserTarget
+    from curl_cffi.requests.models import Response as CurlResponse
+    from multidict import CIMultiDictProxy
+    from yarl import URL
+
+    from cyberdrop_dl.managers.client_manager import ClientManager
 
 curl_import_error = None
 try:
@@ -26,33 +40,20 @@ try:
 except ImportError as e:
     curl_import_error = e
 
-if TYPE_CHECKING:
-    from collections.abc import Callable, Coroutine
-
-    from curl_cffi.requests.impersonate import BrowserTypeLiteral
-    from curl_cffi.requests.models import Response as CurlResponse
-    from multidict import CIMultiDictProxy
-    from yarl import URL
-
-    from cyberdrop_dl.managers.client_manager import ClientManager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
-
-
 P = ParamSpec("P")
 R = TypeVar("R")
+T = TypeVar("T")
 
 
 def limiter(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, Coroutine[None, None, R]]:
-    """Wrapper handles limits for scrape session."""
+    """Wrapper to handle limits for scrape session."""
 
     @wraps(func)
     async def wrapper(*args, **kwargs) -> R:
         self: ScraperClient = args[0]
         domain: str = args[1]
         domain_limiter = await self.client_manager.get_rate_limiter(domain)
-        async with self.client_manager.session_limit:
-            await self._global_limiter.acquire()
-            await domain_limiter.acquire()
+        async with self.client_manager.session_limit, self._global_limiter, domain_limiter:
             await self.client_manager.manager.states.RUNNING.wait()
 
             if "cffi" in func.__name__:
@@ -61,13 +62,28 @@ def limiter(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, Coroutin
                     msg = f"curl_cffi is required to scrape URLs from {domain}, but a dependency it's not available on {system}.\n"
                     msg += f"See: https://github.com/lexiforest/curl_cffi/issues/74#issuecomment-1849365636\n{curl_import_error!r}"
                     raise ScrapeError("Missing Dependency", msg)
-                kwargs.pop("client_session", None)
                 return await func(*args, **kwargs)
 
-            kwargs["client_session"] = self._session
             return await func(*args, **kwargs)
 
     return wrapper
+
+
+def copy_signature(target: Callable[P, R]) -> Callable[[Callable[..., T]], Callable[P, T]]:
+    """Decorator to make a function mimic the signature of another function,
+    but preserve the return type of the decorated function."""
+
+    def decorator(func: Callable[..., T]) -> Callable[P, T]:
+        @functools.wraps(func)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(target).replace(  # type: ignore
+            return_annotation=inspect.signature(func).return_annotation
+        )
+        return wrapper
+
+    return decorator
 
 
 @asynccontextmanager
@@ -78,7 +94,7 @@ async def cache_control_manager(client_session: CachedSession, disabled: bool = 
 
 
 class ScraperClient:
-    """AIOHTTP operations for scraping."""
+    """AIOHTTP / CURL operations for scraping."""
 
     def __init__(self, client_manager: ClientManager) -> None:
         self.client_manager = client_manager
@@ -86,297 +102,273 @@ class ScraperClient:
         self._timeout_tuple = client_manager.connection_timeout + 60, client_manager.connection_timeout
         self._timeouts = aiohttp.ClientTimeout(*self._timeout_tuple)
         self._global_limiter = self.client_manager.global_rate_limiter
-        self.trace_configs = []
-        self.save_pages_html = client_manager.manager.config_manager.settings_data.files.save_pages_html
-        self.pages_folder = self.client_manager.manager.path_manager.pages_folder
+        self._trace_configs = []
+        self._save_pages_html = client_manager.manager.config_manager.settings_data.files.save_pages_html
+        self._pages_folder = self.client_manager.manager.path_manager.pages_folder
         # folder len + date_prefix len + 10 [suffix (.html) + 1 OS separator + 4 (padding)]
-        min_html_file_path_len = len(str(self.pages_folder)) + len(constants.STARTUP_TIME_STR) + 10
-        self.max_html_stem_len = 245 - min_html_file_path_len
+        min_html_file_path_len = len(str(self._pages_folder)) + len(constants.STARTUP_TIME_STR) + 10
+        self._max_html_stem_len = 245 - min_html_file_path_len
         self._session: CachedSession = field(init=False)
+        self._curl_session: AsyncSession = field(init=False)
 
     def startup(self):
-        self.add_request_log_hooks()
+        add_request_log_hooks(self._trace_configs)
         self._session = CachedSession(
             headers=self._headers,
             raise_for_status=False,
             cookie_jar=self.client_manager.cookies,
             timeout=self._timeouts,
-            trace_configs=self.trace_configs,
+            trace_configs=self._trace_configs,
             cache=self.client_manager.manager.cache_manager.request_cache,
         )
+        if curl_import_error is not None:
+            return
 
-    async def close(self):
-        await self._session.close()
-
-    @asynccontextmanager
-    async def write_soup_on_error(self, domain: str, url, response: CurlResponse | aiohttp.ClientResponse):
-        try:
-            yield
-        except (DDOSGuardError, DownloadError) as e:
-            if self.save_pages_html and (soup := await get_soup_from_response(response)):
-                await self.write_soup_to_disk(domain, url, response, soup, exc=e)
-            raise
-
-    @asynccontextmanager
-    async def new_curl_session(self, impersonate):
         proxy = str(self.client_manager.proxy) if self.client_manager.proxy else None
-        async with AsyncSession(
+        self._curl_session = AsyncSession(
             headers=self._headers,
-            impersonate=impersonate,
+            impersonate="chrome",
             verify=bool(self.client_manager.ssl_context),
             proxy=proxy,
             timeout=self._timeout_tuple,
             cookies={c.key: c.value for c in self.client_manager.cookies},
-        ) as curl_session:
-            yield curl_session
+        )
 
-    def add_request_log_hooks(self) -> None:
-        async def on_request_start(*args):
-            params: aiohttp.TraceRequestStartParams = args[2]
-            log_debug(f"Starting scrape {params.method} request to {params.url}", 10)
+    async def close(self):
+        await self._session.close()
+        if not isinstance(self._curl_session, Field):
+            await self._curl_session.close()
 
-        async def on_request_end(*args):
-            params: aiohttp.TraceRequestEndParams = args[2]
-            msg = f"Finishing scrape {params.method} request to {params.url}"
-            msg += f" -> response status: {params.response.status}"
-            log_debug(msg, 10)
+    def is_ddos(self, soup: BeautifulSoup) -> bool:
+        return self.client_manager.check_ddos_guard(soup) or self.client_manager.check_cloudflare(soup)
 
-        trace_config = aiohttp.TraceConfig()
-        trace_config.on_request_start.append(on_request_start)
-        trace_config.on_request_end.append(on_request_end)
-        self.trace_configs.append(trace_config)
+    @asynccontextmanager
+    async def write_soup_on_error(self, url, response: CurlResponse | aiohttp.ClientResponse):
+        try:
+            yield
+        except (DDOSGuardError, DownloadError) as e:
+            if self._save_pages_html and (soup := await get_soup_no_error(response)):
+                await self.write_soup_to_disk(url, response, soup, exc=e)
+            raise
 
     @limiter
     async def get_soup_cffi(
-        self, domain: str, url: URL, impersonate: BrowserTypeLiteral | None = "chrome", **_
+        self,
+        domain: str,
+        url: URL,
+        headers: dict[str, str] | None = None,
+        impersonate: BrowserTarget | None = "chrome",
+        **request_params: Any,
     ) -> BeautifulSoup:
-        async with self.new_curl_session(impersonate) as session:
-            response: CurlResponse = await session.get(str(url))
-            async with self.write_soup_on_error(domain, url, response):
-                await self.client_manager.check_http_status(response)
-                content_type: str = response.headers.get("Content-Type")
-                assert content_type is not None
-                if not any(s in content_type.lower() for s in ("html", "text")):
-                    raise InvalidContentTypeError(message=f"Received {content_type}, was expecting text")
-                self.client_manager.cookies.update_cookies(session.cookies, url)
-                soup = BeautifulSoup(response.content, "html.parser")
-                if self.save_pages_html:
-                    await self.write_soup_to_disk(domain, url, response, soup)
-                return soup
+        """Makes a GET request using curl-cffi and creates a soup.
+
+        :param domain: The crawler's domain (for rate limiting)
+        :param url: The URL to fetch.
+        :param headers: Optional headers to include in the request. Will be added to session's default headers.
+        :param impersonate: Optional browser target to impersonate. Defaults to `chrome`.
+        :param **request_params: Additional keyword arguments to pass to `curl_session.get` (e.g., `timeout`).
+        """
+        headers = self._headers | (headers or {})
+        response: CurlResponse = await self._curl_session.get(
+            str(url), impersonate=impersonate, headers=headers, **request_params
+        )
+
+        async with self.write_soup_on_error(url, response):
+            await self.client_manager.check_http_status(response)
+
+        soup = await response_to_soup(response)
+        if self._save_pages_html:
+            await self.write_soup_to_disk(url, response, soup)
+        self.client_manager.cookies.update_cookies(self._curl_session.cookies, url)
+        return soup
 
     @limiter
     async def post_data_cffi(
         self,
         domain: str,
         url: URL,
-        impersonate: BrowserTypeLiteral | None = "chrome",
-        data: dict | None = None,
-        **kwargs: Any,
+        headers: dict[str, str] | None = None,
+        impersonate: BrowserTarget | None = "chrome",
+        data: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
+        **request_params: Any,
     ) -> CurlResponse:
-        """**kwargs are passed to `session.post`"""
-        data = data or {}
-        async with self.new_curl_session(impersonate) as session:
-            response: CurlResponse = await session.post(str(url), data=data, **kwargs)
-            await self.client_manager.check_http_status(response)
-            return response
+        """Makes a POST request using curl-cffi
+
+        :param domain: The crawler's domain (for rate limiting)
+        :param url: The URL to fetch.
+        :param headers: Optional headers to include in the request. Will be added to session's default headers.
+        :param impersonate: Optional browser target to impersonate. Defaults to `chrome`.
+        :param data: Data to include in the requests. Will be sent as is (FormData).
+        :param json: JSON data to include in the request. This will be serialized into a JSON string, and the `Content-Type` header will be set to `application/json`.
+        :param **request_params: Additional keyword arguments to pass to `curl_session.post` (e.g., `timeout`).
+        """
+        headers = self._headers | (headers or {})
+        response: CurlResponse = await self._curl_session.post(
+            str(url), data=data, json=json, impersonate=impersonate, headers=headers, **request_params
+        )
+        await self.client_manager.check_http_status(response)
+        return response
+
+    # ~~~~~~~~~~~~~ AIOHTTP ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+    async def _resilient_get(self, url: URL, **request_params: Any) -> tuple[AnyResponse, BeautifulSoup | None]:
+        """Makes a GET request and automatically retries it with flaresolverr (if needed)"""
+        for retry in range(2):
+            response = await self._session.get(url, **request_params)
+            async with self.write_soup_on_error(url, response):
+                try:
+                    await self.client_manager.check_http_status(response)
+                except DDOSGuardError:
+                    if retry == 0:
+                        await self.client_manager.manager.cache_manager.request_cache.delete_url(url)
+                        # TODO: Rebuilt response object from flaresolver response
+                        soup, _ = await self.client_manager.flaresolverr.get(url, self._session)
+                        if soup and not self.is_ddos(soup):
+                            return response, soup
+                        if self.client_manager.flaresolverr.enabled:
+                            # retry again with the cookies we got from flaresolverr
+                            continue
+                    raise
+
+                else:
+                    return response, await response_to_soup(response)
+
+        return response, None
 
     @limiter
-    async def get_soup(
+    async def _get_response_and_soup(
         self,
         domain: str,
         url: URL,
-        client_session: CachedSession,
-        origin: ScrapeItem | URL | None = None,
-        with_response_url: bool = False,
-        cache_disabled: bool = False,
-        retry: bool = True,
+        headers: dict[str, str] | None = None,
         *,
-        with_response_headers: bool = False,
-    ) -> BeautifulSoup | tuple[BeautifulSoup, CIMultiDictProxy | URL]:
-        """Returns a BeautifulSoup object from the given URL."""
-        async with (
-            cache_control_manager(client_session, disabled=cache_disabled),
-            client_session.get(
-                url, headers=self._headers, ssl=self.client_manager.ssl_context, proxy=self.client_manager.proxy
-            ) as response,
-            self.write_soup_on_error(domain, url, response),
-        ):
-            try:
-                await self.client_manager.check_http_status(response, origin=origin)
-            except DDOSGuardError:
-                await self.client_manager.manager.cache_manager.request_cache.delete_url(url)
-                soup, response_URL = await self.client_manager.flaresolverr.get(
-                    url,
-                    client_session,
-                    origin,
-                )
-                # retry request with flaresolverr cookies
-                if not soup or (
-                    self.client_manager.check_ddos_guard(soup) or self.client_manager.check_cloudflare(soup)
-                ):
-                    if not retry:
-                        raise DDOSGuardError(message="Unable to access website with flaresolverr cookies") from None
-                    return await self.get_soup(
-                        domain,
-                        url,
-                        origin=origin,
-                        with_response_url=with_response_url,
-                        retry=False,
-                        cache_disabled=True,
-                    )
-                if with_response_url:
-                    return soup, response_URL
-                if with_response_headers:
-                    return soup, response.headers
-                return soup
+        cache_disabled: bool = False,
+        **request_params: Any,
+    ) -> tuple[AnyResponse, BeautifulSoup]:
+        """
+        Makes a GET request using aiohttp and creates a soup.
 
-            content_type = response.headers.get("Content-Type")
-            assert content_type is not None
-            if not any(s in content_type.lower() for s in ("html", "text")):
-                raise InvalidContentTypeError(message=f"Received {content_type}, was expecting text", origin=origin)
-            text = await CachedStreamReader(await response.read()).read()
-            soup = BeautifulSoup(text, "html.parser")
-            if self.save_pages_html:
-                await self.write_soup_to_disk(domain, url, response, soup)
-            if with_response_url:
-                return soup, response.url
-            return soup
+        :param domain: The crawler's domain (for rate limiting)
+        :param url: The URL to fetch.
+        :param headers:  Optional headers to include in the request. Will be added to session's default headers.
+        :param cache_disabled: Whether to disable caching for this request. Defaults to `False`.
+        :param **request_params: Additional keyword arguments to pass to `session.get` (e.g., `timeout`).
+        """
+        headers = self._headers | (headers or {})
+        async with cache_control_manager(self._session, disabled=cache_disabled):
+            response, soup_or_none = await self._resilient_get(url, headers=headers, **request_params)
+        if not soup_or_none:
+            soup = await response_to_soup(response)
+        else:
+            soup: BeautifulSoup = soup_or_none
 
-    async def get_soup_and_return_url(
-        self, domain: str, url: URL, origin: ScrapeItem | URL | None = None, **kwargs
-    ) -> tuple[BeautifulSoup, URL]:
-        """Returns a BeautifulSoup object and response URL from the given URL."""
-        return await self.get_soup(domain, url, origin=origin, with_response_url=True, **kwargs)
+        if self._save_pages_html:
+            await self.write_soup_to_disk(url, response, soup)
+        return response, soup
 
-    @limiter
+    @copy_signature(_get_response_and_soup)
+    async def get_soup(self, *args, **kwargs) -> BeautifulSoup:
+        _, soup = await self._get_response_and_soup(*args, **kwargs)
+        return soup
+
+    @copy_signature(_get_response_and_soup)
     async def get_json(
         self,
         domain: str,
         url: URL,
-        params: dict | None = None,
-        headers_inc: dict | None = None,
-        client_session: CachedSession = None,  # type: ignore
-        origin: ScrapeItem | URL | None = None,
+        headers: dict[str, str] | None = None,
+        *,
         cache_disabled: bool = False,
-    ) -> dict:
-        """Returns a JSON object from the given URL."""
-        headers = self._headers | headers_inc if headers_inc else self._headers
-        async with (
-            cache_control_manager(client_session, disabled=cache_disabled),
-            client_session.get(
-                url,
-                headers=headers,
-                ssl=self.client_manager.ssl_context,
-                proxy=self.client_manager.proxy,
-                params=params,
-            ) as response,
-        ):
-            await self.client_manager.check_http_status(response, origin=origin)
-            content_type = response.headers["Content-Type"].lower()
-            if "text/plain" in content_type:
-                json_resp = json.loads(await response.text())
-            elif "json" in content_type:
-                json_resp = await response.json()
-            else:
-                raise InvalidContentTypeError(message=f"Received {content_type}, was expecting JSON", origin=origin)
-            if cache_disabled:
-                return json_resp, response  # type: ignore
-            return json_resp
+        **request_params: Any,
+    ) -> dict[str, Any]:
+        headers = self._headers | (headers or {})
+        async with cache_control_manager(self._session, disabled=cache_disabled):
+            response = await self._session.get(url, headers=headers, **request_params)
+        return await response_to_json(response)
 
-    @limiter
-    async def get_text(
-        self,
-        domain: str,
-        url: URL,
-        client_session: CachedSession,
-        origin: ScrapeItem | URL | None = None,
-        cache_disabled: bool = False,
-        retry: bool = True,
-    ) -> str:
-        """Returns a text object from the given URL."""
-        async with (
-            cache_control_manager(client_session, disabled=cache_disabled),
-            client_session.get(
-                url, headers=self._headers, ssl=self.client_manager.ssl_context, proxy=self.client_manager.proxy
-            ) as response,
-        ):
-            try:
-                await self.client_manager.check_http_status(response, origin=origin)
-            except DDOSGuardError:
-                await self.client_manager.manager.cache_manager.request_cache.delete_url(url)
-                soup, _ = await self.client_manager.flaresolverr.get(url, client_session, origin)
-                if not soup or (
-                    self.client_manager.check_ddos_guard(soup) or self.client_manager.check_cloudflare(soup)
-                ):
-                    if not retry:
-                        raise DDOSGuardError(message="Unable to access website with flaresolverr cookies") from None
-                    return await self.get_text(domain, url, origin=origin, retry=False, cache_disabled=True)
-                return str(soup)
+    @copy_signature(_get_response_and_soup)
+    async def get_text(self, *args, **kwargs) -> str:
+        response, soup = await self._get_response_and_soup(*args, **kwargs)
+        if soup:
+            return soup.text
+        else:
             return await response.text()
 
     @limiter
-    async def post_data(
+    async def _post_data(
         self,
         domain: str,
         url: URL,
-        client_session: CachedSession,
-        data: dict,
-        req_resp: bool = True,
-        raw: bool = False,
-        origin: ScrapeItem | URL | None = None,
-        cache_disabled: bool = False,
-        headers_inc: dict | None = None,
+        headers: dict[str, str] | None = None,
+        data: dict[str, Any] | None = None,
+        json: dict[str, Any] | None = None,
         *,
-        req_headers: bool = False,
-    ) -> dict | bytes:
-        """Returns a JSON object from the given URL when posting data. If raw == True, returns raw binary data of response."""
-        headers = self._headers | headers_inc if headers_inc else self._headers
-        async with (
-            cache_control_manager(client_session, disabled=cache_disabled),
-            client_session.post(
-                url,
-                headers=headers,
-                ssl=self.client_manager.ssl_context,
-                proxy=self.client_manager.proxy,
-                data=data,
-                allow_redirects=req_headers,
-            ) as response,
-        ):
-            await self.client_manager.check_http_status(response, origin=origin)
-            if req_resp:
-                if response.status == 204:
-                    raise ScrapeError(204)
-                content = await response.content.read()
-                if content == b"":
-                    content = await CachedStreamReader(await response.read()).read()
-                return content if raw else json.loads(content)
-            if req_headers:
-                return dict(response.headers)
-            return {}
+        cache_disabled: bool = False,
+        **request_params: Any,
+    ) -> aiohttp.ClientResponse:
+        """Makes a post request using aiohtttp
+
+        :param domain: The crawler's domain (for rate limiting)
+        :param url: The URL to fetch.
+        :param headers: Optional headers to include in the request. Will be added to session's default headers.
+        :param data: Data to include in the requests. Will be sent as is (FormData).
+        :param json: JSON data to include in the request. This will be serialized into a JSON string, and the `Content-Type` header will be set to `application/json`.
+        :param cache_disabled: Whether to disable caching for this request. Defaults to `False`.
+        :param **request_params: Additional keyword arguments to pass to `session.post` (e.g., `timeout`).
+        """
+        headers = self._headers | {"Accept-Encoding": "identity"} | (headers or {})
+        async with cache_control_manager(self._session, disabled=cache_disabled):
+            response = await self._session.post(url, headers=headers, data=data, json=json, **request_params)
+        await self.client_manager.check_http_status(response)
+        return response
+
+    @copy_signature(_post_data)
+    async def post_data_raw(self, *args: Any, **kwargs: Any) -> bytes:
+        response = await self._post_data(*args, **kwargs)
+        if response.status == 204:
+            raise ScrapeError(204)
+        return await response.read()
+
+    @copy_signature(_post_data)
+    async def post_data(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
+        content = await self.post_data_raw(*args, **kwargs)
+        return json_loads(content)
 
     @limiter
     async def get_head(
-        self, domain: str, url: URL, client_session: CachedSession, *, origin: ScrapeItem | URL | None = None
-    ) -> CIMultiDictProxy[str]:
-        """Returns the headers from the given URL."""
-        async with client_session.head(
-            url,
-            headers=self._headers | {"Accept-Encoding": "identity"},
-            ssl=self.client_manager.ssl_context,
-            proxy=self.client_manager.proxy,
-        ) as response:
-            await self.client_manager.check_http_status(response, origin=origin)
-            return response.headers
-
-    async def write_soup_to_disk(
         self,
         domain: str,
         url: URL,
-        response: CurlResponse | aiohttp.ClientResponse,
+        headers: dict[str, str] | None = None,
+        *,
+        cache_disabled: bool = False,
+        **request_params: Any,
+    ) -> CIMultiDictProxy[str]:
+        """
+        Makes a GET request to an URL and returns its headers
+
+        :param domain: The crawler's domain (for rate limiting)
+        :param url: The URL to fetch.
+        :param headers:  Optional headers to include in the request. Will be added to session's default headers.
+        :param cache_disabled: Whether to disable caching for this request. Defaults to `False`.
+        :param **request_params: Additional keyword arguments to pass to `session.head` (e.g., `timeout`).
+        """
+        headers = self._headers | {"Accept-Encoding": "identity"} | (headers or {})
+        async with cache_control_manager(self._session, disabled=cache_disabled):
+            response = await self._session.head(url, headers=headers, **request_params)
+        await self.client_manager.check_http_status(response)
+        return response.headers
+
+    async def write_soup_to_disk(
+        self,
+        url: URL,
+        response: CurlResponse | AnyResponse,
         soup: BeautifulSoup,
         exc: Exception | None = None,
     ):
-        html_text: str = soup.prettify(formatter="html")  # Not sure if we should prettify
+        """Writes html to a file."""
+        html_text: str = soup.prettify(formatter="html")  # type: ignore # Not sure if we should prettify
         status_code: int = response.status_code if hasattr(response, "status_code") else response.status  # type: ignore
         response_headers = dict(response.headers)
         now = datetime.now()
@@ -387,10 +379,9 @@ class ScraperClient:
         url_str = str(url)
         response_url_str = str(response.url)
         clean_url = sanitize_filename(Path(url_str).as_posix().replace("/", "-"))
-        filename = f"{clean_url[: self.max_html_stem_len]}_{log_date}.html"
-        file_path = self.pages_folder / filename
+        filename = f"{clean_url[: self._max_html_stem_len]}_{log_date}.html"
+        file_path = self._pages_folder / filename
         info = {
-            "crawler": domain,
             "url": url_str,
             "response_url": response_url_str,
             "status_code": status_code,
@@ -399,8 +390,49 @@ class ScraperClient:
         }
         if exc:
             info = info | {"error": str(exc), "exception": repr(exc)}
-        text = f"<!-- cyberdrop-dl scraping result\n{json.dumps(info, indent=4, ensure_ascii=False)}\n-->\n{html_text}"
+
+        json_data = json_dumps(info, indent=4, ensure_ascii=False)
+        text = f"<!-- cyberdrop-dl scraping result\n{json_data}\n-->\n{html_text}"
         try:
             await asyncio.to_thread(file_path.write_text, text, "utf8")
         except OSError:
             pass
+
+
+async def response_to_soup(response: AnyResponse | CurlResponse) -> BeautifulSoup:
+    content_type: str = response.headers.get("Content-Type") or ""
+    if not any(s in content_type.lower() for s in ("html", "text")):
+        raise InvalidContentTypeError(message=f"Received {content_type}, was expecting text")
+
+    if isinstance(response, AnyResponse):
+        content = await response.read()  # aiohttp
+    else:
+        content = response.content  # curl response
+    return BeautifulSoup(content, "html.parser")
+
+
+async def response_to_json(response: AnyResponse) -> dict[str, Any]:
+    content_type: str = response.headers["Content-Type"].lower()
+    if "text/plain" in content_type:
+        return json_loads(await response.text())
+    elif "json" in content_type:
+        return await response.json() or {}
+    else:
+        raise InvalidContentTypeError(message=f"Received {content_type}, was expecting JSON")
+
+
+def add_request_log_hooks(trace_configs: list[aiohttp.TraceConfig]) -> None:
+    async def on_request_start(*args):
+        params: aiohttp.TraceRequestStartParams = args[2]
+        log_debug(f"Starting scrape {params.method} request to {params.url}", 10)
+
+    async def on_request_end(*args):
+        params: aiohttp.TraceRequestEndParams = args[2]
+        msg = f"Finishing scrape {params.method} request to {params.url}"
+        msg += f" -> response status: {params.response.status}"
+        log_debug(msg, 10)
+
+    trace_config = aiohttp.TraceConfig()
+    trace_config.on_request_start.append(on_request_start)
+    trace_config.on_request_end.append(on_request_end)
+    trace_configs.append(trace_config)
