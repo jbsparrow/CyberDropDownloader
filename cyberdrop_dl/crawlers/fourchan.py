@@ -16,7 +16,6 @@ if TYPE_CHECKING:
 
 API_ENTRYPOINT = URL("https://a.4cdn.org/")
 FILES_BASE_URL = URL("https://i.4cdn.org/")
-BOARDS_BASE_URL = URL("https://boards.4chan.org/")
 
 
 class Post(TypedDict):
@@ -29,6 +28,15 @@ class ImagePost(Post):
     filename: str  # File stem
     ext: str
     tim: int  # Unix timestamp + microtime of uploaded image
+
+
+class Thread(TypedDict):
+    no: int  # Original post ID
+
+
+class ThreadList(TypedDict):
+    page: int
+    threads: list[Thread]
 
 
 class FourChanCrawler(Crawler):
@@ -90,12 +98,12 @@ class FourChanCrawler(Crawler):
         board: str = scrape_item.url.parts[-1]
         api_url = API_ENTRYPOINT / board / "threads.json"
         async with self.request_limiter:
-            threads = await self.client.get_json(self.domain, api_url, cache_disabled=True)
+            threads: list[ThreadList] = await self.client.get_json(self.domain, api_url, cache_disabled=True)
 
         scrape_item.setup_as_forum("")
         for page in threads:
             for thread in page["threads"]:
-                url = BOARDS_BASE_URL / thread / thread["no"]
+                url = self.primary_base_domain / board / f"thread/{thread['no']}"
                 new_scrape_item = scrape_item.create_child(url)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
                 scrape_item.add_children()
