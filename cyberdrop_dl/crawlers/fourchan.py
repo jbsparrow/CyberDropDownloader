@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 
 HTML_RE = re.compile("<[^>]+>")
 API_ENTRYPOINT = URL("https://a.4cdn.org/")
-FILES_CDN = URL("https://i.4cdn.org/")
+FILES_BASE_URL = URL("https://i.4cdn.org/")
 BOARDS_BASE_URL = URL("https://boards.4chan.org/")
 
 
@@ -41,28 +41,30 @@ class FourChanCrawler(Crawler):
     @error_handling_wrapper
     async def thread(self, scrape_item: ScrapeItem) -> None:
         board = scrape_item.url.parts[1]
-        thread = scrape_item.url.parts[-2]
-        api_url = API_ENTRYPOINT / board / "thread" / f"{thread}.json"
+        thread_id = scrape_item.url.parts[-2]
+        api_url = API_ENTRYPOINT / board / "thread" / f"{thread_id}.json"
         async with self.request_limiter:
-            response = await self.client.get_json(self.domain, api_url, cache_disabled=True)
+            response: dict[str, list[dict]] = await self.client.get_json(self.domain, api_url, cache_disabled=True)
         if not response:
             raise ScrapeError(404)
 
         title = response["posts"][0].get("sub") or remove_html(response["posts"][0].get("com"))
-        title = f"{title} [thread]"
-        title = self.create_title(title)
-        scrape_item.setup_as_album(title)
+        title = self.create_title(f"{title} [thread]", thread_id)
+        scrape_item.setup_as_album(title, album_id=thread_id)
+        results = await self.get_album_results(thread_id)
 
         for post in response["posts"]:
-            if "filename" in post:
-                file_id = post["tim"]
-                filename, ext = self.get_filename_and_ext(f"{post['filename']}{post['ext']}")
-                url = FILES_CDN / board / f"{file_id}{ext}"
+            if filename := post.get("filename"):
+                file_id, ext = post["tim"], post["ext"]
+                url = FILES_BASE_URL / board / f"{file_id}{ext}"
+                if self.check_album_results(url, results):
+                    continue
+
+                filename, ext = self.get_filename_and_ext(f"{filename}{ext}")
                 custom_filename, _ = self.get_filename_and_ext(url.name)
                 scrape_item.possible_datetime = post["time"]
-                if await self.check_complete_from_referer(url):
-                    continue
                 await self.handle_file(url, scrape_item, filename, ext, custom_filename=custom_filename)
+                scrape_item.add_children()
 
     @error_handling_wrapper
     async def board(self, scrape_item: ScrapeItem) -> None:
@@ -71,11 +73,13 @@ class FourChanCrawler(Crawler):
         async with self.request_limiter:
             threads = await self.client.get_json(self.domain, api_url, cache_disabled=True)
 
+        scrape_item.setup_as_forum("")
         for page in threads:
             for thread in page["threads"]:
                 url = BOARDS_BASE_URL / thread / thread["no"]
                 new_scrape_item = scrape_item.create_child(url)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
+                scrape_item.add_children()
 
 
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
