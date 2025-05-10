@@ -81,6 +81,7 @@ from .tiktok import TikTokCrawler
 from .tokyomotion import TokioMotionCrawler
 from .toonily import ToonilyCrawler
 from .twitter_images import TwimgCrawler
+from .vipr_dot_im import ViprImCrawler
 from .wetransfer import WeTransferCrawler
 from .xbunkr import XBunkrCrawler
 from .xenforo import (
