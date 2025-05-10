@@ -52,10 +52,17 @@ class ImxToCrawler(Crawler):
 
     @error_handling_wrapper
     async def thumbnail(self, scrape_item: ScrapeItem) -> None:
-        path = scrape_item.url.path.split("/t/")[-1]
-        link = self.primary_base_domain / "u/i" / path
-        image_id = Path(link.name).stem
-        canonical_url = self.primary_base_domain / "i" / image_id
-        scrape_item.url = canonical_url
+        link = self.thumbnail_to_img(scrape_item.url)
+        scrape_item.url = self.get_canonical_url(link)
         filename, ext = self.get_filename_and_ext(link.name, assume_ext=".jpg")
         await self.handle_file(link, scrape_item, filename, ext)
+
+    def thumbnail_to_img(self, url: URL) -> URL:
+        path = url.path.split("/t/")[-1]
+        return self.primary_base_domain / "u/i" / path
+
+    def get_canonical_url(self, url: URL) -> URL:
+        return self.primary_base_domain / "i" / self.get_image_id(url)
+
+    def get_image_id(self, link: URL) -> str:
+        return Path(link.name).stem
