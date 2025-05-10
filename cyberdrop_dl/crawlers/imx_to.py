@@ -64,5 +64,5 @@ class ImxToCrawler(Crawler):
     def get_canonical_url(self, url: URL) -> URL:
         return self.primary_base_domain / "i" / self.get_image_id(url)
 
-    def get_image_id(self, link: URL) -> str:
-        return Path(link.name).stem
+    def get_image_id(self, url: URL) -> str:
+        return Path(url.name).stem
