@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from yarl import URL
@@ -31,6 +32,8 @@ class ImxToCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "i" in scrape_item.url.parts:
             return await self.image(scrape_item)
+        if "t" in scrape_item.url.parts:
+            return await self.thumbnail(scrape_item)
         raise ValueError
 
     @error_handling_wrapper
@@ -44,5 +47,14 @@ class ImxToCrawler(Crawler):
 
         link_str: str = soup.select_one(IMG_SELECTOR)["src"]  # type: ignore
         link = self.parse_url(link_str)
+        filename, ext = self.get_filename_and_ext(link.name, assume_ext=".jpg")
+        await self.handle_file(link, scrape_item, filename, ext)
+
+    async def thumbnail(self, scrape_item: ScrapeItem) -> None:
+        path = scrape_item.url.path.split("/t/")[-1]
+        link = self.primary_base_domain / "u/i" / path
+        image_id = Path(link.name).stem
+        canonical_url = self.primary_base_domain / "i" / image_id
+        scrape_item.url = canonical_url
         filename, ext = self.get_filename_and_ext(link.name, assume_ext=".jpg")
         await self.handle_file(link, scrape_item, filename, ext)
