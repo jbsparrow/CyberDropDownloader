@@ -50,6 +50,7 @@ class ImxToCrawler(Crawler):
         filename, ext = self.get_filename_and_ext(link.name, assume_ext=".jpg")
         await self.handle_file(link, scrape_item, filename, ext)
 
+    @error_handling_wrapper
     async def thumbnail(self, scrape_item: ScrapeItem) -> None:
         path = scrape_item.url.path.split("/t/")[-1]
         link = self.primary_base_domain / "u/i" / path
