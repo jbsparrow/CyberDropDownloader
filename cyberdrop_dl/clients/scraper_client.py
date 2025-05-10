@@ -335,6 +335,11 @@ class ScraperClient:
         content = await self.post_data_raw(*args, **kwargs)
         return json_loads(content)
 
+    @copy_signature(_post_data)
+    async def post_data_get_soup(self, *args: Any, **kwargs: Any) -> BeautifulSoup:
+        content = await self.post_data_raw(*args, **kwargs)
+        return BeautifulSoup(content, "html.parser")
+
     @limiter
     async def get_head(
         self,
