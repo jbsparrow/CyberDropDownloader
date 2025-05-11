@@ -48,7 +48,8 @@ class ViprImCrawler(Crawler):
         self.manager.task_group.create_task(self.run(scrape_item))
 
     def get_canonical_url(self, url: URL) -> URL:
-        return self.primary_base_domain / self.get_image_id(url)
+        return self.primary_base_domain / get_image_id(url)
 
-    def get_image_id(self, url: URL) -> str:
-        return Path(url.name).stem
+
+def get_image_id(url: URL) -> str:
+    return Path(url.name).stem

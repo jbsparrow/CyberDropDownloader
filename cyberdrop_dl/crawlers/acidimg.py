@@ -32,13 +32,14 @@ class AcidImgCrawler(ImxToCrawler):
             return await self.thumbnail(scrape_item)
         raise ValueError
 
-    def get_image_id(self, url: URL) -> str:
-        return url.name.removesuffix(".html").removeprefix("img-")
-
     def thumbnail_to_img(self, url: URL) -> URL:
         path = url.path.split("/small/")[-1]
         return self.primary_base_domain / "upload/big" / path
 
     def get_canonical_url(self, url: URL) -> URL:
-        image_id = self.get_image_id(url)
+        image_id = get_image_id(url)
         return self.primary_base_domain / f"img-{image_id}.html"
+
+
+def get_image_id(url: URL) -> str:
+    return url.name.removesuffix(".html").removeprefix("img-")
