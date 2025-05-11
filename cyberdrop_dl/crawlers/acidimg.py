@@ -26,14 +26,13 @@ class AcidImgCrawler(ImxToCrawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "i" in scrape_item.url.parts:
             return await self.image(scrape_item)
-        if "/upload/big/" in scrape_item.url.path:
-            return await self.direct_file(scrape_item)
-        if "/upload/small/" in scrape_item.url.path:
+        if "upload" in scrape_item.url.parts:
             return await self.thumbnail(scrape_item)
         raise ValueError
 
     def thumbnail_to_img(self, url: URL) -> URL:
-        path = url.path.split("/small/")[-1]
+        index = url.parts.index("upload") + 2
+        path = "/".join(url.parts[index:])
         return self.primary_base_domain / "upload/big" / path
 
     def get_canonical_url(self, url: URL) -> URL:
