@@ -16,6 +16,7 @@ if TYPE_CHECKING:
 
 class Selectors:
     TITLE = "div.onlyf-model-info > h1"
+    ALTERNATIVE_TITLE = "div.onlyf-leak-links a"
     VIDEOS = "div.onlyf-video-grid > div.onlyf-video-item"
     PICTURES = "div.onlyf-image-container > img"
 
@@ -43,7 +44,10 @@ class InfluencerBitchesCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
-        title: str = self.create_title(soup.select_one(_SELECTORS.TITLE).get_text(strip=True))
+        title: str = soup.select_one(_SELECTORS.TITLE).get_text(strip=True)
+        if not title:
+            title = soup.select_one(_SELECTORS.ALTERNATIVE_TITLE).get_text().replace("leaks", "").strip()
+        title = self.create_title(title)
         scrape_item.setup_as_profile(title)
 
         await self.scrape_pictures(scrape_item, soup)
