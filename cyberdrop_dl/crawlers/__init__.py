@@ -39,6 +39,7 @@ from .imagepond import ImagePondCrawler
 from .imgbb import ImgBBCrawler
 from .imgbox import ImgBoxCrawler
 from .imgur import ImgurCrawler
+from .incestflix import IncestflixCrawler
 from .jpg5 import JPG5Crawler
 from .kemono import KemonoCrawler
 from .luscious import LusciousCrawler
