@@ -55,7 +55,7 @@ class InfluencerBitchesCrawler(Crawler):
 
     async def scrape_pictures(self, scrape_item, soup):
         scrape_item_copy = scrape_item.copy()
-        scrape_item_copy.setup_as_album("Pictures")
+        scrape_item_copy.setup_as_album("Photos")
         for _, new_scrape_item in self.iter_children(
             scrape_item_copy, soup, _SELECTORS.PICTURES, attribute="data-full"
         ):
