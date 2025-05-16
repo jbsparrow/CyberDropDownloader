@@ -49,13 +49,13 @@ class InfluencerBitchesCrawler(Crawler):
         title = self.create_title(title)
         scrape_item.setup_as_profile(title)
 
-        await self.scrape_pictures(scrape_item, soup)
-        await self.scrape_videos(scrape_item, soup)
+        for scrapper in (self.scrape_pictures, self.scrape_videos):
+            new_scrape_item = scrape_item.copy()
+            await scrapper(new_scrape_item, soup)
 
     async def scrape_pictures(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> None:
-        scrape_item_copy = scrape_item.copy()
-        album_id = scrape_item_copy.url.name
-        scrape_item_copy.setup_as_album("Photos", album_id=album_id)
+        album_id = scrape_item.url.name
+        scrape_item.setup_as_album("Photos", album_id=album_id)
         results = await self.get_album_results(album_id)
         for a_tag in soup.select(_SELECTORS.PICTURES):
             link_str: str = a_tag.select_one("img")["data-full"]  # type: ignore
@@ -66,17 +66,14 @@ class InfluencerBitchesCrawler(Crawler):
             new_scrape_item = scrape_item.create_child(web_url)
             filename, ext = self.get_filename_and_ext(link.name)
             await self.handle_file(link, new_scrape_item, filename, ext)
-            scrape_item_copy.add_children()
+            scrape_item.add_children()
 
     async def scrape_videos(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> None:
-        scrape_item_copy = scrape_item.copy()
-        scrape_item_copy.setup_as_album("Videos")
-        for _, new_scrape_item in self.iter_children(
-            scrape_item_copy, soup, _SELECTORS.VIDEOS, attribute="data-video-url"
-        ):
+        scrape_item.setup_as_album("Videos")
+        for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS, attribute="data-video-url"):
             if new_scrape_item.url.host == "bunkrrr.org":
                 new_scrape_item.url = new_scrape_item.url.with_host("bunkr.fi")
             new_scrape_item.url = new_scrape_item.url.with_path(new_scrape_item.url.path.replace("/e/", "/f/", 1))
             if not await self.check_complete_from_referer(new_scrape_item.url):
                 self.handle_external_links(new_scrape_item)
-                scrape_item_copy.add_children()
+                scrape_item.add_children()
