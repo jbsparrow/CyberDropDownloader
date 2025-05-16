@@ -353,6 +353,28 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <details>
 
+<summary>Incestflix.com</summary>
+
+## `Supported URL Paths:`
+
+* Video: `/watch/...`
+* Tag: `/tag/...`
+
+</details>
+
+<details>
+
+<summary>Influencerbitches.com</summary>
+
+## `Supported URL Paths:`
+
+* Model: `/model/...`
+
+</details>
+
+
+<details>
+
 <summary>JPG5.Su</summary>
 
 ## `Supported URL Paths:`
