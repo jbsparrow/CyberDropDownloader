@@ -53,14 +53,14 @@ class InfluencerBitchesCrawler(Crawler):
 
     async def scrape_pictures(self, scrape_item, soup):
         scrape_item_copy = scrape_item.copy()
-        scrape_item_copy.setup_as_album("Photos")
-        for _, new_scrape_item in self.iter_children(
-            scrape_item_copy, soup, _SELECTORS.PICTURES, attribute="data-full"
-        ):
+        album_id = scrape_item_copy.url.path.split("/")[-1]
+        scrape_item_copy.setup_as_album("Photos", album_id=album_id)
+        results = await self.get_album_results(album_id)
+        for _, link in self.iter_tags(soup, _SELECTORS.PICTURES, attribute="data-full", results=results):
+            new_scrape_item = scrape_item.create_child(link)
             filename, ext = self.get_filename_and_ext(new_scrape_item.url.name)
-            if not await self.check_complete_from_referer(new_scrape_item):
-                await self.handle_file(new_scrape_item.url, new_scrape_item, filename, ext)
-                scrape_item_copy.add_children()
+            await self.handle_file(new_scrape_item.url, new_scrape_item, filename, ext)
+            scrape_item_copy.add_children()
 
     async def scrape_videos(self, scrape_item, soup):
         scrape_item_copy = scrape_item.copy()
