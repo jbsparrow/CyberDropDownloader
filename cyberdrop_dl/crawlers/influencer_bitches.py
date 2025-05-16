@@ -54,7 +54,7 @@ class InfluencerBitchesCrawler(Crawler):
 
     async def scrape_pictures(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> None:
         scrape_item_copy = scrape_item.copy()
-        album_id = scrape_item_copy.url.path.split("/")[-1]
+        album_id = scrape_item_copy.url.name
         scrape_item_copy.setup_as_album("Photos", album_id=album_id)
         results = await self.get_album_results(album_id)
         for _, link in self.iter_tags(soup, _SELECTORS.PICTURES, attribute="data-full", results=results):
