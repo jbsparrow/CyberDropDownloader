@@ -40,6 +40,7 @@ from .imgbb import ImgBBCrawler
 from .imgbox import ImgBoxCrawler
 from .imgur import ImgurCrawler
 from .incestflix import IncestflixCrawler
+from .influencer_bitches import InfluencerBitchesCrawler
 from .jpg5 import JPG5Crawler
 from .kemono import KemonoCrawler
 from .luscious import LusciousCrawler
