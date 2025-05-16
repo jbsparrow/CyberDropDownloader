@@ -52,8 +52,7 @@ class IncestflixCrawler(Crawler):
         title: str = soup.select_one(_SELECTORS.TITLE).get_text(strip=True)
         video = soup.select_one(_SELECTORS.VIDEO)
         url = self.parse_url(video.get("src"))
-        ext = video.get("type").split("/")[1]
-        filename, ext = self.get_filename_and_ext(f"{title}.{ext}")
+        filename, ext = self.get_filename_and_ext(f"{title}.mp4")
         await self.handle_file(scrape_item.url, scrape_item, filename, ext, debrid_link=url)
 
     @error_handling_wrapper
