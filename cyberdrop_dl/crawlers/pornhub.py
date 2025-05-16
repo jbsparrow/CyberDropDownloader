@@ -17,6 +17,9 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
+PRIMARY_BASE_DOMAIN = URL("https://pornhub.com")
+ALBUM_API_URL = PRIMARY_BASE_DOMAIN / "album/show_album_json"
+
 
 class Selectors:
     JS_VIDEO_INFO = "script:contains('vars flashvars_')"
@@ -28,6 +31,9 @@ class Selectors:
     DATE = "script.contains('uploadDate')"
     PLAYLIST_VIDEOS = "ul#videoPlaylist a.linkVideoThumb"
     GIF = "div#js-gifToWebm"
+    PHOTO = "div#photoImageSection img"
+    ALBUM_FROM_PHOTO = "div#thumbSlider>h2>a"
+    ALBUM_TITLE = "h1[class*=photoAlbumTitle]"
 
 
 _SELECTORS = Selectors()
@@ -64,7 +70,7 @@ class Format(NamedTuple):
 
 
 class PornHubCrawler(Crawler):
-    primary_base_domain = URL("https://pornhub.com")
+    primary_base_domain = PRIMARY_BASE_DOMAIN
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "pornhub", "PornHub")
@@ -77,7 +83,62 @@ class PornHubCrawler(Crawler):
             return await self.playlist(scrape_item)
         if "gif" in scrape_item.url.parts:
             return await self.gif(scrape_item)
+        if "photo" in scrape_item.url.parts:
+            return await self.photo(scrape_item)
+        if "album" in scrape_item.url.parts:
+            return await self.album(scrape_item)
         raise ValueError
+
+    @error_handling_wrapper
+    async def album(self, scrape_item: ScrapeItem) -> None:
+        album_id = scrape_item.url.parts[2]
+        api_url = ALBUM_API_URL.with_query(album=album_id)
+        async with self.request_limiter:
+            json_resp: dict[str, Any] = await self.client.get_json(self.domain, api_url)
+
+        if not json_resp:
+            return
+
+        async with self.request_limiter:
+            soup = await self.client.get_soup(self.domain, scrape_item.url)
+
+        album_name: str = soup.select_one(_SELECTORS.ALBUM_TITLE).get_text(strip=True)  # type: ignore
+        title = self.create_title(album_name, album_id)
+        scrape_item.setup_as_album(title, album_id=album_id)
+        results = await self.get_album_results(album_id)
+
+        for id, photo in json_resp.items():
+            web_url = self.primary_base_domain / "photo" / id
+            link = self.parse_url(photo["img_large"])
+            new_scrape_item = scrape_item.create_new(web_url)
+            await self.proccess_photo(new_scrape_item, link, results)
+
+    @error_handling_wrapper
+    async def photo(self, scrape_item: ScrapeItem) -> None:
+        if await self.check_complete_from_referer(scrape_item):
+            return
+
+        async with self.request_limiter:
+            soup = await self.client.get_soup(self.domain, scrape_item.url)
+
+        link_str: str = soup.select_one(_SELECTORS.PHOTO)["src"]  # type: ignore
+        link = self.parse_url(link_str)
+        album_tag = soup.select_one(_SELECTORS.ALBUM_FROM_PHOTO)
+        assert album_tag
+        album_link_str: str = album_tag["href"]  # type: ignore
+        album_id: str = album_link_str.split("/")[-1]
+        album_name = album_tag.get_text(strip=True)
+        title = self.create_title(album_name, album_id)
+        scrape_item.setup_as_album(title, album_id=album_id)
+        await self.proccess_photo(scrape_item, link)
+
+    async def proccess_photo(self, scrape_item: ScrapeItem, link: URL, results: dict[str, Any] | None = None) -> None:
+        results = results or {}
+        name = link.name.partition(")original_")[-1]
+        canonical_url = link.with_name(name)
+        if not self.check_album_results(canonical_url, results):
+            filename, ext = self.get_filename_and_ext(name, assume_ext=".jpg")
+            await self.handle_file(canonical_url, scrape_item, filename, ext, debrid_link=link)
 
     @error_handling_wrapper
     async def gif(self, scrape_item: ScrapeItem) -> None:
