@@ -44,6 +44,7 @@ class InfluencerBitchesCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
         title_tag = soup.select_one(_SELECTORS.TITLE) or soup.select_one(_SELECTORS.ALTERNATIVE_TITLE)
+        assert title_tag
         title: str = title_tag.get_text(strip=True).replace("leaks", "").strip()
         title = self.create_title(title)
         scrape_item.setup_as_profile(title)
@@ -51,7 +52,7 @@ class InfluencerBitchesCrawler(Crawler):
         await self.scrape_pictures(scrape_item, soup)
         await self.scrape_videos(scrape_item, soup)
 
-    async def scrape_pictures(self, scrape_item, soup):
+    async def scrape_pictures(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> None:
         scrape_item_copy = scrape_item.copy()
         album_id = scrape_item_copy.url.path.split("/")[-1]
         scrape_item_copy.setup_as_album("Photos", album_id=album_id)
@@ -62,7 +63,7 @@ class InfluencerBitchesCrawler(Crawler):
             await self.handle_file(new_scrape_item.url, new_scrape_item, filename, ext)
             scrape_item_copy.add_children()
 
-    async def scrape_videos(self, scrape_item, soup):
+    async def scrape_videos(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> None:
         scrape_item_copy = scrape_item.copy()
         scrape_item_copy.setup_as_album("Videos")
         for _, new_scrape_item in self.iter_children(
