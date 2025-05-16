@@ -60,8 +60,7 @@ class IncestflixCrawler(Crawler):
         title_created: bool = False
         async for soup in self.web_pager(scrape_item.url):
             if not title_created:
-                title: str = soup.select_one(_SELECTORS.TAG_TITLE).get_text(strip=True)
-                title = self.create_title(f"{title} [tag]")
+                title = self.create_title(soup.select_one(_SELECTORS.TAG_TITLE).get_text(strip=True))
                 scrape_item.setup_as_album(title)
                 title_created = True
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEO_THUMBS):
