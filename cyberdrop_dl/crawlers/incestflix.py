@@ -51,10 +51,7 @@ class IncestflixCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
         title: str = soup.select_one(_SELECTORS.TITLE).get_text(strip=True)
         video = soup.select_one(_SELECTORS.VIDEO)
-        url = video.get("src")
-        if url.startswith("//"):
-            url = f"https:{url}"
-        url = URL(url)
+        url = self.parse_url(video.get("src"))
         ext = video.get("type").split("/")[1]
         filename, ext = self.get_filename_and_ext(f"{title}.{ext}")
         await self.handle_file(scrape_item.url, scrape_item, filename, ext, debrid_link=url)
