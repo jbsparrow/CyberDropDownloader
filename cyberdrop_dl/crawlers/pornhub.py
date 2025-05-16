@@ -21,10 +21,12 @@ if TYPE_CHECKING:
 class Selectors:
     JS_VIDEO_INFO = "script:contains('vars flashvars_')"
     TITLE = "div.title-container > h1.title"
+    PLAYLIST_TITLE = "h1.playlistTitle"
     NO_VIDEO = "section.noVideo"
     REMOVED = "div.removed"
     GEO_BLOCKED = ".geoBlocked"
     DATE = "script.contains('uploadDate')"
+    PLAYLIST_VIDEOS = "ul#videoPlaylist a.linkVideoThumb"
 
 
 _SELECTORS = Selectors()
@@ -70,7 +72,22 @@ class PornHubCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if video_id := get_video_id(scrape_item.url):
             return await self.video(scrape_item, video_id)
+        if "playlist" in scrape_item.url.parts:
+            return await self.playlist(scrape_item)
         raise ValueError
+
+    @error_handling_wrapper
+    async def playlist(self, scrape_item: ScrapeItem) -> None:
+        playlist_id = scrape_item.url.parts[2]
+        results = await self.get_album_results(playlist_id)
+        async with self.request_limiter:
+            soup = await self.client.get_soup(self.domain, scrape_item.url)
+
+        title: str = soup.select_one(_SELECTORS.PLAYLIST_TITLE).get_text(strip=True)  # type: ignore
+        title = self.create_title(title, playlist_id)
+        scrape_item.setup_as_album(title, album_id=playlist_id)
+        for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.PLAYLIST_VIDEOS, results=results):
+            self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem, video_id: str) -> None:
@@ -105,7 +122,7 @@ class PornHubCrawler(Crawler):
         await self.handle_file(embed_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=link)
 
     def set_cookies(self, _) -> None:
-        keys = ("age_verified", "accessPH", "accessAgeDisclaimerPH", "accessAgeDisclaimerUK")
+        keys = ("age_verified", "accessPH", "accessAgeDisclaimerPH", "accessAgeDisclaimerUK", "expiredEnterModalShown")
         cookies = dict.fromkeys(keys, 1)
         self.update_cookies(cookies)
 
