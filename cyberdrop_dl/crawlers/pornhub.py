@@ -27,6 +27,7 @@ class Selectors:
     GEO_BLOCKED = ".geoBlocked"
     DATE = "script.contains('uploadDate')"
     PLAYLIST_VIDEOS = "ul#videoPlaylist a.linkVideoThumb"
+    GIF = "div#js-gifToWebm"
 
 
 _SELECTORS = Selectors()
@@ -74,7 +75,18 @@ class PornHubCrawler(Crawler):
             return await self.video(scrape_item, video_id)
         if "playlist" in scrape_item.url.parts:
             return await self.playlist(scrape_item)
+        if "gif" in scrape_item.url.parts:
+            return await self.gif(scrape_item)
         raise ValueError
+
+    @error_handling_wrapper
+    async def gif(self, scrape_item: ScrapeItem) -> None:
+        async with self.request_limiter:
+            soup = await self.client.get_soup(self.domain, scrape_item.url)
+
+        link_str: str = soup.select_one(_SELECTORS.GIF)["data-mp4"]  # type: ignore
+        link = self.parse_url(link_str)
+        await self.direct_file(scrape_item, link)
 
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem) -> None:
