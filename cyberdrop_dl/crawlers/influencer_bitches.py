@@ -73,7 +73,8 @@ class InfluencerBitchesCrawler(Crawler):
         for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS, attribute="data-video-url"):
             if new_scrape_item.url.host == "bunkrrr.org":
                 new_scrape_item.url = new_scrape_item.url.with_host("bunkr.fi")
-            new_scrape_item.url = new_scrape_item.url.with_path(new_scrape_item.url.path.replace("/e/", "/f/", 1))
-            if not await self.check_complete_from_referer(new_scrape_item.url):
-                self.handle_external_links(new_scrape_item)
-                scrape_item.add_children()
+
+            new_path = new_scrape_item.url.path.replace("/e/", "/f/", 1)
+            new_scrape_item.url = new_scrape_item.url.with_path(new_path, keep_fragment=True, keep_query=True)
+            self.handle_external_links(new_scrape_item)
+            scrape_item.add_children()
