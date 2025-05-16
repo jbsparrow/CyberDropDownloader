@@ -43,10 +43,8 @@ class InfluencerBitchesCrawler(Crawler):
     async def model(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
-
-        title: str = soup.select_one(_SELECTORS.TITLE).get_text(strip=True)
-        if not title:
-            title = soup.select_one(_SELECTORS.ALTERNATIVE_TITLE).get_text().replace("leaks", "").strip()
+        title_tag = soup.select_one(_SELECTORS.TITLE) or soup.select_one(_SELECTORS.ALTERNATIVE_TITLE)
+        title: str = title_tag.get_text(strip=True).replace("leaks", "").strip()
         title = self.create_title(title)
         scrape_item.setup_as_profile(title)
 
