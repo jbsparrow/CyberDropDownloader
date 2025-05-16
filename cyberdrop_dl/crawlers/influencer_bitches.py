@@ -49,11 +49,11 @@ class InfluencerBitchesCrawler(Crawler):
         title = self.create_title(title)
         scrape_item.setup_as_profile(title)
 
-        for scrapper in (self.scrape_pictures, self.scrape_videos):
+        for scrapper in (self.scrape_photos, self.scrape_videos):
             new_scrape_item = scrape_item.copy()
             await scrapper(new_scrape_item, soup)
 
-    async def scrape_pictures(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> None:
+    async def scrape_photos(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> None:
         album_id = scrape_item.url.name
         scrape_item.setup_as_album("Photos", album_id=album_id)
         results = await self.get_album_results(album_id)
