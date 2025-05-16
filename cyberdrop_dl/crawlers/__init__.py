@@ -57,6 +57,7 @@ from .pixeldrain import PixelDrainCrawler
 from .pixhost import PixHostCrawler
 from .pkmncards import PkmncardsCrawler
 from .pmvhaven import PMVHavenCrawler
+from .pornhub import PornHubCrawler
 from .pornpics import PornPicsCrawler
 from .porntrex import PorntrexCrawler
 from .postimg import PostImgCrawler

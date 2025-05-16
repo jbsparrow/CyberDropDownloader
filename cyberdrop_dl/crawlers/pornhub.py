@@ -1,0 +1,142 @@
+from __future__ import annotations
+
+import json
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypedDict
+
+from yarl import URL
+
+from cyberdrop_dl.clients.errors import ScrapeError
+from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
+
+if TYPE_CHECKING:
+    from collections.abc import Generator
+
+    from bs4 import BeautifulSoup
+
+    from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
+
+
+class Selectors:
+    JS_VIDEO_INFO = "script:contains('vars flashvars_')"
+    TITLE = "div.title-container > h1.title"
+    NO_VIDEO = "section.noVideo"
+    REMOVED = "div.removed"
+    GEO_BLOCKED = ".geoBlocked"
+    DATE = "script.contains('uploadDate')"
+
+
+_SELECTORS = Selectors()
+
+
+class Media(TypedDict):
+    height: int
+    width: int
+    format: Literal["hls", "mp4"]
+    videoUrl: str
+    quality: str | list
+
+    # Not used
+    defaultQuality: bool
+    group: int
+    remote: bool
+
+
+class Format(NamedTuple):
+    quality: int
+    height: int
+    width: int
+    format: Literal["hls", "mp4"]
+    url: str  # "videoUrl"
+
+    @staticmethod
+    def new(media: Media) -> Format:
+        try:
+            quality = int(media["quality"])  # type: ignore
+        except ValueError:
+            quality = min(media["height"], media["width"])
+        values: dict[str, Any] = {k: v for k, v in media.items() if k in Format._fields} | {"quality": quality}
+        return Format(url=media["videoUrl"], **values)
+
+
+class PornHubCrawler(Crawler):
+    primary_base_domain = URL("https://pornhub.com")
+
+    def __init__(self, manager: Manager) -> None:
+        super().__init__(manager, "pornhub", "PornHub")
+
+    @create_task_id
+    async def fetch(self, scrape_item: ScrapeItem) -> None:
+        if video_id := get_video_id(scrape_item.url):
+            return await self.video(scrape_item, video_id)
+        raise ValueError
+
+    @error_handling_wrapper
+    async def video(self, scrape_item: ScrapeItem, video_id: str) -> None:
+        embed_url = self.primary_base_domain / "embed" / video_id
+        page_url = self.primary_base_domain.joinpath("view_video.php").with_query(viewkey=video_id)
+
+        if await self.check_complete_from_referer(embed_url):
+            return
+
+        async with self.request_limiter:
+            soup = await self.client.get_soup(self.domain, page_url, cache_disabled=True)
+
+        check_video_is_available(soup)
+        title: str = soup.select_one(_SELECTORS.TITLE).get_text(strip=True)  # type: ignore
+        mp4_format = next(get_mp4_formats(soup), None)
+        if not mp4_format:
+            raise ScrapeError(422)
+
+        mp4_media_url = self.parse_url(mp4_format.url)
+        async with self.request_limiter:
+            mp4_media: list[Media] = await self.client.get_json(self.domain, mp4_media_url, cache_disabled=True)
+
+        if not mp4_media:
+            raise ScrapeError(422)
+
+        best_format = max(Format.new(media) for media in mp4_media)
+        link = self.parse_url(best_format.url)
+        scrape_item.url = page_url
+        scrape_item.possible_datetime = self.parse_date(get_upload_date_str(soup))
+        filename, ext = self.get_filename_and_ext(f"{video_id}.mp4")
+        custom_filename, _ = self.get_filename_and_ext(f"{title} [{video_id}][{best_format.quality}p].mp4")
+        await self.handle_file(embed_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=link)
+
+    def set_cookies(self, _) -> None:
+        keys = ("age_verified", "accessPH", "accessAgeDisclaimerPH", "accessAgeDisclaimerUK")
+        cookies = dict.fromkeys(keys, 1)
+        self.update_cookies(cookies)
+
+
+def get_video_id(url: URL) -> str | None:
+    if "embed" in url.parts and len(url.parts) > 2:
+        return url.parts[2]
+    if viewkey := url.query.get("viewkey"):
+        return viewkey
+
+
+def get_upload_date_str(soup: BeautifulSoup) -> str:
+    date_text = soup.select_one(_SELECTORS.DATE).text  # type: ignore
+    return get_text_between(date_text, 'uploadDate": "', '",')
+
+
+def get_mp4_formats(soup: BeautifulSoup) -> Generator[Format]:
+    flashvars: str = soup.select_one(_SELECTORS.JS_VIDEO_INFO).text  # type: ignore
+    media_text = get_text_between(flashvars, 'mediaDefinitions":', ',"isVertical"')
+    for media in json.loads(media_text):
+        format = Format.new(media)
+        if format.format == "mp4":
+            yield format
+
+
+def check_video_is_available(soup: BeautifulSoup) -> None:
+    if soup.select_one(_SELECTORS.NO_VIDEO):
+        raise ScrapeError(404)
+
+    if soup.select_one(_SELECTORS.GEO_BLOCKED) or "This content is unavailable in your country" in soup.text:
+        raise ScrapeError(403)
+
+    if soup.select_one(_SELECTORS.REMOVED):
+        raise ScrapeError(410)
