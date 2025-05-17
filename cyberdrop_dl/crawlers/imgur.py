@@ -56,7 +56,7 @@ class ImgurCrawler(Crawler):
         async with self.request_limiter:
             await self.check_imgur_credits(scrape_item)
             api_url = API_ENTRYPOINT / "album" / album_id
-            json_resp: dict[str, dict] = await self.client.get_json(self.domain, api_url, headers_inc=self.headers)
+            json_resp: dict[str, dict] = await self.client.get_json(self.domain, api_url, headers=self.headers)
 
         title_part = json_resp["data"].get("title", album_id)
         title = self.create_title(title_part, album_id)
@@ -64,7 +64,7 @@ class ImgurCrawler(Crawler):
 
         async with self.request_limiter:
             api_url = API_ENTRYPOINT / "album" / album_id / "images"
-            json_resp = await self.client.get_json(self.domain, api_url, headers_inc=self.headers)
+            json_resp = await self.client.get_json(self.domain, api_url, headers=self.headers)
 
         for image in json_resp["data"]:
             await self.process_image(scrape_item, image)
@@ -80,7 +80,7 @@ class ImgurCrawler(Crawler):
         async with self.request_limiter:
             await self.check_imgur_credits(scrape_item)
             api_url = API_ENTRYPOINT / "image" / image_id
-            json_resp = await self.client.get_json(self.domain, api_url, headers_inc=self.headers)
+            json_resp = await self.client.get_json(self.domain, api_url, headers=self.headers)
 
         await self.process_image(scrape_item, json_resp["data"])
 
@@ -108,7 +108,7 @@ class ImgurCrawler(Crawler):
     async def check_imgur_credits(self, _=None) -> None:
         """Checks the remaining credits."""
         credits_url = API_ENTRYPOINT / "credits"
-        json_resp = await self.client.get_json(self.domain, credits_url, headers_inc=self.headers)
+        json_resp = await self.client.get_json(self.domain, credits_url, headers=self.headers)
         self.imgur_client_remaining = json_resp["data"]["ClientRemaining"]
         if self.imgur_client_remaining < 100:
             raise ScrapeError(429, "Imgur API rate limit reached")

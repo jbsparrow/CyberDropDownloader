@@ -70,4 +70,4 @@ class JPG5Crawler(CheveretoCrawler):
         """Handles a direct link."""
         link = url or scrape_item.url
         link = self.parse_url(re.sub(JPG5_REPLACE_HOST_REGEX, r"host.church/", str(link)))
-        super().handle_direct_link(scrape_item, link)
+        await super().handle_direct_link(scrape_item, link)

@@ -156,7 +156,7 @@ class GoFileCrawler(Crawler):
 
     async def _update_website_token(self) -> None:
         async with self.request_limiter:
-            text = await self.client.get_text(self.domain, GLOBAL_JS_URL, origin=GLOBAL_JS_URL)
+            text = await self.client.get_text(self.domain, GLOBAL_JS_URL)
         match = re.search(WT_REGEX, str(text))
         if not match:
             raise ScrapeError(401, "Couldn't generate GoFile websiteToken", origin=GLOBAL_JS_URL)
