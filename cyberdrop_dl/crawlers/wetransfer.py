@@ -46,7 +46,7 @@ class WeTransferCrawler(Crawler):
         headers = {"Content-Type": "application/json"}
         async with self.request_limiter:
             json_resp: dict = await self.client.post_data(
-                self.domain, file_info.download_url, data=file_info.json, headers_inc=headers
+                self.domain, file_info.download_url, data=file_info.json, headers=headers
             )
 
         link_str: str = json_resp.get("direct_link")  # type: ignore
@@ -64,7 +64,7 @@ class WeTransferCrawler(Crawler):
 
     async def get_final_url(self, scrape_item: ScrapeItem) -> URL:
         async with self.request_limiter:
-            headers: dict = await self.client.get_head(self.domain, scrape_item.url)
+            headers = await self.client.get_head(self.domain, scrape_item.url)
 
         location: str = headers.get("location")  # type: ignore
         return self.parse_url(location)

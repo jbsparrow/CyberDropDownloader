@@ -187,11 +187,11 @@ class RedditCrawler(Crawler):
         await self.handle_file(url, scrape_item, filename, ext)
 
     async def get_final_location(self, url) -> URL:
-        headers: dict[str, str] = await self.client.get_head(self.domain, url)
+        headers = await self.client.get_head(self.domain, url)
         content_type = headers.get("Content-Type", "")
         if any(s in content_type.lower() for s in ("html", "text")):
-            _, url = await self.client.get_soup_and_return_url(self.domain, url)
-            return url
+            response, _ = await self.client._get_response_and_soup(self.domain, url)
+            return response.url
         location = headers.get("location")
         if not location:
             raise ScrapeError(422)

@@ -43,6 +43,8 @@ from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_from_headers
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.managers.manager import Manager
@@ -138,7 +140,7 @@ class GoogleDriveCrawler(Crawler):
         filename, ext = self.get_filename_and_ext(filename)
         await self.handle_file(canonical_url, scrape_item, filename, ext, debrid_link=link)
 
-    async def get_file_url_and_headers(self, url: URL, file_id: str) -> tuple[URL, dict]:
+    async def get_file_url_and_headers(self, url: URL, file_id: str) -> tuple[URL, Mapping[str, str]]:
         soup = last_error = None
         current_url: URL | None = url
         try_file_open_url = True
@@ -151,7 +153,9 @@ class GoogleDriveCrawler(Crawler):
 
             try:
                 async with self.request_limiter:
-                    soup, headers = await self.client.get_soup(self.domain, current_url, with_response_headers=True)
+                    response, soup = await self.client._get_response_and_soup(self.domain, current_url)
+                    headers = response.headers
+
             except DownloadError as e:
                 last_error = e
                 if e.status == 500 and try_file_open_url:
@@ -176,9 +180,9 @@ class GoogleDriveCrawler(Crawler):
 
         raise ScrapeError(422)
 
-    async def add_headers(self, url: URL) -> tuple[URL, dict]:
+    async def add_headers(self, url: URL) -> tuple[URL, Mapping[str, str]]:
         async with self.request_limiter:
-            headers: dict = await self.client.get_head(self.domain, url)
+            headers = await self.client.get_head(self.domain, url)
         location = headers.get("location")
         if location:
             link = self.parse_url(location)
@@ -264,11 +268,11 @@ def get_download_url(item_id: str, folder: bool = False) -> URL:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-def are_valid_headers(headers: dict):
+def are_valid_headers(headers: Mapping[str, str]):
     return "Content-Disposition" in headers and not is_html(headers)
 
 
-def is_html(headers: dict) -> bool:
+def is_html(headers: Mapping[str, str]) -> bool:
     content_type: str = headers.get("Content-Type", "").lower()
     return any(s in content_type for s in ("html", "text"))
 
