@@ -11,7 +11,7 @@ icon: globe-pointer
 
 <summary>4chan</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Board: `/<board>`
 * Thread: `/thread`
@@ -22,7 +22,7 @@ icon: globe-pointer
 
 <summary>Acidimg.cc</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Image: `/i/...`
 * Thumbnail: `/upload/...`
@@ -33,7 +33,7 @@ icon: globe-pointer
 
 <summary>Archivebate</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Video: `/watch/<video_id>`
 
@@ -43,7 +43,7 @@ icon: globe-pointer
 
 <summary>aShemaleTube.com</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Playlists: `/playlists/...`
 * Video: `/videos/...`
@@ -56,7 +56,7 @@ icon: globe-pointer
 
 <summary>BestPrettyGirl.com</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Collections: `"category", "tag", "date"`
 * Gallery: `/<gallery_name>/`
@@ -67,7 +67,7 @@ icon: globe-pointer
 
 <summary>Bunkrr</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Albums: `/a/...`
 * Videos: `/v/...`
@@ -80,7 +80,7 @@ icon: globe-pointer
 
 <summary>Catbox.moe</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Direct Links
 
@@ -90,7 +90,7 @@ icon: globe-pointer
 
 <summary>Comics.8muses.com</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Album: `/comics/album/...`
 
@@ -100,7 +100,7 @@ icon: globe-pointer
 
 <summary>Coomer</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Fansly Model: `/fansly/user/<user>`
 * Favorites: `/favorites`
@@ -115,7 +115,7 @@ icon: globe-pointer
 
 <summary>Cyberdrop</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Albums: `/a/...`
 * Files: `/f/...`
@@ -127,7 +127,7 @@ icon: globe-pointer
 
 <summary>Cyberfile</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Files: `/...`
 * Folders: `/folder/...`
@@ -139,7 +139,7 @@ icon: globe-pointer
 
 <summary>Dirtyship.com</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Categories: `/category/...`
 * Tags: `/tag/...`
@@ -151,7 +151,7 @@ icon: globe-pointer
 
 <summary>DoodStream (vidply)</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Video: `/e/<video_id>`
 
@@ -161,7 +161,7 @@ icon: globe-pointer
 
 <summary>Dropbox</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Files: `/scl/fi/...`,`/s`
 * Folders: `/scl/fo/...`, `/sh/...`
@@ -175,7 +175,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>E-Hentai</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Albums: `/g/...`
 * Files: `/s/...`
@@ -186,7 +186,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>E621</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Post: `/posts/...`
 * Tags: `/posts?tags=...`
@@ -198,7 +198,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>ePorner.com</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Categories: `/cat/...`
 * Channels: `/channel/...`
@@ -215,7 +215,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Erome</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Album: `/a/...`
 * Profile: `/...`
@@ -226,7 +226,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Fapello</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Individual Post: `/.../...`
 * Model: `/...`
@@ -237,7 +237,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>FileDitch</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Direct links
 
@@ -247,7 +247,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Files.vc</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Direct links
 
@@ -257,7 +257,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>GoFile</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Album: `/d/...`
 
@@ -267,7 +267,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Google Drive</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Docs: `/document/d/<file_id>`
 * Files: `/d/<file_id>`
@@ -281,7 +281,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>HotPic</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Album: `/album/...`
 * Image: `/i/...`
@@ -292,7 +292,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Iceyfile.com</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Files: `/...`
 * Folders: `/folder/...`
@@ -304,7 +304,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>ImageBam</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Album: `/view/...`
 * Image: `/view/...`
@@ -316,7 +316,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Imagepond.net</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Album: `/a/...`
 * Image: `/img/...`
@@ -330,7 +330,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>ImgBB / ibb</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Album: `/album/...`
 * Image: `/...`
@@ -341,7 +341,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>ImgBox</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Album: `/g/...`
 * Images: `/...`
@@ -353,7 +353,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Imgur</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Album: `/a/...`
 * Gallery: `/gallery/...`
@@ -366,7 +366,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Imx.to</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Image: `/i/...`
 * Thumbnail: `/t/...`
@@ -377,7 +377,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Incestflix.com</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Video: `/watch/...`
 * Tag: `/tag/...`
@@ -388,7 +388,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Influencerbitches.com</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Model: `/model/...`
 
@@ -399,7 +399,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>JPG5.Su</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Album: `/a/...`
 * Image: `/img/...`
@@ -412,7 +412,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Kemono</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Afdian Model: `/afdian/user/<user>`
 * Boosty Model: `/boosty/user/<user>`
@@ -436,7 +436,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Litterbox.moe</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Direct Links
 
@@ -446,7 +446,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>MediaFire</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * File: `/file/...`
 * Folder: `/folder/...`
@@ -457,7 +457,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Members.luscious.net</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Album: `/albums/...`
 
@@ -467,7 +467,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>MixDrop</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * File: `/e/<file_id>`, `/f/<file_id>`
 
@@ -477,7 +477,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Motherless</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Groups, users, images and videos (NOT Galleries)
 
@@ -487,7 +487,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Nekohouse.su</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Fanbox Model: `/fanbox/user/<user>`
 * Fantia Model: `/fantia/user/<user>`
@@ -503,7 +503,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>nHentai.net</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Collections: `"favorites", "tag", "search", "parody", "group", "character", "artist"`
 * Gallery: `/g/<gallery_id>`
@@ -514,7 +514,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>NoodleMagazine</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Search: `/video/<search_query>`
 * Video: `/watch/<video_id>`
@@ -525,7 +525,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Nudostar.TV</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Model: `/models/...`
 
@@ -535,7 +535,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>OmegaScans</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Chapter: `/series/.../...`
 * Series: `/series/...`
@@ -547,7 +547,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>OneDrive</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Access Link: `https://onedrive.live.com/?authkey=<KEY>&id=<ID>&cid=<CID>`
 * Share Link (anyone can access): `https://1drv.ms/t/<key>`, `https://1drv.ms/f/<key>`
@@ -558,7 +558,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>PimpAndHost</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Album: `/album/...`
 * Image: `/image/...`
@@ -569,7 +569,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>PixelDrain</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * File: `/u/...`
 * Folder: `/l/...`
@@ -580,7 +580,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>PixHost.to</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Gallery: `/gallery/...`
 * Image: `/show/...`
@@ -591,7 +591,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Pkmncards.com</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Card: `/card/...`
 * Set: `/set/...`
@@ -603,7 +603,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>PMVHaven.com</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Category: `/category/...`
 * Music: `/music/...`
@@ -620,7 +620,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>PornHub</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Album: `/album/...`
 * Channel: `/channel/...`
@@ -636,7 +636,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>PornPics.com</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Categories `/categories/....`
 * Channels `/channels/...`
@@ -652,7 +652,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Porntrex</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Video: `/video/...`
 * Album: `/albums/...`,
@@ -669,7 +669,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>PostImg</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Album: `/gallery/...`
 * Image: `/...`
@@ -681,7 +681,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>RealBooru</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * File: `?id=...`
 * Tags: `?tags=...`
@@ -692,7 +692,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>RedGifs</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * User: `/users/<user>`
 * Video: `/watch/...`
@@ -703,7 +703,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Rule34.XXX</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * File: `?id=...`
 * Tags: `?tags=...`
@@ -714,7 +714,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Rule34.XYZ</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * File page: `/post/...`
 * Tag: `/...`
@@ -725,7 +725,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Rule34Vault</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * File page: `/post/...`
 * Playlist: `/playlists/view/...`
@@ -737,7 +737,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Rule34video.com</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Members: `/members/...`
 * Models: `/models/...`
@@ -751,7 +751,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Saint</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Albums: `/a/...`
 * Video: `/embed/...`, `/d/...`
@@ -763,7 +763,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Scrolller</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Subreddit: `/r/...`
 
@@ -773,7 +773,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Send.now</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Direct links
 
@@ -783,7 +783,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>SendVid.com</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Videos: `/...`
 * Embeds: `/embed/...`
@@ -795,7 +795,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Sex.com</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Shorts Profiles: `/shorts/<profile>`
 
@@ -805,7 +805,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>SpankBang.com</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Playlist: `/playlist/<playlist-id>`
 * Video: `/video/<video_id>`, `/embed/<video_id>`, `/play/<video_id>`, `/playlist/<playlist-id>-<video_id>`
@@ -816,7 +816,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Streamable.com</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Video: `/...`
 
@@ -826,7 +826,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Thisvid.com</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Albums: `/albums/<album_nam>`
 * Albums: `/albums/<album_name>/<image_name>`
@@ -842,7 +842,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>TikTok</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * User: `/@<user>`
 * Video: `/@<user>/video/<video_id>`
@@ -854,7 +854,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Tokyomotion.net</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Albums: `/user/<user>/albums/`, `/album/<album_id>`
 * Photo: `/photo/<photo_id>`, `/user/<user>/favorite/photos`
@@ -869,7 +869,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Toonily</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Chapter: `/webtoon/.../...`
 * Webtoon: `/webtoon/...`
@@ -881,7 +881,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>WeTransfer</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Public link: `wetransfer.com/<file_id>/<security_hash>`
 * Share Link: `wetransfer.com/<file_id>/<recipient_id>/<security_hash>`
@@ -894,7 +894,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>vipr.im</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Image: `/...`
 * Thumbnail: `/th/...`
@@ -905,7 +905,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>XBunkr</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Albums: `/a/...`
 * Direct Links
@@ -916,7 +916,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>xHamster</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Users, creators, videos and galleries
 
@@ -926,7 +926,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>XXXBunker</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Video: `/<video_id>`
 * Search Results: `/search/...`
@@ -937,7 +937,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>Yandex Disk</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Folder: `disk.yandex/d/<folder_id>`, `yadi.sk/d/<folder_id>`
 * Files: `disk.yandex/d/<folder_id>/<file_name>`, `yadi.sk/d/<folder_id>/<file_name>`
@@ -950,7 +950,7 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <summary>YouJizz.com</summary>
 
-## `Supported URL Paths:`
+### `Supported URL Paths:`
 
 * Video: `/video/embed/<video_id>`, `/video/<video_id>/...`
 
