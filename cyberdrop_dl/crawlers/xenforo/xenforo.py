@@ -153,9 +153,10 @@ class XenforoCrawler(Crawler):
         if self.thread_url_part in scrape_item.url.parts:
             return await self.thread(scrape_item)
         if self.is_confirmation_link(scrape_item.url):
-            scrape_item.url = await self.handle_confirmation_link(scrape_item.url)
-            if scrape_item.url:  # If there was an error, this will be None
+            url = await self.handle_confirmation_link(scrape_item.url)
+            if url:  # If there was an error, this will be None
                 # This could end up back in here if the URL goes to another thread
+                scrape_item.url = url
                 return self.handle_external_links(scrape_item)
         if any(p in scrape_item.url.parts for p in ("goto", "posts")):
             return await self.redirect(scrape_item)
@@ -384,7 +385,7 @@ class XenforoCrawler(Crawler):
     async def handle_confirmation_link(self, link: URL, *, origin: ScrapeItem | None = None) -> URL | None:
         """Handles link confirmation."""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, link, origin=origin)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, link)
         confirm_button = soup.select_one("a[class*=button--cta]")
         if not confirm_button:
             return
@@ -500,9 +501,7 @@ class XenforoCrawler(Crawler):
                 attempt += 1
                 await asyncio.sleep(wait_time)
                 data = prepare_login_data(text)
-                await self.client.post_data(
-                    self.domain, login_url / "login", data=data, req_resp=False, cache_disabled=True
-                )
+                _ = await self.client._post_data(self.domain, login_url / "login", data=data, cache_disabled=True)
                 await asyncio.sleep(wait_time)
                 text, logged_in = await self.check_login_with_request(login_url)
                 if logged_in:

@@ -29,6 +29,7 @@ from .erome import EromeCrawler
 from .fapello import FapelloCrawler
 from .fileditch import FileditchCrawler
 from .files_vc import FilesVcCrawler
+from .fourchan import FourChanCrawler
 from .generic import GenericCrawler
 from .gofile import GoFileCrawler
 from .google_drive import GoogleDriveCrawler
@@ -40,6 +41,8 @@ from .imgbb import ImgBBCrawler
 from .imgbox import ImgBoxCrawler
 from .imgur import ImgurCrawler
 from .imx_to import ImxToCrawler
+from .incestflix import IncestflixCrawler
+from .influencer_bitches import InfluencerBitchesCrawler
 from .jpg5 import JPG5Crawler
 from .kemono import KemonoCrawler
 from .luscious import LusciousCrawler
@@ -59,6 +62,7 @@ from .pixeldrain import PixelDrainCrawler
 from .pixhost import PixHostCrawler
 from .pkmncards import PkmncardsCrawler
 from .pmvhaven import PMVHavenCrawler
+from .pornhub import PornHubCrawler
 from .pornpics import PornPicsCrawler
 from .porntrex import PorntrexCrawler
 from .postimg import PostImgCrawler

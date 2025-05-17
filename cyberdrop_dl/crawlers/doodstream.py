@@ -63,14 +63,17 @@ class DoodStreamCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, scrape_item.url)
+            response, soup = await self.client._get_response_and_soup_cffi(self.domain, scrape_item.url)
+
+        host = self.parse_url(response.url).host
+        assert host
+        del response
 
         title: str = soup.select_one("title").text  # type: ignore
         title = title.split("- DoodStream")[0].strip()
 
         file_id = get_file_id(soup)
-        assert scrape_item.url.host
-        debrid_link = await self.get_download_url(scrape_item.url.host, soup)
+        debrid_link = await self.get_download_url(host, soup)
         filename, ext = self.get_filename_and_ext(f"{file_id}.mp4")
         custom_filename, _ = self.get_filename_and_ext(f"{title}{ext}")
         scrape_item.url = canonical_url

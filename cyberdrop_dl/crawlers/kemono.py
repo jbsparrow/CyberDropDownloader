@@ -356,7 +356,7 @@ class KemonoCrawler(Crawler):
         query_url = api_url.with_query(type="post" if is_post else "artist")
 
         async with self.request_limiter:
-            json_resp = await self.client.get_json(self.domain, query_url)
+            json_resp: list[dict] = await self.client.get_json(self.domain, query_url)
 
         self.update_cookies({"session": ""})
 
