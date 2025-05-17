@@ -284,18 +284,24 @@ class KemonoCrawler(Crawler):
     @error_handling_wrapper
     async def discord(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a discord server or channel."""
-        server_id, channel_id = DiscordURL.parse(scrape_item.url)
-        if not channel_id:  # Download all channels
-            scrape_item.setup_as_forum("")
-            server = await self.__get_discord_server(server_id)
-            for channel in server.channels:
-                url = self.primary_base_domain / "discord/server" / server_id / channel.id
-                new_scrape_item = scrape_item.create_child(url)
-                self.manager.task_group.create_task(self.run(new_scrape_item))
-            return
+        discord = DiscordURL.parse(scrape_item.url)
+        if discord.channel_id:
+            return await self.discord_channel(scrape_item, discord.channel_id)
 
-        api_url = self.__make_api_url_w_offset(f"discord/channel/{channel_id}", scrape_item.url)
+        await self.discord_server(scrape_item, discord.server_id)
+
+    async def discord_server(self, scrape_item: ScrapeItem, server_id: str) -> None:
+        scrape_item.setup_as_forum("")
+        server = await self.__get_discord_server(server_id)
+        for channel in server.channels:
+            url = self.primary_base_domain / "discord/server" / server_id / channel.id
+            new_scrape_item = scrape_item.create_child(url)
+            self.manager.task_group.create_task(self.run(new_scrape_item))
+            scrape_item.add_children()
+
+    async def discord_channel(self, scrape_item: ScrapeItem, channel_id: str) -> None:
         scrape_item.setup_as_profile("")
+        api_url = self.__make_api_url_w_offset(f"discord/channel/{channel_id}", scrape_item.url)
         async for json_resp in self.__api_pager(api_url):
             n_posts = 0
             for post in (DiscordPost(**entry) for entry in json_resp):  # type: ignore
