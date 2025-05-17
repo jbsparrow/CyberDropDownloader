@@ -22,7 +22,7 @@ class CelebForumCrawler(XenforoCrawler):
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, self.domain, "CelebForum")
 
-    def filter_link(self, link):
+    def filter_link(self, link: URL) -> URL | None:
         if link.host == self.primary_base_domain.host:
             if all(part in link.parts for part in ["data", "attachments"]):  # Thumbnails
                 return None

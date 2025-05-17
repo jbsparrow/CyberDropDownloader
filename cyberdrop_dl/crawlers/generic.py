@@ -87,7 +87,7 @@ class GenericCrawler(Crawler):
 
     async def get_content_type(self, url: URL) -> str:
         async with self.request_limiter:
-            headers: dict = await self.client.get_head(self.domain, url)
+            headers = await self.client.get_head(self.domain, url)
         content_type: str = headers.get("Content-Type", "")
         if not content_type:
             raise ScrapeError(422)

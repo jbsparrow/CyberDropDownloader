@@ -33,7 +33,7 @@ class F95ZoneCrawler(XenforoCrawler):
         """Override to handle protected link confirmation."""
         async with self.request_limiter:
             data = ({"xhr": "1", "download": "1"},)
-            JSON_Resp = await self.client.post_data(self.domain, link, data=data, origin=origin)
+            JSON_Resp = await self.client.post_data(self.domain, link, data=data)
 
         if JSON_Resp["status"] == "ok":
             return self.parse_url(JSON_Resp["msg"])
