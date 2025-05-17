@@ -34,7 +34,7 @@ class Profile:
         return PRIMARY_BASE_DOMAIN / self.type / self.name
 
     @property
-    def has_photos(self) -> bool:
+    def has_gifs(self) -> bool:
         return "channel" not in self.type
 
 
@@ -146,7 +146,7 @@ class PornHubCrawler(Crawler):
     async def _proccess_profile_items(self, scrape_item: ScrapeItem, profile: Profile) -> None:
         scrape_all = scrape_item.url == profile.url
         scrape_videos = scrape_all or "videos" in scrape_item.url.parts
-        scrape_gifs = profile.has_photos and (scrape_all or "gifs" in scrape_item.url.parts)
+        scrape_gifs = profile.has_gifs and (scrape_all or "gifs" in scrape_item.url.parts)
         scrape_photos = profile.has_photos and (scrape_all or "photos" in scrape_item.url.parts)
         init_page = int(scrape_item.url.query.get("page") or 1)
 
