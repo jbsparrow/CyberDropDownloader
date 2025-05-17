@@ -172,7 +172,6 @@ class PornHubCrawler(Crawler):
         async for soup in self.web_pager(url):
             for _, new_scrape_item in self.iter_children(scrape_item, soup, selector):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
-                scrape_item.add_children()
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
