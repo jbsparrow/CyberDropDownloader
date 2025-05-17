@@ -27,16 +27,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - 4chan support
+- AcidImg support
 - Archivebate support (individual videos only)
 - Box.com support
 - Buzzheavier support
 - Files.vc support
+- Imx.to support
 - Mixdrop support
 - NoodleMagazine support
 - Pkmncards.com support
+- Pornhub support
 - Influencerbitches.com support
 - IncestFlix support
 - Porntrex support
+- Vipr.im support
 - Albums support (ThisVid)
 - Parse upload date of files (rule34xxx)
 - Support for albums and searches (ashemaletube)
