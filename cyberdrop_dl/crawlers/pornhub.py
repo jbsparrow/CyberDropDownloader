@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
-PRIMARY_BASE_DOMAIN = URL("https://pornhub.com")
+PRIMARY_BASE_DOMAIN = URL("https://www.pornhub.com")
 ALBUM_API_URL = PRIMARY_BASE_DOMAIN / "album/show_album_json"
 PROFILE_PARTS = "user", "channel", "channels", "model", "pornstar"
 
