@@ -123,6 +123,6 @@ class LusciousCrawler(Crawler):
         api_url = GRAPHQL_URL.with_query(operationName=query_name)
         headers = {"Content-Type": "application/json"}
         async with self.request_limiter:
-            json_resp = await self.client.post_data(self.domain, api_url, data=query, headers_inc=headers)
+            json_resp = await self.client.post_data(self.domain, api_url, data=query, headers=headers)
         log_debug(json_resp)
         return json_resp

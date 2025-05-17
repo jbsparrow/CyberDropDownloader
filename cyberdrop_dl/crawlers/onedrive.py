@@ -130,7 +130,7 @@ class OneDriveCrawler(Crawler):
     @error_handling_wrapper
     async def share_link(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
-            headers: dict = await self.client.get_head(self.domain, scrape_item.url)
+            headers = await self.client.get_head(self.domain, scrape_item.url)
         location = headers.get("location")
         if not location:
             raise ScrapeError(400)
@@ -210,7 +210,7 @@ class OneDriveCrawler(Crawler):
     async def make_api_request(self, api_url: URL) -> dict[str, Any]:
         headers = {"Content-Type": "application/json"} | self.auth_headers
         async with self.request_limiter:
-            json_resp: dict = await self.client.get_json(self.domain, api_url, headers_inc=headers)
+            json_resp: dict = await self.client.get_json(self.domain, api_url, headers=headers)
 
         return json_resp
 
@@ -220,9 +220,7 @@ class OneDriveCrawler(Crawler):
         data = {"appId": APP_UUID}
         data_json = json.dumps(data)
         async with self.request_limiter:
-            json_resp: dict = await self.client.post_data(
-                self.domain, badger_url, headers_inc=new_headers, data=data_json
-            )
+            json_resp: dict = await self.client.post_data(self.domain, badger_url, headers=new_headers, data=data_json)
 
         badger_token: str = json_resp["token"]
         badger_token_expires: str = json_resp["expiryTimeUtc"]
