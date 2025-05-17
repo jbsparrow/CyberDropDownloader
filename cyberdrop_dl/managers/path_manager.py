@@ -5,8 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from cyberdrop_dl import env
-from cyberdrop_dl.utils import constants
+from cyberdrop_dl import constants, env
 from cyberdrop_dl.utils.utilities import purge_dir_tree
 
 if TYPE_CHECKING:

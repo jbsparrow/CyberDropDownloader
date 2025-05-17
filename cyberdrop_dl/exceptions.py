@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from yaml import YAMLError
 from yarl import URL
 
-from cyberdrop_dl.utils.constants import VALIDATION_ERROR_FOOTER
+from cyberdrop_dl.constants import VALIDATION_ERROR_FOOTER
 
 if TYPE_CHECKING:
     from requests import Response

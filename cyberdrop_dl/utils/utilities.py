@@ -21,6 +21,7 @@ from aiohttp_client_cache.response import AnyResponse
 from bs4 import BeautifulSoup
 from yarl import URL
 
+from cyberdrop_dl import constants
 from cyberdrop_dl.exceptions import (
     CDLBaseError,
     ErrorLogMessage,
@@ -29,7 +30,6 @@ from cyberdrop_dl.exceptions import (
     NoExtensionError,
     get_origin,
 )
-from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.logger import log, log_debug, log_spacer, log_with_color
 
 if TYPE_CHECKING:

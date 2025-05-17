@@ -5,6 +5,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ByteSize, Field, NonNegativeInt, PositiveInt, field_serializer, field_validator
 
+from cyberdrop_dl.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE
 from cyberdrop_dl.data_structures.hash import Hashing
 from cyberdrop_dl.data_structures.supported_domains import SUPPORTED_SITES_DOMAINS
 from cyberdrop_dl.types import (
@@ -19,7 +20,6 @@ from cyberdrop_dl.types import (
     NonEmptyStrOrNone,
     PathOrNone,
 )
-from cyberdrop_dl.utils.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE
 from cyberdrop_dl.utils.validators import parse_duration_as_timedelta, parse_falsy_as
 
 ALL_SUPPORTED_SITES = ["<<ALL_SUPPORTED_SITES>>"]

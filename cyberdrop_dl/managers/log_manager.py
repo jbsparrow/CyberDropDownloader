@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 
 import aiofiles
 
+from cyberdrop_dl.constants import CSV_DELIMITER
 from cyberdrop_dl.exceptions import get_origin
-from cyberdrop_dl.utils.constants import CSV_DELIMITER
 from cyberdrop_dl.utils.logger import log, log_spacer
 
 if TYPE_CHECKING:

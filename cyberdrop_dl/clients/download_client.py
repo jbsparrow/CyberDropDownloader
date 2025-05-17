@@ -16,8 +16,8 @@ from dateutil import parser
 from videoprops import get_audio_properties, get_video_properties
 from yarl import URL
 
+from cyberdrop_dl.constants import FILE_FORMATS
 from cyberdrop_dl.exceptions import DDOSGuardError, DownloadError, InvalidContentTypeError, SlowDownloadError
-from cyberdrop_dl.utils.constants import FILE_FORMATS
 from cyberdrop_dl.utils.logger import log, log_debug
 
 if TYPE_CHECKING:

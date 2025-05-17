@@ -7,9 +7,9 @@ from typing import TYPE_CHECKING
 import arrow
 from yarl import URL
 
-import cyberdrop_dl.utils.constants as constants
+import cyberdrop_dl.constants as constants
+from cyberdrop_dl.constants import FILE_FORMATS
 from cyberdrop_dl.exceptions import NoExtensionError
-from cyberdrop_dl.utils.constants import FILE_FORMATS
 from cyberdrop_dl.utils.utilities import get_filename_and_ext
 
 if TYPE_CHECKING:

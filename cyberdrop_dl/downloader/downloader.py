@@ -15,6 +15,7 @@ from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
 from aiohttp import ClientConnectorError, ClientError, ClientResponseError
 
+from cyberdrop_dl.constants import CustomHTTPStatus
 from cyberdrop_dl.data_structures.url_objects import HlsSegment, MediaItem
 from cyberdrop_dl.exceptions import (
     DownloadError,
@@ -23,7 +24,6 @@ from cyberdrop_dl.exceptions import (
     InvalidContentTypeError,
     RestrictedFiletypeError,
 )
-from cyberdrop_dl.utils.constants import CustomHTTPStatus
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_size_or_none
 

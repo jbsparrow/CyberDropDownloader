@@ -114,7 +114,7 @@ class ConfigManager:
             if posible_fields == set_fields and not needs_update and self.pydantic_config:
                 return
         else:
-            from cyberdrop_dl.utils import constants
+            from cyberdrop_dl import constants
 
             self.settings_data = ConfigSettings()
             self.settings_data.files.input_file = constants.APP_STORAGE / "Configs" / self.loaded_config / "URLs.txt"

@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
 from cyberdrop_dl.clients.download_client import check_file_duration
-from cyberdrop_dl.utils.constants import FILE_FORMATS
+from cyberdrop_dl.constants import FILE_FORMATS
 from cyberdrop_dl.utils.logger import log_debug
 
 if TYPE_CHECKING:
