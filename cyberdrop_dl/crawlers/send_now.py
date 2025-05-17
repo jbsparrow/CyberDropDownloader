@@ -32,10 +32,11 @@ class SendNowCrawler(Crawler):
     async def file(self, scrape_item: ScrapeItem) -> None:
         file_id = scrape_item.url.name
         data = {"op": "download2", "id": file_id, "rand": "", "referer": "", "method_free": "", "method_premium": ""}
+        params = {"allow_redirects": False, "stream": True}
 
         async with self.request_limiter:
             response: CurlResponse = await self.client.post_data_cffi(
-                self.domain, scrape_item.url, data=data, allow_redirects=False, stream=True
+                self.domain, scrape_item.url, data=data, request_params=params
             )
 
         debrid_link = self.parse_url(response.headers.get("location"))

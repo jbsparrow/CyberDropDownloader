@@ -99,5 +99,5 @@ class CyberdropCrawler(Crawler):
             return url
         if url.host.count(".") > 1 or "e" in url.parts:
             return self.primary_base_domain / "f" / url.name
-        _, streaming_url = await self.client.get_soup_and_return_url(self.domain, url)
-        return streaming_url
+        response, _ = await self.client._get_response_and_soup(self.domain, url)
+        return response.url

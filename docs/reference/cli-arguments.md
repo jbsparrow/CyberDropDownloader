@@ -314,6 +314,7 @@ sorting:
 
 general:
   --allow-insecure-connections, --no-allow-insecure-connections
+  --enable-generic-crawler, --no-enable-generic-crawler
   --flaresolverr FLARESOLVERR
   --max-file-name-length MAX_FILE_NAME_LENGTH
   --max-folder-name-length MAX_FOLDER_NAME_LENGTH
@@ -329,6 +330,7 @@ rate_limiting_options:
   --download-speed-limit DOWNLOAD_SPEED_LIMIT
   --file-host-cache-expire-after FILE_HOST_CACHE_EXPIRE_AFTER
   --forum-cache-expire-after FORUM_CACHE_EXPIRE_AFTER
+  --jitter JITTER
   --max-simultaneous-downloads-per-domain MAX_SIMULTANEOUS_DOWNLOADS_PER_DOMAIN
   --max-simultaneous-downloads MAX_SIMULTANEOUS_DOWNLOADS
   --rate-limit RATE_LIMIT
