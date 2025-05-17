@@ -20,6 +20,17 @@ icon: globe-pointer
 
 <details>
 
+<summary>Acidimg.cc</summary>
+
+## `Supported URL Paths:`
+
+* Image: `/i/...`
+* Thumbnail: `/upload/...`
+
+</details>
+
+<details>
+
 <summary>Archivebate</summary>
 
 ## `Supported URL Paths:`
@@ -353,6 +364,17 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <details>
 
+<summary>Imx.to</summary>
+
+## `Supported URL Paths:`
+
+* Image: `/i/...`
+* Thumbnail: `/t/...`
+
+</details>
+
+<details>
+
 <summary>Incestflix.com</summary>
 
 ## `Supported URL Paths:`
@@ -591,6 +613,22 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 * Tag: `/tags/...`
 * Users: `/profile/...`
 * Video: `/video/...`
+
+</details>
+
+<details>
+
+<summary>PornHub</summary>
+
+## `Supported URL Paths:`
+
+* Album: `/album/...`
+* Channel: `/channel/...`
+* Gif: `/gif/...`
+* Photo: `/photo/...`
+* Playlist: `/playlist/...`
+* Profile: `/user/...`, `/model/`, `/pornstar/`
+* Video: `/embed/<video_id>`, `/view_video.php?viewkey=<video_id>`
 
 </details>
 
@@ -849,6 +887,17 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 * Share Link: `wetransfer.com/<file_id>/<recipient_id>/<security_hash>`
 * Short Link: `we.tl/<id>`
 * Direct links: `download.wetransfer.com/...`
+
+</details>
+
+<details>
+
+<summary>vipr.im</summary>
+
+## `Supported URL Paths:`
+
+* Image: `/...`
+* Thumbnail: `/th/...`
 
 </details>
 
