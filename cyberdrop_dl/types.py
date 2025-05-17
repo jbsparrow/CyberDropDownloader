@@ -39,7 +39,7 @@ from cyberdrop_dl.utils.validators import (
 )
 
 
-def do_nothing(cls) -> Any: ...
+def do_nothing(cls=None) -> Any: ...
 
 
 og_init_subclass = yarl.URL.__init_subclass__

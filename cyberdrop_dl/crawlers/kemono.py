@@ -14,8 +14,8 @@ from typing_extensions import TypedDict  # Import from typing is not compatible 
 from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.data_structures.types import AliasModel
 from cyberdrop_dl.exceptions import NoExtensionError, ScrapeError
+from cyberdrop_dl.types import AliasModel
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
 from cyberdrop_dl.utils.validators import parse_falsy_as_none
 

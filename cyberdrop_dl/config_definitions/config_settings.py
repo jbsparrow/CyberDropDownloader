@@ -7,7 +7,7 @@ from pydantic import BaseModel, ByteSize, Field, NonNegativeInt, PositiveInt, fi
 
 from cyberdrop_dl.data_structures.hash import Hashing
 from cyberdrop_dl.data_structures.supported_domains import SUPPORTED_SITES_DOMAINS
-from cyberdrop_dl.data_structures.types import (
+from cyberdrop_dl.types import (
     AliasModel,
     ByteSizeSerilized,
     HttpAppriseURL,
