@@ -2,15 +2,20 @@
 Functions to use with `BeforeValidator`, `field_validator(mode="before")` or `model_validator(mode="before")`
 """
 
-from collections.abc import Callable
+from __future__ import annotations
+
 from datetime import timedelta
 from functools import singledispatch
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import HttpUrl
-from yarl import URL
 
-from .converters import convert_str_to_timedelta, convert_to_yarl
+from cyberdrop_dl.utils.converters import convert_str_to_timedelta, convert_to_yarl
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from yarl import URL
 
 
 def pydantyc_yarl_url(value: str) -> URL:

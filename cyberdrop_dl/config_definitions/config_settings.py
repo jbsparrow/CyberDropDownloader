@@ -19,8 +19,8 @@ from cyberdrop_dl.data_structures.types import (
     NonEmptyStrOrNone,
     PathOrNone,
 )
-from cyberdrop_dl.data_structures.validators import parse_duration_as_timedelta, parse_falsy_as
 from cyberdrop_dl.utils.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE
+from cyberdrop_dl.utils.validators import parse_duration_as_timedelta, parse_falsy_as
 
 ALL_SUPPORTED_SITES = ["<<ALL_SUPPORTED_SITES>>"]
 

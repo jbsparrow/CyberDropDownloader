@@ -1,8 +1,16 @@
+"""Custom types for type annotations
+
+
+1. Only add types here if they do NOT depend on any runtime import from `cyberdrop_dl` itself, except utils
+2. Only add types here if they are going to be used across multiple modules
+"""
+
 from __future__ import annotations
 
+from collections.abc import Sequence
 from functools import partial
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any, TypeAlias, TypeGuard, TypeVar, final
 
 import yarl
 from pydantic import (
@@ -22,8 +30,38 @@ from pydantic import (
     model_validator,
 )
 
-from .converters import change_path_suffix, convert_byte_size_to_str
-from .validators import parse_apprise_url, parse_falsy_as_none, parse_list, pydantyc_yarl_url
+from cyberdrop_dl.utils.converters import change_path_suffix, convert_byte_size_to_str
+from cyberdrop_dl.utils.validators import (
+    parse_apprise_url,
+    parse_falsy_as_none,
+    parse_list,
+    pydantyc_yarl_url,
+)
+
+
+def do_nothing(cls) -> Any: ...
+
+
+og_init_subclass = yarl.URL.__init_subclass__
+
+yarl.URL.__init_subclass__ = do_nothing  # type: ignore
+
+
+@final
+class AbsoluteHttpURL(yarl.URL):
+    def __init__(*args, **kwargs) -> None:
+        raise RuntimeError("Do not create instances, call yarl.URL and them assert validate")
+
+    def host(self) -> str:  # type: ignore
+        """Decoded host part of URL."""
+
+    @staticmethod
+    def validate(url: yarl.URL) -> TypeGuard[AbsoluteHttpURL]:
+        return url.absolute and url.scheme.startswith("http")
+
+
+yarl.URL.__init_subclass__ = og_init_subclass
+
 
 # ~~~~~ Strings ~~~~~~~
 StrSerializer = PlainSerializer(str, return_type=str, when_used="json-unless-none")
@@ -78,3 +116,12 @@ class HttpAppriseURL(AppriseURLModel):
 
 # DEPRECATED
 # HttpURL = Annotated[HttpUrl, AfterValidator(convert_to_yarl), StrSerializer]
+
+
+T = TypeVar("T")
+Array: TypeAlias = list[T] | tuple[T, ...]
+CMD: TypeAlias = Array[str]
+U32Int: TypeAlias = int
+U32IntArray: TypeAlias = Array[U32Int]
+U32IntSequence: TypeAlias = Sequence[U32Int]
+AnyDict: TypeAlias = dict[str, Any]
