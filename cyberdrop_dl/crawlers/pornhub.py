@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypedDict
 
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import ScrapeError
+from cyberdrop_dl.clients.errors import NoExtensionError, ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
@@ -34,16 +34,16 @@ class Profile:
         return PRIMARY_BASE_DOMAIN / self.type / self.name
 
     @property
-    def has_gifs(self) -> bool:
+    def has_photos(self) -> bool:
         return "channel" not in self.type
 
 
 class Selectors:
     ALBUM_FROM_PHOTO = "div#thumbSlider > h2 > a"
     ALBUM_TITLE = "h1[class*=photoAlbumTitle]"
-    DATE = "script.contains('uploadDate')"
+    DATE = "script:contains('uploadDate')"
     GIF = "div#js-gifToWebm"
-    JS_VIDEO_INFO = "script:contains('vars flashvars_')"
+    JS_VIDEO_INFO = "script:contains('var flashvars_')"
     NEXT_PAGE = "li.page_next a"
     PHOTO = "div#photoImageSection img"
     PLAYLIST_TITLE = "h1.playlistTitle"
@@ -146,7 +146,7 @@ class PornHubCrawler(Crawler):
     async def _proccess_profile_items(self, scrape_item: ScrapeItem, profile: Profile) -> None:
         scrape_all = scrape_item.url == profile.url
         scrape_videos = scrape_all or "videos" in scrape_item.url.parts
-        scrape_gifs = profile.has_gifs and (scrape_all or "gifs" in scrape_item.url.parts)
+        scrape_gifs = profile.has_photos and (scrape_all or "gifs" in scrape_item.url.parts)
         scrape_photos = profile.has_photos and (scrape_all or "photos" in scrape_item.url.parts)
         init_page = int(scrape_item.url.query.get("page") or 1)
 
@@ -219,22 +219,24 @@ class PornHubCrawler(Crawler):
         scrape_item.setup_as_album(title, album_id=album_id)
         await self._proccess_photo(scrape_item, link)
 
-    async def _proccess_photo(self, scrape_item: ScrapeItem, link: URL, results: dict[str, Any] | None = None) -> None:
-        results = results or {}
-        name = link.name.partition(")original_")[-1]
-        canonical_url = link.with_name(name)
-        if not self.check_album_results(canonical_url, results):
-            filename, ext = self.get_filename_and_ext(name, assume_ext=".jpg")
-            await self.handle_file(canonical_url, scrape_item, filename, ext, debrid_link=link)
-
     @error_handling_wrapper
     async def gif(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
             soup = await self.client.get_soup(self.domain, scrape_item.url)
 
-        link_str: str = css.select_one_get_attr(soup, _SELECTORS.GIF, "data-mp4")
+        attributes = "data-mp4", "data-fallback", "data-webm"
+        gif_tag = css.select_one(soup, _SELECTORS.GIF)
+        link_str = next(value for attr in attributes if (value := css.get_attr(gif_tag, attr)))
         link = self.parse_url(link_str)
-        await self.direct_file(scrape_item, link)
+        await self._proccess_photo(scrape_item, link)
+
+    async def _proccess_photo(self, scrape_item: ScrapeItem, link: URL, results: dict[str, Any] | None = None) -> None:
+        results = results or {}
+        name = link.name.rsplit(")")[-1].removeprefix("original_")
+        canonical_url = link.with_name(name)
+        if not self.check_album_results(canonical_url, results):
+            filename, ext = self.get_filename_and_ext(name, assume_ext=".jpg")
+            await self.handle_file(canonical_url, scrape_item, filename, ext, debrid_link=link)
 
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem) -> None:
@@ -245,7 +247,7 @@ class PornHubCrawler(Crawler):
 
         title: str = css.select_one(soup, _SELECTORS.PLAYLIST_TITLE).get_text(strip=True)
         title = self.create_title(title, playlist_id)
-        scrape_item.setup_as_album(title, album_id=playlist_id)
+        scrape_item.setup_as_album(f"{title} [playlist]", album_id=playlist_id)
         for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.PLAYLIST_VIDEOS, results=results):
             self.manager.task_group.create_task(self.run(new_scrape_item))
 
@@ -266,7 +268,10 @@ class PornHubCrawler(Crawler):
         link = self.parse_url(best_format.url)
         scrape_item.url = page_url
         scrape_item.possible_datetime = self.parse_date(get_upload_date_str(soup))
-        filename, ext = self.get_filename_and_ext(f"{video_id}.mp4")
+        try:
+            filename, ext = self.get_filename_and_ext(link.name)
+        except NoExtensionError:
+            filename, ext = self.get_filename_and_ext(f"{video_id}.mp4")
         custom_filename, _ = self.get_filename_and_ext(f"{title} [{video_id}][{best_format.quality}p].mp4")
         await self.handle_file(embed_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=link)
 
