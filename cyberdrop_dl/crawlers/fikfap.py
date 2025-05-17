@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import calendar
-import itertools
 from datetime import datetime  # noqa: TC003
 from typing import TYPE_CHECKING, Any
 
@@ -14,14 +13,12 @@ from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
-
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 API_ENTRYPOINT = URL("https://api.fikfap.com")
 PRIMARY_BASE_DOMAIN = URL("https://fikfak.com")
-AMOUNT_LIMIT = 40  # Requesting more posts that this will return 400 - Bad Request
+POST_AMOUNT_LIMIT = 40  # Requesting more posts that this will return 400 - Bad Request
 
 
 class Post(AliasModel):
@@ -34,7 +31,7 @@ class Post(AliasModel):
     user: str = Field(validation_alias=AliasPath("author", "username"))
 
     @property
-    def page_url(self) -> URL:
+    def url(self) -> URL:
         return PRIMARY_BASE_DOMAIN / "posts" / self.id
 
     @property
@@ -47,18 +44,13 @@ class FikFapCrawler(Crawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "fikfap", "FikFap")
-        self.id_token = "8ba195cc-e4e7-4825-9662-884db15da9e2"
+        self.id_token = ""
         self.headers = {"Authorization-Anonymous": self.id_token}
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
-        # Check post first because they can match all the other paths:
-        # https://fikfap.com/hash/hats/post/123456
-        # https://fikfap.com/post/851604,
-        # https://fikfap.com/user/alinevs/post/1068195
         if "post" in scrape_item.url.parts:
             return await self.post(scrape_item)
         if "user" in scrape_item.url.parts:
@@ -78,7 +70,7 @@ class FikFapCrawler(Crawler):
         api_url = API_ENTRYPOINT / "posts" / post_id
         headers = self.headers | {"Referer": str(scrape_item.url)}
         async with self.request_limiter:
-            json_resp: dict[str, Any] = await self.client.get_json(self.domain, api_url, headers_inc=headers)
+            json_resp: dict[str, Any] = await self.client.get_json(self.domain, api_url, headers=headers)
 
         post = Post(**json_resp)
         await self.handle_post(scrape_item, post)
@@ -86,7 +78,7 @@ class FikFapCrawler(Crawler):
     async def user(self, scrape_item: ScrapeItem) -> None:
         user_name = scrape_item.url.name
         api_url = API_ENTRYPOINT / "profile/username" / user_name / "posts"
-        api_url = api_url.with_query(amount=AMOUNT_LIMIT)
+        api_url = api_url.with_query(amount=POST_AMOUNT_LIMIT)
         # Title will be added by self.handle_post, This is just to set `max_children_limit`
         scrape_item.setup_as_profile("")
         await self.collection(scrape_item, api_url)
@@ -94,48 +86,53 @@ class FikFapCrawler(Crawler):
     async def hashtag(self, scrape_item: ScrapeItem) -> None:
         label = scrape_item.url.name
         api_url = API_ENTRYPOINT / "hashtags/label" / label / "posts"
-        api_url = api_url.with_query(amount=AMOUNT_LIMIT, topPercentage=33)
+        api_url = api_url.with_query(amount=POST_AMOUNT_LIMIT, topPercentage=33)
         title = self.create_title(f"{label} [hashtag]")
         scrape_item.setup_as_album(title)
         await self.collection(scrape_item, api_url)
 
     @error_handling_wrapper
-    async def search(self, scrape_item: ScrapeItem):
+    async def search(self, scrape_item: ScrapeItem) -> None:
         search_query = scrape_item.url.query["q"]
         api_url = API_ENTRYPOINT / "search"
-        api_url = api_url.with_query(q=search_query, amount=AMOUNT_LIMIT)
+        api_url = api_url.with_query(q=search_query, amount=POST_AMOUNT_LIMIT)
         headers = self.headers | {"Referer": str(scrape_item.url)}
         title = self.create_title(f"{search_query} [search]")
         scrape_item.setup_as_profile(title)
         async with self.request_limiter:
-            json_resp: dict[str, Any] = await self.client.get_json(self.domain, api_url, headers_inc=headers)
+            json_resp: dict[str, list[dict[str, Any]]] = await self.client.get_json(self.domain, api_url, headers)
 
-        posts: list[dict[str, Any]] = json_resp["posts"]
-        hashtags: Generator[tuple[str, str]] = (("hash", hashtag["label"]) for hashtag in json_resp["hashtags"])
-        users: Generator[tuple[str, str]] = (("user", user["username"]) for user in json_resp["users"])
-        _ = await self.iter_posts(scrape_item, posts)
-        for category, name in itertools.chain(hashtags, users):
-            url = PRIMARY_BASE_DOMAIN / category / name
-            new_scrape_item = scrape_item.create_child(url)
-            self.manager.task_group.create_task(self.run(new_scrape_item))
-            scrape_item.add_children()
+        _ = await self.iter_posts(scrape_item, json_resp["posts"])
+
+        for hashtag in json_resp["hashtags"]:
+            url = PRIMARY_BASE_DOMAIN / "hash" / hashtag["label"]
+            self._proccess_result(scrape_item, url)
+
+        for user in json_resp["users"]:
+            url = PRIMARY_BASE_DOMAIN / "user" / user["username"]
+            self._proccess_result(scrape_item, url)
+
+    def _proccess_result(self, scrape_item: ScrapeItem, url: URL) -> None:
+        new_scrape_item = scrape_item.create_child(url)
+        self.manager.task_group.create_task(self.run(new_scrape_item))
+        scrape_item.add_children()
 
     @error_handling_wrapper
     async def collection(self, scrape_item: ScrapeItem, api_url: URL) -> None:
         headers = self.headers | {"Referer": str(scrape_item.url)}
         while True:
             async with self.request_limiter:
-                json_resp: list[dict[str, Any]] = await self.client.get_json(self.domain, api_url, headers_inc=headers)
+                json_resp: list[dict[str, Any]] = await self.client.get_json(self.domain, api_url, headers)
 
             last_post_id = await self.iter_posts(scrape_item, json_resp)
-            if len(json_resp) < AMOUNT_LIMIT:
+            if len(json_resp) < POST_AMOUNT_LIMIT:
                 break
             api_url = api_url.update_query(afterId=last_post_id)
 
     async def iter_posts(self, scrape_item: ScrapeItem, json_resp: list[dict[str, Any]]) -> str:
         for post_data in json_resp:
             post = Post(**post_data)
-            new_scrape_item = scrape_item.create_child(post.page_url)
+            new_scrape_item = scrape_item.create_child(post.url)
             await self.handle_post(new_scrape_item, post)
             scrape_item.add_children()
         return post.id
@@ -165,7 +162,7 @@ class FikFapCrawler(Crawler):
         assert video_m3u8
         assert audio_m3u8
 
-        scrape_item.url = post.page_url
+        scrape_item.url = post.url
         scrape_item.possible_datetime = post.timestamp
         title = self.create_title(f"{post.user} [user]", post.user_id)
         scrape_item.setup_as_album(title, album_id=post.user_id)
@@ -173,5 +170,5 @@ class FikFapCrawler(Crawler):
         custom_filename, _ = self.get_filename_and_ext(f"{post.label} [{post.id}].mp4")
 
         await self.handle_file(
-            post.page_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=playlist_list_link
+            post.url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=playlist_list_link
         )
