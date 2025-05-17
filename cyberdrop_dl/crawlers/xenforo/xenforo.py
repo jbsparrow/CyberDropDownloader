@@ -12,9 +12,9 @@ from typing import TYPE_CHECKING
 from bs4 import BeautifulSoup, Tag
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import InvalidURLError, LoginError, ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.data_enums_classes.url_objects import FORUM, ScrapeItem
+from cyberdrop_dl.data_structures.url_objects import FORUM, ScrapeItem
+from cyberdrop_dl.exceptions import InvalidURLError, LoginError, ScrapeError
 from cyberdrop_dl.utils.logger import log, log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_trailing_slash
 

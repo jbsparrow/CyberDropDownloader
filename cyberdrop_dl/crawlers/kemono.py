@@ -13,10 +13,10 @@ from pydantic import AliasChoices, BeforeValidator, Field
 from typing_extensions import TypedDict  # Import from typing is not compatible with pydantic
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import NoExtensionError, ScrapeError
-from cyberdrop_dl.config_definitions.custom.types import AliasModel
-from cyberdrop_dl.config_definitions.custom.validators import parse_falsy_as_none
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.data_structures.types import AliasModel
+from cyberdrop_dl.data_structures.validators import parse_falsy_as_none
+from cyberdrop_dl.exceptions import NoExtensionError, ScrapeError
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
 
 if TYPE_CHECKING:
@@ -25,8 +25,8 @@ if TYPE_CHECKING:
     from aiohttp_client_cache.response import AnyResponse
     from bs4 import BeautifulSoup
 
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 MAX_OFFSET_PER_CALL = 50
 LINK_REGEX = re.compile(r"(?:http(?!.*\.\.)[^ ]*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]|</|'))")

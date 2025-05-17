@@ -8,15 +8,15 @@ from typing import TYPE_CHECKING
 
 import aiofiles
 
-from cyberdrop_dl.clients.errors import get_origin
+from cyberdrop_dl.exceptions import get_origin
 from cyberdrop_dl.utils.constants import CSV_DELIMITER
 from cyberdrop_dl.utils.logger import log, log_spacer
 
 if TYPE_CHECKING:
     from yarl import URL
 
+    from cyberdrop_dl.data_structures.url_objects import MediaItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
 
 class LogManager:

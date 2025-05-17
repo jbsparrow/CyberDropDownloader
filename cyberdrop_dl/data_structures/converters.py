@@ -9,7 +9,7 @@ from pathlib import Path
 import yarl
 from pydantic import AnyUrl, ByteSize, TypeAdapter
 
-from cyberdrop_dl.clients.errors import InvalidURLError
+from cyberdrop_dl.exceptions import InvalidURLError
 from cyberdrop_dl.utils.utilities import parse_url
 
 DATE_PATTERN_REGEX = r"(\d+)\s*(second|seconds|minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years)"

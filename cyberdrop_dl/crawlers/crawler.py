@@ -14,10 +14,10 @@ from aiolimiter import AsyncLimiter
 from dateutil import parser
 from yarl import URL
 
+from cyberdrop_dl.data_structures.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.scraper import filters
 from cyberdrop_dl.utils import utilities
-from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.logger import log, log_debug
 from cyberdrop_dl.utils.utilities import (

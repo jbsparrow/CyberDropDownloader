@@ -16,7 +16,7 @@ from dateutil import parser
 from videoprops import get_audio_properties, get_video_properties
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import DDOSGuardError, DownloadError, InvalidContentTypeError, SlowDownloadError
+from cyberdrop_dl.exceptions import DDOSGuardError, DownloadError, InvalidContentTypeError, SlowDownloadError
 from cyberdrop_dl.utils.constants import FILE_FORMATS
 from cyberdrop_dl.utils.logger import log, log_debug
 
@@ -27,9 +27,9 @@ if TYPE_CHECKING:
 
     from multidict import CIMultiDictProxy
 
+    from cyberdrop_dl.data_structures.url_objects import MediaItem
     from cyberdrop_dl.managers.client_manager import ClientManager
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
 
 P = ParamSpec("P")

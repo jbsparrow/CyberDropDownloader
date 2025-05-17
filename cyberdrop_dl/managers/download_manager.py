@@ -12,8 +12,8 @@ from cyberdrop_dl.utils.logger import log_debug
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
+    from cyberdrop_dl.data_structures.url_objects import MediaItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
 
 class FileLocksVault:

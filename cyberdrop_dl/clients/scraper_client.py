@@ -20,7 +20,7 @@ from bs4 import BeautifulSoup
 
 import cyberdrop_dl.utils.constants as constants
 from cyberdrop_dl import env
-from cyberdrop_dl.clients.errors import DDOSGuardError, DownloadError, InvalidContentTypeError, ScrapeError
+from cyberdrop_dl.exceptions import DDOSGuardError, DownloadError, InvalidContentTypeError, ScrapeError
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import get_soup_no_error, sanitize_filename
 

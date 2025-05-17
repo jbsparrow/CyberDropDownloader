@@ -14,7 +14,7 @@ from pydantic import BaseModel, Field, ValidationError, computed_field, field_va
 
 from cyberdrop_dl import __version__, env
 from cyberdrop_dl.config_definitions import ConfigSettings, GlobalSettings
-from cyberdrop_dl.config_definitions.custom.types import AliasModel, HttpURL
+from cyberdrop_dl.data_structures.types import AliasModel, HttpURL
 from cyberdrop_dl.utils.yaml import handle_validation_error
 
 if TYPE_CHECKING:
