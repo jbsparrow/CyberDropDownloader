@@ -68,10 +68,7 @@ class FikFapCrawler(Crawler):
         if await self.check_complete_from_referer(canonical_url):
             return
         api_url = API_ENTRYPOINT / "posts" / post_id
-        headers = self.headers | {"Referer": str(scrape_item.url)}
-        async with self.request_limiter:
-            json_resp: dict[str, Any] = await self.client.get_json(self.domain, api_url, headers=headers)
-
+        json_resp: dict[str, Any] = await self._make_api_request(scrape_item, api_url)
         post = Post(**json_resp)
         await self.handle_post(scrape_item, post)
 
@@ -79,7 +76,6 @@ class FikFapCrawler(Crawler):
         user_name = scrape_item.url.name
         api_url = API_ENTRYPOINT / "profile/username" / user_name / "posts"
         api_url = api_url.with_query(amount=POST_AMOUNT_LIMIT)
-        # Title will be added by self.handle_post, This is just to set `max_children_limit`
         scrape_item.setup_as_profile("")
         await self.collection(scrape_item, api_url)
 
@@ -96,13 +92,13 @@ class FikFapCrawler(Crawler):
         search_query = scrape_item.url.query["q"]
         api_url = API_ENTRYPOINT / "search"
         api_url = api_url.with_query(q=search_query, amount=POST_AMOUNT_LIMIT)
-        headers = self.headers | {"Referer": str(scrape_item.url)}
+
         title = self.create_title(f"{search_query} [search]")
         scrape_item.setup_as_profile(title)
-        async with self.request_limiter:
-            json_resp: dict[str, list[dict[str, Any]]] = await self.client.get_json(self.domain, api_url, headers)
+        json_resp: dict[str, list[dict[str, Any]]] = await self._make_api_request(scrape_item, api_url)
 
-        _ = await self.iter_posts(scrape_item, json_resp["posts"])
+        for post in (Post(**data) for data in json_resp["posts"]):
+            await self._proccess_post(scrape_item, post)
 
         for hashtag in json_resp["hashtags"]:
             url = PRIMARY_BASE_DOMAIN / "hash" / hashtag["label"]
@@ -112,30 +108,34 @@ class FikFapCrawler(Crawler):
             url = PRIMARY_BASE_DOMAIN / "user" / user["username"]
             self._proccess_result(scrape_item, url)
 
+    @error_handling_wrapper
+    async def collection(self, scrape_item: ScrapeItem, api_url: URL) -> None:
+        last_post_id: str = ""
+        while True:
+            json_resp: list[dict[str, Any]] = await self._make_api_request(scrape_item, api_url)
+
+            for post in (Post(**data) for data in json_resp):
+                await self._proccess_post(scrape_item, post)
+                last_post_id = post.id
+
+            if len(json_resp) < POST_AMOUNT_LIMIT:
+                break
+            api_url = api_url.update_query(afterId=last_post_id)
+
     def _proccess_result(self, scrape_item: ScrapeItem, url: URL) -> None:
         new_scrape_item = scrape_item.create_child(url)
         self.manager.task_group.create_task(self.run(new_scrape_item))
         scrape_item.add_children()
 
-    @error_handling_wrapper
-    async def collection(self, scrape_item: ScrapeItem, api_url: URL) -> None:
+    async def _proccess_post(self, scrape_item: ScrapeItem, post: Post) -> None:
+        new_scrape_item = scrape_item.create_child(post.url)
+        await self.handle_post(new_scrape_item, post)
+        scrape_item.add_children()
+
+    async def _make_api_request(self, scrape_item: ScrapeItem, api_url: URL) -> Any:
         headers = self.headers | {"Referer": str(scrape_item.url)}
-        while True:
-            async with self.request_limiter:
-                json_resp: list[dict[str, Any]] = await self.client.get_json(self.domain, api_url, headers)
-
-            last_post_id = await self.iter_posts(scrape_item, json_resp)
-            if len(json_resp) < POST_AMOUNT_LIMIT:
-                break
-            api_url = api_url.update_query(afterId=last_post_id)
-
-    async def iter_posts(self, scrape_item: ScrapeItem, json_resp: list[dict[str, Any]]) -> str:
-        for post_data in json_resp:
-            post = Post(**post_data)
-            new_scrape_item = scrape_item.create_child(post.url)
-            await self.handle_post(new_scrape_item, post)
-            scrape_item.add_children()
-        return post.id
+        async with self.request_limiter:
+            return await self.client.get_json(self.domain, api_url, headers)
 
     async def handle_post(self, scrape_item: ScrapeItem, post: Post) -> None:
         headers = {"Referer": "https://fikfap.com/", "Origin": "https://fikfap.com"}
