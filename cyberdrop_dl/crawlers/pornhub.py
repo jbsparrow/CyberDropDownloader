@@ -144,7 +144,7 @@ class PornHubCrawler(Crawler):
         return self.create_title(f"{title} [{profile.type.removesuffix('s')}]")
 
     async def _proccess_profile_items(self, scrape_item: ScrapeItem, profile: Profile) -> None:
-        scrape_all = scrape_item.url == profile.url
+        scrape_all = scrape_item.url.path == profile.url.path
         scrape_videos = scrape_all or "videos" in scrape_item.url.parts
         scrape_gifs = profile.has_photos and (scrape_all or "gifs" in scrape_item.url.parts)
         scrape_photos = profile.has_photos and (scrape_all or "photos" in scrape_item.url.parts)
