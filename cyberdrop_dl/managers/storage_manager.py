@@ -12,14 +12,14 @@ from typing import TYPE_CHECKING, NamedTuple
 import psutil
 from pydantic import ByteSize
 
-from cyberdrop_dl.clients.errors import InsufficientFreeSpaceError
+from cyberdrop_dl.exceptions import InsufficientFreeSpaceError
 from cyberdrop_dl.utils.logger import log, log_debug
 
 if TYPE_CHECKING:
     from psutil._common import sdiskpart
 
+    from cyberdrop_dl.data_structures.url_objects import MediaItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
 
 @dataclass(frozen=True, slots=True, order=True)

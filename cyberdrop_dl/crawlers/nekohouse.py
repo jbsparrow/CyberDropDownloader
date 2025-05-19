@@ -8,8 +8,8 @@ from cyberdrop_dl.crawlers.crawler import create_task_id
 from cyberdrop_dl.crawlers.kemono import KemonoCrawler
 
 if TYPE_CHECKING:
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
 class NekohouseCrawler(KemonoCrawler):

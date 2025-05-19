@@ -4,9 +4,9 @@ from datetime import timedelta
 from pydantic import BaseModel, ByteSize, Field, NonNegativeFloat, PositiveInt, field_serializer, field_validator
 from yarl import URL
 
-from .custom.converters import convert_to_byte_size
-from .custom.types import AliasModel, ByteSizeSerilized, HttpURL, NonEmptyStr
-from .custom.validators import parse_duration_as_timedelta, parse_falsy_as
+from cyberdrop_dl.types import AliasModel, ByteSizeSerilized, HttpURL, NonEmptyStr
+from cyberdrop_dl.utils.converters import convert_to_byte_size
+from cyberdrop_dl.utils.validators import parse_duration_as_timedelta, parse_falsy_as
 
 MIN_REQUIRED_FREE_SPACE = convert_to_byte_size("512MB")
 DEFAULT_REQUIRED_FREE_SPACE = convert_to_byte_size("5GB")

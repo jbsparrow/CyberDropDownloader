@@ -8,12 +8,12 @@ from typing import TYPE_CHECKING
 from yaml import YAMLError
 from yarl import URL
 
-from cyberdrop_dl.utils.constants import VALIDATION_ERROR_FOOTER
+from cyberdrop_dl.constants import VALIDATION_ERROR_FOOTER
 
 if TYPE_CHECKING:
     from requests import Response
 
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
+    from cyberdrop_dl.data_structures.url_objects import MediaItem, ScrapeItem
 
 
 # See: https://developers.cloudflare.com/support/troubleshooting/cloudflare-errors/troubleshooting-cloudflare-5xx-errors/

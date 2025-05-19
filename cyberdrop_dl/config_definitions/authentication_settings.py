@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from .custom.types import AliasModel
+from cyberdrop_dl.types import AliasModel
 
 
 class CoomerAuth(BaseModel):
