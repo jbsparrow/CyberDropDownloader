@@ -15,6 +15,18 @@ Setting this to `true` will allow the program to connect to websites without SSL
 This will make the connection insecure, and sensitive data may be exposed. You should only enable this option if you know what you are doing. For your safety, is recommended to always use a secure HTTPS connection to protect your privacy.
 {% endhint %}
 
+## `enable_generic_crawler`
+
+| Type   | Default |
+| ------ | ------- |
+| `bool` | `true` |
+
+CDl has a generic crawler that will try to download from unsupported sites. Setting this to `false` will disable it.
+
+{% hint style="info" %}
+CDL will still try to download from unsupported URLs if the last part of the URL has a known file extension. ex: `.jpg`
+{% endhint %}
+
 ## `flaresolverr`
 
 | Type                | Default |

@@ -7,15 +7,15 @@ from typing import TYPE_CHECKING, ClassVar
 
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
 class Selectors:
@@ -63,14 +63,17 @@ class DoodStreamCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, scrape_item.url)
+            response, soup = await self.client._get_response_and_soup_cffi(self.domain, scrape_item.url)
+
+        host = self.parse_url(response.url).host
+        assert host
+        del response
 
         title: str = soup.select_one("title").text  # type: ignore
         title = title.split("- DoodStream")[0].strip()
 
         file_id = get_file_id(soup)
-        assert scrape_item.url.host
-        debrid_link = await self.get_download_url(scrape_item.url.host, soup)
+        debrid_link = await self.get_download_url(host, soup)
         filename, ext = self.get_filename_and_ext(f"{file_id}.mp4")
         custom_filename, _ = self.get_filename_and_ext(f"{title}{ext}")
         scrape_item.url = canonical_url

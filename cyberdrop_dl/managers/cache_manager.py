@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import field
+from dataclasses import Field, field
 from datetime import timedelta
 from http import HTTPStatus
 from typing import TYPE_CHECKING, Any
@@ -8,9 +8,9 @@ from typing import TYPE_CHECKING, Any
 from aiohttp_client_cache import CacheBackend, SQLiteBackend
 
 from cyberdrop_dl import __version__ as current_version
+from cyberdrop_dl.data_structures.supported_domains import SUPPORTED_FORUMS, SUPPORTED_WEBSITES
 from cyberdrop_dl.scraper.filters import cache_filter_fn
 from cyberdrop_dl.utils import yaml
-from cyberdrop_dl.utils.data_enums_classes.supported_domains import SUPPORTED_FORUMS, SUPPORTED_WEBSITES
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -86,7 +86,6 @@ class CacheManager:
             yaml.save(self.cache_file, self._cache)
 
     async def close(self):
-        await self.request_cache.close()
-
-    def close_sync(self):
+        if not isinstance(self.request_cache, Field):
+            await self.request_cache.close()
         self.save("version", current_version)

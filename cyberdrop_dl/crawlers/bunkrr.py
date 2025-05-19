@@ -14,16 +14,16 @@ from typing import TYPE_CHECKING, ClassVar, NamedTuple
 from aiohttp import ClientConnectorError
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import DDOSGuardError, NoExtensionError, ScrapeError
+from cyberdrop_dl.constants import FILE_FORMATS
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.constants import FILE_FORMATS
+from cyberdrop_dl.exceptions import DDOSGuardError, NoExtensionError, ScrapeError
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_og_properties, get_text_between, parse_url
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup, Tag
 
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
 # CDNs
@@ -183,7 +183,9 @@ class BunkrrCrawler(Crawler):
         link: URL | None = None
         soup: BeautifulSoup | None = None
         if is_stream_redirect(scrape_item.url):
-            soup, scrape_item.url = await self.client.get_soup_and_return_url(self.domain, scrape_item.url)
+            response, soup = await self.client._get_response_and_soup(self.domain, scrape_item.url)
+            scrape_item.url = response.url
+            del response
 
         database_url = scrape_item.url.with_host(self.DATABASE_PRIMARY_HOST)
         if await self.check_complete_from_referer(database_url):
@@ -285,7 +287,7 @@ class BunkrrCrawler(Crawler):
 
         data = json.dumps(data_dict)
         async with self.request_limiter:
-            json_resp: dict = await self.client.post_data(self.domain, api_url, data=data, headers_inc=headers)
+            json_resp: dict = await self.client.post_data(self.domain, api_url, data=data, headers=headers)
 
         api_response = ApiResponse(**json_resp)
         link_str = decrypt_api_response(api_response)

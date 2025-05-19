@@ -16,12 +16,13 @@ from typing import TYPE_CHECKING, Any, ClassVar, ParamSpec, Protocol, TypeVar
 
 import aiofiles
 import rich
-from aiohttp import ClientConnectorError, ClientResponse, ClientSession, FormData
-from aiohttp_client_cache import CachedResponse
+from aiohttp import ClientConnectorError, ClientSession, FormData
+from aiohttp_client_cache.response import AnyResponse
 from bs4 import BeautifulSoup
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import (
+from cyberdrop_dl import constants
+from cyberdrop_dl.exceptions import (
     CDLBaseError,
     ErrorLogMessage,
     InvalidExtensionError,
@@ -29,7 +30,6 @@ from cyberdrop_dl.clients.errors import (
     NoExtensionError,
     get_origin,
 )
-from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.logger import log, log_debug, log_spacer, log_with_color
 
 if TYPE_CHECKING:
@@ -39,9 +39,9 @@ if TYPE_CHECKING:
     from rich.text import Text
 
     from cyberdrop_dl.crawlers import Crawler
+    from cyberdrop_dl.data_structures.url_objects import MediaItem, ScrapeItem
     from cyberdrop_dl.downloader.downloader import Downloader
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
 
 
 P = ParamSpec("P")
@@ -74,8 +74,8 @@ class OGProperties:
 
 
 def error_handling_wrapper(
-    func: Callable[..., Coroutine[None, None, Any]],
-) -> Callable[..., Coroutine[None, None, Any]]:
+    func: Callable[..., Coroutine[None, None, R]],
+) -> Callable[..., Coroutine[None, None, R | None]]:
     """Wrapper handles errors for url scraping."""
 
     @wraps(func)
@@ -403,7 +403,7 @@ def set_default_app_if_none(file_path: Path) -> bool:
     return False
 
 
-def get_valid_dict(dataclass: Dataclass | type[Dataclass], info: dict[str, Any]) -> dict[str, Any]:
+def get_valid_dict(dataclass: Dataclass | type[Dataclass], info: Mapping[str, Any]) -> dict[str, Any]:
     """Remove all keys that are not fields in the dataclass"""
     return {k: v for k, v in info.items() if k in get_field_names(dataclass)}
 
@@ -471,12 +471,14 @@ def remove_parts(url: URL, *parts_to_remove: str, keep_query: bool = True, keep_
     return url.with_path("/".join(new_parts), keep_fragment=keep_fragment, keep_query=keep_query)
 
 
-async def get_soup_from_response(response: CurlResponse | ClientResponse | CachedResponse) -> BeautifulSoup | None:
+async def get_soup_no_error(response: CurlResponse | AnyResponse) -> BeautifulSoup | None:
     # We can't use `CurlResponse` at runtime so we check the reverse
-    is_curl = not isinstance(response, ClientResponse | CachedResponse)
     with contextlib.suppress(UnicodeDecodeError):
-        response_text = response.text if is_curl else await response.text()
-        return BeautifulSoup(response_text, "html.parser")
+        if isinstance(response, AnyResponse):
+            content = await response.read()  # aiohttp
+        else:
+            content = response.content  # curl response
+        return BeautifulSoup(content, "html.parser")
 
 
 def get_og_properties(soup: BeautifulSoup) -> OGProperties:

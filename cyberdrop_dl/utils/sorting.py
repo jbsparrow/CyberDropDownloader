@@ -3,29 +3,29 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import itertools
+from datetime import datetime
 from fractions import Fraction
 from pathlib import Path
 from subprocess import CalledProcessError
 from typing import TYPE_CHECKING
 
 import PIL
-from filedate import File
 from PIL import Image
 from videoprops import get_audio_properties, get_video_properties
 
-from cyberdrop_dl.utils.constants import FILE_FORMATS
+from cyberdrop_dl.constants import FILE_FORMATS
 from cyberdrop_dl.utils.logger import log_with_color
 from cyberdrop_dl.utils.utilities import purge_dir_tree
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
-    from datetime import datetime
 
     from cyberdrop_dl.managers.manager import Manager
 
 
-def get_modified_date(file: Path) -> datetime:
-    return File(str(file)).modified
+async def get_modified_date(file: Path) -> datetime:
+    stat = await asyncio.to_thread(file.stat)
+    return datetime.fromtimestamp(stat.st_mtime).replace(microsecond=0)
 
 
 class Sorter:
@@ -115,13 +115,13 @@ class Sorter:
                     continue
 
                 if ext in FILE_FORMATS["Audio"]:
-                    self.sort_audio(file, folder_name)
+                    await self.sort_audio(file, folder_name)
                 elif ext in FILE_FORMATS["Images"]:
-                    self.sort_image(file, folder_name)
+                    await self.sort_image(file, folder_name)
                 elif ext in FILE_FORMATS["Videos"]:
-                    self.sort_video(file, folder_name)
+                    await self.sort_video(file, folder_name)
                 else:
-                    self.sort_other(file, folder_name)
+                    await self.sort_other(file, folder_name)
 
                 self.manager.progress_manager.sort_progress.advance_folder(task_id)
 
@@ -129,7 +129,7 @@ class Sorter:
             queue_length -= 1
             self.manager.progress_manager.sort_progress.set_queue_length(queue_length)
 
-    def sort_audio(self, file: Path, base_name: str) -> None:
+    async def sort_audio(self, file: Path, base_name: str) -> None:
         """Sorts an audio file into the sorted audio folder."""
         if not self.audio_format:
             return
@@ -140,7 +140,7 @@ class Sorter:
             bitrate = int(float(props.get("bit_rate", 0))) or None
             sample_rate = int(float(props.get("sample_rate", 0))) or None
 
-        if self._process_file_move(
+        if await self._process_file_move(
             file,
             base_name,
             self.audio_format,
@@ -151,7 +151,7 @@ class Sorter:
         ):
             self.manager.progress_manager.sort_progress.increment_audio()
 
-    def sort_image(self, file: Path, base_name: str) -> None:
+    async def sort_image(self, file: Path, base_name: str) -> None:
         """Sorts an image file into the sorted image folder."""
         if not self.image_format:
             return
@@ -163,12 +163,12 @@ class Sorter:
             width, height = image.size
             resolution = f"{width}x{height}"
 
-        if self._process_file_move(
+        if await self._process_file_move(
             file, base_name, self.image_format, resolution=resolution, width=width, height=height
         ):
             self.manager.progress_manager.sort_progress.increment_image()
 
-    def sort_video(self, file: Path, base_name: str) -> None:
+    async def sort_video(self, file: Path, base_name: str) -> None:
         """Sorts a video file into the sorted video folder."""
         if not self.video_format:
             return
@@ -192,7 +192,7 @@ class Sorter:
             if fps:
                 fps = int(fps) if fps.is_integer() else f"{fps:.2f}"
 
-        if self._process_file_move(
+        if await self._process_file_move(
             file,
             base_name,
             self.video_format,
@@ -205,15 +205,15 @@ class Sorter:
         ):
             self.manager.progress_manager.sort_progress.increment_video()
 
-    def sort_other(self, file: Path, base_name: str) -> None:
+    async def sort_other(self, file: Path, base_name: str) -> None:
         """Sorts an other file into the sorted other folder."""
         if not self.other_format:
             return
-        if self._process_file_move(file, base_name, self.other_format):
+        if await self._process_file_move(file, base_name, self.other_format):
             self.manager.progress_manager.sort_progress.increment_other()
 
-    def _process_file_move(self, file: Path, base_name: str, format_str: str, **kwargs) -> bool:
-        file_date = get_modified_date(file)
+    async def _process_file_move(self, file: Path, base_name: str, format_str: str, **kwargs) -> bool:
+        file_date = await get_modified_date(file)
         file_date_us = file_date.strftime("%Y-%d-%m")
         file_date_iso = file_date.strftime("%Y-%m-%d")
 

@@ -7,13 +7,14 @@ from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import create_task_id
 from cyberdrop_dl.crawlers.mixdrop import MixDropCrawler
+from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_og_properties, get_text_between
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
 class Selectors:
@@ -76,6 +77,9 @@ class ArchiveBateCrawler(MixDropCrawler):
 
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+
+        if "This video has been deleted" in soup.text:
+            raise ScrapeError(410)
 
         og_props = get_og_properties(soup)
         date_str: str = get_text_between(og_props.description, "show on", " - ").strip()

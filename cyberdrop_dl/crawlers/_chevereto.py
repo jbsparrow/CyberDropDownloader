@@ -6,14 +6,14 @@ from typing import TYPE_CHECKING
 
 from bs4 import BeautifulSoup
 
-from cyberdrop_dl.clients.errors import PasswordProtectedError, ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.exceptions import PasswordProtectedError, ScrapeError
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from yarl import URL
 
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
 ITEM_DESCRIPTION_SELECTOR = "p[class*=description-meta]"
@@ -123,7 +123,7 @@ class CheveretoCrawler(Crawler):
         if PASSWORD_PROTECTED in soup.text and password:
             data = {"content-password": password}
             async with self.request_limiter:
-                html = await self.client.post_data(self.domain, url, data=data, raw=True)
+                html = await self.client.post_data_raw(self.domain, url, data=data)
             soup = BeautifulSoup(html, "html.parser")
 
         if PASSWORD_PROTECTED in soup.text:
@@ -147,12 +147,12 @@ class CheveretoCrawler(Crawler):
         return filename, link
 
     @error_handling_wrapper
-    async def _proccess_media_item(self, scrape_item: ScrapeItem, type: Media, selector: tuple[str, str]) -> None:
+    async def _proccess_media_item(self, scrape_item: ScrapeItem, media_type: Media, selector: tuple[str, str]) -> None:
         """Scrapes a media item."""
         if await self.check_complete_from_referer(scrape_item):
             return
 
-        _, canonical_url = self.get_canonical_url(scrape_item.url, type)
+        _, canonical_url = self.get_canonical_url(scrape_item.url, media_type)
         if await self.check_complete_from_referer(canonical_url):
             return
 
@@ -164,23 +164,23 @@ class CheveretoCrawler(Crawler):
             link = self.parse_url(link_str)
 
         except AttributeError:
-            raise ScrapeError(422, f"Couldn't find {type} source") from None
+            raise ScrapeError(422, f"Couldn't find {media_type} source") from None
 
         scrape_item.possible_datetime = self.parse_date(get_date_from_soup(soup))
         scrape_item.url = canonical_url
         await self.handle_direct_link(scrape_item, link)
 
-    video = partialmethod(_proccess_media_item, url_type=Media.VIDEO, selector=VIDEO_SELECTOR)
-    image = partialmethod(_proccess_media_item, url_type=Media.IMAGE, selector=IMAGE_SELECTOR)
+    video = partialmethod(_proccess_media_item, media_type=Media.VIDEO, selector=VIDEO_SELECTOR)
+    image = partialmethod(_proccess_media_item, media_type=Media.IMAGE, selector=IMAGE_SELECTOR)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    def get_canonical_url(self, url: URL, url_type: Media = Media.ALBUM) -> tuple[str, URL]:
+    def get_canonical_url(self, url: URL, media_type: Media = Media.ALBUM) -> tuple[str, URL]:
         """Returns the id and canonical URL from a given item (album, image or video)."""
         search_parts = ALBUM_PARTS
-        if url_type == Media.IMAGE:
+        if media_type == Media.IMAGE:
             search_parts = IMAGES_PARTS
-        elif url_type == Media.VIDEO:
+        elif media_type == Media.VIDEO:
             search_parts = VIDEO_PARTS
 
         found_part = next(p for p in search_parts if p in url.parts)

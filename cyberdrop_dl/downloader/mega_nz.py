@@ -74,8 +74,8 @@ from Crypto.PublicKey import RSA
 from Crypto.Util import Counter
 
 from cyberdrop_dl.clients.download_client import DownloadClient
-from cyberdrop_dl.clients.errors import CDLBaseError, DownloadError, SlowDownloadError
 from cyberdrop_dl.downloader.downloader import Downloader
+from cyberdrop_dl.exceptions import CDLBaseError, DownloadError, SlowDownloadError
 from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
@@ -83,8 +83,8 @@ if TYPE_CHECKING:
 
     from yarl import URL
 
+    from cyberdrop_dl.data_structures.url_objects import MediaItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
 
 class MegaNzError(CDLBaseError): ...
