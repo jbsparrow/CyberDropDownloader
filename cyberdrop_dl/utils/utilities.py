@@ -12,7 +12,7 @@ from dataclasses import dataclass, fields
 from functools import lru_cache, partial, wraps
 from pathlib import Path
 from stat import S_ISREG
-from typing import TYPE_CHECKING, Any, ClassVar, ParamSpec, Protocol, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, ParamSpec, Protocol, TypeGuard, TypeVar
 
 import aiofiles
 import rich
@@ -42,6 +42,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import MediaItem, ScrapeItem
     from cyberdrop_dl.downloader.downloader import Downloader
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.types import AbsoluteHttpURL, AnyURL
 
 
 P = ParamSpec("P")
@@ -306,7 +307,7 @@ async def send_webhook_message(manager: Manager) -> None:
         return
 
     rich.print("\nSending Webhook Notifications.. ")
-    url: URL = webhook.url.get_secret_value()  # type: ignore
+    url: AbsoluteHttpURL = webhook.url.get_secret_value()  # type: ignore
     text: Text = constants.LOG_OUTPUT_TEXT
     diff_text = convert_text_by_diff(text)
     main_log = manager.path_manager.main_log
@@ -426,14 +427,14 @@ def xdg_mime_query(*args) -> str:
     return subprocess_get_text(arg_list).stdout.strip()
 
 
-def parse_url(link_str: str, relative_to: URL | None = None, *, trim: bool = True) -> URL:
+def parse_url(link_str: str, relative_to: AbsoluteHttpURL | None = None, *, trim: bool = True) -> AbsoluteHttpURL:
     """Parse a string into an absolute URL, handling relative URLs, encoding and optionally removes trailing slash (trimming).
     Raises:
         InvalidURLError: If the input string is not a valid URL or if any other error occurs during parsing.
         TypeError: If `relative_to` is `None` and the parsed URL is relative or has no scheme.
     """
 
-    base: URL = relative_to  # type: ignore
+    base: AbsoluteHttpURL = relative_to  # type: ignore
 
     def fix_query_params_encoding() -> str:
         if "?" not in link_str:
@@ -454,18 +455,29 @@ def parse_url(link_str: str, relative_to: URL | None = None, *, trim: bool = Tru
         new_url = base.join(new_url)
     if not new_url.scheme:
         new_url = new_url.with_scheme(base.scheme or "https")
+    assert is_absolute_http_url(new_url)
     if not trim:
         return new_url
     return remove_trailing_slash(new_url)
 
 
-def remove_trailing_slash(url: URL) -> URL:
+def make_http_url(val: str, *, encoded: bool = False, strict: bool | None = None) -> AbsoluteHttpURL:
+    url = URL(val, encoded=encoded, strict=strict)
+    assert is_absolute_http_url(url)
+    return url
+
+
+def is_absolute_http_url(url: URL) -> TypeGuard[AbsoluteHttpURL]:
+    return url.absolute and url.scheme.startswith("http")
+
+
+def remove_trailing_slash(url: AnyURL) -> AnyURL:
     if url.name or url.path == "/":
         return url
     return url.parent.with_fragment(url.fragment).with_query(url.query)
 
 
-def remove_parts(url: URL, *parts_to_remove: str, keep_query: bool = True, keep_fragment: bool = True) -> URL:
+def remove_parts(url: AnyURL, *parts_to_remove: str, keep_query: bool = True, keep_fragment: bool = True) -> AnyURL:
     assert parts_to_remove
     new_parts = [p for p in url.parts[1:] if p not in set(parts_to_remove)]
     return url.with_path("/".join(new_parts), keep_fragment=keep_fragment, keep_query=keep_query)

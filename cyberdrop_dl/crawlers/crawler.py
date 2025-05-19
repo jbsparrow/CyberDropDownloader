@@ -17,7 +17,7 @@ from yarl import URL
 from cyberdrop_dl.data_structures.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.scraper import filters
-from cyberdrop_dl.types import TimeStamp, is_absolute_http_url
+from cyberdrop_dl.types import TimeStamp
 from cyberdrop_dl.utils import utilities
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.logger import log, log_debug
@@ -25,6 +25,7 @@ from cyberdrop_dl.utils.utilities import (
     error_handling_wrapper,
     get_download_path,
     get_filename_and_ext,
+    is_absolute_http_url,
     parse_url,
     remove_file_id,
 )
@@ -43,6 +44,7 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.clients.scraper_client import ScraperClient
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.types import AbsoluteHttpURL
 
 UNKNOWN_URL_PATH_MSG = "Unknown URL path"
 
@@ -305,7 +307,7 @@ class Crawler(ABC):
         date_str = _str("NO_DATE", date_str)
         return title_format.format(id=id, date=date_str, title=title)
 
-    def parse_url(self, link_str: str, relative_to: URL | None = None, *, trim: bool = True) -> URL:
+    def parse_url(self, link_str: str, relative_to: URL | None = None, *, trim: bool = True) -> AbsoluteHttpURL:
         """Wrapper arround `utils.parse_url` to use `self.primary_base_domain` as base"""
         base = relative_to or self.primary_base_domain
         return parse_url(link_str, base, trim=trim)

@@ -7,10 +7,12 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+import functools
+import inspect
+from collections.abc import Callable, Sequence
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any, Literal, NewType, TypeAlias, TypeGuard, TypeVar
+from typing import TYPE_CHECKING, Annotated, Any, Literal, NewType, ParamSpec, TypeAlias, TypeVar, overload
 
 import yarl
 from pydantic import (
@@ -31,6 +33,7 @@ from pydantic import (
 )
 
 from cyberdrop_dl.utils.converters import change_path_suffix, convert_byte_size_to_str
+from cyberdrop_dl.utils.utilities import make_http_url
 from cyberdrop_dl.utils.validators import (
     parse_apprise_url,
     parse_falsy_as_none,
@@ -38,22 +41,112 @@ from cyberdrop_dl.utils.validators import (
     pydantyc_yarl_url,
 )
 
+P = ParamSpec("P")
+R = TypeVar("R")
+T = TypeVar("T")
+
+
+def copy_signature(target: Callable[P, R]) -> Callable[[Callable[..., T]], Callable[P, T]]:
+    """Decorator to make a function mimic the signature of another function,
+    but preserve the return type of the decorated function."""
+
+    def decorator(func: Callable[..., T]) -> Callable[P, T]:
+        @functools.wraps(func)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            return func(*args, **kwargs)
+
+        wrapper.__signature__ = inspect.signature(target).replace(  # type: ignore
+            return_annotation=inspect.signature(func).return_annotation
+        )
+        return wrapper
+
+    return decorator
+
+
 if TYPE_CHECKING:
+    from propcache.api import under_cached_property as cached_property
+    from yarl._query import Query, QueryVariable
 
     class AbsoluteHttpURL(yarl.URL):
-        absolute: Literal[True]
-        scheme: Literal["http", "https"]
+        @copy_signature(yarl.URL.__new__)
+        def __new__(cls) -> AbsoluteHttpURL: ...
 
-        @property
-        def host(self) -> str:  # type: ignore
-            """Decoded host part of URL."""
+        @copy_signature(yarl.URL.__truediv__)
+        def __truediv__(self) -> AbsoluteHttpURL: ...
+
+        @copy_signature(yarl.URL.__mod__)
+        def __mod__(self) -> AbsoluteHttpURL: ...
+
+        @cached_property
+        def host(self) -> str: ...
+
+        @cached_property
+        def scheme(self) -> Literal["http", "https"]: ...
+
+        @cached_property
+        def absolute(self) -> Literal[True]: ...
+
+        @cached_property
+        def parent(self) -> AbsoluteHttpURL: ...
+
+        @copy_signature(yarl.URL.with_path)
+        def with_path(self) -> AbsoluteHttpURL: ...
+
+        @copy_signature(yarl.URL.with_host)
+        def with_host(self) -> AbsoluteHttpURL: ...
+
+        @copy_signature(yarl.URL.origin)
+        def origin(self) -> AbsoluteHttpURL: ...
+
+        @overload
+        def with_query(self, query: Query) -> AbsoluteHttpURL: ...
+
+        @overload
+        def with_query(self, **kwargs: QueryVariable) -> AbsoluteHttpURL: ...
+
+        @copy_signature(yarl.URL.with_query)
+        def with_query(self) -> AbsoluteHttpURL: ...
+
+        @overload
+        def extend_query(self, query: Query) -> AbsoluteHttpURL: ...
+
+        @overload
+        def extend_query(self, **kwargs: QueryVariable) -> AbsoluteHttpURL: ...
+
+        @copy_signature(yarl.URL.extend_query)
+        def extend_query(self) -> AbsoluteHttpURL: ...
+
+        @overload
+        def update_query(self, query: Query) -> AbsoluteHttpURL: ...
+
+        @overload
+        def update_query(self, **kwargs: QueryVariable) -> AbsoluteHttpURL: ...
+
+        @copy_signature(yarl.URL.update_query)
+        def update_query(self) -> AbsoluteHttpURL: ...
+
+        @copy_signature(yarl.URL.without_query_params)
+        def without_query_params(self) -> AbsoluteHttpURL: ...
+
+        @copy_signature(yarl.URL.with_fragment)
+        def with_fragment(self) -> AbsoluteHttpURL: ...
+
+        @copy_signature(yarl.URL.with_name)
+        def with_name(self) -> AbsoluteHttpURL: ...
+
+        @copy_signature(yarl.URL.with_suffix)
+        def with_suffix(self) -> AbsoluteHttpURL: ...
+
+        @copy_signature(yarl.URL.join)
+        def join(self) -> AbsoluteHttpURL: ...
+
+        @copy_signature(yarl.URL.joinpath)
+        def joinpath(self) -> AbsoluteHttpURL: ...
 
 else:
-    AbsoluteHttpURL = yarl.URL
+    AbsoluteHttpURL = make_http_url
 
-
-def is_absolute_http_url(url: yarl.URL) -> TypeGuard[AbsoluteHttpURL]:
-    return url.absolute and url.scheme.startswith("http")
+AnyURL = TypeVar("AnyURL", yarl.URL, AbsoluteHttpURL)
 
 
 # ~~~~~ Strings ~~~~~~~
