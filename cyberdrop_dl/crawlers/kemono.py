@@ -7,7 +7,7 @@ import itertools
 import re
 from collections import defaultdict
 from datetime import datetime  # noqa: TC003
-from typing import TYPE_CHECKING, Annotated, Any, NamedTuple, NotRequired, cast
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, NamedTuple, NotRequired, cast
 
 from pydantic import AliasChoices, BeforeValidator, Field
 from typing_extensions import TypedDict  # Import from typing is not compatible with pydantic
@@ -15,7 +15,7 @@ from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import NoExtensionError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel
+from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
 from cyberdrop_dl.utils.validators import parse_falsy_as_none
 
@@ -198,6 +198,15 @@ def fallback_if_no_api(func: Callable[..., Coroutine[None, None, Any]]) -> Calla
 
 
 class KemonoCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("Model", "/<service>/user/"),
+        ("Favorites", "/favorites"),
+        ("Search", "/search?..."),
+        ("Individual Post", "/user/post/"),
+        ("Direct links", ""),
+        ("Discord Server", "/discord/"),
+        ("Discord Server Channel", "/discord/server/...#..."),
+    )
     primary_base_domain = AbsoluteHttpURL("https://kemono.su")
     DEFAULT_POST_TITLE_FORMAT = "{date} - {title}"
 
@@ -235,7 +244,6 @@ class KemonoCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if "discord" in scrape_item.url.parts:
             return await self.discord(scrape_item)
         return await self._fetch_kemono_defaults(scrape_item)

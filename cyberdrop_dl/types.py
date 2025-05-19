@@ -215,3 +215,5 @@ AnyDict: TypeAlias = dict[str, Any]
 AbsolutePath = NewType("AbsolutePath", Path)
 HashValue = NewType("HashValue", str)
 TimeStamp = NewType("TimeStamp", int)
+
+SupportedPaths = tuple[tuple[str, ...], ...]

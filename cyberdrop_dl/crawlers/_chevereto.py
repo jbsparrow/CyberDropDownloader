@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import StrEnum, auto
 from functools import partialmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from bs4 import BeautifulSoup
 
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.types import AbsoluteHttpURL
+    from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 
 
 ITEM_DESCRIPTION_SELECTOR = "p[class*=description-meta]"
@@ -46,13 +46,16 @@ def sort_by_new(url: URL) -> URL:
 
 
 class CheveretoCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("Attachments", "/attachments/...", "/data/..."),
+        ("Threads", "/threads/<thread_name>", "/posts/<post_id>", "/goto/<post_id>"),
+    )
     next_page_selector = "a[data-pagination=next]"
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         return await self._fetch_chevereto_defaults(scrape_item)
 
     async def _fetch_chevereto_defaults(self, scrape_item: ScrapeItem) -> None:

@@ -4,12 +4,12 @@ import calendar
 import datetime
 import itertools
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, NamedTuple
+from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -58,6 +58,10 @@ class VideoInfo(dict): ...
 
 
 class SpankBangCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("Playlist", "/playlist/"),
+        ("Video", "/video/"),
+    )
     primary_base_domain = PRIMARY_BASE_DOMAIN
 
     def __init__(self, manager: Manager) -> None:
@@ -70,7 +74,6 @@ class SpankBangCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if is_playlist(scrape_item.url):
             return await self.playlist(scrape_item)
         if any(p in scrape_item.url.parts for p in ("video", "play", "embed", "playlist")):

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -21,6 +21,10 @@ ALBUM_ITEM_SELECTOR = "a[class*=spotlight]"
 
 
 class HotPicCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("Album", "/album/..."),
+        ("Image", "/i/..."),
+    )
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {"hotpic": ["hotpic", "2385290.xyz"]}
     primary_base_domain = AbsoluteHttpURL("https://hotpic.cc")
     update_unsupported = True
@@ -32,7 +36,6 @@ class HotPicCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if "album" in scrape_item.url.parts:
             return await self.album(scrape_item)
         elif "i" in scrape_item.url.parts:

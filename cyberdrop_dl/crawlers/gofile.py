@@ -4,7 +4,7 @@ import http
 import re
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
-from typing import TYPE_CHECKING, Literal, NotRequired, TypedDict, cast
+from typing import TYPE_CHECKING, ClassVar, Literal, NotRequired, TypedDict, cast
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
@@ -12,7 +12,7 @@ from yarl import URL
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.data_structures.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.exceptions import DownloadError, PasswordProtectedError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -85,6 +85,7 @@ class ApiAlbumResponse(TypedDict):
 
 
 class GoFileCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (("Album", "/d/..."),)
     primary_base_domain = AbsoluteHttpURL("https://gofile.io")
 
     def __init__(self, manager: Manager) -> None:
@@ -104,7 +105,6 @@ class GoFileCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if "d" in scrape_item.url.parts:
             return await self.album(scrape_item)
         raise ValueError

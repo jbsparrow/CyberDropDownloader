@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -18,6 +18,7 @@ ALBUM_SELECTOR = "main div.auto-rows-max a"
 
 
 class BunkrAlbumsIOCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (("Search", "/s?search=..."),)
     primary_base_domain = AbsoluteHttpURL("https://bunkr-albums.io/")
     next_page_selector = "nav:last-of-type a.ic-arrow-right"
     skip_pre_check = True
@@ -29,7 +30,6 @@ class BunkrAlbumsIOCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if scrape_item.url.query.get("search"):  # Trying to scrape the root page is a bad idea
             return await self.search(scrape_item)
         raise ValueError

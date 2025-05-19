@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import calendar
 import datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.data_structures.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -22,6 +22,11 @@ ALBUM_TITLE_SELECTOR = "div[id=gallery-view] h1"
 
 
 class ImgBoxCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("Album", "/g/..."),
+        ("Images", "/..."),
+        ("Direct links", ""),
+    )
     primary_base_domain = AbsoluteHttpURL("https://imgbox.com")
 
     def __init__(self, manager: Manager) -> None:
@@ -31,7 +36,6 @@ class ImgBoxCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         assert scrape_item.url.host
         if "t" in scrape_item.url.host or "_" in scrape_item.url.name:
             scrape_item.url = self.primary_base_domain / scrape_item.url.name.split("_")[0]

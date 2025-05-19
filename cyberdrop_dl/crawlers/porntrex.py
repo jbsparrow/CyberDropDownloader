@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import itertools
 import re
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
@@ -47,6 +47,16 @@ _SELECTORS = Selectors()
 
 
 class PorntrexCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("Video", "/video/..."),
+        ("Album", "/albums/..."),
+        ("User", "/members/..."),
+        ("Tag", "/tags/..."),
+        ("Category", "/categories/..."),
+        ("Model", "/models/..."),
+        ("Playlist", "/playlists/..."),
+        ("Search", "/search/..."),
+    )
     primary_base_domain = AbsoluteHttpURL("https://www.porntrex.com")
     next_page_selector = _SELECTORS.NEXT_PAGE
 
@@ -56,7 +66,6 @@ class PorntrexCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if scrape_item.url.name:  # The ending slash is necessary or we get a 404 error
             scrape_item.url = scrape_item.url / ""
 

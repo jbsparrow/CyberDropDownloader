@@ -4,14 +4,14 @@ import asyncio
 import re
 from calendar import timegm
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -35,6 +35,10 @@ PLAYLIST_PARTS = ("search", "categories", "favoritevideos")
 
 
 class XXXBunkerCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("Video", "/"),
+        ("Search Results", "/search/..."),
+    )
     primary_base_domain = AbsoluteHttpURL("https://xxxbunker.com")
 
     def __init__(self, manager: Manager) -> None:
@@ -51,8 +55,6 @@ class XXXBunkerCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
-
         # Old behavior, not worth it with such a bad rate_limit: modify URL to always start on page 1
         """
         new_parts = [part for part in scrape_item.url.parts[1:] if "page-" not in part]

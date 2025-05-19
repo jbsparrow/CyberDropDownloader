@@ -28,7 +28,6 @@ class RealDebridCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         scrape_item.url = await self.get_original_url(scrape_item)
         if self.manager.real_debrid_manager.is_supported_folder(scrape_item.url):
             return await self.folder(scrape_item)

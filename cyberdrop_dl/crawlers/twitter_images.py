@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
@@ -16,6 +16,7 @@ PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://twimg.com/")
 
 
 class TwimgCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (("Photo", "/..."),)
     primary_base_domain = PRIMARY_BASE_DOMAIN
 
     def __init__(self, manager: Manager) -> None:
@@ -25,7 +26,6 @@ class TwimgCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         await self.photo(scrape_item)
 
     async def photo(self, scrape_item: ScrapeItem) -> None:

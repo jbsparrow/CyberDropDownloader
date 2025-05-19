@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -21,6 +21,11 @@ API_ENTRYPOINT = URL("https://postimg.cc/json")
 
 
 class PostImgCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("Album", "/gallery/..."),
+        ("Image", "/..."),
+        ("Direct links", ""),
+    )
     primary_base_domain = AbsoluteHttpURL("https://postimages.org/")
 
     def __init__(self, manager: Manager) -> None:
@@ -30,7 +35,6 @@ class PostImgCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         assert scrape_item.url.host
         if "i.postimg.cc" in scrape_item.url.host:
             return await self.direct_file(scrape_item)

@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -19,6 +19,10 @@ IMAGE_SELECTOR = "img[id=image]"
 
 
 class RealBooruCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("File", "?id=..."),
+        ("Tags", "?tags=..."),
+    )
     primary_base_domain = AbsoluteHttpURL("https://realbooru.com")
     next_page_selector = "a[alt=next]"
 
@@ -32,8 +36,6 @@ class RealBooruCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
-
         if "tags" in scrape_item.url.query_string:
             return await self.tag(scrape_item)
         if "id" in scrape_item.url.query_string:

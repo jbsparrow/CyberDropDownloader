@@ -7,7 +7,7 @@ import contextlib
 import re
 from dataclasses import dataclass
 from functools import cached_property, singledispatchmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from bs4 import BeautifulSoup, Tag
 
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.types import AbsoluteHttpURL
+    from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 
 HTTP_URL_REGEX_STR = r"https?://(www\.)?[-a-zA-Z0-9@:%._+~#=]{2,256}\.[a-z]{2,12}\b([-a-zA-Z0-9@:%_+.~#?&/=]*)"
 HTTP_URL_REGEX = re.compile(HTTP_URL_REGEX_STR)
@@ -110,6 +110,10 @@ class ForumThreadPage:
 
 
 class XenforoCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("Attachments", "/attachments/...", "/data/..."),
+        ("Threads", "/threads/<thread_name>", "/posts/<post_id>", "/goto/<post_id>"),
+    )
     login_required = True
     selectors = XenforoSelectors()
     POST_NAME = "post-"
@@ -145,7 +149,6 @@ class XenforoCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if not self.logged_in and self.login_required:
             return
         scrape_item.url = self.pre_filter_link(scrape_item.url)

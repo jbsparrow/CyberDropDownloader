@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import random
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import LoginError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -28,6 +28,10 @@ LOGIN_PAGE_SELECTOR = "input.id_username_or_email"
 
 
 class NHentaiCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("Collections", '"favorites"'),
+        ("Gallery", "/g/"),
+    )
     primary_base_domain = PRIMARY_BASE_DOMAIN
     next_page_selector = "a.next"
 
@@ -39,7 +43,6 @@ class NHentaiCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if any(p in scrape_item.url.parts for p in COLLECTION_PARTS):
             return await self.collection(scrape_item)
         if "g" in scrape_item.url.parts:

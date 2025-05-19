@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, NamedTuple
+from typing import TYPE_CHECKING, ClassVar, Literal, NamedTuple
 
 from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -35,6 +35,7 @@ class MediaInfo(NamedTuple):
 
 
 class MotherlessCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (("Groups, users, images and videos (NOT Galleries)", ""),)
     primary_base_domain = PRIMARY_BASE_DOMAIN
     next_page_selector = "div.pagination_link > a[rel=next]"
 
@@ -46,7 +47,6 @@ class MotherlessCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem, collection_id: str = "") -> None:
-        """Determines where to send the scrape item based on the url."""
         parts = scrape_item.url.parts
         n_parts = len(parts)
         item_id = collection_id or scrape_item.url.name

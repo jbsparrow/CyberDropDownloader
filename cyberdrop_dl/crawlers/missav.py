@@ -3,11 +3,11 @@ from __future__ import annotations
 import calendar
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -32,6 +32,7 @@ class Format(NamedTuple):
 
 
 class MissAVCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (("Video", "/..."),)
     primary_base_domain = AbsoluteHttpURL("https://missav.ws")
 
     def __init__(self, manager: Manager, _=None) -> None:
@@ -41,7 +42,6 @@ class MissAVCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         return await self.video(scrape_item)
 
     @error_handling_wrapper

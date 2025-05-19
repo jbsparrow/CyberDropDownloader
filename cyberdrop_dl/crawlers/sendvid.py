@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
 
 if TYPE_CHECKING:
@@ -22,6 +22,11 @@ MAIN_HOST = "sendvid.com"
 
 
 class SendVidCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("Videos", "/..."),
+        ("Embeds", "/embed/..."),
+        ("Direct Links", ""),
+    )
     primary_base_domain = AbsoluteHttpURL("https://sendvid.com/")
 
     def __init__(self, manager: Manager) -> None:
@@ -31,7 +36,6 @@ class SendVidCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         scrape_item.url = self.get_streaming_url(scrape_item.url)
         await self.video(scrape_item)
 

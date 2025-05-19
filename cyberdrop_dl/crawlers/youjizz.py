@@ -4,11 +4,11 @@ import json
 import re
 from calendar import timegm
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -40,6 +40,7 @@ class VideoInfo(dict): ...
 
 
 class YouJizzCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (("Video", "/video/embed/"),)
     primary_base_domain = AbsoluteHttpURL("https://www.youjizz.com/")
 
     def __init__(self, manager: Manager) -> None:
@@ -49,7 +50,6 @@ class YouJizzCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if any(p in scrape_item.url.parts for p in ("videos", "embed")):
             return await self.video(scrape_item)
         raise ValueError

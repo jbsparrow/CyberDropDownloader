@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import PasswordProtectedError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
@@ -41,6 +41,11 @@ _SELECTOR = Selectors()
 
 
 class CyberfileCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("Files", "/..."),
+        ("Folders", "/folder/..."),
+        ("Shared", "/shared/..."),
+    )
     primary_base_domain = AbsoluteHttpURL("https://cyberfile.me/")
 
     def __init__(self, manager: Manager) -> None:
@@ -54,7 +59,6 @@ class CyberfileCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if "folder" in scrape_item.url.parts:
             return await self.folder(scrape_item)
         if "shared" in scrape_item.url.parts:

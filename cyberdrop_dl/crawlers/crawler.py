@@ -17,7 +17,7 @@ from yarl import URL
 from cyberdrop_dl.data_structures.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.scraper import filters
-from cyberdrop_dl.types import AbsoluteHttpURL, TimeStamp
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths, TimeStamp
 from cyberdrop_dl.utils import utilities
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.logger import log, log_debug
@@ -58,6 +58,7 @@ class Post(Protocol):
 
 class Crawler(ABC):
     SUPPORTED_SITES: ClassVar[dict[str, list[str]]] = {}
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = ()
     primary_base_domain: ClassVar[AbsoluteHttpURL] = None  # type: ignore
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date} - {number} - {title}"
     update_unsupported: ClassVar[bool] = False
@@ -84,6 +85,12 @@ class Crawler(ABC):
         self.log_debug = log_debug
         self.utils = utilities
         self._semaphore = asyncio.Semaphore(20)
+
+        for path in self.SUPPORTED_PATHS:
+            assert isinstance(path, tuple)
+            assert path
+            if path[0] != "Direct Links":
+                assert len(path) > 1
 
     @property
     def name(self) -> str:

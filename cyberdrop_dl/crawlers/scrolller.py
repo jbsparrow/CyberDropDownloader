@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -44,6 +44,7 @@ API_ENTRYPOINT = AbsoluteHttpURL("https://api.scrolller.com/api/v2/graphql")
 
 
 class ScrolllerCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (("Subreddit", "/r/..."),)
     primary_base_domain = AbsoluteHttpURL("https://scrolller.com")
 
     def __init__(self, manager: Manager) -> None:
@@ -54,7 +55,6 @@ class ScrolllerCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if "r" in scrape_item.url.parts:
             return await self.subreddit(scrape_item)
         raise ValueError

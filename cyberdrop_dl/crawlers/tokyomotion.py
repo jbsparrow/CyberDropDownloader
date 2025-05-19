@@ -4,11 +4,11 @@ import contextlib
 import re
 from calendar import timegm
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
 
 if TYPE_CHECKING:
@@ -21,6 +21,14 @@ DATE_PATTERN = re.compile(r"(\d+)\s*(weeks?|days?|hours?|minutes?|seconds?)", re
 
 
 class TokioMotionCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("Albums", "/user//albums/"),
+        ("Photo", "/photo/"),
+        ("Playlist", "/user//favorite/videos"),
+        ("Profiles", "/user/"),
+        ("Search Results", "/search?..."),
+        ("Video", "/video/"),
+    )
     primary_base_domain = AbsoluteHttpURL("https://www.tokyomotion.net")
     next_page_selector = "a.prevnext"
 
@@ -42,7 +50,6 @@ class TokioMotionCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         scrape_item.url = scrape_item.url.without_query_params("page")
 
         if "video" in scrape_item.url.parts:

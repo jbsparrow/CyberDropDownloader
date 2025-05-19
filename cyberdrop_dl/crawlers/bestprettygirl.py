@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -30,6 +30,10 @@ COLLECTION_PARTS = "category", "tag", "date"
 
 
 class BestPrettyGirlCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("Collections", "category"),
+        ("Gallery", "//"),
+    )
     primary_base_domain = AbsoluteHttpURL("https://bestprettygirl.com/")
     next_page = "a.page-numbers.next"
 
@@ -41,7 +45,6 @@ class BestPrettyGirlCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         is_date = len(scrape_item.url.parts) > 3
         if any(p in scrape_item.url.parts for p in COLLECTION_PARTS) or is_date:
             return await self.collection(scrape_item)

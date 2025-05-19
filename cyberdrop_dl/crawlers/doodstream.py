@@ -9,7 +9,7 @@ from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
@@ -41,6 +41,7 @@ SUPPORTED_DOMAINS = [
 
 
 class DoodStreamCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (("Video", "/e/"),)
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {"doodstream": SUPPORTED_DOMAINS}
     primary_base_domain = AbsoluteHttpURL("https://doodstream.com/")
     update_unsupported = True
@@ -52,7 +53,6 @@ class DoodStreamCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if "e" in scrape_item.url.parts:
             return await self.video(scrape_item)
         raise ValueError

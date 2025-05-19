@@ -4,13 +4,13 @@ import json
 from collections import defaultdict
 from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from pydantic import Field
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel
+from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -46,6 +46,7 @@ JS_SELECTOR = "script:contains('Box.postStreamData')"
 
 
 class BoxDotComCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (("File/Folder", "app.box.com/s?sh=<share_code>"),)
     scrape_mapper_domain = APP_DOMAIN
     primary_base_domain = AbsoluteHttpURL("https://box.com")
 
@@ -56,7 +57,6 @@ class BoxDotComCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if scrape_item.url.host == APP_DOMAIN and ("s" in scrape_item.url.parts or scrape_item.url.query.get("s")):
             return await self.file_or_folder(scrape_item)
         raise ValueError

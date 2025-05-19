@@ -66,7 +66,6 @@ class GenericCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         await self.file(scrape_item)
 
     @error_handling_wrapper

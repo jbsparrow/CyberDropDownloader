@@ -7,7 +7,7 @@ from aiolimiter import AsyncLimiter
 from cyberdrop_dl.crawlers.crawler import create_task_id
 from cyberdrop_dl.crawlers.mixdrop import MixDropCrawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_og_properties, get_text_between
 
 if TYPE_CHECKING:
@@ -30,6 +30,7 @@ _SELECTORS = Selectors()
 
 
 class ArchiveBateCrawler(MixDropCrawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (("Video", "`/watch/`"),)
     SUPPORTED_SITES: ClassVar[dict] = {}
     primary_base_domain = AbsoluteHttpURL("https://www.archivebate.store")
     next_page = _SELECTORS.NEXT_PAGE
@@ -44,7 +45,6 @@ class ArchiveBateCrawler(MixDropCrawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if "watch" in scrape_item.url.parts:
             return await self.video(scrape_item)
 

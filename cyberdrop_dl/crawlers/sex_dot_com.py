@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -17,6 +17,7 @@ API_URL = AbsoluteHttpURL("https://iframe.sex.com/api/")
 
 
 class SexDotComCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (("Shorts Profiles", "/shorts/"),)
     primary_base_domain = AbsoluteHttpURL("https://sex.com")
 
     def __init__(self, manager: Manager) -> None:
@@ -26,7 +27,6 @@ class SexDotComCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         n_parts = len(scrape_item.url.parts)
         if n_parts > 5:
             return await self.post(scrape_item)

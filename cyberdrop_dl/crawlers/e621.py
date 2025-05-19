@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl import __version__
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -19,6 +19,11 @@ if TYPE_CHECKING:
 
 
 class E621Crawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("Post", "/posts/..."),
+        ("Tags", "/posts?tags=..."),
+        ("Pools", "/pools/..."),
+    )
     primary_base_domain = AbsoluteHttpURL("https://e621.net")
 
     def __init__(self, manager: Manager) -> None:
@@ -30,7 +35,6 @@ class E621Crawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the URL."""
         if scrape_item.url.query.get("tags"):
             return await self.tag(scrape_item)
         if "posts" in scrape_item.url.parts:

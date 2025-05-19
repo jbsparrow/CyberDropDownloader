@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -22,6 +22,15 @@ BASE_HOST: str = "pornpics.com"
 
 
 class PornPicsCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("Categories `/categories/....", ""),
+        ("Channels `/channels/...", ""),
+        ("Gallery `/galleries/...", ""),
+        ("Pornstars `/pornstars/...", ""),
+        ("Search `/?q=", ""),
+        ("Tags `/tags/...", ""),
+        ("Direct Links", ""),
+    )
     primary_base_domain = AbsoluteHttpURL("https://pornpics.com")
 
     def __init__(self, manager: Manager) -> None:
@@ -31,7 +40,6 @@ class PornPicsCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         parts_limit = 2 if scrape_item.url.name else 3
         multi_part = len(scrape_item.url.parts) > parts_limit
         collection_part = next((p.removesuffix("s") for p in COLLECTION_PARTS if p in scrape_item.url.parts), None)

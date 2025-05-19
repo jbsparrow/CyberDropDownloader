@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, NotRequired, TypedDict, cast
+from typing import TYPE_CHECKING, ClassVar, NotRequired, TypedDict, cast
 
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
@@ -8,7 +8,7 @@ from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -41,6 +41,10 @@ class ThreadList(TypedDict):
 
 
 class FourChanCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("Board", "/"),
+        ("Thread", "/thread"),
+    )
     primary_base_domain = AbsoluteHttpURL("https://boards.4chan.org")
 
     def __init__(self, manager: Manager) -> None:
@@ -51,7 +55,6 @@ class FourChanCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if "thread" in scrape_item.url.parts:
             return await self.thread(scrape_item)
         elif len(scrape_item.url.parts) == 2:

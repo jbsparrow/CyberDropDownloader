@@ -10,7 +10,7 @@ from asyncpraw import Reddit
 from cyberdrop_dl.clients.scraper_client import cache_control_manager
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import LoginError, NoExtensionError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -45,6 +45,11 @@ class MediaMetadata(TypedDict):
 
 
 class RedditCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("User", "/user/<user>", "/user/<user>/...", "/u/<user>"),
+        ("Subreddit:", "/r/<subreddit>"),
+        ("Direct Links", ""),
+    )
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {"reddit": ["reddit", "redd.it"]}
     DEFAULT_POST_TITLE_FORMAT = "{title}"
     primary_base_domain = AbsoluteHttpURL("https://www.reddit.com/")
@@ -74,7 +79,6 @@ class RedditCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if not self.logged_in:
             return
 

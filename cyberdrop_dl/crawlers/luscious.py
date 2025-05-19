@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import itertools
 import json
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -29,6 +29,7 @@ GRAPHQL_QUERIES = {
 
 
 class LusciousCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (("Album", "/albums/..."),)
     primary_base_domain = AbsoluteHttpURL("https://members.luscious.net")
 
     def __init__(self, manager: Manager) -> None:
@@ -38,8 +39,6 @@ class LusciousCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
-
         if "albums" not in scrape_item.url.parts or "read" in scrape_item.url.parts:
             raise ValueError
         if scrape_item.url.name == "list":

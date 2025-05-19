@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
@@ -49,6 +49,14 @@ class Video(NamedTuple):
 
 
 class ThisVidCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("Albums", "/albums/"),
+        ("Search", "/search/?q=..."),
+        ("Categories", "/categories/..."),
+        ("Tags", "/tags/..."),
+        ("Videos", "/videos/..."),
+        ("Members", "/members/"),
+    )
     primary_base_domain = AbsoluteHttpURL("https://thisvid.com")
     next_page_selector = "li.pagination-next > a"
 
@@ -60,7 +68,6 @@ class ThisVidCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if any(p in scrape_item.url.parts for p in ("categories", "tags")) or scrape_item.url.query.get("q"):
             return await self.search(scrape_item)
         if "members" in scrape_item.url.parts:

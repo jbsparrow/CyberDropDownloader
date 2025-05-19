@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, NamedTuple, cast
+from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, cast
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.downloader.mega_nz import (
@@ -14,7 +14,7 @@ from cyberdrop_dl.downloader.mega_nz import (
     decrypt_attr,
 )
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -28,7 +28,12 @@ class FileTuple(NamedTuple):
 
 
 class MegaNzCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("File", "/file/<handle>#<share_key>", "/!#<handle>!<share_key>"),
+        ("Folder", "/folder/<handle>#<share_key>", "/!F#<handle>!<share_key>"),
+    )
     primary_base_domain = AbsoluteHttpURL("https://mega.nz")
+    skip_pre_check = True
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "mega.nz", "MegaNz")
@@ -52,7 +57,6 @@ class MegaNzCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if scrape_item.url.fragment:  # Mega stores access key in fragment. We can't do anything without the key
             if "file" in scrape_item.url.parts or scrape_item.url.fragment.startswith("!"):
                 return await self.file(scrape_item)

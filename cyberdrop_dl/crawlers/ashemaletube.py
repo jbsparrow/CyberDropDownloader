@@ -3,13 +3,13 @@ from __future__ import annotations
 import json
 import re
 from enum import StrEnum
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
@@ -72,6 +72,12 @@ TITLE_TRASH = "Shemale Porn Videos - Trending"
 
 
 class AShemaleTubeCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("Playlists", "`/playlists/...`"),
+        ("Video", "`/videos/...`"),
+        ("Models", "`/creators/...`"),
+        ("User", "`/profiles/...`"),
+    )
     primary_base_domain = AbsoluteHttpURL("https://www.ashemaletube.com")
     next_page_selector = _SELECTORS.NEXT_PAGE
 
@@ -83,7 +89,6 @@ class AShemaleTubeCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if any(p in scrape_item.url.parts for p in ("creators", "profiles", "pornstars", "model")):
             if "galleries" in scrape_item.url.parts:
                 return await self.gallery(scrape_item)

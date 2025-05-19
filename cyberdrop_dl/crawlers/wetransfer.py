@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -19,6 +19,12 @@ API_ENTRYPOINT = AbsoluteHttpURL("https://wetransfer.com/api/v4/transfers")
 
 
 class WeTransferCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("Public link", "wetransfer.com//"),
+        ("Share Link", "wetransfer.com///"),
+        ("Short Link", "we.tl/"),
+        ("Direct links", "download.wetransfer.com/..."),
+    )
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {"wetransfer": ["wetransfer.com", "we.tl"]}
     primary_base_domain = AbsoluteHttpURL("https://wetransfer.com/")
 
@@ -29,7 +35,6 @@ class WeTransferCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if "download." in scrape_item.url.host:  # type: ignore
             # We can download but db entry will not have a canonical URL
             return await self.direct_link(scrape_item, scrape_item.url)

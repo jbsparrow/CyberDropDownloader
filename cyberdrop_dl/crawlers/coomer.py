@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import create_task_id
 from cyberdrop_dl.crawlers.kemono import KemonoCrawler, UserPost
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 
 if TYPE_CHECKING:
     from aiohttp_client_cache.response import AnyResponse
@@ -17,6 +17,13 @@ if TYPE_CHECKING:
 
 
 class CoomerCrawler(KemonoCrawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("Model", "/<service>/user/"),
+        ("Favorites", "/favorites"),
+        ("Search", "/search?..."),
+        ("Individual Post", "/user/post/"),
+        ("Direct links", ""),
+    )
     primary_base_domain = AbsoluteHttpURL("https://coomer.su")
     DEFAULT_POST_TITLE_FORMAT = "{date} - {title}"
 
@@ -41,7 +48,6 @@ class CoomerCrawler(KemonoCrawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         return await self._fetch_kemono_defaults(scrape_item)
 
     def _handle_post_content(self, scrape_item: ScrapeItem, post: UserPost) -> None:

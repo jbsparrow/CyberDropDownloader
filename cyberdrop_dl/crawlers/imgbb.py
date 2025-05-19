@@ -5,7 +5,7 @@ import datetime
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -28,6 +28,10 @@ MAIN_HOST = "ibb.co"
 
 
 class ImgBBCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("Album", "/album/..."),
+        ("Image", "/..."),
+    )
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {"imgbb": ["ibb.co", "imgbb.co"]}
     primary_base_domain = AbsoluteHttpURL("https://ibb.co")
     next_page_selector = "a[data-pagination=next]"
@@ -39,8 +43,6 @@ class ImgBBCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
-
         if is_cdn(scrape_item.url):
             image_id = scrape_item.url.parts[1]
             scrape_item.url = self.primary_base_domain / image_id

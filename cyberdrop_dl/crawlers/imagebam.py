@@ -1,15 +1,14 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
-    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
@@ -23,6 +22,11 @@ PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://www.imagebam.com/")
 
 
 class ImageBamCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("Album", "/view/..."),
+        ("Image", "/view/..."),
+        ("Direct links", ""),
+    )
     primary_base_domain = PRIMARY_BASE_DOMAIN
 
     def __init__(self, manager: Manager) -> None:
@@ -35,7 +39,6 @@ class ImageBamCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if is_cdn(scrape_item.url):
             scrape_item.url = get_view_url(scrape_item.url)
         if any(part in scrape_item.url.parts for part in ("gallery", "image", "view")):
@@ -92,11 +95,10 @@ class ImageBamCrawler(Crawler):
         self.update_cookies(cookies)
 
 
-def is_cdn(url: URL) -> bool:
-    assert url.host
+def is_cdn(url: AbsoluteHttpURL) -> bool:
     return "imagebam" in url.host.split(".") and "." in url.host.rstrip(".com")
 
 
-def get_view_url(url: URL) -> AbsoluteHttpURL:
+def get_view_url(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
     view_id = url.name.rsplit("_", 1)[0]
     return PRIMARY_BASE_DOMAIN / "view" / view_id

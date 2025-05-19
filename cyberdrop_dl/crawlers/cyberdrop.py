@@ -1,13 +1,13 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -29,6 +29,11 @@ _SELECTORS = Selectors()
 
 
 class CyberdropCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("Albums", "/a/..."),
+        ("Files", "/f/..."),
+        ("Direct links", ""),
+    )
     primary_base_domain = AbsoluteHttpURL("https://cyberdrop.me/")
 
     def __init__(self, manager: Manager) -> None:
@@ -39,7 +44,6 @@ class CyberdropCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if "a" in scrape_item.url.parts:
             return await self.album(scrape_item)
         await self.file(scrape_item)

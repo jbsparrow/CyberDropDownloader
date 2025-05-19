@@ -17,7 +17,7 @@ from yarl import URL
 from cyberdrop_dl.constants import FILE_FORMATS
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import DDOSGuardError, NoExtensionError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_og_properties, get_text_between, parse_url
 
 if TYPE_CHECKING:
@@ -116,6 +116,12 @@ class AlbumItem:
 
 
 class BunkrrCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("Albums", "/a/..."),
+        ("Videos", "/v/..."),
+        ("Others", "/f/..."),
+        ("Direct links", ""),
+    )
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {"bunkrr": ["bunkrr", "bunkr"]}
     DATABASE_PRIMARY_HOST: ClassVar[str] = "bunkr.site"
     primary_base_domain: ClassVar[URL] = URL(f"https://{DATABASE_PRIMARY_HOST}")
@@ -129,7 +135,6 @@ class BunkrrCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if is_reinforced_link(scrape_item.url):  #  get.bunkr.su/file/<file_id>
             return await self.reinforced_file(scrape_item)
         if "a" in scrape_item.url.parts:  #  bunkr.site/a/<album_id>

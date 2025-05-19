@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import create_task_id
 from cyberdrop_dl.crawlers.imx_to import ImxToCrawler
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 
 if TYPE_CHECKING:
     from yarl import URL
@@ -14,6 +14,10 @@ if TYPE_CHECKING:
 
 
 class AcidImgCrawler(ImxToCrawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("Image", "`/i/...`"),
+        ("Thumbnail", "`/upload/...`"),
+    )
     primary_base_domain = AbsoluteHttpURL("https://acidimg.cc")
 
     def __init__(self, manager: Manager) -> None:

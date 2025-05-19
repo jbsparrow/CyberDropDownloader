@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -27,6 +27,11 @@ class Format(NamedTuple):
 
 
 class DirtyShipCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("Categories", "/category/..."),
+        ("Tags", "/tag/..."),
+        ("Videos", "/"),
+    )
     primary_base_domain = AbsoluteHttpURL("https://dirtyship.com")
     next_page_selector = "a.page-next"
 
@@ -37,7 +42,6 @@ class DirtyShipCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if any(p in scrape_item.url.parts for p in ("tag", "category")):
             return await self.playlist(scrape_item)
         return await self.video(scrape_item)

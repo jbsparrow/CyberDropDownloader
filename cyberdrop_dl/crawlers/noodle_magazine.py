@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import itertools
 import json
-from typing import TYPE_CHECKING, Any, NamedTuple
+from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
 
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
@@ -37,6 +37,10 @@ class Source(NamedTuple):
 
 
 class NoodleMagazineCrawler(Crawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
+        ("Search", "/video/"),
+        ("Video", "/watch/"),
+    )
     primary_base_domain = AbsoluteHttpURL("https://noodlemagazine.com")
 
     def __init__(self, manager: Manager) -> None:
@@ -47,7 +51,6 @@ class NoodleMagazineCrawler(Crawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if "video" in scrape_item.url.parts:
             return await self.search(scrape_item)
         elif "watch" in scrape_item.url.parts:
