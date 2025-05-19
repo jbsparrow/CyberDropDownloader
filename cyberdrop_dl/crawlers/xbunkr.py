@@ -17,7 +17,7 @@ IMAGE_SELECTOR = "a[class=image]"
 
 
 class XBunkrCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Albums": "/a/...", "Direct Links": ""}
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Albums": "/a/...", "Direct links": ""}
     primary_base_domain = AbsoluteHttpURL("https://xbunkr.com")
 
     def __init__(self, manager: Manager) -> None:

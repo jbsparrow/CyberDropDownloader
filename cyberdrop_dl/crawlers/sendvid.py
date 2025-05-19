@@ -25,7 +25,7 @@ class SendVidCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
         "Videos": "/...",
         "Embeds": "/embed/...",
-        "Direct Links": "",
+        "Direct links": "",
     }
     primary_base_domain = AbsoluteHttpURL("https://sendvid.com/")
 

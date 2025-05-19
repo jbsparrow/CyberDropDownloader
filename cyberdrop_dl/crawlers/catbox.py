@@ -14,7 +14,7 @@ CDN_HOSTS = "litter.catbox.moe", "files.catbox.moe"
 
 
 class CatboxCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Direct Links": ""}
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Direct links": ""}
     primary_base_domain = AbsoluteHttpURL("https://catbox.moe")
 
     def __init__(self, manager: Manager) -> None:

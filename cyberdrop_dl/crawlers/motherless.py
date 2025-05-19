@@ -35,7 +35,7 @@ class MediaInfo(NamedTuple):
 
 
 class MotherlessCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Groups, users, images and videos (NOT Galleries)": ""}
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Groups, users, images and videos (NOT Galleries)": "pending"}
     primary_base_domain = PRIMARY_BASE_DOMAIN
     next_page_selector = "div.pagination_link > a[rel=next]"
 

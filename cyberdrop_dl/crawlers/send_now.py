@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 class SendNowCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Direct Links": ""}
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Direct links": ""}
     primary_base_domain = AbsoluteHttpURL("https://send.now/")
 
     def __init__(self, manager: Manager) -> None:

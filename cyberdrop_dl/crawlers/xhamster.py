@@ -30,7 +30,7 @@ HttpURL = Annotated[AbsoluteHttpURL, PlainValidator(partial(parse_url, relative_
 
 
 class XhamsterCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Users, creators, videos and galleries": ""}
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Users, creators, videos and galleries": "pending"}
     primary_base_domain = PRIMARY_BASE_DOMAIN
     next_page_selector = "a[data-page='next']"
 

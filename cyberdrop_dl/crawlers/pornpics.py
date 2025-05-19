@@ -29,7 +29,7 @@ class PornPicsCrawler(Crawler):
         "Pornstars": ("/pornstars/...", ""),
         "Search": ("/?q=", ""),
         "Tags": ("/tags/...", ""),
-        "Direct Links": "",
+        "Direct links": "",
     }
     primary_base_domain = AbsoluteHttpURL("https://pornpics.com")
 

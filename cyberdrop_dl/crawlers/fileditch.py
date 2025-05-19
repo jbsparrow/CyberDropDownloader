@@ -18,7 +18,7 @@ HOMEPAGE_CATCHALL_FILE = "/s21/FHVZKQyAZlIsrneDAsp.jpeg"
 
 
 class FileditchCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Direct Links": ""}
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Direct links": ""}
     primary_base_domain = AbsoluteHttpURL("https://fileditchfiles.me/")
 
     def __init__(self, manager: Manager) -> None:

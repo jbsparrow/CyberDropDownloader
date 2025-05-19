@@ -48,7 +48,7 @@ class RedditCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
         "User": ("/user/<user>", "/user/<user>/...", "/u/<user>"),
         "Subreddit:": "/r/<subreddit>",
-        "Direct Links": "",
+        "Direct links": "",
     }
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {"reddit": ["reddit", "redd.it"]}
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{title}"

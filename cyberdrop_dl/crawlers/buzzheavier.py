@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 class BuzzHeavierCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Direct Links": ""}
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Direct links": ""}
     primary_base_domain = AbsoluteHttpURL("https://buzzheavier.com")
 
     def __init__(self, manager: Manager) -> None:

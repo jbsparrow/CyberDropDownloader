@@ -30,7 +30,7 @@ _SELECTORS = Selectors()
 
 
 class ArchiveBateCrawler(MixDropCrawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Video": "`/watch/`"}
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Video": "/watch/"}
     SUPPORTED_SITES: ClassVar[dict] = {}
     primary_base_domain = AbsoluteHttpURL("https://www.archivebate.store")
     next_page = _SELECTORS.NEXT_PAGE

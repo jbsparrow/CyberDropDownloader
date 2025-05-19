@@ -15,8 +15,8 @@ if TYPE_CHECKING:
 
 class AcidImgCrawler(ImxToCrawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
-        "Image": "`/i/...`",
-        "Thumbnail": "`/upload/...`",
+        "Image": "/i/...",
+        "Thumbnail": "/upload/...",
     }
     primary_base_domain = AbsoluteHttpURL("https://acidimg.cc")
 
