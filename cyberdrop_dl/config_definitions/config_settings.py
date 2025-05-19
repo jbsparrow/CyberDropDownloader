@@ -2,11 +2,13 @@ import re
 from datetime import timedelta
 from logging import DEBUG
 from pathlib import Path
+from typing import Any
 
-from pydantic import BaseModel, ByteSize, Field, NonNegativeInt, PositiveInt, field_serializer, field_validator
+from pydantic import BaseModel, ByteSize, NonNegativeInt, PositiveInt, field_serializer, field_validator
+from pydantic import Field as P_Field
+from pydantic.fields import _Unset
 
-from cyberdrop_dl.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE
-from cyberdrop_dl.data_structures.hash import Hashing
+from cyberdrop_dl.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE, Hashing
 from cyberdrop_dl.data_structures.supported_domains import SUPPORTED_SITES_DOMAINS
 from cyberdrop_dl.types import (
     AliasModel,
@@ -23,6 +25,10 @@ from cyberdrop_dl.types import (
 from cyberdrop_dl.utils.validators import parse_duration_as_timedelta, parse_falsy_as
 
 ALL_SUPPORTED_SITES = ["<<ALL_SUPPORTED_SITES>>"]
+
+
+def Field(default: Any, validation_alias: str = _Unset, **kwargs) -> Any:  # noqa: N802
+    return P_Field(default=default, validation_alias=validation_alias, **kwargs)
 
 
 class DownloadOptions(BaseModel):
@@ -50,23 +56,15 @@ class Files(AliasModel):
 
 
 class Logs(AliasModel):
-    download_error_urls: LogPath = Field(
-        default=Path("Download_Error_URLs.csv"), validation_alias="download_error_urls_filename"
-    )
-    last_forum_post: LogPath = Field(
-        default=Path("Last_Scraped_Forum_Posts.csv"), validation_alias="last_forum_post_filename"
-    )
+    download_error_urls: LogPath = Field(Path("Download_Error_URLs.csv"), "download_error_urls_filename")
+    last_forum_post: LogPath = Field(Path("Last_Scraped_Forum_Posts.csv"), "last_forum_post_filename")
     log_folder: Path = APP_STORAGE / "Configs" / "{config}" / "Logs"
     log_line_width: PositiveInt = Field(default=240, ge=50)
     logs_expire_after: timedelta | None = None
-    main_log: MainLogPath = Field(default=Path("downloader.log"), validation_alias="main_log_filename")
+    main_log: MainLogPath = Field(Path("downloader.log"), "main_log_filename")
     rotate_logs: bool = False
-    scrape_error_urls: LogPath = Field(
-        default=Path("Scrape_Error_URLs.csv"), validation_alias="scrape_error_urls_filename"
-    )  # fmt: skip
-    unsupported_urls: LogPath = Field(
-        default=Path("Unsupported_URLs.csv"), validation_alias="unsupported_urls_filename"
-    )  # fmt: skip
+    scrape_error_urls: LogPath = Field(Path("Scrape_Error_URLs.csv"), "scrape_error_urls_filename")
+    unsupported_urls: LogPath = Field(Path("Unsupported_URLs.csv"), "unsupported_urls_filename")
     webhook: HttpAppriseURL | None = Field(default=None, validation_alias="webhook_url")
 
     @field_validator("webhook", mode="before")
