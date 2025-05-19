@@ -2,7 +2,7 @@ import re
 from datetime import UTC, datetime
 from enum import Enum, IntEnum, StrEnum, auto
 from pathlib import Path
-from typing import Any, NewType
+from typing import Any
 
 from rich.text import Text
 
@@ -62,16 +62,13 @@ class HashType(StrEnum):
     xxh128 = "xxh128"
 
 
-HashValue = NewType("HashValue", str)
-
-
 class Hashing(StrEnum):
     OFF = auto()
     IN_PLACE = auto()
     POST_DOWNLOAD = auto()
 
     @classmethod
-    def _missing_(cls, value: str):
+    def _missing_(cls, value: str) -> "Hashing":
         try:
             return cls[str(value.upper())]
         except KeyError as e:

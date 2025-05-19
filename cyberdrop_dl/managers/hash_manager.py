@@ -14,8 +14,9 @@ from send2trash import send2trash
 from typing_extensions import Buffer
 from xxhash import xxh128 as xxh128_hasher
 
+from cyberdrop_dl.constants import Hashing, HashType
+from cyberdrop_dl.types import HashValue
 from cyberdrop_dl.ui.prompts.basic_prompts import enter_to_continue
-from cyberdrop_dl.utils.constants import Hashing, HashType, HashValue
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import get_size_or_none
 
@@ -24,8 +25,8 @@ if TYPE_CHECKING:
 
     from yarl import URL
 
+    from cyberdrop_dl.data_structures.url_objects import MediaItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
 CHUNK_SIZE = 1024 * 1024 * 5  # 5MB
 Xxh128HashValue = NewType("Xxh128HashValue", HashValue)
