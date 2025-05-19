@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from rich.live import Live
 
-from cyberdrop_dl.utils import constants
+from cyberdrop_dl import constants
 from cyberdrop_dl.utils.args import is_terminal_in_portrait
 from cyberdrop_dl.utils.logger import console
 

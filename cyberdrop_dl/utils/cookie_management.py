@@ -11,8 +11,8 @@ import browser_cookie3
 if TYPE_CHECKING:
     from collections.abc import Callable, Generator
 
+    from cyberdrop_dl.constants import BROWSERS
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.constants import BROWSERS
 
 P = ParamSpec("P")
 R = TypeVar("R")

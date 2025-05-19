@@ -13,7 +13,7 @@ import PIL
 from PIL import Image
 from videoprops import get_audio_properties, get_video_properties
 
-from cyberdrop_dl.utils.constants import FILE_FORMATS
+from cyberdrop_dl.constants import FILE_FORMATS
 from cyberdrop_dl.utils.logger import log_with_color
 from cyberdrop_dl.utils.utilities import purge_dir_tree
 

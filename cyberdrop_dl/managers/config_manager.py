@@ -6,8 +6,8 @@ from dataclasses import field
 from time import sleep
 from typing import TYPE_CHECKING
 
-from cyberdrop_dl.clients.errors import InvalidYamlError
 from cyberdrop_dl.config_definitions import AuthSettings, ConfigSettings, GlobalSettings
+from cyberdrop_dl.exceptions import InvalidYamlError
 from cyberdrop_dl.managers.log_manager import LogManager
 from cyberdrop_dl.utils import yaml
 from cyberdrop_dl.utils.apprise import get_apprise_urls
@@ -114,7 +114,7 @@ class ConfigManager:
             if posible_fields == set_fields and not needs_update and self.pydantic_config:
                 return
         else:
-            from cyberdrop_dl.utils import constants
+            from cyberdrop_dl import constants
 
             self.settings_data = ConfigSettings()
             self.settings_data.files.input_file = constants.APP_STORAGE / "Configs" / self.loaded_config / "URLs.txt"

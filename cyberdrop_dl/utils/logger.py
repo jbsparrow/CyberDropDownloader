@@ -15,8 +15,7 @@ from rich.measure import Measurement
 from rich.padding import Padding
 from rich.text import Text, TextType
 
-from cyberdrop_dl import env
-from cyberdrop_dl.utils import constants
+from cyberdrop_dl import constants, env
 
 logger = logging.getLogger("cyberdrop_dl")
 logger_debug = logging.getLogger("cyberdrop_dl_debug")
