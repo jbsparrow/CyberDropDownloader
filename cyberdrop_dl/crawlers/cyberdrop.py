@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -29,11 +29,11 @@ _SELECTORS = Selectors()
 
 
 class CyberdropCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
-        ("Albums", "/a/..."),
-        ("Files", "/f/..."),
-        ("Direct links", ""),
-    )
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+        "Albums": "/a/...",
+        "Files": "/f/...",
+        "Direct links": "",
+    }
     primary_base_domain = AbsoluteHttpURL("https://cyberdrop.me/")
 
     def __init__(self, manager: Manager) -> None:

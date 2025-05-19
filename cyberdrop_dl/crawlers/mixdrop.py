@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
@@ -25,7 +25,7 @@ PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://mixdrop.sb")
 
 
 class MixDropCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (("File", "/e/"),)
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"File": "/e/"}
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {"mixdrop": ["mxdrop", "mixdrop"]}
     primary_base_domain = PRIMARY_BASE_DOMAIN
 

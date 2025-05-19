@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import DownloadError, NoExtensionError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_og_properties, get_text_between
 
@@ -23,10 +23,7 @@ JS_SELECTOR = 'script:contains("window.initial_node")'
 
 
 class PixelDrainCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
-        ("File", "/u/..."),
-        ("Folder", "/l/..."),
-    )
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"File": "/u/...", "Folder": "/l/..."}
     primary_base_domain = AbsoluteHttpURL("https://pixeldrain.com")
 
     def __init__(self, manager: Manager) -> None:

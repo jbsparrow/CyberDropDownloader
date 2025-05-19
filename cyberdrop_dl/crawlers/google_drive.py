@@ -40,7 +40,7 @@ from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import DownloadError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_from_headers
 
 if TYPE_CHECKING:
@@ -64,13 +64,13 @@ class GoogleDriveFolder:
 
 
 class GoogleDriveCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
-        ("Docs", "/document/d/"),
-        ("Files", "/d/"),
-        ("Folders", "/drive/folders/"),
-        ("Sheets", "/spreadsheets/d/"),
-        ("Slides", "/presentation/d/"),
-    )
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+        "Docs": "/document/d/",
+        "Files": "/d/",
+        "Folders": "/drive/folders/",
+        "Sheets": "/spreadsheets/d/",
+        "Slides": "/presentation/d/",
+    }
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {"drive.google": ["drive.google", "docs.google"]}
     primary_base_domain = AbsoluteHttpURL("https://drive.google.com")
 

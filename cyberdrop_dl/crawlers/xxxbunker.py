@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -35,10 +35,7 @@ PLAYLIST_PARTS = ("search", "categories", "favoritevideos")
 
 
 class XXXBunkerCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
-        ("Video", "/"),
-        ("Search Results", "/search/..."),
-    )
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Video": "/", "Search Results": "/search/..."}
     primary_base_domain = AbsoluteHttpURL("https://xxxbunker.com")
 
     def __init__(self, manager: Manager) -> None:

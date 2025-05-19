@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
 
 if TYPE_CHECKING:
@@ -21,14 +21,14 @@ DATE_PATTERN = re.compile(r"(\d+)\s*(weeks?|days?|hours?|minutes?|seconds?)", re
 
 
 class TokioMotionCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
-        ("Albums", "/user//albums/"),
-        ("Photo", "/photo/"),
-        ("Playlist", "/user//favorite/videos"),
-        ("Profiles", "/user/"),
-        ("Search Results", "/search?..."),
-        ("Video", "/video/"),
-    )
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+        "Albums": "/user//albums/",
+        "Photo": "/photo/",
+        "Playlist": "/user//favorite/videos",
+        "Profiles": "/user/",
+        "Search Results": "/search?...",
+        "Video": "/video/",
+    }
     primary_base_domain = AbsoluteHttpURL("https://www.tokyomotion.net")
     next_page_selector = "a.prevnext"
 

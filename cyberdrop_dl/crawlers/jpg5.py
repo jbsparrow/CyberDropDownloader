@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, ClassVar
 from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.crawlers.crawler import create_task_id
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 from ._chevereto import CheveretoCrawler
@@ -36,12 +36,12 @@ JPG5_DOMAINS = [
 
 
 class JPG5Crawler(CheveretoCrawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
-        ("Album", "/a/..."),
-        ("Image", "/img/..."),
-        ("Profiles", "/..."),
-        ("Direct links", ""),
-    )
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+        "Album": "/a/...",
+        "Image": "/img/...",
+        "Profiles": "/...",
+        "Direct links": "",
+    }
     primary_base_domain = PRIMARY_BASE_DOMAIN
     SUPPORTED_SITES = {"jpg5.su": JPG5_DOMAINS}  # noqa: RUF012
 

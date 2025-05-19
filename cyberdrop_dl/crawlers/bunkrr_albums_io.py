@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -18,7 +18,7 @@ ALBUM_SELECTOR = "main div.auto-rows-max a"
 
 
 class BunkrAlbumsIOCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (("Search", "/s?search=..."),)
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Search": "/s?search=..."}
     primary_base_domain = AbsoluteHttpURL("https://bunkr-albums.io/")
     next_page_selector = "nav:last-of-type a.ic-arrow-right"
     skip_pre_check = True

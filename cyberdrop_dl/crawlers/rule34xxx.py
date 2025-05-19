@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -25,10 +25,7 @@ _SELECTOR = Selector()
 
 
 class Rule34XXXCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
-        ("File", "?id=..."),
-        ("Tags", "?tags=..."),
-    )
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"File": "?id=...", "Tags": "?tags=..."}
     primary_base_domain = AbsoluteHttpURL("https://rule34.xxx")
     next_page_selector = "a[alt=next]"
 

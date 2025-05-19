@@ -10,7 +10,7 @@ from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -31,11 +31,11 @@ KEYS_TO_KEEP = "currentResourceId", "resources", "environment"
 
 
 class YandexDiskCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
-        ("Folder", "disk.yandex/d/"),
-        ("Files", "disk.yandex/d//"),
-        ("*NOTE**", "Does NOT support nested folders"),
-    )
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+        "Folder": "disk.yandex/d/",
+        "Files": "disk.yandex/d//",
+        "*NOTE**": "Does NOT support nested folders",
+    }
     primary_base_domain = PRIMARY_BASE_DOMAIN
     SUPPORTED_SITES = MappingProxyType({"disk.yandex": ("disk.yandex", "yadi.sk")})  # type: ignore
 

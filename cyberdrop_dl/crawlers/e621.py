@@ -8,7 +8,7 @@ from aiolimiter import AsyncLimiter
 from cyberdrop_dl import __version__
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -19,11 +19,11 @@ if TYPE_CHECKING:
 
 
 class E621Crawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
-        ("Post", "/posts/..."),
-        ("Tags", "/posts?tags=..."),
-        ("Pools", "/pools/..."),
-    )
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+        "Post": "/posts/...",
+        "Tags": "/posts?tags=...",
+        "Pools": "/pools/...",
+    }
     primary_base_domain = AbsoluteHttpURL("https://e621.net")
 
     def __init__(self, manager: Manager) -> None:

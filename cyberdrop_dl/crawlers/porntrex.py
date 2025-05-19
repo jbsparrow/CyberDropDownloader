@@ -9,7 +9,7 @@ from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
@@ -47,16 +47,16 @@ _SELECTORS = Selectors()
 
 
 class PorntrexCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
-        ("Video", "/video/..."),
-        ("Album", "/albums/..."),
-        ("User", "/members/..."),
-        ("Tag", "/tags/..."),
-        ("Category", "/categories/..."),
-        ("Model", "/models/..."),
-        ("Playlist", "/playlists/..."),
-        ("Search", "/search/..."),
-    )
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+        "Video": "/video/...",
+        "Album": "/albums/...",
+        "User": "/members/...",
+        "Tag": "/tags/...",
+        "Category": "/categories/...",
+        "Model": "/models/...",
+        "Playlist": "/playlists/...",
+        "Search": "/search/...",
+    }
     primary_base_domain = AbsoluteHttpURL("https://www.porntrex.com")
     next_page_selector = _SELECTORS.NEXT_PAGE
 

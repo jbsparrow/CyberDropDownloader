@@ -9,7 +9,7 @@ from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -31,16 +31,16 @@ INCLUDE_VIDEO_ID_IN_FILENAME = True
 
 
 class PMVHavenCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
-        ("Category", "/category/..."),
-        ("Music", "/music/..."),
-        ("Playlist", "/playlist/..."),
-        ("Search results", "/search/..."),
-        ("Star", "/star/..."),
-        ("Tag", "/tags/..."),
-        ("Users", "/profile/..."),
-        ("Video", "/video/..."),
-    )
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+        "Category": "/category/...",
+        "Music": "/music/...",
+        "Playlist": "/playlist/...",
+        "Search results": "/search/...",
+        "Star": "/star/...",
+        "Tag": "/tags/...",
+        "Users": "/profile/...",
+        "Video": "/video/...",
+    }
     primary_base_domain = PRIMARY_BASE_DOMAIN
 
     def __init__(self, manager: Manager) -> None:

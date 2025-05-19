@@ -15,7 +15,7 @@ from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import NoExtensionError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
 from cyberdrop_dl.utils.validators import parse_falsy_as_none
 
@@ -198,17 +198,17 @@ def fallback_if_no_api(func: Callable[..., Coroutine[None, None, Any]]) -> Calla
 
 
 class KemonoCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
-        ("Model", "/<service>/user/"),
-        ("Favorites", "/favorites"),
-        ("Search", "/search?..."),
-        ("Individual Post", "/user/post/"),
-        ("Direct links", ""),
-        ("Discord Server", "/discord/"),
-        ("Discord Server Channel", "/discord/server/...#..."),
-    )
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+        "Model": "/<service>/user/",
+        "Favorites": "/favorites",
+        "Search": "/search?...",
+        "Individual Post": "/user/post/",
+        "Direct links": "",
+        "Discord Server": "/discord/",
+        "Discord Server Channel": "/discord/server/...#...",
+    }
     primary_base_domain = AbsoluteHttpURL("https://kemono.su")
-    DEFAULT_POST_TITLE_FORMAT = "{date} - {title}"
+    DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date} - {title}"
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "kemono", "Kemono")
@@ -425,7 +425,7 @@ class KemonoCrawler(Crawler):
         if not post.content:
             return
 
-        def gen_yarl_urls():
+        def gen_yarl_urls() -> Generator[AbsoluteHttpURL]:
             for match in re.finditer(LINK_REGEX, post.content):
                 link = match.group().replace(".md.", ".")
                 try:

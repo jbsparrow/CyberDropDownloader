@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
@@ -16,7 +16,7 @@ PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://twimg.com/")
 
 
 class TwimgCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (("Photo", "/..."),)
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Photo": "/..."}
     primary_base_domain = PRIMARY_BASE_DOMAIN
 
     def __init__(self, manager: Manager) -> None:

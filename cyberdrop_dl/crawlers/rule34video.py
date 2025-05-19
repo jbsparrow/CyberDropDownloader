@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, ClassVar, NamedTuple
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -51,13 +51,13 @@ class VideoInfo(dict): ...
 
 
 class Rule34VideoCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
-        ("Members", "/members/..."),
-        ("Models", "/models/..."),
-        ("Search", "/search/..."),
-        ("Tags", "/tags/..."),
-        ("Video", "/video//"),
-    )
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+        "Members": "/members/...",
+        "Models": "/models/...",
+        "Search": "/search/...",
+        "Tags": "/tags/...",
+        "Video": "/video//",
+    }
     primary_base_domain = AbsoluteHttpURL("https://rule34video.com/")
     next_page_selector = PLAYLIST_NEXT_PAGE_SELECTOR
 

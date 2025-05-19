@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Literal, NamedTuple, TypedDict
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import NoExtensionError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
@@ -98,15 +98,15 @@ class Format(NamedTuple):
 
 
 class PornHubCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
-        ("Album", "/album/..."),
-        ("Channel", "/channel/..."),
-        ("Gif", "/gif/..."),
-        ("Photo", "/photo/..."),
-        ("Playlist", "/playlist/..."),
-        ("Profile", "/user/..."),
-        ("Video", "/embed/"),
-    )
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+        "Album": "/album/...",
+        "Channel": "/channel/...",
+        "Gif": "/gif/...",
+        "Photo": "/photo/...",
+        "Playlist": "/playlist/...",
+        "Profile": "/user/...",
+        "Video": "/embed/",
+    }
     primary_base_domain = PRIMARY_BASE_DOMAIN
     next_page_selector = _SELECTORS.NEXT_PAGE
 

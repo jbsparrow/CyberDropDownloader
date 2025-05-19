@@ -6,7 +6,7 @@ from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -30,10 +30,10 @@ COLLECTION_PARTS = "category", "tag", "date"
 
 
 class BestPrettyGirlCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
-        ("Collections", "category"),
-        ("Gallery", "//"),
-    )
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+        "Collections": "category",
+        "Gallery": "//",
+    }
     primary_base_domain = AbsoluteHttpURL("https://bestprettygirl.com/")
     next_page = "a.page-numbers.next"
 

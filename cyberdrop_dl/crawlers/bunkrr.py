@@ -17,7 +17,8 @@ from yarl import URL
 from cyberdrop_dl.constants import FILE_FORMATS
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import DDOSGuardError, NoExtensionError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_og_properties, get_text_between, parse_url
 
 if TYPE_CHECKING:
@@ -95,10 +96,10 @@ class AlbumItem:
 
     @classmethod
     def from_tag(cls, tag: Tag) -> AlbumItem:
-        name = tag.select_one(_SELECTORS.ITEM_NAME).text  # type: ignore
-        thumbnail: str = tag.select_one(_SELECTORS.THUMBNAIL)["src"]  # type: ignore
-        date_str = tag.select_one(_SELECTORS.ITEM_DATE).text.strip()  # type: ignore
-        path_qs: str = tag.select_one("a")["href"]  # type: ignore
+        name = css.select_one(tag, _SELECTORS.ITEM_NAME).text
+        thumbnail: str = css.select_one_get_attr(tag, _SELECTORS.THUMBNAIL, "src")
+        date_str = css.select_one(tag, _SELECTORS.ITEM_DATE).get_text(strip=True)
+        path_qs: str = css.select_one_get_attr(tag, "a", "href")
         return cls(name, thumbnail, date_str, path_qs)
 
     @property
@@ -107,7 +108,7 @@ class AlbumItem:
         src = parse_url(src_str, relative_to=PRIMARY_BASE_DOMAIN)
         src = with_suffix_encoded(src, self.suffix).with_query(None)
         if src.suffix.lower() not in FILE_FORMATS["Images"]:
-            src = src.with_host(src.host.replace("i-", ""))  # type: ignore
+            src = src.with_host(src.host.replace("i-", ""))
         return override_cdn(src)
 
     @property
@@ -116,12 +117,12 @@ class AlbumItem:
 
 
 class BunkrrCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
-        ("Albums", "/a/..."),
-        ("Videos", "/v/..."),
-        ("Others", "/f/..."),
-        ("Direct links", ""),
-    )
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+        "Albums": "/a/...",
+        "Videos": "/v/...",
+        "Others": "/f/...",
+        "Direct links": "",
+    }
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {"bunkrr": ["bunkrr", "bunkr"]}
     DATABASE_PRIMARY_HOST: ClassVar[str] = "bunkr.site"
     primary_base_domain: ClassVar[URL] = URL(f"https://{DATABASE_PRIMARY_HOST}")
@@ -404,7 +405,7 @@ def is_reinforced_link(url: URL) -> bool:
     return url.host.startswith("get.") and "file" in url.parts
 
 
-def with_suffix_encoded(url: URL, suffix: str) -> URL:
+def with_suffix_encoded(url: AbsoluteHttpURL, suffix: str) -> AbsoluteHttpURL:
     name = Path(url.raw_name).with_suffix(suffix)
     return url.parent.joinpath(str(name), encoded=True).with_query(url.query).with_fragment(url.fragment)
 

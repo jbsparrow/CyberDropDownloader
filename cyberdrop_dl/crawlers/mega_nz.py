@@ -14,7 +14,7 @@ from cyberdrop_dl.downloader.mega_nz import (
     decrypt_attr,
 )
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -28,10 +28,10 @@ class FileTuple(NamedTuple):
 
 
 class MegaNzCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
-        ("File", "/file/<handle>#<share_key>", "/!#<handle>!<share_key>"),
-        ("Folder", "/folder/<handle>#<share_key>", "/!F#<handle>!<share_key>"),
-    )
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+        "File": ("/file/<handle>#<share_key>", "/!#<handle>!<share_key>"),
+        "Folder": ("/folder/<handle>#<share_key>", "/!F#<handle>!<share_key>"),
+    }
     primary_base_domain = AbsoluteHttpURL("https://mega.nz")
     skip_pre_check = True
 

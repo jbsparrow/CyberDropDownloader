@@ -4,7 +4,7 @@ import json
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -22,15 +22,15 @@ BASE_HOST: str = "pornpics.com"
 
 
 class PornPicsCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
-        ("Categories `/categories/....", ""),
-        ("Channels `/channels/...", ""),
-        ("Gallery `/galleries/...", ""),
-        ("Pornstars `/pornstars/...", ""),
-        ("Search `/?q=", ""),
-        ("Tags `/tags/...", ""),
-        ("Direct Links", ""),
-    )
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+        "Categories": ("/categories/....", ""),
+        "Channels": ("/channels/...", ""),
+        "Gallery": ("/galleries/...", ""),
+        "Pornstars": ("/pornstars/...", ""),
+        "Search": ("/?q=", ""),
+        "Tags": ("/tags/...", ""),
+        "Direct Links": "",
+    }
     primary_base_domain = AbsoluteHttpURL("https://pornpics.com")
 
     def __init__(self, manager: Manager) -> None:

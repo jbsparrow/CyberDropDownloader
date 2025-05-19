@@ -5,7 +5,7 @@ import datetime
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -28,10 +28,7 @@ MAIN_HOST = "ibb.co"
 
 
 class ImgBBCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
-        ("Album", "/album/..."),
-        ("Image", "/..."),
-    )
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Album": "/album/...", "Image": "/..."}
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {"imgbb": ["ibb.co", "imgbb.co"]}
     primary_base_domain = AbsoluteHttpURL("https://ibb.co")
     next_page_selector = "a[data-pagination=next]"

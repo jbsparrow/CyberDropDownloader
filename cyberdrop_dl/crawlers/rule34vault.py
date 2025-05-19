@@ -4,7 +4,7 @@ import itertools
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -26,11 +26,11 @@ _SELECTORS = Selectors()
 
 
 class Rule34VaultCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
-        ("File page", "/post/..."),
-        ("Playlist", "/playlists/view/..."),
-        ("Tag", "/..."),
-    )
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+        "File page": "/post/...",
+        "Playlist": "/playlists/view/...",
+        "Tag": "/...",
+    }
     primary_base_domain = AbsoluteHttpURL("https://rule34vault.com")
 
     def __init__(self, manager: Manager) -> None:

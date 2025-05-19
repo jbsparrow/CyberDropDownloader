@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, ClassVar, NamedTuple
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -58,16 +58,16 @@ class VideoInfo(NamedTuple):
 
 
 class EpornerCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
-        ("Categories", "/cat/..."),
-        ("Channels", "/channel/..."),
-        ("Pornstars", "/pornstar/..."),
-        ("Profile", "/profile/..."),
-        ("Search", "/search/..."),
-        ("Video", "/-"),
-        ("Photo", "/photo/..."),
-        ("Gallery", "/gallery/..."),
-    )
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+        "Categories": "/cat/...",
+        "Channels": "/channel/...",
+        "Pornstars": "/pornstar/...",
+        "Profile": "/profile/...",
+        "Search": "/search/...",
+        "Video": "/-",
+        "Photo": "/photo/...",
+        "Gallery": "/gallery/...",
+    }
     primary_base_domain = AbsoluteHttpURL("https://www.eporner.com/")
     next_page_selector = _SELECTORS.NEXT_PAGE
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import functools
 import inspect
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from functools import partial
 from pathlib import Path
 from typing import TYPE_CHECKING, Annotated, Any, Literal, NewType, ParamSpec, TypeAlias, TypeVar, overload
@@ -33,7 +33,6 @@ from pydantic import (
 )
 
 from cyberdrop_dl.utils.converters import change_path_suffix, convert_byte_size_to_str
-from cyberdrop_dl.utils.utilities import make_http_url
 from cyberdrop_dl.utils.validators import (
     parse_apprise_url,
     parse_falsy_as_none,
@@ -144,7 +143,8 @@ if TYPE_CHECKING:
         def joinpath(self) -> AbsoluteHttpURL: ...
 
 else:
-    AbsoluteHttpURL = make_http_url
+    AbsoluteHttpURL = yarl.URL
+
 
 AnyURL = TypeVar("AnyURL", yarl.URL, AbsoluteHttpURL)
 
@@ -200,11 +200,6 @@ class HttpAppriseURL(AppriseURLModel):
     url: Secret[HttpURL]
 
 
-# DEPRECATED
-# HttpURL = Annotated[HttpUrl, AfterValidator(convert_to_yarl), StrSerializer]
-
-
-T = TypeVar("T")
 Array: TypeAlias = list[T] | tuple[T, ...]
 CMD: TypeAlias = Array[str]
 U32Int: TypeAlias = int
@@ -216,4 +211,6 @@ AbsolutePath = NewType("AbsolutePath", Path)
 HashValue = NewType("HashValue", str)
 TimeStamp = NewType("TimeStamp", int)
 
-SupportedPaths = tuple[tuple[str, ...], ...]
+StrMap: TypeAlias = Mapping[str, T]
+OneOrTuple: TypeAlias = T | tuple[T, ...]
+OneOrTupleStrMapping: TypeAlias = StrMap[OneOrTuple[str]]

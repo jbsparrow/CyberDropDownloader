@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+    from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 
 HTTP_URL_REGEX_STR = r"https?://(www\.)?[-a-zA-Z0-9@:%._+~#=]{2,256}\.[a-z]{2,12}\b([-a-zA-Z0-9@:%_+.~#?&/=]*)"
 HTTP_URL_REGEX = re.compile(HTTP_URL_REGEX_STR)
@@ -110,10 +110,10 @@ class ForumThreadPage:
 
 
 class XenforoCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
-        ("Attachments", "/attachments/...", "/data/..."),
-        ("Threads", "/threads/<thread_name>", "/posts/<post_id>", "/goto/<post_id>"),
-    )
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+        "Attachments": ("/attachments/...", "/data/..."),
+        "Threads": ("/threads/<thread_name>", "/posts/<post_id>", "/goto/<post_id>"),
+    }
     login_required = True
     selectors = XenforoSelectors()
     POST_NAME = "post-"

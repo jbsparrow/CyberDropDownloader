@@ -8,7 +8,7 @@ from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -41,10 +41,7 @@ class ThreadList(TypedDict):
 
 
 class FourChanCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
-        ("Board", "/"),
-        ("Thread", "/thread"),
-    )
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Board": "/", "Thread": "/thread"}
     primary_base_domain = AbsoluteHttpURL("https://boards.4chan.org")
 
     def __init__(self, manager: Manager) -> None:

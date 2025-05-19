@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_from_headers
 
 if TYPE_CHECKING:
@@ -19,11 +19,11 @@ if TYPE_CHECKING:
 
 
 class DropboxCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
-        ("Files", "/scl/fi/..."),
-        ("Folders", "/scl/fo/..."),
-        ("**NOTE**", "Folders will be downloaded as a zip file."),
-    )
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+        "Files": "/scl/fi/...",
+        "Folders": "/scl/fo/...",
+        "**NOTE**": "Folders will be downloaded as a zip file.",
+    }
     primary_base_domain = AbsoluteHttpURL("https://dropbox.com/")
 
     def __init__(self, manager: Manager) -> None:

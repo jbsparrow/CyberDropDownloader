@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -25,10 +25,10 @@ _SELECTORS = Selectors()
 
 
 class EHentaiCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
-        ("Albums", "/g/..."),
-        ("Files", "/s/..."),
-    )
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+        "Albums": "/g/...",
+        "Files": "/s/...",
+    }
     primary_base_domain = AbsoluteHttpURL("https://e-hentai.org/")
     next_page_selector = _SELECTORS.NEXT_PAGE
 

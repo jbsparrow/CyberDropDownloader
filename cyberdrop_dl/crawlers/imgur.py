@@ -7,7 +7,7 @@ from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import LoginError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -18,12 +18,12 @@ API_ENTRYPOINT = URL("https://api.imgur.com/3/")
 
 
 class ImgurCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
-        ("Album", "/a/..."),
-        ("Gallery", "/gallery/..."),
-        ("Image", "/..."),
-        ("Direct links", ""),
-    )
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+        "Album": "/a/...",
+        "Gallery": "/gallery/...",
+        "Image": "/...",
+        "Direct links": "",
+    }
     primary_base_domain = AbsoluteHttpURL("https://imgur.com/")
 
     def __init__(self, manager: Manager) -> None:

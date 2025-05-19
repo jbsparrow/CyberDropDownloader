@@ -9,7 +9,7 @@ from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
@@ -72,12 +72,12 @@ TITLE_TRASH = "Shemale Porn Videos - Trending"
 
 
 class AShemaleTubeCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
-        ("Playlists", "`/playlists/...`"),
-        ("Video", "`/videos/...`"),
-        ("Models", "`/creators/...`"),
-        ("User", "`/profiles/...`"),
-    )
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+        "Playlists": "/playlists/...",
+        "Video": "/videos/...",
+        "Models": "/creators/...",
+        "User": "/profiles/...",
+    }
     primary_base_domain = AbsoluteHttpURL("https://www.ashemaletube.com")
     next_page_selector = _SELECTORS.NEXT_PAGE
 

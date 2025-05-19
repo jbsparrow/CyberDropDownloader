@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -40,7 +40,7 @@ class VideoInfo(dict): ...
 
 
 class YouJizzCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (("Video", "/video/embed/"),)
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Video": "/video/embed/"}
     primary_base_domain = AbsoluteHttpURL("https://www.youjizz.com/")
 
     def __init__(self, manager: Manager) -> None:

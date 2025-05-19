@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Annotated, Any, ClassVar, NamedTuple
 from pydantic import AliasPath, Field, PlainValidator
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel, OneOrTupleStrMapping
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, parse_url
@@ -30,7 +30,7 @@ HttpURL = Annotated[AbsoluteHttpURL, PlainValidator(partial(parse_url, relative_
 
 
 class XhamsterCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (("Users, creators, videos and galleries", ""),)
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Users, creators, videos and galleries": ""}
     primary_base_domain = PRIMARY_BASE_DOMAIN
     next_page_selector = "a[data-page='next']"
 

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -32,7 +32,7 @@ class Format(NamedTuple):
 
 
 class MissAVCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (("Video", "/..."),)
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Video": "/..."}
     primary_base_domain = AbsoluteHttpURL("https://missav.ws")
 
     def __init__(self, manager: Manager, _=None) -> None:

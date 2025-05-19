@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import PasswordProtectedError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
@@ -41,11 +41,11 @@ _SELECTOR = Selectors()
 
 
 class CyberfileCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = (
-        ("Files", "/..."),
-        ("Folders", "/folder/..."),
-        ("Shared", "/shared/..."),
-    )
+    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+        "Files": "/...",
+        "Folders": "/folder/...",
+        "Shared": "/shared/...",
+    }
     primary_base_domain = AbsoluteHttpURL("https://cyberfile.me/")
 
     def __init__(self, manager: Manager) -> None:
