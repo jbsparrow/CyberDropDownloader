@@ -16,7 +16,7 @@ import aiofiles.os
 from multidict import CIMultiDict
 from yarl import URL
 
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import is_absolute_http_url
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import get_valid_dict
 
@@ -66,7 +66,7 @@ class FFmpeg:
     @staticmethod
     async def probe(input: Path | URL, /, *, headers: Mapping[str, str] | None = None) -> FFprobeResult:
         if isinstance(input, URL):
-            assert AbsoluteHttpURL.validate(input)
+            assert is_absolute_http_url(input)
 
         elif isinstance(input, Path):
             assert input.is_absolute()
