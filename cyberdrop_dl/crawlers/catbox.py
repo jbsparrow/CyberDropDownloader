@@ -7,8 +7,8 @@ from yarl import URL
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 
 if TYPE_CHECKING:
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
 CDN_HOSTS = "litter.catbox.moe", "files.catbox.moe"

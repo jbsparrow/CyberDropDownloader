@@ -14,15 +14,15 @@ from InquirerPy.enum import (
 from rich.console import Console
 
 from cyberdrop_dl import __version__
-from cyberdrop_dl.ui.prompts import basic_prompts
-from cyberdrop_dl.ui.prompts.defaults import ALL_CHOICE, DONE_CHOICE, EXIT_CHOICE
-from cyberdrop_dl.utils.constants import BROWSERS, RESERVED_CONFIG_NAMES
-from cyberdrop_dl.utils.cookie_management import get_cookies_from_browsers
-from cyberdrop_dl.utils.data_enums_classes.supported_domains import (
+from cyberdrop_dl.constants import BROWSERS, RESERVED_CONFIG_NAMES
+from cyberdrop_dl.data_structures.supported_domains import (
     SUPPORTED_FORUMS,
     SUPPORTED_SITES_DOMAINS,
     SUPPORTED_WEBSITES,
 )
+from cyberdrop_dl.ui.prompts import basic_prompts
+from cyberdrop_dl.ui.prompts.defaults import ALL_CHOICE, DONE_CHOICE, EXIT_CHOICE
+from cyberdrop_dl.utils.cookie_management import get_cookies_from_browsers
 from cyberdrop_dl.utils.utilities import clear_term
 
 if TYPE_CHECKING:

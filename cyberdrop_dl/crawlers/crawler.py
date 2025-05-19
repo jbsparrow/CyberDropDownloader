@@ -8,16 +8,17 @@ from dataclasses import field
 from datetime import datetime
 from functools import wraps
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, NewType, ParamSpec, Protocol, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, ParamSpec, Protocol, TypeVar
 
 from aiolimiter import AsyncLimiter
 from dateutil import parser
 from yarl import URL
 
+from cyberdrop_dl.data_structures.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.scraper import filters
+from cyberdrop_dl.types import TimeStamp, is_absolute_http_url
 from cyberdrop_dl.utils import utilities
-from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.logger import log, log_debug
 from cyberdrop_dl.utils.utilities import (
@@ -29,7 +30,7 @@ from cyberdrop_dl.utils.utilities import (
 )
 
 _NEW_ISSUE_URL = "https://github.com/jbsparrow/CyberDropDownloader/issues/new/choose"
-TimeStamp = NewType("TimeStamp", int)
+
 P = ParamSpec("P")
 R = TypeVar("R")
 
@@ -147,6 +148,9 @@ class Crawler(ABC):
         else:
             original_filename = filename
 
+        assert is_absolute_http_url(url)
+        if isinstance(debrid_link, URL):
+            assert is_absolute_http_url(debrid_link)
         download_folder = get_download_path(self.manager, scrape_item, self.folder_domain)
         media_item = MediaItem(url, scrape_item, download_folder, filename, original_filename, debrid_link, ext=ext)
 

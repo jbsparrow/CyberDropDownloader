@@ -6,6 +6,7 @@
 /Old Files/
 *.log
 *.profiling
+*.csv
 .coverage
 .config.yaml
 /build

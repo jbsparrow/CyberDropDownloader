@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING, Any, Literal, Self
 
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -19,8 +19,8 @@ if TYPE_CHECKING:
 
     from bs4 import BeautifulSoup
 
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
 JS_SELECTOR = "script#store-prefetch"
@@ -97,7 +97,7 @@ class YandexDiskCrawler(Crawler):
         }
         async with self.request_limiter:
             json_resp: dict[str, Any] = await self.client.post_data(
-                self.domain, DOWNLOAD_API_ENTRYPOINT, data=file.post_data, headers_inc=headers
+                self.domain, DOWNLOAD_API_ENTRYPOINT, data=file.post_data, headers=headers
             )
 
         new_sk = json_resp.get("new_sk")
