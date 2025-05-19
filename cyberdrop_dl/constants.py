@@ -55,6 +55,25 @@ DOWNLOAD_STORAGE = Path("./Downloads")
 RESERVED_CONFIG_NAMES = ["all", "default"]
 
 
+class HashType(StrEnum):
+    md5 = "md5"
+    sha256 = "sha256"
+    xxh128 = "xxh128"
+
+
+class Hashing(StrEnum):
+    OFF = auto()
+    IN_PLACE = auto()
+    POST_DOWNLOAD = auto()
+
+    @classmethod
+    def _missing_(cls, value: str) -> "Hashing":
+        try:
+            return cls[str(value.upper())]
+        except KeyError as e:
+            raise e
+
+
 class BROWSERS(StrEnum):
     chrome = auto()
     firefox = auto()

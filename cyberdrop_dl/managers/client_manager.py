@@ -10,7 +10,7 @@ from http.cookiejar import MozillaCookieJar
 from typing import TYPE_CHECKING, Any
 
 import aiohttp
-import certifi
+import truststore
 from aiohttp import ClientResponse, ClientSession, ContentTypeError
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
@@ -67,10 +67,10 @@ class ClientManager:
 
         self.download_delay = global_settings_data.rate_limiting_options.download_delay
         self.user_agent = global_settings_data.general.user_agent
-        self.verify_ssl = not global_settings_data.general.allow_insecure_connections
         self.simultaneous_per_domain = global_settings_data.rate_limiting_options.max_simultaneous_downloads_per_domain
 
-        self.ssl_context = ssl.create_default_context(cafile=certifi.where()) if self.verify_ssl else False
+        verify_ssl = not global_settings_data.general.allow_insecure_connections
+        self.ssl_context = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT) if verify_ssl else False
         self.cookies = aiohttp.CookieJar(quote_cookie=False)
         self.proxy: URL | None = global_settings_data.general.proxy  # type: ignore
 
