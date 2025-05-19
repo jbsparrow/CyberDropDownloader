@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.crawlers import Crawler
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
+    from cyberdrop_dl.data_structures.url_objects import MediaItem
 
 
 def get_db_path(url: URL, referer: str = "") -> str:

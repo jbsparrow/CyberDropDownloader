@@ -7,13 +7,13 @@ from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import PasswordProtectedError, ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.exceptions import PasswordProtectedError, ScrapeError
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
 SOUP_ERRORS = {
@@ -141,10 +141,10 @@ class CyberfileCrawler(Crawler):
             if not form:
                 raise PasswordProtectedError("Unable to parse Password Protected File details")
 
-            password_post_url = form["action"]
+            password_post_url = self.parse_url(form["action"])  # type: ignore
             data = {"filePassword": password, "submitme": 1}
             async with self.request_limiter:
-                resp_bytes = await self.client.post_data(self.domain, password_post_url, data=data, raw=True)
+                resp_bytes = await self.client.post_data_raw(self.domain, password_post_url, data=data)
 
             soup = BeautifulSoup(resp_bytes, "html.parser")
             if is_password_protected(soup):

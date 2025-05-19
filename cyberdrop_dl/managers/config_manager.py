@@ -6,8 +6,8 @@ from dataclasses import field
 from time import sleep
 from typing import TYPE_CHECKING
 
-from cyberdrop_dl.clients.errors import InvalidYamlError
 from cyberdrop_dl.config_definitions import AuthSettings, ConfigSettings, GlobalSettings
+from cyberdrop_dl.exceptions import InvalidYamlError
 from cyberdrop_dl.managers.log_manager import LogManager
 from cyberdrop_dl.utils import yaml
 from cyberdrop_dl.utils.apprise import get_apprise_urls
@@ -85,7 +85,7 @@ class ConfigManager:
 
     def _load_authentication_config(self) -> None:
         """Verifies the authentication config file and creates it if it doesn't exist."""
-        needs_update = is_in_file("jdownloader_username:", self.authentication_settings)
+        needs_update = is_in_file("socialmediagirls_username:", self.authentication_settings)
         posible_fields = self.get_model_fields(AuthSettings(), exclude_unset=False)
         if self.authentication_settings.is_file():
             self.authentication_data = AuthSettings.model_validate(yaml.load(self.authentication_settings))
@@ -114,7 +114,7 @@ class ConfigManager:
             if posible_fields == set_fields and not needs_update and self.pydantic_config:
                 return
         else:
-            from cyberdrop_dl.utils import constants
+            from cyberdrop_dl import constants
 
             self.settings_data = ConfigSettings()
             self.settings_data.files.input_file = constants.APP_STORAGE / "Configs" / self.loaded_config / "URLs.txt"

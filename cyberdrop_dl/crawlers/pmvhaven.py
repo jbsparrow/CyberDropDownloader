@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -18,8 +18,8 @@ if TYPE_CHECKING:
 
     from bs4 import BeautifulSoup
 
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
 JS_VIDEO_INFO_SELECTOR = "script#__NUXT_DATA__"
@@ -78,7 +78,7 @@ class PMVHavenCrawler(Crawler):
         add_headers = {"Content-Type": "text/plain;charset=UTF-8"}
         add_data = json.dumps({"profile": username, "mode": "GetUser"})
         async with self.request_limiter:
-            json_resp: dict = await self.client.post_data(self.domain, api_url, data=add_data, headers_inc=add_headers)
+            json_resp: dict = await self.client.post_data(self.domain, api_url, data=add_data, headers=add_headers)
 
         user_info: dict[str, dict] = json_resp["data"]
         for playlist in user_info["playlists"]:
@@ -223,7 +223,7 @@ class PMVHavenCrawler(Crawler):
             if is_profile:
                 data = json.dumps(data)
             async with self.request_limiter:
-                json_resp: dict = await self.client.post_data(self.domain, api_url, data=data, headers_inc=add_headers)
+                json_resp: dict = await self.client.post_data(self.domain, api_url, data=data, headers=add_headers)
 
             has_videos = bool(json_resp[check_key])
             if not has_videos:

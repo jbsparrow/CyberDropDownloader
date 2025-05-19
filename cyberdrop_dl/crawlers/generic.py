@@ -6,8 +6,8 @@ from functools import wraps
 from pathlib import Path
 from typing import TYPE_CHECKING, ParamSpec, TypeVar
 
-from cyberdrop_dl.clients.errors import InvalidContentTypeError, NoExtensionError, ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.exceptions import InvalidContentTypeError, NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper.filters import has_valid_extension
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_and_ext
@@ -18,8 +18,8 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
     from yarl import URL
 
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
 P = ParamSpec("P")
@@ -87,7 +87,7 @@ class GenericCrawler(Crawler):
 
     async def get_content_type(self, url: URL) -> str:
         async with self.request_limiter:
-            headers: dict = await self.client.get_head(self.domain, url)
+            headers = await self.client.get_head(self.domain, url)
         content_type: str = headers.get("Content-Type", "")
         if not content_type:
             raise ScrapeError(422)

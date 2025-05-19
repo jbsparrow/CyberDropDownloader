@@ -257,7 +257,6 @@ class ProgramUI:
     def _process_answer(self, answer: Any, options_map: dict) -> Choice | None:
         """Checks prompt answer and executes corresponding function."""
         if answer == EXIT_CHOICE.value:
-            self.manager.cache_manager.close_sync()
             asyncio.run(self.manager.cache_manager.close())
             sys.exit(0)
         if answer == DONE_CHOICE.value:
