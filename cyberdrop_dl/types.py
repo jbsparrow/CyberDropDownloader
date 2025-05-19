@@ -44,6 +44,7 @@ if TYPE_CHECKING:
         absolute: Literal[True]
         scheme: Literal["http", "https"]
 
+        @property
         def host(self) -> str:  # type: ignore
             """Decoded host part of URL."""
 
@@ -89,7 +90,7 @@ class AppriseURLModel(FrozenModel):
     tags: set[str] = set()
 
     @model_serializer()
-    def serialize(self, info: SerializationInfo):
+    def serialize(self, info: SerializationInfo) -> str:
         dump_secret = info.mode != "json"
         url = self.url.get_secret_value() if dump_secret else self.url
         tags = self.tags - set("no_logs")
@@ -117,4 +118,7 @@ U32Int: TypeAlias = int
 U32IntArray: TypeAlias = Array[U32Int]
 U32IntSequence: TypeAlias = Sequence[U32Int]
 AnyDict: TypeAlias = dict[str, Any]
+
 AbsolutePath = NewType("AbsolutePath", Path)
+HashValue = NewType("HashValue", str)
+TimeStamp = NewType("TimeStamp", int)
