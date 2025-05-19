@@ -8,7 +8,7 @@ on:
       - master
   pull_request:
     paths:
-        - cyberdrop_dl/utils/apprise.py
+      - cyberdrop_dl/utils/apprise.py
     branches:
       - master
   workflow_dispatch:
