@@ -8,13 +8,13 @@ from m3u8 import M3U8
 from pydantic import AliasPath, Field
 from yarl import URL
 
-from cyberdrop_dl.config_definitions.custom.types import AliasModel
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.types import AliasModel
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 API_ENTRYPOINT = URL("https://api.fikfap.com")
 PRIMARY_BASE_DOMAIN = URL("https://fikfak.com")
