@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-import calendar
 from typing import TYPE_CHECKING, Any
 
-from dateutil import parser
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -16,11 +13,11 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
-API_URL = URL("https://iframe.sex.com/api/")
+API_URL = AbsoluteHttpURL("https://iframe.sex.com/api/")
 
 
 class SexDotComCrawler(Crawler):
-    primary_base_domain = URL("https://sex.com")
+    primary_base_domain = AbsoluteHttpURL("https://sex.com")
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "sex", "Sex.com")
@@ -71,20 +68,20 @@ class SexDotComCrawler(Crawler):
     async def handle_media(self, scrape_item: ScrapeItem, item: dict[str, Any] | None) -> None:
         real_item = item or await self.get_media(scrape_item)
         relative_url = real_item["relativeUrl"]
-        canonical_url = URL("https://sex.com/en/shorts") / relative_url
+        canonical_url = AbsoluteHttpURL("https://sex.com/en/shorts") / relative_url
         if await self.check_complete_from_referer(canonical_url):
             return
 
         fileType: str = real_item.get("fileType") or real_item["mediaType"]
         if fileType.startswith("image"):
-            media_url = URL(real_item["fullPath"]).with_query(optimizer="image", width=1200)
+            media_url = AbsoluteHttpURL(real_item["fullPath"]).with_query(optimizer="image", width=1200)
             filename, ext = f"{real_item['pictureUid']}.jpg", "jpg"
 
         elif fileType.startswith("video"):
-            media_url = URL(real_item["sources"][0]["fullPath"])
+            media_url = AbsoluteHttpURL(real_item["sources"][0]["fullPath"])
             filename, ext = self.get_filename_and_ext(media_url.name)
 
-        scrape_item.possible_datetime = self.parse_datetime(real_item["createdAt"])
+        scrape_item.possible_datetime = self.parse_date(real_item["createdAt"])
         scrape_item.url = canonical_url
         await self.handle_file(media_url, scrape_item, filename, ext)
         scrape_item.add_children()
@@ -96,17 +93,9 @@ class SexDotComCrawler(Crawler):
             for item in json_data["page"]["items"]:
                 await self.handle_media(scrape_item, item["media"])
 
-    async def post(self, scrape_item: ScrapeItem):
+    async def post(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a post."""
         username = scrape_item.url.parts[2]
         title = self.create_title(username)
         scrape_item.setup_as_album(title)
         await self.handle_media(scrape_item, None)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    @staticmethod
-    def parse_datetime(date: str) -> int:
-        """Parses a datetime string into a unix timestamp."""
-        parsed_date = parser.isoparse(date)
-        return calendar.timegm(parsed_date.utctimetuple())

@@ -5,10 +5,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -20,7 +19,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
-M3U8_SERVER = URL("https://surrit.com/")
+M3U8_SERVER = AbsoluteHttpURL("https://surrit.com/")
 TITLE_SELECTOR = "meta [property='og:title']"
 
 DATE_SELECTOR = "div > span:contains('Release date:') + time"
@@ -33,7 +32,7 @@ class Format(NamedTuple):
 
 
 class MissAVCrawler(Crawler):
-    primary_base_domain = URL("https://missav.ws")
+    primary_base_domain = AbsoluteHttpURL("https://missav.ws")
 
     def __init__(self, manager: Manager, _=None) -> None:
         super().__init__(manager, "missav", "MissAV")

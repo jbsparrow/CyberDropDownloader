@@ -40,6 +40,7 @@ from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import DownloadError, ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_from_headers
 
 if TYPE_CHECKING:
@@ -64,7 +65,7 @@ class GoogleDriveFolder:
 
 class GoogleDriveCrawler(Crawler):
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {"drive.google": ["drive.google", "docs.google"]}
-    primary_base_domain = URL("https://drive.google.com")
+    primary_base_domain = AbsoluteHttpURL("https://drive.google.com")
 
     def __init__(self, manager: Manager, site: str) -> None:
         super().__init__(manager, site, "GoogleDrive")
@@ -253,16 +254,16 @@ def get_folder_id(url: URL) -> str:
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-def get_canonical_url(item_id: str, folder: bool = False) -> URL:
+def get_canonical_url(item_id: str, folder: bool = False) -> AbsoluteHttpURL:
     if folder:
-        return URL(f"https://drive.google.com/drive/folders/{item_id}")
-    return URL(f"https://drive.google.com/file/d/{item_id}")
+        return AbsoluteHttpURL(f"https://drive.google.com/drive/folders/{item_id}")
+    return AbsoluteHttpURL(f"https://drive.google.com/file/d/{item_id}")
 
 
-def get_download_url(item_id: str, folder: bool = False) -> URL:
+def get_download_url(item_id: str, folder: bool = False) -> AbsoluteHttpURL:
     if folder:
-        return URL(f"https://drive.google.com/embeddedfolderview?id={item_id}")
-    return URL(f"https://drive.google.com/uc?export=download&id={item_id}")
+        return AbsoluteHttpURL(f"https://drive.google.com/embeddedfolderview?id={item_id}")
+    return AbsoluteHttpURL(f"https://drive.google.com/uc?export=download&id={item_id}")
 
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

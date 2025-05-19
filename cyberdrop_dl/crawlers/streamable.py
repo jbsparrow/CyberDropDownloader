@@ -3,10 +3,9 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -17,7 +16,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
-AJAX_ENTRYPOINT = URL("https://ajax.streamable.com/videos/")
+AJAX_ENTRYPOINT = AbsoluteHttpURL("https://ajax.streamable.com/videos/")
 
 STATUS_OK = 2
 VIDEO_STATUS = {
@@ -29,7 +28,7 @@ VIDEO_STATUS = {
 
 
 class StreamableCrawler(Crawler):
-    primary_base_domain = URL("https://streamable.com")
+    primary_base_domain = AbsoluteHttpURL("https://streamable.com")
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "streamable", "Streamable")

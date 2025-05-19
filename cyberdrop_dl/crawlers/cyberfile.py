@@ -5,10 +5,10 @@ from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
-from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import PasswordProtectedError, ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
@@ -41,7 +41,7 @@ _SELECTOR = Selectors()
 
 
 class CyberfileCrawler(Crawler):
-    primary_base_domain = URL("https://cyberfile.me/")
+    primary_base_domain = AbsoluteHttpURL("https://cyberfile.me/")
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "cyberfile", "Cyberfile")

@@ -17,7 +17,7 @@ from yarl import URL
 from cyberdrop_dl.data_structures.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.scraper import filters
-from cyberdrop_dl.types import TimeStamp
+from cyberdrop_dl.types import AbsoluteHttpURL, TimeStamp
 from cyberdrop_dl.utils import utilities
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.logger import log, log_debug
@@ -58,7 +58,7 @@ class Post(Protocol):
 
 class Crawler(ABC):
     SUPPORTED_SITES: ClassVar[dict[str, list[str]]] = {}
-    primary_base_domain: ClassVar[URL] = None  # type: ignore
+    primary_base_domain: ClassVar[AbsoluteHttpURL] = None  # type: ignore
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date} - {number} - {title}"
     update_unsupported: ClassVar[bool] = False
     skip_pre_check: ClassVar[bool] = False
@@ -310,6 +310,7 @@ class Crawler(ABC):
     def parse_url(self, link_str: str, relative_to: URL | None = None, *, trim: bool = True) -> AbsoluteHttpURL:
         """Wrapper arround `utils.parse_url` to use `self.primary_base_domain` as base"""
         base = relative_to or self.primary_base_domain
+        assert is_absolute_http_url(base)
         return parse_url(link_str, base, trim=trim)
 
     def update_cookies(self, cookies: dict, url: URL | None = None) -> None:
@@ -328,7 +329,7 @@ class Crawler(ABC):
         attribute: str = "href",
         *,
         results: dict[str, int] | None = None,
-    ) -> Generator[tuple[URL | None, URL]]:
+    ) -> Generator[tuple[AbsoluteHttpURL | None, AbsoluteHttpURL]]:
         """Generates tuples with an URL from the `src` value of the first image tag (AKA the thumbnail) and an URL from the value of `attribute`
 
         :param results: must be the output of `self.get_album_results`.

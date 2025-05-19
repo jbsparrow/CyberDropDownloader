@@ -3,9 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.types import AbsoluteHttpURL
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
@@ -13,7 +12,7 @@ if TYPE_CHECKING:
 
 
 CDN_HOST = "pbs.twimg.com"
-PRIMARY_BASE_DOMAIN = URL("https://twimg.com/")
+PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://twimg.com/")
 
 
 class TwimgCrawler(Crawler):

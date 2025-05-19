@@ -4,20 +4,22 @@ from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
 from multidict import MultiDict
-from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.managers.real_debrid.api import RATE_LIMIT
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
+    from yarl import URL
+
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
 
 
 class RealDebridCrawler(Crawler):
-    primary_base_domain = URL("https://real-debrid.com")
+    primary_base_domain = AbsoluteHttpURL("https://real-debrid.com")
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "real-debrid", "RealDebrid")
@@ -89,7 +91,7 @@ class RealDebridCrawler(Crawler):
         assert url.host
         return any(subdomain in url.host for subdomain in ("download.", "my.")) and self.domain in url.host
 
-    async def get_original_url(self, scrape_item: ScrapeItem) -> URL:
+    async def get_original_url(self, scrape_item: ScrapeItem) -> AbsoluteHttpURL:
         assert scrape_item.url.host
         log(f"Input URL: {scrape_item.url}")
         if not self.is_self_hosted(scrape_item.url) or self.domain not in scrape_item.url.host:
@@ -112,6 +114,10 @@ class RealDebridCrawler(Crawler):
             query[parts_dict["query"][i]] = parts_dict["query"][i + 1]
 
         frag = parts_dict["frag"][0] if parts_dict["frag"] else None
-        parsed_url = URL(f"https://{original_domain}/{path}", encoded="%" in path).with_query(query).with_fragment(frag)
+        parsed_url = (
+            AbsoluteHttpURL(f"https://{original_domain}/{path}", encoded="%" in path)
+            .with_query(query)
+            .with_fragment(frag)
+        )
         log(f"Parsed URL: {parsed_url}")
         return parsed_url

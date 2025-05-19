@@ -15,7 +15,7 @@ from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import NoExtensionError, ScrapeError
-from cyberdrop_dl.types import AliasModel
+from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
 from cyberdrop_dl.utils.validators import parse_falsy_as_none
 
@@ -198,7 +198,7 @@ def fallback_if_no_api(func: Callable[..., Coroutine[None, None, Any]]) -> Calla
 
 
 class KemonoCrawler(Crawler):
-    primary_base_domain = URL("https://kemono.su")
+    primary_base_domain = AbsoluteHttpURL("https://kemono.su")
     DEFAULT_POST_TITLE_FORMAT = "{date} - {title}"
 
     def __init__(self, manager: Manager) -> None:
@@ -340,10 +340,10 @@ class KemonoCrawler(Crawler):
                 self.__known_attachment_servers[path] = server
 
     @error_handling_wrapper
-    async def handle_direct_link(self, scrape_item: ScrapeItem, url: URL | None) -> None:
+    async def handle_direct_link(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL | None) -> None:
         """Handles a direct link."""
 
-        def clean_url(og_url: URL) -> URL:
+        def clean_url(og_url: AbsoluteHttpURL) -> AbsoluteHttpURL:
             if "thumbnails" in og_url.parts:
                 return remove_parts(og_url, "thumbnails")
             return og_url

@@ -10,7 +10,6 @@ from functools import cached_property, singledispatchmethod
 from typing import TYPE_CHECKING
 
 from bs4 import BeautifulSoup, Tag
-from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.data_structures.url_objects import FORUM, ScrapeItem
@@ -22,8 +21,10 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Sequence
 
     from aiohttp_client_cache.response import AnyResponse
+    from yarl import URL
 
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.types import AbsoluteHttpURL
 
 HTTP_URL_REGEX_STR = r"https?://(www\.)?[-a-zA-Z0-9@:%._+~#=]{2,256}\.[a-z]{2,12}\b([-a-zA-Z0-9@:%_+.~#?&/=]*)"
 HTTP_URL_REGEX = re.compile(HTTP_URL_REGEX_STR)
@@ -98,7 +99,7 @@ class ThreadInfo:
     id_: int
     page: int
     post: int
-    url: URL
+    url: AbsoluteHttpURL
     complete_url: URL
 
 
@@ -332,21 +333,21 @@ class XenforoCrawler(Crawler):
         link = self.parse_url(link_str)
         return self.is_attachment(link)
 
-    @singledispatchmethod
-    async def get_absolute_link(self, link: URL) -> URL | None:
-        absolute_link = link
-        if self.is_confirmation_link(link):
+    async def get_absolute_link(self, link: str | AbsoluteHttpURL) -> AbsoluteHttpURL | None:
+        if isinstance(link, str):
+            absolute_link = self.str_to_url(link)
+        else:
+            absolute_link = link
+        if self.is_confirmation_link(absolute_link):
             absolute_link = await self.handle_confirmation_link(link)
         return absolute_link
 
-    @get_absolute_link.register
-    async def _(self, link: str) -> URL | None:
+    def str_to_url(self, link: str) -> AbsoluteHttpURL:
         link_str = link
         text_to_replace = [(".th.", "."), (".md.", "."), ("ifr", "watch")]
         for old, new in text_to_replace:
             link_str = link_str.replace(old, new)
-        parsed_link = self.parse_url(link_str)
-        return await self.get_absolute_link(parsed_link)
+        return self.parse_url(link_str)
 
     @error_handling_wrapper
     async def handle_link(self, scrape_item: ScrapeItem) -> None:
@@ -382,7 +383,7 @@ class XenforoCrawler(Crawler):
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
 
     @error_handling_wrapper
-    async def handle_confirmation_link(self, link: URL, *, origin: ScrapeItem | None = None) -> URL | None:
+    async def handle_confirmation_link(self, link: URL, *, origin: ScrapeItem | None = None) -> AbsoluteHttpURL | None:
         """Handles link confirmation."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, link)
@@ -438,7 +439,7 @@ class XenforoCrawler(Crawler):
             return match.group(0).replace("www.", "")
         return embed_str
 
-    def pre_filter_link(self, link: URL) -> URL:
+    def pre_filter_link(self, link: AbsoluteHttpURL) -> AbsoluteHttpURL:
         return link
 
     def filter_link(self, link: URL | None) -> URL | None:
@@ -517,7 +518,7 @@ class XenforoCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    def get_thread_info(self, url: URL) -> ThreadInfo:
+    def get_thread_info(self, url: AbsoluteHttpURL) -> ThreadInfo:
         name_index = url.parts.index(self.thread_url_part) + 1
         name, id_ = get_thread_name_and_id(url, name_index)
         thread_url = get_thread_canonical_url(url, name_index)
@@ -531,7 +532,7 @@ def get_thread_name_and_id(url: URL, thread_name_index: int) -> tuple[str, int]:
     return thread_name, thread_id
 
 
-def get_thread_canonical_url(url: URL, thread_name_index: int) -> URL:
+def get_thread_canonical_url(url: AbsoluteHttpURL, thread_name_index: int) -> AbsoluteHttpURL:
     new_parts = url.parts[1 : thread_name_index + 1]
     new_path = "/".join(new_parts)
     thread_url = url.with_path(new_path).with_fragment(None).with_query(None)

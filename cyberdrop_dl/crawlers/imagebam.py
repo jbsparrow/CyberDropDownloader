@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
+    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
@@ -19,7 +19,7 @@ GALLERY_TITLE_SELECTOR = "a#gallery-name"
 IMAGES_SELECTOR = "ul.images a.thumbnail"
 IMAGE_SELECTOR = "img.main-image"
 GALLERY_INFO_SELECTOR = "div.view-navigation a:has(i.fas.fa-reply)"
-PRIMARY_BASE_DOMAIN = URL("https://www.imagebam.com/")
+PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://www.imagebam.com/")
 
 
 class ImageBamCrawler(Crawler):
@@ -97,6 +97,6 @@ def is_cdn(url: URL) -> bool:
     return "imagebam" in url.host.split(".") and "." in url.host.rstrip(".com")
 
 
-def get_view_url(url: URL) -> URL:
+def get_view_url(url: URL) -> AbsoluteHttpURL:
     view_id = url.name.rsplit("_", 1)[0]
     return PRIMARY_BASE_DOMAIN / "view" / view_id

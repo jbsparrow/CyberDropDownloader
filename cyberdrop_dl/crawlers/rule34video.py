@@ -4,11 +4,10 @@ import calendar
 from datetime import datetime
 from typing import TYPE_CHECKING, NamedTuple
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -17,6 +16,7 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from bs4 import BeautifulSoup, Tag
+    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
@@ -51,7 +51,7 @@ class VideoInfo(dict): ...
 
 
 class Rule34VideoCrawler(Crawler):
-    primary_base_domain = URL("https://rule34video.com/")
+    primary_base_domain = AbsoluteHttpURL("https://rule34video.com/")
     next_page_selector = PLAYLIST_NEXT_PAGE_SELECTOR
 
     def __init__(self, manager: Manager) -> None:

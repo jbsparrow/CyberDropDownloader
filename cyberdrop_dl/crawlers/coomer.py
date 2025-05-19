@@ -7,6 +7,7 @@ from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import create_task_id
 from cyberdrop_dl.crawlers.kemono import KemonoCrawler, UserPost
+from cyberdrop_dl.types import AbsoluteHttpURL
 
 if TYPE_CHECKING:
     from aiohttp_client_cache.response import AnyResponse
@@ -16,7 +17,7 @@ if TYPE_CHECKING:
 
 
 class CoomerCrawler(KemonoCrawler):
-    primary_base_domain = URL("https://coomer.su")
+    primary_base_domain = AbsoluteHttpURL("https://coomer.su")
     DEFAULT_POST_TITLE_FORMAT = "{date} - {title}"
 
     def __init__(self, manager: Manager) -> None:

@@ -6,16 +6,16 @@ from calendar import timegm
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, NamedTuple
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
+    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
@@ -40,7 +40,7 @@ class VideoInfo(dict): ...
 
 
 class YouJizzCrawler(Crawler):
-    primary_base_domain = URL("https://www.youjizz.com/")
+    primary_base_domain = AbsoluteHttpURL("https://www.youjizz.com/")
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "youjizz", "YouJizz")

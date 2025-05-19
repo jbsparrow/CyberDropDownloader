@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -26,7 +26,7 @@ _SELECTORS = Selectors()
 
 
 class IncestflixCrawler(Crawler):
-    primary_base_domain = URL("https://www.incestflix.com")
+    primary_base_domain = AbsoluteHttpURL("https://www.incestflix.com")
     next_page_selector = _SELECTORS.NEXT
 
     def __init__(self, manager: Manager) -> None:
@@ -49,9 +49,9 @@ class IncestflixCrawler(Crawler):
             return
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
-        title: str = soup.select_one(_SELECTORS.TITLE).get_text(strip=True)
-        video = soup.select_one(_SELECTORS.VIDEO)
-        url = self.parse_url(video.get("src"))
+        title: str = css.select_one(soup, _SELECTORS.TITLE).get_text(strip=True)
+        link_str = css.select_one_get_attr(soup, _SELECTORS.VIDEO, "mp4")
+        url = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(f"{title}.mp4")
         await self.handle_file(scrape_item.url, scrape_item, filename, ext, debrid_link=url)
 
@@ -60,7 +60,7 @@ class IncestflixCrawler(Crawler):
         title_created: bool = False
         async for soup in self.web_pager(scrape_item.url):
             if not title_created:
-                title = self.create_title(soup.select_one(_SELECTORS.TAG_TITLE).get_text(strip=True))
+                title = self.create_title(css.select_one(soup, _SELECTORS.TAG_TITLE).get_text(strip=True))
                 scrape_item.setup_as_album(title)
                 title_created = True
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEO_THUMBS):

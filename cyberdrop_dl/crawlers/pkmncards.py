@@ -9,14 +9,15 @@ from datetime import datetime
 from typing import TYPE_CHECKING, NewType
 
 from bs4 import BeautifulSoup
-from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup, Tag
+    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
@@ -98,7 +99,7 @@ class CardSet:
 
 
 class PkmncardsCrawler(Crawler):
-    primary_base_domain = URL("https://pkmncards.com")
+    primary_base_domain = AbsoluteHttpURL("https://pkmncards.com")
     next_page_selector = _SELECTORS.NEXT_PAGE
 
     def __init__(self, manager: Manager) -> None:

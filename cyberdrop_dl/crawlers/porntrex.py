@@ -9,6 +9,7 @@ from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
@@ -40,13 +41,13 @@ class Selectors:
 
 
 VIDEO_INFO_FIELDS_PATTERN = re.compile(r"(\w+):\s*'([^']*)'")
-COLLECTION_PARTS = ("tags", "categories", "models", "playlists", "search", "members")
+COLLECTION_PARTS = "tags", "categories", "models", "playlists", "search", "members"
 TITLE_TRASH = "Free HD ", "Most Relevant ", "New ", "Videos", "Porn", "for:", "New Videos", "Tagged with"
 _SELECTORS = Selectors()
 
 
 class PorntrexCrawler(Crawler):
-    primary_base_domain = URL("https://www.porntrex.com")
+    primary_base_domain = AbsoluteHttpURL("https://www.porntrex.com")
     next_page_selector = _SELECTORS.NEXT_PAGE
 
     def __init__(self, manager: Manager) -> None:

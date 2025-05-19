@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
+    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
@@ -22,7 +22,7 @@ MAIN_HOST = "sendvid.com"
 
 
 class SendVidCrawler(Crawler):
-    primary_base_domain = URL("https://sendvid.com/")
+    primary_base_domain = AbsoluteHttpURL("https://sendvid.com/")
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "sendvid", "SendVid")
@@ -66,7 +66,7 @@ class SendVidCrawler(Crawler):
             canonical_url, scrape_item, filename, ext, debrid_link=link, custom_filename=custom_filename
         )
 
-    def get_streaming_url(self, url: URL) -> URL:
+    def get_streaming_url(self, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         if is_cdn(url):
             video_id = url.name.split(".", 1)[0]
             return self.primary_base_domain.with_path(video_id)

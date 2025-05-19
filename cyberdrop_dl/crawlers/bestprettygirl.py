@@ -3,10 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
-from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -30,7 +30,7 @@ COLLECTION_PARTS = "category", "tag", "date"
 
 
 class BestPrettyGirlCrawler(Crawler):
-    primary_base_domain = URL("https://bestprettygirl.com/")
+    primary_base_domain = AbsoluteHttpURL("https://bestprettygirl.com/")
     next_page = "a.page-numbers.next"
 
     def __init__(self, manager: Manager) -> None:

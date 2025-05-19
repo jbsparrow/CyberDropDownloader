@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.types import AbsoluteHttpURL
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
@@ -15,7 +14,7 @@ CDN_HOSTS = "litter.catbox.moe", "files.catbox.moe"
 
 
 class CatboxCrawler(Crawler):
-    primary_base_domain = URL("https://catbox.moe")
+    primary_base_domain = AbsoluteHttpURL("https://catbox.moe")
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "catbox.moe", "Catbox")

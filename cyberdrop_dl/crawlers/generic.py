@@ -32,7 +32,7 @@ def log_unsupported_wrapper(
     func: Callable[P, Coroutine[None, None, R]],
 ) -> Callable[P, Coroutine[None, None, R | None]]:
     @wraps(func)
-    async def wrapper(*args, **kwargs):
+    async def wrapper(*args, **kwargs) -> R | None:
         self: GenericCrawler = args[0]
         item: ScrapeItem = args[1]
         try:

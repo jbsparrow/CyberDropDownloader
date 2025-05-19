@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import create_task_id
 from cyberdrop_dl.crawlers.kemono import KemonoCrawler
+from cyberdrop_dl.types import AbsoluteHttpURL
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
@@ -13,7 +12,7 @@ if TYPE_CHECKING:
 
 
 class NekohouseCrawler(KemonoCrawler):
-    primary_base_domain = URL("https://nekohouse.su")
+    primary_base_domain = AbsoluteHttpURL("https://nekohouse.su")
     DEFAULT_POST_TITLE_FORMAT = "{date} - {title}"
 
     def __init__(self, manager: Manager) -> None:

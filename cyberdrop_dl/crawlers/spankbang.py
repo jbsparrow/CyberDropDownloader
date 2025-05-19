@@ -6,23 +6,23 @@ import itertools
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, NamedTuple
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
+    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
 
 
-PRIMARY_BASE_DOMAIN = URL("https://spankbang.com/")
+PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://spankbang.com/")
 DEFAULT_QUALITY = "main"
 RESOLUTIONS = ["4k", "2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"]  # best to worst
 
@@ -36,7 +36,7 @@ EXTENDED_JS_SELECTOR = "main.main-container > script:contains('uploadDate')"
 @dataclass(frozen=True)
 class PlaylistInfo:
     id_: str
-    url: URL
+    url: AbsoluteHttpURL
     title: str = ""
 
     @classmethod
@@ -163,7 +163,7 @@ def get_info_dict(soup: BeautifulSoup) -> VideoInfo:
 
     info["title"] = title.strip()
     info = info | extended_info_dict
-    embed_url = URL(info["embedUrl"])
+    embed_url = AbsoluteHttpURL(info["embedUrl"])
     info["video_id"] = embed_url.parts[1]
     javascript.clean_dict(info, "stream_data")
     log_debug(info)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from yarl import URL
+from cyberdrop_dl.types import AbsoluteHttpURL
 
 from .xenforo import XenforoCrawler
 
@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 class SimpCityCrawler(XenforoCrawler):
-    primary_base_domain = URL("https://simpcity.su")
+    primary_base_domain = AbsoluteHttpURL("https://simpcity.su")
     login_required = False
     domain = "simpcity"
     session_cookie_name = "dontlikebots_user"

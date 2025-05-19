@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -20,7 +21,7 @@ API_ENTRYPOINT = URL("https://postimg.cc/json")
 
 
 class PostImgCrawler(Crawler):
-    primary_base_domain = URL("https://postimages.org/")
+    primary_base_domain = AbsoluteHttpURL("https://postimages.org/")
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "postimg", "PostImg")

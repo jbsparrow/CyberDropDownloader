@@ -2,16 +2,18 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from yarl import URL
+from cyberdrop_dl.types import AbsoluteHttpURL
 
 from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
 
 if TYPE_CHECKING:
+    from yarl import URL
+
     from cyberdrop_dl.managers.manager import Manager
 
 
 class CelebForumCrawler(XenforoCrawler):
-    primary_base_domain = URL("https://celebforum.to")
+    primary_base_domain = AbsoluteHttpURL("https://celebforum.to")
     post_selectors = PostSelectors(
         date=Selector("time", "data-time"),
         images=Selector("a[class*=js-lbImage]", "href"),

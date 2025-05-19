@@ -10,6 +10,7 @@ from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -24,8 +25,8 @@ if TYPE_CHECKING:
 
 
 JS_SELECTOR = "script#store-prefetch"
-DOWNLOAD_API_ENTRYPOINT = URL("https://disk.yandex.com.tr/public/api/download-url")
-PRIMARY_BASE_DOMAIN = URL("https://disk.yandex.com.tr/")
+DOWNLOAD_API_ENTRYPOINT = AbsoluteHttpURL("https://disk.yandex.com.tr/public/api/download-url")
+PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://disk.yandex.com.tr/")
 KEYS_TO_KEEP = "currentResourceId", "resources", "environment"
 
 
@@ -226,7 +227,7 @@ class YandexFile(YandexItem):
         return cls(**valid_dict, sk=sk, short_url=short_url)
 
 
-def get_canonical_url(url: URL) -> URL:
+def get_canonical_url(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
     folder_id_index = url.parts.index("d") + 1
     folder_id = url.parts[folder_id_index]
     return PRIMARY_BASE_DOMAIN / "d" / folder_id

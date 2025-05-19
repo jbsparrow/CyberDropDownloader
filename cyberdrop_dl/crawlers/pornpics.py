@@ -3,15 +3,15 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from bs4 import BeautifulSoup
+    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
@@ -22,7 +22,7 @@ BASE_HOST: str = "pornpics.com"
 
 
 class PornPicsCrawler(Crawler):
-    primary_base_domain = URL("https://pornpics.com")
+    primary_base_domain = AbsoluteHttpURL("https://pornpics.com")
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "pornpics", "PornPics")

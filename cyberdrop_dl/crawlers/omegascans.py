@@ -5,10 +5,9 @@ import datetime
 import itertools
 from typing import TYPE_CHECKING
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -19,14 +18,14 @@ if TYPE_CHECKING:
 
 
 DATE_SELECTOR = 'h2[class="font-semibold font-sans text-muted-foreground text-xs"]'
-API_ENTRYPOINT = URL("https://api.omegascans.org/chapter/query")
+API_ENTRYPOINT = AbsoluteHttpURL("https://api.omegascans.org/chapter/query")
 JS_SELECTOR = "script:contains('series_id')"
 DATE_JS_SELECTOR = "script:contains('created')"
 IMAGE_SELECTOR = "p[class*=flex] img"
 
 
 class OmegaScansCrawler(Crawler):
-    primary_base_domain = URL("https://omegascans.org")
+    primary_base_domain = AbsoluteHttpURL("https://omegascans.org")
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "omegascans", "OmegaScans")

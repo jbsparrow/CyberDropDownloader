@@ -2,21 +2,22 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
+    from yarl import URL
+
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
 
 
-API_ENTRYPOINT = URL("https://api.redgifs.com/")
+API_ENTRYPOINT = AbsoluteHttpURL("https://api.redgifs.com/")
 
 
 class RedGifsCrawler(Crawler):
-    primary_base_domain = URL("https://redgifs.com/")
+    primary_base_domain = AbsoluteHttpURL("https://redgifs.com/")
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "redgifs", "RedGifs")

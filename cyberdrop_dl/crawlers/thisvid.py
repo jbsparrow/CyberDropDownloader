@@ -4,14 +4,15 @@ import re
 from typing import TYPE_CHECKING, NamedTuple
 
 from aiolimiter import AsyncLimiter
-from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
+    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
@@ -43,12 +44,12 @@ HASH_LENGTH = 32
 
 class Video(NamedTuple):
     id: str
-    url: URL
+    url: AbsoluteHttpURL
     res: str
 
 
 class ThisVidCrawler(Crawler):
-    primary_base_domain = URL("https://thisvid.com")
+    primary_base_domain = AbsoluteHttpURL("https://thisvid.com")
     next_page_selector = "li.pagination-next > a"
 
     def __init__(self, manager: Manager) -> None:
@@ -111,7 +112,7 @@ class ThisVidCrawler(Crawler):
             await self.iter_videos(scrape_item, "private_videos")
 
     async def iter_videos(self, scrape_item: ScrapeItem, video_category: str = "") -> None:
-        url: URL = scrape_item.url / video_category if video_category else scrape_item.url
+        url = scrape_item.url / video_category if video_category else scrape_item.url
         async for soup in self.web_pager(url):
             for _, new_scrape_item in self.iter_children(scrape_item, soup, VIDEOS_SELECTOR):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
@@ -198,11 +199,11 @@ def kvs_get_license_token(license_code: str) -> list[int]:
     ]
 
 
-def kvs_get_real_url(video_url: str, license_code: str) -> URL:
+def kvs_get_real_url(video_url: str, license_code: str) -> AbsoluteHttpURL:
     if not video_url.startswith("function/0/"):
-        return URL(video_url)  # not obfuscated
+        return AbsoluteHttpURL(video_url)  # not obfuscated
 
-    parsed_url = URL(video_url.removeprefix("function/0/"))
+    parsed_url = AbsoluteHttpURL(video_url.removeprefix("function/0/"))
     license_token = kvs_get_license_token(license_code)
     hash, tail = parsed_url.parts[3][:HASH_LENGTH], parsed_url.parts[3][HASH_LENGTH:]
     indices = list(range(HASH_LENGTH))

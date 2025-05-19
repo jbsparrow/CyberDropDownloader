@@ -4,10 +4,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Literal, NamedTuple
 
 from aiolimiter import AsyncLimiter
-from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -17,8 +17,8 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
+PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://motherless.com")
 MEDIA_INFO_JS_SELECTOR = "script:contains('__fileurl')"
-PRIMARY_BASE_DOMAIN = URL("https://motherless.com")
 ITEM_SELECTOR = "div.thumb-container a.img-container"
 ITEM_TITLE_SELECTOR = "div.media-meta-title"
 GALLERY_TITLE_SELECTOR = "div.gallery-title > h2"

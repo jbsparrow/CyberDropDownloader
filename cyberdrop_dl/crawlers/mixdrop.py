@@ -3,9 +3,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, ClassVar
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
@@ -22,7 +21,7 @@ class Selectors:
 
 _SELECTOR = Selectors()
 
-PRIMARY_BASE_DOMAIN = URL("https://mixdrop.sb")
+PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://mixdrop.sb")
 
 
 class MixDropCrawler(Crawler):
@@ -65,7 +64,7 @@ class MixDropCrawler(Crawler):
         await self.handle_file(video_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=link)
 
     @staticmethod
-    def create_download_link(soup: BeautifulSoup) -> URL:
+    def create_download_link(soup: BeautifulSoup) -> AbsoluteHttpURL:
         # Defined as a method to simplify subclasses calls
         js_text = soup.select_one(_SELECTOR.JS).text  # type: ignore
         file_id = get_text_between(js_text, "|v2||", "|")
@@ -73,8 +72,9 @@ class MixDropCrawler(Crawler):
         secure_key = get_text_between(js_text, f"{file_id}|", "|")
         timestamp = int((datetime.now() + timedelta(hours=1)).timestamp())
         host, ext, expires = ".".join(parts[:-3]), parts[-3], parts[-1]
-        return URL(f"https://s-{host}/v2/{file_id}.{ext}").with_query(s=secure_key, e=expires, t=timestamp)
+        url = AbsoluteHttpURL(f"https://s-{host}/v2/{file_id}.{ext}")
+        return url.with_query(s=secure_key, e=expires, t=timestamp)
 
     @staticmethod
-    def get_embed_url(url: URL) -> URL:
+    def get_embed_url(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         return PRIMARY_BASE_DOMAIN / "e" / url.name

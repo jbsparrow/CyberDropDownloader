@@ -4,11 +4,10 @@ import calendar
 import datetime
 from typing import TYPE_CHECKING
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.data_structures.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -23,7 +22,7 @@ ALBUM_TITLE_SELECTOR = "div[id=gallery-view] h1"
 
 
 class ImgBoxCrawler(Crawler):
-    primary_base_domain = URL("https://imgbox.com")
+    primary_base_domain = AbsoluteHttpURL("https://imgbox.com")
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "imgbox", "ImgBox")

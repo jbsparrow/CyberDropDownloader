@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -19,7 +18,7 @@ ALBUM_SELECTOR = "main div.auto-rows-max a"
 
 
 class BunkrAlbumsIOCrawler(Crawler):
-    primary_base_domain = URL("https://bunkr-albums.io/")
+    primary_base_domain = AbsoluteHttpURL("https://bunkr-albums.io/")
     next_page_selector = "nav:last-of-type a.ic-arrow-right"
     skip_pre_check = True
 

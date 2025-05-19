@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from yarl import URL
+from cyberdrop_dl.types import AbsoluteHttpURL
 
 from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
 
@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 class BellazonCrawler(XenforoCrawler):
-    primary_base_domain = URL("https://www.bellazon.com/main/")
+    primary_base_domain = AbsoluteHttpURL("https://www.bellazon.com/main/")
     domain = "bellazon"
     thread_url_part = "topic"
     login_required = False

@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
+    from cyberdrop_dl.types import AbsoluteHttpURL
 
 
 ITEM_DESCRIPTION_SELECTOR = "p[class*=description-meta]"
@@ -175,7 +176,7 @@ class CheveretoCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    def get_canonical_url(self, url: URL, media_type: Media = Media.ALBUM) -> tuple[str, URL]:
+    def get_canonical_url(self, url: URL, media_type: Media = Media.ALBUM) -> tuple[str, AbsoluteHttpURL]:
         """Returns the id and canonical URL from a given item (album, image or video)."""
         search_parts = ALBUM_PARTS
         if media_type == Media.IMAGE:

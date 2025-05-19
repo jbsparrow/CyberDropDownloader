@@ -11,10 +11,9 @@ from datetime import UTC, datetime, timedelta
 from functools import partial
 from typing import TYPE_CHECKING, Any, ClassVar, Self
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -22,9 +21,9 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
-API_ENTRYPOINT = URL("https://api.onedrive.com/v1.0/drives/")
-PERSONAL_API_ENTRYPOINT = URL("https://my.microsoftpersonalcontent.com/_api/v2.0/shares/")
-BADGER_URL = URL("https://api-badgerp.svc.ms/v1.0/token")
+API_ENTRYPOINT = AbsoluteHttpURL("https://api.onedrive.com/v1.0/drives/")
+PERSONAL_API_ENTRYPOINT = AbsoluteHttpURL("https://my.microsoftpersonalcontent.com/_api/v2.0/shares/")
+BADGER_URL = AbsoluteHttpURL("https://api-badgerp.svc.ms/v1.0/token")
 SHARE_LINK_HOST = "1drv.ms"
 SHARE_LINK_PARTS = "f", "t", "u", "b"
 
@@ -41,7 +40,7 @@ class AccessDetails:
     redeem: str
 
     @classmethod
-    def from_url(cls, direct_url: URL) -> AccessDetails:
+    def from_url(cls, direct_url: AbsoluteHttpURL) -> AccessDetails:
         resid = direct_url.query.get("resid") or ""  # ex: ABCXYZ000!12345
         auth_key = direct_url.query.get("authkey") or ""
         redeem = direct_url.query.get("redeem") or ""
@@ -58,8 +57,8 @@ class AccessDetails:
 @dataclass(frozen=True, slots=True)
 class OneDriveItem:
     id: str
-    url: URL
-    web_url: URL
+    url: AbsoluteHttpURL
+    web_url: AbsoluteHttpURL
     name: str
     date: int
     access_details: AccessDetails
@@ -67,13 +66,13 @@ class OneDriveItem:
 
 @dataclass(frozen=True, slots=True)
 class OneDriveFile(OneDriveItem):
-    download_url: URL
+    download_url: AbsoluteHttpURL
 
     @classmethod
     def from_api_response(cls, json_resp: dict, access_details: AccessDetails) -> Self:
         info = parse_api_response(json_resp, access_details)
         download_url_str = json_resp["@content.downloadUrl"]
-        info["download_url"] = URL(download_url_str, encoded="%" in download_url_str)
+        info["download_url"] = AbsoluteHttpURL(download_url_str, encoded="%" in download_url_str)
         return cls(**info)
 
 
@@ -90,7 +89,7 @@ class OneDriveFolder(OneDriveItem):
 
 class OneDriveCrawler(Crawler):
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {"onedrive": [SHARE_LINK_HOST, "onedrive.live.com"]}
-    primary_base_domain = URL("https://onedrive.com/")
+    primary_base_domain = AbsoluteHttpURL("https://onedrive.com/")
     skip_pre_check = True  # URLs with not path could be valid
 
     def __init__(self, manager: Manager, _) -> None:
@@ -139,7 +138,9 @@ class OneDriveCrawler(Crawler):
         await self.link_with_credentials(scrape_item, og_share_link)
 
     @error_handling_wrapper
-    async def link_with_credentials(self, scrape_item: ScrapeItem, og_share_link: URL | None = None) -> None:
+    async def link_with_credentials(
+        self, scrape_item: ScrapeItem, og_share_link: AbsoluteHttpURL | None = None
+    ) -> None:
         if await self.check_complete_from_referer(scrape_item):
             return
 
@@ -151,7 +152,7 @@ class OneDriveCrawler(Crawler):
 
     @error_handling_wrapper
     async def process_access_details(
-        self, scrape_item: ScrapeItem, access_details: AccessDetails, og_share_link: URL | None = None
+        self, scrape_item: ScrapeItem, access_details: AccessDetails, og_share_link: AbsoluteHttpURL | None = None
     ) -> None:
         if not (access_details.resid and access_details.auth_key) and not access_details.redeem:
             raise ScrapeError(401)
@@ -207,7 +208,7 @@ class OneDriveCrawler(Crawler):
         scrape_item.possible_datetime = file.date
         await self.handle_file(file.url, scrape_item, filename, ext, debrid_link=file.download_url)
 
-    async def make_api_request(self, api_url: URL) -> dict[str, Any]:
+    async def make_api_request(self, api_url: AbsoluteHttpURL) -> dict[str, Any]:
         headers = {"Content-Type": "application/json"} | self.auth_headers
         async with self.request_limiter:
             json_resp: dict = await self.client.get_json(self.domain, api_url, headers=headers)
@@ -215,7 +216,7 @@ class OneDriveCrawler(Crawler):
         return json_resp
 
     @error_handling_wrapper
-    async def get_badger_token(self, badger_url: URL = BADGER_URL) -> None:
+    async def get_badger_token(self, badger_url: AbsoluteHttpURL = BADGER_URL) -> None:
         new_headers = {"Content-Type": "application/json", "AppId": APP_ID}
         data = {"appId": APP_UUID}
         data_json = json.dumps(data)
@@ -229,7 +230,7 @@ class OneDriveCrawler(Crawler):
         self.manager.cache_manager.save("onedrive_badger_token_expires", badger_token_expires)
 
 
-def is_share_link(url: URL) -> bool:
+def is_share_link(url: AbsoluteHttpURL) -> bool:
     return bool(url.host and url.host == SHARE_LINK_HOST) and any(p in url.parts for p in SHARE_LINK_PARTS)
 
 
@@ -246,14 +247,14 @@ def parse_api_response(json_resp: dict, access_details: AccessDetails) -> dict[s
     return {
         "id": item_id,
         "url": create_api_url(new_access_details),
-        "web_url": URL(web_url_str, encoded="%" in web_url_str),
+        "web_url": AbsoluteHttpURL(web_url_str, encoded="%" in web_url_str),
         "name": json_resp["name"],
         "date": parse_datetime(date_str),
         "access_details": new_access_details,
     }
 
 
-def create_api_url(access_details: AccessDetails) -> URL:
+def create_api_url(access_details: AccessDetails) -> AbsoluteHttpURL:
     if access_details.redeem:
         api_url = PERSONAL_API_ENTRYPOINT / f"u!{access_details.redeem}" / "driveitem"
     else:

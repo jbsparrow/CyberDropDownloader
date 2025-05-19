@@ -3,14 +3,14 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING, NamedTuple
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
+    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
@@ -27,7 +27,7 @@ class Format(NamedTuple):
 
 
 class DirtyShipCrawler(Crawler):
-    primary_base_domain = URL("https://dirtyship.com")
+    primary_base_domain = AbsoluteHttpURL("https://dirtyship.com")
     next_page_selector = "a.page-next"
 
     def __init__(self, manager: Manager) -> None:

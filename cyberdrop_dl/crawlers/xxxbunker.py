@@ -8,10 +8,10 @@ from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
-from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -35,11 +35,11 @@ PLAYLIST_PARTS = ("search", "categories", "favoritevideos")
 
 
 class XXXBunkerCrawler(Crawler):
-    primary_base_domain = URL("https://xxxbunker.com")
+    primary_base_domain = AbsoluteHttpURL("https://xxxbunker.com")
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "xxxbunker", "XXXBunker")
-        self.api_download = URL("https://xxxbunker.com/ajax/downloadpopup")
+        self.api_download = AbsoluteHttpURL("https://xxxbunker.com/ajax/downloadpopup")
         self.rate_limit = self.wait_time = 10
         self.request_limiter = AsyncLimiter(self.rate_limit, 60)
         self.session_cookie = None

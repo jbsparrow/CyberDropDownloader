@@ -2,19 +2,19 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
+    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
 
 
-PRIMARY_BASE_DOMAIN = URL("https://pixhost.to/")
+PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://pixhost.to/")
 GALLERY_TITLE_SELECTOR = "a[class=link] h2"
 IMAGES_SELECTOR = "div[class=images] a"
 IMAGE_SELECTOR = "img[class=image-img]"
@@ -78,14 +78,14 @@ class PixHostCrawler(Crawler):
         await self.handle_direct_link(scrape_item, link)
 
     @error_handling_wrapper
-    async def handle_direct_link(self, scrape_item: ScrapeItem, url: URL | None = None) -> None:
+    async def handle_direct_link(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL | None = None) -> None:
         link = url or scrape_item.url
         if is_thumbnail(link):
             link = thumbnail_to_img(link)
         await self.direct_file(scrape_item, link)
 
 
-def thumbnail_to_img(url: URL) -> URL:
+def thumbnail_to_img(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
     assert url.host
     thumb_server_id: str = url.host.split(".", 1)[0].split("t")[-1]
     img_host = f"img{thumb_server_id}.{PRIMARY_BASE_DOMAIN.host}"
@@ -93,7 +93,7 @@ def thumbnail_to_img(url: URL) -> URL:
     return img_url.with_host(img_host)
 
 
-def replace_first_part(url: URL, new_part: str) -> URL:
+def replace_first_part(url: AbsoluteHttpURL, new_part: str) -> AbsoluteHttpURL:
     new_parts = new_part, *url.parts[1:]
     new_path = "/".join(new_parts)
     return url.with_path(new_path)
@@ -109,6 +109,6 @@ def is_cdn(url: URL) -> bool:
     return len(url.host.split(".")) > 2
 
 
-def get_canonical_url(url: URL) -> URL:
+def get_canonical_url(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
     show_url = replace_first_part(url, "show")
-    return show_url.with_host(PRIMARY_BASE_DOMAIN.host)  # type: ignore
+    return show_url.with_host(PRIMARY_BASE_DOMAIN.host)

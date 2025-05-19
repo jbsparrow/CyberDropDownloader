@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from yarl import URL
+from cyberdrop_dl.types import AbsoluteHttpURL
 
 from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
 
@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 class AllPornComixCrawler(XenforoCrawler):
-    primary_base_domain = URL("https://forum.allporncomix.com")
+    primary_base_domain = AbsoluteHttpURL("https://forum.allporncomix.com")
     domain = "allporncomix"
     login_required = False
     post_selectors = PostSelectors(

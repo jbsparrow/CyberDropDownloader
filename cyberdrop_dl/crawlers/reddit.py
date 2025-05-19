@@ -6,11 +6,11 @@ from typing import TYPE_CHECKING, ClassVar, NotRequired, TypedDict
 import asyncprawcore
 from aiolimiter import AsyncLimiter
 from asyncpraw import Reddit
-from yarl import URL
 
 from cyberdrop_dl.clients.scraper_client import cache_control_manager
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import LoginError, NoExtensionError, ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from collections.abc import AsyncIterator, Generator
 
     from asyncpraw.models import Redditor, Submission, Subreddit
+    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
@@ -46,7 +47,7 @@ class MediaMetadata(TypedDict):
 class RedditCrawler(Crawler):
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {"reddit": ["reddit", "redd.it"]}
     DEFAULT_POST_TITLE_FORMAT = "{title}"
-    primary_base_domain = URL("https://www.reddit.com/")
+    primary_base_domain = AbsoluteHttpURL("https://www.reddit.com/")
 
     def __init__(self, manager: Manager, site: str) -> None:
         super().__init__(manager, site, "Reddit")
@@ -177,8 +178,7 @@ class RedditCrawler(Crawler):
         try:
             filename, ext = self.get_filename_and_ext(url.name)
         except NoExtensionError:
-            url = await self.get_final_location(url)
-            scrape_item.url = url
+            scrape_item.url = url = await self.get_final_location(url)
             with asyncpraw_error_handle():
                 post = await self._reddit.submission(url=str(url))
 
@@ -186,12 +186,12 @@ class RedditCrawler(Crawler):
 
         await self.handle_file(url, scrape_item, filename, ext)
 
-    async def get_final_location(self, url) -> URL:
+    async def get_final_location(self, url) -> AbsoluteHttpURL:
         headers = await self.client.get_head(self.domain, url)
         content_type = headers.get("Content-Type", "")
         if any(s in content_type.lower() for s in ("html", "text")):
             response, _ = await self.client._get_response_and_soup(self.domain, url)
-            return response.url
+            return AbsoluteHttpURL(response.url)
         location = headers.get("location")
         if not location:
             raise ScrapeError(422)

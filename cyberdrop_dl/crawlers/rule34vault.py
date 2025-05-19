@@ -3,9 +3,8 @@ from __future__ import annotations
 import itertools
 from typing import TYPE_CHECKING
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -27,7 +26,7 @@ _SELECTORS = Selectors()
 
 
 class Rule34VaultCrawler(Crawler):
-    primary_base_domain = URL("https://rule34vault.com")
+    primary_base_domain = AbsoluteHttpURL("https://rule34vault.com")
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "rule34vault", "Rule34Vault")

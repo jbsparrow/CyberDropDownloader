@@ -2,14 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers._chevereto import CheveretoCrawler
+from cyberdrop_dl.types import AbsoluteHttpURL
 
 if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
-PRIMARY_BASE_DOMAIN = URL("https://imagepond.net")
+PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://imagepond.net")
 
 
 class ImagePondCrawler(CheveretoCrawler):

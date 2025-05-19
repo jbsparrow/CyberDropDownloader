@@ -3,9 +3,8 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -41,11 +40,11 @@ DEFAULT_QUERY = """
     }
 """
 
-API_ENTRYPOINT = URL("https://api.scrolller.com/api/v2/graphql")
+API_ENTRYPOINT = AbsoluteHttpURL("https://api.scrolller.com/api/v2/graphql")
 
 
 class ScrolllerCrawler(Crawler):
-    primary_base_domain = URL("https://scrolller.com")
+    primary_base_domain = AbsoluteHttpURL("https://scrolller.com")
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "scrolller", "Scrolller")

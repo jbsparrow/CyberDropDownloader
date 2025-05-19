@@ -3,12 +3,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
+    from yarl import URL
+
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
 
@@ -17,7 +18,7 @@ IMG_SELECTOR = "div#body a > img"
 
 
 class ViprImCrawler(Crawler):
-    primary_base_domain = URL("https://vipr.im")
+    primary_base_domain = AbsoluteHttpURL("https://vipr.im")
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "vipr.im", "Vipr.im")
@@ -47,7 +48,7 @@ class ViprImCrawler(Crawler):
         scrape_item.url = self.get_canonical_url(scrape_item.url)
         self.manager.task_group.create_task(self.run(scrape_item))
 
-    def get_canonical_url(self, url: URL) -> URL:
+    def get_canonical_url(self, url: URL) -> AbsoluteHttpURL:
         return self.primary_base_domain / get_image_id(url)
 
 

@@ -4,18 +4,20 @@ import re
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
-from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import create_task_id
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 from ._chevereto import CheveretoCrawler
 
 if TYPE_CHECKING:
+    from yarl import URL
+
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
 
-PRIMARY_BASE_DOMAIN = URL("https://jpg5.su")
+PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://jpg5.su")
 JPG5_REPLACE_HOST_REGEX = re.compile(r"(jpg\.fish/)|(jpg\.fishing/)|(jpg\.church/)")
 JPG5_DOMAINS = [
     "jpg5.su",

@@ -4,10 +4,9 @@ import base64
 import re
 from typing import TYPE_CHECKING
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -25,7 +24,7 @@ URL_REGEX = re.compile(r"\('(.+?)'\)")
 
 
 class SaintCrawler(Crawler):
-    primary_base_domain = URL("https://saint2.su/")
+    primary_base_domain = AbsoluteHttpURL("https://saint2.su/")
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "saint", "Saint")
@@ -118,10 +117,10 @@ def is_not_found(soup: BeautifulSoup) -> bool:
     return False
 
 
-def get_url_from_base64(link: URL) -> URL:
+def get_url_from_base64(link: AbsoluteHttpURL) -> AbsoluteHttpURL:
     base64_str: str | None = link.query.get("file")
     if not base64_str:
         return link
     assert link.host
     filename_decoded = base64.b64decode(base64_str).decode("utf-8")
-    return URL(f"https://{link.host}/videos/{filename_decoded}")
+    return AbsoluteHttpURL(f"https://{link.host}/videos/{filename_decoded}")

@@ -7,11 +7,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from pydantic import Field
-from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AliasModel
+from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -42,13 +41,13 @@ class SharedFolder(AliasModel):
 
 
 APP_DOMAIN = "app.box.com"
-DOWNLOAD_URL_BASE = URL("https://app.box.com/index.php?rm=box_download_shared_file")
+DOWNLOAD_URL_BASE = AbsoluteHttpURL("https://app.box.com/index.php?rm=box_download_shared_file")
 JS_SELECTOR = "script:contains('Box.postStreamData')"
 
 
 class BoxDotComCrawler(Crawler):
     scrape_mapper_domain = APP_DOMAIN
-    primary_base_domain = URL("https://box.com")
+    primary_base_domain = AbsoluteHttpURL("https://box.com")
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "box.com", "Box")
@@ -158,8 +157,8 @@ class BoxDotComCrawler(Crawler):
         return sorted_mapping
 
 
-def get_canonical_url(shared_name: str, id: str, is_folder: bool = False) -> URL:
-    base = URL(f"https://app.box.com/s/{shared_name}")
+def get_canonical_url(shared_name: str, id: str, is_folder: bool = False) -> AbsoluteHttpURL:
+    base = AbsoluteHttpURL(f"https://app.box.com/s/{shared_name}")
     if is_folder:
         return base / "folder" / id
     return base / "file" / id

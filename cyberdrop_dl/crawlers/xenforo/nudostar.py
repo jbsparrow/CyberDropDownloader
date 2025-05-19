@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from yarl import URL
+from cyberdrop_dl.types import AbsoluteHttpURL
 
 from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
 
@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 class NudoStarCrawler(XenforoCrawler):
-    primary_base_domain = URL("https://nudostar.com/forum/")
+    primary_base_domain = AbsoluteHttpURL("https://nudostar.com/forum/")
     post_selectors = PostSelectors(
         date=Selector("time", "data-time"),
         number=Selector("a[class=u-concealed]", "href"),

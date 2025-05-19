@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -26,7 +25,7 @@ _SELECTORS = Selectors()
 
 
 class EHentaiCrawler(Crawler):
-    primary_base_domain = URL("https://e-hentai.org/")
+    primary_base_domain = AbsoluteHttpURL("https://e-hentai.org/")
     next_page_selector = _SELECTORS.NEXT_PAGE
 
     def __init__(self, manager: Manager) -> None:

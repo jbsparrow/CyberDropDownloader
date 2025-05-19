@@ -4,22 +4,23 @@ import json
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
+    from yarl import URL
+
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
 
-API_ENTRYPOINT = URL("https://wetransfer.com/api/v4/transfers")
+API_ENTRYPOINT = AbsoluteHttpURL("https://wetransfer.com/api/v4/transfers")
 
 
 class WeTransferCrawler(Crawler):
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {"wetransfer": ["wetransfer.com", "we.tl"]}
-    primary_base_domain = URL("https://wetransfer.com/")
+    primary_base_domain = AbsoluteHttpURL("https://wetransfer.com/")
 
     def __init__(self, manager: Manager, _) -> None:
         super().__init__(manager, "wetransfer", "WeTransfer")
@@ -62,12 +63,11 @@ class WeTransferCrawler(Crawler):
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 
-    async def get_final_url(self, scrape_item: ScrapeItem) -> URL:
+    async def get_final_url(self, scrape_item: ScrapeItem) -> AbsoluteHttpURL:
         async with self.request_limiter:
             headers = await self.client.get_head(self.domain, scrape_item.url)
 
-        location: str = headers.get("location")  # type: ignore
-        return self.parse_url(location)
+        return self.parse_url(headers["location"])
 
 
 @dataclass(frozen=True, order=True)

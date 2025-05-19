@@ -3,10 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
-from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -22,7 +22,7 @@ POST_CONTENT_SELECTOR = "div[class='flex justify-between items-center']"
 
 
 class FapelloCrawler(Crawler):
-    primary_base_domain = URL("https://fapello.su/")
+    primary_base_domain = AbsoluteHttpURL("https://fapello.su/")
     next_page_selector = 'div[id="next_page"] a'
 
     def __init__(self, manager: Manager) -> None:

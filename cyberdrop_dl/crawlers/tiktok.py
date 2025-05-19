@@ -3,9 +3,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 
 from aiolimiter import AsyncLimiter
-from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -15,11 +15,11 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 VIDEO_PARTS = "video", "photo", "v"
-API_URL = URL("https://www.tikwm.com/api/")
+API_URL = AbsoluteHttpURL("https://www.tikwm.com/api/")
 
 
 class TikTokCrawler(Crawler):
-    primary_base_domain = URL("https://tiktok.com/")
+    primary_base_domain = AbsoluteHttpURL("https://tiktok.com/")
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "tiktok", "TikTok")
@@ -145,12 +145,12 @@ class TikTokCrawler(Crawler):
         await self.handle_file(canonical_audio_url, new_scrape_item, filename, ext, debrid_link=audio_url)
         scrape_item.add_children()
 
-    async def get_canonical_url(self, author: str, post_id: str | None = None) -> URL:
+    async def get_canonical_url(self, author: str, post_id: str | None = None) -> AbsoluteHttpURL:
         if post_id is None:
             return self.primary_base_domain / f"@{author}"
         return self.primary_base_domain / f"@{author}/video/{post_id}"
 
-    async def get_canonical_audio_url(self, audio_title: str, audio_id: str) -> URL:
+    async def get_canonical_audio_url(self, audio_title: str, audio_id: str) -> AbsoluteHttpURL:
         if "original audio" in audio_title.lower():
             return self.primary_base_domain / f"music/original-audio-{audio_id}"
         return self.primary_base_domain / f"music/{audio_title.replace(' ', '-').lower()}-{audio_id}"

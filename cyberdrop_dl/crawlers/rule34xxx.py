@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -26,7 +25,7 @@ _SELECTOR = Selector()
 
 
 class Rule34XXXCrawler(Crawler):
-    primary_base_domain = URL("https://rule34.xxx")
+    primary_base_domain = AbsoluteHttpURL("https://rule34.xxx")
     next_page_selector = "a[alt=next]"
 
     def __init__(self, manager: Manager) -> None:

@@ -4,10 +4,9 @@ from functools import partial
 from typing import TYPE_CHECKING, Annotated, Any, NamedTuple
 
 from pydantic import AliasPath, Field, PlainValidator
-from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.types import AliasModel
+from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, parse_url
@@ -16,17 +15,18 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from bs4 import BeautifulSoup
+    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
 
-PRIMARY_BASE_DOMAIN = URL("https://xhamster.com/")
+PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://xhamster.com/")
 JS_VIDEO_INFO_SELECTOR = "script#initials-script"
 VIDEO_SELECTOR = "a.video-thumb__image-container"
 GALLERY_SELECTOR = "a.gallery-thumb__link"
 
 
-HttpURL = Annotated[URL, PlainValidator(partial(parse_url, relative_to=PRIMARY_BASE_DOMAIN))]
+HttpURL = Annotated[AbsoluteHttpURL, PlainValidator(partial(parse_url, relative_to=PRIMARY_BASE_DOMAIN))]
 
 
 class XhamsterCrawler(Crawler):

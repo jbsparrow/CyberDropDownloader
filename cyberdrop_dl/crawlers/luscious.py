@@ -8,6 +8,7 @@ from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -28,7 +29,7 @@ GRAPHQL_QUERIES = {
 
 
 class LusciousCrawler(Crawler):
-    primary_base_domain = URL("https://members.luscious.net")
+    primary_base_domain = AbsoluteHttpURL("https://members.luscious.net")
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "luscious", "Luscious")

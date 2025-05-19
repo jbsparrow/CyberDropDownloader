@@ -17,6 +17,7 @@ from yarl import URL
 from cyberdrop_dl.constants import FILE_FORMATS
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import DDOSGuardError, NoExtensionError, ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_og_properties, get_text_between, parse_url
 
 if TYPE_CHECKING:
@@ -57,9 +58,9 @@ CDNS = BASE_CDNS + EXTENDED_CDNS + IMAGE_CDNS
 CDN_POSSIBILITIES = re.compile(r"^(?:(?:(" + "|".join(CDNS) + r")[0-9]{0,2}(?:redir)?))\.bunkr?\.[a-z]{2,3}$")
 
 # URLs
-DOWNLOAD_API_ENTRYPOINT = URL("https://get.bunkrr.su/api/_001")
-STREAMING_API_ENTRYPOINT = URL("https://bunkr.site/api/vs")
-PRIMARY_BASE_DOMAIN = URL("https://bunkr.site")
+DOWNLOAD_API_ENTRYPOINT = AbsoluteHttpURL("https://get.bunkrr.su/api/_001")
+STREAMING_API_ENTRYPOINT = AbsoluteHttpURL("https://bunkr.site/api/vs")
+PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://bunkr.site")
 
 
 class Selectors:
@@ -184,7 +185,7 @@ class BunkrrCrawler(Crawler):
         soup: BeautifulSoup | None = None
         if is_stream_redirect(scrape_item.url):
             response, soup = await self.client._get_response_and_soup(self.domain, scrape_item.url)
-            scrape_item.url = response.url
+            scrape_item.url = AbsoluteHttpURL(response.url)
             del response
 
         database_url = scrape_item.url.with_host(self.DATABASE_PRIMARY_HOST)
@@ -239,7 +240,9 @@ class BunkrrCrawler(Crawler):
         await self.handle_direct_link(scrape_item, link, fallback_filename=title)
 
     @error_handling_wrapper
-    async def handle_direct_link(self, scrape_item: ScrapeItem, url: URL, fallback_filename: str = "") -> None:
+    async def handle_direct_link(
+        self, scrape_item: ScrapeItem, url: AbsoluteHttpURL, fallback_filename: str = ""
+    ) -> None:
         """Handles direct links (CDNs URLs) before sending them to the downloader.
 
         `fallback_filename` will only be used if the link has no `n` query parameter"""
@@ -265,7 +268,7 @@ class BunkrrCrawler(Crawler):
             filename, ext = self.get_filename_and_ext(str(Path(link.name).with_suffix(ext)))
 
         if is_cdn(scrape_item.url) and not is_reinforced_link(scrape_item.url):
-            scrape_item.url = URL("https://get.bunkr.su/")  # Using a CDN as referer gets a 403 response
+            scrape_item.url = AbsoluteHttpURL("https://get.bunkr.su/")  # Using a CDN as referer gets a 403 response
 
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 

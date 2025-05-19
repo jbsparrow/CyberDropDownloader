@@ -4,10 +4,9 @@ import json
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypedDict
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import NoExtensionError, ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
@@ -15,11 +14,12 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from bs4 import BeautifulSoup
+    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
 
-PRIMARY_BASE_DOMAIN = URL("https://www.pornhub.com")
+PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://www.pornhub.com")
 ALBUM_API_URL = PRIMARY_BASE_DOMAIN / "album/show_album_json"
 PROFILE_PARTS = "user", "channel", "channels", "model", "pornstar"
 

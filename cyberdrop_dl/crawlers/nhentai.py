@@ -4,10 +4,10 @@ import random
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
-from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.exceptions import LoginError, ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
-PRIMARY_BASE_DOMAIN = URL("https://nhentai.net/")
+PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://nhentai.net/")
 API_ENTRYPOINT = PRIMARY_BASE_DOMAIN / "api/gallery/"
 EXT_MAP = {"a": ".avif", "g": ".gif", "j": ".jpg", "p": ".png", "w": ".webp"}
 COLLECTION_PARTS = "favorites", "tag", "search", "parody", "group", "character", "artist"
@@ -97,9 +97,9 @@ class NHentaiCrawler(Crawler):
             await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
 
-def get_image_urls(json_resp: dict) -> Generator[tuple[int, URL]]:
+def get_image_urls(json_resp: dict) -> Generator[tuple[int, AbsoluteHttpURL]]:
     media_id: str = json_resp["media_id"]
     for index, info in enumerate(json_resp["images"]["pages"], 1):
         ext = EXT_MAP.get(info["t"]) or ".jpg"
         cdn = random.randint(1, 4)
-        yield index, URL(f"https://i{cdn}.nhentai.net/galleries/{media_id}/{index}{ext}")
+        yield index, AbsoluteHttpURL(f"https://i{cdn}.nhentai.net/galleries/{media_id}/{index}{ext}")

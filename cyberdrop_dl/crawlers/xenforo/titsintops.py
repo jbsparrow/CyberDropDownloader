@@ -4,6 +4,8 @@ from typing import TYPE_CHECKING
 
 from yarl import URL
 
+from cyberdrop_dl.types import AbsoluteHttpURL
+
 from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
 
 if TYPE_CHECKING:
@@ -13,7 +15,7 @@ if TYPE_CHECKING:
 
 
 class TitsInTopsCrawler(XenforoCrawler):
-    primary_base_domain = URL("https://titsintops.com/phpBB2")
+    primary_base_domain = AbsoluteHttpURL("https://titsintops.com/phpBB2")
     domain = "titsintops"
     post_selectors = PostSelectors(
         images=Selector("a[class*=file-preview]", "href"),

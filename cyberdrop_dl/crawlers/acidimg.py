@@ -2,18 +2,19 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import create_task_id
 from cyberdrop_dl.crawlers.imx_to import ImxToCrawler
+from cyberdrop_dl.types import AbsoluteHttpURL
 
 if TYPE_CHECKING:
+    from yarl import URL
+
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
 
 
 class AcidImgCrawler(ImxToCrawler):
-    primary_base_domain = URL("https://acidimg.cc")
+    primary_base_domain = AbsoluteHttpURL("https://acidimg.cc")
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager)
