@@ -9,13 +9,14 @@ from datetime import datetime, timedelta
 from fractions import Fraction
 from functools import lru_cache
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Required, Self, TypedDict, cast
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Required, Self, TypedDict, overload
 
 import aiofiles
 import aiofiles.os
 from multidict import CIMultiDict
 from yarl import URL
 
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import get_valid_dict
 
@@ -54,20 +55,27 @@ class FFmpeg:
                 await async_delete_files(concat_file_path, *input_files)
         return result
 
+    @overload
     @staticmethod
-    async def probe(file_or_url: Path | URL, /, *, headers: Mapping[str, str] | None = None) -> FFprobeResult:
-        if isinstance(file_or_url, URL):
-            assert file_or_url.absolute
-            assert file_or_url.scheme
+    async def probe(input: Path, /) -> FFprobeResult: ...
 
-        elif isinstance(file_or_url, Path):
-            assert file_or_url.is_absolute()
+    @overload
+    @staticmethod
+    async def probe(input: URL, /, *, headers: Mapping[str, str] | None = None) -> FFprobeResult: ...
+
+    @staticmethod
+    async def probe(input: Path | URL, /, *, headers: Mapping[str, str] | None = None) -> FFprobeResult:
+        if isinstance(input, URL):
+            assert AbsoluteHttpURL.validate(input)
+
+        elif isinstance(input, Path):
+            assert input.is_absolute()
             assert not headers
 
         else:
             raise ValueError("Can only probe a Path or a yarl.URL")
 
-        command = *FFPROBE_CALL_PREFIX, str(file_or_url)
+        command = *FFPROBE_CALL_PREFIX, str(input)
         if headers:
             add_headers = []
             for name, value in headers.items():
@@ -75,7 +83,8 @@ class FFmpeg:
 
             command = *command, *add_headers
         result = await _run_command(command)
-        output = cast("FFprobeOutput", json.loads(result.stdout) if result.success else {"streams": []})
+        default: FFprobeOutput = {"streams": []}
+        output = json.loads(result.stdout) if result.success else default
         return FFprobeResult(output)
 
 
@@ -149,8 +158,8 @@ class StreamDict(TypedDict, total=False):
     codec_type: Required[Literal["video", "audio", "subtitle"]]
 
 
-class FFprobeOutput(TypedDict):
-    streams: list[StreamDict]
+class FFprobeOutput(TypedDict, total=False):
+    streams: Required[list[StreamDict]]
 
 
 class Tags(CIMultiDict[Any]): ...
@@ -171,7 +180,7 @@ class Stream:
     tags: Tags
 
     @property
-    def length(self):
+    def length(self) -> float | None:
         return self.duration
 
     @property
@@ -235,7 +244,7 @@ class FFprobeResult:
     ffprobe_output: FFprobeOutput
     streams: tuple[Stream, ...] = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         streams: list[Stream] = []
         for stream in self.ffprobe_output.get("streams", []):
             if stream["codec_type"] == "video":
