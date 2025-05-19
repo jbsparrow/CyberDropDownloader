@@ -77,11 +77,13 @@ class Crawler(ABC):
         self.log_debug = log_debug
         self._semaphore = asyncio.Semaphore(20)
 
-        for path in self.SUPPORTED_PATHS:
-            assert isinstance(path, tuple)
-            assert path
-            if path[0] != "Direct Links":
-                assert len(path) > 1
+        for name, paths in self.SUPPORTED_PATHS.items():
+            assert name
+            assert isinstance(paths, str | tuple)
+            if name != "Direct links":
+                assert paths, f"crawler {self.name} has not paths for {name}"
+                for path in paths:
+                    assert "`" not in path, f"crawler {self.name}, {name}, Invalid path {path}"
 
     @property
     def name(self) -> str:

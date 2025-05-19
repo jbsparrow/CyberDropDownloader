@@ -230,12 +230,12 @@ class CustomHelpFormatter(RawDescriptionHelpFormatter):
         witdh = 300 if env.RUNNING_IN_IDE else None
         super().__init__(prog, max_help_position=80, width=witdh)
 
-    def _get_help_string(self, action):
+    def _get_help_string(self, action) -> str | None:
         if action.help:
             return action.help.replace("program's", "CDL")  ## The ' messes up the markdown formatting
         return action.help
 
-    def format_help(self):
+    def format_help(self) -> str:
         help_text = super().format_help()
         if env.RUNNING_IN_IDE and CLI_ARGUMENTS_MD.is_file():
             cli_overview, *_ = help_text.partition(CDL_EPILOG)

@@ -6,7 +6,7 @@ import json
 import platform
 from dataclasses import Field, field
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Protocol, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, NoReturn, Protocol, TypeVar
 
 from cyberdrop_dl import __version__, constants
 from cyberdrop_dl.config_definitions import ConfigSettings, GlobalSettings
@@ -352,10 +352,9 @@ def get_system_information() -> str:
     return json.dumps(system_info, indent=4)
 
 
-def show_supported_sites():
+def show_supported_sites() -> NoReturn:
     import sys
 
-    from rich import print
     from rich.table import Table
 
     from cyberdrop_dl.scraper.scrape_mapper import gen_crawlers_info
@@ -365,5 +364,42 @@ def show_supported_sites():
         table.add_column(column, no_wrap=True)
     for crawler in gen_crawlers_info():
         table.add_row(crawler.site, crawler.name, str(crawler.primary_base_domain))
+    update_wiki_supported_sites()
+    # print(table)
+    sys.exit(0)
+
+
+def update_wiki_supported_sites() -> None:
+    import sys
+
+    from rich import print
+    from rich.table import Table
+
+    from cyberdrop_dl.scraper.scrape_mapper import gen_crawlers_info
+
+    table = Table(title="Cyberdrop-DL Supported Sites")
+    for column in ("Crawler", "Primary Base Domain", "Supported Domains", "Supported Paths"):
+        table.add_column(column, no_wrap=True)
+    for crawler in gen_crawlers_info():
+        supported_paths: list[str] = []
+        for name, paths in crawler.crawler.SUPPORTED_PATHS.items():
+            if isinstance(paths, str):
+                paths = [paths]
+            joined_paths = "\n".join([f"    `{p}`" for p in paths])
+            supported_paths.append(f"{name}: \n{joined_paths}")
+
+        paths = "\n".join(supported_paths)
+        supported_domains: list[str] = []
+        for name, domains in crawler.crawler.SUPPORTED_SITES.items():
+            joined_domains = "\n".join([f"    `{p}`" for p in domains])
+            supported_domains.append(f"{name}: \n{joined_domains}")
+
+        if not supported_domains:
+            domain = crawler.crawler.primary_base_domain.host
+            name = crawler.crawler.scrape_mapper_domain or crawler.crawler.domain
+            supported_domains = [f"{name}: \n    `{domain}`"]
+
+        domains = "\n".join(supported_domains)
+        table.add_row(crawler.name, str(crawler.primary_base_domain), domains, paths)
     print(table)
     sys.exit(0)
