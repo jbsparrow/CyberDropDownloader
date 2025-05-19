@@ -9,8 +9,8 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper
 from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
 
 if TYPE_CHECKING:
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
 class F95ZoneCrawler(XenforoCrawler):
@@ -33,7 +33,7 @@ class F95ZoneCrawler(XenforoCrawler):
         """Override to handle protected link confirmation."""
         async with self.request_limiter:
             data = ({"xhr": "1", "download": "1"},)
-            JSON_Resp = await self.client.post_data(self.domain, link, data=data, origin=origin)
+            JSON_Resp = await self.client.post_data(self.domain, link, data=data)
 
         if JSON_Resp["status"] == "ok":
             return self.parse_url(JSON_Resp["msg"])

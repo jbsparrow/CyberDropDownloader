@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import signal
 import sys
 from datetime import datetime
 from enum import IntEnum
@@ -15,13 +16,12 @@ import browser_cookie3
 from pydantic import ValidationError
 from rich import print as rich_print
 
-from cyberdrop_dl import env
-from cyberdrop_dl.clients.errors import InvalidYamlError
+from cyberdrop_dl import constants, env
+from cyberdrop_dl.exceptions import InvalidYamlError
 from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.scraper.scrape_mapper import ScrapeMapper
 from cyberdrop_dl.ui.program_ui import ProgramUI
 from cyberdrop_dl.ui.textual import textual_ui
-from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.apprise import send_apprise_notifications
 from cyberdrop_dl.utils.dumper import Dumper
 from cyberdrop_dl.utils.logger import LogHandler, QueuedLogger, TextualLogQueueHandler, log, log_spacer, log_with_color
@@ -115,10 +115,19 @@ async def _run_manager(manager: Manager) -> None:
 
 
 async def _scheduler(manager: Manager) -> None:
+    loop = asyncio.get_running_loop()
+
+    def shutdown() -> None:
+        log("Received keyboard interrupt, shutting down...", 30)
+        manager.states.SHUTTING_DOWN.set()
+        manager.current_task.cancel()
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
+
     for func in (_runtime, _post_runtime):
         if manager.states.SHUTTING_DOWN.is_set():
             return
         manager.current_task = task = asyncio.create_task(func(manager))
+        loop.add_signal_handler(signal.SIGINT, shutdown)
         try:
             await task
         except asyncio.CancelledError:

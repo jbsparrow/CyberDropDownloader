@@ -12,9 +12,9 @@ from typing import TYPE_CHECKING
 from bs4 import BeautifulSoup, Tag
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import InvalidURLError, LoginError, ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.data_enums_classes.url_objects import FORUM, FORUM_POST, ScrapeItem
+from cyberdrop_dl.data_structures.url_objects import FORUM, ScrapeItem
+from cyberdrop_dl.exceptions import InvalidURLError, LoginError, ScrapeError
 from cyberdrop_dl.utils.logger import log, log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_trailing_slash
 
@@ -67,7 +67,6 @@ class XenforoSelectors:
 class ForumPost:
     soup: Tag
     selectors: PostSelectors
-    title: str | None = None
     post_name: str = "post-"
 
     @cached_property
@@ -91,10 +90,6 @@ class ForumPost:
         number_tag = self.soup.select_one(self.selectors.number.element)
         number_str: str = number_tag.get(self.selectors.number.attribute)  # type: ignore
         return int(number_str.split("/")[-1].split(self.post_name)[-1])
-
-    @cached_property
-    def id(self) -> int:
-        return self.number
 
 
 @dataclass(frozen=True, slots=True)
@@ -158,9 +153,10 @@ class XenforoCrawler(Crawler):
         if self.thread_url_part in scrape_item.url.parts:
             return await self.thread(scrape_item)
         if self.is_confirmation_link(scrape_item.url):
-            scrape_item.url = await self.handle_confirmation_link(scrape_item.url)
-            if scrape_item.url:  # If there was an error, this will be None
+            url = await self.handle_confirmation_link(scrape_item.url)
+            if url:  # If there was an error, this will be None
                 # This could end up back in here if the URL goes to another thread
+                scrape_item.url = url
                 return self.handle_external_links(scrape_item)
         if any(p in scrape_item.url.parts for p in ("goto", "posts")):
             return await self.redirect(scrape_item)
@@ -230,7 +226,9 @@ class XenforoCrawler(Crawler):
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
         """Scrapes a post."""
-        scrape_item.set_type(FORUM_POST, self.manager)
+        scrape_item.setup_as_post("")
+        post_title = self.create_separate_post_title(None, str(post.number), post.date)
+        scrape_item.add_to_parent_title(post_title)
         posts_scrapers = [self.attachments, self.embeds, self.images, self.links, self.videos]
         for scraper in posts_scrapers:
             await scraper(scrape_item, post)
@@ -387,7 +385,7 @@ class XenforoCrawler(Crawler):
     async def handle_confirmation_link(self, link: URL, *, origin: ScrapeItem | None = None) -> URL | None:
         """Handles link confirmation."""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, link, origin=origin)
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, link)
         confirm_button = soup.select_one("a[class*=button--cta]")
         if not confirm_button:
             return
@@ -503,9 +501,7 @@ class XenforoCrawler(Crawler):
                 attempt += 1
                 await asyncio.sleep(wait_time)
                 data = prepare_login_data(text)
-                await self.client.post_data(
-                    self.domain, login_url / "login", data=data, req_resp=False, cache_disabled=True
-                )
+                _ = await self.client._post_data(self.domain, login_url / "login", data=data, cache_disabled=True)
                 await asyncio.sleep(wait_time)
                 text, logged_in = await self.check_login_with_request(login_url)
                 if logged_in:

@@ -12,8 +12,8 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
 API_URL = URL("https://iframe.sex.com/api/")
@@ -58,8 +58,7 @@ class SexDotComCrawler(Crawler):
                 break
             page += 1
 
-    @error_handling_wrapper
-    async def get_media(self, scrape_item: ScrapeItem) -> dict:
+    async def get_media(self, scrape_item: ScrapeItem) -> dict[str, Any]:
         """Gets media from its relative URL."""
         relative_url = "/".join(scrape_item.url.parts[3:])
         data_url = API_URL / "media" / "getMedia"
@@ -70,22 +69,22 @@ class SexDotComCrawler(Crawler):
 
     @error_handling_wrapper
     async def handle_media(self, scrape_item: ScrapeItem, item: dict[str, Any] | None) -> None:
-        item = item or await self.get_media(scrape_item)
-        relative_url = item["relativeUrl"]
+        real_item = item or await self.get_media(scrape_item)
+        relative_url = real_item["relativeUrl"]
         canonical_url = URL("https://sex.com/en/shorts") / relative_url
         if await self.check_complete_from_referer(canonical_url):
             return
 
-        fileType: str = item.get("fileType") or item["mediaType"]
+        fileType: str = real_item.get("fileType") or real_item["mediaType"]
         if fileType.startswith("image"):
-            media_url = URL(item["fullPath"]).with_query(optimizer="image", width=1200)
-            filename, ext = f"{item['pictureUid']}.jpg", "jpg"
+            media_url = URL(real_item["fullPath"]).with_query(optimizer="image", width=1200)
+            filename, ext = f"{real_item['pictureUid']}.jpg", "jpg"
 
         elif fileType.startswith("video"):
-            media_url = URL(item["sources"][0]["fullPath"])
+            media_url = URL(real_item["sources"][0]["fullPath"])
             filename, ext = self.get_filename_and_ext(media_url.name)
 
-        scrape_item.possible_datetime = self.parse_datetime(item["createdAt"])
+        scrape_item.possible_datetime = self.parse_datetime(real_item["createdAt"])
         scrape_item.url = canonical_url
         await self.handle_file(media_url, scrape_item, filename, ext)
         scrape_item.add_children()

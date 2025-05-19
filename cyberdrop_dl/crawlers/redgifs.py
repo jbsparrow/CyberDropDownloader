@@ -8,8 +8,8 @@ from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
 API_ENTRYPOINT = URL("https://api.redgifs.com/")
@@ -63,7 +63,7 @@ class RedGifsCrawler(Crawler):
             async with self.request_limiter:
                 api_url = API_ENTRYPOINT / "v2/users" / user_id / "search"
                 api_url = api_url.with_query(order="new", page=page)
-                json_resp = await self.client.get_json(self.domain, api_url, headers_inc=self.headers)
+                json_resp = await self.client.get_json(self.domain, api_url, headers=self.headers)
             gifs = json_resp["gifs"]
             yield json_resp
             if total_gifs is None:
@@ -78,7 +78,7 @@ class RedGifsCrawler(Crawler):
         post_id = scrape_item.url.parts[-1].split(".")[0]
         async with self.request_limiter:
             api_url = API_ENTRYPOINT / "v2/gifs" / post_id
-            json_resp: dict[str, dict] = await self.client.get_json(self.domain, api_url, headers_inc=self.headers)
+            json_resp: dict[str, dict] = await self.client.get_json(self.domain, api_url, headers=self.headers)
 
         title_part: str = json_resp["gif"].get("title") or "Loose Files"
         title = self.create_title(title_part)

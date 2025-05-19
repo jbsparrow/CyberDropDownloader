@@ -11,8 +11,8 @@ from cyberdrop_dl.crawlers.kemono import KemonoCrawler, UserPost
 if TYPE_CHECKING:
     from aiohttp_client_cache.response import AnyResponse
 
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
 class CoomerCrawler(KemonoCrawler):
