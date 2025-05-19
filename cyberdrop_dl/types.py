@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from functools import partial
 from pathlib import Path
-from typing import Annotated, Any, TypeAlias, TypeGuard, TypeVar, final
+from typing import TYPE_CHECKING, Annotated, Any, Literal, NewType, TypeAlias, TypeGuard, TypeVar
 
 import yarl
 from pydantic import (
@@ -38,29 +38,21 @@ from cyberdrop_dl.utils.validators import (
     pydantyc_yarl_url,
 )
 
+if TYPE_CHECKING:
 
-def do_nothing(cls=None) -> Any: ...
+    class AbsoluteHttpURL(yarl.URL):
+        absolute: Literal[True]
+        scheme: Literal["http", "https"]
 
+        def host(self) -> str:  # type: ignore
+            """Decoded host part of URL."""
 
-og_init_subclass = yarl.URL.__init_subclass__
-
-yarl.URL.__init_subclass__ = do_nothing  # type: ignore
-
-
-@final
-class AbsoluteHttpURL(yarl.URL):
-    def __init__(*args, **kwargs) -> None:
-        raise RuntimeError("Do not create instances, call yarl.URL and them assert validate")
-
-    def host(self) -> str:  # type: ignore
-        """Decoded host part of URL."""
-
-    @staticmethod
-    def validate(url: yarl.URL) -> TypeGuard[AbsoluteHttpURL]:
-        return url.absolute and url.scheme.startswith("http")
+else:
+    AbsoluteHttpURL = yarl.URL
 
 
-yarl.URL.__init_subclass__ = og_init_subclass
+def is_absolute_http_url(url: yarl.URL) -> TypeGuard[AbsoluteHttpURL]:
+    return url.absolute and url.scheme.startswith("http")
 
 
 # ~~~~~ Strings ~~~~~~~
@@ -125,3 +117,4 @@ U32Int: TypeAlias = int
 U32IntArray: TypeAlias = Array[U32Int]
 U32IntSequence: TypeAlias = Sequence[U32Int]
 AnyDict: TypeAlias = dict[str, Any]
+AbsolutePath = NewType("AbsolutePath", Path)

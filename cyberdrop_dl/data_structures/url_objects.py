@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, NamedTuple
 from yarl import URL
 
 from cyberdrop_dl.exceptions import MaxChildrenError
+from cyberdrop_dl.types import is_absolute_http_url
 from cyberdrop_dl.utils.utilities import sanitize_folder
 
 if TYPE_CHECKING:
@@ -19,6 +20,7 @@ if TYPE_CHECKING:
     from rich.progress import TaskID
 
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.types import AbsoluteHttpURL
 
 
 class ScrapeItemType(IntEnum):
@@ -42,16 +44,18 @@ class HlsSegment(NamedTuple):
 
 @dataclass(unsafe_hash=True, slots=True)
 class MediaItem:
-    url: URL
+    url: AbsoluteHttpURL
     origin: InitVar[ScrapeItem | MediaItem]
     download_folder: Path
     filename: str
     original_filename: str | None = None
-    debrid_link: URL | None = field(default=None, hash=False, compare=False)
+    debrid_link: AbsoluteHttpURL | None = field(default=None, hash=False, compare=False)
     duration: float | None = field(default=None, hash=False, compare=False)
     ext: str = ""
     is_segment: bool = False
-    fallbacks: Callable[..., URL] | list[URL] | None = field(default=None, hash=False, compare=False)
+    fallbacks: Callable[..., AbsoluteHttpURL] | list[AbsoluteHttpURL] | None = field(
+        default=None, hash=False, compare=False
+    )
 
     # exclude from __init__
     parent_media_item: MediaItem | None = field(init=False, default=None, hash=False, compare=False)
@@ -69,8 +73,8 @@ class MediaItem:
     referer: URL = field(init=False)
     album_id: str | None = field(init=False)
     datetime: int | None = field(init=False, hash=False, compare=False)
-    parents: list[URL] = field(init=False, hash=False, compare=False)
-    parent_threads: set[URL] = field(init=False, hash=False, compare=False)
+    parents: list[AbsoluteHttpURL] = field(init=False, hash=False, compare=False)
+    parent_threads: set[AbsoluteHttpURL] = field(init=False, hash=False, compare=False)
 
     def __post_init__(self, origin: ScrapeItem | MediaItem) -> None:
         self.referer = origin.url
@@ -102,7 +106,7 @@ class MediaItem:
 
 @dataclass(kw_only=True, slots=True)
 class ScrapeItem:
-    url: URL
+    url: AbsoluteHttpURL
     parent_title: str = ""
     part_of_album: bool = False
     album_id: str | None = None
@@ -110,8 +114,8 @@ class ScrapeItem:
     retry: bool = False
     retry_path: Path | None = None
 
-    parents: list[URL] = field(default_factory=list, init=False)
-    parent_threads: set[URL] = field(default_factory=set, init=False)
+    parents: list[AbsoluteHttpURL] = field(default_factory=list, init=False)
+    parent_threads: set[AbsoluteHttpURL] = field(default_factory=set, init=False)
     children: int = field(default=0, init=False)
     children_limit: int = field(default=0, init=False)
     type: ScrapeItemType | None = field(default=None, init=False)
@@ -175,9 +179,11 @@ class ScrapeItem:
     ) -> ScrapeItem:
         """Creates a scrape item."""
         scrape_item = self.copy()
+        assert is_absolute_http_url(url)
         scrape_item.url = url
         if add_parent:
             new_parent = add_parent if isinstance(add_parent, URL) else self.url
+            assert is_absolute_http_url(new_parent)
             scrape_item.parents.append(new_parent)
         if new_title_part:
             scrape_item.add_to_parent_title(new_title_part)
