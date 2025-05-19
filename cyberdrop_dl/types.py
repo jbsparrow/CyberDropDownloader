@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any, NewType, TypeAlias, TypeGuard, TypeVar
+from typing import TYPE_CHECKING, Annotated, Any, Literal, NewType, TypeAlias, TypeGuard, TypeVar
 
 import yarl
 from pydantic import (
@@ -41,6 +41,9 @@ from cyberdrop_dl.utils.validators import (
 if TYPE_CHECKING:
 
     class AbsoluteHttpURL(yarl.URL):
+        absolute: Literal[True]
+        scheme: Literal["http", "https"]
+
         def host(self) -> str:  # type: ignore
             """Decoded host part of URL."""
 
