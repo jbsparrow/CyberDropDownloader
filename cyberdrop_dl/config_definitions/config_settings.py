@@ -5,11 +5,10 @@ from pathlib import Path
 
 from pydantic import BaseModel, ByteSize, Field, NonNegativeInt, PositiveInt, field_serializer, field_validator
 
-from cyberdrop_dl.utils.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE
-from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
-from cyberdrop_dl.utils.data_enums_classes.supported_domains import SUPPORTED_SITES_DOMAINS
-
-from .custom.types import (
+from cyberdrop_dl.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE
+from cyberdrop_dl.data_structures.hash import Hashing
+from cyberdrop_dl.data_structures.supported_domains import SUPPORTED_SITES_DOMAINS
+from cyberdrop_dl.types import (
     AliasModel,
     ByteSizeSerilized,
     HttpAppriseURL,
@@ -21,7 +20,7 @@ from .custom.types import (
     NonEmptyStrOrNone,
     PathOrNone,
 )
-from .custom.validators import parse_duration_as_timedelta, parse_falsy_as
+from cyberdrop_dl.utils.validators import parse_duration_as_timedelta, parse_falsy_as
 
 ALL_SUPPORTED_SITES = ["<<ALL_SUPPORTED_SITES>>"]
 
@@ -45,22 +44,30 @@ class DownloadOptions(BaseModel):
 
 class Files(AliasModel):
     download_folder: Path = Field(validation_alias="d", default=DOWNLOAD_STORAGE)
-    dump_json: bool = Field(False, validation_alias="j")
+    dump_json: bool = Field(default=False, validation_alias="j")
     input_file: Path = Field(validation_alias="i", default=APP_STORAGE / "Configs" / "{config}" / "URLs.txt")
     save_pages_html: bool = False
 
 
 class Logs(AliasModel):
-    download_error_urls: LogPath = Field(Path("Download_Error_URLs.csv"), validation_alias="download_error_urls_filename")  # fmt: skip
-    last_forum_post: LogPath = Field(Path("Last_Scraped_Forum_Posts.csv"), validation_alias="last_forum_post_filename")
+    download_error_urls: LogPath = Field(
+        default=Path("Download_Error_URLs.csv"), validation_alias="download_error_urls_filename"
+    )
+    last_forum_post: LogPath = Field(
+        default=Path("Last_Scraped_Forum_Posts.csv"), validation_alias="last_forum_post_filename"
+    )
     log_folder: Path = APP_STORAGE / "Configs" / "{config}" / "Logs"
     log_line_width: PositiveInt = Field(default=240, ge=50)
     logs_expire_after: timedelta | None = None
-    main_log: MainLogPath = Field(Path("downloader.log"), validation_alias="main_log_filename")
+    main_log: MainLogPath = Field(default=Path("downloader.log"), validation_alias="main_log_filename")
     rotate_logs: bool = False
-    scrape_error_urls: LogPath = Field(Path("Scrape_Error_URLs.csv"), validation_alias="scrape_error_urls_filename")
-    unsupported_urls: LogPath = Field(Path("Unsupported_URLs.csv"), validation_alias="unsupported_urls_filename")
-    webhook: HttpAppriseURL | None = Field(validation_alias="webhook_url", default=None)
+    scrape_error_urls: LogPath = Field(
+        default=Path("Scrape_Error_URLs.csv"), validation_alias="scrape_error_urls_filename"
+    )
+    unsupported_urls: LogPath = Field(
+        default=Path("Unsupported_URLs.csv"), validation_alias="unsupported_urls_filename"
+    )
+    webhook: HttpAppriseURL | None = Field(default=None, validation_alias="webhook_url")
 
     @field_validator("webhook", mode="before")
     @classmethod
@@ -200,6 +207,6 @@ class ConfigSettings(AliasModel):
     )
     files: Files = Field(validation_alias="Files", default=Files())
     ignore_options: IgnoreOptions = Field(validation_alias="Ignore_Options", default=IgnoreOptions())
-    logs: Logs = Field(validation_alias="Logs", default=Logs())  # type: ignore
+    logs: Logs = Field(validation_alias="Logs", default=Logs())
     runtime_options: RuntimeOptions = Field(validation_alias="Runtime_Options", default=RuntimeOptions())
     sorting: Sorting = Field(validation_alias="Sorting", default=Sorting())

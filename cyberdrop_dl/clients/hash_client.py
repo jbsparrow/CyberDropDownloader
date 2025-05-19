@@ -9,16 +9,16 @@ from typing import TYPE_CHECKING
 import aiofiles.os
 from send2trash import send2trash
 
+from cyberdrop_dl.data_structures.hash import Hashing
 from cyberdrop_dl.ui.prompts.basic_prompts import enter_to_continue
-from cyberdrop_dl.utils.data_enums_classes.hash import Hashing
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import get_size_or_none
 
 if TYPE_CHECKING:
     from yarl import URL
 
+    from cyberdrop_dl.data_structures.url_objects import MediaItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem
 
 
 def hash_directory_scanner(manager: Manager, path: Path) -> None:

@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import json
 import platform
 from dataclasses import Field, field
 from time import perf_counter
-from typing import TYPE_CHECKING, Literal, NamedTuple
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Protocol, TypeVar
 
-from cyberdrop_dl import __version__
+from cyberdrop_dl import __version__, constants
 from cyberdrop_dl.config_definitions import ConfigSettings, GlobalSettings
 from cyberdrop_dl.managers.cache_manager import CacheManager
 from cyberdrop_dl.managers.client_manager import ClientManager
@@ -22,7 +23,6 @@ from cyberdrop_dl.managers.progress_manager import ProgressManager
 from cyberdrop_dl.managers.realdebrid_manager import RealDebridManager
 from cyberdrop_dl.managers.storage_manager import StorageManager
 from cyberdrop_dl.ui.textual import TextualUI
-from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.args import ParsedArgs
 from cyberdrop_dl.utils.ffmpeg import FFmpeg, get_ffmpeg_version
 from cyberdrop_dl.utils.logger import QueuedLogger, log
@@ -33,6 +33,27 @@ if TYPE_CHECKING:
     from asyncio import TaskGroup
 
     from cyberdrop_dl.scraper.scrape_mapper import ScrapeMapper
+
+
+class HasClose(Protocol):
+    def close(self): ...
+
+
+class HasAsyncClose(Protocol):
+    async def close(self): ...
+
+
+C = TypeVar("C", bound=HasAsyncClose | HasClose)
+
+
+def unset() -> Any:
+    return field(init=False)
+
+
+async def close_if_set(obj: C) -> C:
+    if not isinstance(obj, Field):
+        await obj.close() if inspect.iscoroutinefunction(obj.close) else obj.close()
+    return unset()
 
 
 class AsyncioEvents(NamedTuple):
@@ -285,31 +306,23 @@ class Manager:
 
     async def async_db_close(self) -> None:
         "Partial shutdown for managers used for hash directory scanner"
-        if not isinstance(self.db_manager, Field):
-            await self.db_manager.close()
-        self.db_manager: DBManager = field(init=False)
-        self.hash_manager: HashManager = field(init=False)
+        self.db_manager = await close_if_set(self.db_manager)
+        self.hash_manager = unset()
         self.progress_manager.hash_progress.reset()
 
     async def close(self) -> None:
         """Closes the manager."""
         self.states.RUNNING.clear()
-        if not isinstance(self.client_manager, Field):
-            if not isinstance(self.client_manager.scraper_session, Field):
-                await self.client_manager.scraper_session.close()
-            await self.client_manager.close()
 
         await self.async_db_close()
-        await self.cache_manager.close()
-        await self.storage_manager.close()
 
-        self.cache_manager.close_sync()
+        self.client_manager = await close_if_set(self.client_manager)
+        self.storage_manager = await close_if_set(self.storage_manager)
+        self.cache_manager = await close_if_set(self.cache_manager)
+
         while self.loggers:
             _, queued_logger = self.loggers.popitem()
             queued_logger.stop()
-
-        self.cache_manager: CacheManager = field(init=False)
-        self.hash_manager: HashManager = field(init=False)
 
     def validate_all_configs(self) -> None:
         all_configs = self.config_manager.get_configs()

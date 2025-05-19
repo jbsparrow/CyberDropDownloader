@@ -4,23 +4,83 @@ import http
 import re
 from datetime import UTC, datetime, timedelta
 from hashlib import sha256
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, NotRequired, TypedDict, cast
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import DownloadError, PasswordProtectedError, ScrapeError
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.data_enums_classes.url_objects import FILE_HOST_ALBUM, ScrapeItem
+from cyberdrop_dl.data_structures.url_objects import FILE_HOST_ALBUM, ScrapeItem
+from cyberdrop_dl.exceptions import DownloadError, PasswordProtectedError, ScrapeError
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from cyberdrop_dl.managers.manager import Manager
 
 
 WT_REGEX = re.compile(r'appdata\.wt\s=\s"([^"]+)"')
 API_ENTRYPOINT = URL("https://api.gofile.io")
 GLOBAL_JS_URL = URL("https://gofile.io/dist/js/global.js")
+
+
+class Node(TypedDict):
+    canAccess: bool
+    id: str
+    type: Literal["folder", "file"]
+    name: str
+    createTime: int
+
+    # Not used
+    public: bool
+
+
+class UnlockedNode(Node):
+    canAccess: Literal[True]
+    code: str
+
+
+class UnlockedFile(UnlockedNode):
+    type: Literal["file"]
+    link: str
+    directLink: NotRequired[str]  # Only present in overloded files (imported)
+    isFrozen: NotRequired[bool]  # Only present in files uploaded by free accounts and older than 30 days
+
+    # Not used
+    parentFolder: str
+    size: int
+    downloadCount: int
+    md5: str
+    thumbnail: str
+
+
+class UnlockedFolder(UnlockedNode):
+    type: Literal["folder"]
+
+    # Not used
+    isRoot: NotRequired[bool]
+
+
+class Album(UnlockedFolder):
+    childrenCount: int
+    children: dict[str, Node]
+    password: NotRequired[str]
+
+
+# TODO: add pagination support for albums with 1000+ items
+class AlbumMetadata(TypedDict):
+    totalCount: int
+    totalPages: int
+    page: int
+    pageSize: Literal[1000]
+    hasNextPage: bool
+
+
+class ApiAlbumResponse(TypedDict):
+    status: str
+    data: Album
+    Metadata: AlbumMetadata
 
 
 class GoFileCrawler(Crawler):
@@ -30,7 +90,7 @@ class GoFileCrawler(Crawler):
         super().__init__(manager, "gofile", "GoFile")
         self.api_key = manager.config_manager.authentication_data.gofile.api_key
         self.website_token = manager.cache_manager.get("gofile_website_token")
-        self.headers = {}
+        self.headers: dict[str, str] = {}
         self.request_limiter = AsyncLimiter(4, 6)
         self._website_token_date = datetime.now(UTC) - timedelta(days=7)
 
@@ -44,87 +104,112 @@ class GoFileCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        await self.album(scrape_item)
+        if "d" in scrape_item.url.parts:
+            return await self.album(scrape_item)
+        raise ValueError
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
         if not self.api_key or not self.website_token:
             return
-        content_id = scrape_item.url.name
-        password = scrape_item.url.query.get("password", "")
-        scrape_item.url = scrape_item.url.with_query(None)
-        if password:
-            password = sha256(password.encode()).hexdigest()
 
-        content_query = {"wt": self.website_token, "password": password}
-        content_url = API_ENTRYPOINT.joinpath("contents", content_id).with_query(content_query)
-        api_query = {"url": content_url, "headers_inc": self.headers, "origin": scrape_item}
+        content_id = scrape_item.url.name
+        api_url = API_ENTRYPOINT.joinpath("contents", content_id).with_query(wt=self.website_token)
+
+        if password := scrape_item.url.query.get("password"):
+            sha256_password = sha256(password.encode()).hexdigest()
+            api_url = api_url.update_query(password=sha256_password)
 
         try:
             async with self.request_limiter:
-                json_resp = await self.client.get_json(self.domain, **api_query)
+                json_resp: ApiAlbumResponse = await self.client.get_json(self.domain, api_url, headers=self.headers)
 
         except DownloadError as e:
             if e.status != http.HTTPStatus.UNAUTHORIZED:
-                raise ScrapeError(e.status, e.message) from e
+                raise
             async with self.startup_lock:
                 await self.get_website_token(update=True)
-            content_url = content_url.update_query(wt=self.website_token)
-            api_query["url"] = content_url
+            api_url = api_url.update_query(wt=self.website_token)
             async with self.request_limiter:
-                json_resp = await self.client.get_json(self.domain, **api_query)
+                json_resp = await self.client.get_json(self.domain, api_url, headers=self.headers)
 
-        self.check_json_response(json_resp, scrape_item)
-        json_data: dict = json_resp["data"]
-        name = json_data["name"]
-        title = self.create_title(name, content_id)
-        if json_data["childrenCount"] == 1 and name == json_data["code"] and scrape_item.type != FILE_HOST_ALBUM:
-            # Consider single files in autogenerated album as loose
-            scrape_item.part_of_album = False
+        album = get_album_data(json_resp)
+        if is_single_not_nested_file(scrape_item, album):
+            # Consider this file a loose file (autogenerated album name)
+            title = ""
+            part_of_album = False
         else:
-            scrape_item.add_to_parent_title(title)
+            title = self.create_title(album["name"], content_id)
+            part_of_album = True
 
-        scrape_item.setup_as_album("", album_id=content_id)
-        await self.handle_children(json_data["children"], scrape_item)
+        scrape_item.setup_as_album(title, album_id=content_id)
+        scrape_item.part_of_album = part_of_album
+        scrape_item.url = scrape_item.url.with_query(None)
+        await self.handle_children(album["children"], scrape_item)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    def check_json_response(self, json_resp: dict, scrape_item: ScrapeItem | None = None) -> None:
-        """Parses and raises errors from json response."""
-        if json_resp["status"] == "error-notFound":
-            raise ScrapeError(404)
-
-        data: dict = json_resp["data"]
-        is_password_protected = data.get("password")
-        if is_password_protected and (is_password_protected in {"passwordRequired", "passwordWrong"}):
-            raise PasswordProtectedError(origin=scrape_item)
-
-        if not data.get("canAccess"):
-            raise ScrapeError(403, "Album is private")
-
-    async def handle_children(self, children: dict, scrape_item: ScrapeItem) -> None:
+    async def handle_children(self, children: Mapping[str, Node], scrape_item: ScrapeItem) -> None:
         """Sends files to downloader and adds subfolder to scrape queue."""
-        subfolders = []
+        subfolders: list[URL] = []
+        unavailable: list[URL] = []
+        dangerous: list[URL] = []
+
+        def get_website_url(node: Node) -> URL:
+            if node["type"] == "folder":
+                return self.primary_base_domain / "d" / (node.get("code") or node["id"])
+            return scrape_item.url.with_fragment(file["id"])
+
         for child in children.values():
-            if child["type"] == "folder":
-                folder_url = self.primary_base_domain / "d" / child["code"]
-                subfolders.append(folder_url)
+            if not child["canAccess"]:
+                url = get_website_url(child)
+                unavailable.append(url)
                 continue
 
-            link_str = child["link"]
-            if link_str == "overloaded":
-                link_str = child["directLink"]
+            if child["type"] == "folder":
+                folder = cast("UnlockedFolder", child)
+                url = self.primary_base_domain / "d" / folder["code"]
+                subfolders.append(url)
+                continue
+
+            assert child["type"] == "file"
+            file = cast("UnlockedFile", child)
+
+            link_str = file["link"]
+            if not link_str or link_str == "overloaded":
+                link_str = file.get("directLink")
+                assert link_str
 
             link = self.parse_url(link_str)
+
+            if file.get("v" + "iru" + "ses"):  # Auto flagged by GoFile. We can download them but better not to
+                dangerous.append(link)
+                continue
+
+            if file.get("isFrozen"):
+                self.log(f"{link} is marked as frozen, download may fail", 30)
+
             filename, ext = self.get_filename_and_ext(link.name, assume_ext=".mp4")
-            new_scrape_item = scrape_item.create_new(scrape_item.url, possible_datetime=child["createTime"])
+            new_scrape_item = scrape_item.create_new(scrape_item.url, possible_datetime=file["createTime"])
             await self.handle_file(link, new_scrape_item, filename, ext)
             scrape_item.add_children()
 
-        for folder_url in subfolders:
-            subfolder = scrape_item.create_child(folder_url)
+        for url in subfolders:
+            subfolder = scrape_item.create_child(url)
             self.manager.task_group.create_task(self.run(subfolder))
+
+        for url in unavailable:
+            new_scrape_item = scrape_item.create_new(url)
+            await self.raise_error(new_scrape_item, 403)
+
+        for url in dangerous:
+            new_scrape_item = scrape_item.create_new(url)
+            await self.raise_error(new_scrape_item, "Dangerous File")
+
+    @error_handling_wrapper
+    async def raise_error(self, scrape_item: ScrapeItem | URL, status: str | int, message: str | None = None) -> None:
+        raise ScrapeError(status, message)
 
     @error_handling_wrapper
     async def get_account_token(self, _) -> None:
@@ -135,11 +220,11 @@ class GoFileCrawler(Crawler):
         self.update_cookies(cookies)
 
     async def _get_new_api_key(self) -> str:
-        create_account_address = API_ENTRYPOINT / "accounts"
+        api_url = API_ENTRYPOINT / "accounts"
         async with self.request_limiter:
-            json_resp = await self.client.post_data(self.domain, create_account_address, data={})
+            json_resp = await self.client.post_data(self.domain, api_url, data={})
         if json_resp["status"] != "ok":
-            raise ScrapeError(401, "Couldn't generate GoFile API token", origin=create_account_address)
+            raise ScrapeError(401, "Couldn't generate GoFile API token", origin=api_url)
 
         return json_resp["data"]["token"]
 
@@ -156,10 +241,29 @@ class GoFileCrawler(Crawler):
 
     async def _update_website_token(self) -> None:
         async with self.request_limiter:
-            text = await self.client.get_text(self.domain, GLOBAL_JS_URL, origin=GLOBAL_JS_URL)
-        match = re.search(WT_REGEX, str(text))
+            text = await self.client.get_text(self.domain, GLOBAL_JS_URL)
+        match = WT_REGEX.search(str(text))
         if not match:
             raise ScrapeError(401, "Couldn't generate GoFile websiteToken", origin=GLOBAL_JS_URL)
         self.website_token = match.group(1)
         self.manager.cache_manager.save("gofile_website_token", self.website_token)
         self._website_token_date = datetime.now(UTC)
+
+
+def get_album_data(json_resp: ApiAlbumResponse) -> Album:
+    """Parses and raises errors if we can not proccess the API response."""
+    if json_resp["status"] == "error-notFound":
+        raise ScrapeError(404)
+
+    album: Album = json_resp["data"]
+    if (password := album.get("password")) and (password in ("passwordRequired", "passwordWrong")):
+        raise PasswordProtectedError
+
+    if not album["canAccess"]:
+        raise ScrapeError(403, "Album is private")
+
+    return album
+
+
+def is_single_not_nested_file(scrape_item: ScrapeItem, album: Album) -> bool:
+    return album["childrenCount"] == 1 and album["name"] == album["code"] and scrape_item.type != FILE_HOST_ALBUM

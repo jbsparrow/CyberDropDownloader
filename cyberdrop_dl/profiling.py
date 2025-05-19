@@ -12,8 +12,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import TYPE_CHECKING
 
-from cyberdrop_dl import env
-from cyberdrop_dl.utils import constants
+from cyberdrop_dl import constants, env
 
 if TYPE_CHECKING:
     from collections.abc import Callable
