@@ -14,16 +14,16 @@ from typing import TYPE_CHECKING, ClassVar, NamedTuple
 from aiohttp import ClientConnectorError
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import DDOSGuardError, NoExtensionError, ScrapeError
+from cyberdrop_dl.constants import FILE_FORMATS
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
-from cyberdrop_dl.utils.constants import FILE_FORMATS
+from cyberdrop_dl.exceptions import DDOSGuardError, NoExtensionError, ScrapeError
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_og_properties, get_text_between, parse_url
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup, Tag
 
+    from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import ScrapeItem
 
 
 # CDNs

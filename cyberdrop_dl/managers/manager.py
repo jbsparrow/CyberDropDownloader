@@ -8,7 +8,7 @@ from dataclasses import Field, field
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Protocol, TypeVar
 
-from cyberdrop_dl import __version__
+from cyberdrop_dl import __version__, constants
 from cyberdrop_dl.config_definitions import ConfigSettings, GlobalSettings
 from cyberdrop_dl.managers.cache_manager import CacheManager
 from cyberdrop_dl.managers.client_manager import ClientManager
@@ -23,7 +23,6 @@ from cyberdrop_dl.managers.progress_manager import ProgressManager
 from cyberdrop_dl.managers.realdebrid_manager import RealDebridManager
 from cyberdrop_dl.managers.storage_manager import StorageManager
 from cyberdrop_dl.ui.textual import TextualUI
-from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.args import ParsedArgs
 from cyberdrop_dl.utils.ffmpeg import FFmpeg, get_ffmpeg_version
 from cyberdrop_dl.utils.logger import QueuedLogger, log

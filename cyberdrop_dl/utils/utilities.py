@@ -21,7 +21,8 @@ from aiohttp_client_cache.response import AnyResponse
 from bs4 import BeautifulSoup
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import (
+from cyberdrop_dl import constants
+from cyberdrop_dl.exceptions import (
     CDLBaseError,
     ErrorLogMessage,
     InvalidExtensionError,
@@ -29,7 +30,6 @@ from cyberdrop_dl.clients.errors import (
     NoExtensionError,
     get_origin,
 )
-from cyberdrop_dl.utils import constants
 from cyberdrop_dl.utils.logger import log, log_debug, log_spacer, log_with_color
 
 if TYPE_CHECKING:
@@ -39,9 +39,9 @@ if TYPE_CHECKING:
     from rich.text import Text
 
     from cyberdrop_dl.crawlers import Crawler
+    from cyberdrop_dl.data_structures.url_objects import MediaItem, ScrapeItem
     from cyberdrop_dl.downloader.downloader import Downloader
     from cyberdrop_dl.managers.manager import Manager
-    from cyberdrop_dl.utils.data_enums_classes.url_objects import MediaItem, ScrapeItem
 
 
 P = ParamSpec("P")

@@ -6,11 +6,12 @@ from pathlib import Path
 import pytest
 from rich.text import Text
 
+from cyberdrop_dl import constants
+from cyberdrop_dl.constants import NotificationResult
 from cyberdrop_dl.managers.config_manager import ConfigManager
 from cyberdrop_dl.managers.manager import Manager
 from cyberdrop_dl.managers.path_manager import PathManager
-from cyberdrop_dl.utils import apprise, constants
-from cyberdrop_dl.utils.constants import NotificationResult
+from cyberdrop_dl.utils import apprise
 from tests.fake_classes.managers import FakeCacheManager
 
 TEST_FILES_PATH = Path(__file__).parent / "test_files/apprise"

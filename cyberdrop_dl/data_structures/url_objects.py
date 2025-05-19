@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, NamedTuple
 
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import MaxChildrenError
+from cyberdrop_dl.exceptions import MaxChildrenError
 from cyberdrop_dl.utils.utilities import sanitize_folder
 
 if TYPE_CHECKING:

@@ -9,7 +9,7 @@ from requests import Session
 from requests.exceptions import RequestException
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import RealDebridError
+from cyberdrop_dl.exceptions import RealDebridError
 from cyberdrop_dl.managers.real_debrid.errors import ERROR_CODES
 
 if TYPE_CHECKING:

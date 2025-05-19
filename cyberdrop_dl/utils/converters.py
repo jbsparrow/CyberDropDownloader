@@ -2,15 +2,21 @@
 Functions to use with `AfterValidator`, `field_validator(mode="after")` or `model_validator(mode="after")`
 """
 
+from __future__ import annotations
+
 import re
 from datetime import timedelta
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-import yarl
 from pydantic import AnyUrl, ByteSize, TypeAdapter
 
-from cyberdrop_dl.clients.errors import InvalidURLError
+from cyberdrop_dl.exceptions import InvalidURLError
 from cyberdrop_dl.utils.utilities import parse_url
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    import yarl
 
 DATE_PATTERN_REGEX = r"(\d+)\s*(second|seconds|minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years)"
 DATE_PATTERN = re.compile(DATE_PATTERN_REGEX, re.IGNORECASE)
