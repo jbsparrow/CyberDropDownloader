@@ -1630,6 +1630,18 @@ dev = ["abi3audit", "black (==24.10.0)", "check-manifest", "coverage", "packagin
 test = ["pytest", "pytest-xdist", "setuptools"]
 
 [[package]]
+name = "py-markdown-table"
+version = "1.3.0"
+description = "Package that generates markdown tables from a list of dicts"
+optional = false
+python-versions = "<4.0,>=3.8"
+groups = ["dev"]
+files = [
+    {file = "py_markdown_table-1.3.0-py3-none-any.whl", hash = "sha256:b8740b57e466f343dbb1e9c7ca4e2d1b4281d96fb922bf1ed60b6c496c8725c4"},
+    {file = "py_markdown_table-1.3.0.tar.gz", hash = "sha256:be63f6bcbe32e10a9a68575eb48a648949df067b54b48ad6d993b0e5748f57d6"},
+]
+
+[[package]]
 name = "pycparser"
 version = "2.22"
 description = "C parser in Python"
@@ -2745,4 +2757,4 @@ propcache = ">=0.2.1"
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.11,<4"
-content-hash = "70619b741c995f47c2afe39d331eb88f42ded0193c0e4a64e756a336607b9f39"
+content-hash = "61f8d175574c0313b3704ffb4a2404bbe70a32eceb35b4996bc931e6e30c29da"
