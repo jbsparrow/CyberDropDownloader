@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 
 
 RowDict: TypeAlias = dict[str, str]
+SUPPORTED_SITES_URL = "https://script-ware.gitbook.io/cyberdrop-dl/reference/supported-websites"
 
 
 def show_supported_sites() -> None:
@@ -21,19 +22,20 @@ def show_supported_sites() -> None:
     def make_colunm(field_name: str) -> str:
         return field_name.replace("_", " ").title().replace("Url", "URL")
 
-    table = Table(title="Cyberdrop-DL Supported Sites")
+    caption = f"Visit {SUPPORTED_SITES_URL} for a details about supported paths"
+    table = Table(title="Cyberdrop-DL Supported Sites", caption=caption)
 
     html_rows: list[RowDict] = []
     crawlers = get_unique_crawlers()
     columns = [make_colunm(f) for f in crawlers[0].INFO._fields]
-    for column in columns:
+    for column in columns[0:3]:
         table.add_column(column, no_wrap=True)
 
     for crawler in crawlers:
         if crawler.NAME.casefold() == "generic":
             continue
         row_values = get_row_values(crawler.INFO)
-        table.add_row(*row_values)
+        table.add_row(*row_values[0:3])
         html_row_values = [r.replace("\n", "<br>") for r in row_values]
         html_row_dict = RowDict(zip(columns, html_row_values, strict=True))
         html_rows.append(html_row_dict)
@@ -56,7 +58,7 @@ def get_row_values(crawler_info: CrawlerInfo) -> tuple[str, ...]:
             continue
         if isinstance(paths, str):
             paths = [paths]
-        if "*NOTE*" in name.casefold():
+        if "*note*" in name.casefold():
             notes += join_paths(paths, "")
             continue
 
@@ -66,7 +68,6 @@ def get_row_values(crawler_info: CrawlerInfo) -> tuple[str, ...]:
         supported_paths = f"{supported_paths}\n\n**NOTES**\n{notes}"
     supported_domains = "\n".join(crawler_info.supported_domains)
     row_values = crawler_info.site, str(crawler_info.primary_url), supported_domains, supported_paths
-    print(row_values)
     return row_values
 
 
