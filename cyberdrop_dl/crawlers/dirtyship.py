@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 VIDEO_SELECTOR = "video#fp-video-0 > source"
@@ -34,11 +33,8 @@ class DirtyShipCrawler(Crawler):
     }
     primary_base_domain = AbsoluteHttpURL("https://dirtyship.com")
     next_page_selector = "a.page-next"
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "dirtyship", "DirtyShip")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "dirtyship"
+    FOLDER_DOMAIN = "DirtyShip"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if any(p in scrape_item.url.parts for p in ("tag", "category")):
@@ -87,8 +83,6 @@ class DirtyShipCrawler(Crawler):
         filename, ext = self.get_filename_and_ext(link.name)
         custom_filename, _ = self.get_filename_and_ext(f"{title} [{res}]{link.suffix}")
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     def get_flowplayer_sources(self, soup: BeautifulSoup) -> set[Format]:
         flow_player = soup.select_one(FLOWPLAYER_VIDEO_SELECTOR)

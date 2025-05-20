@@ -8,12 +8,11 @@ from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
-
-    from cyberdrop_dl.managers.manager import Manager
 
 
 IMAGES_SELECTOR = "div#gallery-view-content img"
@@ -24,14 +23,10 @@ ALBUM_TITLE_SELECTOR = "div[id=gallery-view] h1"
 class ImgBoxCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Album": "/g/...", "Images": "/...", "Direct links": ""}
     primary_base_domain = AbsoluteHttpURL("https://imgbox.com")
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "imgbox", "ImgBox")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "imgbox"
+    FOLDER_DOMAIN = "ImgBox"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        assert scrape_item.url.host
         if "t" in scrape_item.url.host or "_" in scrape_item.url.name:
             scrape_item.url = self.primary_base_domain / scrape_item.url.name.split("_")[0]
 
@@ -45,7 +40,6 @@ class ImgBoxCrawler(Crawler):
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
@@ -55,12 +49,12 @@ class ImgBoxCrawler(Crawler):
         album_id = scrape_item.url.parts[2]
 
         scrape_item.set_type(FILE_HOST_ALBUM, self.manager)
-        title = soup.select_one(ALBUM_TITLE_SELECTOR).get_text(strip=True).rsplit(" - ", 1)[0]  # type: ignore
+        title = css.select_one(soup, ALBUM_TITLE_SELECTOR).get_text(strip=True).rsplit(" - ", 1)[0]
         title = self.create_title(title, album_id)
         scrape_item.setup_as_album(title, album_id=album_id)
 
         for link in soup.select(IMAGES_SELECTOR):
-            link_str: str = link.get("src").replace("thumbs", "images").replace("_b", "_o")  # type: ignore
+            link_str: str = css.get_attr(link, "src").replace("thumbs", "images").replace("_b", "_o")
             link = self.parse_url(link_str)
             filename, ext = self.get_filename_and_ext(link.name)
             await self.handle_file(link, scrape_item, filename, ext)
@@ -68,7 +62,6 @@ class ImgBoxCrawler(Crawler):
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an image."""
         if await self.check_complete_from_referer(scrape_item):
             return
 
@@ -79,8 +72,6 @@ class ImgBoxCrawler(Crawler):
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @staticmethod
     def parse_datetime(date: str) -> int:

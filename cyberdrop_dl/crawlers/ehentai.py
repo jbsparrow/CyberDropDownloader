@@ -10,7 +10,6 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class Selectors:
@@ -31,12 +30,11 @@ class EHentaiCrawler(Crawler):
     }
     primary_base_domain = AbsoluteHttpURL("https://e-hentai.org/")
     next_page_selector = _SELECTORS.NEXT_PAGE
+    DOMAIN = "e-hentai"
+    FOLDER_DOMAIN = "E-Hentai"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "e-hentai", "E-Hentai")
+    def __post_init__(self) -> None:
         self._warnings_set = False
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "g" in scrape_item.url.parts:
@@ -47,7 +45,6 @@ class EHentaiCrawler(Crawler):
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album."""
         async with self.startup_lock:
             if not self._warnings_set:
                 await self.set_no_warnings(scrape_item)
@@ -68,7 +65,6 @@ class EHentaiCrawler(Crawler):
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an image."""
         if await self.check_complete_from_referer(scrape_item):
             return
 
@@ -80,8 +76,6 @@ class EHentaiCrawler(Crawler):
         filename, ext = self.get_filename_and_ext(link.name)
         custom_filename, _ = self.get_filename_and_ext(f"{scrape_item.url.name}{ext}")
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @error_handling_wrapper
     async def set_no_warnings(self, scrape_item: ScrapeItem) -> None:

@@ -375,14 +375,15 @@ def update_wiki_supported_sites() -> None:
     from rich import print
     from rich.table import Table
 
-    from cyberdrop_dl.scraper.scrape_mapper import gen_crawlers_info
+    from cyberdrop_dl.scraper.scrape_mapper import get_crawlers
 
     table = Table(title="Cyberdrop-DL Supported Sites")
     for column in ("Crawler", "Primary Base Domain", "Supported Domains", "Supported Paths"):
         table.add_column(column, no_wrap=True)
-    for crawler in gen_crawlers_info():
+    crawlers = sorted(set(get_crawlers().values()), key=lambda x: x.NAME)
+    for crawler in crawlers:
         supported_paths: list[str] = []
-        for name, paths in crawler.crawler.SUPPORTED_PATHS.items():
+        for name, paths in crawler.SUPPORTED_PATHS.items():
             if isinstance(paths, str):
                 paths = [paths]
             joined_paths = "\n".join([f"    `{p}`" for p in paths])
@@ -390,11 +391,11 @@ def update_wiki_supported_sites() -> None:
 
         paths = "\n".join(supported_paths)
         supported_domains: list[str] = []
-        domains = crawler.crawler.SUPPORTED_HOSTS or [crawler.crawler.primary_base_domain.host]
+        domains = crawler.SUPPORTED_HOSTS or [crawler.primary_base_domain.host]
         joined_domains = "\n".join([f"    `{p}`" for p in domains])
         supported_domains.append(joined_domains)
 
         domains = "\n".join(supported_domains)
-        table.add_row(crawler.name, str(crawler.primary_base_domain), domains, paths)
+        table.add_row(crawler.NAME, str(crawler.primary_base_domain), domains, paths)
     print(table)
     sys.exit(0)

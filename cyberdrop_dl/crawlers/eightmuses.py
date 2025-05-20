@@ -10,7 +10,6 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 TILE_SELECTOR = "a[class*=c-tile]"
@@ -21,22 +20,16 @@ TITLE_PARTS_SELECTOR = "div[class=top-menu-breadcrumb] > ol > li > a"
 class EightMusesCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Album": "/comics/album/..."}
     primary_base_domain = AbsoluteHttpURL("https://comics.8muses.com")
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "8muses", "8Muses")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "8muses"
+    FOLDER_DOMAIN = "8Muses"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "album" in scrape_item.url.parts:
             return await self.album(scrape_item)
         raise ValueError
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 

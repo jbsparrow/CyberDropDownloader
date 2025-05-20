@@ -16,7 +16,6 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class Selectors:
@@ -28,28 +27,24 @@ class Selectors:
 _SELECTORS = Selectors()
 API_MD5_ENTRYPOINT = URL("https://doodstream.com/pass_md5/")
 TOKEN_CHARS = string.ascii_letters + string.digits
-SUPPORTED_DOMAINS = [
-    "vidply.com",
-    "dood.re",
-    "doodstream",
-    "doodcdn",
-    "doodstream.co",
-    "dood.yt",
-    "do7go.com",
-    "all3do.com",
-]
 
 
 class DoodStreamCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Video": "/e/"}
-    SUPPORTED_SITES: ClassVar[dict[str, list]] = {"doodstream": SUPPORTED_DOMAINS}
+    SUPPORTED_HOSTS: ClassVar[tuple[str, ...]] = (
+        "vidply.com",
+        "dood.re",
+        "doodstream",
+        "doodcdn",
+        "doodstream.co",
+        "dood.yt",
+        "do7go.com",
+        "all3do.com",
+    )
     primary_base_domain = AbsoluteHttpURL("https://doodstream.com/")
     update_unsupported = True
-
-    def __init__(self, manager: Manager, _=None) -> None:
-        super().__init__(manager, "doodstream", "DoodStream")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "doodstream"
+    FOLDER_DOMAIN = "DoodStream"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "e" in scrape_item.url.parts:

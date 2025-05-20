@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, ClassVar, NamedTuple
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
-from cyberdrop_dl.utils import javascript
+from cyberdrop_dl.utils import css, javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -18,7 +18,6 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 DEFAULT_QUALITY = "Auto"
@@ -42,11 +41,8 @@ class VideoInfo(dict): ...
 class YouJizzCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Video": "/video/embed/"}
     primary_base_domain = AbsoluteHttpURL("https://www.youjizz.com/")
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "youjizz", "YouJizz")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "youjizz"
+    FOLDER_DOMAIN = "YouJizz"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if any(p in scrape_item.url.parts for p in ("videos", "embed")):
@@ -55,7 +51,6 @@ class YouJizzCrawler(Crawler):
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a video."""
         video_id = get_video_id(scrape_item.url)
         canonical_url = self.primary_base_domain / "videos" / "embed" / video_id
 
@@ -96,11 +91,10 @@ def get_video_id(url: URL) -> str:
 
 
 def get_info(soup: BeautifulSoup) -> VideoInfo:
-    info_js_script = soup.select_one(JS_SELECTOR)
-    info_js_script_text: str = info_js_script.text  # type: ignore
+    info_js_script_text: str = css.select_one_get_text(soup, JS_SELECTOR)
     info: dict[str, str | None | dict] = javascript.parse_js_vars(info_js_script_text)  # type: ignore
-    info["title"] = soup.title.text.replace("\n", "").strip()  # type: ignore
-    date_tag = soup.select_one(DATE_SELECTOR)  # type: ignore
+    info["title"] = css.get_attr(soup, "title").replace("\n", "").strip()
+    date_tag = soup.select_one(DATE_SELECTOR)
     date_str: str | None = date_tag.text if date_tag else None
     info["date"] = date_str.replace("(s)", "s").strip() if date_str else None
     javascript.clean_dict(info, "stream_data")

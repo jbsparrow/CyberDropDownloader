@@ -14,7 +14,6 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 API_ENTRYPOINT = AbsoluteHttpURL("https://api.cyberdrop.me/api/")
 
@@ -35,12 +34,10 @@ class CyberdropCrawler(Crawler):
         "Direct links": "",
     }
     primary_base_domain = AbsoluteHttpURL("https://cyberdrop.me/")
+    DOMAIN = "cyberdrop"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "cyberdrop", "Cyberdrop")
+    def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(1, 2)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "a" in scrape_item.url.parts:
@@ -49,7 +46,6 @@ class CyberdropCrawler(Crawler):
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album."""
         scrape_item.url = scrape_item.url.with_query("nojs")
         album_id = scrape_item.url.parts[2]
 
@@ -72,7 +68,6 @@ class CyberdropCrawler(Crawler):
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a file."""
         scrape_item.url = await self.get_stream_link(scrape_item.url)
         if await self.check_complete_from_referer(scrape_item):
             return
@@ -90,8 +85,6 @@ class CyberdropCrawler(Crawler):
 
         link = self.parse_url(json_resp["url"])
         await self.handle_file(link, scrape_item, filename, ext)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def get_stream_link(self, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         """Gets the stream link for a given URL.

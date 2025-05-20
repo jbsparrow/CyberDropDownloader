@@ -14,7 +14,6 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 DATE_SELECTOR = 'h2[class="font-semibold font-sans text-muted-foreground text-xs"]'
@@ -31,11 +30,8 @@ class OmegaScansCrawler(Crawler):
         "Direct links": "",
     }
     primary_base_domain = AbsoluteHttpURL("https://omegascans.org")
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "omegascans", "OmegaScans")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "omegascans"
+    FOLDER_DOMAIN = "OmegaScans"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "chapter" in scrape_item.url.name:
@@ -46,7 +42,6 @@ class OmegaScansCrawler(Crawler):
 
     @error_handling_wrapper
     async def series(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
@@ -75,7 +70,6 @@ class OmegaScansCrawler(Crawler):
 
     @error_handling_wrapper
     async def chapter(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an image."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
@@ -109,8 +103,6 @@ class OmegaScansCrawler(Crawler):
         scrape_item.url = scrape_item.url.with_query(None)
         filename, ext = self.get_filename_and_ext(scrape_item.url.name)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
 
 def parse_datetime(date: str) -> int:

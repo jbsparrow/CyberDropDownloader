@@ -5,14 +5,13 @@ from typing import TYPE_CHECKING, ClassVar
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
-    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 VIDEO_SRC_SELECTOR = "video > source#video_source"
@@ -28,11 +27,8 @@ class SendVidCrawler(Crawler):
         "Direct links": "",
     }
     primary_base_domain = AbsoluteHttpURL("https://sendvid.com/")
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "sendvid", "SendVid")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "sendvid"
+    FOLDER_DOMAIN = "SendVid"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         scrape_item.url = self.get_streaming_url(scrape_item.url)
@@ -40,22 +36,23 @@ class SendVidCrawler(Crawler):
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a video page."""
         if await self.check_complete_from_referer(scrape_item):
             return
 
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        title = soup.select_one(TITLE_SELECTOR).get_text()  # type: ignore
+        title = css.select_one_get_text(soup, TITLE_SELECTOR)
         try:
-            link_str: str = soup.select_one(VIDEO_SRC_SELECTOR).get("src")  # type: ignore
-            link = self.parse_url(link_str)
-        except AttributeError:
+            link_str: str = css.select_one_get_attr(soup, VIDEO_SRC_SELECTOR, "src")
+        except AssertionError:
             raise ScrapeError(422, "Couldn't find video source") from None
+        link = self.parse_url(link_str)
         await self.handle_direct_link(scrape_item, link, title)
 
-    async def handle_direct_link(self, scrape_item: ScrapeItem, link: URL | None = None, title: str = "") -> None:
+    async def handle_direct_link(
+        self, scrape_item: ScrapeItem, link: AbsoluteHttpURL | None = None, title: str = ""
+    ) -> None:
         link = link or scrape_item.url
         canonical_url = link.with_query(None)
 
@@ -79,5 +76,5 @@ class SendVidCrawler(Crawler):
         return url
 
 
-def is_cdn(url: URL) -> bool:
-    return bool(url.host and all(p in url.host for p in (MAIN_HOST, ".")))
+def is_cdn(url: AbsoluteHttpURL) -> bool:
+    return all(p in url.host for p in (MAIN_HOST, "."))

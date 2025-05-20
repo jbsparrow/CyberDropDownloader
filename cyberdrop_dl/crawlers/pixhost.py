@@ -8,10 +8,8 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
-    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://pixhost.to/")
@@ -24,11 +22,8 @@ class PixHostCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Gallery": "/gallery/...", "Image": "/show/..."}
     primary_base_domain = PRIMARY_BASE_DOMAIN
     update_unsupported = True
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "pixhost", "PixHost")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "pixhost"
+    FOLDER_DOMAIN = "PixHost"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if is_cdn(scrape_item.url):
@@ -43,7 +38,6 @@ class PixHostCrawler(Crawler):
 
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a gallery."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
@@ -65,7 +59,6 @@ class PixHostCrawler(Crawler):
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an image."""
         if await self.check_complete_from_referer(scrape_item):
             return
 
@@ -98,13 +91,11 @@ def replace_first_part(url: AbsoluteHttpURL, new_part: str) -> AbsoluteHttpURL:
     return url.with_path(new_path)
 
 
-def is_thumbnail(url: URL) -> bool:
-    assert url.host
+def is_thumbnail(url: AbsoluteHttpURL) -> bool:
     return "thumbs" in url.parts and is_cdn(url)
 
 
-def is_cdn(url: URL) -> bool:
-    assert url.host
+def is_cdn(url: AbsoluteHttpURL) -> bool:
     return len(url.host.split(".")) > 2
 
 

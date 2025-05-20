@@ -5,13 +5,13 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class Selectors:
@@ -32,11 +32,8 @@ class Rule34VaultCrawler(Crawler):
         "Tag": "/...",
     }
     primary_base_domain = AbsoluteHttpURL("https://rule34vault.com")
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "rule34vault", "Rule34Vault")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "rule34vault"
+    FOLDER_DOMAIN = "Rule34Vault"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "post" in scrape_item.url.parts:
@@ -47,8 +44,6 @@ class Rule34VaultCrawler(Crawler):
 
     @error_handling_wrapper
     async def playlist_or_tag(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a playlist."""
-
         is_playlist = "playlists" in scrape_item.url.parts
         init_page = int(scrape_item.url.query.get("page") or 1)
         title: str = ""
@@ -61,7 +56,7 @@ class Rule34VaultCrawler(Crawler):
             if not title:
                 if is_playlist:
                     album_id = scrape_item.url.parts[-1]
-                    title_str: str = soup.select_one(_SELECTORS.TITLE).text  # type: ignore
+                    title_str: str = css.select_one_get_text(soup, _SELECTORS.TITLE)
                     title = self.create_title(title_str, album_id)
                     scrape_item.setup_as_album(title, album_id=album_id)
                 else:
@@ -77,8 +72,6 @@ class Rule34VaultCrawler(Crawler):
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an image."""
-
         canonical_url = scrape_item.url.with_query(None)
         if await self.check_complete_from_referer(canonical_url):
             return
@@ -98,5 +91,3 @@ class Rule34VaultCrawler(Crawler):
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

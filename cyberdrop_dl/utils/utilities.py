@@ -527,6 +527,11 @@ def get_size_or_none(path: Path) -> int | None:
         return None
 
 
+def with_suffix_encoded(url: AnyURL, suffix: str) -> AnyURL:
+    name = Path(url.raw_name).with_suffix(suffix)
+    return url.parent.joinpath(str(name), encoded=True).with_query(url.query).with_fragment(url.fragment)
+
+
 log_cyan = partial(log_with_color, style="cyan", level=20)
 log_yellow = partial(log_with_color, style="yellow", level=20)
 log_green = partial(log_with_color, style="green", level=20)

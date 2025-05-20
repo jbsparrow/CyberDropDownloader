@@ -126,8 +126,6 @@ class XenforoCrawler(Crawler, is_abc=True):
     def __post_init__(self) -> None:
         self.scraped_threads = set()
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
     async def async_startup(self) -> None:
         if not self.logged_in:
             login_url = self.primary_base_domain / "login"
@@ -225,7 +223,6 @@ class XenforoCrawler(Crawler, is_abc=True):
 
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
-        """Scrapes a post."""
         scrape_item.setup_as_post("")
         post_title = self.create_separate_post_title(None, str(post.number), post.date)
         scrape_item.add_to_parent_title(post_title)
@@ -265,8 +262,6 @@ class XenforoCrawler(Crawler, is_abc=True):
         selector = post.selectors.attachments
         attachments = post.content.select(selector.attribute)
         await self.process_children(scrape_item, attachments, selector.attribute)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def thread_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
         """Generator of forum thread pages."""

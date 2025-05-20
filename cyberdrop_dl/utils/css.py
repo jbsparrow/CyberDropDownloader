@@ -27,11 +27,20 @@ def select_one(tag: Tag, selector: str) -> Tag:
     return not_none(tag.select_one)(selector)
 
 
+def select_one_get_text(tag: Tag, selector: str, strip: bool = True) -> str:
+    """Same as `tag.select_one` but asserts the result is not `None`"""
+    return get_text(select_one(tag, selector), strip)
+
+
 def get_attr_or_none(tag: Tag, attribute: str) -> str | None:
     """Same as `tag.get(attribute)` but asserts the result is not multiple strings"""
     value = tag.get(attribute)
     assert not isinstance(value, list)
     return value
+
+
+def get_text(tag: Tag, strip: bool = True) -> str:
+    return tag.get_text(strip=strip)
 
 
 def get_attr(tag: Tag, attribute: str) -> str:

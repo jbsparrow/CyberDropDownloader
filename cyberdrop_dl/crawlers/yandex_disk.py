@@ -40,8 +40,6 @@ class YandexDiskCrawler(Crawler):
     FOLDER_DOMAIN: ClassVar[str] = "YandexDisk"
     primary_base_domain = PRIMARY_BASE_DOMAIN
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "d" in scrape_item.url.parts:
             return await self.folder(scrape_item)
@@ -49,8 +47,6 @@ class YandexDiskCrawler(Crawler):
 
     @error_handling_wrapper
     async def folder(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a folder."""
-
         single_file_name = scrape_item.url.parts[3] if len(scrape_item.url.parts) > 3 else None
         canonical_url = get_canonical_url(scrape_item.url)
         if single_file_name and await self.check_complete_from_referer(scrape_item.url):

@@ -1,19 +1,15 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
-from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
-
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 AJAX_ENTRYPOINT = AbsoluteHttpURL("https://ajax.streamable.com/videos/")
@@ -30,18 +26,13 @@ VIDEO_STATUS = {
 class StreamableCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Video": "/..."}
     primary_base_domain = AbsoluteHttpURL("https://streamable.com")
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "streamable", "Streamable")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "streamable"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         await self.video(scrape_item)
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a video."""
         video_id = scrape_item.url.name or scrape_item.url.parent.name
         canonical_url = self.primary_base_domain / video_id
         scrape_item.url = canonical_url
@@ -51,17 +42,17 @@ class StreamableCrawler(Crawler):
 
         ajax_url = AJAX_ENTRYPOINT / video_id
         async with self.request_limiter:
-            json_resp: BeautifulSoup = await self.client.get_json(self.DOMAIN, ajax_url)
+            json_resp: dict[str, Any] = await self.client.get_json(self.DOMAIN, ajax_url)
 
-        status: int = json_resp.get("status")  # type: ignore
+        status: int = json_resp["status"]
         if status != STATUS_OK:
             raise ScrapeError(404, VIDEO_STATUS.get(status))
 
         title = json_resp.get("reddit_title") or json_resp["title"]
-        scrape_item.possible_datetime = json_resp.get("date_added")  # type: ignore
+        scrape_item.possible_datetime = json_resp["date_added"]
 
-        log_debug(json.dumps(json_resp, indent=4))
-        link_str = get_best_quality(json_resp["files"])  # type: ignore
+        self.log_debug(json.dumps(json_resp, indent=4))
+        link_str = get_best_quality(json_resp["files"])
         if not link_str:
             raise ScrapeError(422)
 

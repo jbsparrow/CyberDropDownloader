@@ -19,13 +19,18 @@ from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import DDOSGuardError, NoExtensionError, ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils import css
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_og_properties, get_text_between, parse_url
+from cyberdrop_dl.utils.utilities import (
+    error_handling_wrapper,
+    get_og_properties,
+    get_text_between,
+    parse_url,
+    with_suffix_encoded,
+)
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup, Tag
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 # CDNs
@@ -123,16 +128,13 @@ class BunkrrCrawler(Crawler):
         "Others": "/f/...",
         "Direct links": "",
     }
-    SUPPORTED_SITES: ClassVar[dict[str, list]] = {"bunkrr": ["bunkrr", "bunkr"]}
     DATABASE_PRIMARY_HOST: ClassVar[str] = "bunkr.site"
-    primary_base_domain: ClassVar[URL] = URL(f"https://{DATABASE_PRIMARY_HOST}")
+    primary_base_domain: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL(f"https://{DATABASE_PRIMARY_HOST}")
+    DOMAIN: ClassVar[str] = "bunkrr"
 
-    def __init__(self, manager: Manager, site: str) -> None:
-        super().__init__(manager, site, "Bunkrr")
+    def __post_init__(self) -> None:
         self.known_good_host: str = ""
         self.switch_host_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if is_reinforced_link(scrape_item.url):  #  get.bunkr.su/file/<file_id>
@@ -146,7 +148,6 @@ class BunkrrCrawler(Crawler):
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album."""
         soup: BeautifulSoup = await self.get_soup_lenient(scrape_item.url)
         album_id = scrape_item.url.parts[2]
         title = soup.select_one("title").text.rsplit(" | Bunkr")[0].strip()  # type: ignore
@@ -369,8 +370,6 @@ class BunkrrCrawler(Crawler):
         # everything failed, do the request with the original URL to throw an exception
         return await get_soup(url)
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
 
 def get_part_next_to(url: URL, part: str) -> str:
     part_index = url.parts.index(part) + 1
@@ -402,11 +401,6 @@ def override_cdn(url: URL) -> URL:
 def is_reinforced_link(url: URL) -> bool:
     assert url.host
     return url.host.startswith("get.") and "file" in url.parts
-
-
-def with_suffix_encoded(url: AbsoluteHttpURL, suffix: str) -> AbsoluteHttpURL:
-    name = Path(url.raw_name).with_suffix(suffix)
-    return url.parent.joinpath(str(name), encoded=True).with_query(url.query).with_fragment(url.fragment)
 
 
 def decrypt_api_response(api_response: ApiResponse) -> str:

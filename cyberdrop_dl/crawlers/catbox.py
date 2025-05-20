@@ -7,20 +7,17 @@ from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 CDN_HOSTS = "litter.catbox.moe", "files.catbox.moe"
 
 
 class CatboxCrawler(Crawler):
+    SUPPORTED_HOSTS: ClassVar[tuple[str, ...]] = CDN_HOSTS
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Direct links": ""}
     primary_base_domain = AbsoluteHttpURL("https://catbox.moe")
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "catbox.moe", "Catbox")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "catbox.moe"
+    FOLDER_DOMAIN = "Catbox"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if any(p == scrape_item.url.host for p in CDN_HOSTS):

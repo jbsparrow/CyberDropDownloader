@@ -7,10 +7,7 @@ from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from yarl import URL
-
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 API_ENTRYPOINT = AbsoluteHttpURL("https://api.redgifs.com/")
@@ -19,15 +16,14 @@ API_ENTRYPOINT = AbsoluteHttpURL("https://api.redgifs.com/")
 class RedGifsCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"User": "/users/", "Video": "/watch/..."}
     primary_base_domain = AbsoluteHttpURL("https://redgifs.com/")
+    DOMAIN = "redgifs"
+    FOLDER_DOMAIN = "RedGifs"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "redgifs", "RedGifs")
+    def __post_init__(self) -> None:
         self.headers = {}
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
     async def async_startup(self) -> None:
-        await self.manage_token(API_ENTRYPOINT / "v2/auth/temporary")
+        await self.get_auth_token(API_ENTRYPOINT / "v2/auth/temporary")
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "users" in scrape_item.url.parts:
@@ -36,15 +32,11 @@ class RedGifsCrawler(Crawler):
 
     @error_handling_wrapper
     async def user(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a users page."""
         user_id = scrape_item.url.parts[-1].split(".")[0]
-        title: str = ""
+        title = self.create_title(user_id)
+        scrape_item.setup_as_album(title)
 
         async for json_resp in self.user_profile_pager(scrape_item):
-            if not title:
-                title = self.create_title(user_id)
-                scrape_item.setup_as_album(title)
-
             for gif in json_resp["gifs"]:
                 links: dict[str, str] = gif["urls"]
                 date: int = gif["createDate"]
@@ -74,7 +66,6 @@ class RedGifsCrawler(Crawler):
 
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a post."""
         post_id = scrape_item.url.parts[-1].split(".")[0]
         async with self.request_limiter:
             api_url = API_ENTRYPOINT / "v2/gifs" / post_id
@@ -91,11 +82,8 @@ class RedGifsCrawler(Crawler):
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
     @error_handling_wrapper
-    async def manage_token(self, token_url: URL) -> None:
-        """Gets/Sets the redgifs token and header."""
+    async def get_auth_token(self, token_url: AbsoluteHttpURL) -> None:
         async with self.request_limiter:
             json_obj = await self.client.get_json(self.DOMAIN, token_url)
         token = json_obj["token"]

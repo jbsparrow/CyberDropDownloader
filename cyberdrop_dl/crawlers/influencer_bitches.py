@@ -10,7 +10,6 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class Selectors:
@@ -26,11 +25,8 @@ _SELECTORS = Selectors()
 class InfluencerBitchesCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Model": "/model/..."}
     primary_base_domain = AbsoluteHttpURL("https://influencerbitches.com")
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "influencerbitches", "InfluencerBitches")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "influencerbitches"
+    FOLDER_DOMAIN = "InfluencerBitches"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "model" in scrape_item.url.parts:

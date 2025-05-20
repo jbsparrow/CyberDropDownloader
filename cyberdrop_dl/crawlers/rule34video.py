@@ -1,25 +1,21 @@
 from __future__ import annotations
 
-import calendar
-from datetime import datetime
 from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
-from cyberdrop_dl.utils import javascript
+from cyberdrop_dl.utils import css, javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from collections.abc import Generator
 
-    from bs4 import BeautifulSoup, Tag
-    from yarl import URL
+    from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 RESOLUTIONS = ["4k", "2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"]  # best to worst
@@ -38,6 +34,7 @@ PLAYLIST_TITLE_SELECTORS = {
 }
 
 PLAYLIST_TITLE_SELECTORS["categories"] = PLAYLIST_TITLE_SELECTORS["models"]
+TITLE_TRASH = "Tagged with", "Videos for:"
 
 
 class Format(NamedTuple):
@@ -60,28 +57,25 @@ class Rule34VideoCrawler(Crawler):
     }
     primary_base_domain = AbsoluteHttpURL("https://rule34video.com/")
     next_page_selector = PLAYLIST_NEXT_PAGE_SELECTOR
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "rule34video", "Rule34Video")
+    DOMAIN = "rule34video"
+    FOLDER_DOMAIN = "Rule34Video"
 
     async def async_startup(self) -> None:
         self.set_cookies()
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if any(p in scrape_item.url.parts for p in ("video", "videos")):
             return await self.video(scrape_item)
-        if is_playlist(scrape_item.url):
-            return await self.playlist(scrape_item)
+        if playlist_type := get_playlist_type(scrape_item.url):
+            return await self.playlist(scrape_item, playlist_type)
         raise ValueError
 
     @error_handling_wrapper
-    async def playlist(self, scrape_item: ScrapeItem) -> None:
+    async def playlist(self, scrape_item: ScrapeItem, playlist_type: str) -> None:
         title: str = ""
         async for soup in self.web_pager(scrape_item.url):
             if not title:
-                title = get_playlist_title(soup, scrape_item.url)
+                title = get_playlist_title(soup, playlist_type)
                 title = self.create_title(title)
                 scrape_item.setup_as_album(title)
 
@@ -90,7 +84,6 @@ class Rule34VideoCrawler(Crawler):
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a video."""
         video_id, video_name = scrape_item.url.parts[2:4]
         canonical_url = self.primary_base_domain / "video" / video_id / video_name / ""
 
@@ -107,7 +100,7 @@ class Rule34VideoCrawler(Crawler):
             raise ScrapeError(422)
         ext, resolution, link_str = v_format
         link = self.parse_url(link_str)
-        scrape_item.possible_datetime = parse_datetime(info["uploadDate"])
+        scrape_item.possible_datetime = self.parse_date(info["uploadDate"], "%Y-%m-%d")
 
         name = link.name or link.parent.name
         filename, ext = self.get_filename_and_ext(name)
@@ -151,28 +144,20 @@ def get_best_quality(soup: BeautifulSoup) -> Format | None:
             return v_format
 
 
-def parse_datetime(date: str) -> int:
-    """Parses a datetime string into a unix timestamp."""
-    parsed_date = datetime.strptime(date, "%Y-%m-%d")
-    return calendar.timegm(parsed_date.timetuple())
-
-
-def get_playlist_title(soup: BeautifulSoup, url: URL) -> str:
-    name = get_playlist_type(url)
-    assert name
-    selector = PLAYLIST_TITLE_SELECTORS.get(name)
-    title_tag: Tag = soup.select_one(selector)  # type: ignore
-    title = title_tag.text.strip() if title_tag else ""
-    if name in ("tags", "search"):
+def get_playlist_title(soup: BeautifulSoup, playlist_type: str) -> str:
+    assert playlist_type
+    selector = PLAYLIST_TITLE_SELECTORS[playlist_type]
+    title_tag = css.select_one(soup, selector)
+    if playlist_type in ("tags", "search"):
         for span in title_tag.find_all("span"):
             span.decompose()
-        title = title_tag.text.split("Tagged with", 1)[-1].split("Videos for:", 1)[-1].strip()  # type: ignore
-    return f"{title} [{name}]"
+
+    title = css.get_text(title_tag.text)
+    for trash in TITLE_TRASH:
+        title = title.replace(trash, "").strip()
+
+    return f"{title} [{playlist_type}]"
 
 
-def get_playlist_type(url: URL) -> str:
+def get_playlist_type(url: AbsoluteHttpURL) -> str:
     return next((name for name in PLAYLIST_TITLE_SELECTORS if name in url.parts), "")
-
-
-def is_playlist(url: URL) -> bool:
-    return bool(get_playlist_type(url))

@@ -11,7 +11,6 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 GALLERY_TITLE_SELECTOR = "a#gallery-name"
@@ -24,11 +23,8 @@ PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://www.imagebam.com/")
 class ImageBamCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Album": "/view/...", "Image": "/view/...", "Direct links": ""}
     primary_base_domain = PRIMARY_BASE_DOMAIN
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "imagebam", "ImageBam")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "imagebam"
+    FOLDER_DOMAIN = "ImageBam"
 
     async def async_startup(self) -> None:
         self.set_cookies()
@@ -62,7 +58,6 @@ class ImageBamCrawler(Crawler):
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> None:
-        """Scrapes an image."""
         if await self.check_complete_from_referer(scrape_item):
             return
 
@@ -81,8 +76,6 @@ class ImageBamCrawler(Crawler):
         filename, ext = self.get_filename_and_ext(link.name)
         custom_filename, _ = self.get_filename_and_ext(title)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     def set_cookies(self) -> None:
         """Set cookies to bypass confirmation."""

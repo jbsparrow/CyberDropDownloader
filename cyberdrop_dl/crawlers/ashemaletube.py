@@ -16,7 +16,6 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup, Tag
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class Selectors:
@@ -78,14 +77,13 @@ class AShemaleTubeCrawler(Crawler):
         "Models": "/creators/...",
         "User": "/profiles/...",
     }
+    DOMAIN = "ashemaletube"
+    FOLDER_DOMAIN = "aShemaleTube"
     primary_base_domain = AbsoluteHttpURL("https://www.ashemaletube.com")
     next_page_selector = _SELECTORS.NEXT_PAGE
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "ashemaletube", "aShemaleTube")
+    def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(3, 10)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if any(p in scrape_item.url.parts for p in ("creators", "profiles", "pornstars", "model")):
@@ -202,9 +200,6 @@ class AShemaleTubeCrawler(Crawler):
         await self.handle_file(
             canonical_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=link
         )
-
-
-"""~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
 
 def get_best_quality(info_dict: dict) -> Format:

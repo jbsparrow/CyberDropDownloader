@@ -301,8 +301,6 @@ class HistoryTable:
             log(f"Error getting bunkr failed via hash: {e}", 40, exc_info=e)
             return []
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
     async def fix_bunkr_v4_entries(self) -> None:
         """Fixes bunkr v4 entries in the database."""
         cursor = await self.db_conn.cursor()

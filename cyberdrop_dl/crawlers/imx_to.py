@@ -11,7 +11,6 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 IMG_SELECTOR = "div#container a > img"
@@ -20,11 +19,7 @@ IMG_SELECTOR = "div#container a > img"
 class ImxToCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Image": "/i/...", "Thumbnail": "/t/..."}
     primary_base_domain = AbsoluteHttpURL("https://imx.to")
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "imx.to", "Imx.to")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "imx.to"
 
     async def async_startup(self) -> None:
         cookies = {"continue": 1}
@@ -58,11 +53,11 @@ class ImxToCrawler(Crawler):
         filename, ext = self.get_filename_and_ext(link.name, assume_ext=".jpg")
         await self.handle_file(link, scrape_item, filename, ext)
 
-    def thumbnail_to_img(self, url: URL) -> URL:
+    def thumbnail_to_img(self, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         path = url.path.split("/t/")[-1]
         return self.primary_base_domain / "u/i" / path
 
-    def get_canonical_url(self, url: URL) -> AbsoluteHttpURL:
+    def get_canonical_url(self, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         return self.primary_base_domain / get_image_id(url)
 
 

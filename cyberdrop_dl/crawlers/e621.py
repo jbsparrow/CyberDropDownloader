@@ -15,7 +15,6 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class E621Crawler(Crawler):
@@ -25,13 +24,12 @@ class E621Crawler(Crawler):
         "Pools": "/pools/...",
     }
     primary_base_domain = AbsoluteHttpURL("https://e621.net")
+    DOMAIN = "e621.net"
+    FOLDER_DOMAIN = "E621"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "e621.net", "E621")
-        self.custom_headers = {"User-Agent": f"CyberDrop-DL/{__version__} (by B05FDD249DF29ED3)"}
+    def __post_init__(self) -> None:
+        self.headers = {"User-Agent": f"CyberDrop-DL/{__version__} (by B05FDD249DF29ED3)"}
         self.request_limiter = AsyncLimiter(2, 1)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.query.get("tags"):
@@ -49,7 +47,7 @@ class E621Crawler(Crawler):
         for page in itertools.count(initial_page):
             url = url.with_query(tags=scrape_item.url.query["tags"], page=page)
             async with self.request_limiter:
-                json_resp: dict = await self.client.get_json(self.DOMAIN, url, headers=self.custom_headers)
+                json_resp: dict = await self.client.get_json(self.DOMAIN, url, self.headers)
 
             posts: list[dict] = json_resp.get("posts", [])
             if not posts:
@@ -82,7 +80,7 @@ class E621Crawler(Crawler):
         pool_id = scrape_item.url.name
         url = self.primary_base_domain / f"pools/{pool_id}.json"
         async with self.request_limiter:
-            json_resp: dict = await self.client.get_json(self.DOMAIN, url, headers=self.custom_headers)
+            json_resp: dict = await self.client.get_json(self.DOMAIN, url, self.headers)
 
         posts = json_resp.get("post_ids", [])
         title: str = json_resp.get("name", "Unknown Pool").replace("_", " ")
@@ -100,7 +98,7 @@ class E621Crawler(Crawler):
         post_id = scrape_item.url.name
         url = self.primary_base_domain / f"posts/{post_id}.json"
         async with self.request_limiter:
-            json_resp: dict = await self.client.get_json(self.DOMAIN, url, headers=self.custom_headers)
+            json_resp: dict = await self.client.get_json(self.DOMAIN, url, self.headers)
 
         try:
             file_url = json_resp["post"]["file"]["url"]
@@ -110,5 +108,3 @@ class E621Crawler(Crawler):
         link = self.parse_url(file_url)
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

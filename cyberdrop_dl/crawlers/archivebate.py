@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class Selectors:
@@ -30,17 +29,14 @@ _SELECTORS = Selectors()
 
 class ArchiveBateCrawler(MixDropCrawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Video": "/watch/"}
-    SUPPORTED_SITES: ClassVar[dict] = {}
+    SUPPORTED_HOSTS = ()
+    DOMAIN = "archivebate"
+    FOLDER_DOMAIN = "ArchiveBate"
     primary_base_domain = AbsoluteHttpURL("https://www.archivebate.store")
     next_page = _SELECTORS.NEXT_PAGE
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager)
-        self.DOMAIN = "archivebate"
-        self.folder_domain = "ArchiveBate"
+    def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(4, 1)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "watch" in scrape_item.url.parts:

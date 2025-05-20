@@ -16,7 +16,6 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class Video(NamedTuple):
@@ -59,9 +58,9 @@ class PorntrexCrawler(Crawler):
     }
     primary_base_domain = AbsoluteHttpURL("https://www.porntrex.com")
     next_page_selector = _SELECTORS.NEXT_PAGE
+    DOMAIN = "porntrex"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "porntrex", "Porntrex")
+    def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(3, 10)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
@@ -200,9 +199,6 @@ class PorntrexCrawler(Crawler):
 
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.VIDEOS_OR_ALBUMS):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
-
-
-"""~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
 
 def get_video_info(soup: BeautifulSoup) -> Video:

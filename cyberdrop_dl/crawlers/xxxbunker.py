@@ -12,14 +12,12 @@ from bs4 import BeautifulSoup
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
-from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 DATE_PATTERN = re.compile(r"(\d+)\s*(weeks?|days?|hours?|minutes?|seconds?)", re.IGNORECASE)
 MIN_RATE_LIMIT = 4  # per minute
@@ -37,15 +35,14 @@ PLAYLIST_PARTS = ("search", "categories", "favoritevideos")
 class XXXBunkerCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Video": "/", "Search Results": "/search/..."}
     primary_base_domain = AbsoluteHttpURL("https://xxxbunker.com")
+    DOMAIN = "xxxbunker"
+    FOLDER_DOMAIN = "XXXBunker"
+    api_download = AbsoluteHttpURL("https://xxxbunker.com/ajax/downloadpopup")
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "xxxbunker", "XXXBunker")
-        self.api_download = AbsoluteHttpURL("https://xxxbunker.com/ajax/downloadpopup")
+    def __post_init__(self) -> None:
         self.rate_limit = self.wait_time = 10
         self.request_limiter = AsyncLimiter(self.rate_limit, 60)
         self.session_cookie = None
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def async_startup(self) -> None:
         await self.check_session_cookie()
@@ -62,7 +59,6 @@ class XXXBunkerCrawler(Crawler):
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a video."""
         if await self.check_complete_from_referer(scrape_item):
             return
 
@@ -115,7 +111,6 @@ class XXXBunkerCrawler(Crawler):
 
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a playlist."""
         if not self.session_cookie:
             raise ScrapeError(401, "No cookies provided")
 
@@ -155,7 +150,7 @@ class XXXBunkerCrawler(Crawler):
                     break
 
                 await self.adjust_rate_limit()
-                log(f"Rate limited: {page_url}, retrying in {self.wait_time} seconds")
+                self.log(f"Rate limited: {page_url}, retrying in {self.wait_time} seconds")
                 attempt += 1
                 await asyncio.sleep(self.wait_time)
 

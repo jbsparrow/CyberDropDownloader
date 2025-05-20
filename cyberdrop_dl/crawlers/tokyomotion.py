@@ -15,7 +15,6 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 DATE_PATTERN = re.compile(r"(\d+)\s*(weeks?|days?|hours?|minutes?|seconds?)", re.IGNORECASE)
 
@@ -31,10 +30,9 @@ class TokioMotionCrawler(Crawler):
     }
     primary_base_domain = AbsoluteHttpURL("https://www.tokyomotion.net")
     next_page_selector = "a.prevnext"
+    DOMAIN = "tokyomotion"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "tokyomotion", "Tokyomotion")
-
+    def __post_init__(self) -> None:
         self.album_selector = 'a[href^="/album/"]'
         self.image_link_selector = 'a[href^="/photo/"]'
         self.image_selector = "img[class='img-responsive-mw']"
@@ -45,8 +43,6 @@ class TokioMotionCrawler(Crawler):
         self.search_div_selector = "div[class^='well']"
         self.video_date_selector = "div.pull-right.big-views-xs.visible-xs > span.text-white"
         self.album_title_selector = "div.panel.panel-default > div.panel-heading > div.pull-left"
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         scrape_item.url = scrape_item.url.without_query_params("page")
@@ -69,7 +65,6 @@ class TokioMotionCrawler(Crawler):
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a video."""
         if await self.check_complete_from_referer(scrape_item):
             return
 
@@ -104,7 +99,6 @@ class TokioMotionCrawler(Crawler):
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an image."""
         if await self.check_complete_from_referer(scrape_item):
             return
 
@@ -124,7 +118,6 @@ class TokioMotionCrawler(Crawler):
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album."""
         title = await self.get_album_title(scrape_item)
         if "user" in scrape_item.url.parts:
             self.add_user_title(scrape_item)
@@ -195,7 +188,6 @@ class TokioMotionCrawler(Crawler):
 
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a video playlist."""
         self.add_user_title(scrape_item)
         if "favorite" in scrape_item.url.parts:
             scrape_item.add_to_parent_title("favorite")

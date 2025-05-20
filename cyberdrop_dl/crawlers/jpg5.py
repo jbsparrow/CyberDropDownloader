@@ -48,19 +48,15 @@ class JPG5Crawler(CheveretoCrawler):
     def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(1, 5)
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         scrape_item.url = scrape_item.url.with_host("jpg5.su")
         return await self._fetch_chevereto_defaults(scrape_item)
 
     async def video(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a video."""
         raise ValueError
 
     @error_handling_wrapper
     async def _proccess_media_item(self, scrape_item: ScrapeItem, url_type, *_) -> None:
-        """Scrapes a media item."""
         if await self.check_complete_from_referer(scrape_item):
             return
 

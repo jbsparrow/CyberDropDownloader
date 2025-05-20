@@ -13,7 +13,6 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 API_ENTRYPOINT = URL("https://a.4cdn.org/")
 FILES_BASE_URL = URL("https://i.4cdn.org/")
@@ -43,12 +42,10 @@ class ThreadList(TypedDict):
 class FourChanCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Board": "/", "Thread": "/thread"}
     primary_base_domain = AbsoluteHttpURL("https://boards.4chan.org")
+    DOMAIN = "4chan"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "4chan", "4chan")
+    def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(3, 10)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "thread" in scrape_item.url.parts:

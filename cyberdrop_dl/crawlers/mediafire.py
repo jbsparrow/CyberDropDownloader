@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 DOWNLOAD_BUTTON_SELECTOR = "a[id=downloadButton]"
 DATE_SELECTOR = "ul[class=details] li span"
@@ -26,13 +25,11 @@ DATE_SELECTOR = "ul[class=details] li span"
 class MediaFireCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"File": "/file/...", "Folder": "/folder/..."}
     primary_base_domain = AbsoluteHttpURL("https://www.mediafire.com/")
+    DOMAIN = "mediafire"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "mediafire", "mediafire")
+    def __post_init__(self) -> None:
         self.api = MediaFireApi()
         self.request_limiter = AsyncLimiter(5, 1)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "folder" in scrape_item.url.parts:
@@ -87,8 +84,6 @@ class MediaFireCrawler(Crawler):
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @staticmethod
     def parse_datetime(date: str) -> int:

@@ -3,8 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import LoginError, ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
@@ -12,9 +10,9 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
-API_ENTRYPOINT = URL("https://api.imgur.com/3/")
+API_ENTRYPOINT = AbsoluteHttpURL("https://api.imgur.com/3/")
+DOWNLOAD_URL = AbsoluteHttpURL("https://imgur.com/download")
 
 
 class ImgurCrawler(Crawler):
@@ -25,14 +23,12 @@ class ImgurCrawler(Crawler):
         "Direct links": "",
     }
     primary_base_domain = AbsoluteHttpURL("https://imgur.com/")
+    DOMAIN = "imgur"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "imgur", "Imgur")
+    def __post_init__(self) -> None:
         self.imgur_client_id = self.manager.config_manager.authentication_data.imgur.client_id
         self.imgur_client_remaining = 12500
         self.headers = {"Authorization": f"Client-ID {self.imgur_client_id}"}
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.host == "i.imgur.com":
@@ -50,7 +46,6 @@ class ImgurCrawler(Crawler):
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album."""
         if not self.imgur_client_id:
             msg = "No Imgur Client ID provided"
             raise LoginError(msg)
@@ -76,7 +71,6 @@ class ImgurCrawler(Crawler):
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an image."""
         if not self.imgur_client_id:
             msg = "No Imgur Client ID provided"
             raise LoginError(msg)
@@ -91,14 +85,13 @@ class ImgurCrawler(Crawler):
 
     @error_handling_wrapper
     async def handle_direct_link(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an image."""
         link = scrape_item.url
         filename, ext = self.get_filename_and_ext(scrape_item.url.name)
         if ext.lower() in (".gifv", ".mp4"):
             filename_path = Path(filename).with_suffix(".mp4")
             file_id = filename_path.stem
             filename, ext = self.get_filename_and_ext(str(filename_path))
-            link = URL("https://imgur.com/download") / file_id
+            link = DOWNLOAD_URL / file_id
 
         await self.handle_file(link, scrape_item, filename, ext)
 
@@ -107,8 +100,6 @@ class ImgurCrawler(Crawler):
         new_scrape_item = scrape_item.create_child(link, possible_datetime=image_data["datetime"])
         await self.handle_direct_link(new_scrape_item)
         scrape_item.add_children()
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def check_imgur_credits(self, _=None) -> None:
         """Checks the remaining credits."""

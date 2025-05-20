@@ -11,7 +11,6 @@ from cyberdrop_dl.clients.scraper_client import cache_control_manager
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import LoginError, NoExtensionError, ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
-from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -21,7 +20,6 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class MediaFile(TypedDict):
@@ -50,18 +48,16 @@ class RedditCrawler(Crawler):
         "Subreddit:": "/r/<subreddit>",
         "Direct links": "",
     }
-    SUPPORTED_SITES: ClassVar[dict[str, list]] = {"reddit": ["reddit", "redd.it"]}
+    SUPPORTED_HOSTS = "reddit", "redd.it"
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{title}"
     primary_base_domain = AbsoluteHttpURL("https://www.reddit.com/")
+    DOMAIN = "reddit"
 
-    def __init__(self, manager: Manager, site: str) -> None:
-        super().__init__(manager, site, "Reddit")
+    def __post_init__(self) -> None:
         self.reddit_personal_use_script = self.manager.config_manager.authentication_data.reddit.personal_use_script
         self.reddit_secret = self.manager.config_manager.authentication_data.reddit.secret
         self.request_limiter = AsyncLimiter(5, 1)
         self.logged_in = False
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def async_startup(self) -> None:
         await self.check_login(self.primary_base_domain / "login")
@@ -80,8 +76,6 @@ class RedditCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if not self.logged_in:
             return
-
-        assert scrape_item.url.host
 
         async with cache_control_manager(self._session):
             if any(part in scrape_item.url.parts for part in ("user", "u")):
@@ -154,7 +148,7 @@ class RedditCrawler(Crawler):
         msg = f"found on {parent}"
         if parent != origin:
             msg += f" from {origin}"
-        log(f"Skipping nested thread URL {link} {msg}")
+        self.log(f"Skipping nested thread URL {link} {msg}")
 
     async def gallery(self, scrape_item: ScrapeItem, submission: Submission) -> None:
         """Scrapes galleries."""
@@ -199,8 +193,6 @@ class RedditCrawler(Crawler):
         if not location:
             raise ScrapeError(422)
         return self.parse_url(location)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @error_handling_wrapper
     async def check_login(self, _) -> None:

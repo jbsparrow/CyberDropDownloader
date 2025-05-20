@@ -5,13 +5,13 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class Selectors:
@@ -26,13 +26,10 @@ PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://mixdrop.sb")
 
 class MixDropCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"File": "/e/"}
-    SUPPORTED_SITES: ClassVar[dict[str, list]] = {"mixdrop": ["mxdrop", "mixdrop"]}
+    SUPPORTED_HOSTS = "mxdrop", "mixdrop"
     primary_base_domain = PRIMARY_BASE_DOMAIN
-
-    def __init__(self, manager: Manager, *_) -> None:
-        super().__init__(manager, "mixdrop", "MixDrop")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "mixdrop"
+    FOLDER_DOMAIN = "MixDrop"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if any(p in scrape_item.url.parts for p in ("f", "e")):
@@ -52,7 +49,7 @@ class MixDropCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, video_url)
 
-        title = soup.select_one(_SELECTOR.FILE_NAME).get_text(strip=True)  # type: ignore
+        title = css.select_one_get_text(soup, _SELECTOR.FILE_NAME)
 
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, embed_url)

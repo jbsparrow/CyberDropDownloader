@@ -51,8 +51,6 @@ class BoxDotComCrawler(Crawler):
     FOLDER_DOMAIN: ClassVar[str] = "Box"
     primary_base_domain = AbsoluteHttpURL("https://box.com")
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.host == APP_DOMAIN and ("s" in scrape_item.url.parts or scrape_item.url.query.get("s")):
             return await self.file_or_folder(scrape_item)

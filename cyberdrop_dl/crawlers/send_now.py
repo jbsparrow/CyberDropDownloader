@@ -10,18 +10,16 @@ if TYPE_CHECKING:
     from curl_cffi.requests.models import Response as CurlResponse
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class SendNowCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Direct links": ""}
     primary_base_domain = AbsoluteHttpURL("https://send.now/")
+    DOMAIN = "send.now"
+    FOLDER_DOMAIN = "SendNow"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "send.now", "SendNow")
+    def __post_init__(self) -> None:
         self.got_cookies = False
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         await self.file(scrape_item)
@@ -41,7 +39,7 @@ class SendNowCrawler(Crawler):
         filename, ext = self.get_filename_and_ext(debrid_link.name, assume_ext=".zip")
         await self.handle_file(scrape_item.url, scrape_item, filename, ext, debrid_link=debrid_link)
 
-    async def get_cookies(self, scrape_item) -> None:
+    async def get_cookies(self, scrape_item: ScrapeItem) -> None:
         async with self.startup_lock:
             if not self.got_cookies:
                 async with self.request_limiter:

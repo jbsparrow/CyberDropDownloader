@@ -1,12 +1,9 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, ClassVar
+from typing import ClassVar
 
 from cyberdrop_dl.crawlers._chevereto import CheveretoCrawler
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
-
-if TYPE_CHECKING:
-    from cyberdrop_dl.managers.manager import Manager
 
 PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://imagepond.net")
 
@@ -20,8 +17,5 @@ class ImagePondCrawler(CheveretoCrawler):
         "Direct links": "",
     }
     primary_base_domain = PRIMARY_BASE_DOMAIN
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "imagepond.net", "ImagePond")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "imagepond.net"
+    FOLDER_DOMAIN = "ImagePond"

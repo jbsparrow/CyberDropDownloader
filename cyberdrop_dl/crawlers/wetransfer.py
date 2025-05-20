@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 API_ENTRYPOINT = AbsoluteHttpURL("https://wetransfer.com/api/v4/transfers")
 
@@ -25,13 +24,10 @@ class WeTransferCrawler(Crawler):
         "Short Link": "we.tl/",
         "Direct links": "download.wetransfer.com/...",
     }
-    SUPPORTED_SITES: ClassVar[dict[str, list]] = {"wetransfer": ["wetransfer.com", "we.tl"]}
+    SUPPORTED_HOSTS = "wetransfer.com", "we.tl"
     primary_base_domain = AbsoluteHttpURL("https://wetransfer.com/")
-
-    def __init__(self, manager: Manager, _) -> None:
-        super().__init__(manager, "wetransfer", "WeTransfer")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "wetransfer"
+    FOLDER_DOMAIN = "WeTransfer"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "download." in scrape_item.url.host:  # type: ignore
@@ -48,13 +44,11 @@ class WeTransferCrawler(Crawler):
         file_info = get_file_info(scrape_item.url)
         if await self.check_complete_from_referer(file_info.download_url):
             return
-        headers = {"Content-Type": "application/json"}
-        async with self.request_limiter:
-            json_resp: dict = await self.client.post_data(
-                self.DOMAIN, file_info.download_url, data=file_info.json, headers=headers
-            )
 
-        link_str: str = json_resp.get("direct_link")  # type: ignore
+        async with self.request_limiter:
+            json_resp: dict = await self.client.post_data(self.DOMAIN, file_info.download_url, json=file_info.json)
+
+        link_str: str | None = json_resp.get("direct_link")
         if not link_str:
             code, msg = parse_error(json_resp)
             raise ScrapeError(code, message=msg)

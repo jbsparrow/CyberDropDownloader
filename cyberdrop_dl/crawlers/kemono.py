@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, Annotated, Any, ClassVar, NamedTuple, NotRequi
 
 from pydantic import AliasChoices, BeforeValidator, Field
 from typing_extensions import TypedDict  # Import from typing is not compatible with pydantic
-from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import NoExtensionError, ScrapeError
@@ -24,9 +23,9 @@ if TYPE_CHECKING:
 
     from aiohttp_client_cache.response import AnyResponse
     from bs4 import BeautifulSoup
+    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 MAX_OFFSET_PER_CALL = 50
 LINK_REGEX = re.compile(r"(?:http(?!.*\.\.)[^ ]*?)(?=($|\n|\r\n|\r|\s|\"|\[/URL]|']\[|]\[|\[/img]|</|'))")
@@ -187,7 +186,7 @@ def fallback_if_no_api(func: Callable[..., Coroutine[None, None, Any]]) -> Calla
 
     @functools.wraps(func)
     async def wrapper(self: KemonoCrawler, *args, **kwargs) -> Any:
-        if self.api_entrypoint:
+        if self.API_ENTRYPOINT:
             return await func(self, *args, **kwargs)
         fallback_func = getattr(self, f"{func.__name__}_w_no_api", None)
         if not fallback_func:
@@ -209,38 +208,36 @@ class KemonoCrawler(Crawler):
     }
     primary_base_domain = AbsoluteHttpURL("https://kemono.su")
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date} - {title}"
+    DOMAIN: ClassVar[str] = "kemono"
+    API_ENTRYPOINT: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://kemono.su/api/v1")
+    SERVICES: ClassVar[tuple[str, ...]] = (
+        "afdian",
+        "boosty",
+        "dlsite",
+        "fanbox",
+        "fantia",
+        "gumroad",
+        "patreon",
+        "subscribestar",
+    )
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "kemono", "Kemono")
-        self.api_entrypoint: URL = URL("https://kemono.su/api/v1")
+    def __post_init__(self) -> None:
         self.__known_user_names: dict[User, str] = {}
         self.__known_discord_servers: dict[str, DiscordServer] = {}
         self.__known_attachment_servers: dict[str, str] = {}
         self.__user_names_locks: dict[User, asyncio.Lock] = defaultdict(asyncio.Lock)
         self.__discord_servers_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
-        self.services: tuple[str, ...] = (
-            "afdian",
-            "boosty",
-            "dlsite",
-            "fanbox",
-            "fantia",
-            "gumroad",
-            "patreon",
-            "subscribestar",
-        )
         self.session_cookie = self.manager.config_manager.authentication_data.kemono.session
 
     async def async_startup(self) -> None:
         def check_kemono_page(response: AnyResponse) -> bool:
-            if any(x in response.url.parts for x in self.services):
+            if any(x in response.url.parts for x in self.SERVICES):
                 return False
             if "discord/channel" in response.url.path:
                 return False
             return True
 
         self.register_cache_filter(self.primary_base_domain, check_kemono_page)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "discord" in scrape_item.url.parts:
@@ -261,7 +258,7 @@ class KemonoCrawler(Crawler):
             if not scrape_item.url.query.get("q"):
                 raise ValueError
             return await self.search(scrape_item)
-        if any(x in scrape_item.url.parts for x in self.services):
+        if any(x in scrape_item.url.parts for x in self.SERVICES):
             return await self.profile(scrape_item)
         if "favorites" in scrape_item.url.parts:
             return await self.favorites(scrape_item)
@@ -280,7 +277,6 @@ class KemonoCrawler(Crawler):
     @fallback_if_no_api
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a profile."""
         url_info = UserURL.parse(scrape_item.url)
         path = f"{url_info.service}/user/{url_info.user_id}"
         api_url = self.__make_api_url_w_offset(path, scrape_item.url)
@@ -341,7 +337,7 @@ class KemonoCrawler(Crawler):
                 path = attach["path"]
                 if previous_server := self.__known_attachment_servers.get(path):
                     if previous_server != server:
-                        msg = f"[{self.name}] {path} found with multiple diferent servers: {server = } {previous_server = } "
+                        msg = f"[{self.NAME}] {path} found with multiple diferent servers: {server = } {previous_server = } "
                         self.log_debug(msg)
                     continue
                 self.__known_attachment_servers[path] = server
@@ -375,7 +371,7 @@ class KemonoCrawler(Crawler):
         scrape_item.setup_as_profile(self.create_title(title))
 
         self.update_cookies({"session": self.session_cookie})
-        api_url = self.api_entrypoint / "account/favorites"
+        api_url = self.API_ENTRYPOINT / "account/favorites"
         query_url = api_url.with_query(type="post" if is_post else "artist")
 
         async with self.request_limiter:
@@ -474,7 +470,7 @@ class KemonoCrawler(Crawler):
         return self.parse_url(url).with_query(f=file["name"])
 
     def __make_api_url_w_offset(self, path: str, og_url: URL) -> URL:
-        api_url = self.api_entrypoint / path
+        api_url = self.API_ENTRYPOINT / path
         offset = int(og_url.query.get("o", 0))
         if query := og_url.query.get("q"):
             return api_url.update_query(o=offset, q=query)
@@ -486,7 +482,7 @@ class KemonoCrawler(Crawler):
             if user_name := self.__known_user_names.get(user):
                 return user_name
 
-            api_url = self.api_entrypoint / user.service / "user" / user.id / "posts-legacy"
+            api_url = self.API_ENTRYPOINT / user.service / "user" / user.id / "posts-legacy"
             async with self.request_limiter:
                 profile_json: dict = await self.client.get_json(self.DOMAIN, api_url)
 
@@ -504,7 +500,7 @@ class KemonoCrawler(Crawler):
                 soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, url)
 
             name = soup.select_one(DISCORD_SERVER_NAME_SELECTOR).text  # type: ignore
-            url = self.api_entrypoint / "discord/channel/lookup" / server_id
+            url = self.API_ENTRYPOINT / "discord/channel/lookup" / server_id
             async with self.request_limiter:
                 json_resp: list[dict] = await self.client.get_json(self.DOMAIN, url)
 

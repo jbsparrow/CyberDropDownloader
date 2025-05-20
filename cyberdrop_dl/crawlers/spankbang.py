@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import calendar
-import datetime
 import itertools
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
@@ -10,16 +8,14 @@ from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
-from cyberdrop_dl.utils import javascript
+from cyberdrop_dl.utils import css, javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
-    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://spankbang.com/")
@@ -40,11 +36,11 @@ class PlaylistInfo:
     title: str = ""
 
     @classmethod
-    def from_url(cls, url: URL, soup: BeautifulSoup | None = None) -> PlaylistInfo:
+    def from_url(cls, url: AbsoluteHttpURL, soup: BeautifulSoup | None = None) -> PlaylistInfo:
         playlist_id = url.parts[1].split("-")[0]
         name = url.parts[3]
         canonical_url = PRIMARY_BASE_DOMAIN / playlist_id / "playlist" / name
-        title = soup.select_one("title").text.rsplit("Playlist -")[0].strip() if soup else ""  # type: ignore
+        title = css.select_one_get_text(soup, "title").rsplit("Playlist -")[0].strip() if soup else ""
         return cls(playlist_id, canonical_url, title)
 
 
@@ -60,11 +56,8 @@ class VideoInfo(dict): ...
 class SpankBangCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Playlist": "/playlist/", "Video": "/video/"}
     primary_base_domain = PRIMARY_BASE_DOMAIN
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "spankbang", "SpankBang")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "spankbang"
+    FOLDER_DOMAIN = "SpankBang"
 
     async def async_startup(self) -> None:
         self.set_cookies()
@@ -78,8 +71,6 @@ class SpankBangCrawler(Crawler):
 
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a playlist."""
-
         # Get basic playlist info from the URL
         playlist = PlaylistInfo.from_url(scrape_item.url)
         scrape_item.url = playlist.url
@@ -110,8 +101,6 @@ class SpankBangCrawler(Crawler):
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a video."""
-
         if "playlist" not in scrape_item.url.parts:
             video_id = scrape_item.url.parts[1]
             canonical_url = self.primary_base_domain / video_id / "video"
@@ -135,7 +124,7 @@ class SpankBangCrawler(Crawler):
         if not video_format:
             raise ScrapeError(422)
         resolution, link_str = video_format
-        scrape_item.possible_datetime = parse_datetime(info["uploadDate"])
+        scrape_item.possible_datetime = self.parse_date(info["uploadDate"], "%Y-%m-%dT%H:%M:%S")
 
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
@@ -148,14 +137,11 @@ class SpankBangCrawler(Crawler):
 
 
 def get_info_dict(soup: BeautifulSoup) -> VideoInfo:
-    info_js_script = soup.select_one(JS_SELECTOR)
-    extended_info_js_script = soup.select_one(EXTENDED_JS_SELECTOR)
+    info_js_script_text = css.select_one_get_text(soup, JS_SELECTOR)
+    extended_info_js_script_text = css.select_one_get_text(soup, EXTENDED_JS_SELECTOR)
 
-    info_js_script_text: str = info_js_script.text  # type: ignore
-    extended_info_js_script_text: str = extended_info_js_script.text  # type: ignore
-
-    title_tag = soup.select_one("div#video h1")
-    title: str = title_tag.get("title") or title_tag.text.replace("\n", "")  # type: ignore
+    title_tag = css.select_one(soup, "div#video h1")
+    title: str = css.get_attr_or_none(title_tag, "title") or css.get_text(title_tag).replace("\n", "")
     del soup
     info: dict[str, Any] = javascript.parse_js_vars(info_js_script_text)
     extended_info_dict: dict = javascript.parse_json_to_dict(extended_info_js_script_text)  # type: ignore
@@ -179,11 +165,5 @@ def get_best_quality(info_dict: dict) -> Format:
     return Format(DEFAULT_QUALITY, qualities[DEFAULT_QUALITY])
 
 
-def parse_datetime(date: str) -> int:
-    """Parses a datetime string into a unix timestamp."""
-    parsed_date = datetime.datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
-    return calendar.timegm(parsed_date.timetuple())
-
-
-def is_playlist(url: URL) -> bool:
+def is_playlist(url: AbsoluteHttpURL) -> bool:
     return "playlist" in url.parts and "-" not in url.parts[1]

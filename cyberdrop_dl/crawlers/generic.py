@@ -58,8 +58,6 @@ class GenericCrawler(Crawler):
 
     primary_base_domain = FakeURL(host=".")  # type: ignore
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         await self.file(scrape_item)
 

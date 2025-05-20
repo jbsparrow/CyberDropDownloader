@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 CONTENT_SELECTOR = "div[id=content] a"
@@ -28,12 +27,10 @@ class FapelloCrawler(Crawler):
     }
     primary_base_domain = AbsoluteHttpURL("https://fapello.su/")
     next_page_selector = 'div[id="next_page"] a'
+    DOMAIN = "fapello"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "fapello", "Fapello")
+    def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(5, 1)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.name:
@@ -45,8 +42,6 @@ class FapelloCrawler(Crawler):
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a profile."""
-
         title: str = ""
         async for soup in self.web_pager(scrape_item.url):
             if not title:
@@ -66,8 +61,6 @@ class FapelloCrawler(Crawler):
 
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes apost."""
-
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 

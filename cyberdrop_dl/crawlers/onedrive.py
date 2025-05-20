@@ -18,7 +18,6 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 API_ENTRYPOINT = AbsoluteHttpURL("https://api.onedrive.com/v1.0/drives/")
@@ -92,14 +91,15 @@ class OneDriveCrawler(Crawler):
         "Access Link": "https://onedrive.live.com/?authkey=&id=&cid=",
         "Share Link (anyone can access)": "https://1drv.ms/t/",
     }
-    SUPPORTED_SITES: ClassVar[dict[str, list]] = {"onedrive": [SHARE_LINK_HOST, "onedrive.live.com"]}
+    SUPPORTED_HOSTS = SHARE_LINK_HOST, "onedrive.live.com"
     primary_base_domain = AbsoluteHttpURL("https://onedrive.com/")
     skip_pre_check = True  # URLs with not path could be valid
+    DOMAIN = "onedrive"
+    FOLDER_DOMAIN = "OneDrive"
 
-    def __init__(self, manager: Manager, _) -> None:
-        super().__init__(manager, "onedrive", "OneDrive")
-        badger_token: str = manager.cache_manager.get("onedrive_badger_token") or ""
-        badger_token_expires: str = manager.cache_manager.get("onedrive_badger_token_expires") or ""
+    def __post_init__(self) -> None:
+        badger_token: str = self.manager.cache_manager.get("onedrive_badger_token") or ""
+        badger_token_expires: str = self.manager.cache_manager.get("onedrive_badger_token_expires") or ""
         self.auth_headers = {}
         expired = True
         if badger_token_expires:
@@ -111,8 +111,6 @@ class OneDriveCrawler(Crawler):
                 expired = False
         if badger_token and not expired:
             self.auth_headers = {"Prefer": "autoredeem", "Authorization": f"Badger {badger_token}"}
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def async_startup(self) -> None:
         if self.auth_headers:

@@ -36,19 +36,17 @@ class Media(StrEnum):
     VIDEO = auto()
 
 
-def clean_name(url: URL) -> URL:
+def clean_name(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
     return url.with_name(url.name.replace(".md.", ".").replace(".th.", "."))
 
 
-def sort_by_new(url: URL) -> URL:
+def sort_by_new(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
     init_page = int(url.query.get("page") or 1)
     return url.with_query(sort="date_desc", page=init_page)
 
 
-class CheveretoCrawler(Crawler):
+class CheveretoCrawler(Crawler, is_abc=True):
     next_page_selector = "a[data-pagination=next]"
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         return await self._fetch_chevereto_defaults(scrape_item)
@@ -88,7 +86,6 @@ class CheveretoCrawler(Crawler):
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album."""
         album_id, canonical_url = self.get_canonical_url(scrape_item.url)
         results = await self.get_album_results(album_id)
         original_url = scrape_item.url
@@ -129,7 +126,7 @@ class CheveretoCrawler(Crawler):
             raise PasswordProtectedError(message="Wrong password" if password else None)
 
     @error_handling_wrapper
-    async def handle_direct_link(self, scrape_item: ScrapeItem, url: URL | None = None) -> None:
+    async def handle_direct_link(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL | None = None) -> None:
         """Handles a direct link."""
         link = clean_name(url or scrape_item.url)
         filename, ext = self.get_filename_and_ext(link.name)
@@ -147,7 +144,6 @@ class CheveretoCrawler(Crawler):
 
     @error_handling_wrapper
     async def _proccess_media_item(self, scrape_item: ScrapeItem, media_type: Media, selector: tuple[str, str]) -> None:
-        """Scrapes a media item."""
         if await self.check_complete_from_referer(scrape_item):
             return
 
@@ -171,8 +167,6 @@ class CheveretoCrawler(Crawler):
 
     video = partialmethod(_proccess_media_item, media_type=Media.VIDEO, selector=VIDEO_SELECTOR)
     image = partialmethod(_proccess_media_item, media_type=Media.IMAGE, selector=IMAGE_SELECTOR)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     def get_canonical_url(self, url: URL, media_type: Media = Media.ALBUM) -> tuple[str, AbsoluteHttpURL]:
         """Returns the id and canonical URL from a given item (album, image or video)."""

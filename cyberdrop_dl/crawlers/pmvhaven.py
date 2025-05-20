@@ -5,8 +5,6 @@ import json
 from datetime import datetime
 from typing import TYPE_CHECKING, ClassVar
 
-from yarl import URL
-
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
@@ -18,13 +16,13 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from bs4 import BeautifulSoup
+    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 JS_VIDEO_INFO_SELECTOR = "script#__NUXT_DATA__"
-API_ENTRYPOINT = URL("https://pmvhaven.com/api/v2/")
+API_ENTRYPOINT = AbsoluteHttpURL("https://pmvhaven.com/api/v2/")
 PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://pmvhaven.com")
 CATEGORIES = "Hmv", "Pmv", "Hypno", "Tiktok", "KoreanBJ"
 INCLUDE_VIDEO_ID_IN_FILENAME = True
@@ -42,9 +40,8 @@ class PMVHavenCrawler(Crawler):
         "Video": "/video/...",
     }
     primary_base_domain = PRIMARY_BASE_DOMAIN
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "pmvhaven", "PMVHaven")
+    DOMAIN = "pmvhaven"
+    FOLDER_DOMAIN = "PMVHaven"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "video" in scrape_item.url.parts:

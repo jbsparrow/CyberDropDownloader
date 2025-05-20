@@ -10,7 +10,6 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 API_URL = AbsoluteHttpURL("https://iframe.sex.com/api/")
@@ -19,11 +18,8 @@ API_URL = AbsoluteHttpURL("https://iframe.sex.com/api/")
 class SexDotComCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Shorts Profiles": "/shorts/"}
     primary_base_domain = AbsoluteHttpURL("https://sex.com")
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "sex", "Sex.com")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "sex"
+    FOLDER_DOMAIN = "Sex.com"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         n_parts = len(scrape_item.url.parts)
@@ -87,13 +83,11 @@ class SexDotComCrawler(Crawler):
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes shorts."""
         async for json_data in self.shorts_profile_paginator(scrape_item):
             for item in json_data["page"]["items"]:
                 await self.handle_media(scrape_item, item["media"])
 
     async def post(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a post."""
         username = scrape_item.url.parts[2]
         title = self.create_title(username)
         scrape_item.setup_as_album(title)

@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 IMAGE_PAGE_SELECTOR = "a[class*=image-container]"
@@ -29,14 +28,11 @@ MAIN_HOST = "ibb.co"
 
 class ImgBBCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Album": "/album/...", "Image": "/..."}
-    SUPPORTED_SITES: ClassVar[dict[str, list]] = {"imgbb": ["ibb.co", "imgbb.co"]}
+    SUPPORTED_HOSTS = "ibb.co", "imgbb.co"
     primary_base_domain = AbsoluteHttpURL("https://ibb.co")
     next_page_selector = "a[data-pagination=next]"
-
-    def __init__(self, manager: Manager, site: str) -> None:
-        super().__init__(manager, site, "ImgBB")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "imgbb"
+    FOLDER_DOMAIN = "ImgBB"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if is_cdn(scrape_item.url):
@@ -50,7 +46,6 @@ class ImgBBCrawler(Crawler):
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album."""
         title: str = ""
 
         async for soup in self.web_pager(scrape_item.url / "sub"):
@@ -71,7 +66,6 @@ class ImgBBCrawler(Crawler):
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an image."""
         if await self.check_complete_from_referer(scrape_item):
             return
 
@@ -92,8 +86,6 @@ class ImgBBCrawler(Crawler):
         scrape_item.url = scrape_item.url.with_name(scrape_item.url.name.replace(".md.", ".").replace(".th.", "."))
         filename, ext = self.get_filename_and_ext(scrape_item.url.name)
         await self.handle_file(scrape_item.url, scrape_item, filename, ext)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @staticmethod
     def parse_datetime(date: str) -> int:

@@ -8,25 +8,19 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_fr
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class BuzzHeavierCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Direct links": ""}
     primary_base_domain = AbsoluteHttpURL("https://buzzheavier.com")
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "buzzheavier.com", "BuzzHeavier")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "buzzheavier.com"
+    FOLDER_DOMAIN = "BuzzHeavier"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         return await self.file(scrape_item)
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a file."""
-
         if await self.check_complete_from_referer(scrape_item):
             return
 

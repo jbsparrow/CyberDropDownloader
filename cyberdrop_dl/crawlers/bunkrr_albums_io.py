@@ -12,7 +12,6 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 ALBUM_SELECTOR = "main div.auto-rows-max a"
 
@@ -20,13 +19,10 @@ ALBUM_SELECTOR = "main div.auto-rows-max a"
 class BunkrAlbumsIOCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Search": "/s?search=..."}
     primary_base_domain = AbsoluteHttpURL("https://bunkr-albums.io/")
+    DOMAIN = "bunkr-albums.io"
+    FOLDER_DOMAIN = "Bunkr-Albums.io"
     next_page_selector = "nav:last-of-type a.ic-arrow-right"
     skip_pre_check = True
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "bunkr-albums.io", "Bunkr-Albums.io")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.query.get("search"):  # Trying to scrape the root page is a bad idea

@@ -11,10 +11,8 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from bs4 import BeautifulSoup
-    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 COLLECTION_PARTS = "search", "channel", "pornstar", "tag", "category"
 IMAGE_SELECTOR = "div#main a.rel-link"
@@ -32,11 +30,8 @@ class PornPicsCrawler(Crawler):
         "Direct links": "",
     }
     primary_base_domain = AbsoluteHttpURL("https://pornpics.com")
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "pornpics", "PornPics")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "pornpics"
+    FOLDER_DOMAIN = "PornPics"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         parts_limit = 2 if scrape_item.url.name else 3
@@ -56,7 +51,6 @@ class PornPicsCrawler(Crawler):
 
     @error_handling_wrapper
     async def collection(self, scrape_item: ScrapeItem, collection_type: str) -> None:
-        """Scrapes a collection."""
         assert collection_type in COLLECTION_PARTS
 
         def update_scrape_item(soup: BeautifulSoup) -> None:
@@ -76,7 +70,6 @@ class PornPicsCrawler(Crawler):
 
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a gallery."""
         gallery_base = scrape_item.url.name or scrape_item.url.parent.name
         gallery_id = gallery_base.rsplit("-", 1)[-1]
         results = await self.get_album_results(gallery_id)
@@ -95,19 +88,20 @@ class PornPicsCrawler(Crawler):
                 await self.handle_file(new_scrape_item.url, new_scrape_item, filename, ext)
 
     async def image(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an image."""
         scrape_item.album_id = scrape_item.url.parts[-2]
         await self.direct_file(scrape_item)
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~``
 
-    async def _web_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[tuple[BeautifulSoup | None, tuple[URL, ...]]]:
+    async def _web_pager(
+        self, scrape_item: ScrapeItem
+    ) -> AsyncGenerator[tuple[BeautifulSoup | None, tuple[AbsoluteHttpURL, ...]]]:
         """Generator of website pages."""
         limit = 20
         page_url = scrape_item.url.without_query_params("limit", "offset")
         offset = int(scrape_item.url.query.get("offset") or 0)
 
-        async def get_items(current_page: URL) -> tuple[BeautifulSoup | None, tuple[URL, ...]]:
+        async def get_items(current_page: AbsoluteHttpURL) -> tuple[BeautifulSoup | None, tuple[AbsoluteHttpURL, ...]]:
             offset = current_page.query.get("offset")
             if not offset:  # offset == 0 does not return JSON
                 async with self.request_limiter:
@@ -130,7 +124,7 @@ class PornPicsCrawler(Crawler):
             page_url = page_url.update_query(offset=offset, limit=limit)
 
 
-def is_cdn(url: URL) -> bool:
+def is_cdn(url: AbsoluteHttpURL) -> bool:
     assert url.host, f"{url} has no host"
     url_host: str = url.host.removeprefix("www.")
     return len(url_host.split(".")) > len(BASE_HOST.split("."))

@@ -19,7 +19,6 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class FileTuple(NamedTuple):
@@ -34,12 +33,14 @@ class MegaNzCrawler(Crawler):
     }
     primary_base_domain = AbsoluteHttpURL("https://mega.nz")
     skip_pre_check = True
+    DOMAIN = "mega.nz"
+    FOLDER_DOMAIN = "MegaNz"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "mega.nz", "MegaNz")
-        self.api = MegaApi(manager)
-        self.user = manager.config_manager.authentication_data.meganz.email or None
-        self.password = manager.config_manager.authentication_data.meganz.password or None
+    def __post_init__(self) -> None:
+        self.api = MegaApi(self.manager)
+        self.user = self.manager.config_manager.authentication_data.meganz.email or None
+        self.password = self.manager.config_manager.authentication_data.meganz.password or None
+        self.downloader: MegaDownloader
 
     async def startup(self) -> None:
         """Starts the crawler."""
@@ -62,8 +63,6 @@ class MegaNzCrawler(Crawler):
             if "folder" in scrape_item.url.parts or scrape_item.url.fragment.startswith("F!"):
                 return await self.folder(scrape_item)
         raise ValueError
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:

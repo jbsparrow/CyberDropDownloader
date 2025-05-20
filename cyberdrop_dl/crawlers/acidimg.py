@@ -9,7 +9,6 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class AcidImgCrawler(ImxToCrawler):
@@ -18,13 +17,8 @@ class AcidImgCrawler(ImxToCrawler):
         "Thumbnail": "/upload/...",
     }
     primary_base_domain = AbsoluteHttpURL("https://acidimg.cc")
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager)
-        self.DOMAIN = "acidimg.cc"
-        self.folder_domain = "AcidImg"
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "acidimg.cc"
+    FOLDER_DOMAIN = "AcidImg"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "i" in scrape_item.url.parts:

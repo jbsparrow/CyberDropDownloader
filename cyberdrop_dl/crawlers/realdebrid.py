@@ -8,21 +8,20 @@ from multidict import MultiDict
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.managers.real_debrid.api import RATE_LIMIT
 from cyberdrop_dl.types import AbsoluteHttpURL
-from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class RealDebridCrawler(Crawler):
     primary_base_domain = AbsoluteHttpURL("https://real-debrid.com")
+    DOMAIN = "real-debrid"
+    FOLDER_DOMAIN = "RealDebrid"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "real-debrid", "RealDebrid")
+    def __post_init__(self) -> None:
         self.headers = {}
         self.request_limiter = AsyncLimiter(RATE_LIMIT, 60)
 
@@ -34,8 +33,7 @@ class RealDebridCrawler(Crawler):
 
     @error_handling_wrapper
     async def folder(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a folder."""
-        log(f"Scraping folder with RealDebrid: {scrape_item.url}", 20)
+        self.log(f"Scraping folder with RealDebrid: {scrape_item.url}", 20)
         folder_id = self.manager.real_debrid_manager.guess_folder(scrape_item.url)
         title = self.create_title(f"{folder_id} [{scrape_item.url.host.lower()}]", folder_id)  # type: ignore
         scrape_item.setup_as_album(title, album_id=folder_id)
@@ -50,7 +48,6 @@ class RealDebridCrawler(Crawler):
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a file."""
         original_url = database_url = debrid_url = scrape_item.url
         password = original_url.query.get("password", "")
 
@@ -69,7 +66,7 @@ class RealDebridCrawler(Crawler):
         if await self.check_complete_from_referer(debrid_url):
             return
 
-        log(f"Real Debrid:\n  Original URL: {original_url}\n  Debrid URL: {debrid_url}", 10)
+        self.log(f"Real Debrid:\n  Original URL: {original_url}\n  Debrid URL: {debrid_url}", 10)
 
         if not self_hosted:
             # Some hosts use query params or fragment as id or password (ex: mega.nz)
@@ -90,10 +87,9 @@ class RealDebridCrawler(Crawler):
         return any(subdomain in url.host for subdomain in ("download.", "my.")) and self.DOMAIN in url.host
 
     async def get_original_url(self, scrape_item: ScrapeItem) -> AbsoluteHttpURL:
-        assert scrape_item.url.host
-        log(f"Input URL: {scrape_item.url}")
+        self.log(f"Input URL: {scrape_item.url}")
         if not self.is_self_hosted(scrape_item.url) or self.DOMAIN not in scrape_item.url.host:
-            log(f"Parsed URL: {scrape_item.url}")
+            self.log(f"Parsed URL: {scrape_item.url}")
             return scrape_item.url
 
         parts_dict: dict[str, list[str]] = {"parts": [], "query": [], "frag": []}
@@ -117,5 +113,5 @@ class RealDebridCrawler(Crawler):
             .with_query(query)
             .with_fragment(frag)
         )
-        log(f"Parsed URL: {parsed_url}")
+        self.log(f"Parsed URL: {parsed_url}")
         return parsed_url

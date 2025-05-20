@@ -360,7 +360,8 @@ def get_crawlers(manager: Manager | None = None) -> dict[str, Crawler]:
         for crawler in CRAWLERS:
             site_crawler = crawler(manager)
             for domain in site_crawler.SCRAPE_MAPPER_KEYS:
-                assert domain not in existing_crawlers
+                msg = f"{domain} from {site_crawler.NAME} already registered by {existing_crawlers.get(domain)}"
+                assert domain not in existing_crawlers, msg
                 existing_crawlers[domain] = site_crawler
     return existing_crawlers
 

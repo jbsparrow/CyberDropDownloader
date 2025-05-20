@@ -8,6 +8,7 @@ from aiolimiter import AsyncLimiter
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import LoginError, ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -15,7 +16,6 @@ if TYPE_CHECKING:
     from collections.abc import Generator
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://nhentai.net/")
@@ -31,12 +31,11 @@ class NHentaiCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Collections": '"favorites"', "Gallery": "/g/"}
     primary_base_domain = PRIMARY_BASE_DOMAIN
     next_page_selector = "a.next"
+    DOMAIN = "nhentai.net"
+    FOLDER_DOMAIN = "nHentai"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "nhentai.net", "nHentai")
+    def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(4, 1)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if any(p in scrape_item.url.parts for p in COLLECTION_PARTS):
@@ -64,10 +63,10 @@ class NHentaiCrawler(Crawler):
                         span.decompose()
 
                 else:
-                    title_tag = soup.select_one("span.name")
+                    title_tag = css.select_one(soup, "span.name")
                     title = f" [{collection_type}]"
 
-                title: str = title_tag.get_text(strip=True) + title  # type: ignore
+                title: str = title_tag.get_text(strip=True) + title
                 title = self.create_title(title)
                 scrape_item.setup_as_album(title)
 

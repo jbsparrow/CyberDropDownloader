@@ -7,7 +7,6 @@ from hashlib import sha256
 from typing import TYPE_CHECKING, ClassVar, Literal, NotRequired, TypedDict, cast
 
 from aiolimiter import AsyncLimiter
-from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import FILE_HOST_ALBUM, ScrapeItem
@@ -18,12 +17,12 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
-    from cyberdrop_dl.managers.manager import Manager
+    from yarl import URL
 
 
 WT_REGEX = re.compile(r'appdata\.wt\s=\s"([^"]+)"')
-API_ENTRYPOINT = URL("https://api.gofile.io")
-GLOBAL_JS_URL = URL("https://gofile.io/dist/js/global.js")
+API_ENTRYPOINT = AbsoluteHttpURL("https://api.gofile.io")
+GLOBAL_JS_URL = AbsoluteHttpURL("https://gofile.io/dist/js/global.js")
 
 
 class Node(TypedDict):
@@ -87,16 +86,15 @@ class ApiAlbumResponse(TypedDict):
 class GoFileCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Album": "/d/..."}
     primary_base_domain = AbsoluteHttpURL("https://gofile.io")
+    DOMAIN = "gofile"
+    FOLDER_DOMAIN = "GoFile"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "gofile", "GoFile")
-        self.api_key = manager.config_manager.authentication_data.gofile.api_key
-        self.website_token = manager.cache_manager.get("gofile_website_token")
+    def __post_init__(self) -> None:
+        self.api_key = self.manager.config_manager.authentication_data.gofile.api_key
+        self.website_token = self.manager.cache_manager.get("gofile_website_token")
         self.headers: dict[str, str] = {}
         self.request_limiter = AsyncLimiter(4, 6)
         self._website_token_date = datetime.now(UTC) - timedelta(days=7)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def async_startup(self) -> None:
         get_website_token = error_handling_wrapper(self.get_website_token)
@@ -110,7 +108,6 @@ class GoFileCrawler(Crawler):
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album."""
         if not self.api_key or not self.website_token:
             return
 
@@ -147,8 +144,6 @@ class GoFileCrawler(Crawler):
         scrape_item.part_of_album = part_of_album
         scrape_item.url = scrape_item.url.with_query(None)
         await self.handle_children(album["children"], scrape_item)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def handle_children(self, children: Mapping[str, Node], scrape_item: ScrapeItem) -> None:
         """Sends files to downloader and adds subfolder to scrape queue."""

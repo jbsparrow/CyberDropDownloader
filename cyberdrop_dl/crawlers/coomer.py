@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
-from yarl import URL
 
 from cyberdrop_dl.crawlers.kemono import KemonoCrawler, UserPost
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
@@ -12,7 +11,6 @@ if TYPE_CHECKING:
     from aiohttp_client_cache.response import AnyResponse
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class CoomerCrawler(KemonoCrawler):
@@ -25,17 +23,15 @@ class CoomerCrawler(KemonoCrawler):
     }
     primary_base_domain = AbsoluteHttpURL("https://coomer.su")
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date} - {title}"
+    DOMAIN = "coomer"
+    FOLDER_DOMAIN = "Coomer"
+    API_ENTRYPOINT = AbsoluteHttpURL("https://coomer.su/api/v1")
+    SERVICES = "onlyfans", "fansly"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager)
-        self.DOMAIN = "coomer"
-        self.folder_domain = "Coomer"
-        self.api_entrypoint = URL("https://coomer.su/api/v1")
-        self.services = "onlyfans", "fansly"
+    def __post_init__(self) -> None:
+        super().__post_init__()
         self.request_limiter = AsyncLimiter(4, 1)
         self.session_cookie = self.manager.config_manager.authentication_data.coomer.session
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def async_startup(self) -> None:
         def check_coomer_page(response: AnyResponse) -> bool:

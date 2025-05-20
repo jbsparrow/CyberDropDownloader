@@ -9,7 +9,6 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 DEFAULT_QUERY = """
     query SubredditQuery(
@@ -46,12 +45,10 @@ API_ENTRYPOINT = AbsoluteHttpURL("https://api.scrolller.com/api/v2/graphql")
 class ScrolllerCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Subreddit": "/r/..."}
     primary_base_domain = AbsoluteHttpURL("https://scrolller.com")
+    DOMAIN = "scrolller"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "scrolller", "Scrolller")
+    def __post_init__(self) -> None:
         self.headers = {"Content-Type": "application/json"}
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "r" in scrape_item.url.parts:
@@ -60,7 +57,6 @@ class ScrolllerCrawler(Crawler):
 
     @error_handling_wrapper
     async def subreddit(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album."""
         subreddit = scrape_item.url.parts[-1]
         title = self.create_title(subreddit)
         scrape_item.setup_as_album(title)

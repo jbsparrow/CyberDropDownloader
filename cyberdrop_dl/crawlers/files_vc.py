@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from aiolimiter import AsyncLimiter
-from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
@@ -11,21 +10,19 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
-API_ENTRYPOINT = URL("https://api.files.vc/api")
+API_ENTRYPOINT = AbsoluteHttpURL("https://api.files.vc/api")
 
 
 class FilesVcCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Direct links": ""}
     primary_base_domain = AbsoluteHttpURL("https://files.vc")
+    DOMAIN = "files.vc"
+    FOLDER_DOMAIN = "FilesVC"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "files.vc", "FilesVC")
+    def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(1, 1)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.path == "/d/dl" and scrape_item.url.query.get("hash"):
@@ -34,8 +31,6 @@ class FilesVcCrawler(Crawler):
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a file."""
-
         if await self.check_complete_from_referer(scrape_item):
             return
 

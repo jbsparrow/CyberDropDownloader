@@ -14,6 +14,7 @@ from aiolimiter import AsyncLimiter
 from dateutil import parser
 from yarl import URL
 
+from cyberdrop_dl.constants import NEW_ISSUE_URL
 from cyberdrop_dl.data_structures.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.scraper import filters
@@ -29,8 +30,6 @@ from cyberdrop_dl.utils.utilities import (
     parse_url,
     remove_file_id,
 )
-
-_NEW_ISSUE_URL = "https://github.com/jbsparrow/CyberDropDownloader/issues/new/choose"
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -182,8 +181,6 @@ class Crawler(ABC):
     async def queue_fetch_task(self, scrape_item: ScrapeItem) -> None:
         await self.fetch(scrape_item)
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
     async def handle_file(
         self,
         url: URL,
@@ -212,7 +209,7 @@ class Crawler(ABC):
 
         if media_item.datetime and not isinstance(media_item.datetime, int):
             msg = f"Invalid datetime from '{self.FOLDER_DOMAIN}' crawler . Got {media_item.datetime!r}, expected int. "
-            msg += "Please file a bug report at https://github.com/jbsparrow/CyberDropDownloader/issues/new/choose"
+            msg += f"Please file a bug report at {NEW_ISSUE_URL}"
             log(msg, 30)
 
         check_complete = await self.manager.db_manager.history_table.check_complete(self.DOMAIN, url, scrape_item.url)
@@ -232,8 +229,6 @@ class Crawler(ABC):
             return
 
         self.manager.task_group.create_task(self.downloader.download_hls(media_item, m3u8_content))
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @final
     async def check_skip_by_config(self, media_item: MediaItem) -> bool:
@@ -282,8 +277,6 @@ class Crawler(ABC):
         if reset:
             scrape_item.reset()
         self.manager.task_group.create_task(self.manager.scrape_mapper.filter_and_send_to_crawler(scrape_item))
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -456,7 +449,7 @@ class Crawler(ABC):
         await self.handle_file(link, scrape_item, filename, ext)
 
     def parse_date(self, date_or_datetime: str, format: str | None = None, /) -> TimeStamp | None:
-        msg = f"Date parsing for {self.DOMAIN} seems to be broken. Please report this as a bug at {_NEW_ISSUE_URL}"
+        msg = f"Date parsing for {self.DOMAIN} seems to be broken. Please report this as a bug at {NEW_ISSUE_URL}"
         if not date_or_datetime:
             log(f"{msg}: Unable to extract date from soup", 40)
             return None

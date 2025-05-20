@@ -12,7 +12,6 @@ if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 VIDEO_PARTS = "video", "photo", "v"
 API_URL = AbsoluteHttpURL("https://www.tikwm.com/api/")
@@ -21,13 +20,13 @@ API_URL = AbsoluteHttpURL("https://www.tikwm.com/api/")
 class TikTokCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"User": "/@", "Video": "/@/video/", "Photo": "/@/photo/"}
     primary_base_domain = AbsoluteHttpURL("https://tiktok.com/")
+    DOMAIN = "tiktok"
+    FOLDER_DOMAIN = "TikTok"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "tiktok", "TikTok")
+    def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(1, 10)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        assert scrape_item.url.host
         if any(p in scrape_item.url.parts for p in VIDEO_PARTS) or scrape_item.url.host.startswith("vm.tiktok"):
             return await self.video(scrape_item)
         if len(scrape_item.url.parts) > 1 and "@" in scrape_item.url.parts[1]:

@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class Selectors:
@@ -34,14 +33,13 @@ class BestPrettyGirlCrawler(Crawler):
         "Collections": "category",
         "Gallery": "//",
     }
+    DOMAIN = "bestprettygirl.com"
+    FOLDER_DOMAIN = "BestPrettyGirl"
     primary_base_domain = AbsoluteHttpURL("https://bestprettygirl.com/")
     next_page = "a.page-numbers.next"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "bestprettygirl.com", "BestPrettyGirl")
+    def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(4, 1)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         is_date = len(scrape_item.url.parts) > 3

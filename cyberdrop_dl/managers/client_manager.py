@@ -106,8 +106,6 @@ class ClientManager:
         self.downloader_session = DownloadClient(manager, self)
         self.flaresolverr = Flaresolverr(self)
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
     def load_cookie_files(self) -> None:
         if self.manager.config_manager.settings_data.browser_cookies.auto_import:
             get_cookies_from_browsers(self.manager)
@@ -156,8 +154,6 @@ class ClientManager:
         if domain in self.domain_rate_limits:
             return self.domain_rate_limits[domain]
         return self.domain_rate_limits["other"]
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     @classmethod
     async def check_http_status(

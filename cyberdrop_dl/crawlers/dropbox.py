@@ -15,7 +15,6 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class DropboxCrawler(Crawler):
@@ -25,12 +24,10 @@ class DropboxCrawler(Crawler):
         "**NOTE**": "Folders will be downloaded as a zip file.",
     }
     primary_base_domain = AbsoluteHttpURL("https://dropbox.com/")
+    DOMAIN = "dropbox"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "dropbox", "Dropbox")
-        self.download_folders = manager.parsed_args.cli_only_args.download_dropbox_folders_as_zip
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    def __post_init__(self) -> None:
+        self.download_folders = self.manager.parsed_args.cli_only_args.download_dropbox_folders_as_zip
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         url = await self.get_share_url(scrape_item)

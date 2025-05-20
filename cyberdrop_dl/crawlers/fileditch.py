@@ -11,7 +11,6 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 DOWNLOAD_SELECTOR = "a[class*='download-button']"
 HOMEPAGE_CATCHALL_FILE = "/s21/FHVZKQyAZlIsrneDAsp.jpeg"
@@ -20,11 +19,7 @@ HOMEPAGE_CATCHALL_FILE = "/s21/FHVZKQyAZlIsrneDAsp.jpeg"
 class FileditchCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Direct links": ""}
     primary_base_domain = AbsoluteHttpURL("https://fileditchfiles.me/")
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "fileditch", "Fileditch")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "fileditch"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.path != "/file.php":

@@ -6,7 +6,7 @@ from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
-from cyberdrop_dl.utils import javascript
+from cyberdrop_dl.utils import css, javascript
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -14,7 +14,6 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class Selectors:
@@ -49,10 +48,10 @@ class VideoInfo(NamedTuple):
 
     @classmethod
     def from_tag(cls, tag: Tag) -> VideoInfo:
-        link_str: str = tag["href"]  # type: ignore
+        link_str: str = css.get_attr(tag, "href")
         name = tag.get_text(strip=True).removeprefix("Download")
         details = name.split("(", 1)[1].removesuffix(")").split(",")
-        res, codec, size = tuple([d.strip() for d in details])
+        res, codec, size = [d.strip() for d in details]
         codec = codec.lower()
         return cls(codec, res, size, link_str)
 
@@ -69,12 +68,9 @@ class EpornerCrawler(Crawler):
         "Gallery": "/gallery/...",
     }
     primary_base_domain = AbsoluteHttpURL("https://www.eporner.com/")
+    DOMAIN = "eporner"
+    FOLDER_DOMAIN = "ePorner"
     next_page_selector = _SELECTORS.NEXT_PAGE
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "eporner", "ePorner")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if get_video_id(scrape_item.url):

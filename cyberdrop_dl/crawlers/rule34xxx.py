@@ -11,7 +11,6 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class Selector:
@@ -28,14 +27,11 @@ class Rule34XXXCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"File": "?id=...", "Tags": "?tags=..."}
     primary_base_domain = AbsoluteHttpURL("https://rule34.xxx")
     next_page_selector = "a[alt=next]"
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "rule34.xxx", "Rule34XXX")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "rule34.xxx"
+    FOLDER_DOMAIN = "Rule34XXX"
 
     async def async_startup(self) -> None:
-        await self.set_cookies()
+        self.set_cookies()
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.query.get("tags"):
@@ -46,7 +42,6 @@ class Rule34XXXCrawler(Crawler):
 
     @error_handling_wrapper
     async def tag(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album."""
         title: str = ""
         async for soup in self.web_pager(scrape_item.url, relative_to=scrape_item.url):
             if not title:
@@ -59,7 +54,6 @@ class Rule34XXXCrawler(Crawler):
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an image."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
@@ -68,15 +62,13 @@ class Rule34XXXCrawler(Crawler):
             raise ScrapeError(422)
 
         if date_tag := soup.select_one(_SELECTOR.DATE):
-            scrape_item.possible_datetime = self.parse_date(date_tag.get_text(strip=True).removeprefix("Posted: "))
+            date_str = date_tag.get_text(strip=True).removeprefix("Posted: ")
+            scrape_item.possible_datetime = self.parse_date(date_str)
         link_str: str = media_tag["src"]  # type: ignore
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    async def set_cookies(self) -> None:
-        """Sets the cookies for the client."""
+    def set_cookies(self) -> None:
         cookies = {"resize-original": "1"}
         self.update_cookies(cookies)

@@ -13,7 +13,6 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 DOWNLOAD_BUTTON_SELECTOR = "a[id=download]"
@@ -23,14 +22,10 @@ API_ENTRYPOINT = URL("https://postimg.cc/json")
 class PostImgCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Album": "/gallery/...", "Image": "/...", "Direct links": ""}
     primary_base_domain = AbsoluteHttpURL("https://postimages.org/")
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "postimg", "PostImg")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "postimg"
+    FOLDER_DOMAIN = "PostImg"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        assert scrape_item.url.host
         if "i.postimg.cc" in scrape_item.url.host:
             return await self.direct_file(scrape_item)
         if "gallery" in scrape_item.url.parts:
@@ -39,7 +34,6 @@ class PostImgCrawler(Crawler):
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album."""
         data = {"action": "list", "album": scrape_item.url.raw_name, "page": 0}
         title: str = ""
         for page in itertools.count(1):
@@ -64,7 +58,6 @@ class PostImgCrawler(Crawler):
 
     @error_handling_wrapper
     async def image(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an image."""
         if await self.check_complete_from_referer(scrape_item):
             return
 

@@ -6,24 +6,20 @@ import json
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
-from typing import TYPE_CHECKING, ClassVar, NewType
+from typing import TYPE_CHECKING, ClassVar
 
 from bs4 import BeautifulSoup
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping, TimeStamp
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup, Tag
-    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
-
-
-TimeStamp = NewType("TimeStamp", int)
 
 
 class Selectors:
@@ -52,7 +48,7 @@ class Card:
     name: str
     number_str: str
     set: CardSet
-    download_url: URL
+    download_url: AbsoluteHttpURL
 
     @property
     def full_name(self) -> str:
@@ -79,7 +75,7 @@ class SimpleCard:
     number_str: str  # This can actually contain letters as well, but the oficial name is `number`
     set_name: str
     set_abbr: str
-    download_url: URL
+    download_url: AbsoluteHttpURL
 
 
 @dataclass(slots=True)
@@ -102,13 +98,11 @@ class PkmncardsCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Card": "/card/...", "Set": "/set/...", "Series": "/series/..."}
     primary_base_domain = AbsoluteHttpURL("https://pkmncards.com")
     next_page_selector = _SELECTORS.NEXT_PAGE
+    DOMAIN = "pkmncards"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "pkmncards", "Pkmncards")
+    def __post_init__(self) -> None:
         self.known_sets: dict[str, CardSet] = {}
         self.set_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if len(scrape_item.url.parts) > 2:
@@ -138,7 +132,7 @@ class PkmncardsCrawler(Crawler):
         page_url = self.primary_base_domain / "set" / scrape_item.url.parts[2]
         await self._iter_from_url(scrape_item, page_url)
 
-    async def _iter_from_url(self, scrape_item: ScrapeItem, url: URL) -> None:
+    async def _iter_from_url(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL) -> None:
         page_url = url.with_query(sort="date", ord="auto", display="images")
         async for soup in self.web_pager(page_url):
             for thumb in soup.select(_SELECTORS.CARD):
@@ -197,7 +191,7 @@ class PkmncardsCrawler(Crawler):
         scrape_item.add_children()
 
 
-def create_simple_card(title: str, download_url: URL) -> SimpleCard:
+def create_simple_card(title: str, download_url: AbsoluteHttpURL) -> SimpleCard:
     """Over-complicated function to parse the information of a card from the title of a page or the alt-title of a thumbnail."""
 
     # ex: Fuecoco · Scarlet & Violet Promos (SVP) #002
@@ -225,16 +219,16 @@ def create_simple_card(title: str, download_url: URL) -> SimpleCard:
 def create_set(soup: Tag) -> CardSet:
     tag = soup.select_one(_SELECTORS.SET_SERIES_CODE)
     # Some sets do not have series code
-    set_series_code: str | None = tag.get_text(strip=True) if tag else None  # type: ignore
-    set_info: dict[str, list[dict]] = json.loads(soup.select_one(_SELECTORS.SET_INFO).text)  # type: ignore
+    set_series_code: str | None = tag.get_text(strip=True) if tag else None
+    set_info: dict[str, list[dict]] = json.loads(css.select_one(soup, _SELECTORS.SET_INFO).text)
     release_date: int | None = None
     for item in set_info["@graph"]:
         if iso_date := item.get("datePublished"):
             release_date = calendar.timegm(datetime.fromisoformat(iso_date).timetuple())
             break
 
-    set_abbr = soup.select_one(_SELECTORS.SET_ABBR).text  # type: ignore
-    set_name = soup.select_one(_SELECTORS.SET_NAME).text  # type: ignore
+    set_abbr = css.select_one(soup, _SELECTORS.SET_ABBR).text
+    set_name = css.select_one(soup, _SELECTORS.SET_NAME).text
 
     if not release_date:
         raise ScrapeError(422)

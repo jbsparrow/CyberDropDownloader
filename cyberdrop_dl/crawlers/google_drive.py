@@ -36,11 +36,11 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
-from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import DownloadError, ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_from_headers
 
 if TYPE_CHECKING:
@@ -49,7 +49,6 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 VALID_FILE_URL_PARTS = "file", "document", "presentation", "spreadsheets"
@@ -71,14 +70,13 @@ class GoogleDriveCrawler(Crawler):
         "Sheets": "/spreadsheets/d/",
         "Slides": "/presentation/d/",
     }
-    SUPPORTED_SITES: ClassVar[dict[str, list]] = {"drive.google": ["drive.google", "docs.google"]}
+    SUPPORTED_HOSTS = "drive.google", "docs.google"
     primary_base_domain = AbsoluteHttpURL("https://drive.google.com")
+    DOMAIN = "drive.google"
+    FOLDER_DOMAIN = "GoogleDrive"
 
-    def __init__(self, manager: Manager, site: str) -> None:
-        super().__init__(manager, site, "GoogleDrive")
+    def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(4, 6)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if is_folder(scrape_item.url):
@@ -98,7 +96,7 @@ class GoogleDriveCrawler(Crawler):
 
         subfolders = []
         for link_str in folder.items:
-            link: URL = self.parse_url(link_str)
+            link = self.parse_url(link_str)
             if is_folder(link):
                 subfolders.append(link)
                 continue
@@ -146,9 +144,11 @@ class GoogleDriveCrawler(Crawler):
         filename, ext = self.get_filename_and_ext(filename)
         await self.handle_file(canonical_url, scrape_item, filename, ext, debrid_link=link)
 
-    async def get_file_url_and_headers(self, url: URL, file_id: str) -> tuple[URL, Mapping[str, str]]:
+    async def get_file_url_and_headers(
+        self, url: AbsoluteHttpURL, file_id: str
+    ) -> tuple[AbsoluteHttpURL, Mapping[str, str]]:
         soup = last_error = None
-        current_url: URL | None = url
+        current_url: AbsoluteHttpURL | None = url
         try_file_open_url = True
 
         headers = {}
@@ -165,7 +165,7 @@ class GoogleDriveCrawler(Crawler):
             except DownloadError as e:
                 last_error = e
                 if e.status == 500 and try_file_open_url:
-                    current_url = URL(f"https://drive.google.com/open?id={file_id}")
+                    current_url = AbsoluteHttpURL(f"https://drive.google.com/open?id={file_id}")
                     try_file_open_url = False
                     continue
 
@@ -186,7 +186,7 @@ class GoogleDriveCrawler(Crawler):
 
         raise ScrapeError(422)
 
-    async def add_headers(self, url: URL) -> tuple[URL, Mapping[str, str]]:
+    async def add_headers(self, url: AbsoluteHttpURL) -> tuple[AbsoluteHttpURL, Mapping[str, str]]:
         async with self.request_limiter:
             headers = await self.client.get_head(self.DOMAIN, url)
         location = headers.get("location")
@@ -195,18 +195,18 @@ class GoogleDriveCrawler(Crawler):
             return await self.add_headers(link)
         return url, headers
 
-    def get_url_from_download_button(self, soup: BeautifulSoup) -> URL | None:
+    def get_url_from_download_button(self, soup: BeautifulSoup) -> AbsoluteHttpURL | None:
         form = soup.select_one("#download-form")
         if not form:
             return None
 
-        url_str: str = form["action"]  # type: ignore
-        url: URL = self.parse_url(url_str.replace("&amp;", "&"))
+        url_str: str = css.get_attr(form, "action")
+        url: AbsoluteHttpURL = self.parse_url(url_str.replace("&amp;", "&"))
         query_params = dict(url.query)
 
         input_tags = soup.select('input[type="hidden"]')
         for input_tag in input_tags:
-            query_params[input_tag.get("name")] = input_tag.get("value")  # type: ignore
+            query_params[css.get_attr(input_tag, "name")] = css.get_attr(input_tag, "value")
 
         return url.with_query(query_params)
 
@@ -214,17 +214,17 @@ class GoogleDriveCrawler(Crawler):
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-def get_docs_url(soup: BeautifulSoup, file_id: str) -> URL | None:
+def get_docs_url(soup: BeautifulSoup, file_id: str) -> AbsoluteHttpURL | None:
     title: str = soup.title.text  # type: ignore
     if title.endswith(" - Google Docs"):
-        return URL(f"https://docs.google.com/document/d/{file_id}/export?format=docx")
+        return AbsoluteHttpURL(f"https://docs.google.com/document/d/{file_id}/export?format=docx")
     if title.endswith(" - Google Sheets"):
-        return URL(f"https://docs.google.com/spreadsheets/d/{file_id}/export?format=xlsx")
+        return AbsoluteHttpURL(f"https://docs.google.com/spreadsheets/d/{file_id}/export?format=xlsx")
     if title.endswith(" - Google Slides"):
-        return URL(f"https://docs.google.com/presentation/d/{file_id}/export?format=pptx")
+        return AbsoluteHttpURL(f"https://docs.google.com/presentation/d/{file_id}/export?format=pptx")
 
 
-def get_id_from_query(url: URL) -> str | None:
+def get_id_from_query(url: AbsoluteHttpURL) -> str | None:
     item_id = url.query.get("id")
     if item_id:
         if len(item_id) == 1:
@@ -232,7 +232,7 @@ def get_id_from_query(url: URL) -> str | None:
         return item_id
 
 
-def get_file_id(url: URL) -> str:
+def get_file_id(url: AbsoluteHttpURL) -> str:
     file_id = get_id_from_query(url)
     if file_id:
         return file_id
@@ -244,7 +244,7 @@ def get_file_id(url: URL) -> str:
     return ""
 
 
-def get_folder_id(url: URL) -> str:
+def get_folder_id(url: AbsoluteHttpURL) -> str:
     # URL should have been pre-validated with `is_folder`
     folder_id = get_id_from_query(url)
     if folder_id:
@@ -283,9 +283,9 @@ def is_html(headers: Mapping[str, str]) -> bool:
     return any(s in content_type for s in ("html", "text"))
 
 
-def is_folder(url: URL) -> bool:
+def is_folder(url: AbsoluteHttpURL) -> bool:
     return "/drive/folders/" in url.path or "embeddedfolderview" in url.parts
 
 
-def is_download_page(url: URL) -> bool:
+def is_download_page(url: AbsoluteHttpURL) -> bool:
     return url.name == "uc" or "usercontent" in url.host  # type: ignore

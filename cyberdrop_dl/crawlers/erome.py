@@ -10,7 +10,6 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class Selectors:
@@ -30,11 +29,7 @@ class EromeCrawler(Crawler):
     }
     primary_base_domain = AbsoluteHttpURL("https://www.erome.com")
     next_page_selector = _SELECTORS.NEXT_PAGE
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "erome", "Erome")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "erome"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "a" in scrape_item.url.parts:
@@ -43,7 +38,6 @@ class EromeCrawler(Crawler):
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a profile."""
         title: str = ""
         async for soup in self.web_pager(scrape_item.url):
             if not title:
@@ -55,7 +49,6 @@ class EromeCrawler(Crawler):
 
     @error_handling_wrapper
     async def album(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album."""
         album_id = scrape_item.url.parts[2]
         results = await self.get_album_results(album_id)
 

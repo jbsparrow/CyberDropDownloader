@@ -10,14 +10,13 @@ from bs4 import BeautifulSoup
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup
-    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 PLAYLIST_SELECTOR = "script:contains('window.playlist')"
@@ -39,12 +38,11 @@ class Source(NamedTuple):
 class NoodleMagazineCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Search": "/video/", "Video": "/watch/"}
     primary_base_domain = AbsoluteHttpURL("https://noodlemagazine.com")
+    DOMAIN = "noodlemagazine"
+    FOLDER_DOMAIN = "NoodleMagazine"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "noodlemagazine", "NoodleMagazine")
+    def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(1, 3)
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "video" in scrape_item.url.parts:
@@ -57,7 +55,7 @@ class NoodleMagazineCrawler(Crawler):
     async def search(self, scrape_item: ScrapeItem) -> None:
         title: str = ""
         init_page = int(scrape_item.url.query.get("p") or 1)
-        seen_urls: set[URL] = set()
+        seen_urls: set[AbsoluteHttpURL] = set()
         for page in itertools.count(1, init_page):
             n_videos = 0
             page_url = scrape_item.url.with_query(p=page)
@@ -86,15 +84,15 @@ class NoodleMagazineCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup_cffi(self.DOMAIN, scrape_item.url)
 
-        metadata_script = soup.select_one(METADATA_SELECTOR)
-        metadata = json.loads(metadata_script.text.strip())  # type: ignore
+        metadata_text = css.select_one(soup, METADATA_SELECTOR).get_text()
+        metadata = json.loads(metadata_text.strip())
         playlist = soup.select_one(PLAYLIST_SELECTOR)
         if not playlist:
             raise ScrapeError(404)
 
         playlist_data = json.loads(get_text_between(playlist.text, "window.playlist = ", ";\nwindow.ads"))
         best_source = max(Source.new(source) for source in playlist_data["sources"])
-        title: str = soup.select_one("title").text.split(" watch online")[0]  # type: ignore
+        title: str = css.select_one(soup, "title").get_text().split(" watch online")[0]
 
         scrape_item.possible_datetime = self.parse_date(metadata["uploadDate"], "%Y-%m-%d")
         content_url = self.parse_url(metadata["contentUrl"])

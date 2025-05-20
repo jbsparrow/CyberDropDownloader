@@ -11,7 +11,6 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class Selectors:
@@ -29,11 +28,8 @@ class IncestflixCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Video": "/watch/...", "Tag": "/tag/..."}
     primary_base_domain = AbsoluteHttpURL("https://www.incestflix.com")
     next_page_selector = _SELECTORS.NEXT
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "incestflix", "IncestFlix")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "incestflix"
+    FOLDER_DOMAIN = "IncestFlix"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "watch" in scrape_item.url.parts:

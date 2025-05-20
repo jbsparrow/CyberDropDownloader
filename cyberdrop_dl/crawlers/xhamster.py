@@ -18,7 +18,6 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://xhamster.com/")
 JS_VIDEO_INFO_SELECTOR = "script#initials-script"
@@ -33,11 +32,8 @@ class XhamsterCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Users, creators, videos and galleries": "pending"}
     primary_base_domain = PRIMARY_BASE_DOMAIN
     next_page_selector = "a[data-page='next']"
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "xhamster", "xHamster")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "xhamster"
+    FOLDER_DOMAIN = "xHamster"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "gallery" in scrape_item.url.parts:
@@ -60,18 +56,19 @@ class XhamsterCrawler(Crawler):
         all_paths = ("videos", "photos")
         paths_to_scrape = next(((p,) for p in all_paths if p in scrape_item.url.parts), all_paths)
 
-        async def process_children(url: URL, selector: str, name: str):
-            async for soup in self.web_pager(url):
-                for _, new_scrape_item in self.iter_children(scrape_item, soup, selector, new_title_part=name):
-                    self.manager.task_group.create_task(self.run(new_scrape_item))
-
         if "videos" in paths_to_scrape:
             videos_url = base_url / last_part
-            await process_children(videos_url, VIDEO_SELECTOR, last_part)
+            await self.process_children(scrape_item, videos_url, VIDEO_SELECTOR, last_part)
 
         if is_user and "photos" in paths_to_scrape:
             gallerys_url = base_url / "photos"
-            await process_children(gallerys_url, GALLERY_SELECTOR, "galleries")
+            await self.process_children(scrape_item, gallerys_url, GALLERY_SELECTOR, "galleries")
+
+    @error_handling_wrapper
+    async def process_children(self, scrape_item: ScrapeItem, url: URL, selector: str, name: str) -> None:
+        async for soup in self.web_pager(url):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, selector, new_title_part=name):
+                self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem) -> None:

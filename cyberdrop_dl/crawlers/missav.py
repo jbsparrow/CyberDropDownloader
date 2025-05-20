@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-import calendar
-from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -16,7 +15,6 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 M3U8_SERVER = AbsoluteHttpURL("https://surrit.com/")
@@ -34,11 +32,8 @@ class Format(NamedTuple):
 class MissAVCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Video": "/..."}
     primary_base_domain = AbsoluteHttpURL("https://missav.ws")
-
-    def __init__(self, manager: Manager, _=None) -> None:
-        super().__init__(manager, "missav", "MissAV")
-
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+    DOMAIN = "missav"
+    FOLDER_DOMAIN = "MissAV"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         return await self.video(scrape_item)
@@ -53,20 +48,18 @@ class MissAVCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup_cffi(self.DOMAIN, scrape_item.url)
 
-        title = clean_title = soup.select_one(TITLE_SELECTOR)["content"].strip()  # type: ignore
+        title = clean_title = css.select_one_get_attr(soup, TITLE_SELECTOR, "content").strip()
         date_tag = soup.select_one(DATE_SELECTOR)
         dvd_code_tag = soup.select_one(DVD_CODE_SELECTOR)
 
-        date_str: str = date_tag.get("datetime") if date_tag else ""  # type: ignore
-        dvd_code = dvd_code_tag.text.strip().upper() if dvd_code_tag else None
+        date_str: str = css.get_attr(date_tag, "datetime") if date_tag else ""
+        dvd_code = css.get_text(dvd_code_tag).upper() if dvd_code_tag else None
 
         if dvd_code:
             clean_title = clean_title.replace(dvd_code.lower(), "").replace(dvd_code.upper(), "").strip()
             title = f"{dvd_code} {clean_title}"
 
-        if date_str:
-            date = parse_datetime(date_str)
-            scrape_item.possible_datetime = date
+        scrape_item.possible_datetime = self.parse_date(date_str)
 
         uuid = get_uuid(soup)
         del soup
@@ -125,16 +118,10 @@ def get_playlist_name(m3u8_playlist_content: str, res: Format) -> str:
 
 def get_uuid(soup: BeautifulSoup) -> str:
     info_js_script = soup.select_one("script:contains('m3u8|')")
-    js_text = info_js_script.text if info_js_script else None
+    js_text = css.get_text(info_js_script) if info_js_script else None
     if not js_text:
         raise ScrapeError(422)
 
     uuid_joined_parts = js_text.split("m3u8|", 1)[-1].split("|com|surrit", 1)[0]
     uuid_parts = reversed(uuid_joined_parts.split("|"))
     return "-".join(uuid_parts)
-
-
-def parse_datetime(date: str) -> int:
-    """Parses a datetime string into a unix timestamp."""
-    parsed_date = datetime.fromisoformat(date)
-    return calendar.timegm(parsed_date.timetuple())
