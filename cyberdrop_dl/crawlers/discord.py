@@ -153,12 +153,10 @@ class DiscordCrawler(Crawler):
             canonical_url = await self.get_canonical_url(scrape_item.url)
             if await self.check_complete_from_referer(canonical_url):
                 continue
-            new_scrape_item = scrape_item.create_new(
+            new_scrape_item = scrape_item.create_child(
                 url=canonical_url,
                 new_title_part=f"{username} ({user_id})",
                 possible_datetime=timestamp,
-                add_parent=True,
-                part_of_album=True,
             )
 
             filename, ext = get_filename_and_ext(filename)
