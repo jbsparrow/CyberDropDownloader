@@ -178,15 +178,14 @@ class DiscordCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @staticmethod
-    def parse_datetime(date: str) -> int:
-        """Parses a datetime string into a unix timestamp."""
-        date = date.split("+")[0]
-        try:
-            dt = datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%f")
-        except ValueError:
-            dt = datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
-        return calendar.timegm(dt.timetuple())
+def parse_datetime(date: str) -> int:
+    """Parses a datetime string into a unix timestamp."""
+    date = date.split("+")[0]
+    try:
+        dt = datetime.strptime(date, "%Y-%m-%dT%H:%M:%S.%f")
+    except ValueError:
+        dt = datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
+    return calendar.timegm(dt.timetuple())
 
 def get_canonical_url(url: URL) -> URL:
     """Normalizes CDN URLs for consistency."""
