@@ -67,7 +67,7 @@ class DiscordCrawler(Crawler):
         async with self.request_limiter:
             servers_url = self.api_url / "v9" / "users" / "@me" / "guilds"
             data = await self.client.get_json(
-                self.domain, url=servers_url, origin=scrape_item, headers_inc=self.headers
+                self.domain, url=servers_url, headers_inc=self.headers
             )
             for server in data:
                 server_id = server.get("id")
