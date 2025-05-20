@@ -9,7 +9,7 @@ from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
@@ -44,9 +44,11 @@ COLLECTION_PARTS = "tags", "categories", "models", "playlists", "search", "membe
 TITLE_TRASH = "Free HD ", "Most Relevant ", "New ", "Videos", "Porn", "for:", "New Videos", "Tagged with"
 _SELECTORS = Selectors()
 
+PRIMARY_URL = AbsoluteHttpURL("https://www.porntrex.com")
+
 
 class PorntrexCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Video": "/video/...",
         "Album": "/albums/...",
         "User": "/members/...",
@@ -56,7 +58,7 @@ class PorntrexCrawler(Crawler):
         "Playlist": "/playlists/...",
         "Search": "/search/...",
     }
-    primary_base_domain = AbsoluteHttpURL("https://www.porntrex.com")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     next_page_selector = _SELECTORS.NEXT_PAGE
     DOMAIN = "porntrex"
 
@@ -93,14 +95,14 @@ class PorntrexCrawler(Crawler):
         for _, link in self.iter_tags(soup, _SELECTORS.IMAGES):
             filename, ext = self.get_filename_and_ext(link.name)
             debrid_link = link / ""  # iter_tags always trims URLs
-            canonical_url = self.primary_base_domain / "albums" / album_id / filename
+            canonical_url = PRIMARY_URL / "albums" / album_id / filename
             await self.handle_file(canonical_url, scrape_item, filename, ext, debrid_link=debrid_link)
             scrape_item.add_children()
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
         video_id = scrape_item.url.parts[2]
-        canonical_url = self.primary_base_domain / "video" / video_id
+        canonical_url = PRIMARY_URL / "video" / video_id
         if await self.check_complete_from_referer(canonical_url):
             return
 

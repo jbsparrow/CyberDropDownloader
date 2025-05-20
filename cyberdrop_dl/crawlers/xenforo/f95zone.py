@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 class F95ZoneCrawler(XenforoCrawler):
-    primary_base_domain = AbsoluteHttpURL("https://f95zone.to")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://f95zone.to")
     post_selectors = PostSelectors(
         date=Selector("time", "data-time"),
         number=Selector("a[class=u-concealed]", "href"),

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -11,10 +11,12 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
+PRIMARY_URL = AbsoluteHttpURL("https://send.now/")
+
 
 class SendNowCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Direct links": ""}
-    primary_base_domain = AbsoluteHttpURL("https://send.now/")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Direct links": ""}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN = "send.now"
     FOLDER_DOMAIN = "SendNow"
 
@@ -44,5 +46,5 @@ class SendNowCrawler(Crawler):
             if not self.got_cookies:
                 async with self.request_limiter:
                     await self.client.get_soup_cffi(self.DOMAIN, scrape_item.url)
-                cookies = self.manager.client_manager.cookies.filter_cookies(self.primary_base_domain)
+                cookies = self.manager.client_manager.cookies.filter_cookies(PRIMARY_URL)
                 self.got_cookies = bool(cookies)

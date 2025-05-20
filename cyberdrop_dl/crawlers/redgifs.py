@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -14,8 +14,8 @@ API_ENTRYPOINT = AbsoluteHttpURL("https://api.redgifs.com/")
 
 
 class RedGifsCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"User": "/users/", "Video": "/watch/..."}
-    primary_base_domain = AbsoluteHttpURL("https://redgifs.com/")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"User": "/users/", "Video": "/watch/..."}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://redgifs.com/")
     DOMAIN = "redgifs"
     FOLDER_DOMAIN = "RedGifs"
 

@@ -7,7 +7,7 @@ from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
@@ -17,6 +17,8 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
+
+PRIMARY_URL = AbsoluteHttpURL("https://thisvid.com")
 # Selectors
 UNAUTHORIZED_SELECTOR = "div.video-holder:contains('This video is a private video')"
 JS_SELECTOR = "div.video-holder > script:contains('var flashvars')"
@@ -49,7 +51,7 @@ class Video(NamedTuple):
 
 
 class ThisVidCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Albums": "/albums/",
         "Search": "/search/?q=...",
         "Categories": "/categories/...",
@@ -57,7 +59,7 @@ class ThisVidCrawler(Crawler):
         "Videos": "/videos/...",
         "Members": "/members/",
     }
-    primary_base_domain = AbsoluteHttpURL("https://thisvid.com")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     next_page_selector = "li.pagination-next > a"
     DOMAIN = "thisvid"
     FOLDER_DOMAIN = "ThisVid"
@@ -135,7 +137,7 @@ class ThisVidCrawler(Crawler):
         video = get_video_info(script.text)
         title: str = css.select_one_get_text(soup, "title").split("- ThisVid.com")[0].strip()
         filename, ext = self.get_filename_and_ext(video.url.name)
-        canonical_url = self.primary_base_domain / "videos" / video.id
+        canonical_url = PRIMARY_URL / "videos" / video.id
         scrape_item.url = canonical_url
         custom_filename, _ = self.get_filename_and_ext(f"{title} [{video.id}] [{video.res}]{ext}")
         await self.handle_file(

@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
@@ -14,8 +14,8 @@ CDN_HOSTS = "litter.catbox.moe", "files.catbox.moe"
 
 class CatboxCrawler(Crawler):
     SUPPORTED_HOSTS: ClassVar[tuple[str, ...]] = CDN_HOSTS
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Direct links": ""}
-    primary_base_domain = AbsoluteHttpURL("https://catbox.moe")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Direct links": ""}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://catbox.moe")
     DOMAIN = "catbox.moe"
     FOLDER_DOMAIN = "Catbox"
 

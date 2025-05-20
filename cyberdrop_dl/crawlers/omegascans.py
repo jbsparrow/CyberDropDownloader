@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -24,12 +24,12 @@ IMAGE_SELECTOR = "p[class*=flex] img"
 
 
 class OmegaScansCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Chapter": "/series/.../...",
         "Series": "/series/...",
         "Direct links": "",
     }
-    primary_base_domain = AbsoluteHttpURL("https://omegascans.org")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://omegascans.org")
     DOMAIN = "omegascans"
     FOLDER_DOMAIN = "OmegaScans"
 

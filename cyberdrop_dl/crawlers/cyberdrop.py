@@ -7,7 +7,7 @@ from bs4 import BeautifulSoup
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 API_ENTRYPOINT = AbsoluteHttpURL("https://api.cyberdrop.me/api/")
+PRIMARY_URL = AbsoluteHttpURL("https://cyberdrop.me/")
 
 
 class Selectors:
@@ -28,12 +29,12 @@ _SELECTORS = Selectors()
 
 
 class CyberdropCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Albums": "/a/...",
         "Files": "/f/...",
         "Direct links": "",
     }
-    primary_base_domain = AbsoluteHttpURL("https://cyberdrop.me/")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN = "cyberdrop"
 
     def __post_init__(self) -> None:
@@ -94,6 +95,6 @@ class CyberdropCrawler(Crawler):
         if any(part in url.parts for part in ("a", "f")):
             return url
         if url.host.count(".") > 1 or "e" in url.parts:
-            return self.primary_base_domain / "f" / url.name
+            return PRIMARY_URL / "f" / url.name
         response, _ = await self.client._get_response_and_soup(self.DOMAIN, url)
         return AbsoluteHttpURL(response.url)

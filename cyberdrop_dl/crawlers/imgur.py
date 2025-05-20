@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import LoginError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -13,16 +13,17 @@ if TYPE_CHECKING:
 
 API_ENTRYPOINT = AbsoluteHttpURL("https://api.imgur.com/3/")
 DOWNLOAD_URL = AbsoluteHttpURL("https://imgur.com/download")
+PRIMARY_URL = AbsoluteHttpURL("https://imgur.com/")
 
 
 class ImgurCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Album": "/a/...",
         "Gallery": "/gallery/...",
         "Image": "/...",
         "Direct links": "",
     }
-    primary_base_domain = AbsoluteHttpURL("https://imgur.com/")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN = "imgur"
 
     def __post_init__(self) -> None:
@@ -41,7 +42,7 @@ class ImgurCrawler(Crawler):
 
     async def gallery(self, scrape_item: ScrapeItem) -> None:
         album_id = scrape_item.url.name.rsplit("-", 1)[-1]
-        scrape_item.url = self.primary_base_domain / "a" / album_id
+        scrape_item.url = PRIMARY_URL / "a" / album_id
         await self.album(scrape_item)
 
     @error_handling_wrapper

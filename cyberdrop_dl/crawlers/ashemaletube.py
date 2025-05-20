@@ -9,7 +9,7 @@ from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
@@ -68,10 +68,11 @@ TITLE_SELECTOR_MAP = {
 }
 
 TITLE_TRASH = "Shemale Porn Videos - Trending"
+PRIMARY_URL = AbsoluteHttpURL("https://www.ashemaletube.com")
 
 
 class AShemaleTubeCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Playlists": "/playlists/...",
         "Video": "/videos/...",
         "Models": "/creators/...",
@@ -79,7 +80,7 @@ class AShemaleTubeCrawler(Crawler):
     }
     DOMAIN = "ashemaletube"
     FOLDER_DOMAIN = "aShemaleTube"
-    primary_base_domain = AbsoluteHttpURL("https://www.ashemaletube.com")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     next_page_selector = _SELECTORS.NEXT_PAGE
 
     def __post_init__(self) -> None:
@@ -169,7 +170,7 @@ class AShemaleTubeCrawler(Crawler):
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
         video_id: str = scrape_item.url.parts[2]
-        canonical_url = self.primary_base_domain / "videos" / video_id
+        canonical_url = PRIMARY_URL / "videos" / video_id
         if await self.check_complete_from_referer(canonical_url):
             return
 

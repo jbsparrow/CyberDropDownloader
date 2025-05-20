@@ -19,6 +19,7 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
+    from cyberdrop_dl.types import AbsoluteHttpURL
 
 
 P = ParamSpec("P")
@@ -56,7 +57,7 @@ class FakeURL:
 class GenericCrawler(Crawler):
     DOMAIN: ClassVar[str] = "generic"
 
-    primary_base_domain = FakeURL(host=".")  # type: ignore
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = FakeURL(host=".")  # type: ignore
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         await self.file(scrape_item)

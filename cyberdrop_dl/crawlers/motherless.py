@@ -7,7 +7,7 @@ from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
-PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://motherless.com")
+PRIMARY_URL = AbsoluteHttpURL("https://motherless.com")
 MEDIA_INFO_JS_SELECTOR = "script:contains('__fileurl')"
 ITEM_SELECTOR = "div.thumb-container a.img-container"
 ITEM_TITLE_SELECTOR = "div.media-meta-title"
@@ -35,8 +35,8 @@ class MediaInfo(NamedTuple):
 
 
 class MotherlessCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Groups, users, images and videos (NOT Galleries)": "pending"}
-    primary_base_domain = PRIMARY_BASE_DOMAIN
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Groups, users, images and videos (NOT Galleries)": "pending"}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     next_page_selector = "div.pagination_link > a[rel=next]"
     DOMAIN = "motherless"
 
@@ -70,7 +70,7 @@ class MotherlessCrawler(Crawler):
         n_parts = len(scrape_item.url.parts)
         assert n_parts >= 3
         username = scrape_item.url.parts[2]
-        canonical_url = self.primary_base_domain / "f" / username
+        canonical_url = PRIMARY_URL / "f" / username
         videos_url = canonical_url / "videos"
         images_url = canonical_url / "images"
         is_homepage = n_parts == 3
@@ -104,10 +104,10 @@ class MotherlessCrawler(Crawler):
             gallery_id = gallery_id.removeprefix(prefix)
 
         if is_group:
-            new_urls = [PRIMARY_BASE_DOMAIN / part / group_id for part in ("gi", "gv")]
+            new_urls = [PRIMARY_URL / part / group_id for part in ("gi", "gv")]
 
         else:
-            new_urls = [PRIMARY_BASE_DOMAIN / f"{part}{gallery_id}" for part in ("GI", "GV")]
+            new_urls = [PRIMARY_URL / f"{part}{gallery_id}" for part in ("GI", "GV")]
 
         collection_id = group_id if is_group else gallery_id
         for media_type, url in zip(media_types, new_urls, strict=True):
@@ -135,7 +135,7 @@ class MotherlessCrawler(Crawler):
     @error_handling_wrapper
     async def media(self, scrape_item: ScrapeItem) -> None:
         media_id = scrape_item.url.parts[-1]
-        canonical_url = PRIMARY_BASE_DOMAIN / media_id
+        canonical_url = PRIMARY_URL / media_id
 
         if await self.check_complete_from_referer(canonical_url):
             return
@@ -180,7 +180,7 @@ class MotherlessCrawler(Crawler):
             parent_title: str = css.get_attr(title_tag, "title") if from_gallery else title_tag.get_text(strip=True)
 
         parent_path = parent_id if from_gallery else f"g/{parent_id}"
-        parent_url = PRIMARY_BASE_DOMAIN / parent_path
+        parent_url = PRIMARY_URL / parent_path
         if parent_url not in scrape_item.parents and parent_title:
             scrape_item.parents.append(parent_url)
             title = self.create_title(parent_title, parent_id)

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
-
+PRIMARY_URL = AbsoluteHttpURL("https://saint2.su/")
 VIDEOS_SELECTOR = "a.btn-primary.action.download"
 EMBED_SRC_SELECTOR = "video[id=main-video] source"
 DOWNLOAD_BUTTON_SELECTOR = "a:contains('Download Video')"
@@ -25,12 +25,12 @@ NOT_FOUND_GIF = "https://saint2.su/assets/notfound.gif"
 
 
 class SaintCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Albums": "/a/...", "Video": "/embed/...", "Direct links": ""}
-    primary_base_domain = AbsoluteHttpURL("https://saint2.su/")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Albums": "/a/...", "Video": "/embed/...", "Direct links": ""}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN = "saint"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path)
+        scrape_item.url = PRIMARY_URL.with_path(scrape_item.url.path)
 
         if "a" in scrape_item.url.parts:
             return await self.album(scrape_item)

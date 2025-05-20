@@ -9,7 +9,7 @@ from bs4 import BeautifulSoup
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
@@ -36,8 +36,8 @@ class Source(NamedTuple):
 
 
 class NoodleMagazineCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Search": "/video/", "Video": "/watch/"}
-    primary_base_domain = AbsoluteHttpURL("https://noodlemagazine.com")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Search": "/video/", "Video": "/watch/"}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://noodlemagazine.com")
     DOMAIN = "noodlemagazine"
     FOLDER_DOMAIN = "NoodleMagazine"
 

@@ -8,7 +8,7 @@ from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
 
 
 class AllPornComixCrawler(XenforoCrawler):
-    primary_base_domain = AbsoluteHttpURL("https://forum.allporncomix.com")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://forum.allporncomix.com")
     DOMAIN: ClassVar[str] = "allporncomix"
     FOLDER_DOMAIN: ClassVar[str] = "AllPornComix"
     login_required = False

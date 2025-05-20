@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -26,8 +26,8 @@ GRAPHQL_QUERIES = {
 
 
 class LusciousCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Album": "/albums/..."}
-    primary_base_domain = AbsoluteHttpURL("https://members.luscious.net")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Album": "/albums/..."}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://members.luscious.net")
     DOMAIN = "luscious"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:

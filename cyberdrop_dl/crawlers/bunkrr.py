@@ -16,7 +16,7 @@ from aiohttp import ClientConnectorError
 from cyberdrop_dl.constants import FILE_FORMATS
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import DDOSGuardError, NoExtensionError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import (
     error_handling_wrapper,
@@ -66,7 +66,7 @@ CDN_POSSIBILITIES = re.compile(r"^(?:(?:(" + "|".join(CDNS) + r")[0-9]{0,2}(?:re
 # URLs
 DOWNLOAD_API_ENTRYPOINT = AbsoluteHttpURL("https://get.bunkrr.su/api/_001")
 STREAMING_API_ENTRYPOINT = AbsoluteHttpURL("https://bunkr.site/api/vs")
-PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://bunkr.site")
+PRIMARY_URL = AbsoluteHttpURL("https://bunkr.site")
 
 
 class Selectors:
@@ -110,7 +110,7 @@ class AlbumItem:
     @property
     def src(self) -> AbsoluteHttpURL:
         src_str = self.thumbnail.replace("/thumbs/", "/")
-        src = parse_url(src_str, relative_to=PRIMARY_BASE_DOMAIN)
+        src = parse_url(src_str, relative_to=PRIMARY_URL)
         src = with_suffix_encoded(src, self.suffix).with_query(None)
         if src.suffix.lower() not in FILE_FORMATS["Images"]:
             src = src.with_host(src.host.replace("i-", ""))
@@ -122,14 +122,14 @@ class AlbumItem:
 
 
 class BunkrrCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Albums": "/a/...",
         "Videos": "/v/...",
         "Others": "/f/...",
         "Direct links": "",
     }
     DATABASE_PRIMARY_HOST: ClassVar[str] = "bunkr.site"
-    primary_base_domain: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL(f"https://{DATABASE_PRIMARY_HOST}")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL(f"https://{DATABASE_PRIMARY_HOST}")
     DOMAIN: ClassVar[str] = "bunkrr"
 
     def __post_init__(self) -> None:
@@ -302,7 +302,7 @@ class BunkrrCrawler(Crawler):
         api_response = ApiResponse(**json_resp)
         link_str = decrypt_api_response(api_response)
         link = self.parse_url(link_str)
-        if link != self.primary_base_domain:  # We got an empty response
+        if link != PRIMARY_URL:  # We got an empty response
             return link
 
     def deep_scrape(self, url: AbsoluteHttpURL) -> bool:

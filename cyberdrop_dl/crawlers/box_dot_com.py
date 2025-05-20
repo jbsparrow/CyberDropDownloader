@@ -10,7 +10,7 @@ from pydantic import Field
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -46,10 +46,10 @@ JS_SELECTOR = "script:contains('Box.postStreamData')"
 
 class BoxDotComCrawler(Crawler):
     SUPPORTED_HOSTS: ClassVar[tuple[str, ...]] = (APP_DOMAIN,)
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"File or Folder": "app.box.com/s?sh=<share_code>"}
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"File or Folder": "app.box.com/s?sh=<share_code>"}
     DOMAIN: ClassVar[str] = "box.com"
     FOLDER_DOMAIN: ClassVar[str] = "Box"
-    primary_base_domain = AbsoluteHttpURL("https://box.com")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://box.com")
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.host == APP_DOMAIN and ("s" in scrape_item.url.parts or scrape_item.url.query.get("s")):

@@ -4,18 +4,18 @@ from typing import TYPE_CHECKING, ClassVar, NotRequired, TypedDict, cast
 
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
-from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
-API_ENTRYPOINT = URL("https://a.4cdn.org/")
-FILES_BASE_URL = URL("https://i.4cdn.org/")
+API_ENTRYPOINT = AbsoluteHttpURL("https://a.4cdn.org/")
+FILES_BASE_URL = AbsoluteHttpURL("https://i.4cdn.org/")
+PRIMARY_URL = AbsoluteHttpURL("https://boards.4chan.org")
 
 
 class Post(TypedDict):
@@ -40,8 +40,8 @@ class ThreadList(TypedDict):
 
 
 class FourChanCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Board": "/", "Thread": "/thread"}
-    primary_base_domain = AbsoluteHttpURL("https://boards.4chan.org")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Board": "/", "Thread": "/thread"}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN = "4chan"
 
     def __post_init__(self) -> None:
@@ -99,7 +99,7 @@ class FourChanCrawler(Crawler):
         scrape_item.setup_as_forum("")
         for page in threads:
             for thread in page["threads"]:
-                url = self.primary_base_domain / board / f"thread/{thread['no']}"
+                url = PRIMARY_URL / board / f"thread/{thread['no']}"
                 new_scrape_item = scrape_item.create_child(url)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
                 scrape_item.add_children()

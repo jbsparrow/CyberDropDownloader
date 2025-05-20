@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -20,8 +20,8 @@ DATE_FORMAT = "%A, %B %d, %Y %I:%M:%S%p %Z"
 
 
 class PimpAndHostCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Album": "/album/...", "Image": "/image/..."}
-    primary_base_domain = AbsoluteHttpURL("https://pimpandhost.com/")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Album": "/album/...", "Image": "/image/..."}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://pimpandhost.com/")
     next_page_selector = "li[class=next] a"
     DOMAIN = "pimpandhost"
     FOLDER_DOMAIN = "PimpAndHost"

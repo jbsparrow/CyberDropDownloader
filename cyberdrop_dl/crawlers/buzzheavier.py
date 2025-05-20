@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_from_headers
 
 if TYPE_CHECKING:
@@ -11,8 +11,8 @@ if TYPE_CHECKING:
 
 
 class BuzzHeavierCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Direct links": ""}
-    primary_base_domain = AbsoluteHttpURL("https://buzzheavier.com")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Direct links": ""}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://buzzheavier.com")
     DOMAIN = "buzzheavier.com"
     FOLDER_DOMAIN = "BuzzHeavier"
 

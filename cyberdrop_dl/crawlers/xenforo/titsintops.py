@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from yarl import URL
 
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 class TitsInTopsCrawler(XenforoCrawler):
-    primary_base_domain = AbsoluteHttpURL("https://titsintops.com/phpBB2")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://titsintops.com/phpBB2")
     DOMAIN = "titsintops"
     FOLDER_DOMAIN = "TitsInTops"
     post_selectors = PostSelectors(

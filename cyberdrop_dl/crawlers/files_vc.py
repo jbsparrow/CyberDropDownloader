@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -16,8 +16,8 @@ API_ENTRYPOINT = AbsoluteHttpURL("https://api.files.vc/api")
 
 
 class FilesVcCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Direct links": ""}
-    primary_base_domain = AbsoluteHttpURL("https://files.vc")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Direct links": ""}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://files.vc")
     DOMAIN = "files.vc"
     FOLDER_DOMAIN = "FilesVC"
 

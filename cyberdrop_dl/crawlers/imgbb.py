@@ -5,7 +5,7 @@ import datetime
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
+PRIMARY_URL = AbsoluteHttpURL("https://ibb.co")
 
 IMAGE_PAGE_SELECTOR = "a[class*=image-container]"
 ALBUM_PAGE_SELECTOR = "a[class='image-container --media']"
@@ -27,9 +28,9 @@ MAIN_HOST = "ibb.co"
 
 
 class ImgBBCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Album": "/album/...", "Image": "/..."}
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Album": "/album/...", "Image": "/..."}
     SUPPORTED_HOSTS = "ibb.co", "imgbb.co"
-    primary_base_domain = AbsoluteHttpURL("https://ibb.co")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     next_page_selector = "a[data-pagination=next]"
     DOMAIN = "imgbb"
     FOLDER_DOMAIN = "ImgBB"
@@ -37,7 +38,7 @@ class ImgBBCrawler(Crawler):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if is_cdn(scrape_item.url):
             image_id = scrape_item.url.parts[1]
-            scrape_item.url = self.primary_base_domain / image_id
+            scrape_item.url = PRIMARY_URL / image_id
 
         scrape_item.url = scrape_item.url.with_host(MAIN_HOST)
         if "album" in scrape_item.url.parts:

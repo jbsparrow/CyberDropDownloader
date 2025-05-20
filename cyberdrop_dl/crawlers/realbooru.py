@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -19,8 +19,8 @@ IMAGE_SELECTOR = "img[id=image]"
 
 
 class RealBooruCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"File": "?id=...", "Tags": "?tags=..."}
-    primary_base_domain = AbsoluteHttpURL("https://realbooru.com")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"File": "?id=...", "Tags": "?tags=..."}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://realbooru.com")
     next_page_selector = "a[alt=next]"
     DOMAIN = "realbooru"
     FOLDER_DOMAIN = "RealBooru"

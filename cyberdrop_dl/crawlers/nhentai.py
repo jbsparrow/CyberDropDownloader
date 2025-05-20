@@ -7,7 +7,7 @@ from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import LoginError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -18,8 +18,8 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
-PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://nhentai.net/")
-API_ENTRYPOINT = PRIMARY_BASE_DOMAIN / "api/gallery/"
+PRIMARY_URL = AbsoluteHttpURL("https://nhentai.net/")
+API_ENTRYPOINT = PRIMARY_URL / "api/gallery/"
 EXT_MAP = {"a": ".avif", "g": ".gif", "j": ".jpg", "p": ".png", "w": ".webp"}
 COLLECTION_PARTS = "favorites", "tag", "search", "parody", "group", "character", "artist"
 ITEM_SELECTOR = "div.gallery > a"
@@ -28,8 +28,8 @@ LOGIN_PAGE_SELECTOR = "input.id_username_or_email"
 
 
 class NHentaiCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Collections": '"favorites"', "Gallery": "/g/"}
-    primary_base_domain = PRIMARY_BASE_DOMAIN
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Collections": '"favorites"', "Gallery": "/g/"}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     next_page_selector = "a.next"
     DOMAIN = "nhentai.net"
     FOLDER_DOMAIN = "nHentai"

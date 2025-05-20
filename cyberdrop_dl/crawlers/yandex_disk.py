@@ -9,7 +9,7 @@ from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -24,13 +24,13 @@ if TYPE_CHECKING:
 
 JS_SELECTOR = "script#store-prefetch"
 DOWNLOAD_API_ENTRYPOINT = AbsoluteHttpURL("https://disk.yandex.com.tr/public/api/download-url")
-PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://disk.yandex.com.tr/")
+PRIMARY_URL = AbsoluteHttpURL("https://disk.yandex.com.tr/")
 KEYS_TO_KEEP = "currentResourceId", "resources", "environment"
 
 
 class YandexDiskCrawler(Crawler):
     SUPPORTED_HOSTS = ("disk.yandex", "yadi.sk")
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Folder": "disk.yandex/d/",
         "Files": "disk.yandex/d//",
         "*NOTE**": "Does NOT support nested folders",
@@ -38,7 +38,7 @@ class YandexDiskCrawler(Crawler):
 
     DOMAIN: ClassVar[str] = "disk.yandex"
     FOLDER_DOMAIN: ClassVar[str] = "YandexDisk"
-    primary_base_domain = PRIMARY_BASE_DOMAIN
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "d" in scrape_item.url.parts:
@@ -184,7 +184,7 @@ class YandexFolder(YandexItem):
 
     @cached_property
     def url(self) -> URL:
-        return PRIMARY_BASE_DOMAIN / "d" / self.id
+        return PRIMARY_URL / "d" / self.id
 
     @classmethod
     def from_json(cls, json_resp: dict) -> Self:
@@ -207,7 +207,7 @@ class YandexFile(YandexItem):
     @cached_property
     def url(self) -> URL:
         if self.parent_folder_public_id:
-            return PRIMARY_BASE_DOMAIN / "d" / self.parent_folder_public_id / self.name
+            return PRIMARY_URL / "d" / self.parent_folder_public_id / self.name
         if self.file_url:
             return self.file_url
         return self.short_url
@@ -227,7 +227,7 @@ class YandexFile(YandexItem):
 def get_canonical_url(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
     folder_id_index = url.parts.index("d") + 1
     folder_id = url.parts[folder_id_index]
-    return PRIMARY_BASE_DOMAIN / "d" / folder_id
+    return PRIMARY_URL / "d" / folder_id
 
 
 def is_single_item(json_resp: dict) -> bool:

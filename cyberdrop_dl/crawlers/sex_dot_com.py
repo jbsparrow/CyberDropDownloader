@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -16,8 +16,8 @@ API_URL = AbsoluteHttpURL("https://iframe.sex.com/api/")
 
 
 class SexDotComCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Shorts Profiles": "/shorts/"}
-    primary_base_domain = AbsoluteHttpURL("https://sex.com")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Shorts Profiles": "/shorts/"}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://sex.com")
     DOMAIN = "sex"
     FOLDER_DOMAIN = "Sex.com"
 

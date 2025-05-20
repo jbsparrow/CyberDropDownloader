@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import css, javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
-PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://spankbang.com/")
+PRIMARY_URL = AbsoluteHttpURL("https://spankbang.com/")
 DEFAULT_QUALITY = "main"
 RESOLUTIONS = ["4k", "2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"]  # best to worst
 
@@ -39,7 +39,7 @@ class PlaylistInfo:
     def from_url(cls, url: AbsoluteHttpURL, soup: BeautifulSoup | None = None) -> PlaylistInfo:
         playlist_id = url.parts[1].split("-")[0]
         name = url.parts[3]
-        canonical_url = PRIMARY_BASE_DOMAIN / playlist_id / "playlist" / name
+        canonical_url = PRIMARY_URL / playlist_id / "playlist" / name
         title = css.select_one_get_text(soup, "title").rsplit("Playlist -")[0].strip() if soup else ""
         return cls(playlist_id, canonical_url, title)
 
@@ -54,8 +54,8 @@ class VideoInfo(dict): ...
 
 
 class SpankBangCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Playlist": "/playlist/", "Video": "/video/"}
-    primary_base_domain = PRIMARY_BASE_DOMAIN
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Playlist": "/playlist/", "Video": "/video/"}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN = "spankbang"
     FOLDER_DOMAIN = "SpankBang"
 
@@ -103,7 +103,7 @@ class SpankBangCrawler(Crawler):
     async def video(self, scrape_item: ScrapeItem) -> None:
         if "playlist" not in scrape_item.url.parts:
             video_id = scrape_item.url.parts[1]
-            canonical_url = self.primary_base_domain / video_id / "video"
+            canonical_url = PRIMARY_URL / video_id / "video"
             if await self.check_complete_from_referer(canonical_url):
                 return
 
@@ -115,7 +115,7 @@ class SpankBangCrawler(Crawler):
             raise ScrapeError(410)
 
         info = get_info_dict(soup)
-        canonical_url = self.primary_base_domain / info["video_id"] / "video"
+        canonical_url = PRIMARY_URL / info["video_id"] / "video"
         if await self.check_complete_from_referer(canonical_url):
             return
         scrape_item.url = canonical_url

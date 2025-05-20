@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -26,12 +26,12 @@ class Format(NamedTuple):
 
 
 class DirtyShipCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Categories": "/category/...",
         "Tags": "/tag/...",
         "Videos": "/",
     }
-    primary_base_domain = AbsoluteHttpURL("https://dirtyship.com")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://dirtyship.com")
     next_page_selector = "a.page-next"
     DOMAIN = "dirtyship"
     FOLDER_DOMAIN = "DirtyShip"

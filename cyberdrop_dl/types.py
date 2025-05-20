@@ -213,4 +213,5 @@ TimeStamp = NewType("TimeStamp", int)
 
 StrMap: TypeAlias = Mapping[str, T]
 OneOrTuple: TypeAlias = T | tuple[T, ...]
-OneOrTupleStrMapping: TypeAlias = StrMap[OneOrTuple[str]]
+SupportedPaths: TypeAlias = StrMap[OneOrTuple[str]]
+SupportedDomains: TypeAlias = tuple[str, ...]

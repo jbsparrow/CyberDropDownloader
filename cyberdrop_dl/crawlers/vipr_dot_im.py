@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -14,12 +14,13 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
+PRIMARY_URL = AbsoluteHttpURL("https://vipr.im")
 IMG_SELECTOR = "div#body a > img"
 
 
 class ViprImCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Image": "/...", "Thumbnail": "/th/..."}
-    primary_base_domain = AbsoluteHttpURL("https://vipr.im")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Image": "/...", "Thumbnail": "/th/..."}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN = "vipr.im"
     FOLDER_DOMAIN = "Vipr.im"
 
@@ -48,7 +49,7 @@ class ViprImCrawler(Crawler):
         self.manager.task_group.create_task(self.run(scrape_item))
 
     def get_canonical_url(self, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
-        return self.primary_base_domain / get_image_id(url)
+        return PRIMARY_URL / get_image_id(url)
 
 
 def get_image_id(url: URL) -> str:

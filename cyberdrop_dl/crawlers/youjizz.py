@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import css, javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
-
+PRIMARY_URL = AbsoluteHttpURL("https://www.youjizz.com/")
 DEFAULT_QUALITY = "Auto"
 RESOLUTIONS = ["4k", "2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"]  # best to worst
 DATE_PATTERN = re.compile(r"(\d+)\s*(weeks?|days?|hours?|minutes?|seconds?)", re.IGNORECASE)
@@ -39,8 +39,8 @@ class VideoInfo(dict): ...
 
 
 class YouJizzCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Video": "/video/embed/"}
-    primary_base_domain = AbsoluteHttpURL("https://www.youjizz.com/")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Video": "/video/embed/"}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN = "youjizz"
     FOLDER_DOMAIN = "YouJizz"
 
@@ -52,7 +52,7 @@ class YouJizzCrawler(Crawler):
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
         video_id = get_video_id(scrape_item.url)
-        canonical_url = self.primary_base_domain / "videos" / "embed" / video_id
+        canonical_url = PRIMARY_URL / "videos" / "embed" / video_id
 
         if await self.check_complete_from_referer(canonical_url):
             return

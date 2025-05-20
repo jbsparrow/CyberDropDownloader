@@ -4,27 +4,28 @@ from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 
-from cyberdrop_dl.crawlers.kemono import KemonoCrawler, UserPost
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+
+from ._kemono_base import KemonoBaseCrawler, UserPost
 
 if TYPE_CHECKING:
     from aiohttp_client_cache.response import AnyResponse
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
+PRIMARY_URL = AbsoluteHttpURL("https://coomer.su")
 
-class CoomerCrawler(KemonoCrawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+
+class CoomerCrawler(KemonoBaseCrawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Model": "/<service>/user/",
         "Favorites": "/favorites",
         "Search": "/search?...",
         "Individual Post": "/user/post/",
         "Direct links": "",
     }
-    primary_base_domain = AbsoluteHttpURL("https://coomer.su")
-    DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date} - {title}"
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN = "coomer"
-    FOLDER_DOMAIN = "Coomer"
     API_ENTRYPOINT = AbsoluteHttpURL("https://coomer.su/api/v1")
     SERVICES = "onlyfans", "fansly"
 
@@ -39,7 +40,7 @@ class CoomerCrawler(KemonoCrawler):
                 return False
             return True
 
-        self.register_cache_filter(self.primary_base_domain, check_coomer_page)
+        self.register_cache_filter(PRIMARY_URL, check_coomer_page)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         return await self._fetch_kemono_defaults(scrape_item)

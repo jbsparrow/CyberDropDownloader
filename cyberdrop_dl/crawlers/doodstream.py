@@ -9,7 +9,7 @@ from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
@@ -30,7 +30,7 @@ TOKEN_CHARS = string.ascii_letters + string.digits
 
 
 class DoodStreamCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Video": "/e/"}
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Video": "/e/"}
     SUPPORTED_HOSTS: ClassVar[tuple[str, ...]] = (
         "vidply.com",
         "dood.re",
@@ -41,7 +41,7 @@ class DoodStreamCrawler(Crawler):
         "do7go.com",
         "all3do.com",
     )
-    primary_base_domain = AbsoluteHttpURL("https://doodstream.com/")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://doodstream.com/")
     update_unsupported = True
     DOMAIN = "doodstream"
     FOLDER_DOMAIN = "DoodStream"

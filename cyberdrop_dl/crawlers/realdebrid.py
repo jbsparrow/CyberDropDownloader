@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 from multidict import MultiDict
@@ -11,13 +11,13 @@ from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
-    from yarl import URL
-
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
+
+PRIMARY_URL = AbsoluteHttpURL("https://real-debrid.com")
 
 
 class RealDebridCrawler(Crawler):
-    primary_base_domain = AbsoluteHttpURL("https://real-debrid.com")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN = "real-debrid"
     FOLDER_DOMAIN = "RealDebrid"
 
@@ -71,7 +71,7 @@ class RealDebridCrawler(Crawler):
         if not self_hosted:
             # Some hosts use query params or fragment as id or password (ex: mega.nz)
             # This save the query and fragment as parts of the URL path since DB lookups only use url_path
-            database_url = self.primary_base_domain / host / original_url.path[1:]
+            database_url = PRIMARY_URL / host / original_url.path[1:]
             if original_url.query:
                 query_params_list = [item for pair in original_url.query.items() for item in pair]
                 database_url = database_url / "query" / "/".join(query_params_list)
@@ -82,7 +82,7 @@ class RealDebridCrawler(Crawler):
         filename, ext = self.get_filename_and_ext(debrid_url.name)
         await self.handle_file(database_url, scrape_item, filename, ext, debrid_link=debrid_url)
 
-    def is_self_hosted(self, url: URL) -> bool:
+    def is_self_hosted(self, url: AbsoluteHttpURL) -> bool:
         return any(subdomain in url.host for subdomain in ("download.", "my.")) and self.DOMAIN in url.host
 
     async def get_original_url(self, scrape_item: ScrapeItem) -> AbsoluteHttpURL:

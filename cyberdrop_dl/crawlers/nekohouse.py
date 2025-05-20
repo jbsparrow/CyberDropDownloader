@@ -2,25 +2,23 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.kemono import KemonoCrawler
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+
+from ._kemono_base import KemonoBaseCrawler
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
-class NekohouseCrawler(KemonoCrawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+class NekohouseCrawler(KemonoBaseCrawler):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Model": "/<service>/user/",
         "Individual Post": "/user/post/",
         "Direct links": "",
     }
-    primary_base_domain = AbsoluteHttpURL("https://nekohouse.su")
-    DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date} - {title}"
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://nekohouse.su")
     DOMAIN = "nekohouse"
-    FOLDER_DOMAIN = "Nekohouse"
     SERVICES = "fanbox", "fantia", "fantia_products", "subscribestar", "twitter"
-    API_ENTRYPOINT = None  # type: ignore
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "thumbnails" in scrape_item.url.parts:

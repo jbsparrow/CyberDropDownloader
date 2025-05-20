@@ -18,7 +18,7 @@ from cyberdrop_dl.constants import NEW_ISSUE_URL
 from cyberdrop_dl.data_structures.url_objects import MediaItem, ScrapeItem
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.scraper import filters
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping, TimeStamp
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths, TimeStamp
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.database.tables.history_table import get_db_path
 from cyberdrop_dl.utils.logger import log, log_debug
@@ -52,7 +52,7 @@ class CrawlerInfo(NamedTuple):
     site: str
     primary_url: URL
     supported_domains: tuple[str, ...]
-    supported_paths: OneOrTupleStrMapping
+    supported_paths: SupportedPaths
 
 
 def create_task_id(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, Coroutine[None, None, R | None]]:
@@ -78,20 +78,16 @@ def create_task_id(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, C
     return wrapper
 
 
-def pretty_name(cls: type[Crawler]) -> str:
-    return cls.__name__.removesuffix("Crawler")
-
-
 class Crawler(ABC):
-    SUPPORTED_HOSTS: ClassVar[tuple[str, ...]] = ()
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {}
+    SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = ()
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {}
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date} - {number} - {title}"
 
     update_unsupported: ClassVar[bool] = False
     skip_pre_check: ClassVar[bool] = False
     next_page_selector: ClassVar[str] = ""
 
-    primary_base_domain: ClassVar[AbsoluteHttpURL] = None  # type: ignore
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = None  # type: ignore
     DOMAIN: ClassVar[str] = None  # type: ignore
     FOLDER_DOMAIN: ClassVar[str] = None  # type: ignore
 
@@ -119,30 +115,31 @@ class Crawler(ABC):
 
         msg = (
             f"Subclass {cls.__name__} must not override __init__ method,",
-            "use __post_init__ for setup and async_startup",
-            "for anything that requires cookies, database access or making a request",
+            "use __post_init__ for additional setup",
+            "use async_startup for setup that requires database access, making a request or setting cookies",
         )
         assert cls.__init__ is Crawler.__init__, msg
         if is_abc:
             return
 
-        REQUIRED_FIELDS = "primary_base_domain", "DOMAIN"
+        REQUIRED_FIELDS = "PRIMARY_URL", "DOMAIN"
         for field_name in REQUIRED_FIELDS:
             assert getattr(cls, field_name, None), f"Subclass {cls.__name__} must override: {field_name}"
 
         cls.FOLDER_DOMAIN = cls.FOLDER_DOMAIN or cls.DOMAIN.capitalize()
-        cls.NAME = pretty_name(cls)
+        cls.NAME = cls.__name__.removesuffix("Crawler")
         cls.SCRAPE_MAPPER_KEYS = make_scrape_mapper_keys(cls)
         cls.SUPPORTED_PATHS = sort_dict(cls.SUPPORTED_PATHS)
-        cls.INFO = CrawlerInfo(cls.FOLDER_DOMAIN, cls.primary_base_domain, cls.SCRAPE_MAPPER_KEYS, cls.SUPPORTED_PATHS)
+        cls.INFO = CrawlerInfo(cls.FOLDER_DOMAIN, cls.PRIMARY_URL, cls.SCRAPE_MAPPER_KEYS, cls.SUPPORTED_PATHS)
 
         for path_name, paths in cls.SUPPORTED_PATHS.items():
             assert path_name
             assert isinstance(paths, str | tuple)
             if path_name != "Direct links":
                 assert paths, f"{cls.__name__} has not paths for {path_name}"
-                for path in paths:
-                    assert "`" not in path, f"{cls.__name__}, Invalid path {path_name}: {path}"
+
+            for path in paths:
+                assert "`" not in path, f"{cls.__name__}, Invalid path {path_name}: {path}"
 
     @abstractmethod
     async def fetch(self, scrape_item: ScrapeItem) -> None: ...
@@ -366,17 +363,17 @@ class Crawler(ABC):
         return title_format.format(id=id, date=date_str, title=title)
 
     def parse_url(self, link_str: str, relative_to: URL | None = None, *, trim: bool = True) -> AbsoluteHttpURL:
-        """Wrapper arround `utils.parse_url` to use `self.primary_base_domain` as base"""
-        base = relative_to or self.primary_base_domain
+        """Wrapper arround `utils.parse_url` to use `self.PRIMARY_URL` as base"""
+        base = relative_to or self.PRIMARY_URL
         assert is_absolute_http_url(base)
         return parse_url(link_str, base, trim=trim)
 
     def update_cookies(self, cookies: dict, url: URL | None = None) -> None:
         """Update cookies for the provided URL
 
-        If `url` is `None`, defaults to `self.primary_base_domain`
+        If `url` is `None`, defaults to `self.PRIMARY_URL`
         """
-        response_url = url or self.primary_base_domain
+        response_url = url or self.PRIMARY_URL
         self.client.client_manager.cookies.update_cookies(cookies, response_url)
 
     def iter_tags(
@@ -486,11 +483,11 @@ class Crawler(ABC):
 
 
 def make_scrape_mapper_keys(cls: type[Crawler] | Crawler) -> tuple[str, ...]:
-    if cls.SUPPORTED_HOSTS:
-        hosts = cls.SUPPORTED_HOSTS
+    if cls.SUPPORTED_DOMAINS:
+        hosts = cls.SUPPORTED_DOMAINS
 
     else:
-        hosts = [cls.DOMAIN or cls.primary_base_domain.host]
+        hosts = [cls.DOMAIN or cls.PRIMARY_URL.host]
     return tuple(sorted(host.removeprefix("www.") for host in hosts))
 
 

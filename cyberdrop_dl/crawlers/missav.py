@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -29,9 +29,12 @@ class Format(NamedTuple):
     width: int
 
 
+PRIMARY_URL = AbsoluteHttpURL("https://missav.ws")
+
+
 class MissAVCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Video": "/..."}
-    primary_base_domain = AbsoluteHttpURL("https://missav.ws")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Video": "/..."}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN = "missav"
     FOLDER_DOMAIN = "MissAV"
 
@@ -40,7 +43,7 @@ class MissAVCrawler(Crawler):
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
-        canonical_url = self.primary_base_domain / "en" / scrape_item.url.name
+        canonical_url = PRIMARY_URL / "en" / scrape_item.url.name
         scrape_item.url = canonical_url
         if await self.check_complete_from_referer(canonical_url):
             return

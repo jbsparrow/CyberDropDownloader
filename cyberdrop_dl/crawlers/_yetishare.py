@@ -12,7 +12,7 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_betwee
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.types import OneOrTupleStrMapping
+    from cyberdrop_dl.types import SupportedPaths
 
 
 SOUP_ERRORS = {
@@ -40,16 +40,19 @@ _SELECTOR = Selectors()
 
 
 class YetiShareCrawler(Crawler, is_abc=True):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Files": "/...",
         "Folders": "/folder/...",
         "Shared": "/shared/...",
     }
 
+    def __init_subclass__(cls, **kwargs) -> None:
+        super().__init_subclass__(**kwargs)
+        cls.folders_api_url = cls.PRIMARY_URL / "account/ajax/load_files"
+        cls.files_api_url = cls.PRIMARY_URL / "account/ajax/file_details"
+        cls.folder_password_api_url = cls.PRIMARY_URL / "ajax/folder_password_process"
+
     def __post_init__(self) -> None:
-        self.folders_api_url = self.primary_base_domain / "account/ajax/load_files"
-        self.files_api_url = self.primary_base_domain / "account/ajax/file_details"
-        self.folder_password_api_url = self.primary_base_domain / "ajax/folder_password_process"
         self.request_limiter = AsyncLimiter(5, 1)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
@@ -121,7 +124,7 @@ class YetiShareCrawler(Crawler, is_abc=True):
                 return int(content_id)
 
         file_id = scrape_item.url.parts[1]
-        canonical_url = self.primary_base_domain / file_id
+        canonical_url = self.PRIMARY_URL / file_id
         if await self.check_complete_from_referer(canonical_url):
             return
 

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -17,12 +17,12 @@ GALLERY_TITLE_SELECTOR = "a#gallery-name"
 IMAGES_SELECTOR = "ul.images a.thumbnail"
 IMAGE_SELECTOR = "img.main-image"
 GALLERY_INFO_SELECTOR = "div.view-navigation a:has(i.fas.fa-reply)"
-PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://www.imagebam.com/")
+PRIMARY_URL = AbsoluteHttpURL("https://www.imagebam.com/")
 
 
 class ImageBamCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Album": "/view/...", "Image": "/view/...", "Direct links": ""}
-    primary_base_domain = PRIMARY_BASE_DOMAIN
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Album": "/view/...", "Image": "/view/...", "Direct links": ""}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN = "imagebam"
     FOLDER_DOMAIN = "ImageBam"
 
@@ -89,4 +89,4 @@ def is_cdn(url: AbsoluteHttpURL) -> bool:
 
 def get_view_url(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
     view_id = url.name.rsplit("_", 1)[0]
-    return PRIMARY_BASE_DOMAIN / "view" / view_id
+    return PRIMARY_URL / "view" / view_id

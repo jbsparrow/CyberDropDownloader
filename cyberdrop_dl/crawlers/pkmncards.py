@@ -12,7 +12,7 @@ from bs4 import BeautifulSoup
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping, TimeStamp
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths, TimeStamp
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -94,9 +94,12 @@ class CardSet:
         return f"{self.abbr}, {self.set_series_code}"
 
 
+PRIMARY_URL = AbsoluteHttpURL("https://pkmncards.com")
+
+
 class PkmncardsCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Card": "/card/...", "Set": "/set/...", "Series": "/series/..."}
-    primary_base_domain = AbsoluteHttpURL("https://pkmncards.com")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Card": "/card/...", "Set": "/set/...", "Series": "/series/..."}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     next_page_selector = _SELECTORS.NEXT_PAGE
     DOMAIN = "pkmncards"
 
@@ -123,13 +126,13 @@ class PkmncardsCrawler(Crawler):
     async def series(self, scrape_item: ScrapeItem) -> None:
         # This is just to set the max children limit. `handle_card` will add the actual title
         scrape_item.setup_as_profile("")
-        page_url = self.primary_base_domain / "series" / scrape_item.url.parts[2]
+        page_url = PRIMARY_URL / "series" / scrape_item.url.parts[2]
         await self._iter_from_url(scrape_item, page_url)
 
     @error_handling_wrapper
     async def card_set(self, scrape_item: ScrapeItem) -> None:
         scrape_item.setup_as_album("")
-        page_url = self.primary_base_domain / "set" / scrape_item.url.parts[2]
+        page_url = PRIMARY_URL / "set" / scrape_item.url.parts[2]
         await self._iter_from_url(scrape_item, page_url)
 
     async def _iter_from_url(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL) -> None:

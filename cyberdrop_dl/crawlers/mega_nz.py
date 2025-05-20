@@ -14,11 +14,13 @@ from cyberdrop_dl.downloader.mega_nz import (
     decrypt_attr,
 )
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
+
+PRIMARY_URL = AbsoluteHttpURL("https://mega.nz")
 
 
 class FileTuple(NamedTuple):
@@ -27,11 +29,11 @@ class FileTuple(NamedTuple):
 
 
 class MegaNzCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "File": ("/file/<handle>#<share_key>", "/!#<handle>!<share_key>"),
         "Folder": ("/folder/<handle>#<share_key>", "/!F#<handle>!<share_key>"),
     }
-    primary_base_domain = AbsoluteHttpURL("https://mega.nz")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     skip_pre_check = True
     DOMAIN = "mega.nz"
     FOLDER_DOMAIN = "MegaNz"
@@ -77,7 +79,7 @@ class MegaNzCrawler(Crawler):
         else:
             raise ScrapeError(422)
 
-        canonical_url = self.primary_base_domain / "file" / file_id / shared_key
+        canonical_url = PRIMARY_URL / "file" / file_id / shared_key
         if await self.check_complete_from_referer(canonical_url):
             return
 
@@ -119,7 +121,7 @@ class MegaNzCrawler(Crawler):
         else:
             raise ScrapeError(422)
 
-        canonical_url = self.primary_base_domain / "folder" / folder_id / shared_key
+        canonical_url = PRIMARY_URL / "folder" / folder_id / shared_key
         scrape_item.url = canonical_url
         nodes = await self.api.get_nodes_public_folder(folder_id, shared_key)
         root_id = next(iter(nodes))
@@ -135,7 +137,7 @@ class MegaNzCrawler(Crawler):
 
             file = cast("File", node)
             file_id = file["h"]
-            canonical_url = self.primary_base_domain / "file" / file_id / shared_key
+            canonical_url = PRIMARY_URL / "file" / file_id / shared_key
             new_scrape_item = scrape_item.create_child(canonical_url)
             for part in path.parent.parts:
                 if part != folder_name:

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, ClassVar, NamedTuple
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import css, javascript
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -14,6 +14,8 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
+
+PRIMARY_URL = AbsoluteHttpURL("https://www.eporner.com/")
 
 
 class Selectors:
@@ -57,7 +59,7 @@ class VideoInfo(NamedTuple):
 
 
 class EpornerCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Categories": "/cat/...",
         "Channels": "/channel/...",
         "Pornstars": "/pornstar/...",
@@ -67,7 +69,7 @@ class EpornerCrawler(Crawler):
         "Photo": "/photo/...",
         "Gallery": "/gallery/...",
     }
-    primary_base_domain = AbsoluteHttpURL("https://www.eporner.com/")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN = "eporner"
     FOLDER_DOMAIN = "ePorner"
     next_page_selector = _SELECTORS.NEXT_PAGE
@@ -88,7 +90,7 @@ class EpornerCrawler(Crawler):
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
         username = scrape_item.url.parts[2]
-        canonical_url = self.primary_base_domain / "profile" / username
+        canonical_url = PRIMARY_URL / "profile" / username
         if canonical_url in scrape_item.parents and "playlist" in scrape_item.url.parts:
             await self.playlist(scrape_item, from_profile=True)
 
@@ -144,7 +146,7 @@ class EpornerCrawler(Crawler):
     @error_handling_wrapper
     async def photo(self, scrape_item: ScrapeItem) -> None:
         photo_id = scrape_item.url.parts[2]
-        canonical_url = self.primary_base_domain / "photo" / photo_id
+        canonical_url = PRIMARY_URL / "photo" / photo_id
         if await self.check_complete_from_referer(canonical_url):
             return
 
@@ -163,7 +165,7 @@ class EpornerCrawler(Crawler):
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
         video_id = get_video_id(scrape_item.url)
-        canonical_url = self.primary_base_domain / f"video-{video_id}"
+        canonical_url = PRIMARY_URL / f"video-{video_id}"
         if await self.check_complete_from_referer(canonical_url):
             return
 

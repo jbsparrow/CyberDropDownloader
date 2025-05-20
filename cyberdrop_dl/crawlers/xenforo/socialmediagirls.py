@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from typing import ClassVar
+
 from cyberdrop_dl.types import AbsoluteHttpURL
 
 from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
 
 
 class SocialMediaGirlsCrawler(XenforoCrawler):
-    primary_base_domain = AbsoluteHttpURL("https://forums.socialmediagirls.com")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://forums.socialmediagirls.com")
     DOMAIN = "socialmediagirls"
     FOLDER_DOMAIN = "SocialMediaGirls"
     post_selectors = PostSelectors(

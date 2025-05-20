@@ -10,7 +10,7 @@ from mediafire import MediaFireApi, api
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import MediaFireError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -23,8 +23,8 @@ DATE_SELECTOR = "ul[class=details] li span"
 
 
 class MediaFireCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"File": "/file/...", "Folder": "/folder/..."}
-    primary_base_domain = AbsoluteHttpURL("https://www.mediafire.com/")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"File": "/file/...", "Folder": "/folder/..."}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://www.mediafire.com/")
     DOMAIN = "mediafire"
 
     def __post_init__(self) -> None:

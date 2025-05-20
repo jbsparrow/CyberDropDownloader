@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from aiohttp_client_cache.response import AnyResponse
     from yarl import URL
 
-    from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+    from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 
 HTTP_URL_REGEX_STR = r"https?://(www\.)?[-a-zA-Z0-9@:%._+~#=]{2,256}\.[a-z]{2,12}\b([-a-zA-Z0-9@:%_+.~#?&/=]*)"
 HTTP_URL_REGEX = re.compile(HTTP_URL_REGEX_STR)
@@ -109,7 +109,7 @@ class ForumThreadPage:
 
 
 class XenforoCrawler(Crawler, is_abc=True):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Attachments": ("/attachments/...", "/data/..."),
         "Threads": ("/threads/<thread_name>", "/posts/<post_id>", "/goto/<post_id>"),
     }
@@ -128,10 +128,10 @@ class XenforoCrawler(Crawler, is_abc=True):
 
     async def async_startup(self) -> None:
         if not self.logged_in:
-            login_url = self.primary_base_domain / "login"
+            login_url = self.PRIMARY_URL / "login"
             await self.login_setup(login_url)
 
-        async def is_not_last_page(response: AnyResponse):
+        async def is_not_last_page(response: AnyResponse) -> bool:
             soup = BeautifulSoup(await response.text(), "html.parser")
             try:
                 last_page = int(soup.select(FINAL_PAGE_SELECTOR)[-1].text.split("page-")[-1])
@@ -140,7 +140,7 @@ class XenforoCrawler(Crawler, is_abc=True):
                 return False
             return current_page != last_page
 
-        self.register_cache_filter(self.primary_base_domain, is_not_last_page)
+        self.register_cache_filter(self.PRIMARY_URL, is_not_last_page)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if not self.logged_in and self.login_required:
@@ -339,13 +339,13 @@ class XenforoCrawler(Crawler, is_abc=True):
 
     @error_handling_wrapper
     async def handle_link(self, scrape_item: ScrapeItem) -> None:
-        if not scrape_item.url or scrape_item.url == self.primary_base_domain:
+        if not scrape_item.url or scrape_item.url == self.PRIMARY_URL:
             return
         if not scrape_item.url.host:
             raise InvalidURLError("url has no host")
         if self.is_attachment(scrape_item.url):
             return await self.handle_internal_link(scrape_item)
-        if self.primary_base_domain.host in scrape_item.url.host and self.stop_thread_recursion(scrape_item):
+        if self.PRIMARY_URL.host in scrape_item.url.host and self.stop_thread_recursion(scrape_item):
             origin = scrape_item.parents[0]
             return log(f"Skipping nested thread URL {scrape_item.url} found on {origin}", 10)
         scrape_item.set_type(None, self.manager)
@@ -437,7 +437,7 @@ class XenforoCrawler(Crawler, is_abc=True):
 
     @error_handling_wrapper
     async def login_setup(self, login_url: URL) -> None:
-        host_cookies: dict = self.client.client_manager.cookies.filter_cookies(self.primary_base_domain)
+        host_cookies: dict = self.client.client_manager.cookies.filter_cookies(self.PRIMARY_URL)
         session_cookie = host_cookies.get(self.session_cookie_name)
         session_cookie = session_cookie.value if session_cookie else None
         msg = f"No cookies found for {self.FOLDER_DOMAIN}"
@@ -477,7 +477,7 @@ class XenforoCrawler(Crawler, is_abc=True):
             self.logged_in = True
             return
 
-        credentials = {"login": username, "password": password, "_xfRedirect": str(self.primary_base_domain)}
+        credentials = {"login": username, "password": password, "_xfRedirect": str(self.PRIMARY_URL)}
 
         def prepare_login_data(resp_text) -> dict:
             soup = BeautifulSoup(resp_text, "html.parser")

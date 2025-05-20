@@ -4,7 +4,7 @@ import json
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -18,9 +18,11 @@ COLLECTION_PARTS = "search", "channel", "pornstar", "tag", "category"
 IMAGE_SELECTOR = "div#main a.rel-link"
 BASE_HOST: str = "pornpics.com"
 
+PRIMARY_URL = AbsoluteHttpURL("https://pornpics.com")
+
 
 class PornPicsCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Categories": "/categories/....",
         "Channels": "/channels/...",
         "Gallery": "/galleries/...",
@@ -29,7 +31,7 @@ class PornPicsCrawler(Crawler):
         "Tags": "/tags/...",
         "Direct links": "",
     }
-    primary_base_domain = AbsoluteHttpURL("https://pornpics.com")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN = "pornpics"
     FOLDER_DOMAIN = "PornPics"
 
@@ -77,7 +79,7 @@ class PornPicsCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        scrape_item.url = self.primary_base_domain / "galleries" / gallery_id  # canonical URL
+        scrape_item.url = PRIMARY_URL / "galleries" / gallery_id  # canonical URL
         title = soup.select_one("h1").text  # type: ignore
         title = self.create_title(title, gallery_id)
         scrape_item.setup_as_album(title, album_id=gallery_id)

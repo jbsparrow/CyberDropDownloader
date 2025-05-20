@@ -11,7 +11,7 @@ from aiolimiter import AsyncLimiter
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.exceptions import DownloadError, PasswordProtectedError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -23,6 +23,7 @@ if TYPE_CHECKING:
 WT_REGEX = re.compile(r'appdata\.wt\s=\s"([^"]+)"')
 API_ENTRYPOINT = AbsoluteHttpURL("https://api.gofile.io")
 GLOBAL_JS_URL = AbsoluteHttpURL("https://gofile.io/dist/js/global.js")
+PRIMARY_URL = AbsoluteHttpURL("https://gofile.io")
 
 
 class Node(TypedDict):
@@ -84,8 +85,8 @@ class ApiAlbumResponse(TypedDict):
 
 
 class GoFileCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Album": "/d/..."}
-    primary_base_domain = AbsoluteHttpURL("https://gofile.io")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Album": "/d/..."}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN = "gofile"
     FOLDER_DOMAIN = "GoFile"
 
@@ -99,7 +100,7 @@ class GoFileCrawler(Crawler):
     async def async_startup(self) -> None:
         get_website_token = error_handling_wrapper(self.get_website_token)
         await self.get_account_token(API_ENTRYPOINT)
-        await get_website_token(self, self.primary_base_domain)
+        await get_website_token(self, PRIMARY_URL)
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "d" in scrape_item.url.parts:
@@ -153,7 +154,7 @@ class GoFileCrawler(Crawler):
 
         def get_website_url(node: Node) -> URL:
             if node["type"] == "folder":
-                return self.primary_base_domain / "d" / (node.get("code") or node["id"])
+                return PRIMARY_URL / "d" / (node.get("code") or node["id"])
             return scrape_item.url.with_fragment(file["id"])
 
         for child in children.values():
@@ -164,7 +165,7 @@ class GoFileCrawler(Crawler):
 
             if child["type"] == "folder":
                 folder = cast("UnlockedFolder", child)
-                url = self.primary_base_domain / "d" / folder["code"]
+                url = PRIMARY_URL / "d" / folder["code"]
                 subfolders.append(url)
                 continue
 

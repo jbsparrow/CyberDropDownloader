@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Literal, NamedTuple, TypedDict
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import NoExtensionError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
@@ -18,8 +18,8 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
-PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://www.pornhub.com")
-ALBUM_API_URL = PRIMARY_BASE_DOMAIN / "album/show_album_json"
+PRIMARY_URL = AbsoluteHttpURL("https://www.pornhub.com")
+ALBUM_API_URL = PRIMARY_URL / "album/show_album_json"
 PROFILE_PARTS = "user", "channel", "channels", "model", "pornstar"
 
 
@@ -30,7 +30,7 @@ class Profile:
 
     @property
     def url(self) -> AbsoluteHttpURL:
-        return PRIMARY_BASE_DOMAIN / self.type / self.name
+        return PRIMARY_URL / self.type / self.name
 
     @property
     def has_photos(self) -> bool:
@@ -97,7 +97,7 @@ class Format(NamedTuple):
 
 
 class PornHubCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Album": "/album/...",
         "Channel": "/channel/...",
         "Gif": "/gif/...",
@@ -106,7 +106,7 @@ class PornHubCrawler(Crawler):
         "Profile": "/user/...",
         "Video": "/embed/",
     }
-    primary_base_domain = PRIMARY_BASE_DOMAIN
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     next_page_selector = _SELECTORS.NEXT_PAGE
     DOMAIN = "pornhub"
     FOLDER_DOMAIN = "PornHub"
@@ -201,7 +201,7 @@ class PornHubCrawler(Crawler):
         results = await self.get_album_results(album_id)
 
         for id, photo in json_resp.items():
-            web_url = self.primary_base_domain / "photo" / id
+            web_url = PRIMARY_URL / "photo" / id
             link = self.parse_url(photo["img_large"])
             new_scrape_item = scrape_item.create_new(web_url)
             await self._proccess_photo(new_scrape_item, link, results)
@@ -267,8 +267,8 @@ class PornHubCrawler(Crawler):
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem, video_id: str) -> None:
-        embed_url = self.primary_base_domain / "embed" / video_id
-        page_url = self.primary_base_domain.joinpath("view_video.php").with_query(viewkey=video_id)
+        embed_url = PRIMARY_URL / "embed" / video_id
+        page_url = PRIMARY_URL.joinpath("view_video.php").with_query(viewkey=video_id)
 
         if await self.check_complete_from_referer(page_url):
             return

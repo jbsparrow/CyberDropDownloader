@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -14,11 +14,12 @@ if TYPE_CHECKING:
 
 
 IMG_SELECTOR = "div#container a > img"
+PRIMARY_URL = AbsoluteHttpURL("https://imx.to")
 
 
 class ImxToCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Image": "/i/...", "Thumbnail": "/t/..."}
-    primary_base_domain = AbsoluteHttpURL("https://imx.to")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Image": "/i/...", "Thumbnail": "/t/..."}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN = "imx.to"
 
     async def async_startup(self) -> None:
@@ -55,10 +56,10 @@ class ImxToCrawler(Crawler):
 
     def thumbnail_to_img(self, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         path = url.path.split("/t/")[-1]
-        return self.primary_base_domain / "u/i" / path
+        return PRIMARY_URL / "u/i" / path
 
     def get_canonical_url(self, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
-        return self.primary_base_domain / get_image_id(url)
+        return PRIMARY_URL / get_image_id(url)
 
 
 def get_image_id(url: URL) -> str:

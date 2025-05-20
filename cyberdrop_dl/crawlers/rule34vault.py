@@ -4,7 +4,7 @@ import itertools
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -26,12 +26,12 @@ _SELECTORS = Selectors()
 
 
 class Rule34VaultCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "File page": "/post/...",
         "Playlist": "/playlists/view/...",
         "Tag": "/...",
     }
-    primary_base_domain = AbsoluteHttpURL("https://rule34vault.com")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://rule34vault.com")
     DOMAIN = "rule34vault"
     FOLDER_DOMAIN = "Rule34Vault"
 

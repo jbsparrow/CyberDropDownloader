@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, ClassVar, NamedTuple
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import css, javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
+PRIMARY_URL = AbsoluteHttpURL("https://rule34video.com/")
 RESOLUTIONS = ["4k", "2160p", "1440p", "1080p", "720p", "480p", "360p", "240p"]  # best to worst
 DOWNLOADS_SELECTOR = "div#tab_video_info div.row_spacer div.wrap > a.tag_item"
 JS_SELECTOR = "head > script:contains('uploadDate')"
@@ -48,14 +49,14 @@ class VideoInfo(dict): ...
 
 
 class Rule34VideoCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Members": "/members/...",
         "Models": "/models/...",
         "Search": "/search/...",
         "Tags": "/tags/...",
         "Video": "/video//",
     }
-    primary_base_domain = AbsoluteHttpURL("https://rule34video.com/")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     next_page_selector = PLAYLIST_NEXT_PAGE_SELECTOR
     DOMAIN = "rule34video"
     FOLDER_DOMAIN = "Rule34Video"
@@ -85,7 +86,7 @@ class Rule34VideoCrawler(Crawler):
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
         video_id, video_name = scrape_item.url.parts[2:4]
-        canonical_url = self.primary_base_domain / "video" / video_id / video_name / ""
+        canonical_url = PRIMARY_URL / "video" / video_id / video_name / ""
 
         if await self.check_complete_from_referer(canonical_url):
             return

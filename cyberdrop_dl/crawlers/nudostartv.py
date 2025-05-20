@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -18,8 +18,8 @@ CONTENT_SELECTOR = "div[id=list_videos_common_videos_list_items] div a"
 
 
 class NudoStarTVCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Model": "/models/..."}
-    primary_base_domain = AbsoluteHttpURL("https://nudostar.tv/")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Model": "/models/..."}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://nudostar.tv/")
     next_page_selector = "li[class=next] a"
     DOMAIN = "nudostar.tv"
     FOLDER_DOMAIN = "NudoStarTV"

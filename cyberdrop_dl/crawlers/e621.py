@@ -8,7 +8,7 @@ from aiolimiter import AsyncLimiter
 from cyberdrop_dl import __version__
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -16,14 +16,16 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
+PRIMARY_URL = AbsoluteHttpURL("https://e621.net")
+
 
 class E621Crawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Post": "/posts/...",
         "Tags": "/posts?tags=...",
         "Pools": "/pools/...",
     }
-    primary_base_domain = AbsoluteHttpURL("https://e621.net")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN = "e621.net"
     FOLDER_DOMAIN = "E621"
 
@@ -43,7 +45,7 @@ class E621Crawler(Crawler):
     async def paginator(self, scrape_item: ScrapeItem) -> AsyncGenerator[list[dict[str, Any]]]:
         """Generator for album pages."""
         initial_page = int(scrape_item.url.query.get("page", 1))
-        url = self.primary_base_domain / "posts.json"
+        url = PRIMARY_URL / "posts.json"
         for page in itertools.count(initial_page):
             url = url.with_query(tags=scrape_item.url.query["tags"], page=page)
             async with self.request_limiter:
@@ -78,7 +80,7 @@ class E621Crawler(Crawler):
     async def pool(self, scrape_item: ScrapeItem) -> None:
         """Fetches posts from an e621 pool."""
         pool_id = scrape_item.url.name
-        url = self.primary_base_domain / f"pools/{pool_id}.json"
+        url = PRIMARY_URL / f"pools/{pool_id}.json"
         async with self.request_limiter:
             json_resp: dict = await self.client.get_json(self.DOMAIN, url, self.headers)
 
@@ -87,7 +89,7 @@ class E621Crawler(Crawler):
         scrape_item.setup_as_album(title)
 
         for post_id in posts:
-            url = self.primary_base_domain / f"posts/{post_id}"
+            url = PRIMARY_URL / f"posts/{post_id}"
             new_scrape_item = scrape_item.create_child(url)
             self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.add_children()
@@ -96,7 +98,7 @@ class E621Crawler(Crawler):
     async def file(self, scrape_item: ScrapeItem) -> None:
         """Fetches a single post by extracting the ID from the URL."""
         post_id = scrape_item.url.name
-        url = self.primary_base_domain / f"posts/{post_id}.json"
+        url = PRIMARY_URL / f"posts/{post_id}.json"
         async with self.request_limiter:
             json_resp: dict = await self.client.get_json(self.DOMAIN, url, self.headers)
 

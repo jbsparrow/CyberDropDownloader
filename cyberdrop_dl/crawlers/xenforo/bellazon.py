@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from typing import ClassVar
+
 from cyberdrop_dl.types import AbsoluteHttpURL
 
 from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
 
 
 class BellazonCrawler(XenforoCrawler):
-    primary_base_domain = AbsoluteHttpURL("https://www.bellazon.com/main/")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://www.bellazon.com/main/")
     DOMAIN = "bellazon"
     FOLDER_DOMAIN = "Bellazon"
     thread_url_part = "topic"

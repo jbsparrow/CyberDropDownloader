@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import FILE_HOST_PROFILE, ScrapeItem
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -18,12 +18,12 @@ SERIES_TITLE_SELECTOR = "div.post-title > h1"
 
 
 class ToonilyCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Chapter": "/webtoon/.../...",
         "Webtoon": "/webtoon/...",
         "Direct links": "",
     }
-    primary_base_domain = AbsoluteHttpURL("https://toonily.com")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://toonily.com")
     DOMAIN = "toonily"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:

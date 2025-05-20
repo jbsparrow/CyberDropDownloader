@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Annotated, Any, ClassVar, NamedTuple
 from pydantic import AliasPath, Field, PlainValidator
 
 from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel, SupportedPaths
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, parse_url
@@ -19,18 +19,18 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
-PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://xhamster.com/")
+PRIMARY_URL = AbsoluteHttpURL("https://xhamster.com/")
 JS_VIDEO_INFO_SELECTOR = "script#initials-script"
 VIDEO_SELECTOR = "a.video-thumb__image-container"
 GALLERY_SELECTOR = "a.gallery-thumb__link"
 
 
-HttpURL = Annotated[AbsoluteHttpURL, PlainValidator(partial(parse_url, relative_to=PRIMARY_BASE_DOMAIN))]
+HttpURL = Annotated[AbsoluteHttpURL, PlainValidator(partial(parse_url, relative_to=PRIMARY_URL))]
 
 
 class XhamsterCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Users, creators, videos and galleries": "pending"}
-    primary_base_domain = PRIMARY_BASE_DOMAIN
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Users, creators, videos and galleries": "pending"}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     next_page_selector = "a[data-page='next']"
     DOMAIN = "xhamster"
     FOLDER_DOMAIN = "xHamster"
@@ -51,7 +51,7 @@ class XhamsterCrawler(Crawler):
         scrape_item.setup_as_profile(title)
         is_user = "users" in scrape_item.url.parts
         last_part = "videos" if is_user else "exclusive"
-        base_url = PRIMARY_BASE_DOMAIN / profile_type / username
+        base_url = PRIMARY_URL / profile_type / username
 
         all_paths = ("videos", "photos")
         paths_to_scrape = next(((p,) for p in all_paths if p in scrape_item.url.parts), all_paths)
@@ -97,7 +97,7 @@ class XhamsterCrawler(Crawler):
         scrape_item.url = video.page_url
         scrape_item.possible_datetime = video.created
         _, resolution, download_url = max(video.get_formats())
-        link = PRIMARY_BASE_DOMAIN / "movies" / video.id / "download" / resolution
+        link = PRIMARY_URL / "movies" / video.id / "download" / resolution
 
         filename, ext = self.get_filename_and_ext(f"{video.id}.mp4")
         custom_filename, _ = self.get_filename_and_ext(f"{video.title} [{video.id}][{resolution}]{ext}")
@@ -166,5 +166,5 @@ class Video(XHamsterItem):
         for resolution, details in self.mp4_sources.items():
             height = int(resolution.removesuffix("p"))
             link: str = details["link"] if isinstance(details, dict) else details
-            url = parse_url(link, relative_to=PRIMARY_BASE_DOMAIN)
+            url = parse_url(link, relative_to=PRIMARY_URL)
             yield Format(height, f"{height}p", url)

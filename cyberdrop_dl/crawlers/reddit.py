@@ -10,7 +10,7 @@ from asyncpraw import Reddit
 from cyberdrop_dl.clients.scraper_client import cache_control_manager
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import LoginError, NoExtensionError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -42,15 +42,18 @@ class MediaMetadata(TypedDict):
     s: MediaSource  # Source
 
 
+PRIMARY_URL = AbsoluteHttpURL("https://www.reddit.com/")
+
+
 class RedditCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "User": ("/user/<user>", "/user/<user>/...", "/u/<user>"),
         "Subreddit:": "/r/<subreddit>",
         "Direct links": "",
     }
     SUPPORTED_HOSTS = "reddit", "redd.it"
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{title}"
-    primary_base_domain = AbsoluteHttpURL("https://www.reddit.com/")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN = "reddit"
 
     def __post_init__(self) -> None:
@@ -60,7 +63,7 @@ class RedditCrawler(Crawler):
         self.logged_in = False
 
     async def async_startup(self) -> None:
-        await self.check_login(self.primary_base_domain / "login")
+        await self.check_login(PRIMARY_URL / "login")
         if not self.logged_in:
             return
 

@@ -4,7 +4,7 @@ import json
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -43,8 +43,8 @@ API_ENTRYPOINT = AbsoluteHttpURL("https://api.scrolller.com/api/v2/graphql")
 
 
 class ScrolllerCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Subreddit": "/r/..."}
-    primary_base_domain = AbsoluteHttpURL("https://scrolller.com")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Subreddit": "/r/..."}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://scrolller.com")
     DOMAIN = "scrolller"
 
     def __post_init__(self) -> None:

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -15,11 +15,12 @@ if TYPE_CHECKING:
 
 VIDEO_PARTS = "video", "photo", "v"
 API_URL = AbsoluteHttpURL("https://www.tikwm.com/api/")
+PRIMARY_URL = AbsoluteHttpURL("https://tiktok.com/")
 
 
 class TikTokCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"User": "/@", "Video": "/@/video/", "Photo": "/@/photo/"}
-    primary_base_domain = AbsoluteHttpURL("https://tiktok.com/")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"User": "/@", "Video": "/@/video/", "Photo": "/@/photo/"}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN = "tiktok"
     FOLDER_DOMAIN = "TikTok"
 
@@ -146,10 +147,10 @@ class TikTokCrawler(Crawler):
 
     async def get_canonical_url(self, author: str, post_id: str | None = None) -> AbsoluteHttpURL:
         if post_id is None:
-            return self.primary_base_domain / f"@{author}"
-        return self.primary_base_domain / f"@{author}/video/{post_id}"
+            return PRIMARY_URL / f"@{author}"
+        return PRIMARY_URL / f"@{author}/video/{post_id}"
 
     async def get_canonical_audio_url(self, audio_title: str, audio_id: str) -> AbsoluteHttpURL:
         if "original audio" in audio_title.lower():
-            return self.primary_base_domain / f"music/original-audio-{audio_id}"
-        return self.primary_base_domain / f"music/{audio_title.replace(' ', '-').lower()}-{audio_id}"
+            return PRIMARY_URL / f"music/original-audio-{audio_id}"
+        return PRIMARY_URL / f"music/{audio_title.replace(' ', '-').lower()}-{audio_id}"

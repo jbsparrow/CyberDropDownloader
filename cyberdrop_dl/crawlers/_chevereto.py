@@ -132,7 +132,7 @@ class CheveretoCrawler(Crawler, is_abc=True):
         await self.handle_file(link, scrape_item, filename, ext)
 
     async def get_embed_info(self, url: URL) -> tuple[str, URL]:
-        embed_url = self.primary_base_domain / "oembed" / ""
+        embed_url = self.PRIMARY_URL / "oembed" / ""
         embed_url = embed_url.with_query(url=str(url), format="json")
         async with self.request_limiter:
             json_resp: dict[str, str] = await self.client.get_json(self.DOMAIN, embed_url)

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -23,13 +23,13 @@ if TYPE_CHECKING:
 
 JS_VIDEO_INFO_SELECTOR = "script#__NUXT_DATA__"
 API_ENTRYPOINT = AbsoluteHttpURL("https://pmvhaven.com/api/v2/")
-PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://pmvhaven.com")
+PRIMARY_URL = AbsoluteHttpURL("https://pmvhaven.com")
 CATEGORIES = "Hmv", "Pmv", "Hypno", "Tiktok", "KoreanBJ"
 INCLUDE_VIDEO_ID_IN_FILENAME = True
 
 
 class PMVHavenCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Category": "/category/...",
         "Music": "/music/...",
         "Playlist": "/playlist/...",
@@ -39,7 +39,7 @@ class PMVHavenCrawler(Crawler):
         "Users": "/profile/...",
         "Video": "/video/...",
     }
-    primary_base_domain = PRIMARY_BASE_DOMAIN
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN = "pmvhaven"
     FOLDER_DOMAIN = "PMVHaven"
 
@@ -90,7 +90,7 @@ class PMVHavenCrawler(Crawler):
         user_info: dict[str, dict] = json_resp["data"]
         for playlist in user_info["playlists"]:
             playlist_id = playlist["_id"]
-            link = PRIMARY_BASE_DOMAIN / "playlist" / playlist_id
+            link = PRIMARY_URL / "playlist" / playlist_id
             new_scrape_item = scrape_item.create_child(link, new_title_part="Playlists")
             self.manager.task_group.create_task(self.playlist(new_scrape_item, add_suffix=False))
             scrape_item.add_children()
@@ -246,7 +246,7 @@ def create_canonical_video_url(video_info: dict) -> URL:
     title: str = video_info.get("title") or video_info["uploadTitle"]
     video_id: str = video_info["_id"]
     path = f"{title}_{video_id}"
-    return PRIMARY_BASE_DOMAIN / "video" / path
+    return PRIMARY_URL / "video" / path
 
 
 def get_video_info_from_js(soup: BeautifulSoup) -> dict:

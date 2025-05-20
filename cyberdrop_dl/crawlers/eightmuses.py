@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -18,8 +18,8 @@ TITLE_PARTS_SELECTOR = "div[class=top-menu-breadcrumb] > ol > li > a"
 
 
 class EightMusesCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Album": "/comics/album/..."}
-    primary_base_domain = AbsoluteHttpURL("https://comics.8muses.com")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Album": "/comics/album/..."}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://comics.8muses.com")
     DOMAIN = "8muses"
     FOLDER_DOMAIN = "8Muses"
 

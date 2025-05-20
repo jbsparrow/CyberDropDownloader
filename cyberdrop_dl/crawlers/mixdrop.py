@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
@@ -21,13 +21,13 @@ class Selectors:
 
 _SELECTOR = Selectors()
 
-PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://mixdrop.sb")
+PRIMARY_URL = AbsoluteHttpURL("https://mixdrop.sb")
 
 
 class MixDropCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"File": "/e/"}
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"File": "/e/"}
     SUPPORTED_HOSTS = "mxdrop", "mixdrop"
-    primary_base_domain = PRIMARY_BASE_DOMAIN
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN = "mixdrop"
     FOLDER_DOMAIN = "MixDrop"
 
@@ -39,7 +39,7 @@ class MixDropCrawler(Crawler):
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
         file_id = scrape_item.url.name
-        video_url = self.primary_base_domain / "f" / file_id
+        video_url = PRIMARY_URL / "f" / file_id
         embed_url = self.get_embed_url(video_url)
 
         if await self.check_complete_from_referer(embed_url):
@@ -73,4 +73,4 @@ class MixDropCrawler(Crawler):
 
     @staticmethod
     def get_embed_url(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
-        return PRIMARY_BASE_DOMAIN / "e" / url.name
+        return PRIMARY_URL / "e" / url.name

@@ -3,20 +3,22 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.imx_to import ImxToCrawler
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 
 if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
+PRIMARY_URL = AbsoluteHttpURL("https://acidimg.cc")
+
 
 class AcidImgCrawler(ImxToCrawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Image": "/i/...",
         "Thumbnail": "/upload/...",
     }
-    primary_base_domain = AbsoluteHttpURL("https://acidimg.cc")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN = "acidimg.cc"
     FOLDER_DOMAIN = "AcidImg"
 
@@ -30,11 +32,11 @@ class AcidImgCrawler(ImxToCrawler):
     def thumbnail_to_img(self, url: URL) -> URL:
         index = url.parts.index("upload") + 2
         path = "/".join(url.parts[index:])
-        return self.primary_base_domain / "upload/big" / path
+        return PRIMARY_URL / "upload/big" / path
 
     def get_canonical_url(self, url: URL) -> URL:
         image_id = get_image_id(url)
-        return self.primary_base_domain / f"img-{image_id}.html"
+        return PRIMARY_URL / f"img-{image_id}.html"
 
 
 def get_image_id(url: URL) -> str:

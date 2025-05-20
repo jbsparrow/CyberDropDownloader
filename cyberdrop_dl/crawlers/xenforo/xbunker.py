@@ -8,7 +8,7 @@ from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
 
 
 class XBunkerCrawler(XenforoCrawler):
-    primary_base_domain = AbsoluteHttpURL("https://xbunker.nu/")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://xbunker.nu/")
     DOMAIN: ClassVar[str] = "xbunker"
     FOLDER_DOMAIN: ClassVar[str] = "XBunker"
     post_selectors = PostSelectors(

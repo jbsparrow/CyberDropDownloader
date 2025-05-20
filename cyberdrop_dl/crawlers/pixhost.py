@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -12,15 +12,15 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
-PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://pixhost.to/")
+PRIMARY_URL = AbsoluteHttpURL("https://pixhost.to/")
 GALLERY_TITLE_SELECTOR = "a[class=link] h2"
 IMAGES_SELECTOR = "div[class=images] a"
 IMAGE_SELECTOR = "img[class=image-img]"
 
 
 class PixHostCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"Gallery": "/gallery/...", "Image": "/show/..."}
-    primary_base_domain = PRIMARY_BASE_DOMAIN
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Gallery": "/gallery/...", "Image": "/show/..."}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     update_unsupported = True
     DOMAIN = "pixhost"
     FOLDER_DOMAIN = "PixHost"
@@ -79,7 +79,7 @@ class PixHostCrawler(Crawler):
 
 def thumbnail_to_img(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
     thumb_server_id: str = url.host.split(".", 1)[0].split("t")[-1]
-    img_host = f"img{thumb_server_id}.{PRIMARY_BASE_DOMAIN.host}"
+    img_host = f"img{thumb_server_id}.{PRIMARY_URL.host}"
     img_url = replace_first_part(url, "images")
     return img_url.with_host(img_host)
 
@@ -100,4 +100,4 @@ def is_cdn(url: AbsoluteHttpURL) -> bool:
 
 def get_canonical_url(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
     show_url = replace_first_part(url, "show")
-    return show_url.with_host(PRIMARY_BASE_DOMAIN.host)
+    return show_url.with_host(PRIMARY_URL.host)

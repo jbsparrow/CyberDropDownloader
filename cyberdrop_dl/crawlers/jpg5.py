@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 from ._chevereto import CheveretoCrawler
@@ -19,7 +19,7 @@ JPG5_REPLACE_HOST_REGEX = re.compile(r"(jpg\.fish/)|(jpg\.fishing/)|(jpg\.church
 
 
 class JPG5Crawler(CheveretoCrawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Album": "/a/...",
         "Image": "/img/...",
         "Profiles": "/...",
@@ -43,7 +43,7 @@ class JPG5Crawler(CheveretoCrawler):
     DOMAIN = "jpg5.su"
     FOLDER_DOMAIN = "JPG5"
 
-    primary_base_domain = AbsoluteHttpURL("https://jpg5.su")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://jpg5.su")
 
     def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(1, 5)

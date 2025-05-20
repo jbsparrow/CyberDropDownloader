@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
 
@@ -13,7 +13,7 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
-
+PRIMARY_URL = AbsoluteHttpURL("https://sendvid.com/")
 VIDEO_SRC_SELECTOR = "video > source#video_source"
 TITLE_SELECTOR = "p.video-title"
 REQUIRED_QUERY_PARAMS = "validfrom", "validto", "rate", "ip", "hash"
@@ -21,12 +21,12 @@ MAIN_HOST = "sendvid.com"
 
 
 class SendVidCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Videos": "/...",
         "Embeds": "/embed/...",
         "Direct links": "",
     }
-    primary_base_domain = AbsoluteHttpURL("https://sendvid.com/")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN = "sendvid"
     FOLDER_DOMAIN = "SendVid"
 
@@ -69,7 +69,7 @@ class SendVidCrawler(Crawler):
     def get_streaming_url(self, url: AbsoluteHttpURL) -> AbsoluteHttpURL:
         if is_cdn(url):
             video_id = url.name.split(".", 1)[0]
-            return self.primary_base_domain.with_path(video_id)
+            return PRIMARY_URL.with_path(video_id)
 
         if "embed" in url.parts:
             return remove_parts(url, "embed")
