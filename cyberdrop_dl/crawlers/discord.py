@@ -162,7 +162,8 @@ class DiscordCrawler(Crawler):
             )
 
             filename, ext = get_filename_and_ext(filename)
-            await self.handle_file(url=URL(url), scrape_item=new_scrape_item, filename=filename, ext=ext)
+            link = self.parse_url(url)
+            await self.handle_file(link, new_scrape_item, filename, ext)
             scrape_item.add_children()
 
     @error_handling_wrapper
