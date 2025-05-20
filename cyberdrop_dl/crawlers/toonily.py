@@ -35,7 +35,6 @@ class ToonilyCrawler(Crawler):
 
     @error_handling_wrapper
     async def series(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a series."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 

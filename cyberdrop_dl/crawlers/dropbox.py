@@ -41,7 +41,6 @@ class DropboxCrawler(Crawler):
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a dropbox file"""
         item = get_item_info(scrape_item.url)
         if not item.is_file and not self.download_folders:
             raise ScrapeError(422, message="Folders download is not enabled")

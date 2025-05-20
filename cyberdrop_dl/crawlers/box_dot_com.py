@@ -58,8 +58,6 @@ class BoxDotComCrawler(Crawler):
 
     @error_handling_wrapper
     async def file_or_folder(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a file or folder from a public (shared) URL."""
-
         if "file" in scrape_item.url.parts and await self.check_complete_from_referer(scrape_item):
             return
 

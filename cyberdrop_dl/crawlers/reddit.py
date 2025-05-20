@@ -88,7 +88,6 @@ class RedditCrawler(Crawler):
 
     @error_handling_wrapper
     async def user(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes user pages."""
         username = scrape_item.url.parts[-2] if len(scrape_item.url.parts) > 3 else scrape_item.url.name
         title = self.create_title(username)
         scrape_item.setup_as_profile(title)
@@ -98,7 +97,6 @@ class RedditCrawler(Crawler):
 
     @error_handling_wrapper
     async def subreddit(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes subreddit pages."""
         subreddit_name: str = scrape_item.url.name or scrape_item.url.parts[-2]
         title = self.create_title(subreddit_name)
         scrape_item.setup_as_profile(title)
@@ -116,8 +114,6 @@ class RedditCrawler(Crawler):
 
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem, submission: Submission) -> None:
-        """Scrapes posts."""
-
         try:
             link_str: str = submission.media["reddit_video"]["fallback_url"]
         except (KeyError, TypeError):
@@ -151,7 +147,6 @@ class RedditCrawler(Crawler):
         self.log(f"Skipping nested thread URL {link} {msg}")
 
     async def gallery(self, scrape_item: ScrapeItem, submission: Submission) -> None:
-        """Scrapes galleries."""
         media_metadata: dict[str, MediaMetadata] = getattr(submission, "media_metadata", {})
         if not media_metadata:
             return

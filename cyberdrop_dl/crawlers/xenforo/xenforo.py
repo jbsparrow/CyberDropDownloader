@@ -170,7 +170,6 @@ class XenforoCrawler(Crawler, is_abc=True):
 
     @error_handling_wrapper
     async def thread(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a forum thread."""
         scrape_item.set_type(FORUM, self.manager)
         thread = self.get_thread_info(scrape_item.url)
         title = None
@@ -231,20 +230,17 @@ class XenforoCrawler(Crawler, is_abc=True):
             await scraper(scrape_item, post)
 
     async def links(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
-        """Scrapes links from a post."""
         selector = post.selectors.links
         links = post.content.select(selector.element)
         links = [link for link in links if self.is_valid_post_link(link)]
         await self.process_children(scrape_item, links, selector.attribute)
 
     async def images(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
-        """Scrapes images from a post."""
         selector = post.selectors.images
         images = post.content.select(selector.element)
         await self.process_children(scrape_item, images, selector.attribute)
 
     async def videos(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
-        """Scrapes videos from a post."""
         selector = post.selectors.videos
         iframe_selector = post.selectors.iframe
         videos = post.content.select(selector.element)
@@ -252,13 +248,11 @@ class XenforoCrawler(Crawler, is_abc=True):
         await self.process_children(scrape_item, videos, selector.attribute)
 
     async def embeds(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
-        """Scrapes embeds from a post."""
         selector = post.selectors.embeds
         embeds = post.content.select(selector.element)
         await self.process_children(scrape_item, embeds, selector.attribute, embeds=True)
 
     async def attachments(self, scrape_item: ScrapeItem, post: ForumPost) -> None:
-        """Scrapes attachments from a post."""
         selector = post.selectors.attachments
         attachments = post.content.select(selector.attribute)
         await self.process_children(scrape_item, attachments, selector.attribute)

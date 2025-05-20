@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -31,7 +32,6 @@ class BunkrAlbumsIOCrawler(Crawler):
 
     @error_handling_wrapper
     async def search(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes search results."""
         search_query = scrape_item.url.query["search"]
         title = self.create_title(search_query)
         scrape_item.setup_as_profile(title)
@@ -50,7 +50,7 @@ class BunkrAlbumsIOCrawler(Crawler):
             yield soup
             if not next_page:
                 break
-            page_url_str: str = next_page[-1].get("href")  # type: ignore
+            page_url_str: str = css.get_attr(next_page[-1], "href")
             page_url = self.parse_url(page_url_str)
             next_page_number = int(page_url.query.get("page") or 1)
             if current_page_number >= next_page_number:

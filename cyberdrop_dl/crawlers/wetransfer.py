@@ -37,7 +37,6 @@ class WeTransferCrawler(Crawler):
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an file."""
         if scrape_item.url.host == "we.tl":
             scrape_item.url = await self.get_final_url(scrape_item)
 

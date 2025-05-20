@@ -148,7 +148,6 @@ class TokioMotionCrawler(Crawler):
 
     @error_handling_wrapper
     async def albums(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes user albums."""
         self.add_user_title(scrape_item)
         async for soup in self.web_pager(scrape_item.url):
             for _, new_scrape_item in self.iter_children(
@@ -158,7 +157,6 @@ class TokioMotionCrawler(Crawler):
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an user profile."""
         self.add_user_title(scrape_item)
         new_parts = ["albums", "favorite/photos", "videos", "favorite/videos"]
         scrapers = [self.albums, self.album, self.playlist, self.playlist]
@@ -169,7 +167,6 @@ class TokioMotionCrawler(Crawler):
 
     @error_handling_wrapper
     async def search(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a search result."""
         search_type = scrape_item.url.query.get("search_type")
         search_query = scrape_item.url.query.get("search_query")
         search_title = f"{search_query} [{search_type} search]"

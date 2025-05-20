@@ -162,7 +162,6 @@ class EpornerCrawler(Crawler):
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an embeded video page."""
         video_id = get_video_id(scrape_item.url)
         canonical_url = self.primary_base_domain / f"video-{video_id}"
         if await self.check_complete_from_referer(canonical_url):

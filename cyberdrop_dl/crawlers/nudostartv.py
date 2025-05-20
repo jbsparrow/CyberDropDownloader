@@ -35,7 +35,6 @@ class NudoStarTVCrawler(Crawler):
 
     @error_handling_wrapper
     async def model(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a model page."""
         title = ""
         async for soup in self.web_pager(scrape_item.url):
             if not title:

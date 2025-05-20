@@ -186,7 +186,6 @@ class BunkrrCrawler(Crawler):
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a file from a streaming URL."""
         link: URL | None = None
         soup: BeautifulSoup | None = None
         if is_stream_redirect(scrape_item.url):
@@ -233,9 +232,6 @@ class BunkrrCrawler(Crawler):
 
     @error_handling_wrapper
     async def reinforced_file(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a file from a reinforced URL.
-
-        Gets the filename from the soup before sending the scrape_item to `handle_direct_link`"""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 

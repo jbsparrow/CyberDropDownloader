@@ -38,7 +38,6 @@ class MediaFireCrawler(Crawler):
 
     @error_handling_wrapper
     async def folder(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a folder of media."""
         folder_key = scrape_item.url.parts[2]
         try:
             folder_details: dict[str, dict] = self.api.folder_get_info(folder_key=folder_key)  # type: ignore
@@ -66,7 +65,6 @@ class MediaFireCrawler(Crawler):
 
     @error_handling_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a single file."""
         if await self.check_complete_from_referer(scrape_item):
             return
 

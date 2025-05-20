@@ -267,7 +267,6 @@ class KemonoCrawler(Crawler):
     @fallback_if_no_api
     @error_handling_wrapper
     async def search(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes results from a search query."""
         query = scrape_item.url.query["q"]
         api_url = self.__make_api_url_w_offset("posts", scrape_item.url)
         title = self.create_title(f"{query} [search]")
@@ -286,7 +285,6 @@ class KemonoCrawler(Crawler):
     @fallback_if_no_api
     @error_handling_wrapper
     async def discord(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a discord server or channel."""
         discord = DiscordURL.parse(scrape_item.url)
         if discord.channel_id:
             return await self.discord_channel(scrape_item, discord.channel_id)
@@ -320,7 +318,6 @@ class KemonoCrawler(Crawler):
     @fallback_if_no_api
     @error_handling_wrapper
     async def post(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an user post."""
         url_info = UserPostURL.parse(scrape_item.url)
         path = f"{url_info.service}/user/{url_info.user_id}/post/{url_info.post_id}"
         api_url = self.__make_api_url_w_offset(path, scrape_item.url)
@@ -362,7 +359,6 @@ class KemonoCrawler(Crawler):
 
     @error_handling_wrapper
     async def favorites(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes the user's favorite artists or posts and enqueues them for processing."""
         if not self.session_cookie:
             raise ScrapeError(401, "No session cookie found in the config file, cannot scrape favorites")
 
@@ -553,7 +549,6 @@ class KemonoCrawler(Crawler):
 
     @error_handling_wrapper
     async def profile_w_no_api(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an user profile."""
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
@@ -580,8 +575,6 @@ class KemonoCrawler(Crawler):
 
     @error_handling_wrapper
     async def post_w_no_api(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an user post."""
-
         url_info = UserPostURL.parse(scrape_item.url)
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)

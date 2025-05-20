@@ -56,7 +56,7 @@ class YetiShareCrawler(Crawler, is_abc=True):
         if "folder" in scrape_item.url.parts:
             return await self.folder(scrape_item)
         if "shared" in scrape_item.url.parts:
-            return await self.shared(scrape_item)
+            return await self.shared_folder(scrape_item)
         return await self.file(scrape_item)
 
     @error_handling_wrapper
@@ -88,8 +88,7 @@ class YetiShareCrawler(Crawler, is_abc=True):
                 break
 
     @error_handling_wrapper
-    async def shared(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a shared folder."""
+    async def shared_folder(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
             await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
@@ -153,7 +152,6 @@ class YetiShareCrawler(Crawler, is_abc=True):
 
     @error_handling_wrapper
     async def handle_content_id(self, scrape_item: ScrapeItem, content_id: int) -> None:
-        """Scrapes a file using the content id."""
         data = {"u": content_id}
         ajax_soup, page_title = await self.get_soup_from_ajax(data, scrape_item, is_file=True)
 

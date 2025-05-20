@@ -64,7 +64,6 @@ class GenericCrawler(Crawler):
     @error_handling_wrapper
     @log_unsupported_wrapper
     async def file(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes a file trying to guess the ext from the headers"""
         content_type = await self.get_content_type(scrape_item.url)
         if "html" in content_type:
             return await self.try_video_from_soup(scrape_item)

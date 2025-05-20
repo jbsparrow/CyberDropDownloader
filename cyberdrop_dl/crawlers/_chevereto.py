@@ -66,7 +66,6 @@ class CheveretoCrawler(Crawler, is_abc=True):
 
     @error_handling_wrapper
     async def profile(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an user profile."""
         title: str = ""
         async for soup in self.web_pager(sort_by_new(scrape_item.url), trim=False):
             if not title:
