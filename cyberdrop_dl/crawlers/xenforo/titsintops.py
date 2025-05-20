@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from yarl import URL
 
 from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.utils import css
 
 from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
 
@@ -34,11 +35,11 @@ class TitsInTopsCrawler(XenforoCrawler):
 
     def is_valid_post_link(self, link_obj: Tag) -> bool:
         is_image = link_obj.select_one("img")
-        text = link_obj.text
-        if text and "view attachment" in text.lower():
+        text = css.get_text(link_obj)
+        if "view attachment" in text.lower():
             return False
-        title: str = link_obj.get("title")  # type: ignore
+        title: str | None = css.get_attr_or_none(link_obj, "title")
         if title and "permanent link" in title.lower():
             return False
-        link_str: str = link_obj.get(self.selectors.posts.links.element)  # type: ignore
+        link_str: str | None = css.get_attr_or_none(link_obj, self.selectors.posts.links.element)
         return not (is_image and self.is_attachment(link_str))

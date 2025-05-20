@@ -12,7 +12,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from aiohttp import ClientConnectorError
-from yarl import URL
 
 from cyberdrop_dl.constants import FILE_FORMATS
 from cyberdrop_dl.crawlers.crawler import Crawler
@@ -29,6 +28,7 @@ from cyberdrop_dl.utils.utilities import (
 
 if TYPE_CHECKING:
     from bs4 import BeautifulSoup, Tag
+    from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
@@ -108,7 +108,7 @@ class AlbumItem:
         return cls(name, thumbnail, date_str, path_qs)
 
     @property
-    def src(self) -> URL:
+    def src(self) -> AbsoluteHttpURL:
         src_str = self.thumbnail.replace("/thumbs/", "/")
         src = parse_url(src_str, relative_to=PRIMARY_BASE_DOMAIN)
         src = with_suffix_encoded(src, self.suffix).with_query(None)
@@ -135,6 +135,11 @@ class BunkrrCrawler(Crawler):
     def __post_init__(self) -> None:
         self.known_good_host: str = ""
         self.switch_host_locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
+
+    @property
+    def known_good_url(self) -> AbsoluteHttpURL | None:
+        if self.known_good_host:
+            return AbsoluteHttpURL(f"https://{self.known_good_host}")
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if is_reinforced_link(scrape_item.url):  #  get.bunkr.su/file/<file_id>
@@ -211,7 +216,7 @@ class BunkrrCrawler(Crawler):
         # Try to get downloadd URL from streaming API. Should work for most files, even none video files
         if not link and "f" in scrape_item.url.parts:
             slug = get_slug_from_soup(soup) or scrape_item.url.name or scrape_item.url.parent.name
-            base = URL(f"https://{self.known_good_host}") if self.known_good_host else scrape_item.url.origin()
+            base = self.known_good_url or scrape_item.url.origin()
             slug_url = base / "f" / slug
             link = await self.get_download_url_from_api(slug_url)
 
@@ -274,7 +279,7 @@ class BunkrrCrawler(Crawler):
 
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
-    async def get_download_url_from_api(self, url: URL) -> URL | None:
+    async def get_download_url_from_api(self, url: AbsoluteHttpURL) -> AbsoluteHttpURL | None:
         """Gets the download link for a given URL
 
         1. Reinforced URL (get.bunkr.su/<file_id>). or
@@ -300,8 +305,7 @@ class BunkrrCrawler(Crawler):
         if link != self.primary_base_domain:  # We got an empty response
             return link
 
-    def deep_scrape(self, url: URL) -> bool:
-        assert url.host
+    def deep_scrape(self, url: AbsoluteHttpURL) -> bool:
         return any(part in url.host.split(".") for part in ("burger.",)) or self.manager.config_manager.deep_scrape
 
     async def handle_file(
@@ -321,27 +325,26 @@ class BunkrrCrawler(Crawler):
             url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=debrid_link
         )
 
-    async def get_soup_lenient(self, url: URL) -> BeautifulSoup:
+    async def get_soup_lenient(self, url: AbsoluteHttpURL) -> BeautifulSoup:
         """Overrides URL in host if we know a valid host.
 
         If we don't know a valid host but the response was successful, register the host as a valid host"""
-        assert url.host
 
-        async def get_soup(url: URL) -> BeautifulSoup:
+        async def get_soup(url: AbsoluteHttpURL) -> BeautifulSoup:
             async with self.request_limiter:
                 return await self.client.get_soup(self.DOMAIN, url)
 
-        async def get_soup_no_error(url: URL) -> BeautifulSoup | None:
+        async def get_soup_no_error(url: AbsoluteHttpURL) -> BeautifulSoup | None:
             global known_bad_hosts
             try:
                 soup: BeautifulSoup = await get_soup(url)
             except (ClientConnectorError, DDOSGuardError):
-                known_bad_hosts.add(url.host)  # type: ignore
+                known_bad_hosts.add(url.host)
                 if not HOST_OPTIONS - known_bad_hosts:
                     raise
             else:
                 if not self.known_good_host:
-                    self.known_good_host = url.host  # type: ignore
+                    self.known_good_host = url.host
                 return soup
 
         if not is_root_domain(url):
@@ -372,8 +375,7 @@ def get_part_next_to(url: URL, part: str) -> str:
     return url.parts[part_index]
 
 
-def is_stream_redirect(url: URL) -> bool:
-    assert url.host
+def is_stream_redirect(url: AbsoluteHttpURL) -> bool:
     first_subdomain = url.host.split(".")[0]
     prefix, _, number = first_subdomain.partition("cdn")
     if not prefix and number.isdigit():
@@ -381,21 +383,17 @@ def is_stream_redirect(url: URL) -> bool:
     return any(part in url.host for part in ("cdn12", "cdn-")) or url.host == "cdn.bunkr.ru"
 
 
-def is_cdn(url: URL) -> bool:
-    """Checks if a given URL is from a CDN."""
-    assert url.host
+def is_cdn(url: AbsoluteHttpURL) -> bool:
     return bool(CDN_POSSIBILITIES.match(url.host))
 
 
-def override_cdn(url: URL) -> URL:
-    assert url.host
+def override_cdn(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
     if "milkshake" in url.host:
         return url.with_host("mlk-bk.cdn.gigachad-cdn.ru")
     return url
 
 
-def is_reinforced_link(url: URL) -> bool:
-    assert url.host
+def is_reinforced_link(url: AbsoluteHttpURL) -> bool:
     return url.host.startswith("get.") and "file" in url.parts
 
 
@@ -421,6 +419,5 @@ def get_slug_from_soup(soup: BeautifulSoup) -> str | None:
     return get_text_between(info_js.text, "jsSlug = '", "';")
 
 
-def is_root_domain(url: URL):
-    assert url.host
+def is_root_domain(url: AbsoluteHttpURL) -> bool:
     return "bunkr" in url.host and url.host.count(".") == 1

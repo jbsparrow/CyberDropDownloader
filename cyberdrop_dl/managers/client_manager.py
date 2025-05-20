@@ -20,12 +20,13 @@ from cyberdrop_dl.clients.download_client import DownloadClient
 from cyberdrop_dl.clients.scraper_client import ScraperClient
 from cyberdrop_dl.exceptions import DDOSGuardError, DownloadError, ScrapeError
 from cyberdrop_dl.managers.download_speed_manager import DownloadSpeedLimiter
+from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.ui.prompts.user_prompts import get_cookies_from_browsers
 from cyberdrop_dl.utils.logger import log, log_spacer
 from cyberdrop_dl.utils.utilities import get_soup_no_error
 
 if TYPE_CHECKING:
-    from aiohttp_client_cache import CachedResponse
+    from aiohttp_client_cache.response import CachedResponse
     from curl_cffi.requests.models import Response as CurlResponse
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
@@ -168,21 +169,21 @@ class ClientManager:
         """
         status: int = response.status_code if hasattr(response, "status_code") else response.status  # type: ignore
         headers = response.headers
-        url_host: str = URL(response.url).host  # type: ignore
+        url_host: str = AbsoluteHttpURL(response.url).host
         message = None
 
-        def check_etag():
+        def check_etag() -> None:
             if download and (e_tag := headers.get("ETag")) in DOWNLOAD_ERROR_ETAGS:
                 message = DOWNLOAD_ERROR_ETAGS.get(e_tag)
                 raise DownloadError(HTTPStatus.NOT_FOUND, message=message, origin=origin)
 
-        async def check_ddos_guard():
+        async def check_ddos_guard() -> BeautifulSoup | None:
             if soup := await get_soup_no_error(response):
                 if cls.check_ddos_guard(soup) or cls.check_cloudflare(soup):
                     raise DDOSGuardError(origin=origin)
                 return soup
 
-        async def check_json_status():
+        async def check_json_status() -> None:
             if not any(domain in url_host for domain in ("gofile", "imgur")):
                 return
 
@@ -208,15 +209,15 @@ class ClientManager:
         raise DownloadError(status=status, message=message, origin=origin)
 
     @staticmethod
-    def check_bunkr_maint(headers: dict):
+    def check_bunkr_maint(headers: dict) -> None:
         if headers.get("Content-Length") == "322509" and headers.get("Content-Type") == "video/mp4":
             raise DownloadError(status="Bunkr Maintenance", message="Bunkr under maintenance")
 
     @staticmethod
     def check_ddos_guard(soup: BeautifulSoup) -> bool:
-        if soup.title and soup.title.string:
+        if (title := soup.select_one("title")) and (title_str := title.string):
             for title in DDOS_GUARD_CHALLENGE_TITLES:
-                challenge_found = title.casefold() == soup.title.string.casefold()  # type: ignore
+                challenge_found = title.casefold() == title_str.casefold()
                 if challenge_found:
                     return True
 
@@ -229,9 +230,9 @@ class ClientManager:
 
     @staticmethod
     def check_cloudflare(soup: BeautifulSoup) -> bool:
-        if soup.title and soup.title.string:
+        if (title := soup.select_one("title")) and (title_str := title.string):
             for title in CLOUDFLARE_CHALLENGE_TITLES:
-                challenge_found = title.casefold() == soup.title.string.casefold()  # type: ignore
+                challenge_found = title.casefold() == title_str.casefold()
                 if challenge_found:
                     return True
 

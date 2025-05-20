@@ -78,7 +78,6 @@ class PixHostCrawler(Crawler):
 
 
 def thumbnail_to_img(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
-    assert url.host
     thumb_server_id: str = url.host.split(".", 1)[0].split("t")[-1]
     img_host = f"img{thumb_server_id}.{PRIMARY_BASE_DOMAIN.host}"
     img_url = replace_first_part(url, "images")

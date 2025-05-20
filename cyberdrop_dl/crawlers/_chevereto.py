@@ -52,7 +52,7 @@ class CheveretoCrawler(Crawler, is_abc=True):
         return await self._fetch_chevereto_defaults(scrape_item)
 
     async def _fetch_chevereto_defaults(self, scrape_item: ScrapeItem) -> None:
-        if scrape_item.url.host.count(".") > 1:  # type: ignore
+        if scrape_item.url.host.count(".") > 1:
             return await self.handle_direct_link(scrape_item)
         if any(part in scrape_item.url.parts for part in ALBUM_PARTS):
             return await self.album(scrape_item)

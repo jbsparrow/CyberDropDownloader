@@ -125,6 +125,5 @@ class PornPicsCrawler(Crawler):
 
 
 def is_cdn(url: AbsoluteHttpURL) -> bool:
-    assert url.host, f"{url} has no host"
     url_host: str = url.host.removeprefix("www.")
     return len(url_host.split(".")) > len(BASE_HOST.split("."))

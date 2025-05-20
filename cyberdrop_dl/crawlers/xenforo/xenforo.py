@@ -307,12 +307,12 @@ class XenforoCrawler(Crawler, is_abc=True):
         scrape_item.add_children()
 
     @singledispatchmethod
-    def is_attachment(self, link: URL) -> bool:
+    def is_attachment(self, link: AbsoluteHttpURL) -> bool:
         if not link:
             return False
         parts = self.ATTACHMENT_URL_PARTS
         hosts = self.ATTACHMENT_HOSTS
-        return any(p in link.parts for p in parts) or (link.host and any(h in link.host for h in hosts))  # type: ignore
+        return any(p in link.parts for p in parts) or any(h in link.host for h in hosts)
 
     @is_attachment.register
     def _(self, link_str: str) -> bool:
@@ -345,7 +345,7 @@ class XenforoCrawler(Crawler, is_abc=True):
             raise InvalidURLError("url has no host")
         if self.is_attachment(scrape_item.url):
             return await self.handle_internal_link(scrape_item)
-        if self.primary_base_domain.host in scrape_item.url.host and self.stop_thread_recursion(scrape_item):  # type: ignore
+        if self.primary_base_domain.host in scrape_item.url.host and self.stop_thread_recursion(scrape_item):
             origin = scrape_item.parents[0]
             return log(f"Skipping nested thread URL {scrape_item.url} found on {origin}", 10)
         scrape_item.set_type(None, self.manager)

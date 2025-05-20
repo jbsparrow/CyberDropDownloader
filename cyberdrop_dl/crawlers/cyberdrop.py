@@ -90,7 +90,7 @@ class CyberdropCrawler(Crawler):
         """Gets the stream link for a given URL.
 
         NOTE: This makes a request to get the final URL (if necessary). Calling function must use `@error_handling_wrapper`"""
-        assert url.host
+
         if any(part in url.parts for part in ("a", "f")):
             return url
         if url.host.count(".") > 1 or "e" in url.parts:

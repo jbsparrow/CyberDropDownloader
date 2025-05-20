@@ -288,4 +288,4 @@ def is_folder(url: AbsoluteHttpURL) -> bool:
 
 
 def is_download_page(url: AbsoluteHttpURL) -> bool:
-    return url.name == "uc" or "usercontent" in url.host  # type: ignore
+    return url.name == "uc" or "usercontent" in url.host

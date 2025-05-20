@@ -55,7 +55,7 @@ class RealDebridCrawler(Crawler):
             return
 
         self_hosted = self.is_self_hosted(original_url)
-        host = original_url.host.lower()  # type: ignore
+        host = original_url.host.lower()
 
         if not self_hosted:
             title = self.create_title(f"files [{host}]")
@@ -83,7 +83,6 @@ class RealDebridCrawler(Crawler):
         await self.handle_file(database_url, scrape_item, filename, ext, debrid_link=debrid_url)
 
     def is_self_hosted(self, url: URL) -> bool:
-        assert url.host
         return any(subdomain in url.host for subdomain in ("download.", "my.")) and self.DOMAIN in url.host
 
     async def get_original_url(self, scrape_item: ScrapeItem) -> AbsoluteHttpURL:

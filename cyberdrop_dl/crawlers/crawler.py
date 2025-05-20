@@ -472,7 +472,6 @@ class Crawler(ABC):
     def register_cache_filter(
         url: URL, filter_fn: Callable[[AnyResponse], bool] | Callable[[AnyResponse], Awaitable[bool]]
     ) -> None:
-        assert url.host
         filters.cache_filter_functions[url.host] = filter_fn
 
 

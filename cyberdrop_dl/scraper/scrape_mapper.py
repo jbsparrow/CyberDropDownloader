@@ -192,11 +192,11 @@ class ScrapeMapper:
     async def send_to_crawler(self, scrape_item: ScrapeItem) -> None:
         """Maps URLs to their respective handlers."""
         scrape_item.url = remove_trailing_slash(scrape_item.url)
-        supported_domain = [key for key in self.existing_crawlers if key in scrape_item.url.host]  # type: ignore
+        supported_domain = [key for key in self.existing_crawlers if key in scrape_item.url.host]
         is_generic = supported_domain == ["."]
         jdownloader_whitelisted = True
         if self.jdownloader_whitelist:
-            jdownloader_whitelisted = any(domain in scrape_item.url.host for domain in self.jdownloader_whitelist)  # type: ignore
+            jdownloader_whitelisted = any(domain in scrape_item.url.host for domain in self.jdownloader_whitelist)
 
         if supported_domain and not is_generic:
             # get most restrictive domain if multiple domain matches
