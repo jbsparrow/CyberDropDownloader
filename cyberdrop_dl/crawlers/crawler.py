@@ -481,7 +481,7 @@ def make_scrape_mapper_keys(cls: type[Crawler] | Crawler) -> tuple[str, ...]:
 
     else:
         hosts = [cls.DOMAIN or cls.primary_base_domain.host]
-    return tuple(host.removeprefix("www.") for host in hosts)
+    return tuple(sorted(host.removeprefix("www.") for host in hosts))
 
 
 def pre_check_scrape_item(scrape_item: ScrapeItem) -> None:

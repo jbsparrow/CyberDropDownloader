@@ -46,6 +46,7 @@ if TYPE_CHECKING:
 
 
 P = ParamSpec("P")
+T = TypeVar("T")
 R = TypeVar("R")
 
 
@@ -530,6 +531,10 @@ def get_size_or_none(path: Path) -> int | None:
 def with_suffix_encoded(url: AnyURL, suffix: str) -> AnyURL:
     name = Path(url.raw_name).with_suffix(suffix)
     return url.parent.joinpath(str(name), encoded=True).with_query(url.query).with_fragment(url.fragment)
+
+
+def sort_dict(map: Mapping[str, T]) -> dict[str, T]:
+    return {key: map[key] for key in sorted(map, key=str.casefold)}
 
 
 log_cyan = partial(log_with_color, style="cyan", level=20)

@@ -5,6 +5,7 @@ import inspect
 import json
 import platform
 from dataclasses import Field, field
+from pathlib import Path
 from time import perf_counter
 from typing import TYPE_CHECKING, Any, Literal, NamedTuple, NoReturn, Protocol, TypeVar
 
@@ -27,6 +28,7 @@ from cyberdrop_dl.utils.args import ParsedArgs
 from cyberdrop_dl.utils.ffmpeg import FFmpeg, get_ffmpeg_version
 from cyberdrop_dl.utils.logger import QueuedLogger, log
 from cyberdrop_dl.utils.transfer import transfer_v5_db_to_v6
+from cyberdrop_dl.utils.utilities import sort_dict
 
 if TYPE_CHECKING:
     import queue
@@ -378,24 +380,48 @@ def update_wiki_supported_sites() -> None:
     from cyberdrop_dl.scraper.scrape_mapper import get_crawlers
 
     table = Table(title="Cyberdrop-DL Supported Sites")
-    for column in ("Crawler", "Primary Base Domain", "Supported Domains", "Supported Paths"):
+    columns = ("Site", "Primary URL", "Supported Domains", "Supported Paths")
+
+    for column in columns:
         table.add_column(column, no_wrap=True)
-    crawlers = sorted(set(get_crawlers().values()), key=lambda x: x.NAME)
+    crawlers = sorted(set(get_crawlers().values()), key=lambda x: x.FOLDER_DOMAIN)
+    rows: list[dict[str, str]] = []
     for crawler in crawlers:
-        supported_paths: list[str] = []
-        for name, paths in crawler.SUPPORTED_PATHS.items():
+        supported_paths: str = ""
+
+        for name, paths in sort_dict(crawler.SUPPORTED_PATHS).items():
             if isinstance(paths, str):
                 paths = [paths]
-            joined_paths = "\n".join([f"    `{p}`" for p in paths])
-            supported_paths.append(f"{name}: \n{joined_paths}")
+            joined_paths = "\n".join([f"- `{p}`" for p in paths])
+            value = f"{name}: \n{joined_paths}"
+            supported_paths += value + "\n"
 
-        paths = "\n".join(supported_paths)
-        supported_domains: list[str] = []
-        domains = crawler.SUPPORTED_HOSTS or [crawler.primary_base_domain.host]
-        joined_domains = "\n".join([f"    `{p}`" for p in domains])
-        supported_domains.append(joined_domains)
+        supported_domains = "\n".join(crawler.SCRAPE_MAPPER_KEYS)
 
-        domains = "\n".join(supported_domains)
-        table.add_row(crawler.NAME, str(crawler.primary_base_domain), domains, paths)
+        row = crawler.FOLDER_DOMAIN, str(crawler.primary_base_domain), supported_domains, supported_paths
+        table.add_row(*row)
+        html_rows = [r.replace("\n", "<br>") for r in row]
+        row_dict: dict[str, str] = dict(zip(columns, html_rows, strict=True))
+        # print(row_dict)
+        rows.append(row_dict)
     print(table)
+    # sys.exit(0)
+    from py_markdown_table.markdown_table import markdown_table
+
+    markdown = (
+        markdown_table(rows)
+        .set_params(
+            row_sep="markdown",
+            padding_width=10,
+            padding_weight="centerright",
+            # multiline=dict.fromkeys(columns, 100),
+            # multiline_delimiter="\n",
+            quote=False,
+        )
+        .get_markdown()
+    )
+    # print(markdown)
+    text = f"# Supported sites\n\nList of sites supported by cyberdrop-dl-patched as of version {__version__}\n\n"
+    file_path = Path(__file__).parents[2] / "supported_sites.md"
+    file_path.write_text(text + markdown + "\n")
     sys.exit(0)
