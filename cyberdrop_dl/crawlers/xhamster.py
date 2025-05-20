@@ -32,8 +32,8 @@ class XhamsterCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Users, creators, videos and galleries": "pending"}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = "a[data-page='next']"
-    DOMAIN = "xhamster"
-    FOLDER_DOMAIN = "xHamster"
+    DOMAIN: ClassVar[str] = "xhamster"
+    FOLDER_DOMAIN: ClassVar[str] = "xHamster"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "gallery" in scrape_item.url.parts:

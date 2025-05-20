@@ -21,8 +21,8 @@ PRIMARY_URL = AbsoluteHttpURL("https://tiktok.com/")
 class TikTokCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"User": "/@", "Video": "/@/video/", "Photo": "/@/photo/"}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    DOMAIN = "tiktok"
-    FOLDER_DOMAIN = "TikTok"
+    DOMAIN: ClassVar[str] = "tiktok"
+    FOLDER_DOMAIN: ClassVar[str] = "TikTok"
 
     def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(1, 10)

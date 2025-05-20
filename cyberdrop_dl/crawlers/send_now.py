@@ -17,8 +17,8 @@ PRIMARY_URL = AbsoluteHttpURL("https://send.now/")
 class SendNowCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Direct links": ""}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    DOMAIN = "send.now"
-    FOLDER_DOMAIN = "SendNow"
+    DOMAIN: ClassVar[str] = "send.now"
+    FOLDER_DOMAIN: ClassVar[str] = "SendNow"
 
     def __post_init__(self) -> None:
         self.got_cookies = False

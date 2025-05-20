@@ -21,8 +21,8 @@ class NudoStarTVCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Model": "/models/..."}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://nudostar.tv/")
     NEXT_PAGE_SELECTOR: ClassVar[str] = "li[class=next] a"
-    DOMAIN = "nudostar.tv"
-    FOLDER_DOMAIN = "NudoStarTV"
+    DOMAIN: ClassVar[str] = "nudostar.tv"
+    FOLDER_DOMAIN: ClassVar[str] = "NudoStarTV"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "models" not in scrape_item.url.parts:

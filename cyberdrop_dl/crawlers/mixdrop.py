@@ -28,8 +28,8 @@ class MixDropCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"File": "/e/"}
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = "mxdrop", "mixdrop"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    DOMAIN = "mixdrop"
-    FOLDER_DOMAIN = "MixDrop"
+    DOMAIN: ClassVar[str] = "mixdrop"
+    FOLDER_DOMAIN: ClassVar[str] = "MixDrop"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if any(p in scrape_item.url.parts for p in ("f", "e")):

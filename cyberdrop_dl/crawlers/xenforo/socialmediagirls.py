@@ -9,8 +9,8 @@ from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
 
 class SocialMediaGirlsCrawler(XenforoCrawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://forums.socialmediagirls.com")
-    DOMAIN = "socialmediagirls"
-    FOLDER_DOMAIN = "SocialMediaGirls"
+    DOMAIN: ClassVar[str] = "socialmediagirls"
+    FOLDER_DOMAIN: ClassVar[str] = "SocialMediaGirls"
     post_selectors = PostSelectors(
         content=Selector("div[class=bbWrapper]"),
         images=Selector("img[class*=bbImage]", "data-src"),

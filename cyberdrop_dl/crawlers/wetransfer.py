@@ -26,8 +26,8 @@ class WeTransferCrawler(Crawler):
     }
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = "wetransfer.com", "we.tl"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://wetransfer.com/")
-    DOMAIN = "wetransfer"
-    FOLDER_DOMAIN = "WeTransfer"
+    DOMAIN: ClassVar[str] = "wetransfer"
+    FOLDER_DOMAIN: ClassVar[str] = "WeTransfer"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "download." in scrape_item.url.host:  # type: ignore

@@ -27,7 +27,7 @@ class FapelloCrawler(Crawler):
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://fapello.su/")
     NEXT_PAGE_SELECTOR: ClassVar[str] = 'div[id="next_page"] a'
-    DOMAIN = "fapello"
+    DOMAIN: ClassVar[str] = "fapello"
 
     def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(5, 1)

@@ -101,7 +101,7 @@ class PkmncardsCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Card": "/card/...", "Set": "/set/...", "Series": "/series/..."}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE
-    DOMAIN = "pkmncards"
+    DOMAIN: ClassVar[str] = "pkmncards"
 
     def __post_init__(self) -> None:
         self.known_sets: dict[str, CardSet] = {}

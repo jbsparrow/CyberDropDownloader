@@ -38,7 +38,7 @@ class MotherlessCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Groups, users, images and videos (NOT Galleries)": "pending"}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = "div.pagination_link > a[rel=next]"
-    DOMAIN = "motherless"
+    DOMAIN: ClassVar[str] = "motherless"
 
     def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(2, 1)

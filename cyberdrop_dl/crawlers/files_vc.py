@@ -18,8 +18,8 @@ API_ENTRYPOINT = AbsoluteHttpURL("https://api.files.vc/api")
 class FilesVcCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Direct links": ""}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://files.vc")
-    DOMAIN = "files.vc"
-    FOLDER_DOMAIN = "FilesVC"
+    DOMAIN: ClassVar[str] = "files.vc"
+    FOLDER_DOMAIN: ClassVar[str] = "FilesVC"
 
     def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(1, 1)

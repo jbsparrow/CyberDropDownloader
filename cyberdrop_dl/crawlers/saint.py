@@ -27,7 +27,7 @@ NOT_FOUND_GIF = "https://saint2.su/assets/notfound.gif"
 class SaintCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Albums": "/a/...", "Video": "/embed/...", "Direct links": ""}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    DOMAIN = "saint"
+    DOMAIN: ClassVar[str] = "saint"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         scrape_item.url = PRIMARY_URL.with_path(scrape_item.url.path)

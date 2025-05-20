@@ -33,8 +33,8 @@ class BestPrettyGirlCrawler(Crawler):
         "Collections": "category",
         "Gallery": "//",
     }
-    DOMAIN = "bestprettygirl.com"
-    FOLDER_DOMAIN = "BestPrettyGirl"
+    DOMAIN: ClassVar[str] = "bestprettygirl.com"
+    FOLDER_DOMAIN: ClassVar[str] = "BestPrettyGirl"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://bestprettygirl.com/")
     next_page = "a.page-numbers.next"
 

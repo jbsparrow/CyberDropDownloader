@@ -33,8 +33,8 @@ class DirtyShipCrawler(Crawler):
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://dirtyship.com")
     NEXT_PAGE_SELECTOR: ClassVar[str] = "a.page-next"
-    DOMAIN = "dirtyship"
-    FOLDER_DOMAIN = "DirtyShip"
+    DOMAIN: ClassVar[str] = "dirtyship"
+    FOLDER_DOMAIN: ClassVar[str] = "DirtyShip"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if any(p in scrape_item.url.parts for p in ("tag", "category")):

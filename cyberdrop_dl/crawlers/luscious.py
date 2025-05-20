@@ -28,7 +28,7 @@ GRAPHQL_QUERIES = {
 class LusciousCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Album": "/albums/..."}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://members.luscious.net")
-    DOMAIN = "luscious"
+    DOMAIN: ClassVar[str] = "luscious"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "albums" not in scrape_item.url.parts or "read" in scrape_item.url.parts:

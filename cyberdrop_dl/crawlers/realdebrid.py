@@ -18,8 +18,8 @@ PRIMARY_URL = AbsoluteHttpURL("https://real-debrid.com")
 
 class RealDebridCrawler(Crawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    DOMAIN = "real-debrid"
-    FOLDER_DOMAIN = "RealDebrid"
+    DOMAIN: ClassVar[str] = "real-debrid"
+    FOLDER_DOMAIN: ClassVar[str] = "RealDebrid"
 
     def __post_init__(self) -> None:
         self.headers = {}

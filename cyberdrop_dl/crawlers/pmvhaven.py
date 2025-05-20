@@ -40,8 +40,8 @@ class PMVHavenCrawler(Crawler):
         "Video": "/video/...",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    DOMAIN = "pmvhaven"
-    FOLDER_DOMAIN = "PMVHaven"
+    DOMAIN: ClassVar[str] = "pmvhaven"
+    FOLDER_DOMAIN: ClassVar[str] = "PMVHaven"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "video" in scrape_item.url.parts:

@@ -42,7 +42,7 @@ class ThreadList(TypedDict):
 class FourChanCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Board": "/", "Thread": "/thread"}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    DOMAIN = "4chan"
+    DOMAIN: ClassVar[str] = "4chan"
 
     def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(3, 10)

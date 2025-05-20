@@ -15,8 +15,8 @@ if TYPE_CHECKING:
 
 class TitsInTopsCrawler(XenforoCrawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://titsintops.com/phpBB2")
-    DOMAIN = "titsintops"
-    FOLDER_DOMAIN = "TitsInTops"
+    DOMAIN: ClassVar[str] = "titsintops"
+    FOLDER_DOMAIN: ClassVar[str] = "TitsInTops"
     post_selectors = PostSelectors(
         images=Selector("a[class*=file-preview]", "href"),
     )

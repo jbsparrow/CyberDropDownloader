@@ -30,7 +30,7 @@ class TokioMotionCrawler(Crawler):
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://www.tokyomotion.net")
     NEXT_PAGE_SELECTOR: ClassVar[str] = "a.prevnext"
-    DOMAIN = "tokyomotion"
+    DOMAIN: ClassVar[str] = "tokyomotion"
 
     def __post_init__(self) -> None:
         self.album_selector = 'a[href^="/album/"]'

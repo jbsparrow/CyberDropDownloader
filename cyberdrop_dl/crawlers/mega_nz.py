@@ -35,8 +35,8 @@ class MegaNzCrawler(Crawler):
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     SKIP_PRE_CHECK: ClassVar[bool] = True
-    DOMAIN = "mega.nz"
-    FOLDER_DOMAIN = "MegaNz"
+    DOMAIN: ClassVar[str] = "mega.nz"
+    FOLDER_DOMAIN: ClassVar[str] = "MegaNz"
 
     def __post_init__(self) -> None:
         self.api = MegaApi(self.manager)

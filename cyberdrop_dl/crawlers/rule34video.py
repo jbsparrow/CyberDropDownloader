@@ -58,8 +58,8 @@ class Rule34VideoCrawler(Crawler):
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = PLAYLIST_NEXT_PAGE_SELECTOR
-    DOMAIN = "rule34video"
-    FOLDER_DOMAIN = "Rule34Video"
+    DOMAIN: ClassVar[str] = "rule34video"
+    FOLDER_DOMAIN: ClassVar[str] = "Rule34Video"
 
     async def async_startup(self) -> None:
         self.set_cookies()

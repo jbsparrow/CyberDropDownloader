@@ -19,8 +19,8 @@ class AcidImgCrawler(ImxToCrawler):
         "Thumbnail": "/upload/...",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    DOMAIN = "acidimg.cc"
-    FOLDER_DOMAIN = "AcidImg"
+    DOMAIN: ClassVar[str] = "acidimg.cc"
+    FOLDER_DOMAIN: ClassVar[str] = "AcidImg"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "i" in scrape_item.url.parts:

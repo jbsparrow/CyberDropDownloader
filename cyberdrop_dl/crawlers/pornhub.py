@@ -108,8 +108,8 @@ class PornHubCrawler(Crawler):
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE
-    DOMAIN = "pornhub"
-    FOLDER_DOMAIN = "PornHub"
+    DOMAIN: ClassVar[str] = "pornhub"
+    FOLDER_DOMAIN: ClassVar[str] = "PornHub"
 
     def __post_init__(self) -> None:
         self._known_profiles_urls: set[AbsoluteHttpURL] = set()

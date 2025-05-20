@@ -38,8 +38,8 @@ class Source(NamedTuple):
 class NoodleMagazineCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Search": "/video/", "Video": "/watch/"}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://noodlemagazine.com")
-    DOMAIN = "noodlemagazine"
-    FOLDER_DOMAIN = "NoodleMagazine"
+    DOMAIN: ClassVar[str] = "noodlemagazine"
+    FOLDER_DOMAIN: ClassVar[str] = "NoodleMagazine"
 
     def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(1, 3)

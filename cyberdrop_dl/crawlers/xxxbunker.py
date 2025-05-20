@@ -35,8 +35,8 @@ PLAYLIST_PARTS = ("search", "categories", "favoritevideos")
 class XXXBunkerCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Video": "/", "Search Results": "/search/..."}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://xxxbunker.com")
-    DOMAIN = "xxxbunker"
-    FOLDER_DOMAIN = "XXXBunker"
+    DOMAIN: ClassVar[str] = "xxxbunker"
+    FOLDER_DOMAIN: ClassVar[str] = "XXXBunker"
     api_download = AbsoluteHttpURL("https://xxxbunker.com/ajax/downloadpopup")
 
     def __post_init__(self) -> None:

@@ -9,8 +9,8 @@ from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
 
 class BellazonCrawler(XenforoCrawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://www.bellazon.com/main/")
-    DOMAIN = "bellazon"
-    FOLDER_DOMAIN = "Bellazon"
+    DOMAIN: ClassVar[str] = "bellazon"
+    FOLDER_DOMAIN: ClassVar[str] = "Bellazon"
     thread_url_part = "topic"
     login_required = False
     post_selectors = PostSelectors(

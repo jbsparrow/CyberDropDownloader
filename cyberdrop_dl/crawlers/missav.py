@@ -35,8 +35,8 @@ PRIMARY_URL = AbsoluteHttpURL("https://missav.ws")
 class MissAVCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Video": "/..."}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    DOMAIN = "missav"
-    FOLDER_DOMAIN = "MissAV"
+    DOMAIN: ClassVar[str] = "missav"
+    FOLDER_DOMAIN: ClassVar[str] = "MissAV"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         return await self.video(scrape_item)

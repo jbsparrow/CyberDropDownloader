@@ -20,8 +20,8 @@ class F95ZoneCrawler(XenforoCrawler):
         number=Selector("a[class=u-concealed]", "href"),
     )
     selectors = XenforoSelectors(posts=post_selectors)
-    DOMAIN = "f95zone"
-    FOLDER_DOMAIN = "F95Zone"
+    DOMAIN: ClassVar[str] = "f95zone"
+    FOLDER_DOMAIN: ClassVar[str] = "F95Zone"
 
     def is_confirmation_link(self, link: URL) -> bool:
         return "masked" in link.parts or super().is_confirmation_link(link)

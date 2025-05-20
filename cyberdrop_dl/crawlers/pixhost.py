@@ -22,8 +22,8 @@ class PixHostCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Gallery": "/gallery/...", "Image": "/show/..."}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     UPDATE_UNSUPPORTED: ClassVar[bool] = True
-    DOMAIN = "pixhost"
-    FOLDER_DOMAIN = "PixHost"
+    DOMAIN: ClassVar[str] = "pixhost"
+    FOLDER_DOMAIN: ClassVar[str] = "PixHost"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if is_cdn(scrape_item.url):

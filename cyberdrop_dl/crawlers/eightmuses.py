@@ -20,8 +20,8 @@ TITLE_PARTS_SELECTOR = "div[class=top-menu-breadcrumb] > ol > li > a"
 class EightMusesCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Album": "/comics/album/..."}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://comics.8muses.com")
-    DOMAIN = "8muses"
-    FOLDER_DOMAIN = "8Muses"
+    DOMAIN: ClassVar[str] = "8muses"
+    FOLDER_DOMAIN: ClassVar[str] = "8Muses"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "album" in scrape_item.url.parts:

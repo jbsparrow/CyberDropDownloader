@@ -31,8 +31,8 @@ class NHentaiCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Collections": '"favorites"', "Gallery": "/g/"}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = "a.next"
-    DOMAIN = "nhentai.net"
-    FOLDER_DOMAIN = "nHentai"
+    DOMAIN: ClassVar[str] = "nhentai.net"
+    FOLDER_DOMAIN: ClassVar[str] = "nHentai"
 
     def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(4, 1)

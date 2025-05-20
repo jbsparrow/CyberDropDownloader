@@ -17,5 +17,5 @@ class ImagePondCrawler(CheveretoCrawler):
         "Direct links": "",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    DOMAIN = "imagepond.net"
-    FOLDER_DOMAIN = "ImagePond"
+    DOMAIN: ClassVar[str] = "imagepond.net"
+    FOLDER_DOMAIN: ClassVar[str] = "ImagePond"

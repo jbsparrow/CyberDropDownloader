@@ -60,7 +60,7 @@ class PorntrexCrawler(Crawler):
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE
-    DOMAIN = "porntrex"
+    DOMAIN: ClassVar[str] = "porntrex"
 
     def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(3, 10)

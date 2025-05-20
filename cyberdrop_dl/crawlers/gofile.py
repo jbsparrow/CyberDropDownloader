@@ -87,8 +87,8 @@ class ApiAlbumResponse(TypedDict):
 class GoFileCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Album": "/d/..."}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    DOMAIN = "gofile"
-    FOLDER_DOMAIN = "GoFile"
+    DOMAIN: ClassVar[str] = "gofile"
+    FOLDER_DOMAIN: ClassVar[str] = "GoFile"
 
     def __post_init__(self) -> None:
         self.api_key = self.manager.config_manager.authentication_data.gofile.api_key

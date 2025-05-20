@@ -61,8 +61,8 @@ class ThisVidCrawler(Crawler):
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = "li.pagination-next > a"
-    DOMAIN = "thisvid"
-    FOLDER_DOMAIN = "ThisVid"
+    DOMAIN: ClassVar[str] = "thisvid"
+    FOLDER_DOMAIN: ClassVar[str] = "ThisVid"
 
     def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(3, 10)

@@ -56,8 +56,8 @@ class VideoInfo(dict): ...
 class SpankBangCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Playlist": "/playlist/", "Video": "/video/"}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    DOMAIN = "spankbang"
-    FOLDER_DOMAIN = "SpankBang"
+    DOMAIN: ClassVar[str] = "spankbang"
+    FOLDER_DOMAIN: ClassVar[str] = "SpankBang"
 
     async def async_startup(self) -> None:
         self.set_cookies()

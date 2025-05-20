@@ -16,8 +16,8 @@ API_ENTRYPOINT = AbsoluteHttpURL("https://api.redgifs.com/")
 class RedGifsCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"User": "/users/", "Video": "/watch/..."}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://redgifs.com/")
-    DOMAIN = "redgifs"
-    FOLDER_DOMAIN = "RedGifs"
+    DOMAIN: ClassVar[str] = "redgifs"
+    FOLDER_DOMAIN: ClassVar[str] = "RedGifs"
 
     def __post_init__(self) -> None:
         self.headers = {}

@@ -32,8 +32,8 @@ class ImgBBCrawler(Crawler):
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = "ibb.co", "imgbb.co"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = "a[data-pagination=next]"
-    DOMAIN = "imgbb"
-    FOLDER_DOMAIN = "ImgBB"
+    DOMAIN: ClassVar[str] = "imgbb"
+    FOLDER_DOMAIN: ClassVar[str] = "ImgBB"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if is_cdn(scrape_item.url):

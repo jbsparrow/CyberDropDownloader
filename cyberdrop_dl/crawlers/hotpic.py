@@ -22,8 +22,8 @@ class HotPicCrawler(Crawler):
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = "hotpic", "2385290.xyz"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://hotpic.cc")
     UPDATE_UNSUPPORTED: ClassVar[bool] = True
-    DOMAIN = "hotpic"
-    FOLDER_DOMAIN = "HotPic"
+    DOMAIN: ClassVar[str] = "hotpic"
+    FOLDER_DOMAIN: ClassVar[str] = "HotPic"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "album" in scrape_item.url.parts:

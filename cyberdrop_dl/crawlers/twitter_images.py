@@ -17,8 +17,8 @@ PRIMARY_URL = AbsoluteHttpURL("https://twimg.com/")
 class TwimgCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Photo": "/..."}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    DOMAIN = "twimg"
-    FOLDER_DOMAIN = "TwitterImages"
+    DOMAIN: ClassVar[str] = "twimg"
+    FOLDER_DOMAIN: ClassVar[str] = "TwitterImages"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         await self.photo(scrape_item)

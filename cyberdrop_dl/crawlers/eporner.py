@@ -70,8 +70,8 @@ class EpornerCrawler(Crawler):
         "Gallery": "/gallery/...",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    DOMAIN = "eporner"
-    FOLDER_DOMAIN = "ePorner"
+    DOMAIN: ClassVar[str] = "eporner"
+    FOLDER_DOMAIN: ClassVar[str] = "ePorner"
     NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:

@@ -24,7 +24,7 @@ class DropboxCrawler(Crawler):
         "**NOTE**": "Folders will be downloaded as a zip file.",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://dropbox.com/")
-    DOMAIN = "dropbox"
+    DOMAIN: ClassVar[str] = "dropbox"
 
     def __post_init__(self) -> None:
         self.download_folders = self.manager.parsed_args.cli_only_args.download_dropbox_folders_as_zip

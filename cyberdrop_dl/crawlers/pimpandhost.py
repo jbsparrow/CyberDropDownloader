@@ -23,8 +23,8 @@ class PimpAndHostCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Album": "/album/...", "Image": "/image/..."}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://pimpandhost.com/")
     NEXT_PAGE_SELECTOR: ClassVar[str] = "li[class=next] a"
-    DOMAIN = "pimpandhost"
-    FOLDER_DOMAIN = "PimpAndHost"
+    DOMAIN: ClassVar[str] = "pimpandhost"
+    FOLDER_DOMAIN: ClassVar[str] = "PimpAndHost"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "album" in scrape_item.url.parts:

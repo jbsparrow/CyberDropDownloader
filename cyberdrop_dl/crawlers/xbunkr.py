@@ -20,8 +20,8 @@ TITLE_SELECTOR = "h1#title"
 class XBunkrCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Albums": "/a/...", "Direct links": ""}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://xbunkr.com")
-    DOMAIN = "xbunkr"
-    FOLDER_DOMAIN = "XBunkr"
+    DOMAIN: ClassVar[str] = "xbunkr"
+    FOLDER_DOMAIN: ClassVar[str] = "XBunkr"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "media" in scrape_item.url.host:

@@ -12,5 +12,5 @@ class Rule34XYZCrawler(Rule34VaultCrawler):
         "Tag": "/...",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://rule34.xyz")
-    DOMAIN = "rule34.xyz"
-    FOLDER_DOMAIN = "Rule34XYZ"
+    DOMAIN: ClassVar[str] = "rule34.xyz"
+    FOLDER_DOMAIN: ClassVar[str] = "Rule34XYZ"

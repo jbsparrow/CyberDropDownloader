@@ -23,8 +23,8 @@ ALBUM_TITLE_SELECTOR = "div[id=gallery-view] h1"
 class ImgBoxCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Album": "/g/...", "Images": "/...", "Direct links": ""}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    DOMAIN = "imgbox"
-    FOLDER_DOMAIN = "ImgBox"
+    DOMAIN: ClassVar[str] = "imgbox"
+    FOLDER_DOMAIN: ClassVar[str] = "ImgBox"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "t" in scrape_item.url.host or "_" in scrape_item.url.name:

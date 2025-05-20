@@ -17,7 +17,7 @@ class NekohouseCrawler(KemonoBaseCrawler):
         "Direct links": "",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://nekohouse.su")
-    DOMAIN = "nekohouse"
+    DOMAIN: ClassVar[str] = "nekohouse"
     SERVICES = "fanbox", "fantia", "fantia_products", "subscribestar", "twitter"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:

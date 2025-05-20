@@ -24,7 +24,7 @@ class ImgurCrawler(Crawler):
         "Direct links": "",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    DOMAIN = "imgur"
+    DOMAIN: ClassVar[str] = "imgur"
 
     def __post_init__(self) -> None:
         self.imgur_client_id = self.manager.config_manager.authentication_data.imgur.client_id

@@ -21,8 +21,8 @@ IMG_SELECTOR = "div#body a > img"
 class ViprImCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Image": "/...", "Thumbnail": "/th/..."}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    DOMAIN = "vipr.im"
-    FOLDER_DOMAIN = "Vipr.im"
+    DOMAIN: ClassVar[str] = "vipr.im"
+    FOLDER_DOMAIN: ClassVar[str] = "Vipr.im"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "th" in scrape_item.url.parts:

@@ -14,5 +14,5 @@ class NudoStarCrawler(XenforoCrawler):
         number=Selector("a[class=u-concealed]", "href"),
     )
     selectors = XenforoSelectors(posts=post_selectors)
-    DOMAIN = "nudostar"
-    FOLDER_DOMAIN = "NudoStar"
+    DOMAIN: ClassVar[str] = "nudostar"
+    FOLDER_DOMAIN: ClassVar[str] = "NudoStar"

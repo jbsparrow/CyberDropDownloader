@@ -20,7 +20,7 @@ PRIMARY_URL = AbsoluteHttpURL("https://imx.to")
 class ImxToCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Image": "/i/...", "Thumbnail": "/t/..."}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    DOMAIN = "imx.to"
+    DOMAIN: ClassVar[str] = "imx.to"
 
     async def async_startup(self) -> None:
         cookies = {"continue": 1}

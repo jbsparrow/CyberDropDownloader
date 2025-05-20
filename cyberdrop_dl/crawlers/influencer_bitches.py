@@ -25,8 +25,8 @@ _SELECTORS = Selectors()
 class InfluencerBitchesCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Model": "/model/..."}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://influencerbitches.com")
-    DOMAIN = "influencerbitches"
-    FOLDER_DOMAIN = "InfluencerBitches"
+    DOMAIN: ClassVar[str] = "influencerbitches"
+    FOLDER_DOMAIN: ClassVar[str] = "InfluencerBitches"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "model" in scrape_item.url.parts:

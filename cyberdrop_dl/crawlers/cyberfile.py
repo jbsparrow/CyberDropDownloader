@@ -9,4 +9,4 @@ from ._yetishare import YetiShareCrawler
 
 class CyberfileCrawler(YetiShareCrawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://cyberfile.me/")
-    DOMAIN = "cyberfile"
+    DOMAIN: ClassVar[str] = "cyberfile"

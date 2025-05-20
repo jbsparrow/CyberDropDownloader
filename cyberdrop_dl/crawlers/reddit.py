@@ -54,7 +54,7 @@ class RedditCrawler(Crawler):
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = "reddit", "redd.it"
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{title}"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    DOMAIN = "reddit"
+    DOMAIN: ClassVar[str] = "reddit"
 
     def __post_init__(self) -> None:
         self.reddit_personal_use_script = self.manager.config_manager.authentication_data.reddit.personal_use_script

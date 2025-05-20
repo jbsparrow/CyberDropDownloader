@@ -10,6 +10,6 @@ from .xenforo import XenforoCrawler
 class SimpCityCrawler(XenforoCrawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://simpcity.su")
     login_required = False
-    DOMAIN = "simpcity"
-    FOLDER_DOMAIN = "SimpCity"
+    DOMAIN: ClassVar[str] = "simpcity"
+    FOLDER_DOMAIN: ClassVar[str] = "SimpCity"
     session_cookie_name = "dontlikebots_user"

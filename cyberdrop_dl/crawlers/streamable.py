@@ -27,7 +27,7 @@ VIDEO_STATUS = {
 class StreamableCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Video": "/..."}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    DOMAIN = "streamable"
+    DOMAIN: ClassVar[str] = "streamable"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         await self.video(scrape_item)

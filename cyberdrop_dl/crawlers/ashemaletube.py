@@ -78,8 +78,8 @@ class AShemaleTubeCrawler(Crawler):
         "Models": "/creators/...",
         "User": "/profiles/...",
     }
-    DOMAIN = "ashemaletube"
-    FOLDER_DOMAIN = "aShemaleTube"
+    DOMAIN: ClassVar[str] = "ashemaletube"
+    FOLDER_DOMAIN: ClassVar[str] = "aShemaleTube"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE
 

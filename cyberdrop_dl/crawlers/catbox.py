@@ -16,8 +16,8 @@ class CatboxCrawler(Crawler):
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = CDN_HOSTS
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Direct links": ""}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://catbox.moe")
-    DOMAIN = "catbox.moe"
-    FOLDER_DOMAIN = "Catbox"
+    DOMAIN: ClassVar[str] = "catbox.moe"
+    FOLDER_DOMAIN: ClassVar[str] = "Catbox"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if any(p == scrape_item.url.host for p in CDN_HOSTS):

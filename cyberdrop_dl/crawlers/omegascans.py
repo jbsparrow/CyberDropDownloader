@@ -30,8 +30,8 @@ class OmegaScansCrawler(Crawler):
         "Direct links": "",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://omegascans.org")
-    DOMAIN = "omegascans"
-    FOLDER_DOMAIN = "OmegaScans"
+    DOMAIN: ClassVar[str] = "omegascans"
+    FOLDER_DOMAIN: ClassVar[str] = "OmegaScans"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "chapter" in scrape_item.url.name:

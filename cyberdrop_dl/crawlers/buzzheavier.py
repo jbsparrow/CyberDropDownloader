@@ -13,8 +13,8 @@ if TYPE_CHECKING:
 class BuzzHeavierCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Direct links": ""}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://buzzheavier.com")
-    DOMAIN = "buzzheavier.com"
-    FOLDER_DOMAIN = "BuzzHeavier"
+    DOMAIN: ClassVar[str] = "buzzheavier.com"
+    FOLDER_DOMAIN: ClassVar[str] = "BuzzHeavier"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         return await self.file(scrape_item)

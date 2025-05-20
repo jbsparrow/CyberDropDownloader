@@ -94,8 +94,8 @@ class OneDriveCrawler(Crawler):
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = SHARE_LINK_HOST, "onedrive.live.com"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://onedrive.com/")
     SKIP_PRE_CHECK: ClassVar[bool] = True  # URLs with not path could be valid
-    DOMAIN = "onedrive"
-    FOLDER_DOMAIN = "OneDrive"
+    DOMAIN: ClassVar[str] = "onedrive"
+    FOLDER_DOMAIN: ClassVar[str] = "OneDrive"
 
     def __post_init__(self) -> None:
         badger_token: str = self.manager.cache_manager.get("onedrive_badger_token") or ""

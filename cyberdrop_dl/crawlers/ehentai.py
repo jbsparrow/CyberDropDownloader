@@ -30,8 +30,8 @@ class EHentaiCrawler(Crawler):
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://e-hentai.org/")
     NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE
-    DOMAIN = "e-hentai"
-    FOLDER_DOMAIN = "E-Hentai"
+    DOMAIN: ClassVar[str] = "e-hentai"
+    FOLDER_DOMAIN: ClassVar[str] = "E-Hentai"
 
     def __post_init__(self) -> None:
         self._warnings_set = False

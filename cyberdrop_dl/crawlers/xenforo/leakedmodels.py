@@ -13,5 +13,5 @@ class LeakedModelsCrawler(XenforoCrawler):
         date=Selector("time", "data-time"),
     )
     selectors = XenforoSelectors(posts=post_selectors)
-    DOMAIN = "leakedmodels"
-    FOLDER_DOMAIN = "LeakedModels"
+    DOMAIN: ClassVar[str] = "leakedmodels"
+    FOLDER_DOMAIN: ClassVar[str] = "LeakedModels"

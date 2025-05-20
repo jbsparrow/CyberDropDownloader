@@ -22,8 +22,8 @@ API_ENTRYPOINT = URL("https://postimg.cc/json")
 class PostImgCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Album": "/gallery/...", "Image": "/...", "Direct links": ""}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://postimages.org/")
-    DOMAIN = "postimg"
-    FOLDER_DOMAIN = "PostImg"
+    DOMAIN: ClassVar[str] = "postimg"
+    FOLDER_DOMAIN: ClassVar[str] = "PostImg"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "i.postimg.cc" in scrape_item.url.host:

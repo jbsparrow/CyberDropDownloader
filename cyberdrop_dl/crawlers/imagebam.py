@@ -23,8 +23,8 @@ PRIMARY_URL = AbsoluteHttpURL("https://www.imagebam.com/")
 class ImageBamCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Album": "/view/...", "Image": "/view/...", "Direct links": ""}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    DOMAIN = "imagebam"
-    FOLDER_DOMAIN = "ImageBam"
+    DOMAIN: ClassVar[str] = "imagebam"
+    FOLDER_DOMAIN: ClassVar[str] = "ImageBam"
 
     async def async_startup(self) -> None:
         self.set_cookies()

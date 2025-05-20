@@ -18,8 +18,8 @@ API_URL = AbsoluteHttpURL("https://iframe.sex.com/api/")
 class SexDotComCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Shorts Profiles": "/shorts/"}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://sex.com")
-    DOMAIN = "sex"
-    FOLDER_DOMAIN = "Sex.com"
+    DOMAIN: ClassVar[str] = "sex"
+    FOLDER_DOMAIN: ClassVar[str] = "Sex.com"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         n_parts = len(scrape_item.url.parts)

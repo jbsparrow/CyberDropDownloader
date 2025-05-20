@@ -32,8 +32,8 @@ class PornPicsCrawler(Crawler):
         "Direct links": "",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    DOMAIN = "pornpics"
-    FOLDER_DOMAIN = "PornPics"
+    DOMAIN: ClassVar[str] = "pornpics"
+    FOLDER_DOMAIN: ClassVar[str] = "PornPics"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         parts_limit = 2 if scrape_item.url.name else 3

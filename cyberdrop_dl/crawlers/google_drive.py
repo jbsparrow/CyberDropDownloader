@@ -72,8 +72,8 @@ class GoogleDriveCrawler(Crawler):
     }
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = "drive.google", "docs.google"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://drive.google.com")
-    DOMAIN = "drive.google"
-    FOLDER_DOMAIN = "GoogleDrive"
+    DOMAIN: ClassVar[str] = "drive.google"
+    FOLDER_DOMAIN: ClassVar[str] = "GoogleDrive"
 
     def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(4, 6)

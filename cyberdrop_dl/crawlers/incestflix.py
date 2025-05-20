@@ -28,8 +28,8 @@ class IncestflixCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Video": "/watch/...", "Tag": "/tag/..."}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://www.incestflix.com")
     NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT
-    DOMAIN = "incestflix"
-    FOLDER_DOMAIN = "IncestFlix"
+    DOMAIN: ClassVar[str] = "incestflix"
+    FOLDER_DOMAIN: ClassVar[str] = "IncestFlix"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "watch" in scrape_item.url.parts:

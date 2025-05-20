@@ -32,8 +32,8 @@ class Rule34VaultCrawler(Crawler):
         "Tag": "/...",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://rule34vault.com")
-    DOMAIN = "rule34vault"
-    FOLDER_DOMAIN = "Rule34Vault"
+    DOMAIN: ClassVar[str] = "rule34vault"
+    FOLDER_DOMAIN: ClassVar[str] = "Rule34Vault"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "post" in scrape_item.url.parts:

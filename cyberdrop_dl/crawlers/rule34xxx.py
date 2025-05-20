@@ -27,8 +27,8 @@ class Rule34XXXCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"File": "?id=...", "Tags": "?tags=..."}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://rule34.xxx")
     NEXT_PAGE_SELECTOR: ClassVar[str] = "a[alt=next]"
-    DOMAIN = "rule34.xxx"
-    FOLDER_DOMAIN = "Rule34XXX"
+    DOMAIN: ClassVar[str] = "rule34.xxx"
+    FOLDER_DOMAIN: ClassVar[str] = "Rule34XXX"
 
     async def async_startup(self) -> None:
         self.set_cookies()

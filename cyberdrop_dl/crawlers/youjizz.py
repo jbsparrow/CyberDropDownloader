@@ -41,8 +41,8 @@ class VideoInfo(dict): ...
 class YouJizzCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Video": "/video/embed/"}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    DOMAIN = "youjizz"
-    FOLDER_DOMAIN = "YouJizz"
+    DOMAIN: ClassVar[str] = "youjizz"
+    FOLDER_DOMAIN: ClassVar[str] = "YouJizz"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if any(p in scrape_item.url.parts for p in ("videos", "embed")):

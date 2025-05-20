@@ -20,8 +20,8 @@ ALBUM_SELECTOR = "main div.auto-rows-max a"
 class BunkrAlbumsIOCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Search": "/s?search=..."}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://bunkr-albums.io/")
-    DOMAIN = "bunkr-albums.io"
-    FOLDER_DOMAIN = "Bunkr-Albums.io"
+    DOMAIN: ClassVar[str] = "bunkr-albums.io"
+    FOLDER_DOMAIN: ClassVar[str] = "Bunkr-Albums.io"
     NEXT_PAGE_SELECTOR: ClassVar[str] = "nav:last-of-type a.ic-arrow-right"
     SKIP_PRE_CHECK: ClassVar[bool] = True
 

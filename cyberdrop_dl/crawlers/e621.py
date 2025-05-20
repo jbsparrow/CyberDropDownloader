@@ -26,8 +26,8 @@ class E621Crawler(Crawler):
         "Pools": "/pools/...",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    DOMAIN = "e621.net"
-    FOLDER_DOMAIN = "E621"
+    DOMAIN: ClassVar[str] = "e621.net"
+    FOLDER_DOMAIN: ClassVar[str] = "E621"
 
     def __post_init__(self) -> None:
         self.headers = {"User-Agent": f"CyberDrop-DL/{__version__} (by B05FDD249DF29ED3)"}

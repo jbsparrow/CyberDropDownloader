@@ -25,7 +25,7 @@ class CoomerCrawler(KemonoBaseCrawler):
         "Direct links": "",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    DOMAIN = "coomer"
+    DOMAIN: ClassVar[str] = "coomer"
     API_ENTRYPOINT = AbsoluteHttpURL("https://coomer.su/api/v1")
     SERVICES = "onlyfans", "fansly"
 

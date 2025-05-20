@@ -43,8 +43,8 @@ class DoodStreamCrawler(Crawler):
     )
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://doodstream.com/")
     UPDATE_UNSUPPORTED: ClassVar[bool] = True
-    DOMAIN = "doodstream"
-    FOLDER_DOMAIN = "DoodStream"
+    DOMAIN: ClassVar[str] = "doodstream"
+    FOLDER_DOMAIN: ClassVar[str] = "DoodStream"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "e" in scrape_item.url.parts:

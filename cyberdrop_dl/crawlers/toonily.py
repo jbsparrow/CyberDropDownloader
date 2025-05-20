@@ -24,7 +24,7 @@ class ToonilyCrawler(Crawler):
         "Direct links": "",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://toonily.com")
-    DOMAIN = "toonily"
+    DOMAIN: ClassVar[str] = "toonily"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "chapter" in scrape_item.url.name:

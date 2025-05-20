@@ -27,8 +27,8 @@ class SendVidCrawler(Crawler):
         "Direct links": "",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    DOMAIN = "sendvid"
-    FOLDER_DOMAIN = "SendVid"
+    DOMAIN: ClassVar[str] = "sendvid"
+    FOLDER_DOMAIN: ClassVar[str] = "SendVid"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         scrape_item.url = self.get_streaming_url(scrape_item.url)

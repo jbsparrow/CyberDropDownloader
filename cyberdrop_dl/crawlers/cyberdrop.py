@@ -35,7 +35,7 @@ class CyberdropCrawler(Crawler):
         "Direct links": "",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    DOMAIN = "cyberdrop"
+    DOMAIN: ClassVar[str] = "cyberdrop"
 
     def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(1, 2)

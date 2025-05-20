@@ -22,8 +22,8 @@ class RealBooruCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"File": "?id=...", "Tags": "?tags=..."}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://realbooru.com")
     NEXT_PAGE_SELECTOR: ClassVar[str] = "a[alt=next]"
-    DOMAIN = "realbooru"
-    FOLDER_DOMAIN = "RealBooru"
+    DOMAIN: ClassVar[str] = "realbooru"
+    FOLDER_DOMAIN: ClassVar[str] = "RealBooru"
 
     async def async_startup(self) -> None:
         cookies = {"resize-original": "1"}

@@ -17,8 +17,8 @@ class CelebForumCrawler(XenforoCrawler):
         images=Selector("a[class*=js-lbImage]", "href"),
     )
     selectors = XenforoSelectors(posts=post_selectors)
-    DOMAIN = "celebforum"
-    FOLDER_DOMAIN = "CelebForum"
+    DOMAIN: ClassVar[str] = "celebforum"
+    FOLDER_DOMAIN: ClassVar[str] = "CelebForum"
 
     def filter_link(self, link: URL) -> URL | None:
         if link.host == self.PRIMARY_URL.host:

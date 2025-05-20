@@ -40,8 +40,8 @@ class JPG5Crawler(CheveretoCrawler):
         "jpg4.su",
         "host.church",
     )
-    DOMAIN = "jpg5.su"
-    FOLDER_DOMAIN = "JPG5"
+    DOMAIN: ClassVar[str] = "jpg5.su"
+    FOLDER_DOMAIN: ClassVar[str] = "JPG5"
 
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://jpg5.su")
 

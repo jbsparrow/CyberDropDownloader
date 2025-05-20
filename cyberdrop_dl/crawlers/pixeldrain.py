@@ -22,8 +22,8 @@ JS_SELECTOR = 'script:contains("window.initial_node")'
 class PixelDrainCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"File": "/u/...", "Folder": "/l/..."}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://pixeldrain.com")
-    DOMAIN = "pixeldrain"
-    FOLDER_DOMAIN = "PixelDrain"
+    DOMAIN: ClassVar[str] = "pixeldrain"
+    FOLDER_DOMAIN: ClassVar[str] = "PixelDrain"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "l" in scrape_item.url.parts:

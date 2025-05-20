@@ -25,7 +25,7 @@ DATE_SELECTOR = "ul[class=details] li span"
 class MediaFireCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"File": "/file/...", "Folder": "/folder/..."}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://www.mediafire.com/")
-    DOMAIN = "mediafire"
+    DOMAIN: ClassVar[str] = "mediafire"
 
     def __post_init__(self) -> None:
         self.api = MediaFireApi()
