@@ -9,8 +9,6 @@ from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
 if TYPE_CHECKING:
     from yarl import URL
 
-    from cyberdrop_dl.managers.manager import Manager
-
 
 class CelebForumCrawler(XenforoCrawler):
     primary_base_domain = AbsoluteHttpURL("https://celebforum.to")
@@ -19,10 +17,8 @@ class CelebForumCrawler(XenforoCrawler):
         images=Selector("a[class*=js-lbImage]", "href"),
     )
     selectors = XenforoSelectors(posts=post_selectors)
-    domain = "celebforum"
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, self.DOMAIN, "CelebForum")
+    DOMAIN = "celebforum"
+    FOLDER_DOMAIN = "CelebForum"
 
     def filter_link(self, link: URL) -> URL | None:
         if link.host == self.primary_base_domain.host:

@@ -23,7 +23,6 @@ if TYPE_CHECKING:
     from aiohttp_client_cache.response import AnyResponse
     from yarl import URL
 
-    from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 
 HTTP_URL_REGEX_STR = r"https?://(www\.)?[-a-zA-Z0-9@:%._+~#=]{2,256}\.[a-z]{2,12}\b([-a-zA-Z0-9@:%_+.~#?&/=]*)"
@@ -109,7 +108,7 @@ class ForumThreadPage:
     posts: Sequence[Tag]
 
 
-class XenforoCrawler(Crawler):
+class XenforoCrawler(Crawler, is_abc=True):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
         "Attachments": ("/attachments/...", "/data/..."),
         "Threads": ("/threads/<thread_name>", "/posts/<post_id>", "/goto/<post_id>"),
@@ -121,12 +120,10 @@ class XenforoCrawler(Crawler):
     thread_url_part = "threads"
     session_cookie_name = "xf_user"
 
-    def __init__(self, manager: Manager, site: str, folder_domain: str | None = None) -> None:
-        super().__init__(manager, site, folder_domain)
-        assert self.primary_base_domain, "Subclasses must override primary_base_domain"
-        self.attachment_url_parts = ["attachments", "data"]
-        self.attachment_url_hosts = ["smgmedia", "attachments.f95zone"]
-        self.logged_in = False
+    ATTACHMENT_URL_PARTS = "attachments", "data"
+    ATTACHMENT_HOSTS = "smgmedia", "attachments.f95zone"
+
+    def __post_init__(self) -> None:
         self.scraped_threads = set()
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
@@ -324,8 +321,8 @@ class XenforoCrawler(Crawler):
     def is_attachment(self, link: URL) -> bool:
         if not link:
             return False
-        parts = self.attachment_url_parts
-        hosts = self.attachment_url_hosts
+        parts = self.ATTACHMENT_URL_PARTS
+        hosts = self.ATTACHMENT_HOSTS
         return any(p in link.parts for p in parts) or (link.host and any(h in link.host for h in hosts))  # type: ignore
 
     @is_attachment.register

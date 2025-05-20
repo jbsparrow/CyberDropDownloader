@@ -11,22 +11,17 @@ from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
 if TYPE_CHECKING:
     from bs4 import Tag
 
-    from cyberdrop_dl.managers.manager import Manager
-
 
 class TitsInTopsCrawler(XenforoCrawler):
     primary_base_domain = AbsoluteHttpURL("https://titsintops.com/phpBB2")
-    domain = "titsintops"
+    DOMAIN = "titsintops"
+    FOLDER_DOMAIN = "TitsInTops"
     post_selectors = PostSelectors(
         images=Selector("a[class*=file-preview]", "href"),
     )
     selectors = XenforoSelectors(posts=post_selectors)
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, self.DOMAIN, "TitsInTops")
-        self.attachment_url_part = ["attachments", "data"]
-
-    def filter_link(self, link: URL):
+    def filter_link(self, link: URL) -> URL:
         return URL(
             str(link)
             .replace("index.php%3F", "index.php/")
@@ -34,7 +29,7 @@ class TitsInTopsCrawler(XenforoCrawler):
             .replace("index.php/goto", "index.php?goto")
         )
 
-    def pre_filter_link(self, link):
+    def pre_filter_link(self, link) -> URL:
         return URL(str(link).replace("index.php?", "index.php/").replace("index.php%3F", "index.php/"))
 
     def is_valid_post_link(self, link_obj: Tag) -> bool:

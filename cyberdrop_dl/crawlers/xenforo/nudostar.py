@@ -1,13 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from cyberdrop_dl.types import AbsoluteHttpURL
 
 from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
-
-if TYPE_CHECKING:
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class NudoStarCrawler(XenforoCrawler):
@@ -17,7 +12,5 @@ class NudoStarCrawler(XenforoCrawler):
         number=Selector("a[class=u-concealed]", "href"),
     )
     selectors = XenforoSelectors(posts=post_selectors)
-    domain = "nudostar"
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, self.DOMAIN, "NudoStar")
+    DOMAIN = "nudostar"
+    FOLDER_DOMAIN = "NudoStar"

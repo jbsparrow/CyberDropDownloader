@@ -1,18 +1,16 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import ClassVar
 
 from cyberdrop_dl.types import AbsoluteHttpURL
 
 from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
 
-if TYPE_CHECKING:
-    from cyberdrop_dl.managers.manager import Manager
-
 
 class AllPornComixCrawler(XenforoCrawler):
     primary_base_domain = AbsoluteHttpURL("https://forum.allporncomix.com")
-    domain = "allporncomix"
+    DOMAIN: ClassVar[str] = "allporncomix"
+    FOLDER_DOMAIN: ClassVar[str] = "AllPornComix"
     login_required = False
     post_selectors = PostSelectors(
         content=Selector("div[class=bbWrapper]"),
@@ -21,6 +19,3 @@ class AllPornComixCrawler(XenforoCrawler):
         attachments=Selector("section[class=message-attachments] .attachmentList .file .file-preview", "href"),
     )
     selectors = XenforoSelectors(posts=post_selectors)
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, self.DOMAIN, "AllPornComix")

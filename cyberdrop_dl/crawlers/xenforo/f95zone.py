@@ -11,7 +11,6 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class F95ZoneCrawler(XenforoCrawler):
@@ -21,10 +20,8 @@ class F95ZoneCrawler(XenforoCrawler):
         number=Selector("a[class=u-concealed]", "href"),
     )
     selectors = XenforoSelectors(posts=post_selectors)
-    domain = "f95zone"
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, self.DOMAIN, "F95Zone")
+    DOMAIN = "f95zone"
+    FOLDER_DOMAIN = "F95Zone"
 
     def is_confirmation_link(self, link: URL) -> bool:
         return "masked" in link.parts or super().is_confirmation_link(link)

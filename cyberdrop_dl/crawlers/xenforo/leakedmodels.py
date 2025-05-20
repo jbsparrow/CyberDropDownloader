@@ -1,13 +1,8 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from cyberdrop_dl.types import AbsoluteHttpURL
 
 from .xenforo import PostSelectors, Selector, XenforoCrawler, XenforoSelectors
-
-if TYPE_CHECKING:
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class LeakedModelsCrawler(XenforoCrawler):
@@ -16,7 +11,5 @@ class LeakedModelsCrawler(XenforoCrawler):
         date=Selector("time", "data-time"),
     )
     selectors = XenforoSelectors(posts=post_selectors)
-    domain = "leakedmodels"
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, self.DOMAIN, "LeakedModels")
+    DOMAIN = "leakedmodels"
+    FOLDER_DOMAIN = "LeakedModels"
