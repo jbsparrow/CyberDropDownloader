@@ -14,18 +14,19 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
+PRIMARY_URL = AbsoluteHttpURL("https://wetransfer.com/")
 API_ENTRYPOINT = AbsoluteHttpURL("https://wetransfer.com/api/v4/transfers")
 
 
 class WeTransferCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Public link": "wetransfer.com//",
-        "Share Link": "wetransfer.com///",
-        "Short Link": "we.tl/",
+        "Public link": "wetransfer.com/<file_id>/<security_hash>",
+        "Share Link": "wetransfer.com/<file_id>/<recipient_id>/<security_hash>",
+        "Short Link": "we.tl/<id>",
         "Direct links": "download.wetransfer.com/...",
     }
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = "wetransfer.com", "we.tl"
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://wetransfer.com/")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "wetransfer"
     FOLDER_DOMAIN: ClassVar[str] = "WeTransfer"
 

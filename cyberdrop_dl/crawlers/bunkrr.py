@@ -123,9 +123,9 @@ class AlbumItem:
 
 class BunkrrCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Albums": "/a/...",
-        "Videos": "/v/...",
-        "Others": "/f/...",
+        "Album": "/a/...",
+        "Video": "/v/...",
+        "File": "/f/...",
         "Direct links": "",
     }
     DATABASE_PRIMARY_HOST: ClassVar[str] = "bunkr.site"

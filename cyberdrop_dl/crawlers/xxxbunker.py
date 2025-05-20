@@ -19,6 +19,9 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
+PRIMARY_URL = AbsoluteHttpURL("https://xxxbunker.com")
+DOWNLOAD_URL = AbsoluteHttpURL("https://xxxbunker.com/ajax/downloadpopup")
+
 DATE_PATTERN = re.compile(r"(\d+)\s*(weeks?|days?|hours?|minutes?|seconds?)", re.IGNORECASE)
 MIN_RATE_LIMIT = 4  # per minute
 MAX_WAIT = 120  # seconds
@@ -33,11 +36,10 @@ PLAYLIST_PARTS = ("search", "categories", "favoritevideos")
 
 
 class XXXBunkerCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Video": "/", "Search Results": "/search/..."}
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://xxxbunker.com")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Video": "/<video_id>", "Search": "/search/..."}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "xxxbunker"
     FOLDER_DOMAIN: ClassVar[str] = "XXXBunker"
-    api_download = AbsoluteHttpURL("https://xxxbunker.com/ajax/downloadpopup")
 
     def __post_init__(self) -> None:
         self.rate_limit = self.wait_time = 10
@@ -90,7 +92,7 @@ class XXXBunkerCrawler(Crawler):
             data = {"internalid": internal_id}
 
             async with self.request_limiter:
-                json_resp = await self.client.post_data(self.DOMAIN, self.api_download, data=data)
+                json_resp = await self.client.post_data(self.DOMAIN, DOWNLOAD_URL, data=data)
 
             video_soup = BeautifulSoup(json_resp["floater"], "html.parser")
             link_str: str = video_soup.select_one(DOWNLOAD_URL_SELECTOR)["href"]  # type: ignore

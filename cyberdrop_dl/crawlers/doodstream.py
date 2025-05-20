@@ -28,9 +28,11 @@ _SELECTORS = Selectors()
 API_MD5_ENTRYPOINT = URL("https://doodstream.com/pass_md5/")
 TOKEN_CHARS = string.ascii_letters + string.digits
 
+PRIMARY_URL = AbsoluteHttpURL("https://doodstream.com/")
+
 
 class DoodStreamCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Video": "/e/"}
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Video": "/e/<video_id>"}
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = (
         "vidply.com",
         "dood.re",
@@ -41,7 +43,7 @@ class DoodStreamCrawler(Crawler):
         "do7go.com",
         "all3do.com",
     )
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://doodstream.com/")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     UPDATE_UNSUPPORTED: ClassVar[bool] = True
     DOMAIN: ClassVar[str] = "doodstream"
     FOLDER_DOMAIN: ClassVar[str] = "DoodStream"

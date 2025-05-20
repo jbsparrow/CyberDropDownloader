@@ -9,10 +9,12 @@ from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_fr
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
+PRIMARY_URL = AbsoluteHttpURL("https://buzzheavier.com")
+
 
 class BuzzHeavierCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Direct links": ""}
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://buzzheavier.com")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "buzzheavier.com"
     FOLDER_DOMAIN: ClassVar[str] = "BuzzHeavier"
 

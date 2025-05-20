@@ -28,7 +28,10 @@ LOGIN_PAGE_SELECTOR = "input.id_username_or_email"
 
 
 class NHentaiCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Collections": '"favorites"', "Gallery": "/g/"}
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Collections": ("favorites", "tag", "search", "parody", "group", "character", "artist"),
+        "Gallery": "/g/<gallery_id>",
+    }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = "a.next"
     DOMAIN: ClassVar[str] = "nhentai.net"

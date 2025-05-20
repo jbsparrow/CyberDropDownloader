@@ -62,16 +62,19 @@ class GoogleDriveFolder:
     items: tuple[str]
 
 
+PRIMARY_URL = AbsoluteHttpURL("https://drive.google.com")
+
+
 class GoogleDriveCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Docs": "/document/d/",
-        "Files": "/d/",
-        "Folders": "/drive/folders/",
-        "Sheets": "/spreadsheets/d/",
-        "Slides": "/presentation/d/",
+        "Docs": "/document/d/<file_id>",
+        "Files": "/d/<file_id>",
+        "Folders": "/drive/folders/<folder_id>",
+        "Sheets": "/spreadsheets/d/<file_id>",
+        "Slides": "/presentation/d/<file_id>",
     }
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = "drive.google", "docs.google"
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://drive.google.com")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "drive.google"
     FOLDER_DOMAIN: ClassVar[str] = "GoogleDrive"
 

@@ -27,7 +27,7 @@ class PornPicsCrawler(Crawler):
         "Channels": "/channels/...",
         "Gallery": "/galleries/...",
         "Pornstars": "/pornstars/...",
-        "Search": "/?q=",
+        "Search": "/?q=<query>",
         "Tags": "/tags/...",
         "Direct links": "",
     }

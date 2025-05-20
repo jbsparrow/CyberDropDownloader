@@ -42,8 +42,8 @@ _SELECTOR = Selectors()
 class YetiShareCrawler(Crawler, is_abc=True):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Files": "/...",
-        "Folders": "/folder/...",
-        "Shared": "/shared/...",
+        "Folder": "/folder/...",
+        "Shared folder": "/shared/...",
     }
 
     def __init_subclass__(cls, **kwargs) -> None:

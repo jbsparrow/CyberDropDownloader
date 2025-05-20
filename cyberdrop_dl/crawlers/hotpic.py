@@ -16,11 +16,13 @@ IMAGE_SELECTOR = "img[id*=main-image]"
 VIDEO_SELECTOR = "video > source"
 ALBUM_ITEM_SELECTOR = "a[class*=spotlight]"
 
+PRIMARY_URL = AbsoluteHttpURL("https://hotpic.cc")
+
 
 class HotPicCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Album": "/album/...", "Image": "/i/..."}
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = "hotpic", "2385290.xyz"
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://hotpic.cc")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     UPDATE_UNSUPPORTED: ClassVar[bool] = True
     DOMAIN: ClassVar[str] = "hotpic"
     FOLDER_DOMAIN: ClassVar[str] = "HotPic"

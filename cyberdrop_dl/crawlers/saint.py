@@ -25,7 +25,11 @@ NOT_FOUND_GIF = "https://saint2.su/assets/notfound.gif"
 
 
 class SaintCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Albums": "/a/...", "Video": "/embed/...", "Direct links": ""}
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Album": "/a/...",
+        "Video": ("/embed/...", "/d/..."),
+        "Direct links": "",
+    }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "saint"
 

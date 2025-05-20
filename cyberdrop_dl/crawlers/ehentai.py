@@ -22,13 +22,15 @@ class Selectors:
 
 _SELECTORS = Selectors()
 
+PRIMARY_URL = AbsoluteHttpURL("https://e-hentai.org/")
+
 
 class EHentaiCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Albums": "/g/...",
-        "Files": "/s/...",
+        "Album": "/g/...",
+        "File": "/s/...",
     }
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://e-hentai.org/")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE
     DOMAIN: ClassVar[str] = "e-hentai"
     FOLDER_DOMAIN: ClassVar[str] = "E-Hentai"

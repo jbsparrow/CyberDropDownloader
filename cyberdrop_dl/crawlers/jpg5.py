@@ -22,7 +22,7 @@ class JPG5Crawler(CheveretoCrawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Album": "/a/...",
         "Image": "/img/...",
-        "Profiles": "/...",
+        "Profile": "/<user_name>",
         "Direct links": "",
     }
 

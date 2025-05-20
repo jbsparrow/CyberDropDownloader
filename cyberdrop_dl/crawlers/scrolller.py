@@ -39,12 +39,13 @@ DEFAULT_QUERY = """
     }
 """
 
+PRIMARY_URL = AbsoluteHttpURL("https://scrolller.com")
 API_ENTRYPOINT = AbsoluteHttpURL("https://api.scrolller.com/api/v2/graphql")
 
 
 class ScrolllerCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Subreddit": "/r/..."}
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://scrolller.com")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "scrolller"
 
     def __post_init__(self) -> None:

@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.types import AbsoluteHttpURL
+    from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 
 
 ITEM_DESCRIPTION_SELECTOR = "p[class*=description-meta]"
@@ -46,6 +46,13 @@ def sort_by_new(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
 
 
 class CheveretoCrawler(Crawler, is_abc=True):
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Album": "/a/...",
+        "Image": "/img/...",
+        "Profiles": "/...",
+        "Video": "/video/..",
+        "Direct links": "",
+    }
     NEXT_PAGE_SELECTOR: ClassVar[str] = "a[data-pagination=next]"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:

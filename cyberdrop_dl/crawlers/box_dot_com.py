@@ -43,13 +43,15 @@ APP_DOMAIN = "app.box.com"
 DOWNLOAD_URL_BASE = AbsoluteHttpURL("https://app.box.com/index.php?rm=box_download_shared_file")
 JS_SELECTOR = "script:contains('Box.postStreamData')"
 
+PRIMARY_URL = AbsoluteHttpURL("https://www.box.com")
+
 
 class BoxDotComCrawler(Crawler):
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = (APP_DOMAIN,)
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"File or Folder": "app.box.com/s?sh=<share_code>"}
     DOMAIN: ClassVar[str] = "box.com"
     FOLDER_DOMAIN: ClassVar[str] = "Box"
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://box.com")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.host == APP_DOMAIN and ("s" in scrape_item.url.parts or scrape_item.url.query.get("s")):

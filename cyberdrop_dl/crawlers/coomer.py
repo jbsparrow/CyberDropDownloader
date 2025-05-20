@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL
 
 from ._kemono_base import KemonoBaseCrawler, UserPost
 
@@ -17,13 +17,6 @@ PRIMARY_URL = AbsoluteHttpURL("https://coomer.su")
 
 
 class CoomerCrawler(KemonoBaseCrawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Model": "/<service>/user/",
-        "Favorites": "/favorites",
-        "Search": "/search?...",
-        "Individual Post": "/user/post/",
-        "Direct links": "",
-    }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "coomer"
     API_ENTRYPOINT = AbsoluteHttpURL("https://coomer.su/api/v1")

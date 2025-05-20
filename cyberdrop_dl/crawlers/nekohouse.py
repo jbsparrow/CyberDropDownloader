@@ -12,8 +12,8 @@ if TYPE_CHECKING:
 
 class NekohouseCrawler(KemonoBaseCrawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Model": "/<service>/user/",
-        "Individual Post": "/user/post/",
+        "Model": "/<service>/user/<user>",
+        "Individual Post": "/<service>/<user>/post/...",
         "Direct links": "",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://nekohouse.su")

@@ -17,18 +17,19 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 DATE_PATTERN = re.compile(r"(\d+)\s*(weeks?|days?|hours?|minutes?|seconds?)", re.IGNORECASE)
+PRIMARY_URL = AbsoluteHttpURL("https://www.tokyomotion.net")
 
 
 class TokioMotionCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Albums": "/user//albums/",
-        "Photo": "/photo/",
-        "Playlist": "/user//favorite/videos",
-        "Profiles": "/user/",
+        "Albums": ("/user/<user>/albums/", "/album/<album_id>"),
+        "Photo": ("/photo/<photo_id>", "/user/<user>/favorite/photos"),
+        "Playlist": "/user/<user>/favorite/videos",
+        "Profiles": "/user/<user>",
         "Search Results": "/search?...",
-        "Video": "/video/",
+        "Video": "/video/<video_id>",
     }
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://www.tokyomotion.net")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = "a.prevnext"
     DOMAIN: ClassVar[str] = "tokyomotion"
 

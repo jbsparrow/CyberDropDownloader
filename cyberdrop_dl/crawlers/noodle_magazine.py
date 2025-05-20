@@ -35,9 +35,12 @@ class Source(NamedTuple):
         return Source(resolution, source_dict["file"])
 
 
+PRIMARY_URL = AbsoluteHttpURL("https://noodlemagazine.com")
+
+
 class NoodleMagazineCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Search": "/video/", "Video": "/watch/"}
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://noodlemagazine.com")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Search": "/video/<search_query", "Video": "/watch/<video_id>"}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "noodlemagazine"
     FOLDER_DOMAIN: ClassVar[str] = "NoodleMagazine"
 

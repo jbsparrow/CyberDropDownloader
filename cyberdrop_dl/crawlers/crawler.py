@@ -133,8 +133,8 @@ class Crawler(ABC):
         cls.INFO = CrawlerInfo(cls.FOLDER_DOMAIN, cls.PRIMARY_URL, cls.SCRAPE_MAPPER_KEYS, cls.SUPPORTED_PATHS)
 
         for path_name, paths in cls.SUPPORTED_PATHS.items():
-            assert path_name
-            assert isinstance(paths, str | tuple)
+            assert path_name, f"{cls.__name__}, Invalid path: {path_name}"
+            assert isinstance(paths, str | tuple), f"{cls.__name__}, Invalid path {path_name}: {type(paths)}"
             if path_name != "Direct links":
                 assert paths, f"{cls.__name__} has not paths for {path_name}"
 

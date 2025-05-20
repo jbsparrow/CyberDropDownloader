@@ -15,11 +15,12 @@ if TYPE_CHECKING:
 
 IMAGE_SELECTOR = "a[class=image]"
 TITLE_SELECTOR = "h1#title"
+PRIMARY_URL = AbsoluteHttpURL("https://xbunkr.com")
 
 
 class XBunkrCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Albums": "/a/...", "Direct links": ""}
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://xbunkr.com")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "xbunkr"
     FOLDER_DOMAIN: ClassVar[str] = "XBunkr"
 

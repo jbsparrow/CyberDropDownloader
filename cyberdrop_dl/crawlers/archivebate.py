@@ -26,14 +26,15 @@ class Selectors:
 
 
 _SELECTORS = Selectors()
+PRIMARY_URL = AbsoluteHttpURL("https://www.archivebate.store")
 
 
 class ArchiveBateCrawler(MixDropCrawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Video": "/watch/"}
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Video": "/watch/<video_id>"}
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = ()
     DOMAIN: ClassVar[str] = "archivebate"
     FOLDER_DOMAIN: ClassVar[str] = "ArchiveBate"
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://www.archivebate.store")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     next_page = _SELECTORS.NEXT_PAGE
 
     def __post_init__(self) -> None:

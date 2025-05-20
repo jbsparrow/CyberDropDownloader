@@ -19,7 +19,11 @@ PRIMARY_URL = AbsoluteHttpURL("https://tiktok.com/")
 
 
 class TikTokCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"User": "/@", "Video": "/@/video/", "Photo": "/@/photo/"}
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "User": "/@<user>",
+        "Video": "/@<user>/video/<video_id>",
+        "Photo": "/@<user>/photo/<photo_id>",
+    }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "tiktok"
     FOLDER_DOMAIN: ClassVar[str] = "TikTok"

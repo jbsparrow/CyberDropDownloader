@@ -17,7 +17,6 @@ PRIMARY_URL = AbsoluteHttpURL("https://sendvid.com/")
 VIDEO_SRC_SELECTOR = "video > source#video_source"
 TITLE_SELECTOR = "p.video-title"
 REQUIRED_QUERY_PARAMS = "validfrom", "validto", "rate", "ip", "hash"
-MAIN_HOST = "sendvid.com"
 
 
 class SendVidCrawler(Crawler):
@@ -77,4 +76,4 @@ class SendVidCrawler(Crawler):
 
 
 def is_cdn(url: AbsoluteHttpURL) -> bool:
-    return all(p in url.host for p in (MAIN_HOST, "."))
+    return all(p in url.host for p in (PRIMARY_URL.host, "."))

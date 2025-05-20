@@ -22,6 +22,8 @@ JS_SELECTOR = "script:contains('series_id')"
 DATE_JS_SELECTOR = "script:contains('created')"
 IMAGE_SELECTOR = "p[class*=flex] img"
 
+PRIMARY_URL = AbsoluteHttpURL("https://omegascans.org")
+
 
 class OmegaScansCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
@@ -29,7 +31,7 @@ class OmegaScansCrawler(Crawler):
         "Series": "/series/...",
         "Direct links": "",
     }
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://omegascans.org")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "omegascans"
     FOLDER_DOMAIN: ClassVar[str] = "OmegaScans"
 

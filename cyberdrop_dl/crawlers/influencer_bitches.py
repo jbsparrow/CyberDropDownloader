@@ -21,10 +21,12 @@ class Selectors:
 
 _SELECTORS = Selectors()
 
+PRIMARY_URL = AbsoluteHttpURL("https://influencerbitches.com")
+
 
 class InfluencerBitchesCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Model": "/model/..."}
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://influencerbitches.com")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "influencerbitches"
     FOLDER_DOMAIN: ClassVar[str] = "InfluencerBitches"
 

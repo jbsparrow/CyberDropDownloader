@@ -16,10 +16,12 @@ if TYPE_CHECKING:
 IMAGE_SELECTOR = "div[class=block-video] a img"
 CONTENT_SELECTOR = "div[id=list_videos_common_videos_list_items] div a"
 
+PRIMARY_URL = AbsoluteHttpURL("https://nudostar.tv/")
+
 
 class NudoStarTVCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Model": "/models/..."}
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://nudostar.tv/")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = "li[class=next] a"
     DOMAIN: ClassVar[str] = "nudostar.tv"
     FOLDER_DOMAIN: ClassVar[str] = "NudoStarTV"

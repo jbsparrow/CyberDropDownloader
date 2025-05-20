@@ -15,10 +15,12 @@ if TYPE_CHECKING:
 DOWNLOAD_SELECTOR = "a[class*='download-button']"
 HOMEPAGE_CATCHALL_FILE = "/s21/FHVZKQyAZlIsrneDAsp.jpeg"
 
+PRIMARY_URL = AbsoluteHttpURL("https://fileditchfiles.me/")
+
 
 class FileditchCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Direct links": ""}
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://fileditchfiles.me/")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "fileditch"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:

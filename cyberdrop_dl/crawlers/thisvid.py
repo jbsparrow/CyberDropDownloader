@@ -52,12 +52,13 @@ class Video(NamedTuple):
 
 class ThisVidCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Albums": "/albums/",
+        "Albums": "/albums/<album_name>",
+        "Image": "/albums/<album_name>/<image_name>",
         "Search": "/search/?q=...",
         "Categories": "/categories/...",
         "Tags": "/tags/...",
         "Videos": "/videos/...",
-        "Members": "/members/",
+        "Members": "/members/<member_id>",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = "li.pagination-next > a"

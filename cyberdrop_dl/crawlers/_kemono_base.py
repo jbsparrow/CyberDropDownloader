@@ -14,7 +14,7 @@ from typing_extensions import TypedDict  # Import from typing is not compatible 
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import NoExtensionError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
 from cyberdrop_dl.utils.validators import parse_falsy_as_none
 
@@ -197,14 +197,12 @@ def fallback_if_no_api(func: Callable[..., Coroutine[None, None, Any]]) -> Calla
 
 
 class KemonoBaseCrawler(Crawler, is_abc=True):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Model": "/<service>/user/",
-        "Favorites": "/favorites",
+    SUPPORTED_PATHS: ClassVar[dict[str, str]] = {
+        "Model": "/<service>/user/<user>",
+        "Favorites": "/favorites/<user>",
         "Search": "/search?...",
-        "Individual Post": "/user/post/",
+        "Individual Post": "<service>/<user>/post/...",
         "Direct links": "",
-        "Discord Server": "/discord/",
-        "Discord Server Channel": "/discord/server/...#...",
     }
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date} - {title}"
     API_ENTRYPOINT: ClassVar[AbsoluteHttpURL] = None  # type: ignore

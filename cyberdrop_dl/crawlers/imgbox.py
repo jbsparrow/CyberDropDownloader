@@ -21,7 +21,7 @@ ALBUM_TITLE_SELECTOR = "div[id=gallery-view] h1"
 
 
 class ImgBoxCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Album": "/g/...", "Images": "/...", "Direct links": ""}
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Album": "/g/...", "Image": "/...", "Direct links": ""}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "imgbox"
     FOLDER_DOMAIN: ClassVar[str] = "ImgBox"

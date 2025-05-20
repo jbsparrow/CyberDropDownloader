@@ -25,13 +25,16 @@ class Format(NamedTuple):
     url: URL
 
 
+PRIMARY_URL = AbsoluteHttpURL("https://dirtyship.com")
+
+
 class DirtyShipCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Categories": "/category/...",
-        "Tags": "/tag/...",
-        "Videos": "/",
+        "Categorie": "/category/...",
+        "Tag": "/tag/...",
+        "Video": "/<video_name>",
     }
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://dirtyship.com")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = "a.page-next"
     DOMAIN: ClassVar[str] = "dirtyship"
     FOLDER_DOMAIN: ClassVar[str] = "DirtyShip"

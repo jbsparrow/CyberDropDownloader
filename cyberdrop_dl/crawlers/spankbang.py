@@ -54,7 +54,15 @@ class VideoInfo(dict): ...
 
 
 class SpankBangCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Playlist": "/playlist/", "Video": "/video/"}
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Playlist": "/playlist/<playlist-id>",
+        "Video": (
+            "/video/<video_id>",
+            "/embed/<video_id>",
+            "/play/<video_id>",
+            "/playlist/<playlist-id>-<video_id>",
+        ),
+    }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "spankbang"
     FOLDER_DOMAIN: ClassVar[str] = "SpankBang"

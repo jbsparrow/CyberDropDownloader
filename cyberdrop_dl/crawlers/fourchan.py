@@ -40,7 +40,7 @@ class ThreadList(TypedDict):
 
 
 class FourChanCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Board": "/", "Thread": "/thread"}
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Board": "/<board>", "Thread": "/thread"}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "4chan"
 

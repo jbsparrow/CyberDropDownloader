@@ -12,12 +12,13 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
+PRIMARY_URL = AbsoluteHttpURL("https://sex.com")
 API_URL = AbsoluteHttpURL("https://iframe.sex.com/api/")
 
 
 class SexDotComCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Shorts Profiles": "/shorts/"}
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://sex.com")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Shorts Profiles": "/shorts/<profile>"}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "sex"
     FOLDER_DOMAIN: ClassVar[str] = "Sex.com"
 

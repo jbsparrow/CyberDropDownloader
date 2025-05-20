@@ -88,8 +88,13 @@ class OneDriveFolder(OneDriveItem):
 
 class OneDriveCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Access Link": "https://onedrive.live.com/?authkey=&id=&cid=",
-        "Share Link (anyone can access)": "https://1drv.ms/t/",
+        "Access Link": "https://onedrive.live.com/?authkey=<KEY>&id=<ID>&cid=<CID>",
+        "Share Link (anyone can access)": (
+            "https://1drv.ms/t/<KEY>",
+            "https://1drv.ms/f/<KEY>",
+            "https://1drv.ms/b/<KEY>",
+            "https://1drv.ms/u/<KEY>",
+        ),
     }
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = SHARE_LINK_HOST, "onedrive.live.com"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://onedrive.com/")

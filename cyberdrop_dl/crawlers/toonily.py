@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 CHAPTER_SELECTOR = "li[class*=wp-manga-chapter] a"
 IMAGE_SELECTOR = 'div[class="page-break no-gaps"] img'
 SERIES_TITLE_SELECTOR = "div.post-title > h1"
+PRIMARY_URL = AbsoluteHttpURL("https://toonily.com")
 
 
 class ToonilyCrawler(Crawler):
@@ -23,7 +24,7 @@ class ToonilyCrawler(Crawler):
         "Webtoon": "/webtoon/...",
         "Direct links": "",
     }
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://toonily.com")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "toonily"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:

@@ -24,14 +24,16 @@ class Selectors:
 
 _SELECTORS = Selectors()
 
+PRIMARY_URL = AbsoluteHttpURL("https://rule34vault.com")
+
 
 class Rule34VaultCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "File page": "/post/...",
+        "Post": "/post/...",
         "Playlist": "/playlists/view/...",
         "Tag": "/...",
     }
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://rule34vault.com")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "rule34vault"
     FOLDER_DOMAIN: ClassVar[str] = "Rule34Vault"
 

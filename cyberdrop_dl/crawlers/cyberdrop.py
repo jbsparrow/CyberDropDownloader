@@ -30,8 +30,8 @@ _SELECTORS = Selectors()
 
 class CyberdropCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Albums": "/a/...",
-        "Files": "/f/...",
+        "Album": "/a/...",
+        "File": "/f/...",
         "Direct links": "",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL

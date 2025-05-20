@@ -17,11 +17,12 @@ if TYPE_CHECKING:
 
 API_ENTRYPOINT = AbsoluteHttpURL("https://pixeldrain.com/api/")
 JS_SELECTOR = 'script:contains("window.initial_node")'
+PRIMARY_URL = AbsoluteHttpURL("https://pixeldrain.com")
 
 
 class PixelDrainCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"File": "/u/...", "Folder": "/l/..."}
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://pixeldrain.com")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "pixeldrain"
     FOLDER_DOMAIN: ClassVar[str] = "PixelDrain"
 
@@ -95,7 +96,7 @@ class PixelDrainCrawler(Crawler):
 
         await self.handle_file(link, scrape_item, filename, ext)
 
-    async def text(self, scrape_item: ScrapeItem):
+    async def text(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
             api_url = API_ENTRYPOINT / "file" / scrape_item.url.parts[-1]
             text: str = await self.client.get_text(self.DOMAIN, api_url)

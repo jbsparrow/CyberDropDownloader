@@ -46,14 +46,17 @@ def get_row_values(crawler_info: CrawlerInfo) -> tuple[str, ...]:
     supported_paths: str = ""
     notes: str = ""
 
-    def join_paths(paths: tuple[str, ...] | list[str], quote_char: str = "") -> str:
+    def join_paths(paths: tuple[str, ...] | list[str], quote_char: str = "`") -> str:
         joined = "\n".join([f" - {quote_char}{p}{quote_char}" for p in paths])
         return f"{joined}\n"
 
     for name, paths in crawler_info.supported_paths.items():
+        if "direct link" in name.casefold() and (not paths or paths == ("",)):
+            supported_paths += "Direct Links\n"
+            continue
         if isinstance(paths, str):
             paths = [paths]
-        if "*NOTE*" in name:
+        if "*NOTE*" in name.casefold():
             notes += join_paths(paths, "")
             continue
 
@@ -63,6 +66,7 @@ def get_row_values(crawler_info: CrawlerInfo) -> tuple[str, ...]:
         supported_paths = f"{supported_paths}\n\n**NOTES**\n{notes}"
     supported_domains = "\n".join(crawler_info.supported_domains)
     row_values = crawler_info.site, str(crawler_info.primary_url), supported_domains, supported_paths
+    print(row_values)
     return row_values
 
 

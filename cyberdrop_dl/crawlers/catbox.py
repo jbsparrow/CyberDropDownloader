@@ -9,13 +9,14 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
+PRIMARY_URL = AbsoluteHttpURL("https://catbox.moe")
 CDN_HOSTS = "litter.catbox.moe", "files.catbox.moe"
 
 
 class CatboxCrawler(Crawler):
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = CDN_HOSTS
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Direct links": ""}
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://catbox.moe")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "catbox.moe"
     FOLDER_DOMAIN: ClassVar[str] = "Catbox"
 

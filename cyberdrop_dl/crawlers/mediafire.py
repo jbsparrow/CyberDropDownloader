@@ -20,11 +20,12 @@ if TYPE_CHECKING:
 
 DOWNLOAD_BUTTON_SELECTOR = "a[id=downloadButton]"
 DATE_SELECTOR = "ul[class=details] li span"
+PRIMARY_URL = AbsoluteHttpURL("https://www.mediafire.com/")
 
 
 class MediaFireCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"File": "/file/...", "Folder": "/folder/..."}
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://www.mediafire.com/")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "mediafire"
 
     def __post_init__(self) -> None:

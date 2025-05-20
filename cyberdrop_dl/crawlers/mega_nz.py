@@ -32,6 +32,7 @@ class MegaNzCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "File": ("/file/<handle>#<share_key>", "/!#<handle>!<share_key>"),
         "Folder": ("/folder/<handle>#<share_key>", "/!F#<handle>!<share_key>"),
+        "**NOTE**": "Downloads can not be resumed. Partial downloads will always be deleted ans a new downloa dwill start from 0",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     SKIP_PRE_CHECK: ClassVar[bool] = True

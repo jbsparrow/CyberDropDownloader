@@ -18,10 +18,12 @@ FILES_SELECTOR = 'a[class*="image-wrapper center-cropped im-wr"]'
 IMAGE_SELECTOR = ".main-image-wrapper"
 DATE_FORMAT = "%A, %B %d, %Y %I:%M:%S%p %Z"
 
+PRIMARY_URL = AbsoluteHttpURL("https://pimpandhost.com/")
+
 
 class PimpAndHostCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Album": "/album/...", "Image": "/image/..."}
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://pimpandhost.com/")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = "li[class=next] a"
     DOMAIN: ClassVar[str] = "pimpandhost"
     FOLDER_DOMAIN: ClassVar[str] = "PimpAndHost"

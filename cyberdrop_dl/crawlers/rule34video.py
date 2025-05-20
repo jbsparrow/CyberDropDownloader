@@ -54,7 +54,7 @@ class Rule34VideoCrawler(Crawler):
         "Models": "/models/...",
         "Search": "/search/...",
         "Tags": "/tags/...",
-        "Video": "/video//",
+        "Video": ("/video/<video_id>/<video_name>", "/videos/<video_id>/<video_name>"),
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = PLAYLIST_NEXT_PAGE_SELECTOR

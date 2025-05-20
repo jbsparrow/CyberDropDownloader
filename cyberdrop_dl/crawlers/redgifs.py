@@ -10,12 +10,13 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 
+PRIMARY_URL = AbsoluteHttpURL("https://redgifs.com/")
 API_ENTRYPOINT = AbsoluteHttpURL("https://api.redgifs.com/")
 
 
 class RedGifsCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"User": "/users/", "Video": "/watch/..."}
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://redgifs.com/")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"User": "/users/<user>", "Video": "/watch/..."}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "redgifs"
     FOLDER_DOMAIN: ClassVar[str] = "RedGifs"
 

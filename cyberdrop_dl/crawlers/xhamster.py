@@ -20,18 +20,30 @@ if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 PRIMARY_URL = AbsoluteHttpURL("https://xhamster.com/")
-JS_VIDEO_INFO_SELECTOR = "script#initials-script"
-VIDEO_SELECTOR = "a.video-thumb__image-container"
-GALLERY_SELECTOR = "a.gallery-thumb__link"
+
+
+class Selectors:
+    JS_VIDEO_INFO = "script#initials-script"
+    VIDEO = "a.video-thumb__image-container"
+    GALLERY = "a.gallery-thumb__link"
+    NEXT_PAGE = "a[data-page='next']"
+
+
+_SELECTORS = Selectors()
 
 
 HttpURL = Annotated[AbsoluteHttpURL, PlainValidator(partial(parse_url, relative_to=PRIMARY_URL))]
 
 
 class XhamsterCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Users, creators, videos and galleries": "pending"}
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Video": "/<video_title>",
+        "User": "/users/<user_name>",
+        "Creator": "/creatos/<creator_name>",
+        "Gallery": "photos/gallery/<gallery_name>",
+    }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    NEXT_PAGE_SELECTOR: ClassVar[str] = "a[data-page='next']"
+    NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE
     DOMAIN: ClassVar[str] = "xhamster"
     FOLDER_DOMAIN: ClassVar[str] = "xHamster"
 
@@ -58,11 +70,11 @@ class XhamsterCrawler(Crawler):
 
         if "videos" in paths_to_scrape:
             videos_url = base_url / last_part
-            await self.process_children(scrape_item, videos_url, VIDEO_SELECTOR, last_part)
+            await self.process_children(scrape_item, videos_url, _SELECTORS.VIDEO, last_part)
 
         if is_user and "photos" in paths_to_scrape:
             gallerys_url = base_url / "photos"
-            await self.process_children(scrape_item, gallerys_url, GALLERY_SELECTOR, "galleries")
+            await self.process_children(scrape_item, gallerys_url, _SELECTORS.GALLERY, "galleries")
 
     @error_handling_wrapper
     async def process_children(self, scrape_item: ScrapeItem, url: URL, selector: str, name: str) -> None:
@@ -128,7 +140,7 @@ class XhamsterCrawler(Crawler):
 
 
 def get_window_initials_json(soup: BeautifulSoup) -> dict[str, dict]:
-    js_script = soup.select_one(JS_VIDEO_INFO_SELECTOR)
+    js_script = soup.select_one(_SELECTORS.JS_VIDEO_INFO)
     js_code: str = str(js_script)
     json_text: str = get_text_between(js_code, "window.initials=", "</script>").removesuffix(";").strip()
     return javascript.parse_json_to_dict(json_text)  # type: ignore

@@ -534,7 +534,17 @@ def with_suffix_encoded(url: AnyURL, suffix: str) -> AnyURL:
 
 
 def sort_dict(map: Mapping[str, T]) -> dict[str, T]:
-    return {key: map[key] for key in sorted(map, key=str.casefold)}
+    def try_to_sort(value: Any) -> Any:
+        try:
+            if isinstance(value, dict):
+                return sort_dict(value)
+            elif isinstance(value, list | tuple):
+                return type(value)(sorted(value))
+        except Exception:
+            pass
+        return value
+
+    return {key: try_to_sort(map[key]) for key in sorted(map, key=str.casefold)}
 
 
 log_cyan = partial(log_with_color, style="cyan", level=20)

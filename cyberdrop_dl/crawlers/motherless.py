@@ -35,7 +35,13 @@ class MediaInfo(NamedTuple):
 
 
 class MotherlessCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Groups, users, images and videos (NOT Galleries)": "pending"}
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "Group": ("/g/<group_name>", "/gi/<image>", "/gv/<video>"),
+        "User": ("/u/...", "/f/..."),
+        "Image": "/...",
+        "Video": "pending",
+        "**NOTE**": "Galleries are NOT supported",
+    }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = "div.pagination_link > a[rel=next]"
     DOMAIN: ClassVar[str] = "motherless"

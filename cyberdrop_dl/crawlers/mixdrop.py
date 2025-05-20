@@ -25,7 +25,12 @@ PRIMARY_URL = AbsoluteHttpURL("https://mixdrop.sb")
 
 
 class MixDropCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"File": "/e/"}
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "File": (
+            "/e/<file_id>",
+            "/f/<file_id>",
+        )
+    }
     SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = "mxdrop", "mixdrop"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "mixdrop"

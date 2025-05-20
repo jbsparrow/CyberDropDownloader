@@ -29,11 +29,11 @@ KEYS_TO_KEEP = "currentResourceId", "resources", "environment"
 
 
 class YandexDiskCrawler(Crawler):
-    SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = ("disk.yandex", "yadi.sk")
+    SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = "disk.yandex", "yadi.sk"
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Folder": "disk.yandex/d/",
-        "Files": "disk.yandex/d//",
-        "*NOTE**": "Does NOT support nested folders",
+        "Folder": "/d/<folder_id>",
+        "Files": "/d/<folder_id>/<file_name>",
+        "**NOTE**": "Does NOT support nested folders",
     }
 
     DOMAIN: ClassVar[str] = "disk.yandex"

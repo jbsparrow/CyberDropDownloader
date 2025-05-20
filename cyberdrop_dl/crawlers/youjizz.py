@@ -39,7 +39,7 @@ class VideoInfo(dict): ...
 
 
 class YouJizzCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Video": "/video/embed/"}
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Video": ("/video/embed/<video_id>", "/video/<video_id>/...")}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "youjizz"
     FOLDER_DOMAIN: ClassVar[str] = "YouJizz"

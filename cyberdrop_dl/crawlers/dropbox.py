@@ -16,12 +16,14 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
+ZIP_REFERENCE = "[--download-dropbox-folders-as-zip](https://script-ware.gitbook.io/cyberdrop-dl/reference/cli-arguments#download-dropbox-folders-as-zip)"
+
 
 class DropboxCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Files": "/scl/fi/...",
-        "Folders": "/scl/fo/...",
-        "**NOTE**": "Folders will be downloaded as a zip file.",
+        "File": ("/scl/fi/...", "/s/..."),
+        "Folder": ("/scl/fo/...", "/sh/..."),
+        "**NOTE**": f"Folders will be downloaded as a zip file. See: {ZIP_REFERENCE}",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://dropbox.com/")
     DOMAIN: ClassVar[str] = "dropbox"

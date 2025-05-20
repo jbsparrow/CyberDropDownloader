@@ -19,13 +19,15 @@ CONTENT_SELECTOR = "div[id=content] a"
 TITLE_SELECTOR = "h2[class='font-semibold lg:text-2xl text-lg mb-2 mt-4']"
 POST_CONTENT_SELECTOR = "div[class='flex justify-between items-center']"
 
+PRIMARY_URL = AbsoluteHttpURL("https://fapello.su/")
+
 
 class FapelloCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Individual Post": "/.../...",
         "Model": "/...",
     }
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://fapello.su/")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = 'div[id="next_page"] a'
     DOMAIN: ClassVar[str] = "fapello"
 

@@ -17,10 +17,12 @@ CONTENT_SELECTOR = "div[class=items] div a"
 VIDEO_SELECTOR = "video source"
 IMAGE_SELECTOR = "img[id=image]"
 
+PRIMARY_URL = AbsoluteHttpURL("https://realbooru.com")
+
 
 class RealBooruCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"File": "?id=...", "Tags": "?tags=..."}
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://realbooru.com")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = "a[alt=next]"
     DOMAIN: ClassVar[str] = "realbooru"
     FOLDER_DOMAIN: ClassVar[str] = "RealBooru"

@@ -16,10 +16,12 @@ if TYPE_CHECKING:
 
 ALBUM_SELECTOR = "main div.auto-rows-max a"
 
+PRIMARY_URL = AbsoluteHttpURL("https://bunkr-albums.io/")
+
 
 class BunkrAlbumsIOCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Search": "/s?search=..."}
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://bunkr-albums.io/")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "bunkr-albums.io"
     FOLDER_DOMAIN: ClassVar[str] = "Bunkr-Albums.io"
     NEXT_PAGE_SELECTOR: ClassVar[str] = "nav:last-of-type a.ic-arrow-right"

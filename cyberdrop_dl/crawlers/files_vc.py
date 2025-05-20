@@ -14,10 +14,12 @@ if TYPE_CHECKING:
 
 API_ENTRYPOINT = AbsoluteHttpURL("https://api.files.vc/api")
 
+PRIMARY_URL = AbsoluteHttpURL("https://files.vc")
+
 
 class FilesVcCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Direct links": ""}
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://files.vc")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "files.vc"
     FOLDER_DOMAIN: ClassVar[str] = "FilesVC"
 

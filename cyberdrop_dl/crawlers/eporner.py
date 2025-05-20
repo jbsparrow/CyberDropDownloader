@@ -62,10 +62,10 @@ class EpornerCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Categories": "/cat/...",
         "Channels": "/channel/...",
-        "Pornstars": "/pornstar/...",
+        "Pornstar": "/pornstar/...",
         "Profile": "/profile/...",
         "Search": "/search/...",
-        "Video": "/-",
+        "Video": ("/<video_name>-<video-id>", "/hd-porn/<video_id>", "/embed/<video_id>"),
         "Photo": "/photo/...",
         "Gallery": "/gallery/...",
     }

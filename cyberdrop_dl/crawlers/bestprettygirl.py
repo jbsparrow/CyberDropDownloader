@@ -27,15 +27,17 @@ _SELECTORS = Selectors()
 
 COLLECTION_PARTS = "category", "tag", "date"
 
+PRIMARY_URL = AbsoluteHttpURL("https://bestprettygirl.com/")
+
 
 class BestPrettyGirlCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Collections": "category",
-        "Gallery": "//",
+        "Collection": COLLECTION_PARTS,
+        "Gallery": "/<gallery_name>/",
     }
     DOMAIN: ClassVar[str] = "bestprettygirl.com"
     FOLDER_DOMAIN: ClassVar[str] = "BestPrettyGirl"
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://bestprettygirl.com/")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     next_page = "a.page-numbers.next"
 
     def __post_init__(self) -> None:

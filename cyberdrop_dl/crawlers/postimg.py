@@ -14,14 +14,14 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
-
+PRIMARY_URL = AbsoluteHttpURL("https://postimages.org/")
 DOWNLOAD_BUTTON_SELECTOR = "a[id=download]"
 API_ENTRYPOINT = URL("https://postimg.cc/json")
 
 
 class PostImgCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Album": "/gallery/...", "Image": "/...", "Direct links": ""}
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://postimages.org/")
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN: ClassVar[str] = "postimg"
     FOLDER_DOMAIN: ClassVar[str] = "PostImg"
 

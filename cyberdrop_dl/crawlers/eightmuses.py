@@ -16,11 +16,13 @@ TILE_SELECTOR = "a[class*=c-tile]"
 IMAGE_SELECTOR = "div[class=image]"
 TITLE_PARTS_SELECTOR = "div[class=top-menu-breadcrumb] > ol > li > a"
 
+PRIMARY_URL = AbsoluteHttpURL("https://comics.8muses.com")
+
 
 class EightMusesCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Album": "/comics/album/..."}
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://comics.8muses.com")
-    DOMAIN: ClassVar[str] = "8muses"
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    DOMAIN = "8muses"
     FOLDER_DOMAIN: ClassVar[str] = "8Muses"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:

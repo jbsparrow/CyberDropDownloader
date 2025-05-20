@@ -103,8 +103,8 @@ class PornHubCrawler(Crawler):
         "Gif": "/gif/...",
         "Photo": "/photo/...",
         "Playlist": "/playlist/...",
-        "Profile": "/user/...",
-        "Video": "/embed/",
+        "Profile": ("/user/...", "/model/...", "/pornstar/..."),
+        "Video": ("/embed/<video_id>", "/view_video.php?viewkey=<video_id>"),
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE

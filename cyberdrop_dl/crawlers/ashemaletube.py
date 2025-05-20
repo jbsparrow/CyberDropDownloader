@@ -73,9 +73,9 @@ PRIMARY_URL = AbsoluteHttpURL("https://www.ashemaletube.com")
 
 class AShemaleTubeCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
-        "Playlists": "/playlists/...",
+        "Playlist": "/playlists/...",
         "Video": "/videos/...",
-        "Models": "/creators/...",
+        "Model": ("/creators/...", "/model/...", "/pornstars/..."),
         "User": "/profiles/...",
     }
     DOMAIN: ClassVar[str] = "ashemaletube"

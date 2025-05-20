@@ -12,6 +12,8 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
+PRIMARY_URL = AbsoluteHttpURL("https://rule34.xxx")
+
 
 class Selector:
     CONTENT = "div[class=image-list] span a"
@@ -24,8 +26,8 @@ _SELECTOR = Selector()
 
 
 class Rule34XXXCrawler(Crawler):
-    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"File": "?id=...", "Tags": "?tags=..."}
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://rule34.xxx")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"File": "?id=...", "Tag": "?tags=..."}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     NEXT_PAGE_SELECTOR: ClassVar[str] = "a[alt=next]"
     DOMAIN: ClassVar[str] = "rule34.xxx"
     FOLDER_DOMAIN: ClassVar[str] = "Rule34XXX"
