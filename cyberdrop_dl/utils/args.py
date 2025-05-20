@@ -295,4 +295,11 @@ def parse_args() -> ParsedArgs:
     except ValidationError as e:
         handle_validation_error(e, title="CLI arguments")
         sys.exit(1)
+
+    if parsed_args_model.cli_only_args.show_supported_sites:
+        # Runtime dependency of manager
+        from .markdown import show_supported_sites
+
+        show_supported_sites()
+        sys.exit(0)
     return parsed_args_model

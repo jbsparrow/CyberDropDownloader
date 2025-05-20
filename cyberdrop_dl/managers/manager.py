@@ -5,9 +5,8 @@ import inspect
 import json
 import platform
 from dataclasses import Field, field
-from pathlib import Path
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple, NoReturn, Protocol, TypeVar
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Protocol, TypeVar
 
 from cyberdrop_dl import __version__, constants
 from cyberdrop_dl.config_definitions import ConfigSettings, GlobalSettings
@@ -28,7 +27,6 @@ from cyberdrop_dl.utils.args import ParsedArgs
 from cyberdrop_dl.utils.ffmpeg import FFmpeg, get_ffmpeg_version
 from cyberdrop_dl.utils.logger import QueuedLogger, log
 from cyberdrop_dl.utils.transfer import transfer_v5_db_to_v6
-from cyberdrop_dl.utils.utilities import sort_dict
 
 if TYPE_CHECKING:
     import queue
@@ -123,9 +121,6 @@ class Manager:
 
         if isinstance(self.parsed_args, Field):
             self.parsed_args = ParsedArgs.parse_args()
-
-        if self.parsed_args.cli_only_args.show_supported_sites:
-            show_supported_sites()
 
         self.path_manager = PathManager(self)
         self.path_manager.pre_startup()
@@ -334,7 +329,7 @@ class Manager:
         for config in all_configs:
             self.config_manager.change_config(config)
 
-    def set_constants(self):
+    def set_constants(self) -> None:
         """
         rewrite constants after config/arg manager have loaded
         """
@@ -352,76 +347,3 @@ def get_system_information() -> str:
     }
 
     return json.dumps(system_info, indent=4)
-
-
-def show_supported_sites() -> NoReturn:
-    import sys
-
-    from rich.table import Table
-
-    from cyberdrop_dl.scraper.scrape_mapper import gen_crawlers_info
-
-    table = Table(title="Cyberdrop-DL Supported Sites")
-    for column in ("Site", "Crawler", "Primary Base Domain"):
-        table.add_column(column, no_wrap=True)
-    for crawler in gen_crawlers_info():
-        table.add_row(crawler.site, crawler.name, str(crawler.primary_base_domain))
-    update_wiki_supported_sites()
-    # print(table)
-    sys.exit(0)
-
-
-def update_wiki_supported_sites() -> None:
-    import sys
-
-    from rich import print
-    from rich.table import Table
-
-    from cyberdrop_dl.scraper.scrape_mapper import get_crawlers
-
-    table = Table(title="Cyberdrop-DL Supported Sites")
-    columns = ("Site", "Primary URL", "Supported Domains", "Supported Paths")
-
-    for column in columns:
-        table.add_column(column, no_wrap=True)
-    crawlers = sorted(set(get_crawlers().values()), key=lambda x: x.FOLDER_DOMAIN)
-    rows: list[dict[str, str]] = []
-    for crawler in crawlers:
-        supported_paths: str = ""
-
-        for name, paths in sort_dict(crawler.SUPPORTED_PATHS).items():
-            if isinstance(paths, str):
-                paths = [paths]
-            joined_paths = "\n".join([f"- `{p}`" for p in paths])
-            value = f"{name}: \n{joined_paths}"
-            supported_paths += value + "\n"
-
-        supported_domains = "\n".join(crawler.SCRAPE_MAPPER_KEYS)
-
-        row = crawler.FOLDER_DOMAIN, str(crawler.primary_base_domain), supported_domains, supported_paths
-        table.add_row(*row)
-        html_rows = [r.replace("\n", "<br>") for r in row]
-        row_dict: dict[str, str] = dict(zip(columns, html_rows, strict=True))
-        # print(row_dict)
-        rows.append(row_dict)
-    print(table)
-    # sys.exit(0)
-    from py_markdown_table.markdown_table import markdown_table
-
-    markdown = (
-        markdown_table(rows)
-        .set_params(
-            row_sep="markdown",
-            padding_width=10,
-            padding_weight="centerright",
-            # multiline=dict.fromkeys(columns, 100),
-            # multiline_delimiter="\n",
-            quote=False,
-        )
-        .get_markdown()
-    )
-    # print(markdown)
-    text = f"# Supported sites\n\nList of sites supported by cyberdrop-dl-patched as of version {__version__}\n\n"
-    file_path = Path(__file__).parents[2] / "supported_sites.md"
-    file_path.write_text(text + markdown + "\n")
-    sys.exit(0)

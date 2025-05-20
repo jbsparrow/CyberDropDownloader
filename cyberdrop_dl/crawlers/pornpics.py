@@ -21,12 +21,12 @@ BASE_HOST: str = "pornpics.com"
 
 class PornPicsCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
-        "Categories": ("/categories/....", ""),
-        "Channels": ("/channels/...", ""),
-        "Gallery": ("/galleries/...", ""),
-        "Pornstars": ("/pornstars/...", ""),
-        "Search": ("/?q=", ""),
-        "Tags": ("/tags/...", ""),
+        "Categories": "/categories/....",
+        "Channels": "/channels/...",
+        "Gallery": "/galleries/...",
+        "Pornstars": "/pornstars/...",
+        "Search": "/?q=",
+        "Tags": "/tags/...",
         "Direct links": "",
     }
     primary_base_domain = AbsoluteHttpURL("https://pornpics.com")

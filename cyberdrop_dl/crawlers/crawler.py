@@ -8,7 +8,7 @@ from dataclasses import field
 from datetime import datetime
 from functools import wraps
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar, ParamSpec, TypeVar, final
+from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, ParamSpec, TypeVar, final
 
 from aiolimiter import AsyncLimiter
 from dateutil import parser
@@ -29,6 +29,7 @@ from cyberdrop_dl.utils.utilities import (
     is_absolute_http_url,
     parse_url,
     remove_file_id,
+    sort_dict,
 )
 
 P = ParamSpec("P")
@@ -45,6 +46,13 @@ if TYPE_CHECKING:
     from cyberdrop_dl.types import AbsoluteHttpURL
 
 UNKNOWN_URL_PATH_MSG = "Unknown URL path"
+
+
+class CrawlerInfo(NamedTuple):
+    site: str
+    primary_url: URL
+    supported_domains: tuple[str, ...]
+    supported_paths: OneOrTupleStrMapping
 
 
 def create_task_id(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, Coroutine[None, None, R | None]]:
@@ -125,6 +133,8 @@ class Crawler(ABC):
         cls.FOLDER_DOMAIN = cls.FOLDER_DOMAIN or cls.DOMAIN.capitalize()
         cls.NAME = pretty_name(cls)
         cls.SCRAPE_MAPPER_KEYS = make_scrape_mapper_keys(cls)
+        cls.SUPPORTED_PATHS = sort_dict(cls.SUPPORTED_PATHS)
+        cls.INFO = CrawlerInfo(cls.FOLDER_DOMAIN, cls.primary_base_domain, cls.SCRAPE_MAPPER_KEYS, cls.SUPPORTED_PATHS)
 
         for path_name, paths in cls.SUPPORTED_PATHS.items():
             assert path_name
