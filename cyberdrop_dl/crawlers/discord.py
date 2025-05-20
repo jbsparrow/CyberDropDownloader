@@ -193,13 +193,6 @@ def get_canonical_url(url: URL) -> URL:
     """Normalizes CDN URLs for consistency."""
     return url.with_host("cdn.discordapp.com")
 
-    @staticmethod
-    async def get_info(scrape_item: ScrapeItem) -> DiscordURLData:
-        """Gets the server, channel, and message IDs from the URL."""
-        parts = scrape_item.url.parts
-        info = (
-            parts[2] if len(parts) > 2 else "",
-            parts[3] if len(parts) > 3 else "",
-            parts[4] if len(parts) > 4 else "",
-        )
-        return DiscordURLData(*info)
+def get_info(scrape_item: ScrapeItem) -> DiscordURLData:
+    """Gets the server, channel, and message IDs from the URL."""
+    return DiscordURLData(*scrape_item.url.parts[2:5])
