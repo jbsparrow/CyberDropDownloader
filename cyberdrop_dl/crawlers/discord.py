@@ -65,7 +65,7 @@ class DiscordCrawler(Crawler):
     async def scrape_all_servers(self, scrape_item: ScrapeItem) -> None:
         """Fetches all servers and creates scrape items for each server, then starts them."""
         async with self.request_limiter:
-            servers_url = self.api_url / "v9" / "users" / "@me" / "guilds"
+            servers_url = self.api_url / "v9/users/@me/guilds"
             data = await self.client.get_json(
                 self.domain, url=servers_url, headers_inc=self.headers
             )
