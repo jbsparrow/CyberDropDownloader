@@ -101,12 +101,13 @@ class DiscordCrawler(Crawler):
 
         if data.is_dm:
             # Dicord DM API paths. First case is to scrape a single DM/Group DM. Second case is to scrape all DMs.
-            path = ("channels", data.channel_id) if data.channel_id else ("users", "@me")
+            path = f"channels/{data.channel_id}" if data.channel_id else "users/@me"
         else:
             # Discord server API path. Always the same, channel IDs are handled by the JSON.
-            path = ("guilds", data.server_id)
+            path = f"guilds/{data.server_id}"
 
-        request_url = self.api_url / "v9" / path[0] / path[1] / "messages" / "search" / "tabs"
+        full_path = f"v9/{path}/messages/search/tabs"
+        request_url = self.api_url / full_path
         return request_json, request_url
 
     async def get_media(self, scrape_item: ScrapeItem) -> AsyncGenerator[dict, None]:
