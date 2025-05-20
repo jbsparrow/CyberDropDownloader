@@ -72,13 +72,13 @@ def write_supported_sites_markdown(rows: list[RowDict]) -> None:
     header = f"{title}\n\nList of sites supported by cyberdrop-dl-patched as of version {__version__}\n\n"
     full_table = header + markdown + "\n"
     root = Path(__file__).parents[2]
-    repo_file_path = root / "supported_sites.md"
-    repo_file_path.write_text(full_table)
+    # repo_file_path = root / "supported_sites.md"
+    # repo_file_path.write_text(full_table)
     wiki_file_path = root / "docs/reference/supported-websites.md"
     wiki_file_content = wiki_file_path.read_text()
 
     end = "<!-- END_SUPPORTED_SITES-->"
-    before, _, after = wiki_file_content.partition(title)
-    after = after.split(end, 1)[-1]
-    new_content = f"{before}{full_table}{end}{after}"
+    content_before, _, rest = wiki_file_content.partition(title)
+    _, _, content_after = rest.partition(end)
+    new_content = f"{content_before}{full_table}{end}{content_after}"
     wiki_file_path.write_text(new_content)
