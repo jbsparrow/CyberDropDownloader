@@ -22,9 +22,9 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, slots=True)
 class DiscordURLData:
-    server_id: str
-    channel_id: str
-    message_id: str
+    server_id: str =""
+    channel_id: str =""
+    message_id: str =""
 
     @property
     def is_dm(self) -> bool:
