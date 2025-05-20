@@ -188,11 +188,9 @@ class DiscordCrawler(Crawler):
             dt = datetime.strptime(date, "%Y-%m-%dT%H:%M:%S")
         return calendar.timegm(dt.timetuple())
 
-    @staticmethod
-    async def get_canonical_url(url: URL) -> URL:
-        """Normalizes CDN URLs for consistency."""
-        url.with_host("cdn.discordapp.com")
-        return url
+def get_canonical_url(url: URL) -> URL:
+    """Normalizes CDN URLs for consistency."""
+    return url.with_host("cdn.discordapp.com")
 
     @staticmethod
     async def get_info(scrape_item: ScrapeItem) -> DiscordURLData:
