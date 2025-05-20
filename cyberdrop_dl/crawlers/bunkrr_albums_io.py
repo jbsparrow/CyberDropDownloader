@@ -22,8 +22,8 @@ class BunkrAlbumsIOCrawler(Crawler):
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://bunkr-albums.io/")
     DOMAIN = "bunkr-albums.io"
     FOLDER_DOMAIN = "Bunkr-Albums.io"
-    next_page_selector = "nav:last-of-type a.ic-arrow-right"
-    skip_pre_check = True
+    NEXT_PAGE_SELECTOR: ClassVar[str] = "nav:last-of-type a.ic-arrow-right"
+    SKIP_PRE_CHECK: ClassVar[bool] = True
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.query.get("search"):  # Trying to scrape the root page is a bad idea
@@ -46,7 +46,7 @@ class BunkrAlbumsIOCrawler(Crawler):
             current_page_number = int(page_url.query.get("page") or 1)
             async with self.request_limiter:
                 soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, page_url)
-            next_page = soup.select(self.next_page_selector)
+            next_page = soup.select(self.NEXT_PAGE_SELECTOR)
             yield soup
             if not next_page:
                 break

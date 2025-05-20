@@ -60,7 +60,7 @@ class ThisVidCrawler(Crawler):
         "Members": "/members/",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    next_page_selector = "li.pagination-next > a"
+    NEXT_PAGE_SELECTOR: ClassVar[str] = "li.pagination-next > a"
     DOMAIN = "thisvid"
     FOLDER_DOMAIN = "ThisVid"
 

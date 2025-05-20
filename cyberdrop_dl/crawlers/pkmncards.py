@@ -100,7 +100,7 @@ PRIMARY_URL = AbsoluteHttpURL("https://pkmncards.com")
 class PkmncardsCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Card": "/card/...", "Set": "/set/...", "Series": "/series/..."}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    next_page_selector = _SELECTORS.NEXT_PAGE
+    NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE
     DOMAIN = "pkmncards"
 
     def __post_init__(self) -> None:

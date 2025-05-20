@@ -34,7 +34,7 @@ class MegaNzCrawler(Crawler):
         "Folder": ("/folder/<handle>#<share_key>", "/!F#<handle>!<share_key>"),
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    skip_pre_check = True
+    SKIP_PRE_CHECK: ClassVar[bool] = True
     DOMAIN = "mega.nz"
     FOLDER_DOMAIN = "MegaNz"
 

@@ -27,7 +27,7 @@ _SELECTORS = Selectors()
 class IncestflixCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Video": "/watch/...", "Tag": "/tag/..."}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://www.incestflix.com")
-    next_page_selector = _SELECTORS.NEXT
+    NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT
     DOMAIN = "incestflix"
     FOLDER_DOMAIN = "IncestFlix"
 

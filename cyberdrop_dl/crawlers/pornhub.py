@@ -107,7 +107,7 @@ class PornHubCrawler(Crawler):
         "Video": "/embed/",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    next_page_selector = _SELECTORS.NEXT_PAGE
+    NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE
     DOMAIN = "pornhub"
     FOLDER_DOMAIN = "PornHub"
 

@@ -31,7 +31,7 @@ class ImgBBCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Album": "/album/...", "Image": "/..."}
     SUPPORTED_HOSTS = "ibb.co", "imgbb.co"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    next_page_selector = "a[data-pagination=next]"
+    NEXT_PAGE_SELECTOR: ClassVar[str] = "a[data-pagination=next]"
     DOMAIN = "imgbb"
     FOLDER_DOMAIN = "ImgBB"
 

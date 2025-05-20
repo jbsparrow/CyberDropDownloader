@@ -21,7 +21,7 @@ class HotPicCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Album": "/album/...", "Image": "/i/..."}
     SUPPORTED_HOSTS = "hotpic", "2385290.xyz"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://hotpic.cc")
-    update_unsupported = True
+    UPDATE_UNSUPPORTED: ClassVar[bool] = True
     DOMAIN = "hotpic"
     FOLDER_DOMAIN = "HotPic"
 

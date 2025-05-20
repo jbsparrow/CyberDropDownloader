@@ -21,7 +21,7 @@ IMAGE_SELECTOR = "img[class=image-img]"
 class PixHostCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Gallery": "/gallery/...", "Image": "/show/..."}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    update_unsupported = True
+    UPDATE_UNSUPPORTED: ClassVar[bool] = True
     DOMAIN = "pixhost"
     FOLDER_DOMAIN = "PixHost"
 

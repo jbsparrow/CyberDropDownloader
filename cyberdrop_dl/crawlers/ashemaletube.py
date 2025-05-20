@@ -81,7 +81,7 @@ class AShemaleTubeCrawler(Crawler):
     DOMAIN = "ashemaletube"
     FOLDER_DOMAIN = "aShemaleTube"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    next_page_selector = _SELECTORS.NEXT_PAGE
+    NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE
 
     def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(3, 10)

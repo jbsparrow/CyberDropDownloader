@@ -65,7 +65,7 @@ def create_task_id(func: Callable[P, Coroutine[None, None, R]]) -> Callable[P, C
         await self.manager.states.RUNNING.wait()
         task_id = self.scraping_progress.add_task(scrape_item.url)
         try:
-            if not self.skip_pre_check:
+            if not self.SKIP_PRE_CHECK:
                 pre_check_scrape_item(scrape_item)
             return await func(*args, **kwargs)
         except ValueError:
@@ -83,9 +83,9 @@ class Crawler(ABC):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {}
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date} - {number} - {title}"
 
-    update_unsupported: ClassVar[bool] = False
-    skip_pre_check: ClassVar[bool] = False
-    next_page_selector: ClassVar[str] = ""
+    UPDATE_UNSUPPORTED: ClassVar[bool] = False
+    SKIP_PRE_CHECK: ClassVar[bool] = False
+    NEXT_PAGE_SELECTOR: ClassVar[str] = ""
 
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = None  # type: ignore
     DOMAIN: ClassVar[str] = None  # type: ignore
@@ -435,7 +435,7 @@ class Crawler(ABC):
         :param **kwargs: Will be forwarded to `self.parse_url` to parse each new page"""
 
         page_url = url
-        selector = next_page_selector or self.next_page_selector
+        selector = next_page_selector or self.NEXT_PAGE_SELECTOR
         assert selector, f"No selector was provided and {self.DOMAIN} does define a next_page_selector"
         get_soup = self.client.get_soup_cffi if cffi else self.client.get_soup
         while True:

@@ -37,7 +37,7 @@ class MediaInfo(NamedTuple):
 class MotherlessCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Groups, users, images and videos (NOT Galleries)": "pending"}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    next_page_selector = "div.pagination_link > a[rel=next]"
+    NEXT_PAGE_SELECTOR: ClassVar[str] = "div.pagination_link > a[rel=next]"
     DOMAIN = "motherless"
 
     def __post_init__(self) -> None:

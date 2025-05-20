@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from enum import StrEnum, auto
 from functools import partialmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from bs4 import BeautifulSoup
 
@@ -46,7 +46,7 @@ def sort_by_new(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
 
 
 class CheveretoCrawler(Crawler, is_abc=True):
-    next_page_selector = "a[data-pagination=next]"
+    NEXT_PAGE_SELECTOR: ClassVar[str] = "a[data-pagination=next]"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         return await self._fetch_chevereto_defaults(scrape_item)

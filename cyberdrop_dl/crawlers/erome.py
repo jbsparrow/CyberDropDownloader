@@ -28,7 +28,7 @@ class EromeCrawler(Crawler):
         "Profile": "/...",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://www.erome.com")
-    next_page_selector = _SELECTORS.NEXT_PAGE
+    NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE
     DOMAIN = "erome"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:

@@ -57,7 +57,7 @@ class Rule34VideoCrawler(Crawler):
         "Video": "/video//",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
-    next_page_selector = PLAYLIST_NEXT_PAGE_SELECTOR
+    NEXT_PAGE_SELECTOR: ClassVar[str] = PLAYLIST_NEXT_PAGE_SELECTOR
     DOMAIN = "rule34video"
     FOLDER_DOMAIN = "Rule34Video"
 

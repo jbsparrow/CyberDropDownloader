@@ -20,7 +20,7 @@ CONTENT_SELECTOR = "div[id=list_videos_common_videos_list_items] div a"
 class NudoStarTVCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Model": "/models/..."}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://nudostar.tv/")
-    next_page_selector = "li[class=next] a"
+    NEXT_PAGE_SELECTOR: ClassVar[str] = "li[class=next] a"
     DOMAIN = "nudostar.tv"
     FOLDER_DOMAIN = "NudoStarTV"
 

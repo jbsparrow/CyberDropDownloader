@@ -42,7 +42,7 @@ class DoodStreamCrawler(Crawler):
         "all3do.com",
     )
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://doodstream.com/")
-    update_unsupported = True
+    UPDATE_UNSUPPORTED: ClassVar[bool] = True
     DOMAIN = "doodstream"
     FOLDER_DOMAIN = "DoodStream"
 

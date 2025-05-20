@@ -29,7 +29,7 @@ class EHentaiCrawler(Crawler):
         "Files": "/s/...",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://e-hentai.org/")
-    next_page_selector = _SELECTORS.NEXT_PAGE
+    NEXT_PAGE_SELECTOR: ClassVar[str] = _SELECTORS.NEXT_PAGE
     DOMAIN = "e-hentai"
     FOLDER_DOMAIN = "E-Hentai"
 

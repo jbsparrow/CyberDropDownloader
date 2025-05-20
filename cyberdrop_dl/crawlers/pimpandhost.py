@@ -22,7 +22,7 @@ DATE_FORMAT = "%A, %B %d, %Y %I:%M:%S%p %Z"
 class PimpAndHostCrawler(Crawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Album": "/album/...", "Image": "/image/..."}
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://pimpandhost.com/")
-    next_page_selector = "li[class=next] a"
+    NEXT_PAGE_SELECTOR: ClassVar[str] = "li[class=next] a"
     DOMAIN = "pimpandhost"
     FOLDER_DOMAIN = "PimpAndHost"
 

@@ -32,7 +32,7 @@ class DirtyShipCrawler(Crawler):
         "Videos": "/",
     }
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://dirtyship.com")
-    next_page_selector = "a.page-next"
+    NEXT_PAGE_SELECTOR: ClassVar[str] = "a.page-next"
     DOMAIN = "dirtyship"
     FOLDER_DOMAIN = "DirtyShip"
 
