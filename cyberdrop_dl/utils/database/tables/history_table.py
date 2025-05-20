@@ -48,7 +48,7 @@ class HistoryTable:
     async def update_previously_unsupported(self, crawlers: dict[str, Crawler]) -> None:
         """Update old `no_crawler` entries that are now supported."""
         domains_to_update = [
-            (c.domain, f"http%{c.primary_base_domain.host}%") for c in crawlers.values() if c.update_unsupported
+            (c.DOMAIN, f"http%{c.primary_base_domain.host}%") for c in crawlers.values() if c.update_unsupported
         ]
         if not domains_to_update:
             return

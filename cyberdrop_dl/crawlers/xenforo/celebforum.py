@@ -22,7 +22,7 @@ class CelebForumCrawler(XenforoCrawler):
     domain = "celebforum"
 
     def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, self.domain, "CelebForum")
+        super().__init__(manager, self.DOMAIN, "CelebForum")
 
     def filter_link(self, link: URL) -> URL | None:
         if link.host == self.primary_base_domain.host:

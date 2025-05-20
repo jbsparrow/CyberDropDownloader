@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
@@ -34,7 +34,6 @@ class MixDropCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if any(p in scrape_item.url.parts for p in ("f", "e")):
             return await self.file(scrape_item)
@@ -51,12 +50,12 @@ class MixDropCrawler(Crawler):
 
         scrape_item.url = embed_url
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, video_url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, video_url)
 
         title = soup.select_one(_SELECTOR.FILE_NAME).get_text(strip=True)  # type: ignore
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, embed_url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, embed_url)
 
         link = self.create_download_link(soup)
         filename, ext = self.get_filename_and_ext(link.name)

@@ -3,12 +3,11 @@ from __future__ import annotations
 import json
 from dataclasses import asdict, dataclass, fields
 from functools import cached_property
-from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, ClassVar, Literal, Self
 
 from yarl import URL
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils import javascript
@@ -21,7 +20,6 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 JS_SELECTOR = "script#store-prefetch"
@@ -31,20 +29,19 @@ KEYS_TO_KEEP = "currentResourceId", "resources", "environment"
 
 
 class YandexDiskCrawler(Crawler):
+    SUPPORTED_HOSTS = ("disk.yandex", "yadi.sk")
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {
         "Folder": "disk.yandex/d/",
         "Files": "disk.yandex/d//",
         "*NOTE**": "Does NOT support nested folders",
     }
-    primary_base_domain = PRIMARY_BASE_DOMAIN
-    SUPPORTED_SITES = MappingProxyType({"disk.yandex": ("disk.yandex", "yadi.sk")})  # type: ignore
 
-    def __init__(self, manager: Manager, site: str) -> None:
-        super().__init__(manager, site, "YandexDisk")
+    DOMAIN: ClassVar[str] = "disk.yandex"
+    FOLDER_DOMAIN: ClassVar[str] = "YandexDisk"
+    primary_base_domain = PRIMARY_BASE_DOMAIN
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "d" in scrape_item.url.parts:
             return await self.folder(scrape_item)
@@ -61,7 +58,7 @@ class YandexDiskCrawler(Crawler):
 
         scrape_item.url = canonical_url
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         item_info = get_item_info(soup)
         del soup
@@ -102,7 +99,7 @@ class YandexDiskCrawler(Crawler):
         }
         async with self.request_limiter:
             json_resp: dict[str, Any] = await self.client.post_data(
-                self.domain, DOWNLOAD_API_ENTRYPOINT, data=file.post_data, headers=headers
+                self.DOMAIN, DOWNLOAD_API_ENTRYPOINT, data=file.post_data, headers=headers
             )
 
         new_sk = json_resp.get("new_sk")

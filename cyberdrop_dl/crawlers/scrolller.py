@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -53,7 +53,6 @@ class ScrolllerCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "r" in scrape_item.url.parts:
             return await self.subreddit(scrape_item)
@@ -77,7 +76,7 @@ class ScrolllerCrawler(Crawler):
         while True:
             request_body["variables"]["iterator"] = iterator
             data: dict[str, dict] = await self.client.post_data(
-                self.domain, API_ENTRYPOINT, data=json.dumps(request_body)
+                self.DOMAIN, API_ENTRYPOINT, data=json.dumps(request_body)
             )
             items: list[dict] = data["data"]["getSubreddit"]["children"]["items"] if data else []
             if not items:

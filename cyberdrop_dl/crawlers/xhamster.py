@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Annotated, Any, ClassVar, NamedTuple
 
 from pydantic import AliasPath, Field, PlainValidator
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel, OneOrTupleStrMapping
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug
@@ -39,7 +39,6 @@ class XhamsterCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "gallery" in scrape_item.url.parts:
             return await self.gallery(scrape_item)
@@ -113,7 +112,7 @@ class XhamsterCrawler(Crawler):
         model_names = model_name_choices or []
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, url)
 
         json_info = get_window_initials_json(soup)
         del soup

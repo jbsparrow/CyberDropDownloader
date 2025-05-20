@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -23,7 +23,6 @@ class SendNowCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         await self.file(scrape_item)
 
@@ -35,7 +34,7 @@ class SendNowCrawler(Crawler):
 
         async with self.request_limiter:
             response: CurlResponse = await self.client.post_data_cffi(
-                self.domain, scrape_item.url, data=data, request_params=params
+                self.DOMAIN, scrape_item.url, data=data, request_params=params
             )
 
         debrid_link = self.parse_url(response.headers.get("location"))
@@ -46,6 +45,6 @@ class SendNowCrawler(Crawler):
         async with self.startup_lock:
             if not self.got_cookies:
                 async with self.request_limiter:
-                    await self.client.get_soup_cffi(self.domain, scrape_item.url)
+                    await self.client.get_soup_cffi(self.DOMAIN, scrape_item.url)
                 cookies = self.manager.client_manager.cookies.filter_cookies(self.primary_base_domain)
                 self.got_cookies = bool(cookies)

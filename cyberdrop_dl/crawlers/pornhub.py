@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, ClassVar, Literal, NamedTuple, TypedDict
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import NoExtensionError, ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils import css
@@ -114,7 +114,6 @@ class PornHubCrawler(Crawler):
         super().__init__(manager, "pornhub", "PornHub")
         self._known_profiles_urls: set[URL] = set()
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         # This logic prevents scraping 2 different URLs of the same profile, ex: /gifs and /videos
         # user can only scrape an entire profile or a single specific type per run
@@ -145,7 +144,7 @@ class PornHubCrawler(Crawler):
 
     async def _get_profile_title(self, url: URL, profile: Profile) -> str:
         async with self.request_limiter:
-            soup = await self.client.get_soup(self.domain, url)
+            soup = await self.client.get_soup(self.DOMAIN, url)
         title_tag = css.select_one(soup, _SELECTORS.PROFILE_TITLE)
         for span in css.iselect(title_tag, "span"):
             span.decompose()
@@ -187,7 +186,7 @@ class PornHubCrawler(Crawler):
         album_id = scrape_item.url.parts[2]
         api_url = ALBUM_API_URL.with_query(album=album_id)
         async with self.request_limiter:
-            json_resp: dict[str, Any] = await self.client.get_json(self.domain, api_url)
+            json_resp: dict[str, Any] = await self.client.get_json(self.DOMAIN, api_url)
 
         if not json_resp:
             return
@@ -204,7 +203,7 @@ class PornHubCrawler(Crawler):
 
     async def _get_album_title(self, url: URL, album_id: str) -> str:
         async with self.request_limiter:
-            soup = await self.client.get_soup(self.domain, url)
+            soup = await self.client.get_soup(self.DOMAIN, url)
 
         album_name: str = css.select_one(soup, _SELECTORS.ALBUM_TITLE).get_text(strip=True)
         return self.create_title(album_name, album_id)
@@ -215,7 +214,7 @@ class PornHubCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         link_str: str = css.select_one_get_attr(soup, _SELECTORS.PHOTO, "src")
         link = self.parse_url(link_str)
@@ -230,7 +229,7 @@ class PornHubCrawler(Crawler):
     @error_handling_wrapper
     async def gif(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
-            soup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         attributes = "data-mp4", "data-fallback", "data-webm"
         gif_tag = css.select_one(soup, _SELECTORS.GIF)
@@ -251,7 +250,7 @@ class PornHubCrawler(Crawler):
         playlist_id = scrape_item.url.parts[2]
         results = await self.get_album_results(playlist_id)
         async with self.request_limiter:
-            soup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         title: str = css.select_one(soup, _SELECTORS.PLAYLIST_TITLE).get_text(strip=True)
         title = self.create_title(title, playlist_id)
@@ -268,7 +267,7 @@ class PornHubCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup = await self.client.get_soup(self.domain, page_url, cache_disabled=True)
+            soup = await self.client.get_soup(self.DOMAIN, page_url, cache_disabled=True)
 
         check_video_is_available(soup)
         title: str = css.select_one(soup, _SELECTORS.TITLE).get_text(strip=True)
@@ -290,7 +289,7 @@ class PornHubCrawler(Crawler):
 
         mp4_media_url = self.parse_url(mp4_format.url)
         async with self.request_limiter:
-            mp4_media: list[Media] = await self.client.get_json(self.domain, mp4_media_url, cache_disabled=True)
+            mp4_media: list[Media] = await self.client.get_json(self.DOMAIN, mp4_media_url, cache_disabled=True)
 
         if not mp4_media:
             raise ScrapeError(422)

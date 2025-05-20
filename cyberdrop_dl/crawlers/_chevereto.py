@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from bs4 import BeautifulSoup
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import PasswordProtectedError, ScrapeError
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -50,7 +50,6 @@ class CheveretoCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         return await self._fetch_chevereto_defaults(scrape_item)
 
@@ -123,7 +122,7 @@ class CheveretoCrawler(Crawler):
         if PASSWORD_PROTECTED in soup.text and password:
             data = {"content-password": password}
             async with self.request_limiter:
-                html = await self.client.post_data_raw(self.domain, url, data=data)
+                html = await self.client.post_data_raw(self.DOMAIN, url, data=data)
             soup = BeautifulSoup(html, "html.parser")
 
         if PASSWORD_PROTECTED in soup.text:
@@ -140,7 +139,7 @@ class CheveretoCrawler(Crawler):
         embed_url = self.primary_base_domain / "oembed" / ""
         embed_url = embed_url.with_query(url=str(url), format="json")
         async with self.request_limiter:
-            json_resp: dict[str, str] = await self.client.get_json(self.domain, embed_url)
+            json_resp: dict[str, str] = await self.client.get_json(self.DOMAIN, embed_url)
 
         link = clean_name(self.parse_url(json_resp["url"]))
         filename = json_resp["title"] + link.suffix
@@ -157,7 +156,7 @@ class CheveretoCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         try:
             link_str: str = soup.select_one(selector[0])[selector[1]]  # type: ignore

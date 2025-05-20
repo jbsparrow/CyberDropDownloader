@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 
-from cyberdrop_dl.crawlers.crawler import create_task_id
 from cyberdrop_dl.crawlers.mixdrop import MixDropCrawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
@@ -37,13 +36,12 @@ class ArchiveBateCrawler(MixDropCrawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager)
-        self.domain = "archivebate"
+        self.DOMAIN = "archivebate"
         self.folder_domain = "ArchiveBate"
         self.request_limiter = AsyncLimiter(4, 1)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "watch" in scrape_item.url.parts:
             return await self.video(scrape_item)
@@ -69,14 +67,14 @@ class ArchiveBateCrawler(MixDropCrawler):
 
         url = scrape_item.url
         # Can't use check_complete_by_referer. We need the mixdrop url for that
-        check_complete = await self.manager.db_manager.history_table.check_complete(self.domain, url, url)
+        check_complete = await self.manager.db_manager.history_table.check_complete(self.DOMAIN, url, url)
         if check_complete:
             self.log(f"Skipping {scrape_item.url} as it has already been downloaded", 10)
             self.manager.progress_manager.download_progress.add_previously_completed()
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         if "This video has been deleted" in soup.text:
             raise ScrapeError(410)
@@ -97,7 +95,7 @@ class ArchiveBateCrawler(MixDropCrawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, mixdrop_url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, mixdrop_url)
 
         link = self.create_download_link(soup)
         filename, ext = self.get_filename_and_ext(link.name)

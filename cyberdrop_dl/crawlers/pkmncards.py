@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, ClassVar, NewType
 
 from bs4 import BeautifulSoup
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -110,7 +110,6 @@ class PkmncardsCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if len(scrape_item.url.parts) > 2:
             if "card" in scrape_item.url.parts:
@@ -155,7 +154,7 @@ class PkmncardsCrawler(Crawler):
     @error_handling_wrapper
     async def card(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         name = soup.select_one(_SELECTORS.CARD_NAME).text  # type: ignore
         number = soup.select_one(_SELECTORS.CARD_NUMBER).text  # type: ignore
@@ -178,7 +177,6 @@ class PkmncardsCrawler(Crawler):
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)
 
     async def handle_simple_card(self, scrape_item: ScrapeItem, simple_card: SimpleCard):
-        @create_task_id
         @error_handling_wrapper
         async def get_card_set(self, scrape_item: ScrapeItem):
             async with self.request_limiter:

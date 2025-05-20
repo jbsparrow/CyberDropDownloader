@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -25,7 +25,6 @@ class SexDotComCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         n_parts = len(scrape_item.url.parts)
         if n_parts > 5:
@@ -42,7 +41,7 @@ class SexDotComCrawler(Crawler):
             query = {"pageSize": 300, "pageNumber": page, "visibility": "public", "username": username}
             posts_api_url = posts_api_url.with_query(query)
             async with self.request_limiter:
-                json_data = await self.client.get_json(self.domain, posts_api_url)
+                json_data = await self.client.get_json(self.DOMAIN, posts_api_url)
 
             if scrape_item.album_id is None:
                 user_id = json_data["page"]["items"][0]["media"]["user"]["userUid"]
@@ -61,7 +60,7 @@ class SexDotComCrawler(Crawler):
         data_url = API_URL / "media" / "getMedia"
         data_url = data_url.with_query(relativeUrl=relative_url)
         async with self.request_limiter:
-            json_data = await self.client.get_json(self.domain, data_url)
+            json_data = await self.client.get_json(self.DOMAIN, data_url)
         return json_data["media"]
 
     @error_handling_wrapper

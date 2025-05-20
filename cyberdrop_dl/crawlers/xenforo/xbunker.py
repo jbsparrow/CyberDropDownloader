@@ -21,5 +21,5 @@ class XBunkerCrawler(XenforoCrawler):
     selectors = XenforoSelectors(posts=post_selectors)
 
     def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, self.domain, "XBunker")
+        super().__init__(manager, self.DOMAIN, "XBunker")
         self.attachment_url_parts += "data"

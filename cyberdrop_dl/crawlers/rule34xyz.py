@@ -18,7 +18,7 @@ class Rule34XYZCrawler(Rule34VaultCrawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager)
-        self.domain = "rule34.xyz"
+        self.DOMAIN = "rule34.xyz"
         self.folder_domain = "Rule34XYZ"
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

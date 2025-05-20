@@ -38,7 +38,7 @@ from typing import TYPE_CHECKING, ClassVar
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import DownloadError, ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_from_headers
@@ -80,7 +80,6 @@ class GoogleDriveCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if is_folder(scrape_item.url):
             return await self.folder(scrape_item)
@@ -117,7 +116,7 @@ class GoogleDriveCrawler(Crawler):
         folder_id = get_folder_id(scrape_item.url)
         download_url = get_download_url(folder_id, folder=True)
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, download_url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, download_url)
 
         title: str = soup.title.text.strip()  # type: ignore
         children = []
@@ -160,7 +159,7 @@ class GoogleDriveCrawler(Crawler):
 
             try:
                 async with self.request_limiter:
-                    response, soup = await self.client._get_response_and_soup(self.domain, current_url)
+                    response, soup = await self.client._get_response_and_soup(self.DOMAIN, current_url)
                     headers = response.headers
 
             except DownloadError as e:
@@ -189,7 +188,7 @@ class GoogleDriveCrawler(Crawler):
 
     async def add_headers(self, url: URL) -> tuple[URL, Mapping[str, str]]:
         async with self.request_limiter:
-            headers = await self.client.get_head(self.domain, url)
+            headers = await self.client.get_head(self.DOMAIN, url)
         location = headers.get("location")
         if location:
             link = self.parse_url(location)

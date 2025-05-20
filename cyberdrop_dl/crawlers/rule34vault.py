@@ -3,7 +3,7 @@ from __future__ import annotations
 import itertools
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -38,7 +38,6 @@ class Rule34VaultCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "post" in scrape_item.url.parts:
             return await self.file(scrape_item)
@@ -57,7 +56,7 @@ class Rule34VaultCrawler(Crawler):
             url = scrape_item.url.with_query(page=page)
             n_images = 0
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, url)
+                soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, url)
 
             if not title:
                 if is_playlist:
@@ -85,7 +84,7 @@ class Rule34VaultCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         if date_tag := soup.select_one(_SELECTORS.DATE):
             scrape_item.possible_datetime = self.parse_date(date_tag.text, "%b %d, %Y, %I:%M:%S %p")

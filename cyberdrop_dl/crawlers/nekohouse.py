@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import create_task_id
 from cyberdrop_dl.crawlers.kemono import KemonoCrawler
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 
@@ -22,11 +21,10 @@ class NekohouseCrawler(KemonoCrawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager)
-        self.domain = "nekohouse"
+        self.DOMAIN = "nekohouse"
         self.folder_domain = "Nekohouse"
         self.services = "fanbox", "fantia", "fantia_products", "subscribestar", "twitter"
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "thumbnails" in scrape_item.url.parts:
             return await self.handle_direct_link(scrape_item)

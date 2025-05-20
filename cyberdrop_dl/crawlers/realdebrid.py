@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from aiolimiter import AsyncLimiter
 from multidict import MultiDict
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.managers.real_debrid.api import RATE_LIMIT
 from cyberdrop_dl.types import AbsoluteHttpURL
 from cyberdrop_dl.utils.logger import log
@@ -26,7 +26,6 @@ class RealDebridCrawler(Crawler):
         self.headers = {}
         self.request_limiter = AsyncLimiter(RATE_LIMIT, 60)
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         scrape_item.url = await self.get_original_url(scrape_item)
         if self.manager.real_debrid_manager.is_supported_folder(scrape_item.url):
@@ -88,12 +87,12 @@ class RealDebridCrawler(Crawler):
 
     def is_self_hosted(self, url: URL) -> bool:
         assert url.host
-        return any(subdomain in url.host for subdomain in ("download.", "my.")) and self.domain in url.host
+        return any(subdomain in url.host for subdomain in ("download.", "my.")) and self.DOMAIN in url.host
 
     async def get_original_url(self, scrape_item: ScrapeItem) -> AbsoluteHttpURL:
         assert scrape_item.url.host
         log(f"Input URL: {scrape_item.url}")
-        if not self.is_self_hosted(scrape_item.url) or self.domain not in scrape_item.url.host:
+        if not self.is_self_hosted(scrape_item.url) or self.DOMAIN not in scrape_item.url.host:
             log(f"Parsed URL: {scrape_item.url}")
             return scrape_item.url
 

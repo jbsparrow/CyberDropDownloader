@@ -4,9 +4,9 @@ import mimetypes
 from dataclasses import dataclass
 from functools import wraps
 from pathlib import Path
-from typing import TYPE_CHECKING, ParamSpec, TypeVar
+from typing import TYPE_CHECKING, ClassVar, ParamSpec, TypeVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import InvalidContentTypeError, NoExtensionError, ScrapeError
 from cyberdrop_dl.scraper.filters import has_valid_extension
 from cyberdrop_dl.utils.logger import log
@@ -19,7 +19,6 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 P = ParamSpec("P")
@@ -55,16 +54,12 @@ class FakeURL:
 
 
 class GenericCrawler(Crawler):
-    primary_base_domain = FakeURL(host=".")  # type: ignore
-    scrape_prefix = "Scraping (unsupported domain):"
-    scrape_mapper_domain = "."
+    DOMAIN: ClassVar[str] = "generic"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "generic", "Generic")
+    primary_base_domain = FakeURL(host=".")  # type: ignore
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         await self.file(scrape_item)
 
@@ -86,7 +81,7 @@ class GenericCrawler(Crawler):
 
     async def get_content_type(self, url: URL) -> str:
         async with self.request_limiter:
-            headers = await self.client.get_head(self.domain, url)
+            headers = await self.client.get_head(self.DOMAIN, url)
         content_type: str = headers.get("Content-Type", "")
         if not content_type:
             raise ScrapeError(422)
@@ -94,7 +89,7 @@ class GenericCrawler(Crawler):
 
     async def try_video_from_soup(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         title: str = soup.select_one("title").text  # type: ignore
         title = title.rsplit(" - ", 1)[0].rsplit("|", 1)[0]

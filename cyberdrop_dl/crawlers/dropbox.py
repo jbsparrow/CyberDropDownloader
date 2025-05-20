@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from functools import cached_property
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_from_headers
@@ -32,7 +32,6 @@ class DropboxCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         url = await self.get_share_url(scrape_item)
         if not url:
@@ -72,14 +71,14 @@ class DropboxCrawler(Crawler):
     async def get_folder_name(self, url: URL) -> str | None:
         url = await self.get_redict_url(url)
         async with self.request_limiter:
-            headers = await self.client.get_head(self.domain, url)
+            headers = await self.client.get_head(self.DOMAIN, url)
         if not ("Content-Disposition" in headers and not is_html(headers)):
             raise ScrapeError(422)
         return get_filename_from_headers(headers)
 
     async def get_redict_url(self, url: URL) -> AbsoluteHttpURL:
         async with self.request_limiter:
-            headers = await self.client.get_head(self.domain, url)
+            headers = await self.client.get_head(self.DOMAIN, url)
         location = headers.get("location")
         if not location:
             raise ScrapeError(400)

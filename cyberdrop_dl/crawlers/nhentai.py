@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import LoginError, ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.logger import log_debug
@@ -38,7 +38,6 @@ class NHentaiCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if any(p in scrape_item.url.parts for p in COLLECTION_PARTS):
             return await self.collection(scrape_item)
@@ -80,7 +79,7 @@ class NHentaiCrawler(Crawler):
         gallery_id = scrape_item.url.name
         api_url = API_ENTRYPOINT / gallery_id
         async with self.request_limiter:
-            json_resp: dict = await self.client.get_json(self.domain, api_url)
+            json_resp: dict = await self.client.get_json(self.DOMAIN, api_url)
 
         log_debug(json_resp)
         titles: dict[str, str] = json_resp["title"]

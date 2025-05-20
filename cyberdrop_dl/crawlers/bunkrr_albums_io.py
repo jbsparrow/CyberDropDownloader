@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -28,7 +28,6 @@ class BunkrAlbumsIOCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.query.get("search"):  # Trying to scrape the root page is a bad idea
             return await self.search(scrape_item)
@@ -50,7 +49,7 @@ class BunkrAlbumsIOCrawler(Crawler):
         while True:
             current_page_number = int(page_url.query.get("page") or 1)
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url)
+                soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, page_url)
             next_page = soup.select(self.next_page_selector)
             yield soup
             if not next_page:

@@ -17,4 +17,4 @@ class SimpCityCrawler(XenforoCrawler):
     session_cookie_name = "dontlikebots_user"
 
     def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, self.domain, "SimpCity")
+        super().__init__(manager, self.DOMAIN, "SimpCity")

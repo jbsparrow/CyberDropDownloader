@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, ClassVar
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.crawlers.crawler import create_task_id
 from cyberdrop_dl.crawlers.kemono import KemonoCrawler, UserPost
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 
@@ -29,7 +28,7 @@ class CoomerCrawler(KemonoCrawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager)
-        self.domain = "coomer"
+        self.DOMAIN = "coomer"
         self.folder_domain = "Coomer"
         self.api_entrypoint = URL("https://coomer.su/api/v1")
         self.services = "onlyfans", "fansly"
@@ -46,7 +45,6 @@ class CoomerCrawler(KemonoCrawler):
 
         self.register_cache_filter(self.primary_base_domain, check_coomer_page)
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         return await self._fetch_kemono_defaults(scrape_item)
 

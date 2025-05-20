@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -24,7 +24,6 @@ class ViprImCrawler(Crawler):
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "vipr.im", "Vipr.im")
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "th" in scrape_item.url.parts:
             return await self.thumbnail(scrape_item)
@@ -38,7 +37,7 @@ class ViprImCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         link_str: str = soup.select_one(IMG_SELECTOR)["src"]  # type: ignore
         link = self.parse_url(link_str)

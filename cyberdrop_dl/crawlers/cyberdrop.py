@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, ClassVar
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -42,7 +42,6 @@ class CyberdropCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "a" in scrape_item.url.parts:
             return await self.album(scrape_item)
@@ -55,7 +54,7 @@ class CyberdropCrawler(Crawler):
         album_id = scrape_item.url.parts[2]
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         try:
             title: str = soup.select_one(_SELECTORS.ALBUM_TITLE).text  # type: ignore
@@ -81,13 +80,13 @@ class CyberdropCrawler(Crawler):
         file_id = scrape_item.url.name
         async with self.request_limiter:
             api_url = API_ENTRYPOINT / "file" / "info" / file_id
-            json_resp = await self.client.get_json(self.domain, api_url)
+            json_resp = await self.client.get_json(self.DOMAIN, api_url)
 
         filename, ext = self.get_filename_and_ext(json_resp["name"])
 
         async with self.request_limiter:
             api_url = API_ENTRYPOINT / "file" / "auth" / file_id
-            json_resp = await self.client.get_json(self.domain, api_url)
+            json_resp = await self.client.get_json(self.DOMAIN, api_url)
 
         link = self.parse_url(json_resp["url"])
         await self.handle_file(link, scrape_item, filename, ext)
@@ -103,5 +102,5 @@ class CyberdropCrawler(Crawler):
             return url
         if url.host.count(".") > 1 or "e" in url.parts:
             return self.primary_base_domain / "f" / url.name
-        response, _ = await self.client._get_response_and_soup(self.domain, url)
+        response, _ = await self.client._get_response_and_soup(self.DOMAIN, url)
         return AbsoluteHttpURL(response.url)

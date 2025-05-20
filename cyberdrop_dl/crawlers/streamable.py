@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.logger import log_debug
@@ -36,7 +36,6 @@ class StreamableCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         await self.video(scrape_item)
 
@@ -52,7 +51,7 @@ class StreamableCrawler(Crawler):
 
         ajax_url = AJAX_ENTRYPOINT / video_id
         async with self.request_limiter:
-            json_resp: BeautifulSoup = await self.client.get_json(self.domain, ajax_url)
+            json_resp: BeautifulSoup = await self.client.get_json(self.DOMAIN, ajax_url)
 
         status: int = json_resp.get("status")  # type: ignore
         if status != STATUS_OK:

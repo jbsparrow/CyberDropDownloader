@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -27,7 +27,6 @@ class FilesVcCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.path == "/d/dl" and scrape_item.url.query.get("hash"):
             return await self.file(scrape_item)
@@ -44,7 +43,7 @@ class FilesVcCrawler(Crawler):
         api_url = API_ENTRYPOINT.joinpath("info").with_query(hash=hash)
 
         async with self.request_limiter:
-            json_resp: dict[str, Any] = await self.client.get_json(self.domain, api_url)
+            json_resp: dict[str, Any] = await self.client.get_json(self.DOMAIN, api_url)
 
         filename, ext = self.get_filename_and_ext(json_resp["filename"], assume_ext=".zip")
         scrape_item.possible_datetime = self.parse_date(json_resp["upload_time"])

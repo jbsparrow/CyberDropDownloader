@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -33,7 +33,6 @@ class ImageBamCrawler(Crawler):
     async def async_startup(self) -> None:
         self.set_cookies()
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if is_cdn(scrape_item.url):
             scrape_item.url = get_view_url(scrape_item.url)
@@ -44,7 +43,7 @@ class ImageBamCrawler(Crawler):
     @error_handling_wrapper
     async def view(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
         if "Share this gallery" in soup.text:
             return await self.gallery(scrape_item, soup)
         await self.image(scrape_item, soup)

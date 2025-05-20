@@ -5,7 +5,7 @@ import datetime
 import json
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import DownloadError, NoExtensionError, ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.logger import log_debug
@@ -31,7 +31,6 @@ class PixelDrainCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "l" in scrape_item.url.parts:
             return await self.folder(scrape_item)
@@ -45,7 +44,7 @@ class PixelDrainCrawler(Crawler):
 
         async with self.request_limiter:
             api_url = API_ENTRYPOINT / "list" / scrape_item.url.parts[-1]
-            json_resp = await self.client.get_json(self.domain, api_url)
+            json_resp = await self.client.get_json(self.DOMAIN, api_url)
 
         log_debug(json_resp)
         title = self.create_title(json_resp["title"], album_id)
@@ -79,7 +78,7 @@ class PixelDrainCrawler(Crawler):
         try:
             async with self.request_limiter:
                 api_url = API_ENTRYPOINT / "file" / scrape_item.url.name / "info"
-                json_resp = await self.client.get_json(self.domain, api_url)
+                json_resp = await self.client.get_json(self.DOMAIN, api_url)
         except DownloadError as e:
             if e.status != 404:
                 raise
@@ -107,7 +106,7 @@ class PixelDrainCrawler(Crawler):
     async def text(self, scrape_item: ScrapeItem):
         async with self.request_limiter:
             api_url = API_ENTRYPOINT / "file" / scrape_item.url.parts[-1]
-            text: str = await self.client.get_text(self.domain, api_url)
+            text: str = await self.client.get_text(self.DOMAIN, api_url)
 
         for line in text.splitlines():
             link = self.parse_url(line)
@@ -117,7 +116,7 @@ class PixelDrainCrawler(Crawler):
 
     async def filesystem(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         meta = get_og_properties(soup)
         filename: str = meta.title

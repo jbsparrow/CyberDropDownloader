@@ -390,14 +390,9 @@ def update_wiki_supported_sites() -> None:
 
         paths = "\n".join(supported_paths)
         supported_domains: list[str] = []
-        for name, domains in crawler.crawler.SUPPORTED_SITES.items():
-            joined_domains = "\n".join([f"    `{p}`" for p in domains])
-            supported_domains.append(f"{name}: \n{joined_domains}")
-
-        if not supported_domains:
-            domain = crawler.crawler.primary_base_domain.host
-            name = crawler.crawler.scrape_mapper_domain or crawler.crawler.domain
-            supported_domains = [f"{name}: \n    `{domain}`"]
+        domains = crawler.crawler.SUPPORTED_HOSTS or [crawler.crawler.primary_base_domain.host]
+        joined_domains = "\n".join([f"    `{p}`" for p in domains])
+        supported_domains.append(joined_domains)
 
         domains = "\n".join(supported_domains)
         table.add_row(crawler.name, str(crawler.primary_base_domain), domains, paths)

@@ -27,11 +27,16 @@ def select_one(tag: Tag, selector: str) -> Tag:
     return not_none(tag.select_one)(selector)
 
 
-def get_attr(tag: Tag, attribute: str) -> str:
-    """Same as `tag[attribute]` but asserts the result is not `None` and is a single string"""
-    value = tag[attribute]
-    assert isinstance(value, str)
+def get_attr_or_none(tag: Tag, attribute: str) -> str | None:
+    """Same as `tag.get(attribute)` but asserts the result is not multiple strings"""
+    value = tag.get(attribute)
+    assert not isinstance(value, list)
     return value
+
+
+def get_attr(tag: Tag, attribute: str) -> str:
+    """Same as `tag.get(attribute)` but asserts the result is not `None` and is a single string"""
+    return not_none(get_attr_or_none)(tag, attribute)
 
 
 def select_one_get_attr(tag: Tag, selector: str, attribute: str) -> str:

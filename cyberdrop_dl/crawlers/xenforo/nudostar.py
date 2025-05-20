@@ -20,4 +20,4 @@ class NudoStarCrawler(XenforoCrawler):
     domain = "nudostar"
 
     def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, self.domain, "NudoStar")
+        super().__init__(manager, self.DOMAIN, "NudoStar")

@@ -23,7 +23,7 @@ class TitsInTopsCrawler(XenforoCrawler):
     selectors = XenforoSelectors(posts=post_selectors)
 
     def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, self.domain, "TitsInTops")
+        super().__init__(manager, self.DOMAIN, "TitsInTops")
         self.attachment_url_part = ["attachments", "data"]
 
     def filter_link(self, link: URL):

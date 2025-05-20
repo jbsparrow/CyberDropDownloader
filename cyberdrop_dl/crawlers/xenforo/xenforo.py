@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from bs4 import BeautifulSoup, Tag
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import FORUM, ScrapeItem
 from cyberdrop_dl.exceptions import InvalidURLError, LoginError, ScrapeError
 from cyberdrop_dl.utils.logger import log, log_debug
@@ -147,7 +147,6 @@ class XenforoCrawler(Crawler):
 
         self.register_cache_filter(self.primary_base_domain, is_not_last_page)
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if not self.logged_in and self.login_required:
             return
@@ -170,7 +169,7 @@ class XenforoCrawler(Crawler):
     @error_handling_wrapper
     async def redirect(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
-            _, url = await self.client.get_soup_and_return_url(self.domain, scrape_item.url)  # type: ignore
+            _, url = await self.client.get_soup_and_return_url(self.DOMAIN, scrape_item.url)  # type: ignore
         scrape_item.url = url
         self.manager.task_group.create_task(self.run(scrape_item))
 
@@ -277,7 +276,7 @@ class XenforoCrawler(Crawler):
         page_url = scrape_item.url
         while True:
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url)
+                soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, page_url)
             next_page = soup.select_one(self.selectors.next_page.element)
             yield soup
             if not next_page:
@@ -372,7 +371,7 @@ class XenforoCrawler(Crawler):
         scrape_item.url = remove_trailing_slash(scrape_item.url)
 
         if scrape_item.url.name.isdigit():
-            head = await self.client.get_head(self.domain, scrape_item.url)  # type: ignore
+            head = await self.client.get_head(self.DOMAIN, scrape_item.url)  # type: ignore
             redirect = head.get("location")
             if not redirect:
                 raise ScrapeError(422)
@@ -389,7 +388,7 @@ class XenforoCrawler(Crawler):
     async def handle_confirmation_link(self, link: URL, *, origin: ScrapeItem | None = None) -> AbsoluteHttpURL | None:
         """Handles link confirmation."""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, link)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, link)
         confirm_button = soup.select_one("a[class*=button--cta]")
         if not confirm_button:
             return
@@ -455,7 +454,7 @@ class XenforoCrawler(Crawler):
         host_cookies: dict = self.client.client_manager.cookies.filter_cookies(self.primary_base_domain)
         session_cookie = host_cookies.get(self.session_cookie_name)
         session_cookie = session_cookie.value if session_cookie else None
-        msg = f"No cookies found for {self.folder_domain}"
+        msg = f"No cookies found for {self.FOLDER_DOMAIN}"
         if not session_cookie and self.login_required:
             raise LoginError(message=msg)
 
@@ -464,7 +463,7 @@ class XenforoCrawler(Crawler):
         if self.logged_in:
             return
         if session_cookie:
-            msg = f"Cookies for {self.folder_domain} are not valid."
+            msg = f"Cookies for {self.FOLDER_DOMAIN} are not valid."
         if self.login_required:
             raise LoginError(message=msg)
 
@@ -480,7 +479,7 @@ class XenforoCrawler(Crawler):
         manual_login = username and password
         missing_credentials = not (manual_login or session_cookie)
         if missing_credentials:
-            msg = f"Login info wasn't provided for {self.folder_domain}"
+            msg = f"Login info wasn't provided for {self.FOLDER_DOMAIN}"
             raise LoginError(message=msg)
 
         if session_cookie:
@@ -505,18 +504,18 @@ class XenforoCrawler(Crawler):
                 attempt += 1
                 await asyncio.sleep(wait_time)
                 data = prepare_login_data(text)
-                _ = await self.client._post_data(self.domain, login_url / "login", data=data, cache_disabled=True)
+                _ = await self.client._post_data(self.DOMAIN, login_url / "login", data=data, cache_disabled=True)
                 await asyncio.sleep(wait_time)
                 text, logged_in = await self.check_login_with_request(login_url)
                 if logged_in:
                     self.logged_in = True
                     return
 
-        msg = f"Failed to login on {self.folder_domain} after {retries} attempts"
+        msg = f"Failed to login on {self.FOLDER_DOMAIN} after {retries} attempts"
         raise LoginError(message=msg)
 
     async def check_login_with_request(self, login_url: URL) -> tuple[str, bool]:
-        text = await self.client.get_text(self.domain, login_url, cache_disabled=True)
+        text = await self.client.get_text(self.DOMAIN, login_url, cache_disabled=True)
         return text, any(p in text for p in ('<span class="p-navgroup-user-linkText">', "You are already logged in."))
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_from_headers
 
@@ -20,7 +20,6 @@ class BuzzHeavierCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         return await self.file(scrape_item)
 
@@ -34,7 +33,7 @@ class BuzzHeavierCrawler(Crawler):
         url = scrape_item.url / "download"
         headers = {"HX-Current-URL": str(scrape_item.url), "HX-Request": "true"}
         async with self.request_limiter:
-            headers = await self.client.get_head(self.domain, url, headers=headers)
+            headers = await self.client.get_head(self.DOMAIN, url, headers=headers)
             redirect = headers["hx-redirect"]
             filename = get_filename_from_headers(headers)
 

@@ -4,7 +4,7 @@ import calendar
 import datetime
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import FILE_HOST_PROFILE, ScrapeItem
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -33,7 +33,6 @@ class ToonilyCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "chapter" in scrape_item.url.name:
             return await self.chapter(scrape_item)
@@ -45,7 +44,7 @@ class ToonilyCrawler(Crawler):
     async def series(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a series."""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         series_name = soup.select_one(SERIES_TITLE_SELECTOR).get_text(strip=True)  # type: ignore
         series_title = self.create_title(series_name)
@@ -57,7 +56,7 @@ class ToonilyCrawler(Crawler):
     async def chapter(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image."""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         series_name, chapter_title = soup.select_one("title").get_text().split(" - ", 2)  # type: ignore
         if scrape_item.type != FILE_HOST_PROFILE:

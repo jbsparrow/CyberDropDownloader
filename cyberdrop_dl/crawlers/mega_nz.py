@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, cast
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.downloader.mega_nz import (
     DecryptData,
     File,
@@ -47,7 +47,7 @@ class MegaNzCrawler(Crawler):
             if self.ready:
                 return
             self.client = self.manager.client_manager.scraper_session
-            self.downloader = MegaDownloader(self.api, self.domain)
+            self.downloader = MegaDownloader(self.api, self.DOMAIN)
             self.downloader.startup()
             await self.async_startup()
             self.ready = True
@@ -55,7 +55,6 @@ class MegaNzCrawler(Crawler):
     async def async_startup(self) -> None:
         await self.login(self.user, self.password)
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.fragment:  # Mega stores access key in fragment. We can't do anything without the key
             if "file" in scrape_item.url.parts or scrape_item.url.fragment.startswith("!"):

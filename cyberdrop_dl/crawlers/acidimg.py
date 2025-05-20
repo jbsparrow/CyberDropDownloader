@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import create_task_id
 from cyberdrop_dl.crawlers.imx_to import ImxToCrawler
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 
@@ -22,12 +21,11 @@ class AcidImgCrawler(ImxToCrawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager)
-        self.domain = "acidimg.cc"
+        self.DOMAIN = "acidimg.cc"
         self.folder_domain = "AcidImg"
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "i" in scrape_item.url.parts:
             return await self.image(scrape_item)

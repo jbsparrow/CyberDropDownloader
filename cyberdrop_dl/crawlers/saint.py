@@ -4,7 +4,7 @@ import base64
 import re
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -32,7 +32,6 @@ class SaintCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         scrape_item.url = self.primary_base_domain.with_path(scrape_item.url.path)
 
@@ -48,7 +47,7 @@ class SaintCrawler(Crawler):
         album_id = scrape_item.url.parts[2]
         results = await self.get_album_results(album_id)
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         title_portion = soup.select_one("title").text.rsplit(" - Saint Video Hosting")[0].strip()  # type: ignore
         if not title_portion:
@@ -76,7 +75,7 @@ class SaintCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
         try:
             link_str: str = soup.select_one(EMBED_SRC_SELECTOR).get("src")  # type: ignore
             link = self.parse_url(link_str)
@@ -91,7 +90,7 @@ class SaintCrawler(Crawler):
     async def video(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a video page."""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
         try:
             link_str: str = soup.select_one(DOWNLOAD_BUTTON_SELECTOR).get("href")  # type: ignore
             link = get_url_from_base64(self.parse_url(link_str))

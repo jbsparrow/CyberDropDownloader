@@ -6,7 +6,7 @@ from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 from yarl import URL
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -50,7 +50,6 @@ class FourChanCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "thread" in scrape_item.url.parts:
             return await self.thread(scrape_item)
@@ -63,7 +62,7 @@ class FourChanCrawler(Crawler):
         board, _, thread_id = scrape_item.url.parts[1:4]
         api_url = API_ENTRYPOINT / board / f"thread/{thread_id}.json"
         async with self.request_limiter:
-            response: dict[str, list[Post]] = await self.client.get_json(self.domain, api_url, cache_disabled=True)
+            response: dict[str, list[Post]] = await self.client.get_json(self.DOMAIN, api_url, cache_disabled=True)
         if not response:
             raise ScrapeError(404)
 
@@ -98,7 +97,7 @@ class FourChanCrawler(Crawler):
         board: str = scrape_item.url.parts[-1]
         api_url = API_ENTRYPOINT / board / "threads.json"
         async with self.request_limiter:
-            threads: list[ThreadList] = await self.client.get_json(self.domain, api_url, cache_disabled=True)
+            threads: list[ThreadList] = await self.client.get_json(self.DOMAIN, api_url, cache_disabled=True)
 
         scrape_item.setup_as_forum("")
         for page in threads:

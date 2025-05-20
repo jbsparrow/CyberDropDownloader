@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from yarl import URL
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
@@ -51,7 +51,6 @@ class DoodStreamCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "e" in scrape_item.url.parts:
             return await self.video(scrape_item)
@@ -64,7 +63,7 @@ class DoodStreamCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            response, soup = await self.client._get_response_and_soup_cffi(self.domain, scrape_item.url)
+            response, soup = await self.client._get_response_and_soup_cffi(self.DOMAIN, scrape_item.url)
 
         host = self.parse_url(response.url).host
         assert host
@@ -87,7 +86,7 @@ class DoodStreamCrawler(Crawler):
         api_url = API_MD5_ENTRYPOINT / md5_path
         token = api_url.name
         async with self.request_limiter:
-            new_soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, api_url.with_host(host))
+            new_soup: BeautifulSoup = await self.client.get_soup_cffi(self.DOMAIN, api_url.with_host(host))
 
         text = new_soup.get_text(strip=True)
         random_padding = "".join(random.choice(TOKEN_CHARS) for _ in range(10))

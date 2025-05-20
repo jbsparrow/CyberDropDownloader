@@ -19,5 +19,5 @@ class IceyFileCrawler(CyberfileCrawler):
 
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager)
-        self.domain = "iceyfile"
+        self.DOMAIN = "iceyfile"
         self.folder_domain = "Iceyfile"

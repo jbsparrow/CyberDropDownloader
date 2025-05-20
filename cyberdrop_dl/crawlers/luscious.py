@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from yarl import URL
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.logger import log_debug
@@ -37,7 +37,6 @@ class LusciousCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "albums" not in scrape_item.url.parts or "read" in scrape_item.url.parts:
             raise ValueError
@@ -123,6 +122,6 @@ class LusciousCrawler(Crawler):
         api_url = GRAPHQL_URL.with_query(operationName=query_name)
         headers = {"Content-Type": "application/json"}
         async with self.request_limiter:
-            json_resp = await self.client.post_data(self.domain, api_url, data=query, headers=headers)
+            json_resp = await self.client.post_data(self.DOMAIN, api_url, data=query, headers=headers)
         log_debug(json_resp)
         return json_resp

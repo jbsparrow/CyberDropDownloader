@@ -24,7 +24,7 @@ class F95ZoneCrawler(XenforoCrawler):
     domain = "f95zone"
 
     def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, self.domain, "F95Zone")
+        super().__init__(manager, self.DOMAIN, "F95Zone")
 
     def is_confirmation_link(self, link: URL) -> bool:
         return "masked" in link.parts or super().is_confirmation_link(link)
@@ -34,7 +34,7 @@ class F95ZoneCrawler(XenforoCrawler):
         """Override to handle protected link confirmation."""
         async with self.request_limiter:
             data = ({"xhr": "1", "download": "1"},)
-            JSON_Resp = await self.client.post_data(self.domain, link, data=data)
+            JSON_Resp = await self.client.post_data(self.DOMAIN, link, data=data)
 
         if JSON_Resp["status"] == "ok":
             return self.parse_url(JSON_Resp["msg"])

@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, ClassVar, Literal, NotRequired, TypedDict, cas
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import FILE_HOST_ALBUM, ScrapeItem
 from cyberdrop_dl.exceptions import DownloadError, PasswordProtectedError, ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
@@ -103,7 +103,6 @@ class GoFileCrawler(Crawler):
         await self.get_account_token(API_ENTRYPOINT)
         await get_website_token(self, self.primary_base_domain)
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "d" in scrape_item.url.parts:
             return await self.album(scrape_item)
@@ -124,7 +123,7 @@ class GoFileCrawler(Crawler):
 
         try:
             async with self.request_limiter:
-                json_resp: ApiAlbumResponse = await self.client.get_json(self.domain, api_url, headers=self.headers)
+                json_resp: ApiAlbumResponse = await self.client.get_json(self.DOMAIN, api_url, headers=self.headers)
 
         except DownloadError as e:
             if e.status != http.HTTPStatus.UNAUTHORIZED:
@@ -133,7 +132,7 @@ class GoFileCrawler(Crawler):
                 await self.get_website_token(update=True)
             api_url = api_url.update_query(wt=self.website_token)
             async with self.request_limiter:
-                json_resp = await self.client.get_json(self.domain, api_url, headers=self.headers)
+                json_resp = await self.client.get_json(self.DOMAIN, api_url, headers=self.headers)
 
         album = get_album_data(json_resp)
         if is_single_not_nested_file(scrape_item, album):
@@ -223,7 +222,7 @@ class GoFileCrawler(Crawler):
     async def _get_new_api_key(self) -> str:
         api_url = API_ENTRYPOINT / "accounts"
         async with self.request_limiter:
-            json_resp = await self.client.post_data(self.domain, api_url, data={})
+            json_resp = await self.client.post_data(self.DOMAIN, api_url, data={})
         if json_resp["status"] != "ok":
             raise ScrapeError(401, "Couldn't generate GoFile API token", origin=api_url)
 
@@ -242,7 +241,7 @@ class GoFileCrawler(Crawler):
 
     async def _update_website_token(self) -> None:
         async with self.request_limiter:
-            text = await self.client.get_text(self.domain, GLOBAL_JS_URL)
+            text = await self.client.get_text(self.DOMAIN, GLOBAL_JS_URL)
         match = WT_REGEX.search(str(text))
         if not match:
             raise ScrapeError(401, "Couldn't generate GoFile websiteToken", origin=GLOBAL_JS_URL)

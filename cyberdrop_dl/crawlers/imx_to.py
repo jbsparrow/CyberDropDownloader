@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -30,7 +30,6 @@ class ImxToCrawler(Crawler):
         cookies = {"continue": 1}
         self.update_cookies(cookies)
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "i" in scrape_item.url.parts:
             return await self.image(scrape_item)
@@ -45,7 +44,7 @@ class ImxToCrawler(Crawler):
 
         data = {"imgContinue": "Continue+to+image+...+"}
         async with self.request_limiter:
-            soup = await self.client.post_data_get_soup(self.domain, scrape_item.url, data=data)
+            soup = await self.client.post_data_get_soup(self.DOMAIN, scrape_item.url, data=data)
 
         link_str: str = soup.select_one(IMG_SELECTOR)["src"]  # type: ignore
         link = self.parse_url(link_str)

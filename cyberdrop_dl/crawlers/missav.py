@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -40,7 +40,6 @@ class MissAVCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         return await self.video(scrape_item)
 
@@ -52,7 +51,7 @@ class MissAVCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup_cffi(self.DOMAIN, scrape_item.url)
 
         title = clean_title = soup.select_one(TITLE_SELECTOR)["content"].strip()  # type: ignore
         date_tag = soup.select_one(DATE_SELECTOR)
@@ -74,14 +73,14 @@ class MissAVCrawler(Crawler):
         m3u8_playlist_url = M3U8_SERVER / uuid / "playlist.m3u8"
 
         async with self.request_limiter:
-            m3u8_playlist_content: str = await self.client.get_text(self.domain, m3u8_playlist_url)
+            m3u8_playlist_content: str = await self.client.get_text(self.DOMAIN, m3u8_playlist_url)
 
         playlist_name, resolution = get_best_resolution(m3u8_playlist_content)
         m3u8_video_url = M3U8_SERVER / uuid / playlist_name
         video_part_base_url = m3u8_video_url.parent
 
         async with self.request_limiter:
-            m3u8_video_content: str = await self.client.get_text(self.domain, m3u8_video_url)
+            m3u8_video_content: str = await self.client.get_text(self.DOMAIN, m3u8_video_url)
 
         title = Path(title).as_posix().replace("/", "-")  # remove OS separators
         filename = f"{title} [{resolution}].mp4"

@@ -5,7 +5,7 @@ import datetime
 import itertools
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -37,7 +37,6 @@ class OmegaScansCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "chapter" in scrape_item.url.name:
             return await self.chapter(scrape_item)
@@ -49,7 +48,7 @@ class OmegaScansCrawler(Crawler):
     async def series(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an album."""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         series_id = None
         js_script = soup.select_one(JS_SELECTOR)
@@ -63,7 +62,7 @@ class OmegaScansCrawler(Crawler):
         for page in itertools.count(1):
             api_url = API_ENTRYPOINT.with_query(page=page, perPage=30, series_id=series_id)
             async with self.request_limiter:
-                json_resp = await self.client.get_json(self.domain, api_url)
+                json_resp = await self.client.get_json(self.DOMAIN, api_url)
 
             for chapter in json_resp["data"]:
                 chapter_url = scrape_item.url / chapter["chapter_slug"]
@@ -78,7 +77,7 @@ class OmegaScansCrawler(Crawler):
     async def chapter(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an image."""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         if "This chapter is premium" in soup.get_text():
             raise ScrapeError(401, "This chapter is premium")

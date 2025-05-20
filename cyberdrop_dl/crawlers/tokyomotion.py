@@ -6,7 +6,7 @@ from calendar import timegm
 from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
@@ -48,7 +48,6 @@ class TokioMotionCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         scrape_item.url = scrape_item.url.without_query_params("page")
 
@@ -81,7 +80,7 @@ class TokioMotionCrawler(Crawler):
 
         video_id = scrape_item.url.parts[2]
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         with contextlib.suppress(AttributeError):
             relative_date_str = soup.select_one(self.video_date_selector).text.strip()  # type: ignore
@@ -110,7 +109,7 @@ class TokioMotionCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
         try:
             img = soup.select_one(self.image_selector)
             link_str: str = img.get("src")  # type: ignore
@@ -218,7 +217,7 @@ class TokioMotionCrawler(Crawler):
         if "album" in scrape_item.url.parts and len(scrape_item.url.parts) > 3:
             return scrape_item.url.parts[3]
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
         return soup.select_one(self.album_title_selector).get_text()  # type: ignore
 
     def add_user_title(self, scrape_item: ScrapeItem) -> None:

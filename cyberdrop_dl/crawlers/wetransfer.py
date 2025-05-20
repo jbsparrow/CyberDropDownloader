@@ -4,7 +4,7 @@ import json
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -33,7 +33,6 @@ class WeTransferCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "download." in scrape_item.url.host:  # type: ignore
             # We can download but db entry will not have a canonical URL
@@ -52,7 +51,7 @@ class WeTransferCrawler(Crawler):
         headers = {"Content-Type": "application/json"}
         async with self.request_limiter:
             json_resp: dict = await self.client.post_data(
-                self.domain, file_info.download_url, data=file_info.json, headers=headers
+                self.DOMAIN, file_info.download_url, data=file_info.json, headers=headers
             )
 
         link_str: str = json_resp.get("direct_link")  # type: ignore
@@ -70,7 +69,7 @@ class WeTransferCrawler(Crawler):
 
     async def get_final_url(self, scrape_item: ScrapeItem) -> AbsoluteHttpURL:
         async with self.request_limiter:
-            headers = await self.client.get_head(self.domain, scrape_item.url)
+            headers = await self.client.get_head(self.DOMAIN, scrape_item.url)
 
         return self.parse_url(headers["location"])
 

@@ -13,7 +13,7 @@ from pydantic import AliasChoices, BeforeValidator, Field
 from typing_extensions import TypedDict  # Import from typing is not compatible with pydantic
 from yarl import URL
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import NoExtensionError, ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
@@ -242,7 +242,6 @@ class KemonoCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "discord" in scrape_item.url.parts:
             return await self.discord(scrape_item)
@@ -330,7 +329,7 @@ class KemonoCrawler(Crawler):
         path = f"{url_info.service}/user/{url_info.user_id}/post/{url_info.post_id}"
         api_url = self.__make_api_url_w_offset(path, scrape_item.url)
         async with self.request_limiter:
-            json_resp: dict[str, dict] = await self.client.get_json(self.domain, api_url)
+            json_resp: dict[str, dict] = await self.client.get_json(self.DOMAIN, api_url)
 
         post = UserPost(**json_resp["post"])
         self._register_attachments_servers(json_resp["attachments"])  # type: ignore
@@ -380,7 +379,7 @@ class KemonoCrawler(Crawler):
         query_url = api_url.with_query(type="post" if is_post else "artist")
 
         async with self.request_limiter:
-            json_resp: list[dict] = await self.client.get_json(self.domain, query_url)
+            json_resp: list[dict] = await self.client.get_json(self.DOMAIN, query_url)
 
         self.update_cookies({"session": ""})
 
@@ -435,7 +434,7 @@ class KemonoCrawler(Crawler):
                     pass
 
         for link in gen_yarl_urls():
-            if not link.host or self.domain in link.host:
+            if not link.host or self.DOMAIN in link.host:
                 continue
             new_scrape_item = scrape_item.create_child(link)
             self.handle_external_links(new_scrape_item)
@@ -489,7 +488,7 @@ class KemonoCrawler(Crawler):
 
             api_url = self.api_entrypoint / user.service / "user" / user.id / "posts-legacy"
             async with self.request_limiter:
-                profile_json: dict = await self.client.get_json(self.domain, api_url)
+                profile_json: dict = await self.client.get_json(self.DOMAIN, api_url)
 
             self.__known_user_names[user] = user_name = profile_json["props"]["name"]
             return user_name
@@ -502,12 +501,12 @@ class KemonoCrawler(Crawler):
 
             url = self.primary_base_domain / "discord/user" / server_id / "links"
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, url)
+                soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, url)
 
             name = soup.select_one(DISCORD_SERVER_NAME_SELECTOR).text  # type: ignore
             url = self.api_entrypoint / "discord/channel/lookup" / server_id
             async with self.request_limiter:
-                json_resp: list[dict] = await self.client.get_json(self.domain, url)
+                json_resp: list[dict] = await self.client.get_json(self.DOMAIN, url)
 
             channels = tuple(DiscordChannel(channel["name"], channel["id"]) for channel in json_resp)
             self.__known_discord_servers[server_id] = server = DiscordServer(name, server_id, channels)
@@ -545,7 +544,7 @@ class KemonoCrawler(Crawler):
         for offset in itertools.count(init_offset, MAX_OFFSET_PER_CALL):
             api_url = url.update_query(o=offset)
             async with self.request_limiter:
-                json_resp: dict = await self.client.get_json(self.domain, api_url)
+                json_resp: dict = await self.client.get_json(self.DOMAIN, api_url)
             yield json_resp
 
     # ~~~~~~~~~~ NO API METHODS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -560,7 +559,7 @@ class KemonoCrawler(Crawler):
     async def profile_w_no_api(self, scrape_item: ScrapeItem) -> None:
         """Scrapes an user profile."""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         url_info = UserURL.parse(scrape_item.url)
         path = f"{url_info.service}/user/{url_info.user_id}"
@@ -571,7 +570,7 @@ class KemonoCrawler(Crawler):
             n_posts = 0
             api_url = api_url.with_query(o=offset)
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.domain, api_url)
+                soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, api_url)
 
             for post in soup.select(POST_SELECTOR):
                 n_posts += 1
@@ -589,7 +588,7 @@ class KemonoCrawler(Crawler):
 
         url_info = UserPostURL.parse(scrape_item.url)
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         post = PartialUserPost.from_soup(soup)
         if not post.title or not post.user_name:

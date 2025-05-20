@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from aiolimiter import AsyncLimiter
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -26,7 +26,6 @@ class TikTokCrawler(Crawler):
         super().__init__(manager, "tiktok", "TikTok")
         self.request_limiter = AsyncLimiter(1, 10)
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         assert scrape_item.url.host
         if any(p in scrape_item.url.parts for p in VIDEO_PARTS) or scrape_item.url.host.startswith("vm.tiktok"):
@@ -42,7 +41,7 @@ class TikTokCrawler(Crawler):
             posts_api_url = API_URL / "user" / "posts"
             posts_api_url = posts_api_url.with_query(cursor=cursor, unique_id=username, count=50)
             async with self.request_limiter:
-                json_data = await self.client.get_json(self.domain, posts_api_url)
+                json_data = await self.client.get_json(self.DOMAIN, posts_api_url)
 
             if scrape_item.album_id is None:
                 author_id = json_data["data"]["videos"][0]["author"]["id"]
@@ -101,7 +100,7 @@ class TikTokCrawler(Crawler):
     async def video(self, scrape_item: ScrapeItem) -> None:
         video_data_url = API_URL.with_query(url=str(scrape_item.url))
         async with self.request_limiter:
-            json_data = await self.client.get_json(self.domain, video_data_url)
+            json_data = await self.client.get_json(self.DOMAIN, video_data_url)
 
         author_id = json_data["data"]["author"]["id"]
         video_id = json_data["data"]["video_id"] = json_data["data"]["id"]

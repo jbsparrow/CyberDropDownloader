@@ -32,5 +32,5 @@ class BellazonCrawler(XenforoCrawler):
     )
 
     def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, self.domain, "Bellazon")
+        super().__init__(manager, self.DOMAIN, "Bellazon")
         self.attachment_url_part = ["attachments", "uploads"]

@@ -8,7 +8,7 @@ from aiolimiter import AsyncLimiter
 from asyncpraw import Reddit
 
 from cyberdrop_dl.clients.scraper_client import cache_control_manager
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import LoginError, NoExtensionError, ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.logger import log
@@ -77,7 +77,6 @@ class RedditCrawler(Crawler):
             check_for_updates=False,
         )
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if not self.logged_in:
             return
@@ -191,10 +190,10 @@ class RedditCrawler(Crawler):
         await self.handle_file(url, scrape_item, filename, ext)
 
     async def get_final_location(self, url) -> AbsoluteHttpURL:
-        headers = await self.client.get_head(self.domain, url)
+        headers = await self.client.get_head(self.DOMAIN, url)
         content_type = headers.get("Content-Type", "")
         if any(s in content_type.lower() for s in ("html", "text")):
-            response, _ = await self.client._get_response_and_soup(self.domain, url)
+            response, _ = await self.client._get_response_and_soup(self.DOMAIN, url)
             return AbsoluteHttpURL(response.url)
         location = headers.get("location")
         if not location:

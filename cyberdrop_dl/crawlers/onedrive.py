@@ -11,7 +11,7 @@ from datetime import UTC, datetime, timedelta
 from functools import partial
 from typing import TYPE_CHECKING, Any, ClassVar, Self
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -119,7 +119,6 @@ class OneDriveCrawler(Crawler):
             return
         await self.get_badger_token(BADGER_URL)
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         # ex: https://1drv.ms/t/s!ABCJKL-ABCJKL?e=ABC123 or  https://1drv.ms/t/c/a12345678/aTOKEN?e=ABC123
         if is_share_link(scrape_item.url):
@@ -131,7 +130,7 @@ class OneDriveCrawler(Crawler):
     @error_handling_wrapper
     async def share_link(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
-            headers = await self.client.get_head(self.domain, scrape_item.url)
+            headers = await self.client.get_head(self.DOMAIN, scrape_item.url)
         location = headers.get("location")
         if not location:
             raise ScrapeError(400)
@@ -213,7 +212,7 @@ class OneDriveCrawler(Crawler):
     async def make_api_request(self, api_url: AbsoluteHttpURL) -> dict[str, Any]:
         headers = {"Content-Type": "application/json"} | self.auth_headers
         async with self.request_limiter:
-            json_resp: dict = await self.client.get_json(self.domain, api_url, headers=headers)
+            json_resp: dict = await self.client.get_json(self.DOMAIN, api_url, headers=headers)
 
         return json_resp
 
@@ -223,7 +222,7 @@ class OneDriveCrawler(Crawler):
         data = {"appId": APP_UUID}
         data_json = json.dumps(data)
         async with self.request_limiter:
-            json_resp: dict = await self.client.post_data(self.domain, badger_url, headers=new_headers, data=data_json)
+            json_resp: dict = await self.client.post_data(self.DOMAIN, badger_url, headers=new_headers, data=data_json)
 
         badger_token: str = json_resp["token"]
         badger_token_expires: str = json_resp["expiryTimeUtc"]

@@ -21,4 +21,4 @@ class SocialMediaGirlsCrawler(XenforoCrawler):
     selectors = XenforoSelectors(posts=post_selectors)
 
     def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, self.domain, "SocialMediaGirls")
+        super().__init__(manager, self.DOMAIN, "SocialMediaGirls")

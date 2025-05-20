@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -35,7 +35,6 @@ class IncestflixCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "watch" in scrape_item.url.parts:
             return await self.video(scrape_item)
@@ -48,7 +47,7 @@ class IncestflixCrawler(Crawler):
         if await self.check_complete_from_referer(scrape_item):
             return
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
         title: str = css.select_one(soup, _SELECTORS.TITLE).get_text(strip=True)
         link_str = css.select_one_get_attr(soup, _SELECTORS.VIDEO, "mp4")
         url = self.parse_url(link_str)

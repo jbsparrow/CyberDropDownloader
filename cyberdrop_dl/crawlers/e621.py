@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl import __version__
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -33,7 +33,6 @@ class E621Crawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.query.get("tags"):
             return await self.tag(scrape_item)
@@ -50,7 +49,7 @@ class E621Crawler(Crawler):
         for page in itertools.count(initial_page):
             url = url.with_query(tags=scrape_item.url.query["tags"], page=page)
             async with self.request_limiter:
-                json_resp: dict = await self.client.get_json(self.domain, url, headers=self.custom_headers)
+                json_resp: dict = await self.client.get_json(self.DOMAIN, url, headers=self.custom_headers)
 
             posts: list[dict] = json_resp.get("posts", [])
             if not posts:
@@ -83,7 +82,7 @@ class E621Crawler(Crawler):
         pool_id = scrape_item.url.name
         url = self.primary_base_domain / f"pools/{pool_id}.json"
         async with self.request_limiter:
-            json_resp: dict = await self.client.get_json(self.domain, url, headers=self.custom_headers)
+            json_resp: dict = await self.client.get_json(self.DOMAIN, url, headers=self.custom_headers)
 
         posts = json_resp.get("post_ids", [])
         title: str = json_resp.get("name", "Unknown Pool").replace("_", " ")
@@ -101,7 +100,7 @@ class E621Crawler(Crawler):
         post_id = scrape_item.url.name
         url = self.primary_base_domain / f"posts/{post_id}.json"
         async with self.request_limiter:
-            json_resp: dict = await self.client.get_json(self.domain, url, headers=self.custom_headers)
+            json_resp: dict = await self.client.get_json(self.DOMAIN, url, headers=self.custom_headers)
 
         try:
             file_url = json_resp["post"]["file"]["url"]

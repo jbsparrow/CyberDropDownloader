@@ -6,7 +6,7 @@ import itertools
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
@@ -69,7 +69,6 @@ class SpankBangCrawler(Crawler):
     async def async_startup(self) -> None:
         self.set_cookies()
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if is_playlist(scrape_item.url):
             return await self.playlist(scrape_item)
@@ -90,7 +89,7 @@ class SpankBangCrawler(Crawler):
 
         for page in itertools.count(1):
             async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, page_url)
+                soup: BeautifulSoup = await self.client.get_soup_cffi(self.DOMAIN, page_url)
 
             # Get full playlist info + title from the soup
             playlist = PlaylistInfo.from_url(page_url, soup)
@@ -120,7 +119,7 @@ class SpankBangCrawler(Crawler):
                 return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup_cffi(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup_cffi(self.DOMAIN, scrape_item.url)
 
         was_removed = soup.select_one(VIDEO_REMOVED_SELECTOR)
         if was_removed or "This video is no longer available" in str(soup):

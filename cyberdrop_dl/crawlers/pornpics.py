@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -38,7 +38,6 @@ class PornPicsCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         parts_limit = 2 if scrape_item.url.name else 3
         multi_part = len(scrape_item.url.parts) > parts_limit
@@ -83,7 +82,7 @@ class PornPicsCrawler(Crawler):
         results = await self.get_album_results(gallery_id)
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         scrape_item.url = self.primary_base_domain / "galleries" / gallery_id  # canonical URL
         title = soup.select_one("h1").text  # type: ignore
@@ -112,13 +111,13 @@ class PornPicsCrawler(Crawler):
             offset = current_page.query.get("offset")
             if not offset:  # offset == 0 does not return JSON
                 async with self.request_limiter:
-                    soup: BeautifulSoup = await self.client.get_soup(self.domain, current_page)
+                    soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, current_page)
                 items = soup.select(IMAGE_SELECTOR)
                 return soup, tuple(self.parse_url(image.get("href")) for image in items)  # type: ignore
 
             async with self.request_limiter:
                 # The response is JSON but the "content-type" is wrong so we have to request it as text
-                json_resp = await self.client.get_text(self.domain, current_page)
+                json_resp = await self.client.get_text(self.DOMAIN, current_page)
                 json_resp = json.loads(json_resp)
             return None, tuple(self.parse_url(g["g_url"]) for g in json_resp)
 

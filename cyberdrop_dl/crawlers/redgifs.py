@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, ClassVar
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -29,7 +29,6 @@ class RedGifsCrawler(Crawler):
     async def async_startup(self) -> None:
         await self.manage_token(API_ENTRYPOINT / "v2/auth/temporary")
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "users" in scrape_item.url.parts:
             return await self.user(scrape_item)
@@ -64,7 +63,7 @@ class RedGifsCrawler(Crawler):
             async with self.request_limiter:
                 api_url = API_ENTRYPOINT / "v2/users" / user_id / "search"
                 api_url = api_url.with_query(order="new", page=page)
-                json_resp = await self.client.get_json(self.domain, api_url, headers=self.headers)
+                json_resp = await self.client.get_json(self.DOMAIN, api_url, headers=self.headers)
             gifs = json_resp["gifs"]
             yield json_resp
             if total_gifs is None:
@@ -79,7 +78,7 @@ class RedGifsCrawler(Crawler):
         post_id = scrape_item.url.parts[-1].split(".")[0]
         async with self.request_limiter:
             api_url = API_ENTRYPOINT / "v2/gifs" / post_id
-            json_resp: dict[str, dict] = await self.client.get_json(self.domain, api_url, headers=self.headers)
+            json_resp: dict[str, dict] = await self.client.get_json(self.DOMAIN, api_url, headers=self.headers)
 
         title_part: str = json_resp["gif"].get("title") or "Loose Files"
         title = self.create_title(title_part)
@@ -98,6 +97,6 @@ class RedGifsCrawler(Crawler):
     async def manage_token(self, token_url: URL) -> None:
         """Gets/Sets the redgifs token and header."""
         async with self.request_limiter:
-            json_obj = await self.client.get_json(self.domain, token_url)
+            json_obj = await self.client.get_json(self.DOMAIN, token_url)
         token = json_obj["token"]
         self.headers = {"Authorization": f"Bearer {token}"}

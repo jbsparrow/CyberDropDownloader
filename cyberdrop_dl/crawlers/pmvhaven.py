@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from yarl import URL
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils import javascript
@@ -46,7 +46,6 @@ class PMVHavenCrawler(Crawler):
     def __init__(self, manager: Manager) -> None:
         super().__init__(manager, "pmvhaven", "PMVHaven")
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "video" in scrape_item.url.parts:
             return await self.video_from_api(scrape_item)
@@ -89,7 +88,7 @@ class PMVHavenCrawler(Crawler):
         add_headers = {"Content-Type": "text/plain;charset=UTF-8"}
         add_data = json.dumps({"profile": username, "mode": "GetUser"})
         async with self.request_limiter:
-            json_resp: dict = await self.client.post_data(self.domain, api_url, data=add_data, headers=add_headers)
+            json_resp: dict = await self.client.post_data(self.DOMAIN, api_url, data=add_data, headers=add_headers)
 
         user_info: dict[str, dict] = json_resp["data"]
         for playlist in user_info["playlists"]:
@@ -164,7 +163,7 @@ class PMVHavenCrawler(Crawler):
         add_data = {"video": video_id, "mode": "InitVideo", "view": True}
         api_url = API_ENTRYPOINT / "videoInput"
         async with self.request_limiter:
-            json_resp: dict = await self.client.post_data(self.domain, api_url, data=add_data)
+            json_resp: dict = await self.client.post_data(self.DOMAIN, api_url, data=add_data)
 
         videos = json_resp.get("video")
         video_info: dict = videos[0] if videos else {}
@@ -176,7 +175,7 @@ class PMVHavenCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         video_info = get_video_info_from_js(soup)
         await self.process_video_info(scrape_item, video_info)
@@ -234,7 +233,7 @@ class PMVHavenCrawler(Crawler):
             if is_profile:
                 data = json.dumps(data)
             async with self.request_limiter:
-                json_resp: dict = await self.client.post_data(self.domain, api_url, data=data, headers=add_headers)
+                json_resp: dict = await self.client.post_data(self.DOMAIN, api_url, data=data, headers=add_headers)
 
             has_videos = bool(json_resp[check_key])
             if not has_videos:

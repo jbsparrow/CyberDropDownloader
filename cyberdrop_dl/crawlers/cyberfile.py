@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, ClassVar
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import PasswordProtectedError, ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
@@ -57,7 +57,6 @@ class CyberfileCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if "folder" in scrape_item.url.parts:
             return await self.folder(scrape_item)
@@ -69,7 +68,7 @@ class CyberfileCrawler(Crawler):
     async def folder(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a folder."""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         if soup.select_one(_SELECTOR.LOGIN_FORM):
             raise ScrapeError(410, "Folder has been deleted")
@@ -98,7 +97,7 @@ class CyberfileCrawler(Crawler):
     async def shared(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a shared folder."""
         async with self.request_limiter:
-            await self.client.get_soup(self.domain, scrape_item.url)
+            await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         subfolders = []
         node_id = ""
@@ -138,7 +137,7 @@ class CyberfileCrawler(Crawler):
         password = scrape_item.url.query.get("password", "")
         scrape_item.url = canonical_url
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         if is_password_protected(soup):
             form = soup.select_one(_SELECTOR.PASSWORD_FORM)
@@ -148,7 +147,7 @@ class CyberfileCrawler(Crawler):
             password_post_url = self.parse_url(form["action"])  # type: ignore
             data = {"filePassword": password, "submitme": 1}
             async with self.request_limiter:
-                resp_bytes = await self.client.post_data_raw(self.domain, password_post_url, data=data)
+                resp_bytes = await self.client.post_data_raw(self.DOMAIN, password_post_url, data=data)
 
             soup = BeautifulSoup(resp_bytes, "html.parser")
             if is_password_protected(soup):
@@ -218,7 +217,7 @@ class CyberfileCrawler(Crawler):
 
         async def get_ajax_info() -> tuple[BeautifulSoup, str]:
             async with self.request_limiter:
-                json_resp: dict = await self.client.post_data(self.domain, ajax_url, data=data)
+                json_resp: dict = await self.client.post_data(self.DOMAIN, ajax_url, data=data)
             html: str = json_resp["html"]
             return BeautifulSoup(html.replace("\\", ""), "html.parser"), json_resp["page_title"]
 
@@ -237,7 +236,7 @@ class CyberfileCrawler(Crawler):
             # Make a request with the password. Access to the file/folder will be stored in cookies
             pw_data = {"folderPassword": password, "folderId": node_id, "submitme": 1}
             async with self.request_limiter:
-                json_resp: dict = await self.client.post_data(self.domain, self.folder_password_api_url, data=pw_data)
+                json_resp: dict = await self.client.post_data(self.DOMAIN, self.folder_password_api_url, data=pw_data)
             if not json_resp.get("success"):
                 raise PasswordProtectedError(message="Incorrect password")
 

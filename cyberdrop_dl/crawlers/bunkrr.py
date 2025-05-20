@@ -15,7 +15,7 @@ from aiohttp import ClientConnectorError
 from yarl import URL
 
 from cyberdrop_dl.constants import FILE_FORMATS
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import DDOSGuardError, NoExtensionError, ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils import css
@@ -134,7 +134,6 @@ class BunkrrCrawler(Crawler):
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if is_reinforced_link(scrape_item.url):  #  get.bunkr.su/file/<file_id>
             return await self.reinforced_file(scrape_item)
@@ -190,7 +189,7 @@ class BunkrrCrawler(Crawler):
         link: URL | None = None
         soup: BeautifulSoup | None = None
         if is_stream_redirect(scrape_item.url):
-            response, soup = await self.client._get_response_and_soup(self.domain, scrape_item.url)
+            response, soup = await self.client._get_response_and_soup(self.DOMAIN, scrape_item.url)
             scrape_item.url = AbsoluteHttpURL(response.url)
             del response
 
@@ -237,7 +236,7 @@ class BunkrrCrawler(Crawler):
 
         Gets the filename from the soup before sending the scrape_item to `handle_direct_link`"""
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         title: str = soup.select_one("h1").text.strip()  # type: ignore
         link: URL | None = await self.get_download_url_from_api(scrape_item.url)
@@ -296,7 +295,7 @@ class BunkrrCrawler(Crawler):
 
         data = json.dumps(data_dict)
         async with self.request_limiter:
-            json_resp: dict = await self.client.post_data(self.domain, api_url, data=data, headers=headers)
+            json_resp: dict = await self.client.post_data(self.DOMAIN, api_url, data=data, headers=headers)
 
         api_response = ApiResponse(**json_resp)
         link_str = decrypt_api_response(api_response)
@@ -333,7 +332,7 @@ class BunkrrCrawler(Crawler):
 
         async def get_soup(url: URL) -> BeautifulSoup:
             async with self.request_limiter:
-                return await self.client.get_soup(self.domain, url)
+                return await self.client.get_soup(self.DOMAIN, url)
 
         async def get_soup_no_error(url: URL) -> BeautifulSoup | None:
             global known_bad_hosts

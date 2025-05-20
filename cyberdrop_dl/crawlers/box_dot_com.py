@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Any, ClassVar
 
 from pydantic import Field
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -17,7 +17,6 @@ if TYPE_CHECKING:
     from bs4 import BeautifulSoup
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 
 class ItemType(StrEnum):
@@ -46,16 +45,14 @@ JS_SELECTOR = "script:contains('Box.postStreamData')"
 
 
 class BoxDotComCrawler(Crawler):
+    SUPPORTED_HOSTS: ClassVar[tuple[str, ...]] = (APP_DOMAIN,)
     SUPPORTED_PATHS: ClassVar[OneOrTupleStrMapping] = {"File or Folder": "app.box.com/s?sh=<share_code>"}
-    scrape_mapper_domain = APP_DOMAIN
+    DOMAIN: ClassVar[str] = "box.com"
+    FOLDER_DOMAIN: ClassVar[str] = "Box"
     primary_base_domain = AbsoluteHttpURL("https://box.com")
-
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "box.com", "Box")
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if scrape_item.url.host == APP_DOMAIN and ("s" in scrape_item.url.parts or scrape_item.url.query.get("s")):
             return await self.file_or_folder(scrape_item)
@@ -69,7 +66,7 @@ class BoxDotComCrawler(Crawler):
             return
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         js_text: str = soup.select_one(JS_SELECTOR).text  # type: ignore
         _, _, data = js_text.removesuffix(";").partition("=")

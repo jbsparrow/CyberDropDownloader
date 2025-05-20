@@ -5,7 +5,6 @@ from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 
-from cyberdrop_dl.crawlers.crawler import create_task_id
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -15,24 +14,8 @@ if TYPE_CHECKING:
     from yarl import URL
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
-PRIMARY_BASE_DOMAIN = AbsoluteHttpURL("https://jpg5.su")
 JPG5_REPLACE_HOST_REGEX = re.compile(r"(jpg\.fish/)|(jpg\.fishing/)|(jpg\.church/)")
-JPG5_DOMAINS = [
-    "jpg5.su",
-    "jpg.homes",
-    "jpg.church",
-    "jpg.fish",
-    "jpg.fishing",
-    "jpg.pet",
-    "jpeg.pet",
-    "jpg1.su",
-    "jpg2.su",
-    "jpg3.su",
-    "jpg4.su",
-    "host.church",
-]
 
 
 class JPG5Crawler(CheveretoCrawler):
@@ -42,17 +25,32 @@ class JPG5Crawler(CheveretoCrawler):
         "Profiles": "/...",
         "Direct links": "",
     }
-    primary_base_domain = PRIMARY_BASE_DOMAIN
-    SUPPORTED_SITES = {"jpg5.su": JPG5_DOMAINS}  # noqa: RUF012
 
-    def __init__(self, manager: Manager, _) -> None:
-        super().__init__(manager, "jpg5.su", "JPG5")
+    SUPPORTED_HOSTS = (
+        "jpg5.su",
+        "jpg.homes",
+        "jpg.church",
+        "jpg.fish",
+        "jpg.fishing",
+        "jpg.pet",
+        "jpeg.pet",
+        "jpg1.su",
+        "jpg2.su",
+        "jpg3.su",
+        "jpg4.su",
+        "host.church",
+    )
+    DOMAIN = "jpg5.su"
+    FOLDER_DOMAIN = "JPG5"
+
+    primary_base_domain = AbsoluteHttpURL("https://jpg5.su")
+
+    def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(1, 5)
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
-    @create_task_id
-    async def fetch(self, scrape_item: ScrapeItem):
+    async def fetch(self, scrape_item: ScrapeItem) -> None:
         scrape_item.url = scrape_item.url.with_host("jpg5.su")
         return await self._fetch_chevereto_defaults(scrape_item)
 

@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, ClassVar
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, OneOrTupleStrMapping
 from cyberdrop_dl.utils.logger import log
@@ -50,7 +50,6 @@ class XXXBunkerCrawler(Crawler):
     async def async_startup(self) -> None:
         await self.check_session_cookie()
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         # Old behavior, not worth it with such a bad rate_limit: modify URL to always start on page 1
         """
@@ -71,7 +70,7 @@ class XXXBunkerCrawler(Crawler):
             raise ScrapeError(401, "No cookies provided")
 
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         title = soup.select_one("title").text.rsplit(" : XXXBunker.com", 1)[0].strip()  # type: ignore
         if date_tag := soup.select_one(DATE_SELECTOR):
@@ -83,7 +82,7 @@ class XXXBunkerCrawler(Crawler):
             iframe_url = self.parse_url(iframe["data-src"])  # type: ignore
             video_id = iframe_url.parts[-1]
             async with self.request_limiter:
-                iframe_soup: BeautifulSoup = await self.client.get_soup(self.domain, iframe_url)
+                iframe_soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, iframe_url)
 
             video_tag = iframe_soup.select_one("source")
             video_url = self.parse_url(video_tag[video_tag])  # type: ignore
@@ -95,7 +94,7 @@ class XXXBunkerCrawler(Crawler):
             data = {"internalid": internal_id}
 
             async with self.request_limiter:
-                json_resp = await self.client.post_data(self.domain, self.api_download, data=data)
+                json_resp = await self.client.post_data(self.DOMAIN, self.api_download, data=data)
 
             video_soup = BeautifulSoup(json_resp["floater"], "html.parser")
             link_str: str = video_soup.select_one(DOWNLOAD_URL_SELECTOR)["href"]  # type: ignore
@@ -122,7 +121,7 @@ class XXXBunkerCrawler(Crawler):
 
         name = scrape_item.url.parts[2]
         async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+            soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         if "favoritevideos" in scrape_item.url.parts:
             title = self.create_title(f"user {name} [favorites]")
@@ -148,7 +147,7 @@ class XXXBunkerCrawler(Crawler):
             rate_limited = True
             while rate_limited and attempt <= MAX_RETRIES:
                 async with self.request_limiter:
-                    soup: BeautifulSoup = await self.client.get_soup(self.domain, page_url)
+                    soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, page_url)
                 await asyncio.sleep(self.wait_time)
 
                 if "TRAFFIC VERIFICATION" not in soup.text:

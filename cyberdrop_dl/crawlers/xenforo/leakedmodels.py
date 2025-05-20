@@ -19,4 +19,4 @@ class LeakedModelsCrawler(XenforoCrawler):
     domain = "leakedmodels"
 
     def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, self.domain, "LeakedModels")
+        super().__init__(manager, self.DOMAIN, "LeakedModels")
