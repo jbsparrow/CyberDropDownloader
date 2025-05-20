@@ -10,7 +10,7 @@ from asyncpraw import Reddit
 from cyberdrop_dl.clients.scraper_client import cache_control_manager
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import LoginError, NoExtensionError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -51,7 +51,7 @@ class RedditCrawler(Crawler):
         "Subreddit:": "/r/<subreddit>",
         "Direct links": "",
     }
-    SUPPORTED_HOSTS = "reddit", "redd.it"
+    SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = "reddit", "redd.it"
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{title}"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
     DOMAIN = "reddit"

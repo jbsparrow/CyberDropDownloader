@@ -9,7 +9,7 @@ from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths
 from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
@@ -29,7 +29,7 @@ KEYS_TO_KEEP = "currentResourceId", "resources", "environment"
 
 
 class YandexDiskCrawler(Crawler):
-    SUPPORTED_HOSTS = ("disk.yandex", "yadi.sk")
+    SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = ("disk.yandex", "yadi.sk")
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
         "Folder": "disk.yandex/d/",
         "Files": "disk.yandex/d//",

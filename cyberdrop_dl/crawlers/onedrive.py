@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Any, ClassVar, Self
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -91,7 +91,7 @@ class OneDriveCrawler(Crawler):
         "Access Link": "https://onedrive.live.com/?authkey=&id=&cid=",
         "Share Link (anyone can access)": "https://1drv.ms/t/",
     }
-    SUPPORTED_HOSTS = SHARE_LINK_HOST, "onedrive.live.com"
+    SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = SHARE_LINK_HOST, "onedrive.live.com"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://onedrive.com/")
     SKIP_PRE_CHECK: ClassVar[bool] = True  # URLs with not path could be valid
     DOMAIN = "onedrive"

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 from ._chevereto import CheveretoCrawler
@@ -26,7 +26,7 @@ class JPG5Crawler(CheveretoCrawler):
         "Direct links": "",
     }
 
-    SUPPORTED_HOSTS = (
+    SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = (
         "jpg5.su",
         "jpg.homes",
         "jpg.church",

@@ -39,7 +39,7 @@ from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import DownloadError, ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_filename_from_headers
 
@@ -70,7 +70,7 @@ class GoogleDriveCrawler(Crawler):
         "Sheets": "/spreadsheets/d/",
         "Slides": "/presentation/d/",
     }
-    SUPPORTED_HOSTS = "drive.google", "docs.google"
+    SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = "drive.google", "docs.google"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://drive.google.com")
     DOMAIN = "drive.google"
     FOLDER_DOMAIN = "GoogleDrive"

@@ -6,7 +6,8 @@ from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.crawlers.mixdrop import MixDropCrawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_og_properties, get_text_between
 
 if TYPE_CHECKING:
@@ -29,7 +30,7 @@ _SELECTORS = Selectors()
 
 class ArchiveBateCrawler(MixDropCrawler):
     SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Video": "/watch/"}
-    SUPPORTED_HOSTS = ()
+    SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = ()
     DOMAIN = "archivebate"
     FOLDER_DOMAIN = "ArchiveBate"
     PRIMARY_URL: ClassVar[AbsoluteHttpURL] = AbsoluteHttpURL("https://www.archivebate.store")
@@ -77,9 +78,9 @@ class ArchiveBateCrawler(MixDropCrawler):
 
         og_props = get_og_properties(soup)
         date_str: str = get_text_between(og_props.description, "show on", " - ").strip()
-        user_name: str = soup.select_one(_SELECTORS.USER_NAME).text  # type: ignore
-        site_name: str = soup.select_one(_SELECTORS.SITE_NAME).text  # type: ignore
-        video_src: str = soup.select_one(_SELECTORS.VIDEO)["src"]  # type: ignore
+        user_name: str = css.select_one_get_text(soup, _SELECTORS.USER_NAME)
+        site_name: str = css.select_one_get_text(soup, _SELECTORS.SITE_NAME)
+        video_src: str = css.select_one_get_attr(soup, _SELECTORS.VIDEO, "src")
         title = self.create_title(f"{user_name} [{site_name}]")
         scrape_item.setup_as_profile(title)
         scrape_item.possible_datetime = self.parse_date(date_str)
