@@ -59,6 +59,8 @@ class DiscordCrawler(Crawler):
                 await self.scrape_all_servers(scrape_item)
         elif "attachments" in scrape_item.url.parts:  # https://cdn.discordapp.com/attachments/.../.../...
             await self.file(scrape_item)
+        else:
+            raise ValueError
 
     async def scrape_all_servers(self, scrape_item: ScrapeItem) -> None:
         """Fetches all servers and creates scrape items for each server, then starts them."""
