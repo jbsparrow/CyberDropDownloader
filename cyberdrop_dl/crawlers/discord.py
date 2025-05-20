@@ -116,7 +116,7 @@ class DiscordCrawler(Crawler):
         while True:
             async with self.request_limiter:
                 data = await self.client.post_data(
-                    self.domain, url=request_url, data=dumps(request_json), origin=scrape_item, headers_inc=self.headers
+                    self.domain, url=request_url, data=dumps(request_json), headers_inc=self.headers
                 )
                 if "rate limited" in data.get("message", ""):
                     wait_time = data.get("retry_after", 0)
