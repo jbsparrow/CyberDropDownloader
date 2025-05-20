@@ -44,14 +44,23 @@ def show_supported_sites() -> None:
 
 def get_row_values(crawler_info: CrawlerInfo) -> tuple[str, ...]:
     supported_paths: str = ""
+    notes: str = ""
+
+    def join_paths(paths: tuple[str, ...] | list[str], quote_char: str = "") -> str:
+        joined = "\n".join([f" - {quote_char}{p}{quote_char}" for p in paths])
+        return f"{joined}\n"
 
     for name, paths in crawler_info.supported_paths.items():
         if isinstance(paths, str):
             paths = [paths]
-        joined_paths = "\n".join([f" - `{p}`" for p in paths])
-        value = f"{name}: \n{joined_paths}"
-        supported_paths += value + "\n"
+        if "*NOTE*" in name:
+            notes += join_paths(paths, "")
+            continue
 
+        supported_paths += f"{name}: \n{join_paths(paths)}"
+
+    if notes:
+        supported_paths = f"{supported_paths}\n\n**NOTES**\n{notes}"
     supported_domains = "\n".join(crawler_info.supported_domains)
     row_values = crawler_info.site, str(crawler_info.primary_url), supported_domains, supported_paths
     return row_values
