@@ -1,56 +1,77 @@
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING, TypeAlias
 
-from rich import print
 from rich.table import Table
 
-from cyberdrop_dl import __version__, env
-
 if TYPE_CHECKING:
-    from cyberdrop_dl.crawlers.crawler import CrawlerInfo
+    from collections.abc import Generator, Sequence
+
+    from cyberdrop_dl.crawlers.crawler import Crawler, CrawlerInfo
 
 
-RowDict: TypeAlias = dict[str, str]
 SUPPORTED_SITES_URL = "https://script-ware.gitbook.io/cyberdrop-dl/reference/supported-websites"
+MarkdownRowDict: TypeAlias = dict[str, str]
 
 
-def show_supported_sites() -> None:
+def get_crawlers_info_as_rich_table() -> Table:
+    caption = f"Visit {SUPPORTED_SITES_URL} for a details about supported paths"
+    table = Table(title="Cyberdrop-DL Supported Sites", caption=caption)
+    columns, rows = _get_crawlers_info_cols_and_rows()
+
+    for column in columns[0:3]:
+        table.add_column(column, no_wrap=True)
+
+    for row_values in rows:
+        table.add_row(*row_values[0:3])
+
+    return table
+
+
+def get_crawlers_info_as_markdown_table() -> str:
+    from py_markdown_table.markdown_table import markdown_table
+
+    rows = _make_html_rows()
+    table = markdown_table(rows).set_params("markdown", padding_width=10, padding_weight="centerright", quote=False)
+    return table.get_markdown()
+
+
+def _make_html_rows() -> list[MarkdownRowDict]:
+    columns, rows = _get_crawlers_info_cols_and_rows()
+    html_rows: list[MarkdownRowDict] = []
+    for row in rows:
+        html_row_values = [r.replace("\n", "<br>") for r in row]
+        html_row_dict = MarkdownRowDict(zip(columns, html_row_values, strict=True))
+        html_rows.append(html_row_dict)
+    return html_rows
+
+
+def _get_crawlers_info_cols_and_rows() -> tuple[list[str], Generator[tuple[str, ...]]]:
     from cyberdrop_dl.scraper.scrape_mapper import get_unique_crawlers
 
     def make_colunm(field_name: str) -> str:
         return field_name.replace("_", " ").title().replace("Url", "URL")
 
-    caption = f"Visit {SUPPORTED_SITES_URL} for a details about supported paths"
-    table = Table(title="Cyberdrop-DL Supported Sites", caption=caption)
-
-    html_rows: list[RowDict] = []
     crawlers = get_unique_crawlers()
     columns = [make_colunm(f) for f in crawlers[0].INFO._fields]
-    for column in columns[0:3]:
-        table.add_column(column, no_wrap=True)
+    return columns, _gen_crawlers_info_rows(crawlers)
 
+
+def _gen_crawlers_info_rows(crawlers: Sequence[Crawler]) -> Generator[tuple[str, ...]]:
     for crawler in crawlers:
         if crawler.NAME.casefold() == "generic":
             continue
-        row_values = get_row_values(crawler.INFO)
-        table.add_row(*row_values[0:3])
-        html_row_values = [r.replace("\n", "<br>") for r in row_values]
-        html_row_dict = RowDict(zip(columns, html_row_values, strict=True))
-        html_rows.append(html_row_dict)
-
-    print(table)
-    write_supported_sites_markdown(html_rows)
+        yield _get_row_values(crawler.INFO)
 
 
-def get_row_values(crawler_info: CrawlerInfo) -> tuple[str, ...]:
+def _join_supported_paths(paths: tuple[str, ...] | list[str], quote_char: str = "`") -> str:
+    joined = "\n".join([f" - {quote_char}{p}{quote_char}" for p in paths])
+    return f"{joined}\n"
+
+
+def _get_supported_paths_and_notes(crawler_info: CrawlerInfo) -> tuple[str, str]:
     supported_paths: str = ""
     notes: str = ""
-
-    def join_paths(paths: tuple[str, ...] | list[str], quote_char: str = "`") -> str:
-        joined = "\n".join([f" - {quote_char}{p}{quote_char}" for p in paths])
-        return f"{joined}\n"
 
     for name, paths in crawler_info.supported_paths.items():
         if "direct link" in name.casefold() and (not paths or paths == ("",)):
@@ -59,40 +80,18 @@ def get_row_values(crawler_info: CrawlerInfo) -> tuple[str, ...]:
         if isinstance(paths, str):
             paths = [paths]
         if "*note*" in name.casefold():
-            notes += join_paths(paths, "")
+            notes += _join_supported_paths(paths, "")
             continue
 
-        supported_paths += f"{name}: \n{join_paths(paths)}"
+        supported_paths += f"{name}: \n{_join_supported_paths(paths)}"
 
+    return supported_paths, notes
+
+
+def _get_row_values(crawler_info: CrawlerInfo) -> tuple[str, ...]:
+    supported_paths, notes = _get_supported_paths_and_notes(crawler_info)
     if notes:
         supported_paths = f"{supported_paths}\n\n**NOTES**\n{notes}"
     supported_domains = "\n".join(crawler_info.supported_domains)
     row_values = crawler_info.site, str(crawler_info.primary_url), supported_domains, supported_paths
     return row_values
-
-
-def write_supported_sites_markdown(rows: list[RowDict]) -> None:
-    if not env.RUNNING_IN_IDE:
-        return
-
-    try:
-        from py_markdown_table.markdown_table import markdown_table
-    except ImportError:
-        return
-
-    table = markdown_table(rows)
-    markdown = table.set_params("markdown", padding_width=10, padding_weight="centerright", quote=False).get_markdown()
-    title = "# Supported sites"
-    header = f"{title}\n\nList of sites supported by cyberdrop-dl-patched as of version {__version__}\n\n"
-    full_table = header + markdown + "\n"
-    root = Path(__file__).parents[2]
-    # repo_file_path = root / "supported_sites.md"
-    # repo_file_path.write_text(full_table)
-    wiki_file_path = root / "docs/reference/supported-websites.md"
-    wiki_file_content = wiki_file_path.read_text()
-
-    end = "<!-- END_SUPPORTED_SITES-->"
-    content_before, _, rest = wiki_file_content.partition(title)
-    _, _, content_after = rest.partition(end)
-    new_content = f"{content_before}{full_table}{end}{content_after}"
-    wiki_file_path.write_text(new_content)

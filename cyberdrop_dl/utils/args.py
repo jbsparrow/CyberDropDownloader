@@ -8,7 +8,7 @@ from datetime import date
 from enum import StrEnum, auto
 from pathlib import Path
 from shutil import get_terminal_size
-from typing import TYPE_CHECKING, Self
+from typing import TYPE_CHECKING, NoReturn, Self
 
 from pydantic import BaseModel, Field, ValidationError, computed_field, field_validator, model_validator
 
@@ -300,9 +300,16 @@ def parse_args() -> ParsedArgs:
         sys.exit(1)
 
     if parsed_args_model.cli_only_args.show_supported_sites:
-        # Runtime dependency of manager
-        from .markdown import show_supported_sites
-
         show_supported_sites()
-        sys.exit(0)
+
     return parsed_args_model
+
+
+def show_supported_sites() -> NoReturn:
+    from rich import print
+
+    from cyberdrop_dl.utils.markdown import get_crawlers_info_as_rich_table
+
+    table = get_crawlers_info_as_rich_table()
+    print(table)
+    sys.exit(0)
