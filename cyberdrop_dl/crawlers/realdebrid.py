@@ -35,7 +35,7 @@ class RealDebridCrawler(Crawler):
     async def folder(self, scrape_item: ScrapeItem) -> None:
         self.log(f"Scraping folder with RealDebrid: {scrape_item.url}", 20)
         folder_id = self.manager.real_debrid_manager.guess_folder(scrape_item.url)
-        title = self.create_title(f"{folder_id} [{scrape_item.url.host.lower()}]", folder_id)  # type: ignore
+        title = self.create_title(f"{folder_id} [{scrape_item.url.host.lower()}]", folder_id)
         scrape_item.setup_as_album(title, album_id=folder_id)
 
         async with self.request_limiter:

@@ -6,7 +6,7 @@ import re
 from abc import ABC, abstractmethod
 from dataclasses import field
 from datetime import datetime
-from functools import wraps
+from functools import partial, wraps
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple, ParamSpec, TypeVar, final
 
@@ -87,9 +87,9 @@ class Crawler(ABC):
     SKIP_PRE_CHECK: ClassVar[bool] = False
     NEXT_PAGE_SELECTOR: ClassVar[str] = ""
 
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = None  # type: ignore
-    DOMAIN: ClassVar[str] = None  # type: ignore
-    FOLDER_DOMAIN: ClassVar[str] = None  # type: ignore
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL]
+    DOMAIN: ClassVar[str]
+    FOLDER_DOMAIN: ClassVar[str] = ""
 
     @final
     def __init__(self, manager: Manager) -> None:
@@ -354,12 +354,12 @@ class Crawler(ABC):
         else:
             date_str: str | None = date
 
-        def _str(default: str, value: str | None) -> str:
+        def default_if_none(value: str | None, default: str) -> str:
             return default if value is None else value
 
-        id = _str("Unknown", id)
-        title = _str("Untitled", title)
-        date_str = _str("NO_DATE", date_str)
+        id = default_if_none(id, "Unknown")
+        title = default_if_none(title, "Untitled")
+        date_str = default_if_none(date_str, "NO_DATE")
         return title_format.format(id=id, date=date_str, title=title)
 
     def parse_url(self, link_str: str, relative_to: URL | None = None, *, trim: bool = True) -> AbsoluteHttpURL:
@@ -434,16 +434,38 @@ class Crawler(ABC):
         :param cffi: If `True`, uses `curl_cffi` to get the soup for each page. Otherwise, `aiohttp` will be used
         :param **kwargs: Will be forwarded to `self.parse_url` to parse each new page"""
 
+        async for soup in self._web_pager(url, next_page_selector, cffi=cffi, **kwargs):
+            yield soup
+
+    async def _web_pager(
+        self,
+        url: URL,
+        selector: Callable[[BeautifulSoup], str | None] | str | None = None,
+        *,
+        cffi: bool = False,
+        **kwargs: Any,
+    ) -> AsyncGenerator[BeautifulSoup]:
+        """Generator of website pages.
+
+        :param next_page_selector: If `None`, `self.next_page_selector` will be used
+        :param cffi: If `True`, uses `curl_cffi` to get the soup for each page. Otherwise, `aiohttp` will be used
+        :param **kwargs: Will be forwarded to `self.parse_url` to parse each new page"""
+
         page_url = url
-        selector = next_page_selector or self.NEXT_PAGE_SELECTOR
-        assert selector, f"No selector was provided and {self.DOMAIN} does define a next_page_selector"
+        if callable(selector):
+            get_next_page = selector
+        else:
+            selector = selector or self.NEXT_PAGE_SELECTOR
+            assert selector, f"No selector was provided and {self.DOMAIN} does define a next_page_selector"
+            func = css.select_one_get_attr_or_none
+            get_next_page = partial(func, selector=selector, attribute="href")
+
         get_soup = self.client.get_soup_cffi if cffi else self.client.get_soup
         while True:
             async with self.request_limiter:
-                soup: BeautifulSoup = await get_soup(self.DOMAIN, page_url)
+                soup = await get_soup(self.DOMAIN, page_url)
             yield soup
-            next_page = soup.select_one(selector)
-            page_url_str: str | None = next_page.get("href") if next_page else None  # type: ignore
+            page_url_str = get_next_page(soup)
             if not page_url_str:
                 break
             page_url = self.parse_url(page_url_str, **kwargs)
@@ -471,9 +493,12 @@ class Crawler(ABC):
         else:
             return TimeStamp(calendar.timegm(parsed_date.timetuple()))
 
-    def parse_soup_date(self, soup: Tag, selector: str, attribute: str, format: str | None = None, /):
-        date_str: str = date_tag.get(attribute) if (date_tag := soup.select_one(selector)) else ""  # type: ignore
-        return self.parse_date(date_str, format)
+    def parse_soup_date(
+        self, soup: Tag, selector: str, attribute: str, format: str | None = None, /
+    ) -> TimeStamp | None:
+        if date_tag := soup.select_one(selector):
+            date_str: str = css.get_attr_or_none(date_tag, attribute) or ""
+            return self.parse_date(date_str, format)
 
     @staticmethod
     def register_cache_filter(

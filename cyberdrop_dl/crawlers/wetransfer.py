@@ -31,7 +31,7 @@ class WeTransferCrawler(Crawler):
     FOLDER_DOMAIN: ClassVar[str] = "WeTransfer"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        if "download." in scrape_item.url.host:  # type: ignore
+        if "download." in scrape_item.url.host:
             # We can download but db entry will not have a canonical URL
             return await self.direct_link(scrape_item, scrape_item.url)
         await self.file(scrape_item)

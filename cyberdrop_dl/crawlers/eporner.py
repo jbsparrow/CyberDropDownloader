@@ -117,7 +117,7 @@ class EpornerCrawler(Crawler):
         title: str = ""
         async for soup in self.web_pager(scrape_item.url):
             if not title and not from_profile:
-                title = soup.title.text  # type: ignore
+                title = soup.title.text
                 title_trash = "Porn Star Videos", "Porn Videos", "Videos -", "EPORNER"
                 for trash in title_trash:
                     title = title.rsplit(trash)[0].strip()
@@ -132,7 +132,7 @@ class EpornerCrawler(Crawler):
         title: str = ""
         async for soup in self.web_pager(scrape_item.url):
             if not title:
-                title = soup.select_one(_SELECTORS.GALLERY_TITLE).get_text(strip=True)  # type: ignore
+                title = soup.select_one(_SELECTORS.GALLERY_TITLE).get_text(strip=True)
                 title = self.create_title(title)
                 scrape_item.setup_as_album(title)
 
@@ -157,7 +157,7 @@ class EpornerCrawler(Crawler):
         img = soup.select_one(_SELECTORS.PHOTO)
         if not img:
             raise ScrapeError(422)
-        link_str: str = img["href"]  # type: ignore
+        link_str: str = img["href"]
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)
@@ -223,7 +223,7 @@ def get_best_quality(soup: BeautifulSoup) -> tuple[str, str]:
 
 def get_info_dict(soup: BeautifulSoup) -> dict:
     info_js_script = soup.select_one(_SELECTORS.DATE_JS)
-    info_dict: dict = javascript.parse_json_to_dict(info_js_script.text, use_regex=False)  # type: ignore
+    info_dict: dict = javascript.parse_json_to_dict(info_js_script.text, use_regex=False)
     javascript.clean_dict(info_dict)
     return info_dict
 

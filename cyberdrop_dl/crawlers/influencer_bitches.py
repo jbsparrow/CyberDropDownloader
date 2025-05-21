@@ -54,11 +54,11 @@ class InfluencerBitchesCrawler(Crawler):
         scrape_item.setup_as_album("Photos", album_id=album_id)
         results = await self.get_album_results(album_id)
         for a_tag in soup.select(_SELECTORS.PICTURES):
-            link_str: str = a_tag.select_one("img")["data-full"]  # type: ignore
+            link_str: str = a_tag.select_one("img")["data-full"]
             link = self.parse_url(link_str)
             if self.check_album_results(link, results):
                 continue
-            web_url = self.parse_url(a_tag["href"])  # type: ignore
+            web_url = self.parse_url(a_tag["href"])
             new_scrape_item = scrape_item.create_child(web_url)
             filename, ext = self.get_filename_and_ext(link.name)
             await self.handle_file(link, new_scrape_item, filename, ext)

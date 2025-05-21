@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import PasswordProtectedError, ScrapeError
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -76,7 +77,7 @@ class CheveretoCrawler(Crawler, is_abc=True):
         title: str = ""
         async for soup in self.web_pager(sort_by_new(scrape_item.url), trim=False):
             if not title:
-                title: str = soup.select_one(PROFILE_TITLE_SELECTOR)["content"]  # type: ignore
+                title: str = css.select_one_get_attr(soup, PROFILE_TITLE_SELECTOR, "content")
                 title = self.create_title(title)
                 scrape_item.setup_as_profile(title)
 
@@ -99,7 +100,7 @@ class CheveretoCrawler(Crawler, is_abc=True):
         async for soup in self.web_pager(sort_by_new(scrape_item.url), trim=False):
             if not title:
                 await self.check_password_protected(soup, scrape_item.url)
-                title: str = soup.select_one(ALBUM_TITLE_SELECTOR).text  # type: ignore
+                title: str = css.select_one_get_text(soup, ALBUM_TITLE_SELECTOR)
                 title = self.create_title(title, album_id)
                 scrape_item.setup_as_album(title, album_id=album_id)
                 scrape_item.url = canonical_url
@@ -161,7 +162,7 @@ class CheveretoCrawler(Crawler, is_abc=True):
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         try:
-            link_str: str = soup.select_one(selector[0])[selector[1]]  # type: ignore
+            link_str: str = css.select_one_get_attr(soup, *selector)
             link = self.parse_url(link_str)
 
         except AttributeError:
@@ -193,6 +194,6 @@ class CheveretoCrawler(Crawler, is_abc=True):
 
 def get_date_from_soup(soup: BeautifulSoup) -> str:
     for row in soup.select(ITEM_DESCRIPTION_SELECTOR):
-        if any(text in row.text.casefold() for text in ("uploaded", "added to")):
-            return row.select_one("span")["title"]  # type: ignore
+        if any(text in row.get_text().casefold() for text in ("uploaded", "added to")):
+            return css.select_one_get_attr(row, "span", "title")
     return ""

@@ -57,7 +57,7 @@ class EromeCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        title_portion = soup.select_one("title").text.rsplit(" - Porn")[0].strip()  # type: ignore
+        title_portion = soup.select_one("title").text.rsplit(" - Porn")[0].strip()
         if not title_portion:
             title_portion = scrape_item.url.name
 

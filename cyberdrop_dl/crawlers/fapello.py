@@ -47,14 +47,14 @@ class FapelloCrawler(Crawler):
         title: str = ""
         async for soup in self.web_pager(scrape_item.url):
             if not title:
-                title = self.create_title(soup.select_one(TITLE_SELECTOR).get_text())  # type: ignore
+                title = self.create_title(soup.select_one(TITLE_SELECTOR).get_text())
                 scrape_item.setup_as_album(title)
 
             for post in soup.select(CONTENT_SELECTOR):
-                link_str: str = post.get("href")  # type: ignore
+                link_str: str = post.get("href")
                 if "javascript" in link_str:
                     video_tag = post.select_one("iframe")
-                    link_str: str = video_tag.get("src")  # type: ignore
+                    link_str: str = video_tag.get("src")
 
                 link = self.parse_url(link_str)
                 new_scrape_item = scrape_item.create_child(link)

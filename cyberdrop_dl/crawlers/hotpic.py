@@ -42,7 +42,7 @@ class HotPicCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         album_id = scrape_item.url.parts[2]
-        title = self.create_title(soup.title.text.rsplit(" - ")[0], scrape_item.album_id)  # type: ignore
+        title = self.create_title(soup.title.text.rsplit(" - ")[0], scrape_item.album_id)
         scrape_item.setup_as_profile(title, album_id=album_id)
 
         for _, link in self.iter_tags(soup, ALBUM_ITEM_SELECTOR):
@@ -59,7 +59,7 @@ class HotPicCrawler(Crawler):
         file = soup.select_one(VIDEO_SELECTOR) or soup.select_one(IMAGE_SELECTOR)
         if not file:
             raise ScrapeError(422)
-        link_str: str = file.get("src")  # type: ignore
+        link_str: str = file.get("src")
         link = self.parse_url(link_str)
         await self.handle_direct_link(scrape_item, link)
 

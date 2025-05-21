@@ -66,7 +66,7 @@ class NoodleMagazineCrawler(Crawler):
                 soup: BeautifulSoup = await self.client.get_soup_cffi(self.DOMAIN, page_url)
 
             if not title:
-                search_string: str = soup.select_one(SEARCH_STRING_SELECTOR).text.strip()  # type: ignore
+                search_string: str = soup.select_one(SEARCH_STRING_SELECTOR).text.strip()
                 title = search_string.rsplit(" videos", 1)[0]
                 title = self.create_title(f"{title} [search]")
                 scrape_item.setup_as_album(title)

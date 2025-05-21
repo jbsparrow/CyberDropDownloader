@@ -30,8 +30,8 @@ class TitsInTopsCrawler(XenforoCrawler):
             .replace("index.php/goto", "index.php?goto")
         )
 
-    def pre_filter_link(self, link) -> URL:
-        return URL(str(link).replace("index.php?", "index.php/").replace("index.php%3F", "index.php/"))
+    def pre_filter_link(self, link: str) -> str:
+        return link.replace("index.php?", "index.php/").replace("index.php%3F", "index.php/")
 
     def is_valid_post_link(self, link_obj: Tag) -> bool:
         is_image = link_obj.select_one("img")

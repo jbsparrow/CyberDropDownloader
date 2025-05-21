@@ -139,7 +139,7 @@ class AShemaleTubeCrawler(Crawler):
         title_elem = soup.select_one(TITLE_SELECTOR_MAP[collection_type])
         if not title_elem:
             raise ScrapeError(401)
-        collection_title: str = title_elem.get_text(strip=True)  # type: ignore
+        collection_title: str = title_elem.get_text(strip=True)
         collection_title = collection_title.replace(TITLE_TRASH, "").strip()
         collection_title = self.create_title(f"{collection_title} [{collection_type}]")
         return collection_title
@@ -158,9 +158,9 @@ class AShemaleTubeCrawler(Crawler):
     @error_handling_wrapper
     async def proccess_image(self, scrape_item: ScrapeItem, img_tag: Tag) -> None:
         if image := img_tag.select_one("img"):
-            link_str: str = image["src"]  # type: ignore
+            link_str: str = image["src"]
         else:
-            style: str = img_tag.select_one("a")["style"]  # type: ignore
+            style: str = img_tag.select_one("a")["style"]
             link_str = get_text_between(style, "url('", "');")
         url = self.parse_url(link_str).with_query(None)
         filename, ext = self.get_filename_and_ext(url.name)
@@ -191,7 +191,7 @@ class AShemaleTubeCrawler(Crawler):
             if "uploadDate" in json_data:
                 scrape_item.possible_datetime = self.parse_date(json_data["uploadDate"])
 
-        title: str = soup.select_one("title").text.split("- aShemaletube.com")[0].strip()  # type: ignore
+        title: str = soup.select_one("title").text.split("- aShemaletube.com")[0].strip()
         link = self.parse_url(best_format.link_str)
 
         scrape_item.url = canonical_url

@@ -139,7 +139,7 @@ class PkmncardsCrawler(Crawler):
         page_url = url.with_query(sort="date", ord="auto", display="images")
         async for soup in self.web_pager(page_url):
             for thumb in soup.select(_SELECTORS.CARD):
-                parts: tuple[str, str, str] = thumb.select_one("img")["src"], thumb["href"], thumb["title"]  # type: ignore
+                parts: tuple[str, str, str] = thumb.select_one("img")["src"], thumb["href"], thumb["title"]
                 link_str, card_page_url_str, title = parts
                 card_page_url = self.parse_url(card_page_url_str)
                 download_url = self.parse_url(link_str)
@@ -153,9 +153,9 @@ class PkmncardsCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        name = soup.select_one(_SELECTORS.CARD_NAME).text  # type: ignore
-        number = soup.select_one(_SELECTORS.CARD_NUMBER).text  # type: ignore
-        link_str: str = soup.select_one(_SELECTORS.CARD_DOWNLOAD)["href"]  # type: ignore
+        name = soup.select_one(_SELECTORS.CARD_NAME).text
+        number = soup.select_one(_SELECTORS.CARD_NUMBER).text
+        link_str: str = soup.select_one(_SELECTORS.CARD_DOWNLOAD)["href"]
         link = self.parse_url(link_str)
         card_set = create_set(soup)
         card = Card(name, number, card_set, link)

@@ -104,7 +104,7 @@ class RedditCrawler(Crawler):
         title = self.create_title(subreddit_name)
         scrape_item.setup_as_profile(title)
         subreddit: Subreddit = await self._reddit.subreddit(subreddit_name)
-        submissions: AsyncIterator[Submission] = subreddit.new(limit=None)  # type: ignore
+        submissions: AsyncIterator[Submission] = subreddit.new(limit=None)
         await self.get_posts(scrape_item, submissions)
 
     @error_handling_wrapper

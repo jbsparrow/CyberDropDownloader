@@ -86,7 +86,7 @@ class Rule34VaultCrawler(Crawler):
 
         scrape_item.url = canonical_url
         media_tag = soup.select_one(_SELECTORS.VIDEO) or soup.select_one(_SELECTORS.IMAGE)
-        link_str: str = media_tag["src"]  # type: ignore
+        link_str: str = media_tag["src"]
         for trash in (".small", ".thumbnail", ".picsmall", ".720", ".hevc"):
             link_str = link_str.replace(trash, "")
 

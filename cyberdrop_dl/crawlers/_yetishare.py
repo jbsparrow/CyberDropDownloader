@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import PasswordProtectedError, ScrapeError
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between
 
 if TYPE_CHECKING:
@@ -83,7 +84,8 @@ class YetiShareCrawler(Crawler, is_abc=True):
             if not title:
                 title = self.create_title(ajax_title, album_id)
                 scrape_item.setup_as_album(title, album_id=album_id)
-                n_pages_text: str = ajax_soup.select(_SELECTOR.FOLDER_N_PAGES)[-1]["onclick"]  # type: ignore
+                next_page_tag = ajax_soup.select(_SELECTOR.FOLDER_N_PAGES)[-1]
+                n_pages_text: str = css.get_attr(next_page_tag, "onclick")
                 n_pages = int(n_pages_text.split(",")[2].split(")")[0].strip())
 
             _ = self.iter_files(scrape_item, ajax_soup)
@@ -106,7 +108,7 @@ class YetiShareCrawler(Crawler, is_abc=True):
             if page == 1:
                 title = self.create_title(ajax_title, album_id)
                 scrape_item.setup_as_album(title, album_id=album_id)
-                n_pages = int(ajax_soup.select_one(_SELECTOR.SHARED_N_PAGES)["value"])  # type: ignore
+                n_pages = int(css.select_one_get_attr(ajax_soup, _SELECTOR.SHARED_N_PAGES, "value"))
 
             subfolders.extend(self.iter_files(scrape_item, ajax_soup, iter_subfolders=False))
             page += 1
@@ -138,7 +140,7 @@ class YetiShareCrawler(Crawler, is_abc=True):
             if not form:
                 raise PasswordProtectedError("Unable to parse Password Protected File details")
 
-            password_post_url = self.parse_url(form["action"])  # type: ignore
+            password_post_url = self.parse_url(css.get_attr(form, "action"))
             data = {"filePassword": password, "submitme": 1}
             async with self.request_limiter:
                 resp_bytes = await self.client.post_data_raw(self.DOMAIN, password_post_url, data=data)
@@ -160,8 +162,8 @@ class YetiShareCrawler(Crawler, is_abc=True):
 
         try:
             file_tag = ajax_soup.select_one(_SELECTOR.FILE_MENU) or ajax_soup.select(_SELECTOR.DOWNLOAD_BUTTON)[-1]
-            html_download_text = file_tag["onclick"]
-            link_str = html_download_text.split("'")[1].strip().removesuffix("'")  # type: ignore
+            html_download_text = css.get_attr(file_tag, "onclick")
+            link_str = html_download_text.split("'")[1].strip().removesuffix("'")
             link = self.parse_url(link_str)
         except (AttributeError, IndexError, KeyError):
             check_soup_error(ajax_soup)
@@ -189,13 +191,13 @@ class YetiShareCrawler(Crawler, is_abc=True):
                 folder_ids.append(folder_ids)
                 if not iter_subfolders:
                     continue
-                link_str = item["sharing-url"]
+                link_str = css.get_attr(item, "sharing-url")
             elif file_id:
-                link_str = item["dtfullurl"]
+                link_str = css.get_attr(item, "dtfullurl")
             else:
                 continue
 
-            link = self.parse_url(link_str)  # type: ignore
+            link = self.parse_url(link_str)
             new_scrape_item = scrape_item.create_child(link)
             self.manager.task_group.create_task(self.run(new_scrape_item))
             scrape_item.add_children()

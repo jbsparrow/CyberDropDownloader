@@ -7,13 +7,14 @@ import contextlib
 import re
 from dataclasses import dataclass
 from functools import cached_property, singledispatchmethod
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
 from bs4 import BeautifulSoup, Tag
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.data_structures.url_objects import FORUM, ScrapeItem
 from cyberdrop_dl.exceptions import InvalidURLError, LoginError, ScrapeError
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.logger import log, log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_trailing_slash
 
@@ -33,8 +34,7 @@ FINAL_PAGE_SELECTOR = "li.pageNav-page a"
 CURRENT_PAGE_SELECTOR = "li.pageNav-page.pageNav-page--current a"
 
 
-@dataclass(frozen=True, slots=True)
-class Selector:
+class Selector(NamedTuple):
     element: str
     attribute: str = ""
 
@@ -71,24 +71,20 @@ class ForumPost:
 
     @cached_property
     def content(self) -> Tag:
-        return self.soup.select_one(self.selectors.content.element)  # type: ignore
+        return css.select_one(self.soup, self.selectors.content.element)
 
     @cached_property
     def date(self) -> int | None:
-        date_tag = self.content.select_one(self.selectors.date.element)
-        date_str: str | None = date_tag.get(self.selectors.date.attribute) if date_tag else None  # type: ignore
-        if not date_str:
-            return
-        return int(date_str)
+        if date_str := css.select_one_get_attr_or_none(self.content, *self.selectors.date):
+            return int(date_str)
 
     @cached_property
     def number(self) -> int:
         if self.selectors.number.element == self.selectors.number.attribute:
-            number_str: str = self.soup.get(self.selectors.number.element)  # type: ignore
+            number_str: str = css.get_attr(self.soup, self.selectors.number.element)
             return int(number_str)
 
-        number_tag = self.soup.select_one(self.selectors.number.element)
-        number_str: str = number_tag.get(self.selectors.number.attribute)  # type: ignore
+        number_str = css.select_one_get_attr(self.soup, *self.selectors.number)
         return int(number_str.split("/")[-1].split(self.post_name)[-1])
 
 
@@ -145,7 +141,8 @@ class XenforoCrawler(Crawler, is_abc=True):
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         if not self.logged_in and self.login_required:
             return
-        scrape_item.url = self.pre_filter_link(scrape_item.url)
+        url = self.pre_filter_link(str(scrape_item.url))
+        scrape_item.url = self.parse_url(url)
         if self.is_attachment(scrape_item.url):
             return await self.handle_internal_link(scrape_item)
         if self.thread_url_part in scrape_item.url.parts:
@@ -164,7 +161,7 @@ class XenforoCrawler(Crawler, is_abc=True):
     @error_handling_wrapper
     async def redirect(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
-            _, url = await self.client.get_soup_and_return_url(self.DOMAIN, scrape_item.url)  # type: ignore
+            _, url = await self.client.get_soup_and_return_url(self.DOMAIN, scrape_item.url)
         scrape_item.url = url
         self.manager.task_group.create_task(self.run(scrape_item))
 
@@ -180,9 +177,9 @@ class XenforoCrawler(Crawler, is_abc=True):
         self.scraped_threads.add(thread.url)
         async for soup in self.thread_pager(scrape_item):
             if not title:
-                title_block = soup.select_one(self.selectors.title.element)
+                title_block = css.select_one(soup, self.selectors.title.element)
                 try:
-                    trash: list[Tag] = title_block.find_all(self.selectors.title_trash.element)  # type: ignore
+                    trash = title_block.select(self.selectors.title_trash.element)
                 except AttributeError as e:
                     log_debug("Got an unprocessable soup", 40, exc_info=e)
                     raise ScrapeError(429, message="Invalid response from forum. You may have been rate limited") from e
@@ -190,7 +187,7 @@ class XenforoCrawler(Crawler, is_abc=True):
                 for element in trash:
                     element.decompose()
 
-                title = self.create_title(title_block.text.replace("\n", ""), thread_id=thread.id_)  # type: ignore
+                title = self.create_title(title_block.get_text().replace("\n", ""), thread_id=thread.id_)
                 scrape_item.add_to_parent_title(title)
 
             posts = soup.select(self.selectors.posts.element)
@@ -259,30 +256,30 @@ class XenforoCrawler(Crawler, is_abc=True):
 
     async def thread_pager(self, scrape_item: ScrapeItem) -> AsyncGenerator[BeautifulSoup]:
         """Generator of forum thread pages."""
-        page_url = scrape_item.url
-        while True:
-            async with self.request_limiter:
-                soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, page_url)
-            next_page = soup.select_one(self.selectors.next_page.element)
+
+        def get_next_page(soup: BeautifulSoup) -> str | None:
+            select, attr = self.selectors.next_page
+            next_page = css.select_one_get_attr_or_none(soup, selector=select, attribute=attr)
+            if next_page:
+                return self.pre_filter_link(next_page)
+
+        async for soup in self._web_pager(scrape_item.url, get_next_page):
             yield soup
-            if not next_page:
-                break
-            page_url_str: str = next_page.get(self.selectors.next_page.attribute)  # type: ignore
-            page_url = self.parse_url(page_url_str)
-            page_url = self.pre_filter_link(page_url)
 
     async def process_children(
         self, scrape_item: ScrapeItem, links: list[Tag], selector: str, *, embeds: bool = False
     ) -> None:
         for link_obj in links:
-            link_tag: Tag | str | None = link_obj.get(selector)  # type: ignore
+            link_tag = link_obj.get(selector)
             if isinstance(link_tag, Tag):
                 if link_tag.parent and (data_simp := link_tag.parent.get("data-simp")) and "init" in data_simp:
                     continue
 
-                link_str: str | None = link_obj.get("href")  # type: ignore
-            else:
+                link_str: str | None = css.get_attr_or_none(link_obj, "href")
+            elif isinstance(link_tag, str):
                 link_str = link_tag
+            else:
+                continue
 
             if not link_str:
                 continue
@@ -357,7 +354,7 @@ class XenforoCrawler(Crawler, is_abc=True):
         scrape_item.url = remove_trailing_slash(scrape_item.url)
 
         if scrape_item.url.name.isdigit():
-            head = await self.client.get_head(self.DOMAIN, scrape_item.url)  # type: ignore
+            head = await self.client.get_head(self.DOMAIN, scrape_item.url)
             redirect = head.get("location")
             if not redirect:
                 raise ScrapeError(422)
@@ -378,7 +375,7 @@ class XenforoCrawler(Crawler, is_abc=True):
         confirm_button = soup.select_one("a[class*=button--cta]")
         if not confirm_button:
             return
-        link_str: str = confirm_button.get("href")  # type: ignore
+        link_str: str = css.get_attr(confirm_button, "href")
         link_str = link_str.split('" class="link link--internal', 1)[0]
         new_link = self.parse_url(link_str)
         return await self.get_absolute_link(new_link)
@@ -415,7 +412,7 @@ class XenforoCrawler(Crawler, is_abc=True):
 
     def is_valid_post_link(self, link_obj: Tag) -> bool:
         is_image = link_obj.select_one("img")
-        link_str: str = link_obj.get(self.selectors.posts.links.element)  # type: ignore
+        link_str: str = css.get_attr(link_obj, self.selectors.posts.links.element)
         return not (is_image or self.is_attachment(link_str))
 
     def is_confirmation_link(self, link: URL) -> bool:
@@ -427,7 +424,7 @@ class XenforoCrawler(Crawler, is_abc=True):
             return match.group(0).replace("www.", "")
         return embed_str
 
-    def pre_filter_link(self, link: AbsoluteHttpURL) -> AbsoluteHttpURL:
+    def pre_filter_link(self, link: str) -> str:
         return link
 
     def filter_link(self, link: URL | None) -> URL | None:

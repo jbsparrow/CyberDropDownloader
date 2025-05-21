@@ -254,7 +254,7 @@ def get_video_info_from_js(soup: BeautifulSoup) -> dict:
     js_text = info_js_script.text if info_js_script else None
     if not js_text:
         raise ScrapeError(422)
-    json_data: list = javascript.parse_json_to_dict(js_text, use_regex=False)  # type: ignore
+    json_data: list = javascript.parse_json_to_dict(js_text, use_regex=False)
     info_dict = {"data": json_data}
     javascript.clean_dict(info_dict)
     indices: dict[str, int] = {}

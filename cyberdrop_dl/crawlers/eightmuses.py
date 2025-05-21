@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -46,17 +47,17 @@ class EightMusesCrawler(Crawler):
         results = await self.get_album_results(album_id)
 
         for tile in soup.select(TILE_SELECTOR):
-            tile_link = self.parse_url(tile.get("href"))  # type: ignore
-            tile_title: str = tile.get("title", "")  # type: ignore
-            image = tile.select_one(IMAGE_SELECTOR)
-            is_new_album = image["itemtype"] == "https://schema.org/ImageGallery"  # type: ignore
+            tile_link = self.parse_url(css.get_attr(tile, "href"))
+            tile_title: str = css.get_attr_or_none(tile, "title") or ""
+            image = css.select_one(tile, IMAGE_SELECTOR)
+            is_new_album = image["itemtype"] == "https://schema.org/ImageGallery"
             new_album_id = f"{scrape_item.album_id}/{tile_title.replace(' ', '-')}"
             new_scrape_item = scrape_item.create_child(tile_link, new_title_part=tile_title, album_id=new_album_id)
             if is_new_album:
                 await self.album(new_scrape_item)
                 continue
 
-            image_link_str: str = image.select_one("img").get("data-src").replace("/th/", "/fm/")  # type: ignore
+            image_link_str: str = css.select_one_get_attr(image, "img", "data-src").replace("/th/", "/fm/")
             image_link = self.parse_url(image_link_str)
             if not self.check_album_results(image_link, results):
                 filename, ext = self.get_filename_and_ext(f"{tile_title}.jpg")
@@ -64,7 +65,7 @@ class EightMusesCrawler(Crawler):
             scrape_item.add_children()
 
 
-def get_title_parts(soup: BeautifulSoup) -> tuple[str, ...]:
+def get_title_parts(soup: BeautifulSoup) -> list[str]:
     """Gets the album title, sub-album title, and comic title."""
     titles = soup.select(TITLE_PARTS_SELECTOR)[1:]
-    return [title.text for title in titles]  # type: ignore
+    return [title.text for title in titles]

@@ -54,6 +54,11 @@ def select_one_get_attr(tag: Tag, selector: str, attribute: str) -> str:
     return get_attr(inner_tag, attribute)
 
 
+def select_one_get_attr_or_none(tag: Tag, selector: str, attribute: str) -> str | None:
+    if inner_tag := tag.select_one(selector):
+        return get_attr_or_none(inner_tag, attribute)
+
+
 def iselect(tag: Tag, selector: str) -> Generator[Tag]:
     """Same as `tag.select(selector)`, but it returns a generator instead of a list."""
     yield from tag.css.iselect(selector)

@@ -115,9 +115,9 @@ class Rule34VideoCrawler(Crawler):
 
 
 def get_video_info(soup: BeautifulSoup) -> VideoInfo:
-    title = soup.select_one(VIDEO_TITLE_SELECTOR).text.strip()  # type: ignore
+    title = soup.select_one(VIDEO_TITLE_SELECTOR).text.strip()
     info_js_script = soup.select_one(JS_SELECTOR)
-    info: dict[str, str | dict] = javascript.parse_json_to_dict(info_js_script.text)  # type: ignore
+    info: dict[str, str | dict] = javascript.parse_json_to_dict(info_js_script.text)
     info["title"] = title
     javascript.clean_dict(info)
     log_debug(info)
@@ -126,7 +126,7 @@ def get_video_info(soup: BeautifulSoup) -> VideoInfo:
 
 def get_available_formats(soup: BeautifulSoup) -> Generator[Format]:
     for download in soup.select(DOWNLOADS_SELECTOR):
-        link_str: str = download.get("href")  # type: ignore
+        link_str: str = download.get("href")
         if "/tags/" in link_str or not all(p in link_str for p in REQUIRED_FORMAT_STRINGS):
             continue
         ext, res = download.text.rsplit(" ", 1)

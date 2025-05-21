@@ -119,7 +119,7 @@ class GoogleDriveCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, download_url)
 
-        title: str = soup.title.text.strip()  # type: ignore
+        title: str = soup.title.text.strip()
         children = []
         for item in soup.select(ITEM_SELECTOR):
             link = item.get("href")
@@ -130,7 +130,7 @@ class GoogleDriveCrawler(Crawler):
         return GoogleDriveFolder(folder_id, title, children)
 
     @error_handling_wrapper
-    async def file(self, scrape_item: ScrapeItem, file_id: str = "") -> None:  # type: ignore
+    async def file(self, scrape_item: ScrapeItem, file_id: str = "") -> None:
         file_id = file_id or get_file_id(scrape_item.url)
         if not file_id:
             raise ScrapeError(422)
@@ -218,7 +218,7 @@ class GoogleDriveCrawler(Crawler):
 
 
 def get_docs_url(soup: BeautifulSoup, file_id: str) -> AbsoluteHttpURL | None:
-    title: str = soup.title.text  # type: ignore
+    title: str = soup.title.text
     if title.endswith(" - Google Docs"):
         return AbsoluteHttpURL(f"https://docs.google.com/document/d/{file_id}/export?format=docx")
     if title.endswith(" - Google Sheets"):

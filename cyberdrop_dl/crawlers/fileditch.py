@@ -33,7 +33,7 @@ class FileditchCrawler(Crawler):
     async def file(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
-        link_str: str = soup.select_one(DOWNLOAD_SELECTOR).get("href")  # type: ignore
+        link_str: str = soup.select_one(DOWNLOAD_SELECTOR).get("href")
         link = self.parse_url(link_str)
         if link.path == HOMEPAGE_CATCHALL_FILE:
             raise ScrapeError(422)

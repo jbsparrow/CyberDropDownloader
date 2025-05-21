@@ -152,7 +152,7 @@ def get_info_dict(soup: BeautifulSoup) -> VideoInfo:
     title: str = css.get_attr_or_none(title_tag, "title") or css.get_text(title_tag).replace("\n", "")
     del soup
     info: dict[str, Any] = javascript.parse_js_vars(info_js_script_text)
-    extended_info_dict: dict = javascript.parse_json_to_dict(extended_info_js_script_text)  # type: ignore
+    extended_info_dict: dict = javascript.parse_json_to_dict(extended_info_js_script_text)
 
     info["title"] = title.strip()
     info = info | extended_info_dict

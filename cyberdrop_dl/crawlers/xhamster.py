@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from functools import partial
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, NamedTuple
 
@@ -7,7 +8,6 @@ from pydantic import AliasPath, Field, PlainValidator
 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel, SupportedPaths
-from cyberdrop_dl.utils import javascript
 from cyberdrop_dl.utils.logger import log_debug
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, get_text_between, parse_url
 
@@ -143,7 +143,7 @@ def get_window_initials_json(soup: BeautifulSoup) -> dict[str, dict]:
     js_script = soup.select_one(_SELECTORS.JS_VIDEO_INFO)
     js_code: str = str(js_script)
     json_text: str = get_text_between(js_code, "window.initials=", "</script>").removesuffix(";").strip()
-    return javascript.parse_json_to_dict(json_text)  # type: ignore
+    return json.loads(json_text)
 
 
 class Format(NamedTuple):

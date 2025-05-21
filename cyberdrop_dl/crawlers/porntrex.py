@@ -88,7 +88,7 @@ class PorntrexCrawler(Crawler):
         if "This album is a private album" in soup.text:
             raise ScrapeError(401, "Private album")
 
-        title = soup.select_one(_SELECTORS.ALBUM_TITLE).text  # type: ignore
+        title = soup.select_one(_SELECTORS.ALBUM_TITLE).text
         title = self.create_title(title, album_id)
         scrape_item.setup_as_album(title)
 
@@ -123,13 +123,13 @@ class PorntrexCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         if "models" in scrape_item.url.parts:
-            title: str = soup.select_one(_SELECTORS.MODEL_NAME).get_text(strip=True).title()  # type: ignore
+            title: str = soup.select_one(_SELECTORS.MODEL_NAME).get_text(strip=True).title()
         elif "members" in scrape_item.url.parts:
-            title: str = soup.select_one(_SELECTORS.USER_NAME).get_text(strip=True)  # type: ignore
+            title: str = soup.select_one(_SELECTORS.USER_NAME).get_text(strip=True)
         elif "latest-updates" in scrape_item.url.parts:
             title: str = "Latest Updates"
         else:
-            title = soup.select_one(_SELECTORS.TITLE).get_text(strip=True)  # type: ignore
+            title = soup.select_one(_SELECTORS.TITLE).get_text(strip=True)
 
         for trash in TITLE_TRASH:
             title = title.replace(trash, "").strip()
@@ -171,7 +171,7 @@ class PorntrexCrawler(Crawler):
         sort_by: str = scrape_item.url.parts[4] if len(scrape_item.url.parts) > 4 else ""
         sort_by = sort_by or scrape_item.url.query.get("sort_by") or "post_date"
         if "search" in scrape_item.url.parts:
-            search_query = scrape_item.url.parts[3]  # type: ignore
+            search_query = scrape_item.url.parts[3]
             block_id = "list_videos_videos"
         elif "members" in scrape_item.url.parts:
             block_id = "list_videos_uploaded_videos"

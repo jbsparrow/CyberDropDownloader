@@ -52,10 +52,10 @@ class ImgBBCrawler(Crawler):
         async for soup in self.web_pager(scrape_item.url / "sub"):
             if not title:
                 album_id = scrape_item.url.parts[2]
-                title_portion = soup.select_one(ALBUM_TITLE_SELECTOR).get_text()  # type: ignore
+                title_portion = soup.select_one(ALBUM_TITLE_SELECTOR).get_text()
                 title = self.create_title(title_portion, album_id)
                 scrape_item.setup_as_album(title, album_id=album_id)
-                first_page_str: str = soup.select_one(FIRST_PAGE_SELECTOR).get("href")  # type: ignore
+                first_page_str: str = soup.select_one(FIRST_PAGE_SELECTOR).get("href")
                 first_page = self.parse_url(first_page_str)
 
             for _, sub_album in self.iter_children(scrape_item, soup, ALBUM_PAGE_SELECTOR):
@@ -73,9 +73,9 @@ class ImgBBCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        link_str: str = soup.select_one(IMAGE_SELECTOR).get("src")  # type: ignore
+        link_str: str = soup.select_one(IMAGE_SELECTOR).get("src")
         link = self.parse_url(link_str)
-        date_str: str = soup.select_one(DATE_SELECTOR).get("title")  # type: ignore
+        date_str: str = soup.select_one(DATE_SELECTOR).get("title")
         scrape_item.possible_datetime = self.parse_datetime(date_str)
 
         filename, ext = self.get_filename_and_ext(link.name)

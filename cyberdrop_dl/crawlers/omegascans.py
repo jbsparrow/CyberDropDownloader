@@ -79,7 +79,7 @@ class OmegaScansCrawler(Crawler):
             raise ScrapeError(401, "This chapter is premium")
 
         scrape_item.part_of_album = True
-        title_parts = soup.select_one("title").get_text().split(" - ")  # type: ignore
+        title_parts = soup.select_one("title").get_text().split(" - ")
         series_name, chapter_title = title_parts[:2]
         series_title = self.create_title(series_name)
         scrape_item.add_to_parent_title(series_title)
@@ -90,7 +90,7 @@ class OmegaScansCrawler(Crawler):
             date = parse_datetime(date_str)
         except ValueError:
             script = soup.select_one(DATE_JS_SELECTOR)
-            date_str = script.get_text().split('created_at\\":\\"')[1].split(".")[0]  # type: ignore
+            date_str = script.get_text().split('created_at\\":\\"')[1].split(".")[0]
             date = parse_datetime(date_str)
 
         scrape_item.possible_datetime = date

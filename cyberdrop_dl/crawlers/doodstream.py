@@ -66,7 +66,7 @@ class DoodStreamCrawler(Crawler):
         assert host
         del response
 
-        title: str = soup.select_one("title").text  # type: ignore
+        title: str = soup.select_one("title").text
         title = title.split("- DoodStream")[0].strip()
 
         file_id = get_file_id(soup)

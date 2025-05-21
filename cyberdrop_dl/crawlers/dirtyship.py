@@ -49,7 +49,7 @@ class DirtyShipCrawler(Crawler):
         title: str = ""
         async for soup in self.web_pager(scrape_item.url):
             if not title:
-                title: str = soup.select_one("title").text  # type: ignore
+                title: str = soup.select_one("title").text
                 title = title.split("Archives - DirtyShip")[0]
                 title = self.create_title(title)
                 scrape_item.setup_as_album(title)
@@ -62,17 +62,17 @@ class DirtyShipCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        title: str = soup.select_one("title").text  # type: ignore
+        title: str = soup.select_one("title").text
         title = title.split(" - DirtyShip")[0]
         videos = soup.select(VIDEO_SELECTOR)
 
         def get_formats():
             for video in videos:
-                link_str: str = video.get("src")  # type: ignore
+                link_str: str = video.get("src")
                 if link_str.startswith("type="):
                     continue
-                res: str = video.get("title")  # type: ignore
-                link = self.parse_url(link_str)  # type: ignore
+                res: str = video.get("title")
+                link = self.parse_url(link_str)
                 yield (Format(int(res), link))
 
         formats = set(get_formats())
@@ -89,7 +89,7 @@ class DirtyShipCrawler(Crawler):
 
     def get_flowplayer_sources(self, soup: BeautifulSoup) -> set[Format]:
         flow_player = soup.select_one(FLOWPLAYER_VIDEO_SELECTOR)
-        data_item: str = flow_player.get("data-item") if flow_player else None  # type: ignore
+        data_item: str = flow_player.get("data-item") if flow_player else None
         if not data_item:
             return set()
         data_item = data_item.replace(r"\/", "/")

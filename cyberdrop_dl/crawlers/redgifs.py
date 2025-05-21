@@ -78,7 +78,7 @@ class RedGifsCrawler(Crawler):
         scrape_item.possible_datetime = json_resp["gif"]["createDate"]
 
         links: dict[str, str] = json_resp["gif"]["urls"]
-        link_str: str = links.get("hd") or links.get("sd")  # type: ignore
+        link_str: str = links.get("hd") or links.get("sd")
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)

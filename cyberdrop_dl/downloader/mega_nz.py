@@ -58,7 +58,6 @@ import random
 import string
 import struct
 import time
-from collections.abc import Sequence
 from enum import IntEnum
 from functools import partial
 from http import HTTPStatus
@@ -76,6 +75,7 @@ from Crypto.Util import Counter
 from cyberdrop_dl.clients.download_client import DownloadClient
 from cyberdrop_dl.downloader.downloader import Downloader
 from cyberdrop_dl.exceptions import CDLBaseError, DownloadError, SlowDownloadError
+from cyberdrop_dl.types import AnyDict, U32Int, U32IntArray, U32IntSequence
 from cyberdrop_dl.utils.logger import log
 
 if TYPE_CHECKING:
@@ -145,11 +145,7 @@ CHUNK_BLOCK_LEN = 16  # Hexadecimal
 EMPTY_IV = b"\0" * CHUNK_BLOCK_LEN
 
 
-U32Int: TypeAlias = int
-TupleArray: TypeAlias = tuple[U32Int, ...]
-Array: TypeAlias = TupleArray | list[U32Int]
-AnyArray: TypeAlias = Sequence[U32Int]
-AnyDict: TypeAlias = dict[str, Any]
+U32IntTupleArray: TypeAlias = tuple[U32Int, ...]
 
 
 class Chunk(NamedTuple):
@@ -184,8 +180,8 @@ class Node(TypedDict):
 
     #  Non standard properties, only used internally
     attributes: Attributes  # Decrypted attributes
-    k_decrypted: TupleArray
-    key_decrypted: TupleArray  # Decrypted access key (for folders, its values if the same as 'k_decrypted')
+    k_decrypted: U32IntTupleArray
+    key_decrypted: U32IntTupleArray  # Decrypted access key (for folders, its values if the same as 'k_decrypted')
 
 
 class FileOrFolder(Node):
@@ -193,9 +189,9 @@ class FileOrFolder(Node):
     sk: NotRequired[str]  # Shared key, only present present in shared (public) files / folder
 
     #  Non standard properties, only used internally
-    iv: TupleArray
-    meta_mac: TupleArray
-    sk_decrypted: TupleArray
+    iv: U32IntTupleArray
+    meta_mac: U32IntTupleArray
+    sk_decrypted: U32IntTupleArray
 
 
 class File(FileOrFolder):
@@ -208,15 +204,15 @@ class Folder(FileOrFolder):
     s: list[FileOrFolder]
 
 
-SharedKey = dict[str, TupleArray]  # Mapping: (recipient) User Id ('u') -> decrypted value of shared key ('sk')
+SharedKey = dict[str, U32IntTupleArray]  # Mapping: (recipient) User Id ('u') -> decrypted value of shared key ('sk')
 SharedkeysDict = dict[str, SharedKey]  # Mapping: (owner) Shared User Id ('su') -> SharedKey
 FilesMapping = dict[str, FileOrFolder]  # key is parent_id ('p')
 
 
 class DecryptData(NamedTuple):
-    iv: TupleArray
-    k: TupleArray
-    meta_mac: TupleArray
+    iv: U32IntTupleArray
+    k: U32IntTupleArray
+    meta_mac: U32IntTupleArray
     file_size: int = 0
 
 
@@ -252,15 +248,15 @@ def _aes_cbc_decrypt(data: bytes, key: bytes) -> bytes:
     return AES.new(key, AES.MODE_CBC, EMPTY_IV).decrypt(data)
 
 
-def _aes_cbc_encrypt_a32(data: AnyArray, key: AnyArray) -> TupleArray:
+def _aes_cbc_encrypt_a32(data: U32IntSequence, key: U32IntSequence) -> U32IntTupleArray:
     return str_to_a32(_aes_cbc_encrypt(a32_to_bytes(data), a32_to_bytes(key)))
 
 
-def _aes_cbc_decrypt_a32(data: AnyArray, key: AnyArray) -> TupleArray:
+def _aes_cbc_decrypt_a32(data: U32IntSequence, key: U32IntSequence) -> U32IntTupleArray:
     return str_to_a32(_aes_cbc_decrypt(a32_to_bytes(data), a32_to_bytes(key)))
 
 
-def make_hash(string: str, aeskey: AnyArray) -> str:
+def make_hash(string: str, aeskey: U32IntSequence) -> str:
     s32 = str_to_a32(string)
     h32 = [0, 0, 0, 0]
     for i in range(len(s32)):
@@ -270,11 +266,11 @@ def make_hash(string: str, aeskey: AnyArray) -> str:
     return a32_to_base64((h32[0], h32[2]))
 
 
-def prepare_key(arr: Array) -> Array:
-    pkey: Array = [0x93C467E3, 0x7DB0C7A4, 0xD1BE3F81, 0x0152CB56]
+def prepare_key(arr: U32IntArray) -> U32IntArray:
+    pkey: U32IntArray = [0x93C467E3, 0x7DB0C7A4, 0xD1BE3F81, 0x0152CB56]
     for _ in range(0x10000):
         for j in range(0, len(arr), 4):
-            key: Array = [0, 0, 0, 0]
+            key: U32IntArray = [0, 0, 0, 0]
             for i in range(4):
                 if i + j < len(arr):
                     key[i] = arr[i + j]
@@ -282,24 +278,24 @@ def prepare_key(arr: Array) -> Array:
     return pkey
 
 
-def encrypt_key(array: AnyArray, key: AnyArray) -> TupleArray:
+def encrypt_key(array: U32IntSequence, key: U32IntSequence) -> U32IntTupleArray:
     # this sum, which is applied to a generator of tuples, actually flattens the output list of lists of that generator
     # i.e. it's equivalent to tuple([item for t in generatorOfLists for item in t])
 
     return sum((_aes_cbc_encrypt_a32(array[index : index + 4], key) for index in range(0, len(array), 4)), ())
 
 
-def decrypt_key(array: AnyArray, key: AnyArray) -> TupleArray:
+def decrypt_key(array: U32IntSequence, key: U32IntSequence) -> U32IntTupleArray:
     return sum((_aes_cbc_decrypt_a32(array[index : index + 4], key) for index in range(0, len(array), 4)), ())
 
 
-def encrypt_attr(attr_dict: dict, key: AnyArray) -> bytes:
+def encrypt_attr(attr_dict: dict, key: U32IntSequence) -> bytes:
     attr: bytes = f"MEGA{json.dumps(attr_dict)}".encode()
     attr = pad_bytes(attr)
     return _aes_cbc_encrypt(attr, a32_to_bytes(key))
 
 
-def decrypt_attr(attr: bytes, key: AnyArray) -> AnyDict:
+def decrypt_attr(attr: bytes, key: U32IntSequence) -> AnyDict:
     attr_bytes = _aes_cbc_decrypt(attr, a32_to_bytes(key))
     try:
         attr_str = attr_bytes.decode("utf-8").rstrip("\0")
@@ -316,11 +312,11 @@ def decrypt_attr(attr: bytes, key: AnyArray) -> AnyDict:
         return {}
 
 
-def a32_to_bytes(array: AnyArray) -> bytes:
+def a32_to_bytes(array: U32IntSequence) -> bytes:
     return struct.pack(f">{len(array):.0f}I", *array)
 
 
-def str_to_a32(bytes_or_str: str | bytes) -> TupleArray:
+def str_to_a32(bytes_or_str: str | bytes) -> U32IntTupleArray:
     if isinstance(bytes_or_str, str):
         bytes_ = bytes_or_str.encode()
     else:
@@ -348,7 +344,7 @@ def base64_url_decode(data: str) -> bytes:
     return base64.b64decode(data)
 
 
-def base64_to_a32(string: str) -> TupleArray:
+def base64_to_a32(string: str) -> U32IntTupleArray:
     return str_to_a32(base64_url_decode(string))
 
 
@@ -360,7 +356,7 @@ def base64_url_encode(data: bytes) -> str:
     return data_str
 
 
-def a32_to_base64(array: AnyArray) -> str:
+def a32_to_base64(array: U32IntSequence) -> str:
     return base64_url_encode(a32_to_bytes(array))
 
 
@@ -536,7 +532,7 @@ class MegaApi:
         log("Login complete [Mega]")
         return self
 
-    def _process_login(self, resp: AnyDict, password: Array):
+    def _process_login(self, resp: AnyDict, password: U32IntArray):
         encrypted_master_key = base64_to_a32(resp["k"])
         self.master_key = decrypt_key(encrypted_master_key, password)
         if b64_tsid := resp.get("tsid"):
@@ -733,8 +729,8 @@ class MegaApi:
                 elif node["t"] == NodeType.FOLDER:
                     k = key
 
-                iv: AnyArray = key[4:6] + (0, 0)
-                meta_mac: TupleArray = key[6:8]
+                iv: U32IntSequence = key[4:6] + (0, 0)
+                meta_mac: U32IntTupleArray = key[6:8]
 
                 attrs = decrypt_attr(base64_url_decode(node["a"]), k)
                 node["attributes"] = cast("Attributes", attrs)
@@ -794,9 +790,9 @@ class MegaDownloadClient(DownloadClient):
 
     def _decrypt_chunks(
         self,
-        iv: TupleArray,
-        k_decrypted: TupleArray,
-        meta_mac: TupleArray,
+        iv: U32IntTupleArray,
+        k_decrypted: U32IntTupleArray,
+        meta_mac: U32IntTupleArray,
     ) -> Generator[bytes, bytes, None]:
         """
         Decrypts chunks of data received via `send()` and yields the decrypted chunks.
@@ -919,5 +915,7 @@ class MegaDownloader(Downloader):
         if self.manager.config_manager.settings_data.sorting.sort_downloads:
             self.manager.path_manager.sorted_folder.mkdir(parents=True, exist_ok=True)
 
-    def register(self, url: URL, iv: TupleArray, k_decrypted: TupleArray, meta_mac: TupleArray, file_size: int) -> None:
+    def register(
+        self, url: URL, iv: U32IntTupleArray, k_decrypted: U32IntTupleArray, meta_mac: U32IntTupleArray, file_size: int
+    ) -> None:
         self.client.decrypt_mapping[url] = DecryptData(iv, k_decrypted, meta_mac, file_size)

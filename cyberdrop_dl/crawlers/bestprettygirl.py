@@ -69,7 +69,7 @@ class BestPrettyGirlCrawler(Crawler):
                     title = "-".join(date_parts)
 
                 else:
-                    title: str = title_tag.get_text(strip=True)  # type: ignore
+                    title: str = title_tag.get_text(strip=True)
                     title = title.removeprefix("Tag:").removeprefix("Category:").strip()
                     title = self.create_title(f"{title} [{collection_type}]")
 
@@ -83,8 +83,8 @@ class BestPrettyGirlCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        og_title: str = soup.select_one(_SELECTORS.TITLE)["content"]  # type: ignore
-        date_str: str = soup.select_one(_SELECTORS.DATE)["content"]  # type: ignore
+        og_title: str = soup.select_one(_SELECTORS.TITLE)["content"]
+        date_str: str = soup.select_one(_SELECTORS.DATE)["content"]
         title = self.create_title(og_title)
         scrape_item.setup_as_album(title)
         scrape_item.possible_datetime = self.parse_date(date_str)

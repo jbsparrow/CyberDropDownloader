@@ -55,8 +55,8 @@ class EHentaiCrawler(Crawler):
         scrape_item.url = scrape_item.url.with_query(None)
         async for soup in self.web_pager(scrape_item.url):
             if not title:
-                title = self.create_title(soup.select_one(_SELECTORS.TITLE).get_text())  # type: ignore
-                date_str: str = soup.select_one(_SELECTORS.DATE).get_text()  # type: ignore
+                title = self.create_title(soup.select_one(_SELECTORS.TITLE).get_text())
+                date_str: str = soup.select_one(_SELECTORS.DATE).get_text()
                 gallery_id = scrape_item.url.parts[2]
                 title = self.create_title(title, gallery_id)
                 scrape_item.setup_as_album(title, album_id=gallery_id)
@@ -73,7 +73,7 @@ class EHentaiCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        link_str: str = soup.select_one(_SELECTORS.IMAGE).get("src")  # type: ignore
+        link_str: str = soup.select_one(_SELECTORS.IMAGE).get("src")
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
         custom_filename, _ = self.get_filename_and_ext(f"{scrape_item.url.name}{ext}")

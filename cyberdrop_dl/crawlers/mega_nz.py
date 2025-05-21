@@ -127,7 +127,7 @@ class MegaNzCrawler(Crawler):
         nodes = await self.api.get_nodes_public_folder(folder_id, shared_key)
         root_id = next(iter(nodes))
         folder_name = nodes[root_id]["attributes"]["n"]
-        filesystem = await self.api._build_file_system(nodes, [root_id])  # type: ignore
+        filesystem = await self.api._build_file_system(nodes, [root_id])
 
         title = self.create_title(folder_name, folder_id)
         scrape_item.setup_as_album(title, album_id=folder_id)

@@ -155,7 +155,7 @@ class BunkrrCrawler(Crawler):
     async def album(self, scrape_item: ScrapeItem) -> None:
         soup: BeautifulSoup = await self.get_soup_lenient(scrape_item.url)
         album_id = scrape_item.url.parts[2]
-        title = soup.select_one("title").text.rsplit(" | Bunkr")[0].strip()  # type: ignore
+        title = soup.select_one("title").text.rsplit(" | Bunkr")[0].strip()
         title = self.create_title(title, album_id)
         scrape_item.setup_as_album(title, album_id=album_id)
         results = await self.get_album_results(album_id)
@@ -210,7 +210,7 @@ class BunkrrCrawler(Crawler):
 
         # Try image first to not make any aditional request
         if image_container:
-            link_str: str = image_container.get("src")  # type: ignore
+            link_str: str = image_container.get("src")
             link = self.parse_url(link_str)
 
         # Try to get downloadd URL from streaming API. Should work for most files, even none video files
@@ -222,7 +222,7 @@ class BunkrrCrawler(Crawler):
 
         # Fallback for everything else, try to get the download URL. `handle_direct_link` will make the final request to the API
         if not link and download_link_container:
-            link_str: str = download_link_container.get("href")  # type: ignore
+            link_str: str = download_link_container.get("href")
             link = self.parse_url(link_str)
 
         # Everything failed, abort
@@ -240,7 +240,7 @@ class BunkrrCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        title: str = soup.select_one("h1").text.strip()  # type: ignore
+        title: str = soup.select_one("h1").text.strip()
         link: URL | None = await self.get_download_url_from_api(scrape_item.url)
         if not link:
             raise ScrapeError(422)

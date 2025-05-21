@@ -15,6 +15,7 @@ from typing_extensions import TypedDict  # Import from typing is not compatible 
 from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import NoExtensionError, ScrapeError
 from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel
+from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_parts
 from cyberdrop_dl.utils.validators import parse_falsy_as_none
 
@@ -186,7 +187,7 @@ def fallback_if_no_api(func: Callable[..., Coroutine[None, None, Any]]) -> Calla
 
     @functools.wraps(func)
     async def wrapper(self: KemonoBaseCrawler, *args, **kwargs) -> Any:
-        if self.API_ENTRYPOINT:
+        if hasattr(self, "API_ENTRYPOINT"):
             return await func(self, *args, **kwargs)
         fallback_func = getattr(self, f"{func.__name__}_w_no_api", None)
         if not fallback_func:
@@ -205,7 +206,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         "Direct links": "",
     }
     DEFAULT_POST_TITLE_FORMAT: ClassVar[str] = "{date} - {title}"
-    API_ENTRYPOINT: ClassVar[AbsoluteHttpURL] = None  # type: ignore
+    API_ENTRYPOINT: ClassVar[AbsoluteHttpURL]
     SERVICES: ClassVar[tuple[str, ...]] = ()
 
     def __init_subclass__(cls, **kwargs) -> None:
@@ -298,7 +299,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         api_url = self.__make_api_url_w_offset(f"discord/channel/{channel_id}", scrape_item.url)
         async for json_resp in self.__api_pager(api_url):
             n_posts = 0
-            for post in (DiscordPost(**entry) for entry in json_resp):  # type: ignore
+            for post in (DiscordPost.model_validate(entry) for entry in json_resp):
                 n_posts += 1
                 link = self.parse_url(post.web_path_qs)
                 new_scrape_item = scrape_item.create_child(link)
@@ -315,10 +316,10 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         path = f"{url_info.service}/user/{url_info.user_id}/post/{url_info.post_id}"
         api_url = self.__make_api_url_w_offset(path, scrape_item.url)
         async with self.request_limiter:
-            json_resp: dict[str, dict] = await self.client.get_json(self.DOMAIN, api_url)
+            json_resp: dict[str, Any] = await self.client.get_json(self.DOMAIN, api_url)
 
-        post = UserPost(**json_resp["post"])
-        self._register_attachments_servers(json_resp["attachments"])  # type: ignore
+        post = UserPost.model_validate(json_resp["post"])
+        self._register_attachments_servers(json_resp["attachments"])
         await self._handle_user_post(scrape_item, post)
 
     def _register_attachments_servers(self, attachments: list[File]) -> None:
@@ -488,7 +489,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             async with self.request_limiter:
                 soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, url)
 
-            name = soup.select_one(DISCORD_SERVER_NAME_SELECTOR).text  # type: ignore
+            name = css.select_one_get_text(soup, DISCORD_SERVER_NAME_SELECTOR)
             url = self.API_ENTRYPOINT / "discord/channel/lookup" / server_id
             async with self.request_limiter:
                 json_resp: list[dict] = await self.client.get_json(self.DOMAIN, url)
@@ -503,7 +504,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
             # From search results
             if isinstance(json_resp, dict):
-                posts = json_resp.get("posts")  # type: ignore
+                posts = json_resp.get("posts", [])
             # From profile
             elif isinstance(json_resp, list):
                 posts: list[dict[str, Any]] = json_resp
@@ -513,7 +514,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             if not posts:
                 return
 
-            for post in (UserPost(**entry) for entry in posts):
+            for post in (UserPost.model_validate(entry) for entry in posts):
                 n_posts += 1
                 link = self.parse_url(post.web_path_qs)
                 new_scrape_item = scrape_item.create_child(link)
@@ -558,7 +559,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
 
             for post in soup.select(POST_SELECTOR):
                 n_posts += 1
-                link = self.parse_url(post["href"])  # type: ignore
+                link = self.parse_url(css.get_attr(post, "href"))
                 new_scrape_item = scrape_item.create_child(link)
                 await self.post_w_no_api(new_scrape_item)
                 scrape_item.add_children()
@@ -579,7 +580,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
         files: list[URL] = []
         for selector in (_POST.VIDEOS, _POST.IMAGES, _POST.ATTACHMENTS):
             for file in soup.select(selector):
-                files.append(self.parse_url(file["href"]))  # type: ignore
+                files.append(self.parse_url(css.get_attr(file, "href")))
 
         full_post = UserPost(
             user_id=url_info.user_id,
@@ -587,7 +588,7 @@ class KemonoBaseCrawler(Crawler, is_abc=True):
             id=url_info.post_id,
             title=post.title,
             content=post.content,
-            published_or_added=post.date,  # type: ignore
+            published_or_added=post.date,  # type: ignore[reportArgumentType]
             soup_attachments=files,
         )
 

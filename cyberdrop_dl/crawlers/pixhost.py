@@ -42,7 +42,7 @@ class PixHostCrawler(Crawler):
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
         album_id = scrape_item.url.name
-        title = soup.select_one(GALLERY_TITLE_SELECTOR).text  # type: ignore
+        title = soup.select_one(GALLERY_TITLE_SELECTOR).text
         title = self.create_title(title, album_id)
         scrape_item.setup_as_album(title, album_id=album_id)
         results = await self.get_album_results(album_id)
@@ -65,7 +65,7 @@ class PixHostCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        link_str: str = soup.select_one(IMAGE_SELECTOR).get("src")  # type: ignore
+        link_str: str = soup.select_one(IMAGE_SELECTOR).get("src")
         link = self.parse_url(link_str)
         await self.handle_direct_link(scrape_item, link)
 

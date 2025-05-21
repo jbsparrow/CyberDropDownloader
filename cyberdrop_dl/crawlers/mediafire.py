@@ -41,7 +41,7 @@ class MediaFireCrawler(Crawler):
     async def folder(self, scrape_item: ScrapeItem) -> None:
         folder_key = scrape_item.url.parts[2]
         try:
-            folder_details: dict[str, dict] = self.api.folder_get_info(folder_key=folder_key)  # type: ignore
+            folder_details: dict[str, dict] = self.api.folder_get_info(folder_key=folder_key)
         except api.MediaFireApiError as e:
             raise MediaFireError(status=e.code, message=e.message) from None
 
@@ -50,7 +50,7 @@ class MediaFireCrawler(Crawler):
 
         for chunk in itertools.count(1):
             try:
-                folder_contents: dict = self.api.folder_get_content(folder_key, "files", chunk=chunk, chunk_size=100)  # type: ignore
+                folder_contents: dict = self.api.folder_get_content(folder_key, "files", chunk=chunk, chunk_size=100)
             except api.MediaFireApiError as e:
                 raise MediaFireError(status=e.code, message=e.message) from None
 
@@ -79,7 +79,7 @@ class MediaFireCrawler(Crawler):
             raise ScrapeError(422)
 
         scrape_item.possible_datetime = self.parse_datetime(soup.select(DATE_SELECTOR)[-1].get_text())
-        link_str: str = link_tag.get("href")  # type: ignore
+        link_str: str = link_tag.get("href")
         link = self.parse_url(link_str)
         filename, ext = self.get_filename_and_ext(link.name)
         await self.handle_file(link, scrape_item, filename, ext)

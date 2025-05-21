@@ -150,7 +150,7 @@ class ThisVidCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        js_text: str = soup.select_one(ALBUM_ID_SELECTOR).text  # type: ignore
+        js_text: str = soup.select_one(ALBUM_ID_SELECTOR).text
         album_id: str = get_text_between(js_text, "params['album_id'] =", ";").strip()
         results = await self.get_album_results(album_id)
         title: str = css.select_one_get_text(soup, ALBUM_NAME_SELECTOR)

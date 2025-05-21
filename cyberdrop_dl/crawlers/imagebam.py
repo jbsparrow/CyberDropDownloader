@@ -46,7 +46,7 @@ class ImageBamCrawler(Crawler):
 
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem, soup: BeautifulSoup) -> None:
-        gallery_name = soup.select_one(GALLERY_TITLE_SELECTOR).get_text()  # type: ignore
+        gallery_name = soup.select_one(GALLERY_TITLE_SELECTOR).get_text()
         gallery_id = scrape_item.url.name
         title = self.create_title(gallery_name, gallery_id)
         scrape_item.setup_as_album(title, album_id=gallery_id)
@@ -67,12 +67,12 @@ class ImageBamCrawler(Crawler):
 
         gallery_info = soup.select_one(GALLERY_INFO_SELECTOR)
         if gallery_info and not scrape_item.album_id:
-            gallery_url = self.parse_url(gallery_info.get("href"))  # type: ignore
+            gallery_url = self.parse_url(gallery_info.get("href"))
             gallery_id = gallery_url.name
             scrape_item.album_id = gallery_id
 
-        title: str = image_tag["alt"]  # type: ignore
-        link = self.parse_url(image_tag["src"])  # type: ignore
+        title: str = image_tag["alt"]
+        link = self.parse_url(image_tag["src"])
         filename, ext = self.get_filename_and_ext(link.name)
         custom_filename, _ = self.get_filename_and_ext(title)
         await self.handle_file(link, scrape_item, filename, ext, custom_filename=custom_filename)

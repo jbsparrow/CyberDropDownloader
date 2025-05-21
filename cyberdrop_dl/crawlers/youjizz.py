@@ -92,7 +92,7 @@ def get_video_id(url: URL) -> str:
 
 def get_info(soup: BeautifulSoup) -> VideoInfo:
     info_js_script_text: str = css.select_one_get_text(soup, JS_SELECTOR)
-    info: dict[str, str | None | dict] = javascript.parse_js_vars(info_js_script_text)  # type: ignore
+    info: dict[str, str | None | dict] = javascript.parse_js_vars(info_js_script_text)
     info["title"] = css.get_attr(soup, "title").replace("\n", "").strip()
     date_tag = soup.select_one(DATE_SELECTOR)
     date_str: str | None = date_tag.text if date_tag else None

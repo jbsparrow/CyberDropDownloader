@@ -57,7 +57,7 @@ class FakeURL:
 class GenericCrawler(Crawler):
     DOMAIN: ClassVar[str] = "generic"
 
-    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = FakeURL(host=".")  # type: ignore
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = FakeURL(host=".")
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         await self.file(scrape_item)
@@ -89,14 +89,14 @@ class GenericCrawler(Crawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
-        title: str = soup.select_one("title").text  # type: ignore
+        title: str = soup.select_one("title").text
         title = title.rsplit(" - ", 1)[0].rsplit("|", 1)[0]
 
         video = soup.select_one(VIDEO_SELECTOR)
         if not video:
             raise ScrapeError(422)
 
-        link_str: str = video.get("src")  # type: ignore
+        link_str: str = video.get("src")
         link = self.parse_url(link_str, scrape_item.url.with_path("/"))
         try:
             filename, ext = self.get_filename_and_ext(link.name)
