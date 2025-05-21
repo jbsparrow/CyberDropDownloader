@@ -1,14 +1,15 @@
 from datetime import timedelta
+from typing import LiteralString
 
 import pytest
 from yarl import URL
 
-from cyberdrop_dl.clients.errors import InvalidURLError
+from cyberdrop_dl.exceptions import InvalidURLError
 from cyberdrop_dl.utils import m3u8
 
 
 @pytest.fixture
-def m3u8_content():
+def m3u8_content() -> LiteralString:
     return """
     #EXTM3U
     #EXT-X-VERSION:3
@@ -26,7 +27,7 @@ def m3u8_content():
 
 
 @pytest.fixture
-def m3u8_master_content():
+def m3u8_master_content() -> LiteralString:
     return """
     #EXTM3U
     #EXT-X-VERSION:3
@@ -43,7 +44,7 @@ def m3u8_master_content():
 
 
 @pytest.fixture
-def m3u8_master_content2():
+def m3u8_master_content2() -> LiteralString:
     return """
     #EXTM3U
     #EXT-X-VERSION:4

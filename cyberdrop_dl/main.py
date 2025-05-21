@@ -3,22 +3,26 @@ import sys
 from cyberdrop_dl import env
 
 
-def main(*, profiling: bool = False, ask: bool = True):
+def main(*, profiling: bool = False, ask: bool = True) -> None:
     if not (profiling or env.PROFILING):
-        return run()
+        return actual_main()
     from cyberdrop_dl.profiling import profile
 
-    profile(run, ask)
+    profile(actual_main, ask)
 
 
-def run() -> None:
+def actual_main() -> None:
+    sys.exit(run())
+
+
+def run() -> str | int:
     try:
         from cyberdrop_dl.director import Director
 
         director = Director()
-        sys.exit(director.run())
+        return director.run()
     except KeyboardInterrupt:
-        sys.exit("\nKeyboardInterrupt")
+        return "\nKeyboardInterrupt"
 
 
 if __name__ == "__main__":
