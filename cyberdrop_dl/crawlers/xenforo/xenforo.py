@@ -166,8 +166,8 @@ class XenforoCrawler(Crawler):
     @error_handling_wrapper
     async def redirect(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
-            _, url = await self.client.get_soup_and_return_url(self.domain, scrape_item.url)  # type: ignore
-        scrape_item.url = url
+            response, _ = await self.client._get_response_and_soup(self.domain, scrape_item.url)
+        scrape_item.url = response.url
         self.manager.task_group.create_task(self.run(scrape_item))
 
     @error_handling_wrapper
