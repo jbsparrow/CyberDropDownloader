@@ -274,7 +274,7 @@ class Downloader:
                         template_file,
                     )
 
-                    handle = windll.kernel32.CreateFileW(complete_file, *params)
+                    handle = windll.kernel32.CreateFileW(str(complete_file), *params)
                     windll.kernel32.SetFileTime(
                         handle,
                         byref(ctime),  # Creation time
