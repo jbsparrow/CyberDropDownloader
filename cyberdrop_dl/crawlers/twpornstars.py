@@ -80,9 +80,7 @@ class TwPornstarsCrawler(TwimgCrawler):
         async for soup in self.web_pager(scrape_item.url):
             if not title_created:
                 title_tag = soup.select_one(_SELECTORS.TITLE) or soup.select_one(_SELECTORS.HASHTAGS)
-                title: str = title_tag.get_text(strip=True)
-                title = title.replace(TITLE_TRASH, "")
-                title = self.create_title(title)
+                title = self.create_title(title_tag.get_text(strip=True).replace(TITLE_TRASH, ""))
                 scrape_item.setup_as_album(title)
                 title_created = True
             for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.THUMBS):
