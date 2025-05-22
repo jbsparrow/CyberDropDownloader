@@ -4,7 +4,8 @@ from typing import TYPE_CHECKING, ClassVar
 
 from yarl import URL
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import create_task_id
+from cyberdrop_dl.crawlers.twitter_images import TwimgCrawler
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -41,13 +42,16 @@ SUPPORTED_DOMAINS = [
 TITLE_TRASH = "'s pics and videos"
 
 
-class TwPornstarsCrawler(Crawler):
+class TwPornstarsCrawler(TwimgCrawler):
     SUPPORTED_SITES: ClassVar[dict[str, list]] = {"twpornstars": SUPPORTED_DOMAINS}
     primary_base_domain = URL("https://www.twpornstars.com")
     next_page_selector = _SELECTORS.NEXT
 
     def __init__(self, manager: Manager, _=None) -> None:
-        super().__init__(manager, "twpornstars", "TWPornStars")
+        super().__init__(manager)
+        self.manager = manager
+        self.domain = "twpornstars"
+        self.folder_domain = "TWPornStars"
 
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
@@ -69,13 +73,12 @@ class TwPornstarsCrawler(Crawler):
 
         if url := soup.select_one(_SELECTORS.PHOTO):
             new_scrape_item = scrape_item.create_new(URL(url.get("src").replace("///", "//").replace(":large", "")))
-            self.handle_external_links(new_scrape_item)
-            scrape_item.add_children()
+            await self.photo(new_scrape_item)
         else:
             url = soup.select_one(_SELECTORS.VIDEO)
             if not url:
                 raise ValueError(404)
-            url = URL(url.get("src")).with_query(None)
+            url = self.parse_url(url["src"]).with_query(None)
             filename, ext = self.get_filename_and_ext(url.name)
             await self.handle_file(scrape_item.url, scrape_item, filename, ext, debrid_link=url)
 
