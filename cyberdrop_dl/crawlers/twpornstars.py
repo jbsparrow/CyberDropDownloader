@@ -71,16 +71,11 @@ class TwPornstarsCrawler(TwimgCrawler):
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
-        if url := soup.select_one(_SELECTORS.PHOTO):
-            new_scrape_item = scrape_item.create_new(self.parse_url(url["src"].replace(":large", "")))
-            await self.photo(new_scrape_item)
-        else:
-            url = soup.select_one(_SELECTORS.VIDEO)
-            if not url:
-                raise ValueError(404)
-            url = self.parse_url(url["src"]).with_query(None)
-            filename, ext = self.get_filename_and_ext(url.name)
-            await self.handle_file(scrape_item.url, scrape_item, filename, ext, debrid_link=url)
+        url = soup.select_one(_SELECTORS.PHOTO) or soup.select_one(_SELECTORS.VIDEO)
+        if not url:
+            raise ValueError(404)
+        new_scrape_item = scrape_item.create_new(self.parse_url(url["src"].replace(":large", "")))
+        await super().fetch(new_scrape_item)
 
     @error_handling_wrapper
     async def collection(self, scrape_item: ScrapeItem) -> None:
