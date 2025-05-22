@@ -74,7 +74,7 @@ class TwPornstarsCrawler(TwimgCrawler):
         url = soup.select_one(_SELECTORS.PHOTO) or soup.select_one(_SELECTORS.VIDEO)
         if not url:
             raise ValueError(404)
-        new_scrape_item = scrape_item.create_new(self.parse_url(url["src"].replace(":large", "")))
+        new_scrape_item = scrape_item.create_new(self.parse_url(url["src"].replace(":large", "")).with_query(None))
         await super().fetch(new_scrape_item)
 
     @error_handling_wrapper
