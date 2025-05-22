@@ -66,11 +66,8 @@ class TwPornstarsCrawler(TwimgCrawler):
 
     @error_handling_wrapper
     async def media(self, scrape_item: ScrapeItem) -> None:
-        if await self.check_complete_from_referer(scrape_item):
-            return
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
-
         url = soup.select_one(_SELECTORS.PHOTO) or soup.select_one(_SELECTORS.VIDEO)
         if not url:
             raise ValueError(404)
