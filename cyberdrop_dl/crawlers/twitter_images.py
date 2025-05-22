@@ -27,7 +27,10 @@ class TwimgCrawler(Crawler):
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
         """Determines where to send the scrape item based on the url."""
-        await self.photo(scrape_item)
+        if "video" in scrape_item.url.host:
+            await self.video(scrape_item)
+        else:
+            await self.photo(scrape_item)
 
     async def photo(self, scrape_item: ScrapeItem) -> None:
         """Scrapes a photo.
@@ -39,3 +42,7 @@ class TwimgCrawler(Crawler):
         filename = str(Path(link.name).with_suffix(".jpg"))
         filename, ext = self.get_filename_and_ext(filename)
         await self.handle_file(link, scrape_item, filename, ext)
+
+    async def video(self, scrape_item: ScrapeItem) -> None:
+        filename, ext = self.get_filename_and_ext(scrape_item.url.name)
+        await self.handle_file(scrape_item.url, scrape_item, filename, ext)
