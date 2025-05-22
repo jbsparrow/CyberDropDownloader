@@ -32,7 +32,6 @@ JPG5_DOMAINS = [
     "host.church",
 ]
 
-IMAGE_SELECTOR = "div.image-viewer-main > img"
 DECRYPTION_KEY = b"seltilovessimpcity@simpcityhatesscrapers"
 
 
