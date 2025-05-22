@@ -2,21 +2,16 @@ from __future__ import annotations
 
 import binascii
 import re
-from functools import partialmethod
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import create_task_id
-from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
-from ._chevereto import CheveretoCrawler, Media
+from ._chevereto import CheveretoCrawler
 
 if TYPE_CHECKING:
-    from bs4 import BeautifulSoup
-
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
 
@@ -60,26 +55,16 @@ class JPG5Crawler(CheveretoCrawler):
         """Scrapes a video."""
         raise ValueError
 
-    @error_handling_wrapper
-    async def _proccess_media_item(self, scrape_item: ScrapeItem, media_type: Media, selector: tuple[str, str]) -> None:
-        """Scrapes a media item."""
-        if await self.check_complete_from_referer(scrape_item):
-            return
-        async with self.request_limiter:
-            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
-        img_tag = soup.select_one(IMAGE_SELECTOR)
-        if not img_tag:
-            raise ScrapeError(404)
-        direct_link = self.parse_url(decrypt_xor(img_tag["data-src"], DECRYPTION_KEY))
-        await self.handle_direct_link(scrape_item, direct_link)
+    def parse_url(self, link_str: str, relative_to: URL | None = None, *, trim: bool = True) -> URL:
+        if not link_str.startswith("https") and not link_str.startswith("/"):
+            link_str = decrypt_xor(link_str, DECRYPTION_KEY)
+        return super().parse_url(link_str, relative_to, trim=trim)
 
     async def handle_direct_link(self, scrape_item: ScrapeItem, url: URL | None = None) -> None:
         """Handles a direct link."""
         link = url or scrape_item.url
         link = self.parse_url(re.sub(JPG5_REPLACE_HOST_REGEX, r"host.church/", str(link)))
         await super().handle_direct_link(scrape_item, link)
-
-    image = partialmethod(_proccess_media_item, media_type=Media.IMAGE, selector=IMAGE_SELECTOR)
 
 
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""

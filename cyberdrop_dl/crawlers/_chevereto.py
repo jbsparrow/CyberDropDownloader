@@ -27,6 +27,7 @@ DIRECT_LINK_PARTS = ("images",)
 PASSWORD_PROTECTED = "This content is password protected"
 VIDEO_SELECTOR = "meta[property='og:video']", "content"
 IMAGE_SELECTOR = "div[id=image-viewer] img", "src"
+ENCRYPTED_IMAGE_SELECTOR = "div.image-viewer-main > img"
 
 
 class Media(StrEnum):
@@ -161,6 +162,8 @@ class CheveretoCrawler(Crawler):
 
         try:
             link_str: str = soup.select_one(selector[0])[selector[1]]  # type: ignore
+            if "loading.svg" in link_str:
+                link_str = soup.select_one(ENCRYPTED_IMAGE_SELECTOR)["data-src"]  # type: ignore
             link = self.parse_url(link_str)
 
         except AttributeError:
