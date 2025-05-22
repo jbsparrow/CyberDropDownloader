@@ -1,17 +1,22 @@
 from __future__ import annotations
 
+import binascii
 import re
+from functools import partialmethod
 from typing import TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
 from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import create_task_id
+from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
-from ._chevereto import CheveretoCrawler
+from ._chevereto import CheveretoCrawler, Media
 
 if TYPE_CHECKING:
+    from bs4 import BeautifulSoup
+
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
 
@@ -31,6 +36,9 @@ JPG5_DOMAINS = [
     "jpg4.su",
     "host.church",
 ]
+
+IMAGE_SELECTOR = "div.image-viewer-main > img"
+DECRYPTION_KEY = b"seltilovessimpcity@simpcityhatesscrapers"
 
 
 class JPG5Crawler(CheveretoCrawler):
@@ -53,21 +61,31 @@ class JPG5Crawler(CheveretoCrawler):
         raise ValueError
 
     @error_handling_wrapper
-    async def _proccess_media_item(self, scrape_item: ScrapeItem, url_type, *_) -> None:
+    async def _proccess_media_item(self, scrape_item: ScrapeItem, media_type: Media, selector: tuple[str, str]) -> None:
         """Scrapes a media item."""
         if await self.check_complete_from_referer(scrape_item):
             return
-
-        _, canonical_url = self.get_canonical_url(scrape_item.url, url_type)
-        if await self.check_complete_from_referer(canonical_url):
-            return
-
-        _, link = await self.get_embed_info(scrape_item.url)
-        scrape_item.url = canonical_url
-        await self.handle_direct_link(scrape_item, link)
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+        img_tag = soup.select_one(IMAGE_SELECTOR)
+        if not img_tag:
+            raise ScrapeError(404)
+        direct_link = self.parse_url(decrypt_xor(img_tag["data-src"], DECRYPTION_KEY))
+        await self.handle_direct_link(scrape_item, direct_link)
 
     async def handle_direct_link(self, scrape_item: ScrapeItem, url: URL | None = None) -> None:
         """Handles a direct link."""
         link = url or scrape_item.url
         link = self.parse_url(re.sub(JPG5_REPLACE_HOST_REGEX, r"host.church/", str(link)))
         await super().handle_direct_link(scrape_item, link)
+
+    image = partialmethod(_proccess_media_item, media_type=Media.IMAGE, selector=IMAGE_SELECTOR)
+
+
+"""~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+
+def decrypt_xor(encrypted, key):
+    div = len(key)
+    encrypted = bytes.fromhex(binascii.a2b_base64(encrypted).decode())
+    return bytes([encrypted[i] ^ key[i % div] for i in range(len(encrypted))]).decode()
