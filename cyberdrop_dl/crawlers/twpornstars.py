@@ -6,6 +6,7 @@ from yarl import URL
 
 from cyberdrop_dl.crawlers.crawler import create_task_id
 from cyberdrop_dl.crawlers.twitter_images import TwimgCrawler
+from cyberdrop_dl.exceptions import ScrapeError
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -68,11 +69,12 @@ class TwPornstarsCrawler(TwimgCrawler):
     async def media(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
-        url = soup.select_one(_SELECTORS.PHOTO) or soup.select_one(_SELECTORS.VIDEO)
-        if not url:
-            raise ValueError(404)
-        new_scrape_item = scrape_item.create_new(self.parse_url(url["src"].replace(":large", "")).with_query(None))
-        await super().fetch(new_scrape_item)
+        if url := soup.select_one(_SELECTORS.PHOTO):
+            await self.photo(scrape_item, self.parse_url(url["src"].replace(":large", "")))
+        elif url := soup.select_one(_SELECTORS.VIDEO):
+            await self.direct_file(scrape_item, self.parse_url(url["src"]).with_query(None))
+        else:
+            raise ScrapeError(404)
 
     @error_handling_wrapper
     async def collection(self, scrape_item: ScrapeItem) -> None:
