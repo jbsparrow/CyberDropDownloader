@@ -443,7 +443,7 @@ def parse_url(link_str: str, relative_to: URL | None = None, *, trim: bool = Tru
         return f"{parts}?{query_and_frag}"
 
     def fix_multiple_slashes() -> str:
-        return link_str.replace("///", "//")
+        return re.sub("/{3,}", "//", link_str)
 
     try:
         assert link_str, "link_str is empty"
