@@ -4,6 +4,8 @@ from functools import lru_cache
 from typing import TYPE_CHECKING, Literal, TypeAlias, TypeVar
 
 import dateparser.date
+import dateutil
+import dateutil.parser
 
 if TYPE_CHECKING:
     from cyberdrop_dl.types import TimeStamp
@@ -86,14 +88,14 @@ class DateParser(dateparser.date.DateDataParser):
             return date_data.date_obj, date_data.period or ""
         return None, None
 
-    def get_datetime_with_formats(
+    def parse_possible_incomplete_date(
         self, date_string: str, date_formats: list[str] | str | None = None
     ) -> datetime.datetime | None:
         date_formats = coerce_to_list(date_formats)
         date_data = dateparser.date.parse_with_formats(date_string, date_formats, self._settings)
         return date_data.date_obj
 
-    def get_datetime_with_locales(
+    def parse_human_date(
         self, date_string: str, date_formats: list[str] | str | None = None
     ) -> datetime.datetime | None:
         parsed_date, period = self.parse_with_locales(date_string, date_formats)
@@ -119,20 +121,20 @@ def parse_date(
     date_order: DateOrder | None = None,
 ) -> datetime.datetime | None:
     parser = get_parser(parser_kind, date_order)
-    date = parser.get_datetime_with_formats(date_string, date_formats)
-    return date or parser.get_datetime_with_locales(date_string, date_formats)
+    date = parser.parse_possible_incomplete_date(date_string, date_formats)
+    return date or parser.parse_human_date(date_string, date_formats)
 
 
-def parse_relative_date(date_string: str) -> datetime.datetime | None:
-    """Uses the freshness parser to parse human readable timedeltas
-
-    ex:
-    >>> "Today"
-    >>> "Yesterday"
-    >>> "1 hour ago"
-    >>> "1 year, 2 months ago"
-    >>> "3 hours, 50 minutes ago"""
-    return parse_date(date_string, parser_kind="relative-time")
+def parse_concrete_date(date_string: str, date_format: str) -> datetime.datetime | None:
+    try:
+        if date_format:
+            parsed_date = datetime.datetime.strptime(date_string, date_format)
+        else:
+            parsed_date = dateutil.parser.parse(date_string)
+    except (ValueError, TypeError, dateutil.parser.ParserError):
+        pass
+    else:
+        return parsed_date
 
 
 def to_timestamp(date: datetime.datetime) -> TimeStamp:
