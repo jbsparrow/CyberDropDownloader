@@ -32,17 +32,18 @@ class TwimgCrawler(Crawler):
         else:
             await self.photo(scrape_item)
 
-    async def photo(self, scrape_item: ScrapeItem) -> None:
+    async def photo(self, scrape_item: ScrapeItem, url: URL | None = None) -> None:
         """Scrapes a photo.
 
         See: https://developer.x.com/en/docs/x-api/v1/data-dictionary/object-model/entities#photo_format
         """
-        scrape_item.url = scrape_item.url.with_host(CDN_HOST)
-        link = scrape_item.url.with_query(format="jpg", name="large")
+        link = url or scrape_item.url
+        link = link.with_host(CDN_HOST).with_query(format="jpg", name="large")
         filename = str(Path(link.name).with_suffix(".jpg"))
         filename, ext = self.get_filename_and_ext(filename)
         await self.handle_file(link, scrape_item, filename, ext)
 
-    async def video(self, scrape_item: ScrapeItem) -> None:
-        filename, ext = self.get_filename_and_ext(scrape_item.url.name)
-        await self.handle_file(scrape_item.url, scrape_item, filename, ext)
+    async def video(self, scrape_item: ScrapeItem, url: URL | None = None) -> None:
+        link = url or scrape_item.url
+        filename, ext = self.get_filename_and_ext(link.name)
+        await self.handle_file(link, scrape_item, filename, ext)
