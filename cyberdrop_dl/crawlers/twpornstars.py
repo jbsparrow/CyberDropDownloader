@@ -72,7 +72,7 @@ class TwPornstarsCrawler(TwimgCrawler):
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
 
         if url := soup.select_one(_SELECTORS.PHOTO):
-            new_scrape_item = scrape_item.create_new(URL(url.get("src").replace("///", "//").replace(":large", "")))
+            new_scrape_item = scrape_item.create_new(self.parse_url(url["src"].replace(":large", "")))
             await self.photo(new_scrape_item)
         else:
             url = soup.select_one(_SELECTORS.VIDEO)

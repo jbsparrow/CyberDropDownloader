@@ -442,10 +442,14 @@ def parse_url(link_str: str, relative_to: URL | None = None, *, trim: bool = Tru
         query_and_frag = query_and_frag.replace("+", "%20")
         return f"{parts}?{query_and_frag}"
 
+    def fix_multiple_slashes() -> str:
+        return link_str.replace("///", "//")
+
     try:
         assert link_str, "link_str is empty"
         assert isinstance(link_str, str), f"link_str must be a string object, got: {link_str!r}"
         clean_link_str = fix_query_params_encoding()
+        clean_link_str = fix_multiple_slashes()
         is_encoded = "%" in clean_link_str
         new_url = URL(clean_link_str, encoded=is_encoded)
     except (AssertionError, AttributeError, ValueError, TypeError) as e:
