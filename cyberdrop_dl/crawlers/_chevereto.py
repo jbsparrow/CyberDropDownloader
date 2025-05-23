@@ -108,7 +108,8 @@ class CheveretoCrawler(Crawler):
 
             for thumb, new_scrape_item in self.iter_children(scrape_item, soup, ITEM_SELECTOR):
                 assert thumb
-                if self.check_album_results(thumb, results):
+                source = clean_name(thumb)
+                if self.check_album_results(source, results):
                     continue
                 is_video = ".fr." in thumb.name
                 media_type = Media.VIDEO if is_video else Media.IMAGE
