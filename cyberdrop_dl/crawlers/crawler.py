@@ -30,6 +30,7 @@ from cyberdrop_dl.utils.utilities import (
 )
 
 _NEW_ISSUE_URL = "https://github.com/jbsparrow/CyberDropDownloader/issues/new/choose"
+SANITIZE_TITLE_PATTERN = re.compile(r"[^a-zA-Z0-9.\-_ ]+")
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -258,6 +259,11 @@ class Crawler(ABC):
 
     def create_title(self, title: str, album_id: str | None = None, thread_id: int | None = None) -> str:
         """Creates the title for the scrape item."""
+
+        def sanitize_title():
+            return SANITIZE_TITLE_PATTERN.sub("", title)
+
+        title = sanitize_title()
         if not title:
             title = "Untitled"
 
