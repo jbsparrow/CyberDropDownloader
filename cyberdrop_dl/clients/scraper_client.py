@@ -134,7 +134,7 @@ class ScraperClient:
             cookies={c.key: c.value for c in self.client_manager.cookies},
         )
 
-    async def close(self):
+    async def close(self) -> None:
         await self._session.close()
         if not isinstance(self._curl_session, Field):
             await self._curl_session.close()
@@ -259,10 +259,9 @@ class ScraperClient:
         cache_disabled: bool = False,
     ) -> tuple[AnyResponse, BeautifulSoup | None]:
         """_resilient_get with cache_control."""
-        request_params = request_params or {}
         headers = self._headers | (headers or {})
         async with cache_control_manager(self._session, disabled=cache_disabled):
-            response, soup_or_none = await self._resilient_get(url, headers=headers, **request_params)
+            response, soup_or_none = await self._resilient_get(url, headers, request_params)
 
         return response, soup_or_none
 
