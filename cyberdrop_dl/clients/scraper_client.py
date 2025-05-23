@@ -420,7 +420,7 @@ class ScraperClient:
 
 async def response_to_soup(response: AnyResponse | CurlResponse) -> BeautifulSoup:
     content_type: str = response.headers.get("Content-Type") or ""
-    if not any(s in content_type.lower() for s in ("html", "text")):
+    if not any(s in content_type.lower() for s in ("html", "text", "javascript")):
         raise InvalidContentTypeError(message=f"Received {content_type}, was expecting text")
 
     if isinstance(response, AnyResponse):
