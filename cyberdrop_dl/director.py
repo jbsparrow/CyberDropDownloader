@@ -254,6 +254,7 @@ def _setup_startup_logger(*, first_time_setup: bool = False) -> None:
         STARTUP_LOGGER_FILE.unlink(missing_ok=True)
         # Get startup logger again in case the CWD changed after the module was imported (for pytest)
         STARTUP_LOGGER_FILE = get_startup_logger()
+        STARTUP_LOGGER_FILE.unlink(missing_ok=True)
     _destroy_startup_logger()
     startup_logger.setLevel(10)
     console_handler = LogHandler(level=10)
