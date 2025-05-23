@@ -51,10 +51,7 @@ R = TypeVar("R")
 
 TEXT_EDITORS = "micro", "nano", "vim"  # Ordered by preference
 FILENAME_REGEX = re.compile(r"filename\*=UTF-8''(.+)|.*filename=\"(.*?)\"", re.IGNORECASE)
-ALLOWED_FILEPATH_PUNCTUATION = {
-    ".", "-", "_", " ", "!", "#", "$", "%", "'", "(", ")", "+", ",", ";",
-    "=", "@", "[", "]", "^", "{", "}", "~"
-}  # fmt: off
+ALLOWED_FILEPATH_PUNCTUATION = " .-_!#$%'()+,;=@[]^{}~"
 subprocess_get_text = partial(subprocess.run, capture_output=True, text=True, check=False)
 
 
@@ -130,16 +127,19 @@ def error_handling_wrapper(
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
 
-def sanitize_unicode_emojis_and_symbols(title: str):
+def sanitize_unicode_emojis_and_symbols(title: str) -> str:
     """Allow all Unicode letters/numbers/marks, plus safe filename punctuation, but not symbols or emoji."""
     return "".join(
         c for c in title if (c in ALLOWED_FILEPATH_PUNCTUATION or unicodedata.category(c)[0] in {"L", "N", "M"})
-    )
+    ).strip()
 
 
 def sanitize_filename(name: str) -> str:
     """Simple sanitization to remove illegal characters from filename."""
-    return sanitize_unicode_emojis_and_symbols(re.sub(constants.SANITIZE_FILENAME_PATTERN, "", name)).strip()
+    clean_name = re.sub(constants.SANITIZE_FILENAME_PATTERN, "", name)
+    if platform.system() in ("Windows", "Darwin"):
+        return sanitize_unicode_emojis_and_symbols(clean_name)
+    return clean_name
 
 
 def sanitize_folder(title: str) -> str:
