@@ -139,7 +139,7 @@ def sanitize_unicode_emojis_and_symbols(title: str):
 
 def sanitize_filename(name: str) -> str:
     """Simple sanitization to remove illegal characters from filename."""
-    return sanitize_unicode_emojis_and_symbols(re.sub(constants.SANITIZE_FILENAME_PATTERN, "", name).strip())
+    return sanitize_unicode_emojis_and_symbols(re.sub(constants.SANITIZE_FILENAME_PATTERN, "", name)).strip()
 
 
 def sanitize_folder(title: str) -> str:
