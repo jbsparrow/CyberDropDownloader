@@ -37,7 +37,10 @@ class Media(StrEnum):
 
 
 def clean_name(url: URL) -> URL:
-    return url.with_name(url.name.replace(".md.", ".").replace(".th.", "."))
+    new_name = url.name
+    for trash in (".md.", ".th.", ".fr."):
+        new_name = new_name.replace(trash, ".")
+    return url.with_name(new_name)
 
 
 def sort_by_new(url: URL) -> URL:
@@ -107,7 +110,12 @@ class CheveretoCrawler(Crawler):
                 assert thumb
                 if self.check_album_results(thumb, results):
                     continue
-                _, new_scrape_item.url = self.get_canonical_url(new_scrape_item.url, Media.IMAGE)
+                is_video = ".fr." in thumb.name
+                media_type = Media.VIDEO if is_video else Media.IMAGE
+                _, new_scrape_item.url = self.get_canonical_url(new_scrape_item.url, media_type)
+                if is_video:
+                    self.manager.task_group.create_task(self.run(new_scrape_item))
+                    continue
                 await self.handle_direct_link(new_scrape_item, thumb)
 
         # Sub album URL needs to be the full URL + a 'sub'
