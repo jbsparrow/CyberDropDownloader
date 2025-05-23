@@ -253,6 +253,7 @@ class ScraperClient:
         self,
         domain: str,
         url: URL,
+        /,
         headers: dict[str, str] | None = None,
         request_params: dict[str, Any] | None = None,
         *,
