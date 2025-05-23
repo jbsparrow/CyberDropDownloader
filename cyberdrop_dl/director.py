@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import os
 import signal
 import sys
 from datetime import datetime
@@ -37,7 +38,13 @@ P = ParamSpec("P")
 R = TypeVar("R")
 
 startup_logger = logging.getLogger("cyberdrop_dl_startup")
-STARTUP_LOGGER_FILE = Path.cwd().joinpath("startup.log")
+
+
+def get_startup_logger() -> Path:
+    return Path.cwd().joinpath("startup.log")
+
+
+STARTUP_LOGGER_FILE = get_startup_logger()
 
 
 class ExitCode(IntEnum):
@@ -241,8 +248,12 @@ def _setup_main_logger(manager: Manager, config_name: str) -> None:
 
 
 def _setup_startup_logger(*, first_time_setup: bool = False) -> None:
+    global STARTUP_LOGGER_FILE
     if first_time_setup:
-        STARTUP_LOGGER_FILE.unlink(missing_ok=True)  # Only delete file once. Subsequent calls will append to file
+        # Only delete file once. Subsequent calls will append to file
+        STARTUP_LOGGER_FILE.unlink(missing_ok=True)
+        # Get startup logger again in case the CWD changed after the module was imported (for pytest)
+        STARTUP_LOGGER_FILE = get_startup_logger()
     _destroy_startup_logger()
     startup_logger.setLevel(10)
     console_handler = LogHandler(level=10)
@@ -335,7 +346,9 @@ def _setup_manager() -> Manager:
 class Director:
     """Creates a manager and runs it"""
 
-    def __init__(self):
+    def __init__(self) -> None:
+        if os.name == "nt":
+            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
         self.manager = _setup_manager()
