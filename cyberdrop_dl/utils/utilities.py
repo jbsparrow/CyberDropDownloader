@@ -8,6 +8,7 @@ import platform
 import re
 import shutil
 import subprocess
+import unicodedata
 from dataclasses import dataclass, fields
 from functools import lru_cache, partial, wraps
 from pathlib import Path
@@ -50,6 +51,7 @@ R = TypeVar("R")
 
 TEXT_EDITORS = "micro", "nano", "vim"  # Ordered by preference
 FILENAME_REGEX = re.compile(r"filename\*=UTF-8''(.+)|.*filename=\"(.*?)\"", re.IGNORECASE)
+ALLOWED_FILEPATH_PUNCTUATION = " .-_!#$%'()+,;=@[]^{}~"
 subprocess_get_text = partial(subprocess.run, capture_output=True, text=True, check=False)
 
 
@@ -125,17 +127,28 @@ def error_handling_wrapper(
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
 
-def sanitize_filename(name: str) -> str:
+def sanitize_unicode_emojis_and_symbols(title: str) -> str:
+    """Allow all Unicode letters/numbers/marks, plus safe filename punctuation, but not symbols or emoji."""
+    return "".join(
+        c for c in title if (c in ALLOWED_FILEPATH_PUNCTUATION or unicodedata.category(c)[0] in {"L", "N", "M"})
+    ).strip()
+
+
+def sanitize_filename(name: str, sub: str = "") -> str:
     """Simple sanitization to remove illegal characters from filename."""
-    return re.sub(constants.SANITIZE_FILENAME_PATTERN, "", name).strip()
+    clean_name = re.sub(constants.SANITIZE_FILENAME_PATTERN, sub, name)
+    if platform.system() in ("Windows", "Darwin"):
+        return sanitize_unicode_emojis_and_symbols(clean_name)
+    return clean_name
 
 
 def sanitize_folder(title: str) -> str:
     """Simple sanitization to remove illegal characters from titles and trim the length to be less than 60 chars."""
+
     title = title.replace("\n", "").strip()
     title = title.replace("\t", "").strip()
     title = re.sub(" +", " ", title)
-    title = re.sub(r'[\\*?:"<>|/]', "-", title)
+    title = sanitize_filename(title, "-")
     title = re.sub(r"\.{2,}", ".", title)
     title = title.rstrip(".").strip()
 
@@ -442,10 +455,14 @@ def parse_url(link_str: str, relative_to: URL | None = None, *, trim: bool = Tru
         query_and_frag = query_and_frag.replace("+", "%20")
         return f"{parts}?{query_and_frag}"
 
+    def fix_multiple_slashes(link_str: str) -> str:
+        return re.sub(r"(?:https?)?:?(\/{3,})", "//", link_str)
+
     try:
         assert link_str, "link_str is empty"
         assert isinstance(link_str, str), f"link_str must be a string object, got: {link_str!r}"
         clean_link_str = fix_query_params_encoding()
+        clean_link_str = fix_multiple_slashes(clean_link_str)
         is_encoded = "%" in clean_link_str
         new_url = URL(clean_link_str, encoded=is_encoded)
     except (AssertionError, AttributeError, ValueError, TypeError) as e:
