@@ -56,7 +56,7 @@ class CheveretoCrawler(Crawler):
         return await self._fetch_chevereto_defaults(scrape_item)
 
     async def _fetch_chevereto_defaults(self, scrape_item: ScrapeItem) -> None:
-        if scrape_item.url.host.count(".") > 1:  # type: ignore
+        if scrape_item.url.host.removeprefix("www.").count(".") > 1:
             return await self.handle_direct_link(scrape_item)
         if any(part in scrape_item.url.parts for part in ALBUM_PARTS):
             return await self.album(scrape_item)
@@ -78,12 +78,12 @@ class CheveretoCrawler(Crawler):
                 title = self.create_title(title)
                 scrape_item.setup_as_profile(title)
 
-            for _, new_scrape_item in self.iter_children(scrape_item, soup, ITEM_SELECTOR):
+            for thumb, new_scrape_item in self.iter_children(scrape_item, soup, ITEM_SELECTOR):
                 # Item may be an image, a video or an album
                 # For images, we can download the file from the thumbnail
                 if any(part in new_scrape_item.url.parts for part in IMAGES_PARTS):
                     _, new_scrape_item.url = self.get_canonical_url(new_scrape_item.url, Media.IMAGE)
-                    await self.image(new_scrape_item)
+                    await self.handle_direct_link(new_scrape_item, thumb)
                     continue
                 # For videos and albums, we have to keep scraping
                 self.manager.task_group.create_task(self.run(new_scrape_item))
