@@ -294,20 +294,11 @@ class ScraperClient:
         _, soup = await self._get_response_and_soup(*args, **kwargs)
         return soup
 
-    @copy_signature(_get_response_and_soup)
-    async def get_json(
-        self,
-        domain: str,
-        url: URL,
-        headers: dict[str, str] | None = None,
-        request_params: dict[str, Any] | None = None,
-        *,
-        cache_disabled: bool = False,
-    ) -> Any:
-        request_params = request_params or {}
-        headers = self._headers | (headers or {})
-        async with cache_control_manager(self._session, disabled=cache_disabled):
-            response = await self._session.get(url, headers=headers, **request_params)
+    @copy_signature(_get)
+    async def get_json(self, *args, **kwargs) -> Any:
+        response, soup_or_none = await self._get(*args, **kwargs)
+        if soup_or_none:
+            return json_loads(soup_or_none.text)
         return await response_to_json(response)
 
     @copy_signature(_get_response_and_soup)
@@ -315,8 +306,7 @@ class ScraperClient:
         response, soup_or_none = await self._get(*args, **kwargs)
         if soup_or_none:
             return soup_or_none.text
-        else:
-            return await response.text()
+        return await response.text()
 
     @limiter
     async def _post_data(
