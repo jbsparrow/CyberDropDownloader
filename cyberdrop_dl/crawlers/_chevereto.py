@@ -84,6 +84,7 @@ class CheveretoCrawler(Crawler):
             for thumb, new_scrape_item in self.iter_children(scrape_item, soup, ITEM_SELECTOR):
                 # Item may be an image, a video or an album
                 # For images, we can download the file from the thumbnail
+                assert thumb
                 if any(part in new_scrape_item.url.parts for part in IMAGES_PARTS):
                     _, new_scrape_item.url = self.get_canonical_url(new_scrape_item.url, Media.IMAGE)
                     await self.handle_direct_link(new_scrape_item, thumb)
@@ -111,13 +112,12 @@ class CheveretoCrawler(Crawler):
                 source = clean_name(thumb)
                 if self.check_album_results(source, results):
                     continue
-                is_video = ".fr." in thumb.name
-                media_type = Media.VIDEO if is_video else Media.IMAGE
-                _, new_scrape_item.url = self.get_canonical_url(new_scrape_item.url, media_type)
-                if is_video:
-                    self.manager.task_group.create_task(self.run(new_scrape_item))
+                if any(part in new_scrape_item.url.parts for part in IMAGES_PARTS):
+                    _, new_scrape_item.url = self.get_canonical_url(new_scrape_item.url, Media.IMAGE)
+                    await self.handle_direct_link(new_scrape_item, thumb)
                     continue
-                await self.handle_direct_link(new_scrape_item, thumb)
+
+                self.manager.task_group.create_task(self.run(new_scrape_item))
 
         # Sub album URL needs to be the full URL + a 'sub'
         # Using the canonical URL + 'sub' won't work because it redirects to the "homepage" of the album
