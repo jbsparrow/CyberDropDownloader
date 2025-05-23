@@ -134,9 +134,9 @@ def sanitize_unicode_emojis_and_symbols(title: str) -> str:
     ).strip()
 
 
-def sanitize_filename(name: str) -> str:
+def sanitize_filename(name: str, sub: str = "") -> str:
     """Simple sanitization to remove illegal characters from filename."""
-    clean_name = re.sub(constants.SANITIZE_FILENAME_PATTERN, "", name)
+    clean_name = re.sub(constants.SANITIZE_FILENAME_PATTERN, sub, name)
     if platform.system() in ("Windows", "Darwin"):
         return sanitize_unicode_emojis_and_symbols(clean_name)
     return clean_name
@@ -144,11 +144,11 @@ def sanitize_filename(name: str) -> str:
 
 def sanitize_folder(title: str) -> str:
     """Simple sanitization to remove illegal characters from titles and trim the length to be less than 60 chars."""
-    title = sanitize_unicode_emojis_and_symbols(title)
+
     title = title.replace("\n", "").strip()
     title = title.replace("\t", "").strip()
     title = re.sub(" +", " ", title)
-    title = re.sub(r'[\\*?:"<>|/]', "-", title)
+    title = sanitize_filename(title, "-")
     title = re.sub(r"\.{2,}", ".", title)
     title = title.rstrip(".").strip()
 
