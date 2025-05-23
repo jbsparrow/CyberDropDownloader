@@ -8,6 +8,7 @@ import platform
 import re
 import shutil
 import subprocess
+import unicodedata
 from dataclasses import dataclass, fields
 from functools import lru_cache, partial, wraps
 from pathlib import Path
@@ -50,6 +51,10 @@ R = TypeVar("R")
 
 TEXT_EDITORS = "micro", "nano", "vim"  # Ordered by preference
 FILENAME_REGEX = re.compile(r"filename\*=UTF-8''(.+)|.*filename=\"(.*?)\"", re.IGNORECASE)
+ALLOWED_FILEPATH_PUNCTUATION = {
+    ".", "-", "_", " ", "!", "#", "$", "%", "'", "(", ")", "+", ",", ";",
+    "=", "@", "[", "]", "^", "{", "}", "~"
+}  # fmt: off
 subprocess_get_text = partial(subprocess.run, capture_output=True, text=True, check=False)
 
 
@@ -125,13 +130,21 @@ def error_handling_wrapper(
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
 
+def sanitize_unicode_emojis_and_symbols(title: str):
+    """Allow all Unicode letters/numbers/marks, plus safe filename punctuation, but not symbols or emoji."""
+    return "".join(
+        c for c in title if (c in ALLOWED_FILEPATH_PUNCTUATION or unicodedata.category(c)[0] in {"L", "N", "M"})
+    )
+
+
 def sanitize_filename(name: str) -> str:
     """Simple sanitization to remove illegal characters from filename."""
-    return re.sub(constants.SANITIZE_FILENAME_PATTERN, "", name).strip()
+    return sanitize_unicode_emojis_and_symbols(re.sub(constants.SANITIZE_FILENAME_PATTERN, "", name).strip())
 
 
 def sanitize_folder(title: str) -> str:
     """Simple sanitization to remove illegal characters from titles and trim the length to be less than 60 chars."""
+    title = sanitize_unicode_emojis_and_symbols(title)
     title = title.replace("\n", "").strip()
     title = title.replace("\t", "").strip()
     title = re.sub(" +", " ", title)
