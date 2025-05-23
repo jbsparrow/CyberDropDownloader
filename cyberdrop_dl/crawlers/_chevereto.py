@@ -27,6 +27,7 @@ DIRECT_LINK_PARTS = ("images",)
 PASSWORD_PROTECTED = "This content is password protected"
 VIDEO_SELECTOR = "meta[property='og:video']", "content"
 IMAGE_SELECTOR = "div[id=image-viewer] img", "src"
+ENCRYPTED_IMAGE_SELECTOR = "div.image-viewer-main > img"
 
 
 class Media(StrEnum):
@@ -77,12 +78,12 @@ class CheveretoCrawler(Crawler):
                 title = self.create_title(title)
                 scrape_item.setup_as_profile(title)
 
-            for thumb, new_scrape_item in self.iter_children(scrape_item, soup, ITEM_SELECTOR):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, ITEM_SELECTOR):
                 # Item may be an image, a video or an album
                 # For images, we can download the file from the thumbnail
                 if any(part in new_scrape_item.url.parts for part in IMAGES_PARTS):
                     _, new_scrape_item.url = self.get_canonical_url(new_scrape_item.url, Media.IMAGE)
-                    await self.handle_direct_link(new_scrape_item, thumb)
+                    await self.image(new_scrape_item)
                     continue
                 # For videos and albums, we have to keep scraping
                 self.manager.task_group.create_task(self.run(new_scrape_item))
@@ -161,6 +162,8 @@ class CheveretoCrawler(Crawler):
 
         try:
             link_str: str = soup.select_one(selector[0])[selector[1]]  # type: ignore
+            if "loading.svg" in link_str:
+                link_str = soup.select_one(ENCRYPTED_IMAGE_SELECTOR)["data-src"]  # type: ignore
             link = self.parse_url(link_str)
 
         except AttributeError:
