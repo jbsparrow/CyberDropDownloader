@@ -277,7 +277,7 @@ class ScraperClient:
         :param cache_disabled: Whether to disable caching for this request. Defaults to `False`.
         """
 
-        response, soup_or_none = await self._get(*args, **kwargs)
+        response, soup_or_none = await self._get(domain, url, *args, **kwargs)
 
         if not soup_or_none:
             soup = await response_to_soup(response)
