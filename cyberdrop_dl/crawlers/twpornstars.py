@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, ClassVar
 
 from cyberdrop_dl.crawlers.twitter_images import TwimgCrawler
 from cyberdrop_dl.exceptions import ScrapeError
-from cyberdrop_dl.types import AbsoluteHttpURL
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
@@ -25,24 +25,22 @@ class Selectors:
 
 _SELECTORS = Selectors()
 
-SUPPORTED_DOMAINS = [
-    "www.twgays.com",
-    "www.twmilf.com",
-    "www.twlesbian.com",
-    "www.twteens.com",
-    "www.twonfans.com",
-    "www.twtiktoks.com",
-    "www.twgaymuscle.com",
-    "www.twanal.com",
-    "www.indiantw.com",
-    "www.twpornstars.com",
-]
-
 TITLE_TRASH = "'s pics and videos"
 
 
 class TwPornstarsCrawler(TwimgCrawler):
-    SUPPORTED_SITES: ClassVar[dict[str, list]] = {"twpornstars": SUPPORTED_DOMAINS}
+    SUPPORTED_DOMAINS: ClassVar[SupportedDomains] = (
+        "www.twgays.com",
+        "www.twmilf.com",
+        "www.twlesbian.com",
+        "www.twteens.com",
+        "www.twonfans.com",
+        "www.twtiktoks.com",
+        "www.twgaymuscle.com",
+        "www.twanal.com",
+        "www.indiantw.com",
+        "www.twpornstars.com",
+    )
     PRIMARY_URL: ClassVar = AbsoluteHttpURL("https://www.twpornstars.com")
     NEXT_PAGE_SELLECTOR: ClassVar = _SELECTORS.NEXT
     DOMAIN: ClassVar = "twpornstars"
