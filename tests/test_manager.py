@@ -18,7 +18,6 @@ async def manager(sync_manager: Manager) -> Manager:
     return sync_manager
 
 
-@pytest.mark.usefixtures("tmp_cwd")
 class TestMergeDicts:
     def test_overwrite(self, manager: Manager) -> None:
         dict1 = {"a": 1, "b": 2}
@@ -105,7 +104,7 @@ class TestMergeDicts:
     ],
 )
 def test_args_logging_should_censor_webhook(
-    tmp_cwd, manager: Manager, logs: pytest.LogCaptureFixture, webhook: str, output: str
+    manager: Manager, logs: pytest.LogCaptureFixture, webhook: str, output: str
 ) -> None:
     logs_model = manager.config_manager.settings_data.logs
     manager.config_manager.settings_data.logs = update_model(logs_model, webhook=webhook)
@@ -113,13 +112,13 @@ def test_args_logging_should_censor_webhook(
     assert logs.messages
     assert "Starting Cyberdrop-DL Process" in logs.text
     assert webhook not in logs.text
-    webhook_line = next(msg for msg in logs.text.splitlines() if "webhook" in msg)
+    webhook_line = next(msg for msg in logs.text.splitlines() if '"webhook"' in msg)
     _, _, webhook_text = webhook_line.partition(":")
     webhook_url = webhook_text.strip().split(" ")[0].replace('"', "").strip()
     assert output == webhook_url
 
 
-async def test_async_db_close(tmp_cwd, async_manager: Manager) -> None:
+async def test_async_db_close(async_manager: Manager) -> None:
     await async_manager.async_db_close()
     assert isinstance(async_manager.db_manager, Field)
     assert isinstance(async_manager.hash_manager, Field)

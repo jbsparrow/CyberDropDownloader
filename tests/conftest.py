@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -15,10 +16,24 @@ if TYPE_CHECKING:
     from _pytest.nodes import Node  # type: ignore
 
 
-@pytest.fixture()
-def tmp_cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
-    monkeypatch.chdir(tmp_path)
-    return tmp_path
+@pytest.fixture
+def unique_tmp_dir(tmp_path: Path, request: pytest.FixtureRequest) -> Path:
+    node: pytest.Function = request.node
+    test_name = node.originalname
+    num = 0
+    test_specific_dir = tmp_path.parent / f"cdl_{test_name}.{num}"
+    while test_specific_dir.exists():
+        num += 1
+        test_specific_dir = test_specific_dir.with_suffix(f".{num}")
+
+    test_specific_dir.mkdir(exist_ok=True)
+    return test_specific_dir
+
+
+@pytest.fixture
+def tmp_cwd(unique_tmp_dir: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    monkeypatch.chdir(unique_tmp_dir)
+    return unique_tmp_dir
 
 
 @pytest.fixture
@@ -34,9 +49,8 @@ def custom_sys_argv(request: pytest.FixtureRequest) -> list[str]:
 
 
 @pytest.fixture
-def bare_manager(tmp_path: Path, custom_sys_argv: list[str]) -> Generator[Manager]:
+def bare_manager(tmp_cwd, custom_sys_argv: list[str]) -> Generator[Manager]:
     with pytest.MonkeyPatch.context() as mocker:
-        mocker.chdir(tmp_path)
         mocker.setattr("sys.argv", custom_sys_argv)
         manager = Manager()
         yield manager
