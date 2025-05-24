@@ -51,8 +51,8 @@ class CustomHTTPStatus(IntEnum):
 BLOCKED_DOMAINS = ("facebook", "instagram", "fbcdn")
 
 
-APP_STORAGE = Path("./AppData")
-DOWNLOAD_STORAGE = Path("./Downloads")
+DEFAULT_APP_STORAGE = Path("./AppData")
+DEFAULT_DOWNLOAD_STORAGE = Path("./Downloads")
 RESERVED_CONFIG_NAMES = ["all", "default"]
 NOT_DEFINED = field(init=False)
 

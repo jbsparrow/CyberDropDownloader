@@ -16,8 +16,10 @@ def update_model(model: M, **kwargs: Any) -> M:
 
 @pytest.fixture(scope="function", name="manager")
 def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Manager:
+    appdata = str(tmp_path)
+    downloads = str(tmp_path / "Downloads")
     monkeypatch.chdir(tmp_path)
-    bare_manager = Manager(("--appdata-folder", str(tmp_path)))
+    bare_manager = Manager(("--appdata-folder", appdata, "-d", downloads))
     bare_manager.startup()
     bare_manager.path_manager.startup()
     bare_manager.log_manager.startup()
