@@ -14,7 +14,7 @@ def update_model(model: M, **kwargs: Any) -> M:
 
 
 @pytest.fixture
-async def manager(sync_manager: Manager):
+async def manager(sync_manager: Manager) -> Manager:
     return sync_manager
 
 
@@ -97,7 +97,7 @@ class TestMergeDicts:
 
 
 @pytest.mark.parametrize(
-    "webhook, text",
+    "webhook, output",
     [
         ("https://example.com", "**********"),
         ("attach_logs=https://example.com", "attach_logs=**********"),
@@ -118,7 +118,7 @@ def test_args_logging_should_censor_webhook(
     assert output == webhook_url
 
 
-async def test_async_db_close(async_manager: Manager):
+async def test_async_db_close(async_manager: Manager) -> None:
     await async_manager.async_db_close()
     assert isinstance(async_manager.db_manager, Field)
     assert isinstance(async_manager.hash_manager, Field)
