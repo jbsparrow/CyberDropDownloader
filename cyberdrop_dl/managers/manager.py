@@ -22,7 +22,7 @@ from cyberdrop_dl.managers.progress_manager import ProgressManager
 from cyberdrop_dl.managers.realdebrid_manager import RealDebridManager
 from cyberdrop_dl.managers.storage_manager import StorageManager
 from cyberdrop_dl.ui.textual import TextualUI
-from cyberdrop_dl.utils.args import ParsedArgs
+from cyberdrop_dl.utils.args import ParsedArgs, parse_args
 from cyberdrop_dl.utils.ffmpeg import FFmpeg, get_ffmpeg_version
 from cyberdrop_dl.utils.logger import QueuedLogger, log
 from cyberdrop_dl.utils.transfer import transfer_v5_db_to_v6
@@ -41,7 +41,7 @@ class AsyncioEvents(NamedTuple):
 
 
 class Manager:
-    def __init__(self) -> None:
+    def __init__(self, args: tuple[str, ...] | None = None) -> None:
         self.parsed_args: ParsedArgs = field(init=False)
         self.cache_manager: CacheManager = CacheManager(self)
         self.path_manager: PathManager = field(init=False)
@@ -75,6 +75,7 @@ class Manager:
         self.multiconfig: bool = False
         self.loggers: dict[str, QueuedLogger] = {}
         self.states = AsyncioEvents()
+        self.args = args
 
     @property
     def config(self):
@@ -99,7 +100,7 @@ class Manager:
         """Startup process for the manager."""
 
         if isinstance(self.parsed_args, Field):
-            self.parsed_args = ParsedArgs.parse_args()
+            self.parsed_args = parse_args(self.args)
 
         if self.parsed_args.cli_only_args.show_supported_sites:
             show_supported_sites()

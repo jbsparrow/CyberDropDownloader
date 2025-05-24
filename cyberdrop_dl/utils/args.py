@@ -3,7 +3,7 @@ import time
 import warnings
 from argparse import SUPPRESS, ArgumentParser, BooleanOptionalAction, RawDescriptionHelpFormatter
 from argparse import _ArgumentGroup as ArgGroup
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from datetime import date
 from enum import StrEnum, auto
 from pathlib import Path
@@ -158,11 +158,6 @@ class ParsedArgs(AliasModel):
                 sys.exit(1)
             time.sleep(WARNING_TIMEOUT)
 
-    @staticmethod
-    def parse_args() -> "ParsedArgs":
-        """Parses the command line arguments passed into the program. Returns an instance of `ParsedArgs`"""
-        return parse_args()
-
     def prepare_warnings(self) -> set[str]:
         warnings_to_emit = set()
 
@@ -247,7 +242,7 @@ class CustomHelpFormatter(RawDescriptionHelpFormatter):
         return help_text
 
 
-def parse_args() -> ParsedArgs:
+def parse_args(args: Sequence[str] | None = None) -> ParsedArgs:
     """Parses the command line arguments passed into the program."""
     parser = ArgumentParser(
         description="Bulk asynchronous downloader for multiple file hosts",
@@ -272,15 +267,15 @@ def parse_args() -> ParsedArgs:
         _add_args_from_model(deprecated, DeprecatedArgs, cli_args=True, deprecated=True)
         group_lists["deprecated_args"] = [deprecated]
 
-    args = parser.parse_intermixed_args()
+    namespace = parser.parse_intermixed_args(args)
     parsed_args: dict[str, dict] = {}
     for name, groups in group_lists.items():
         parsed_args[name] = {}
         for group in groups:
             group_dict = {
-                arg.dest: getattr(args, arg.dest)
+                arg.dest: getattr(namespace, arg.dest)
                 for arg in group._group_actions
-                if getattr(args, arg.dest, None) is not None
+                if getattr(namespace, arg.dest, None) is not None
             }
             if group_dict:
                 parsed_args[name][group.title] = group_dict

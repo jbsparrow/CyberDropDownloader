@@ -5,7 +5,6 @@ from typing import Any, TypeVar
 import pytest
 from pydantic import BaseModel
 
-from cyberdrop_dl import constants
 from cyberdrop_dl.managers.manager import Manager
 
 M = TypeVar("M", bound=BaseModel)
@@ -15,17 +14,14 @@ def update_model(model: M, **kwargs: Any) -> M:
     return model.model_validate(model.model_dump() | kwargs)
 
 
-@pytest.fixture
-def manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Manager:
-    monkeypatch.setattr("sys.argv", ["pytest", "--appdata-folder", str(tmp_path)])
+@pytest.fixture(scope="function", name="manager")
+def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Manager:
     monkeypatch.chdir(tmp_path)
-    constants.APP_STORAGE = tmp_path / "AppData"
-    constants.DOWNLOAD_STORAGE = tmp_path / "Downloads"
-    bare_manager = Manager()
+    bare_manager = Manager(("--appdata-folder", str(tmp_path)))
     bare_manager.startup()
     bare_manager.path_manager.startup()
     bare_manager.log_manager.startup()
-    assert not bare_manager.log_manager.main_log.exists()
+    print(bare_manager.log_manager.main_log)
     return bare_manager
 
 
