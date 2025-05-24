@@ -14,6 +14,12 @@ if TYPE_CHECKING:
     from cyberdrop_dl.constants import BROWSERS
     from cyberdrop_dl.managers.manager import Manager
 
+from cyberdrop_dl.data_structures.supported_domains import (
+    SUPPORTED_FORUMS,
+    SUPPORTED_SITES_DOMAINS,
+    SUPPORTED_WEBSITES,
+)
+
 P = ParamSpec("P")
 R = TypeVar("R")
 
@@ -76,6 +82,15 @@ def get_cookies_from_browsers(
     browsers_to_extract_from = browsers or manager.config_manager.settings_data.browser_cookies.browsers
     extractors_to_use = list(map(str.lower, browsers_to_extract_from))
     domains_to_extract: list[str] = domains or manager.config_manager.settings_data.browser_cookies.sites
+    if "all" in domains_to_extract:
+        domains_to_extract.remove("all")
+        domains_to_extract.extend(SUPPORTED_SITES_DOMAINS)
+    elif "all_forums" in domains_to_extract:
+        domains_to_extract.remove("all_forums")
+        domains_to_extract.extend(SUPPORTED_FORUMS.values())
+    elif "all_file_hosts" in domains_to_extract:
+        domains_to_extract.remove("all_file_hosts")
+        domains_to_extract.extend(SUPPORTED_WEBSITES.values())
 
     def is_decrypt_error(msg: str) -> bool:
         return "Unable to get key for cookie decryption" in msg

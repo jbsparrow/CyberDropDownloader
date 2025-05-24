@@ -14,6 +14,11 @@ if TYPE_CHECKING:
 ScrapeAndManager: TypeAlias = tuple[ScrapeMapper, Manager]
 
 
+@pytest.fixture(autouse=True)
+def test_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.chdir(tmp_path)
+
+
 @pytest.fixture
 def custom_sys_argv(request: pytest.FixtureRequest) -> list[str]:
     args = ["pytest"]
