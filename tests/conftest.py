@@ -20,6 +20,7 @@ def unique_tmp_dir(tmp_path: Path, request: pytest.FixtureRequest) -> Path:
     while test_specific_dir.exists():
         num += 1
         test_specific_dir = test_specific_dir.with_suffix(f".{num}")
+        assert num < 5
 
     test_specific_dir.mkdir(exist_ok=True)
     return test_specific_dir

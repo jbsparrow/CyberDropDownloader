@@ -1,10 +1,11 @@
-from collections.abc import Generator
 from dataclasses import Field
+from pathlib import Path
 from typing import Any, TypeVar
 
 import pytest
 from pydantic import BaseModel
 
+from cyberdrop_dl import constants
 from cyberdrop_dl.managers.manager import Manager
 
 M = TypeVar("M", bound=BaseModel)
@@ -14,16 +15,18 @@ def update_model(model: M, **kwargs: Any) -> M:
     return model.model_validate(model.model_dump() | kwargs)
 
 
-@pytest.fixture()
-def manager(tmp_cwd, custom_sys_argv: list[str]) -> Generator[Manager]:
-    with pytest.MonkeyPatch.context() as mocker:
-        mocker.setattr("sys.argv", custom_sys_argv)
-        bare_manager = Manager()
-        bare_manager.startup()
-        bare_manager.path_manager.startup()
-        bare_manager.log_manager.startup()
-        assert not bare_manager.log_manager.main_log.exists()
-        yield bare_manager
+@pytest.fixture
+def manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Manager:
+    monkeypatch.setattr("sys.argv", ["pytest", "--appdata-folder", str(tmp_path)])
+    monkeypatch.chdir(tmp_path)
+    constants.APP_STORAGE = tmp_path / "AppData"
+    constants.DOWNLOAD_STORAGE = tmp_path / "Downloads"
+    bare_manager = Manager()
+    bare_manager.startup()
+    bare_manager.path_manager.startup()
+    bare_manager.log_manager.startup()
+    assert not bare_manager.log_manager.main_log.exists()
+    return bare_manager
 
 
 class TestMergeDicts:
@@ -134,3 +137,4 @@ async def test_async_db_close(manager: Manager) -> None:
     await manager.async_db_close()
     assert isinstance(manager.db_manager, Field)
     assert isinstance(manager.hash_manager, Field)
+    await manager.close()

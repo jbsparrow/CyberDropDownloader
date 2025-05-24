@@ -53,16 +53,19 @@ class PathManager:
             """This is for testing purposes only"""
             constants.APP_STORAGE = Path("../AppData")
             constants.DOWNLOAD_STORAGE = Path("../Downloads")
+        else:
+            constants.APP_STORAGE = Path("./AppData")
+            constants.DOWNLOAD_STORAGE = Path("./Downloads")
 
     def pre_startup(self) -> None:
         if self.manager.parsed_args.cli_only_args.appdata_folder:
             constants.APP_STORAGE = self.manager.parsed_args.cli_only_args.appdata_folder / "AppData"
 
-        constants.APP_STORAGE = constants.APP_STORAGE.resolve()
+        resolved_path = constants.APP_STORAGE.resolve()
 
-        self.cache_folder = constants.APP_STORAGE / "Cache"
-        self.config_folder = constants.APP_STORAGE / "Configs"
-        self.cookies_dir = constants.APP_STORAGE / "Cookies"
+        self.cache_folder = resolved_path / "Cache"
+        self.config_folder = resolved_path / "Configs"
+        self.cookies_dir = resolved_path / "Cookies"
         self.cache_db = self.cache_folder / "request_cache.db"
 
         self.cache_folder.mkdir(parents=True, exist_ok=True)
