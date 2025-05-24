@@ -62,13 +62,11 @@ class PathManager:
     def appdata(self) -> Path:
         if isinstance(self._appdata, Field):
             if self.manager.parsed_args.cli_only_args.appdata_folder:
-                a = self.manager.parsed_args.cli_only_args.appdata_folder / "AppData"
-                self._appdata = a.resolve()
+                path = self.manager.parsed_args.cli_only_args.appdata_folder / "AppData"
+                self._appdata = self.cwd / path
             else:
                 self._appdata = self.cwd / "AppData"
 
-        print(f"cli = {self.manager.parsed_args.cli_only_args.appdata_folder}")  # noqa: T201
-        print(f"{self._appdata = }")  # noqa: T201
         return self._appdata
 
     def pre_startup(self) -> None:
@@ -132,8 +130,6 @@ class PathManager:
             setattr(self, internal_name, self.log_folder / getattr(log_settings_config, model_name))
 
         self.pages_folder = self.main_log.parent / "cdl_responses"
-        print(self.log_folder)  # noqa: T201
-        print(self.main_log)  # noqa: T201
 
     def _delete_logs_and_folders(self, now: datetime):
         if self.manager.config_manager.settings_data.logs.logs_expire_after:
