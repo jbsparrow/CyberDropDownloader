@@ -5,10 +5,11 @@ import json
 import platform
 from dataclasses import Field, field
 from time import perf_counter
-from typing import TYPE_CHECKING, Literal, NamedTuple
+from typing import TYPE_CHECKING, Literal, NamedTuple, TypeVar
+
+from pydantic import BaseModel
 
 from cyberdrop_dl import __version__, constants
-from cyberdrop_dl.config_definitions import ConfigSettings, GlobalSettings
 from cyberdrop_dl.managers.cache_manager import CacheManager
 from cyberdrop_dl.managers.client_manager import ClientManager
 from cyberdrop_dl.managers.config_manager import ConfigManager
@@ -33,6 +34,7 @@ if TYPE_CHECKING:
     from asyncio import TaskGroup
 
     from cyberdrop_dl.scraper.scrape_mapper import ScrapeMapper
+    from cyberdrop_dl.types import AnyDict
 
 
 class AsyncioEvents(NamedTuple):
@@ -198,62 +200,21 @@ class Manager:
         cli_ignore_options = self.parsed_args.config_settings.ignore_options
         config_skip_hosts = self.config_manager.settings_data.ignore_options.skip_hosts
         config_only_hosts = self.config_manager.settings_data.ignore_options.only_hosts
-        exclude = {"+", "-"}
 
-        def add(config_list: list[str], cli_list: list[str]) -> list[str]:
-            new_list_as_set = set(config_list + cli_list)
-            return sorted(new_list_as_set - exclude)
-
-        def remove(config_list: list[str], cli_list: list[str]) -> list[str]:
-            new_list_as_set = set(config_list) - set(cli_list)
-            return sorted(new_list_as_set - exclude)
-
-        def add_or_remove(config_list: list[str], cli_list: list[str]) -> list[str]:
-            if cli_list:
-                if cli_list[0] == "+":
-                    return add(config_list, cli_list)
-                if cli_list[0] == "-":
-                    return remove(config_list, cli_list)
-            return cli_list
-
-        cli_ignore_options.skip_hosts = add_or_remove(config_skip_hosts, cli_ignore_options.skip_hosts)
-        cli_ignore_options.only_hosts = add_or_remove(config_only_hosts, cli_ignore_options.only_hosts)
+        cli_ignore_options.skip_hosts = add_or_remove_lists(config_skip_hosts, cli_ignore_options.skip_hosts)
+        cli_ignore_options.only_hosts = add_or_remove_lists(config_only_hosts, cli_ignore_options.only_hosts)
 
     def args_consolidation(self) -> None:
         """Consolidates runtime arguments with config values."""
         self.process_additive_args()
-        cli_config_settings = self.parsed_args.config_settings.model_dump(exclude_unset=True)
-        cli_global_settings = self.parsed_args.global_settings.model_dump(exclude_unset=True)
 
-        current_config_settings = self.config_manager.settings_data.model_dump()
-        current_global_settings = self.config_manager.global_settings_data.model_dump()
+        conf = merge_models(self.config_manager.settings_data, self.parsed_args.config_settings)
+        global_conf = merge_models(self.config_manager.global_settings_data, self.parsed_args.global_settings)
+        deep_scrape = self.parsed_args.config_settings.runtime_options.deep_scrape or self.config_manager.deep_scrape
 
-        merged_config_settings = self.merge_dicts(current_config_settings, cli_config_settings)
-        merged_global_settings = self.merge_dicts(current_global_settings, cli_global_settings)
-
-        updated_config_settings = ConfigSettings.model_validate(merged_config_settings)
-        updated_global_settings = GlobalSettings.model_validate(merged_global_settings)
-
-        self.config_manager.settings_data = updated_config_settings
-        self.config_manager.global_settings_data = updated_global_settings
-        self.config_manager.deep_scrape = (
-            self.parsed_args.config_settings.runtime_options.deep_scrape or self.config_manager.deep_scrape
-        )
-
-    def merge_dicts(self, dict1: dict, dict2: dict):
-        for key, val in dict1.items():
-            if isinstance(val, dict):
-                if key in dict2 and isinstance(dict2[key], dict):
-                    self.merge_dicts(dict1[key], dict2[key])
-            else:
-                if key in dict2:
-                    dict1[key] = dict2[key]
-
-        for key, val in dict2.items():
-            if key not in dict1:
-                dict1[key] = val
-
-        return dict1
+        self.config_manager.settings_data = conf
+        self.config_manager.global_settings_data = global_conf
+        self.config_manager.deep_scrape = deep_scrape
 
     def args_logging(self) -> None:
         """Logs the runtime arguments."""
@@ -347,3 +308,49 @@ def show_supported_sites():
         table.add_row(crawler.site, crawler.name, str(crawler.primary_base_domain))
     print(table)
     sys.exit(0)
+
+
+def add_or_remove_lists(old_list: list[str], new_list: list[str]) -> list[str]:
+    exclude = {"+", "-"}
+
+    def add(config_list: list[str], cli_list: list[str]) -> list[str]:
+        new_list_as_set = set(config_list + cli_list)
+        return sorted(new_list_as_set - exclude)
+
+    def remove(config_list: list[str], cli_list: list[str]) -> list[str]:
+        new_list_as_set = set(config_list) - set(cli_list)
+        return sorted(new_list_as_set - exclude)
+
+    if new_list:
+        if new_list[0] == "+":
+            return add(old_list, new_list)
+        if new_list[0] == "-":
+            return remove(old_list, new_list)
+    return new_list
+
+
+def merge_dicts(dict1: AnyDict, dict2: AnyDict) -> AnyDict:
+    for key, val in dict1.items():
+        if isinstance(val, dict):
+            if key in dict2 and isinstance(dict2[key], dict):
+                merge_dicts(dict1[key], dict2[key])
+        else:
+            if key in dict2:
+                dict1[key] = dict2[key]
+
+    for key, val in dict2.items():
+        if key not in dict1:
+            dict1[key] = val
+
+    return dict1
+
+
+M = TypeVar("M", bound=BaseModel)
+
+
+def merge_models(default: M, new: M) -> M:
+    default_dict = default.model_dump()
+    new_dict = new.model_dump(exclude_unset=True)
+
+    updated_dict = merge_dicts(default_dict, new_dict)
+    return default.model_validate(updated_dict)

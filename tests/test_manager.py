@@ -5,7 +5,7 @@ from typing import Any, TypeVar
 import pytest
 from pydantic import BaseModel
 
-from cyberdrop_dl.managers.manager import Manager
+from cyberdrop_dl.managers.manager import Manager, merge_dicts
 
 M = TypeVar("M", bound=BaseModel)
 
@@ -27,19 +27,19 @@ def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Man
 
 
 class TestMergeDicts:
-    def test_overwrite(self, manager: Manager) -> None:
+    def test_overwrite(self) -> None:
         dict1 = {"a": 1, "b": 2}
         dict2 = {"b": 3, "c": 4}
         expected = {"a": 1, "b": 3, "c": 4}
-        assert manager.merge_dicts(dict1, dict2) == expected
+        assert merge_dicts(dict1, dict2) == expected
 
-    def test_merge_with_new_keys(self, manager: Manager) -> None:
+    def test_merge_with_new_keys(self) -> None:
         dict1 = {"a": 1}
         dict2 = {"b": 2, "c": 3}
         expected = {"a": 1, "b": 2, "c": 3}
-        assert manager.merge_dicts(dict1, dict2) == expected
+        assert merge_dicts(dict1, dict2) == expected
 
-    def test_merge_recursive(self, manager: Manager) -> None:
+    def test_merge_recursive(self) -> None:
         dict1 = {
             "a": {
                 "b": 1,
@@ -71,37 +71,37 @@ class TestMergeDicts:
             "d": 3,
             "i": 7,
         }
-        assert manager.merge_dicts(dict1, dict2) == expected
+        assert merge_dicts(dict1, dict2) == expected
 
-    def test_merge_with_empty_dict1(self, manager: Manager) -> None:
+    def test_merge_with_empty_dict1(self) -> None:
         dict1 = {}
         dict2 = {"a": 1, "b": 2}
         expected = {"a": 1, "b": 2}
-        assert manager.merge_dicts(dict1, dict2) == expected
+        assert merge_dicts(dict1, dict2) == expected
 
-    def test_merge_with_empty_dict2(self, manager: Manager) -> None:
+    def test_merge_with_empty_dict2(self) -> None:
         dict1 = {"a": 1, "b": 2}
         dict2 = {}
         expected = {"a": 1, "b": 2}
-        assert manager.merge_dicts(dict1, dict2) == expected
+        assert merge_dicts(dict1, dict2) == expected
 
-    def test_merge_with_both_empty_dicts(self, manager: Manager) -> None:
+    def test_merge_with_both_empty_dicts(self) -> None:
         dict1 = {}
         dict2 = {}
         expected = {}
-        assert manager.merge_dicts(dict1, dict2) == expected
+        assert merge_dicts(dict1, dict2) == expected
 
-    def test_dict_overwrites_value(self, manager: Manager) -> None:
+    def test_dict_overwrites_value(self) -> None:
         dict1 = {"a": 1}
         dict2 = {"a": {"x": 1}}
         expected = {"a": {"x": 1}}
-        assert manager.merge_dicts(dict1, dict2) == expected
+        assert merge_dicts(dict1, dict2) == expected
 
-    def test_value_should_not_overwrite_dict(self, manager: Manager) -> None:
+    def test_value_should_not_overwrite_dict(self) -> None:
         dict1 = {"a": {"x": 1}}
         dict2 = {"a": 1}
         expected = {"a": {"x": 1}}
-        assert manager.merge_dicts(dict1, dict2) == expected
+        assert merge_dicts(dict1, dict2) == expected
 
 
 @pytest.mark.parametrize(
