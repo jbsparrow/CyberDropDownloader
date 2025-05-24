@@ -134,7 +134,7 @@ class ScraperClient:
             cookies={c.key: c.value for c in self.client_manager.cookies},
         )
 
-    async def close(self):
+    async def close(self) -> None:
         await self._session.close()
         if not isinstance(self._curl_session, Field):
             await self._curl_session.close()
@@ -222,7 +222,9 @@ class ScraperClient:
     async def _resilient_get(
         self, url: URL, headers: dict[str, str], request_params: dict[str, Any] | None = None
     ) -> tuple[AnyResponse, BeautifulSoup | None]:
-        """Makes a GET request and automatically retries it with flaresolverr (if needed)"""
+        """Makes a GET request and automatically retries it with flaresolverr (if needed)
+
+        Only returns soup if flaresolverr was used"""
         request_params = request_params or {}
         for retry in range(2):
             response = await self._session.get(url, headers=headers, **request_params)
@@ -242,20 +244,30 @@ class ScraperClient:
                     raise
 
                 else:
-                    return response, await response_to_soup(response)
+                    return response, None
 
         return response, None
 
     @limiter
-    async def _get_response_and_soup(
+    async def _get(
         self,
         domain: str,
         url: URL,
+        /,
         headers: dict[str, str] | None = None,
         request_params: dict[str, Any] | None = None,
         *,
         cache_disabled: bool = False,
-    ) -> tuple[AnyResponse, BeautifulSoup]:
+    ) -> tuple[AnyResponse, BeautifulSoup | None]:
+        """_resilient_get with cache_control."""
+        headers = self._headers | (headers or {})
+        async with cache_control_manager(self._session, disabled=cache_disabled):
+            response, soup_or_none = await self._resilient_get(url, headers, request_params)
+
+        return response, soup_or_none
+
+    @copy_signature(_get)
+    async def _get_response_and_soup(self, domain: str, url: URL, *args, **kwargs) -> tuple[AnyResponse, BeautifulSoup]:
         """
         Makes a GET request using aiohttp and creates a soup.
 
@@ -265,10 +277,9 @@ class ScraperClient:
         :param request_params: Additional keyword arguments to pass to `session.get` (e.g., `timeout`).
         :param cache_disabled: Whether to disable caching for this request. Defaults to `False`.
         """
-        request_params = request_params or {}
-        headers = self._headers | (headers or {})
-        async with cache_control_manager(self._session, disabled=cache_disabled):
-            response, soup_or_none = await self._resilient_get(url, headers=headers, **request_params)
+
+        response, soup_or_none = await self._get(domain, url, *args, **kwargs)
+
         if not soup_or_none:
             soup = await response_to_soup(response)
         else:
@@ -283,29 +294,19 @@ class ScraperClient:
         _, soup = await self._get_response_and_soup(*args, **kwargs)
         return soup
 
-    @copy_signature(_get_response_and_soup)
-    async def get_json(
-        self,
-        domain: str,
-        url: URL,
-        headers: dict[str, str] | None = None,
-        request_params: dict[str, Any] | None = None,
-        *,
-        cache_disabled: bool = False,
-    ) -> Any:
-        request_params = request_params or {}
-        headers = self._headers | (headers or {})
-        async with cache_control_manager(self._session, disabled=cache_disabled):
-            response = await self._session.get(url, headers=headers, **request_params)
+    @copy_signature(_get)
+    async def get_json(self, *args, **kwargs) -> Any:
+        response, soup_or_none = await self._get(*args, **kwargs)
+        if soup_or_none:
+            return json_loads(soup_or_none.text)
         return await response_to_json(response)
 
     @copy_signature(_get_response_and_soup)
     async def get_text(self, *args, **kwargs) -> str:
-        response, soup = await self._get_response_and_soup(*args, **kwargs)
-        if soup:
-            return soup.text
-        else:
-            return await response.text()
+        response, soup_or_none = await self._get(*args, **kwargs)
+        if soup_or_none:
+            return soup_or_none.text
+        return await response.text()
 
     @limiter
     async def _post_data(
