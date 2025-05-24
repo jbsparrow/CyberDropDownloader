@@ -8,8 +8,6 @@ from typing import TYPE_CHECKING
 from yaml import YAMLError
 from yarl import URL
 
-from cyberdrop_dl.constants import VALIDATION_ERROR_FOOTER
-
 if TYPE_CHECKING:
     from requests import Response
 
@@ -27,6 +25,10 @@ CLOUDFLARE_ERRORS = {
     526: "Untrusted",
     530: "IP Banned / Restricted",
 }
+
+
+VALIDATION_ERROR_FOOTER = """Please delete the file or fix the errors. Read the documentation to learn what's the expected format and values: https://script-ware.gitbook.io/cyberdrop-dl/reference/configuration-options
+\nThis is not a bug. Do not open issues related to this"""
 
 
 class CDLBaseError(Exception):

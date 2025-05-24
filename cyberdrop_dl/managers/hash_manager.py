@@ -14,8 +14,8 @@ from send2trash import send2trash
 from typing_extensions import Buffer
 from xxhash import xxh128 as xxh128_hasher
 
-from cyberdrop_dl.constants import Hashing, HashType
-from cyberdrop_dl.types import HashValue
+from cyberdrop_dl.constants import Hashing
+from cyberdrop_dl.types import Hash, HashAlgorithm
 from cyberdrop_dl.ui.prompts.basic_prompts import enter_to_continue
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import get_size_or_none
@@ -29,8 +29,8 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 CHUNK_SIZE = 1024 * 1024 * 5  # 5MB
-Xxh128HashValue = NewType("Xxh128HashValue", HashValue)
-DedupeMapping = Mapping[HashValue, Mapping[int, set[Path]]]
+Xxh128HashValue = NewType("Xxh128HashValue", Hash)
+DedupeMapping = Mapping[Hash, Mapping[int, set[Path]]]
 
 
 class Hasher(Protocol):
@@ -39,9 +39,9 @@ class Hasher(Protocol):
 
 
 HASHER_MAP: dict[str, Callable[..., Hasher]] = {
-    HashType.xxh128: xxh128_hasher,  # type: ignore
-    HashType.md5: md5_hasher,
-    HashType.sha256: sha256_hasher,
+    HashAlgorithm.xxh128: xxh128_hasher,  # type: ignore
+    HashAlgorithm.md5: md5_hasher,
+    HashAlgorithm.sha256: sha256_hasher,
 }
 
 
@@ -52,14 +52,14 @@ class HashManager:
         self.hashes_dict: DedupeMapping = defaultdict(lambda: defaultdict(set))
         self._semaphore = asyncio.Semaphore(4)
 
-    def _hashers_to_use(self) -> Generator[HashType]:
+    def _hashers_to_use(self) -> Generator[HashAlgorithm]:
         if self.manager.config_manager.settings_data.dupe_cleanup_options.add_md5_hash:
-            yield HashType.md5
+            yield HashAlgorithm.md5
         if self.manager.config_manager.settings_data.dupe_cleanup_options.add_sha256_hash:
-            yield HashType.sha256
-        yield HashType.xxh128
+            yield HashAlgorithm.sha256
+        yield HashAlgorithm.xxh128
 
-    async def hash_file(self, filename: Path, hash_type: HashType) -> HashValue:
+    async def hash_file(self, filename: Path, hash_type: HashAlgorithm) -> Hash:
         """Calculates the hash of a file asynchronously.
 
         :param filename: The path to the file to hash.
@@ -73,7 +73,7 @@ class HashManager:
             while data:
                 await asyncio.to_thread(current_hasher.update, data)
                 data = await file_io.read(CHUNK_SIZE)
-            return HashValue(current_hasher.hexdigest())
+            return Hash(current_hasher.hexdigest())
 
     async def hash_directory(self, path: Path) -> None:
         with self.manager.live_manager.get_hash_live(stop=True):
@@ -123,14 +123,14 @@ class HashManager:
         for hash_type in self._hashers_to_use():
             try:
                 hash = await self._hash_and_update_db(file, original_filename, referer, hash_type)
-                if hash_type == HashType.xxh128:
+                if hash_type == HashAlgorithm.xxh128:
                     return Xxh128HashValue(hash)
             except Exception as e:
                 log(f"Error hashing '{file}': {e}", 40, exc_info=True)
 
     async def _hash_and_update_db(
-        self, file: Path, original_filename: str | None, referer: URL | None, hash_type: HashType
-    ) -> HashValue:
+        self, file: Path, original_filename: str | None, referer: URL | None, hash_type: HashAlgorithm
+    ) -> Hash:
         """Generates hash of a file."""
         self.manager.progress_manager.hash_progress.update_currently_hashing(file)
         hash = await self.manager.db_manager.hash_table.get_file_hash_if_exists(file, hash_type)
@@ -144,7 +144,7 @@ class HashManager:
             file, original_filename, referer, hash_type, hash
         )
 
-        return HashValue(hash)
+        return Hash(hash)
 
     async def cleanup_dupes_after_download(self) -> None:
         if self.manager.config_manager.settings_data.dupe_cleanup_options.hashing == Hashing.OFF:
@@ -187,7 +187,7 @@ class HashManager:
         tasks = []
         for hash, size_dict in final_dict.items():
             for size in size_dict:
-                params = hash, HashType.xxh128, size
+                params = hash, HashAlgorithm.xxh128, size
                 db_matches = await self.manager.db_manager.hash_table.get_files_with_hash_matches(*params)
                 if not db_matches or len(db_matches) < 2:
                     continue

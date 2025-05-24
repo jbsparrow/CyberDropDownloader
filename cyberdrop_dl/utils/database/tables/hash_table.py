@@ -4,7 +4,7 @@ import asyncio
 import contextlib
 from typing import TYPE_CHECKING, TypeAlias, cast
 
-from cyberdrop_dl.types import HashValue
+from cyberdrop_dl.types import Hash
 from cyberdrop_dl.utils.database.table_definitions import create_files, create_hash
 from cyberdrop_dl.utils.logger import log
 
@@ -14,14 +14,14 @@ if TYPE_CHECKING:
     import aiosqlite
     from yarl import URL
 
-    from cyberdrop_dl.constants import HashType
+    from cyberdrop_dl.types import HashAlgorithm
 
 
 FileEntry: TypeAlias = tuple[str, str, int]  # folder, filename and date
 
 
 @contextlib.contextmanager
-def log_execute_error(message: str):
+def log_if_error(message: str):
     try:
         yield
     except Exception as e:
@@ -41,7 +41,7 @@ class HashTable:
         await self.db_conn.execute(create_hash)
         await self.db_conn.commit()
 
-    async def get_file_hash_if_exists(self, file: Path, hash_type: HashType) -> HashValue | None:
+    async def get_file_hash_if_exists(self, file: Path, hash_type: HashAlgorithm) -> Hash | None:
         """Gets the hash from a file if it exists in the database.
 
         :param path: Path to the file to check.
@@ -51,15 +51,15 @@ class HashTable:
         query = "SELECT hash FROM hash WHERE folder=? AND download_filename=? AND hash_type=? AND hash IS NOT NULL"
         folder = str(file.parent)
 
-        with log_execute_error("Error checking file"):
+        with log_if_error("Error checking file"):
             cursor = await self.db_conn.cursor()
             await cursor.execute(query, (folder, file.name, hash_type))
             result = await cursor.fetchone()
             if result:
-                return HashValue(result[0])
+                return Hash(result[0])
 
     async def get_files_with_hash_matches(
-        self, hash_value: HashValue, hash_type: HashType, size: int
+        self, hash_value: Hash, hash_type: HashAlgorithm, size: int
     ) -> list[FileEntry]:
         """Retrieves a list of (folder, filename, date) tuples based on a given hash.
 
@@ -74,7 +74,7 @@ class HashTable:
         FROM hash JOIN files ON hash.folder = files.folder AND hash.download_filename = files.download_filename
         WHERE hash.hash = ? AND files.file_size = ? AND hash.hash_type = ?;"""
 
-        with log_execute_error("Error retrieving folder, filename and date"):
+        with log_if_error("Error retrieving folder, filename and date"):
             cursor = await self.db_conn.cursor()
             await cursor.execute(query, (hash_value, size, hash_type))
             return cast("list[FileEntry]", await cursor.fetchall())
@@ -82,7 +82,12 @@ class HashTable:
         return []
 
     async def insert_or_update_hash_db(
-        self, file: Path, original_filename: str | None, referer: URL | None, hash_type: HashType, hash_value: HashValue
+        self,
+        file: Path,
+        original_filename: str | None,
+        referer: URL | None,
+        hash_type: HashAlgorithm,
+        hash_value: Hash,
     ) -> bool:
         """Inserts or updates a record in the specified SQLite database.
 
@@ -98,7 +103,7 @@ class HashTable:
         file_success = await self.insert_or_update_file(file, original_filename, referer)
         return file_success and hash_success
 
-    async def insert_or_update_hashes(self, file: Path, hash_type: HashType, hash_value: HashValue) -> bool:
+    async def insert_or_update_hashes(self, file: Path, hash_type: HashAlgorithm, hash_value: Hash) -> bool:
         """Inserts or updates the hash information for a specific file.
 
         :param file: The path to the file.
@@ -112,7 +117,7 @@ class HashTable:
         ON CONFLICT(download_filename, folder, hash_type) DO UPDATE SET hash = ?"""
         folder = str(file.parent)
 
-        with log_execute_error("Error inserting/updating record"):
+        with log_if_error("Error inserting/updating record"):
             cursor = await self.db_conn.cursor()
             await cursor.execute(query, (hash_value, hash_type, folder, file.name, hash_value))
             await self.db_conn.commit()
@@ -138,7 +143,7 @@ class HashTable:
         file_date = int(file_stat.st_mtime)
         folder = str(file.parent)
 
-        with log_execute_error("Error inserting/updating record"):
+        with log_if_error("Error inserting/updating record"):
             cursor = await self.db_conn.cursor()
             await cursor.execute(
                 query,
@@ -160,14 +165,14 @@ class HashTable:
 
         return False
 
-    async def get_all_unique_hashes(self, hash_type: HashType) -> set[HashValue]:
+    async def get_all_unique_hashes(self, hash_type: HashAlgorithm) -> set[Hash]:
         """Retrieves a list of unique hashes from the database.
 
         :param hash_type: The type of hash to filter by (optional).
         :return: A set with each unique hash and its associated data.
         """
         query = "SELECT DISTINCT hash FROM hash WHERE hash_type =?"
-        with log_execute_error(f"Error retrieving all {hash_type} hashes"):
+        with log_if_error(f"Error retrieving all {hash_type} hashes"):
             cursor = await self.db_conn.cursor()
             await cursor.execute(query, (hash_type,))
             results = await cursor.fetchall()

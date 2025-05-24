@@ -7,10 +7,24 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+import enum
+import sys
+from collections.abc import Generator, Mapping, Sequence
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any, Literal, NewType, TypeAlias, TypeGuard, TypeVar
+from typing import (
+    TYPE_CHECKING,
+    Annotated,
+    Any,
+    Generic,
+    Literal,
+    NewType,
+    Self,
+    TypeAlias,
+    TypeGuard,
+    TypeVar,
+    overload,
+)
 
 import yarl
 from pydantic import (
@@ -120,5 +134,83 @@ U32IntSequence: TypeAlias = Sequence[U32Int]
 AnyDict: TypeAlias = dict[str, Any]
 
 AbsolutePath = NewType("AbsolutePath", Path)
-HashValue = NewType("HashValue", str)
+
 TimeStamp = NewType("TimeStamp", int)
+
+
+class ContainerEnumMixin(Generic[T]):
+    _member_map_: Mapping[str, Self]
+    _member_names_: list[str]
+
+    @classmethod
+    def values(cls) -> tuple[T, ...]:
+        return tuple(member.value for member in cls)  # type: ignore[reportGeneralTypeIssues]
+
+    if sys.version_info < (3, 12):
+
+        @classmethod
+        def __contains__(cls, value: Self | T) -> bool:
+            if isinstance(value, cls):
+                return True
+            try:
+                cls(value)  # type: ignore[reportCallIssue]
+                return True
+            except ValueError:
+                return False
+
+        @classmethod
+        def __iter__(cls) -> Generator[Self, None, None]:
+            return (cls._member_map_[name] for name in cls._member_names_)
+
+
+class Enum(ContainerEnumMixin, enum.Enum): ...
+
+
+class IntEnum(ContainerEnumMixin[int], enum.IntEnum): ...
+
+
+class StrEnum(ContainerEnumMixin[str], enum.StrEnum): ...
+
+
+class MayBeUpperStrEnum(StrEnum):
+    @classmethod
+    def _missing_(cls, value: str) -> MayBeUpperStrEnum:
+        return cls[value.upper()]
+
+
+class HashAlgorithm(StrEnum):
+    md5 = "md5"
+    sha256 = "sha256"
+    xxh128 = "xxh128"
+    sha1 = "sha1"
+
+    def create_hash(self, hash_value: str) -> Hash:
+        return Hash(self, hash_value)
+
+
+class Hash(str):
+    _valid_algorithms = HashAlgorithm.values()
+    algorithm = HashAlgorithm
+    value = str
+    hash_string: str
+
+    @overload
+    def __new__(cls, algorithm: HashAlgorithm, hash_value: str, /) -> Self: ...
+
+    @overload
+    def __new__(cls, hash_string: str, /) -> Self: ...
+
+    def __new__(cls, arg1: HashAlgorithm | str, arg2: str | None = None, /) -> Self:
+        if not arg2:
+            assert ":" in arg1, "input should be in the format 'algorithm:hash_value'"
+            algo, _, value = arg1.partition(":")
+        else:
+            algo, value = arg1, arg2
+        assert algo in cls._valid_algorithms, f"Invalid algorithm. Valid algorithms: {cls._valid_algorithms}"
+        assert value
+
+        self = super().__new__(cls, value)
+        self.algorithm = HashAlgorithm(algo)
+        self.value = value
+        self.hash_string = f"{self.algorithm}:{self.value}"
+        return self

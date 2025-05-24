@@ -1,10 +1,12 @@
 import re
 from datetime import UTC, datetime
-from enum import Enum, IntEnum, StrEnum, auto
+from enum import auto
 from pathlib import Path
 from typing import Any
 
 from rich.text import Text
+
+from cyberdrop_dl.types import Enum, IntEnum, MayBeUpperStrEnum, StrEnum
 
 # TIME
 STARTUP_TIME = datetime.now()
@@ -56,23 +58,10 @@ DOWNLOAD_STORAGE = Path("./Downloads")
 RESERVED_CONFIG_NAMES = ["all", "default"]
 
 
-class HashType(StrEnum):
-    md5 = "md5"
-    sha256 = "sha256"
-    xxh128 = "xxh128"
-
-
-class Hashing(StrEnum):
+class Hashing(MayBeUpperStrEnum):
     OFF = auto()
     IN_PLACE = auto()
     POST_DOWNLOAD = auto()
-
-    @classmethod
-    def _missing_(cls, value: str) -> "Hashing":
-        try:
-            return cls[str(value.upper())]
-        except KeyError as e:
-            raise e
 
 
 class BROWSERS(StrEnum):
