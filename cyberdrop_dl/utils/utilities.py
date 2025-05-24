@@ -9,6 +9,7 @@ import platform
 import re
 import shutil
 import subprocess
+import sys
 import unicodedata
 from dataclasses import Field, dataclass, fields
 from functools import lru_cache, partial, wraps
@@ -548,6 +549,40 @@ async def close_if_defined(obj: C) -> C:
     if not isinstance(obj, Field):
         await obj.close() if inspect.iscoroutinefunction(obj.close) else obj.close()
     return constants.NOT_DEFINED
+
+
+@lru_cache
+def get_system_information() -> str:
+    system_info = platform.uname()._asdict() | {
+        "architecture": str(platform.architecture()),
+        "python": f"{platform.python_version()} {platform.python_implementation()}",
+        "common_name": get_os_common_name(),
+    }
+    return json.dumps(system_info, indent=4)
+
+
+@lru_cache
+def get_os_common_name() -> str:
+    system = platform.system()
+
+    if system in ("Linux",):
+        try:
+            return platform.freedesktop_os_release()["PRETTY_NAME"]
+        except OSError:
+            pass
+
+    if system == "Android" and sys.version_info >= (3, 13):
+        ver = platform.android_ver()
+        os_name = f"{system} {ver.release}"
+        for component in (ver.manufacturer, ver.model, ver.device):
+            if component:
+                os_name += f" ({component})"
+        return os_name
+
+    default = platform.platform(aliased=True, terse=True).replace("-", " ")
+    if system == "Windows" and (edition := platform.win32_edition()):
+        return f"{default} {edition}"
+    return default
 
 
 log_cyan = partial(log_with_color, style="cyan", level=20)

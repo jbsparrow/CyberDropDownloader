@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-import platform
+import sys
 from dataclasses import Field, field
 from time import perf_counter
 from typing import TYPE_CHECKING, Literal, NamedTuple, TypeVar
@@ -27,7 +27,7 @@ from cyberdrop_dl.utils.args import ParsedArgs, parse_args
 from cyberdrop_dl.utils.ffmpeg import FFmpeg, get_ffmpeg_version
 from cyberdrop_dl.utils.logger import QueuedLogger, log
 from cyberdrop_dl.utils.transfer import transfer_v5_db_to_v6
-from cyberdrop_dl.utils.utilities import close_if_defined
+from cyberdrop_dl.utils.utilities import close_if_defined, get_system_information
 
 if TYPE_CHECKING:
     import queue
@@ -280,22 +280,7 @@ class Manager:
         constants.DISABLE_CACHE = self.parsed_args.cli_only_args.disable_cache
 
 
-def get_system_information() -> str:
-    system_info = {
-        "OS": platform.system(),
-        "release": platform.release(),
-        "version": platform.version(),
-        "machine": platform.machine(),
-        "architecture": str(platform.architecture()),
-        "python": platform.python_version(),
-    }
-
-    return json.dumps(system_info, indent=4)
-
-
 def show_supported_sites():
-    import sys
-
     from rich import print
     from rich.table import Table
 

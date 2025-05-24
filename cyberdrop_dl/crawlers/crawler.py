@@ -39,7 +39,6 @@ if TYPE_CHECKING:
 
     from aiohttp_client_cache.response import AnyResponse
     from bs4 import BeautifulSoup, Tag
-    from bs4.css import CSS
 
     from cyberdrop_dl.clients.scraper_client import ScraperClient
     from cyberdrop_dl.managers.manager import Manager
@@ -332,16 +331,18 @@ class Crawler(ABC):
         :param results: must be the output of `self.get_album_results`.
         If provided, it will be used as a filter, to only yield items that has not been downloaded before"""
         album_results = results or {}
-        css: CSS = soup.css  # type: ignore
 
-        for tag in css.iselect(selector):
-            link_str: str = tag.get(attribute)  # type: ignore
+        for tag in soup.css.iselect(selector):
+            link_str: str | None = tag.get(attribute)  # type: ignore
             if not link_str:
                 continue
             link = self.parse_url(link_str)
             if self.check_album_results(link, album_results):
                 continue
-            thumb_str: str | None = t_tag["src"] if (t_tag := tag.select_one("img")) and "src" in t_tag else None  # type: ignore
+            if t_tag := tag.select_one("img"):
+                thumb_str: str | None = t_tag.get("src")
+            else:
+                thumb_str = None
             thumb = self.parse_url(thumb_str) if thumb_str else None
             yield thumb, link
 
