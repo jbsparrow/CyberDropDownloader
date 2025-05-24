@@ -47,6 +47,20 @@ Changelog = "https://github.com/jbsparrow/CyberDropDownloader/blob/master/CHANGE
 Documentation = "https://script-ware.gitbook.io/cyberdrop-dl/"
 Repository = "https://github.com/jbsparrow/CyberDropDownloader"
 
+[tool.coverage.report]
+exclude_also = [
+    '@(abc\.)?abstractmethod',
+    'class .*\bProtocol\):',
+    'if __name__ == .__main__.:',
+    'if env.DEBUG_VAR:',
+    'if TYPE_CHECKING:'
+]
+
+[tool.coverage.run]
+omit = [
+    "tests/*"
+]
+
 [tool.poetry]
 include = ["CHANGELOG.md"]
 packages = [{include = "cyberdrop_dl"}]

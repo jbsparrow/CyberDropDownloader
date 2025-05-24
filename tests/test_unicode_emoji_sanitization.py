@@ -11,6 +11,8 @@ IS_MACOS = sys.platform == "darwin"
 FOREIGN_LENGUAGE_STRINGS = ["これは単なるテストです", "это всего лишь тест", "این فقط یک آزمایش است", "هذا مجرد اختبار"]
 INVALID_UNICODE9_STRING = "🫧Bubblz🫧"
 
+pytestmark = pytest.mark.filterwarnings("ignore:invalid escape sequence.*::SyntaxWarning")
+
 
 def test_sanitize_macos_problematic_unicode_symbol() -> None:
     assert sanitize_unicode_emojis_and_symbols(INVALID_UNICODE9_STRING) == "Bubblz"

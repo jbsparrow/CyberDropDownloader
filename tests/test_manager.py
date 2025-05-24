@@ -23,7 +23,6 @@ def post_startup_manager(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Man
     bare_manager.startup()
     bare_manager.path_manager.startup()
     bare_manager.log_manager.startup()
-    print(bare_manager.log_manager.main_log)
     return bare_manager
 
 
