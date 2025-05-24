@@ -20,8 +20,11 @@ FAKE_MANAGER.cache_manager = FakeCacheManager(FAKE_MANAGER)
 FAKE_MANAGER.config_manager = ConfigManager(FAKE_MANAGER)
 
 URL_FAIL = "mailto://test_user:test_email@gmail.com"
-URL_SUCCESS = os.environ.get("APPRISE_TEST_EMAIL_URL", "")
+APPRISE_ENV_VAR = "APPRISE_TEST_EMAIL_URL"
+URL_SUCCESS = os.environ.get(APPRISE_ENV_VAR, "")
 URL_SUCCESS_ATTACH_LOGS = f"attach_logs={URL_SUCCESS}"
+
+pytestmark = pytest.mark.skipif(not URL_SUCCESS, reason=f"{APPRISE_ENV_VAR} environment variable is not set")
 
 
 @dataclass
@@ -78,7 +81,6 @@ def test_get_apprise_urls():
 
 
 async def send_notification(test_case: AppriseTestCase):
-    assert URL_SUCCESS, "Apprise URL should be set on enviroment"
     FAKE_MANAGER.config_manager.apprise_urls = []
     if test_case.urls and any(test_case.urls):
         FAKE_MANAGER.config_manager.apprise_urls = apprise.get_apprise_urls(urls=test_case.urls)
