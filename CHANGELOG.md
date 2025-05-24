@@ -63,6 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Try to use original server (kemono, coomer, nekohouse)
 - Improve cloudflare captcha detection
 - General performance improvements
+- CDL will remove simbols and emojis from filenames in Windows and macOS
 
 ### Removed
 
