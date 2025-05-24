@@ -4,7 +4,7 @@ import asyncio
 import contextlib
 from typing import TYPE_CHECKING, TypeAlias, cast
 
-from cyberdrop_dl.utils.constants import HashValue
+from cyberdrop_dl.types import HashValue
 from cyberdrop_dl.utils.database.table_definitions import create_files, create_hash
 from cyberdrop_dl.utils.logger import log
 
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     import aiosqlite
     from yarl import URL
 
-    from cyberdrop_dl.utils.constants import HashType
+    from cyberdrop_dl.constants import HashType
 
 
 FileEntry: TypeAlias = tuple[str, str, int]  # folder, filename and date
