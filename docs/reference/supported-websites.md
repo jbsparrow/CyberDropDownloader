@@ -879,6 +879,17 @@ See: [`--download-dropbox-folders-as-zip` (CLI args)](https://script-ware.gitboo
 
 <details>
 
+<summary>twpornstars.com</summary>
+
+### `Supported URL Paths:`
+
+* Photo or Video: `/p/...`
+* Collection: `/...`
+
+</details>
+
+<details>
+
 <summary>WeTransfer</summary>
 
 ### `Supported URL Paths:`
