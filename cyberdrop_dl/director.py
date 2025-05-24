@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import logging
+import os
 import signal
 import sys
 from datetime import datetime
@@ -37,7 +38,15 @@ P = ParamSpec("P")
 R = TypeVar("R")
 
 startup_logger = logging.getLogger("cyberdrop_dl_startup")
-STARTUP_LOGGER_FILE = Path.cwd().joinpath("startup.log")
+
+
+def new_startup_log_file() -> Path:
+    file = Path.cwd().joinpath("startup.log")
+    file.unlink(missing_ok=True)
+    return file
+
+
+STARTUP_LOGGER_FILE = new_startup_log_file()
 
 
 class ExitCode(IntEnum):
@@ -115,7 +124,7 @@ async def _run_manager(manager: Manager) -> None:
 
 
 async def _scheduler(manager: Manager) -> None:
-    loop = asyncio.get_running_loop()
+    # loop = asyncio.get_running_loop()
 
     def shutdown() -> None:
         log("Received keyboard interrupt, shutting down...", 30)
@@ -127,7 +136,7 @@ async def _scheduler(manager: Manager) -> None:
         if manager.states.SHUTTING_DOWN.is_set():
             return
         manager.current_task = task = asyncio.create_task(func(manager))
-        loop.add_signal_handler(signal.SIGINT, shutdown)
+        # loop.add_signal_handler(signal.SIGINT, shutdown)
         try:
             await task
         except asyncio.CancelledError:
@@ -241,8 +250,10 @@ def _setup_main_logger(manager: Manager, config_name: str) -> None:
 
 
 def _setup_startup_logger(*, first_time_setup: bool = False) -> None:
+    global STARTUP_LOGGER_FILE
     if first_time_setup:
-        STARTUP_LOGGER_FILE.unlink(missing_ok=True)  # Only delete file once. Subsequent calls will append to file
+        # Get startup logger again in case the CWD changed after the module was imported (for pytest)
+        STARTUP_LOGGER_FILE = new_startup_log_file()
     _destroy_startup_logger()
     startup_logger.setLevel(10)
     console_handler = LogHandler(level=10)
@@ -335,7 +346,9 @@ def _setup_manager() -> Manager:
 class Director:
     """Creates a manager and runs it"""
 
-    def __init__(self):
+    def __init__(self) -> None:
+        if os.name == "nt":
+            asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
         self.manager = _setup_manager()
