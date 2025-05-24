@@ -1,21 +1,20 @@
 from __future__ import annotations
 
+import binascii
 import re
 from typing import TYPE_CHECKING, ClassVar
 
 from aiolimiter import AsyncLimiter
 
 from cyberdrop_dl.types import AbsoluteHttpURL, SupportedDomains, SupportedPaths
-from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 from ._chevereto import CheveretoCrawler
 
 if TYPE_CHECKING:
-    from yarl import URL
-
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
 
 JPG5_REPLACE_HOST_REGEX = re.compile(r"(jpg\.fish/)|(jpg\.fishing/)|(jpg\.church/)")
+DECRYPTION_KEY = b"seltilovessimpcity@simpcityhatesscrapers"
 
 
 class JPG5Crawler(CheveretoCrawler):
@@ -55,21 +54,24 @@ class JPG5Crawler(CheveretoCrawler):
     async def video(self, scrape_item: ScrapeItem) -> None:
         raise ValueError
 
-    @error_handling_wrapper
-    async def _proccess_media_item(self, scrape_item: ScrapeItem, url_type, *_) -> None:
-        if await self.check_complete_from_referer(scrape_item):
-            return
+    def parse_url(
+        self, link_str: str, relative_to: AbsoluteHttpURL | None = None, *, trim: bool = True
+    ) -> AbsoluteHttpURL:
+        if not link_str.startswith("https") and not link_str.startswith("/"):
+            link_str = decrypt_xor(link_str, DECRYPTION_KEY)
+        return super().parse_url(link_str, relative_to, trim=trim)
 
-        _, canonical_url = self.get_canonical_url(scrape_item.url, url_type)
-        if await self.check_complete_from_referer(canonical_url):
-            return
-
-        _, link = await self.get_embed_info(scrape_item.url)
-        scrape_item.url = canonical_url
-        await self.handle_direct_link(scrape_item, link)
-
-    async def handle_direct_link(self, scrape_item: ScrapeItem, url: URL | None = None) -> None:
+    async def handle_direct_link(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL | None = None) -> None:
         """Handles a direct link."""
         link = url or scrape_item.url
         link = self.parse_url(re.sub(JPG5_REPLACE_HOST_REGEX, r"host.church/", str(link)))
         await super().handle_direct_link(scrape_item, link)
+
+
+"""~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+
+def decrypt_xor(encrypted_str: str, key: bytes) -> str:
+    div = len(key)
+    encrypted = bytes.fromhex(binascii.a2b_base64(encrypted_str).decode())
+    return bytes([encrypted[i] ^ key[i % div] for i in range(len(encrypted))]).decode()

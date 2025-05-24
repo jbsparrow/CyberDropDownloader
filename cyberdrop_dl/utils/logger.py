@@ -102,6 +102,7 @@ class QueuedLogger:
         assert name not in manager.loggers, f"A logger with the name '{name}' already exists"
         log_queue = queue.Queue()
         self.handler = BareQueueHandler(log_queue)
+        self.log_handler = split_handler
         self.listener = QueueListener(log_queue, split_handler, respect_handler_level=True)
         self.listener.start()
         manager.loggers[name] = self
@@ -110,6 +111,8 @@ class QueuedLogger:
         """This asks the thread to terminate, and waits until all pending messages are processed."""
         self.listener.stop()
         self.handler.close()
+        self.log_handler.console.file.close()
+        self.log_handler.close()
 
 
 class NoPaddingLogRender(LogRender):

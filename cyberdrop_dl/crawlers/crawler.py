@@ -398,9 +398,10 @@ class Crawler(ABC):
             link = self.parse_url(link_str)
             if self.check_album_results(link, album_results):
                 continue
-            thumb_str = None
             if t_tag := tag.select_one("img"):
                 thumb_str: str | None = css.get_attr_or_none(t_tag, "src")
+            else:
+                thumb_str = None
             thumb = self.parse_url(thumb_str) if thumb_str else None
             yield thumb, link
 

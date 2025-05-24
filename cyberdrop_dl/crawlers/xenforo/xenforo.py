@@ -5,9 +5,9 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import re
-from dataclasses import dataclass
+from dataclasses import astuple, dataclass
 from functools import cached_property, singledispatchmethod
-from typing import TYPE_CHECKING, ClassVar, NamedTuple
+from typing import TYPE_CHECKING, ClassVar
 
 from bs4 import BeautifulSoup, Tag
 
@@ -16,7 +16,7 @@ from cyberdrop_dl.data_structures.url_objects import FORUM, ScrapeItem
 from cyberdrop_dl.exceptions import InvalidURLError, LoginError, ScrapeError
 from cyberdrop_dl.utils import css
 from cyberdrop_dl.utils.logger import log, log_debug
-from cyberdrop_dl.utils.utilities import error_handling_wrapper, remove_trailing_slash
+from cyberdrop_dl.utils.utilities import error_handling_wrapper, is_absolute_http_url, remove_trailing_slash
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator, Sequence
@@ -34,9 +34,14 @@ FINAL_PAGE_SELECTOR = "li.pageNav-page a"
 CURRENT_PAGE_SELECTOR = "li.pageNav-page.pageNav-page--current a"
 
 
-class Selector(NamedTuple):
+@dataclass(frozen=True, slots=True)
+class Selector:
     element: str
     attribute: str = ""
+
+    @property
+    def astuple(self) -> tuple[str, str]:
+        return astuple(self)
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,7 +80,7 @@ class ForumPost:
 
     @cached_property
     def date(self) -> int | None:
-        if date_str := css.select_one_get_attr_or_none(self.content, *self.selectors.date):
+        if date_str := css.select_one_get_attr_or_none(self.content, *self.selectors.date.astuple):
             return int(date_str)
 
     @cached_property
@@ -84,7 +89,7 @@ class ForumPost:
             number_str: str = css.get_attr(self.soup, self.selectors.number.element)
             return int(number_str)
 
-        number_str = css.select_one_get_attr(self.soup, *self.selectors.number)
+        number_str = css.select_one_get_attr(self.soup, *self.selectors.number.astuple)
         return int(number_str.split("/")[-1].split(self.post_name)[-1])
 
 
@@ -161,8 +166,9 @@ class XenforoCrawler(Crawler, is_abc=True):
     @error_handling_wrapper
     async def redirect(self, scrape_item: ScrapeItem) -> None:
         async with self.request_limiter:
-            _, url = await self.client.get_soup_and_return_url(self.DOMAIN, scrape_item.url)
-        scrape_item.url = url
+            response, _ = await self.client._get_response_and_soup(self.DOMAIN, scrape_item.url)
+        assert is_absolute_http_url(response.url)
+        scrape_item.url = response.url
         self.manager.task_group.create_task(self.run(scrape_item))
 
     @error_handling_wrapper
@@ -258,7 +264,7 @@ class XenforoCrawler(Crawler, is_abc=True):
         """Generator of forum thread pages."""
 
         def get_next_page(soup: BeautifulSoup) -> str | None:
-            select, attr = self.selectors.next_page
+            select, attr = self.selectors.next_page.astuple
             next_page = css.select_one_get_attr_or_none(soup, selector=select, attribute=attr)
             if next_page:
                 return self.pre_filter_link(next_page)

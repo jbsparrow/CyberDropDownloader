@@ -201,7 +201,7 @@ class ClientManager:
         check_etag()
         if HTTPStatus.OK <= status < HTTPStatus.BAD_REQUEST:
             # Check DDosGuard even on successful pages
-            await check_ddos_guard()
+            # await check_ddos_guard()
             return
 
         await check_json_status()

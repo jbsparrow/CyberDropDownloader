@@ -21,12 +21,14 @@ class TwimgCrawler(Crawler):
     FOLDER_DOMAIN: ClassVar[str] = "TwitterImages"
 
     async def fetch(self, scrape_item: ScrapeItem) -> None:
+        if "video" in scrape_item.url.host:
+            return await self.direct_file(scrape_item)
         await self.photo(scrape_item)
 
-    async def photo(self, scrape_item: ScrapeItem) -> None:
+    async def photo(self, scrape_item: ScrapeItem, url: AbsoluteHttpURL | None = None) -> None:
         # https://developer.x.com/en/docs/x-api/v1/data-dictionary/object-model/entities#photo_format
-        scrape_item.url = scrape_item.url.with_host(CDN_HOST)
-        link = scrape_item.url.with_query(format="jpg", name="large")
+        link = url or scrape_item.url
+        link = link.with_host(CDN_HOST).with_query(format="jpg", name="large")
         filename = Path(link.name).with_suffix(".jpg").as_posix()
         filename, ext = self.get_filename_and_ext(filename)
         await self.handle_file(link, scrape_item, filename, ext)

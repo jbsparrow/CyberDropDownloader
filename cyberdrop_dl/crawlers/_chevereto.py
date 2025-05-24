@@ -29,6 +29,7 @@ DIRECT_LINK_PARTS = ("images",)
 PASSWORD_PROTECTED = "This content is password protected"
 VIDEO_SELECTOR = "meta[property='og:video']", "content"
 IMAGE_SELECTOR = "div[id=image-viewer] img", "src"
+ENCRYPTED_IMAGE_SELECTOR = "div.image-viewer-main > img"
 
 
 class Media(StrEnum):
@@ -38,7 +39,10 @@ class Media(StrEnum):
 
 
 def clean_name(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
-    return url.with_name(url.name.replace(".md.", ".").replace(".th.", "."))
+    new_name = url.name
+    for trash in (".md.", ".th.", ".fr."):
+        new_name = new_name.replace(trash, ".")
+    return url.with_name(new_name)
 
 
 def sort_by_new(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
@@ -60,7 +64,7 @@ class CheveretoCrawler(Crawler, is_abc=True):
         return await self._fetch_chevereto_defaults(scrape_item)
 
     async def _fetch_chevereto_defaults(self, scrape_item: ScrapeItem) -> None:
-        if scrape_item.url.host.count(".") > 1:
+        if scrape_item.url.host.removeprefix("www.").count(".") > 1:
             return await self.handle_direct_link(scrape_item)
         if any(part in scrape_item.url.parts for part in ALBUM_PARTS):
             return await self.album(scrape_item)
@@ -84,6 +88,7 @@ class CheveretoCrawler(Crawler, is_abc=True):
             for thumb, new_scrape_item in self.iter_children(scrape_item, soup, ITEM_SELECTOR):
                 # Item may be an image, a video or an album
                 # For images, we can download the file from the thumbnail
+                assert thumb
                 if any(part in new_scrape_item.url.parts for part in IMAGES_PARTS):
                     _, new_scrape_item.url = self.get_canonical_url(new_scrape_item.url, Media.IMAGE)
                     await self.handle_direct_link(new_scrape_item, thumb)
@@ -107,10 +112,15 @@ class CheveretoCrawler(Crawler, is_abc=True):
 
             for thumb, new_scrape_item in self.iter_children(scrape_item, soup, ITEM_SELECTOR):
                 assert thumb
-                if self.check_album_results(thumb, results):
+                source = clean_name(thumb)
+                if self.check_album_results(source, results):
                     continue
-                _, new_scrape_item.url = self.get_canonical_url(new_scrape_item.url, Media.IMAGE)
-                await self.handle_direct_link(new_scrape_item, thumb)
+                if any(part in new_scrape_item.url.parts for part in IMAGES_PARTS):
+                    _, new_scrape_item.url = self.get_canonical_url(new_scrape_item.url, Media.IMAGE)
+                    await self.handle_direct_link(new_scrape_item, thumb)
+                    continue
+
+                self.manager.task_group.create_task(self.run(new_scrape_item))
 
         # Sub album URL needs to be the full URL + a 'sub'
         # Using the canonical URL + 'sub' won't work because it redirects to the "homepage" of the album
@@ -163,6 +173,8 @@ class CheveretoCrawler(Crawler, is_abc=True):
 
         try:
             link_str: str = css.select_one_get_attr(soup, *selector)
+            if "loading.svg" in link_str:
+                link_str = css.select_one_get_attr(soup, ENCRYPTED_IMAGE_SELECTOR, "data-src")
             link = self.parse_url(link_str)
 
         except AttributeError:
