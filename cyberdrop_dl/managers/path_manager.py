@@ -13,12 +13,6 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
-if env.RUNNING_IN_IDE and Path.cwd().name == "cyberdrop_dl":
-    """This is for testing purposes only"""
-    constants.APP_STORAGE = Path("../AppData")
-    constants.DOWNLOAD_STORAGE = Path("../Downloads")
-
-
 class PathManager:
     def __init__(self, manager: Manager) -> None:
         self.manager = manager
@@ -55,6 +49,10 @@ class PathManager:
             "download_error_urls",
             "scrape_error_urls",
         ]
+        if env.RUNNING_IN_IDE and Path.cwd().name == "cyberdrop_dl":
+            """This is for testing purposes only"""
+            constants.APP_STORAGE = Path("../AppData")
+            constants.DOWNLOAD_STORAGE = Path("../Downloads")
 
     def pre_startup(self) -> None:
         if self.manager.parsed_args.cli_only_args.appdata_folder:
