@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 import asyncio
-import inspect
 import json
 import platform
 from dataclasses import Field, field
 from time import perf_counter
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Protocol, TypeVar
+from typing import TYPE_CHECKING, Literal, NamedTuple
 
 from cyberdrop_dl import __version__, constants
 from cyberdrop_dl.config_definitions import ConfigSettings, GlobalSettings
@@ -27,33 +26,13 @@ from cyberdrop_dl.utils.args import ParsedArgs
 from cyberdrop_dl.utils.ffmpeg import FFmpeg, get_ffmpeg_version
 from cyberdrop_dl.utils.logger import QueuedLogger, log
 from cyberdrop_dl.utils.transfer import transfer_v5_db_to_v6
+from cyberdrop_dl.utils.utilities import close_if_defined
 
 if TYPE_CHECKING:
     import queue
     from asyncio import TaskGroup
 
     from cyberdrop_dl.scraper.scrape_mapper import ScrapeMapper
-
-
-class HasClose(Protocol):
-    def close(self): ...
-
-
-class HasAsyncClose(Protocol):
-    async def close(self): ...
-
-
-C = TypeVar("C", bound=HasAsyncClose | HasClose)
-
-
-def unset() -> Any:
-    return field(init=False)
-
-
-async def close_if_set(obj: C) -> C:
-    if not isinstance(obj, Field):
-        await obj.close() if inspect.iscoroutinefunction(obj.close) else obj.close()
-    return unset()
 
 
 class AsyncioEvents(NamedTuple):
@@ -306,8 +285,8 @@ class Manager:
 
     async def async_db_close(self) -> None:
         "Partial shutdown for managers used for hash directory scanner"
-        self.db_manager = await close_if_set(self.db_manager)
-        self.hash_manager = unset()
+        self.db_manager = await close_if_defined(self.db_manager)
+        self.hash_manager = constants.NOT_DEFINED
         self.progress_manager.hash_progress.reset()
 
     async def close(self) -> None:
@@ -316,9 +295,9 @@ class Manager:
 
         await self.async_db_close()
 
-        self.client_manager = await close_if_set(self.client_manager)
-        self.storage_manager = await close_if_set(self.storage_manager)
-        self.cache_manager = await close_if_set(self.cache_manager)
+        self.client_manager = await close_if_defined(self.client_manager)
+        self.storage_manager = await close_if_defined(self.storage_manager)
+        self.cache_manager = await close_if_defined(self.cache_manager)
 
         while self.loggers:
             _, queued_logger = self.loggers.popitem()

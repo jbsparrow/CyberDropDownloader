@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import inspect
 import json
 import os
 import platform
@@ -9,7 +10,7 @@ import re
 import shutil
 import subprocess
 import unicodedata
-from dataclasses import dataclass, fields
+from dataclasses import Field, dataclass, fields
 from functools import lru_cache, partial, wraps
 from pathlib import Path
 from stat import S_ISREG
@@ -530,6 +531,23 @@ def get_size_or_none(path: Path) -> int | None:
             return stat.st_size
     except (OSError, ValueError):
         return None
+
+
+class HasClose(Protocol):
+    def close(self): ...
+
+
+class HasAsyncClose(Protocol):
+    async def close(self): ...
+
+
+C = TypeVar("C", bound=HasAsyncClose | HasClose)
+
+
+async def close_if_defined(obj: C) -> C:
+    if not isinstance(obj, Field):
+        await obj.close() if inspect.iscoroutinefunction(obj.close) else obj.close()
+    return constants.NOT_DEFINED
 
 
 log_cyan = partial(log_with_color, style="cyan", level=20)

@@ -1,4 +1,5 @@
 import re
+from dataclasses import field
 from datetime import UTC, datetime
 from enum import Enum, IntEnum, StrEnum, auto
 from pathlib import Path
@@ -53,6 +54,7 @@ BLOCKED_DOMAINS = ("facebook", "instagram", "fbcdn")
 APP_STORAGE = Path("./AppData")
 DOWNLOAD_STORAGE = Path("./Downloads")
 RESERVED_CONFIG_NAMES = ["all", "default"]
+NOT_DEFINED = field(init=False)
 
 
 class HashType(StrEnum):
