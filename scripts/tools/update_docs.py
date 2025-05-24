@@ -29,9 +29,9 @@ def write_if_updated(path: Path, old_content: str, new_content: str) -> None:
     relative = path.relative_to(REPO_ROOT)
     if old_content != new_content:
         path.write_text(new_content, encoding="utf8")
-        msg = f"Updated CLI '{relative}'"
+        msg = f"Updated:'{relative}'"
     else:
-        msg = f"'{relative}' did not change"
+        msg = f"Did not change: '{relative}'"
     print(msg)  # noqa: T201
 
 
