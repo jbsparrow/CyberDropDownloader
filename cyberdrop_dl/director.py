@@ -115,7 +115,7 @@ async def _run_manager(manager: Manager) -> None:
 
 
 async def _scheduler(manager: Manager) -> None:
-    loop = asyncio.get_running_loop()
+    # loop = asyncio.get_running_loop()
 
     def shutdown() -> None:
         log("Received keyboard interrupt, shutting down...", 30)
@@ -127,7 +127,7 @@ async def _scheduler(manager: Manager) -> None:
         if manager.states.SHUTTING_DOWN.is_set():
             return
         manager.current_task = task = asyncio.create_task(func(manager))
-        loop.add_signal_handler(signal.SIGINT, shutdown)
+        # loop.add_signal_handler(signal.SIGINT, shutdown)
         try:
             await task
         except asyncio.CancelledError:
