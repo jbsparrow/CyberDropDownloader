@@ -1,3 +1,4 @@
+from collections.abc import Generator
 from dataclasses import Field
 from typing import Any, TypeVar
 
@@ -13,9 +14,16 @@ def update_model(model: M, **kwargs: Any) -> M:
     return model.model_validate(model.model_dump() | kwargs)
 
 
-@pytest.fixture
-async def manager(sync_manager: Manager) -> Manager:
-    return sync_manager
+@pytest.fixture()
+def manager(tmp_cwd, custom_sys_argv: list[str]) -> Generator[Manager]:
+    with pytest.MonkeyPatch.context() as mocker:
+        mocker.setattr("sys.argv", custom_sys_argv)
+        bare_manager = Manager()
+        bare_manager.startup()
+        bare_manager.path_manager.startup()
+        bare_manager.log_manager.startup()
+        assert not bare_manager.log_manager.main_log.exists()
+        yield bare_manager
 
 
 class TestMergeDicts:
@@ -118,7 +126,11 @@ def test_args_logging_should_censor_webhook(
     assert output == webhook_url
 
 
-async def test_async_db_close(async_manager: Manager) -> None:
-    await async_manager.async_db_close()
-    assert isinstance(async_manager.db_manager, Field)
-    assert isinstance(async_manager.hash_manager, Field)
+async def test_async_db_close(manager: Manager) -> None:
+    await manager.async_startup()
+    assert not isinstance(manager.db_manager, Field)
+    assert not isinstance(manager.hash_manager, Field)
+    assert "overwrite" not in str(manager.log_manager.main_log)
+    await manager.async_db_close()
+    assert isinstance(manager.db_manager, Field)
+    assert isinstance(manager.hash_manager, Field)
