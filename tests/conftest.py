@@ -15,9 +15,10 @@ if TYPE_CHECKING:
     from _pytest.nodes import Node  # type: ignore
 
 
-@pytest.fixture(autouse=True)
-def test_dir(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.fixture()
+def tmp_cwd(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     monkeypatch.chdir(tmp_path)
+    return tmp_path
 
 
 @pytest.fixture
