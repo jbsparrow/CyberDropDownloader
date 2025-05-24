@@ -40,11 +40,13 @@ R = TypeVar("R")
 startup_logger = logging.getLogger("cyberdrop_dl_startup")
 
 
-def get_startup_logger() -> Path:
-    return Path.cwd().joinpath("startup.log")
+def new_startup_log_file() -> Path:
+    file = Path.cwd().joinpath("startup.log")
+    file.unlink(missing_ok=True)
+    return file
 
 
-STARTUP_LOGGER_FILE = get_startup_logger()
+STARTUP_LOGGER_FILE = new_startup_log_file()
 
 
 class ExitCode(IntEnum):
@@ -250,10 +252,8 @@ def _setup_main_logger(manager: Manager, config_name: str) -> None:
 def _setup_startup_logger(*, first_time_setup: bool = False) -> None:
     global STARTUP_LOGGER_FILE
     if first_time_setup:
-        STARTUP_LOGGER_FILE.unlink(missing_ok=True)  # Only delete file once. Subsequent calls will append to file
-        # Get startup logger again in case the CWD changed after the module was imported
-        # Required for tests to work in GH CI runner
-        STARTUP_LOGGER_FILE = get_startup_logger()
+        # Get startup logger again in case the CWD changed after the module was imported (for pytest)
+        STARTUP_LOGGER_FILE = new_startup_log_file()
     _destroy_startup_logger()
     startup_logger.setLevel(10)
     console_handler = LogHandler(level=10)
