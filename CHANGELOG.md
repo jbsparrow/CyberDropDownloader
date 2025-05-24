@@ -40,6 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Influencerbitches.com support
 - IncestFlix support
 - Porntrex support
+- Twpornstars.com support
 - Vipr.im support
 - Albums support (ThisVid)
 - Parse upload date of files (rule34xxx)
@@ -62,6 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Try to use original server (kemono, coomer, nekohouse)
 - Improve cloudflare captcha detection
 - General performance improvements
+- CDL will remove simbols and emojis from filenames in Windows and macOS
 
 ### Removed
 

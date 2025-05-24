@@ -200,6 +200,7 @@ def domains_prompt(*, domain_message: str = "Select site(s):") -> tuple[list[str
 def extract_cookies(manager: Manager, *, dry_run: bool = False) -> None:
     """Asks the user to select browser(s) and domains(s) to import cookies from."""
 
+    supported_forums, supported_websites = list(SUPPORTED_FORUMS.values()), list(SUPPORTED_WEBSITES.values())
     domains, all_domains = domains_prompt(domain_message="Select site(s) to import cookies from:")
     if domains == []:
         return
@@ -211,7 +212,22 @@ def extract_cookies(manager: Manager, *, dry_run: bool = False) -> None:
     if dry_run:
         manager.config_manager.settings_data.browser_cookies.browsers = browsers
         current_sites = set(manager.config_manager.settings_data.browser_cookies.sites)
-        new_sites = (current_sites - set(all_domains)) | set(domains)
+        new_sites = current_sites - set(all_domains)
+        if domains == supported_forums:
+            new_sites -= {"all"}
+            new_sites.add("all_forums")
+        elif domains == supported_websites:
+            new_sites -= {"all"}
+            new_sites.add("all_file_hosts")
+        elif domains == SUPPORTED_SITES_DOMAINS:
+            new_sites -= {"all_forums", "all_file_hosts"}
+            new_sites.add("all")
+        else:
+            new_sites -= {"all", "all_forums", "all_file_hosts"}
+            new_sites.update(domains)
+        if "all_forums" in new_sites and "all_file_hosts" in new_sites:
+            new_sites -= {"all_forums", "all_file_hosts"}
+            new_sites.add("all")
         manager.config_manager.settings_data.browser_cookies.sites = sorted(new_sites)
         return
 

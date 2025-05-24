@@ -2,35 +2,31 @@ name: CI
 
 on:
   push:
+    paths:
+      - cyberdrop_dl/utils/apprise.py
     branches:
       - master
   pull_request:
+    paths:
+      - cyberdrop_dl/utils/apprise.py
     branches:
       - master
-      - dev
   workflow_dispatch:
 
 jobs:
-  test:
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: [3.11, 3.12, 3.13]
-      fail-fast: false
-    defaults:
-      run:
-        shell: bash
+  test_apprise:
+    env:
+      APPRISE_TEST_EMAIL_URL: ${{ secrets.APPRISE_TEST_EMAIL_URL }}
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: 3.11
 
       - name: Install Poetry
         uses: snok/install-poetry@v1
@@ -41,4 +37,4 @@ jobs:
 
       - name: Run pytest
         run: |
-          poetry run pytest -v --cov --ignore=tests/test_apprise.py
+          poetry run pytest --cov
