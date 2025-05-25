@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-import pathlib
+import asyncio
 from sqlite3 import IntegrityError, Row
 from typing import TYPE_CHECKING
 
 from cyberdrop_dl.utils.database.table_definitions import create_fixed_history, create_history
-from cyberdrop_dl.utils.utilities import log
+from cyberdrop_dl.utils.utilities import get_size_or_none, log
 
 if TYPE_CHECKING:
     import datetime
@@ -16,352 +16,305 @@ if TYPE_CHECKING:
 
     from cyberdrop_dl.crawlers import Crawler
     from cyberdrop_dl.data_structures.url_objects import MediaItem
+    from cyberdrop_dl.types import AbsoluteHttpURL
 
 
-def get_db_path(url: URL, referer: str = "") -> str:
+def get_db_path(url: URL, referer: str | AbsoluteHttpURL = "") -> str:
     """Gets the URL path to be put into the DB and checked from the DB."""
     url_path = url.path
-
-    if referer and "e-hentai" in referer:
-        url_path = url_path.split("keystamp")[0][:-1]
-
-    if referer and "mediafire" in referer:
-        url_path = url.name
+    referer = str(referer)
+    if referer:
+        if "e-hentai" in referer:
+            url_path = url_path.split("keystamp")[0][:-1]
+        elif "mediafire" in referer:
+            url_path = url.name
 
     return url_path
 
 
-class HistoryTable:
-    def __init__(self, db_conn: aiosqlite.Connection) -> None:
-        self.db_conn: aiosqlite.Connection = db_conn
-        self.ignore_history: bool = False
+_db_conn: aiosqlite.Connection
+_ignore_history: bool
 
-    async def startup(self) -> None:
-        """Startup process for the HistoryTable."""
-        await self.db_conn.execute(create_history)
-        await self.db_conn.commit()
-        await self.fix_primary_keys()
-        await self.add_columns_media()
-        await self.fix_bunkr_v4_entries()
-        await self.run_updates()
 
-    async def update_previously_unsupported(self, crawlers: dict[str, Crawler]) -> None:
-        """Update old `no_crawler` entries that are now supported."""
-        domains_to_update = [
-            (c.domain, f"http%{c.primary_base_domain.host}%") for c in crawlers.values() if c.update_unsupported
-        ]
-        if not domains_to_update:
-            return
-        referers = [(d[1],) for d in domains_to_update]
-        cursor = await self.db_conn.cursor()
-        query = "UPDATE OR IGNORE media SET domain = ? WHERE domain = 'no_crawler' AND referer LIKE ?"
-        await cursor.executemany(query, domains_to_update)
-        query = "DELETE FROM media WHERE domain = 'no_crawler' AND referer LIKE ?"
-        await cursor.executemany(query, referers)
-        await self.db_conn.commit()
+def init(db_conn: aiosqlite.Connection, ignore_history: bool = False) -> None:
+    global _db_conn, _ignore_history
+    _db_conn: aiosqlite.Connection = db_conn
+    _ignore_history: bool = ignore_history
 
-    async def run_updates(self) -> None:
-        cursor = await self.db_conn.cursor()
-        query = """UPDATE OR REPLACE media SET domain = 'jpg5.su' WHERE domain = 'sharex'"""
-        await cursor.execute(query)
-        query = """UPDATE OR REPLACE media SET domain = 'nudostar.tv' WHERE domain = 'nudostartv'"""
-        await cursor.execute(query)
-        await self.db_conn.commit()
 
-    async def delete_invalid_rows(self) -> None:
-        query = """DELETE FROM media WHERE download_filename = '' """
-        cursor = await self.db_conn.cursor()
-        await cursor.execute(query)
-        await self.db_conn.commit()
+async def startup() -> None:
+    await _db_conn.execute(create_history)
+    await _db_conn.commit()
+    await fix_primary_keys()
+    await add_columns_media()
+    await fix_bunkr_v4_entries()
+    await run_updates()
 
-    async def check_complete(self, domain: str, url: URL, referer: URL) -> bool:
-        """Checks whether an individual file has completed given its domain and url path."""
-        if self.ignore_history:
-            return False
 
-        url_path = get_db_path(url, domain)
-        cursor = await self.db_conn.cursor()
-        query = """SELECT referer, completed FROM media WHERE domain = ? and url_path = ?"""
-        result = await cursor.execute(query, (domain, url_path))
-        sql_file_check = await result.fetchone()
-        if sql_file_check and sql_file_check[1] != 0:
-            # Update the referer if it has changed so that check_complete_by_referer can work
-            if str(referer) != sql_file_check[0] and url != referer:
-                log(f"Updating referer of {url} from {sql_file_check[0]} to {referer}")
-                query = """UPDATE media SET referer = ? WHERE domain = ? and url_path = ?"""
-                await cursor.execute(query, (str(referer), domain, url_path))
-                await self.db_conn.commit()
+async def update_previously_unsupported(crawlers: dict[str, Crawler]) -> None:
+    """Update old `no_crawler` entries that are now supported."""
+    domains_to_update = [
+        (c.domain, f"http%{c.primary_base_domain.host}%") for c in crawlers.values() if c.update_unsupported
+    ]
+    if not domains_to_update:
+        return
+    referers = [(d[1],) for d in domains_to_update]
+    cursor = await _db_conn.cursor()
+    query = "UPDATE OR IGNORE media SET domain = ? WHERE domain = 'no_crawler' AND referer LIKE ?"
+    await cursor.executemany(query, domains_to_update)
+    query = "DELETE FROM media WHERE domain = 'no_crawler' AND referer LIKE ?"
+    await cursor.executemany(query, referers)
+    await _db_conn.commit()
 
-            return True
+
+async def run_updates() -> None:
+    cursor = await _db_conn.cursor()
+    query = """UPDATE OR REPLACE media SET domain = 'jpg5.su' WHERE domain = 'sharex'"""
+    await cursor.execute(query)
+    query = """UPDATE OR REPLACE media SET domain = 'nudostar.tv' WHERE domain = 'nudostartv'"""
+    await cursor.execute(query)
+    await _db_conn.commit()
+
+
+async def delete_invalid_rows() -> None:
+    query = """DELETE FROM media WHERE download_filename = '' """
+    cursor = await _db_conn.cursor()
+    await cursor.execute(query)
+    await _db_conn.commit()
+
+
+async def check_complete(domain: str, url: URL, referer: URL) -> bool:
+    """Checks whether an individual file has completed given its domain and url path."""
+    if _ignore_history:
         return False
 
-    async def check_album(self, domain: str, album_id: str) -> dict[str, int]:
-        """Checks whether an album has completed given its domain and album id."""
-        if self.ignore_history:
-            return {}
+    url_path = get_db_path(url, domain)
+    cursor = await _db_conn.cursor()
+    query = """SELECT referer, completed FROM media WHERE domain = ? and url_path = ?"""
+    result = await cursor.execute(query, (domain, url_path))
+    sql_file_check = await result.fetchone()
+    if sql_file_check and sql_file_check[1] != 0:
+        # Update the referer if it has changed so that check_complete_from_referer can work
+        if str(referer) != sql_file_check[0] and url != referer:
+            log(f"Updating referer of {url} from {sql_file_check[0]} to {referer}")
+            query = """UPDATE media SET referer = ? WHERE domain = ? and url_path = ?"""
+            await cursor.execute(query, (str(referer), domain, url_path))
+            await _db_conn.commit()
 
-        cursor = await self.db_conn.cursor()
-        result = await cursor.execute(
-            """SELECT url_path, completed FROM media WHERE domain = ? and album_id = ?""",
-            (domain, album_id),
-        )
-        result = await result.fetchall()
-        return {row[0]: row[1] for row in result}
+        return True
+    return False
 
-    async def set_album_id(self, domain: str, media_item: MediaItem) -> None:
-        """Sets an album_id in the database."""
 
-        url_path = get_db_path(media_item.url, str(media_item.referer))
-        await self.db_conn.execute(
-            """UPDATE media SET album_id = ? WHERE domain = ? and url_path = ?""",
-            (media_item.album_id, domain, url_path),
-        )
-        await self.db_conn.commit()
+async def check_album(domain: str, album_id: str) -> dict[str, int]:
+    """Checks whether an album has completed given its domain and album id."""
+    if _ignore_history:
+        return {}
 
-    async def check_complete_by_referer(self, domain: str, referer: URL) -> bool:
-        """Checks whether an individual file has completed given its domain and url path."""
-        if self.ignore_history:
-            return False
+    query = """SELECT url_path, completed FROM media WHERE domain = ? and album_id = ?"""
+    cursor = await _db_conn.cursor()
+    result = await cursor.execute(query, (domain, album_id))
+    result = await result.fetchall()
+    return {row[0]: row[1] for row in result}
 
-        cursor = await self.db_conn.cursor()
-        result = await cursor.execute(
-            """SELECT completed FROM media WHERE domain = ? and referer = ?""",
-            (domain, str(referer)),
-        )
-        sql_file_check = await result.fetchone()
-        return sql_file_check and sql_file_check[0] != 0
 
-    async def insert_incompleted(self, domain: str, media_item: MediaItem) -> None:
-        """Inserts an uncompleted file into the database."""
+async def set_album_id(domain: str, media_item: MediaItem) -> None:
+    url_path = get_db_path(media_item.url, media_item.referer)
+    query = """UPDATE media SET album_id = ? WHERE domain = ? and url_path = ?"""
+    await _db_conn.execute(query, (media_item.album_id, domain, url_path))
+    await _db_conn.commit()
 
-        url_path = get_db_path(media_item.url, str(media_item.referer))
-        download_filename = media_item.download_filename or ""
-        try:
-            await self.db_conn.execute(
-                """UPDATE media SET domain = ?, album_id = ? WHERE domain = 'no_crawler' and url_path = ? and referer = ?""",
-                (domain, media_item.album_id, url_path, str(media_item.referer)),
-            )
-        except IntegrityError:
-            await self.db_conn.execute(
-                """DELETE FROM media WHERE domain = 'no_crawler' and url_path = ?""",
-                (url_path,),
-            )
-        await self.db_conn.execute(
-            """INSERT OR IGNORE INTO media (domain, url_path, referer, album_id, download_path, download_filename, original_filename, completed, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)""",
-            (
-                domain,
-                url_path,
-                str(media_item.referer),
-                media_item.album_id,
-                str(media_item.download_folder),
-                download_filename,
-                media_item.original_filename,
-                0,
-            ),
-        )
-        if download_filename:
-            await self.db_conn.execute(
-                """UPDATE media SET download_filename = ? WHERE domain = ? and url_path = ?""",
-                (download_filename, domain, url_path),
-            )
-        await self.db_conn.commit()
 
-    async def mark_complete(self, domain: str, media_item: MediaItem) -> None:
-        """Mark a download as completed in the database."""
+async def check_complete_by_referer(domain: str, referer: URL) -> bool:
+    """Checks whether an individual file has completed given its domain and url path."""
+    if _ignore_history:
+        return False
 
-        url_path = get_db_path(media_item.url, str(media_item.referer))
-        await self.db_conn.execute(
-            """UPDATE media SET completed = 1, completed_at = CURRENT_TIMESTAMP WHERE domain = ? and url_path = ?""",
-            (domain, url_path),
-        )
-        await self.db_conn.commit()
+    query = """SELECT completed FROM media WHERE domain = ? and referer = ?"""
+    cursor = await _db_conn.cursor()
+    result = await cursor.execute(query, (domain, str(referer)))
+    sql_file_check = await result.fetchone()
+    return bool(sql_file_check and sql_file_check[0] != 0)
 
-    async def add_filesize(self, domain: str, media_item: MediaItem) -> None:
-        """Add the file size to the db."""
 
-        url_path = get_db_path(media_item.url, str(media_item.referer))
-        file_size = pathlib.Path(media_item.complete_file).stat().st_size
-        await self.db_conn.execute(
-            """UPDATE media SET file_size=? WHERE domain = ? and url_path = ?""",
-            (file_size, domain, url_path),
-        )
-        await self.db_conn.commit()
+async def insert_incompleted(domain: str, media_item: MediaItem) -> None:
+    url_path = get_db_path(media_item.url, media_item.referer)
+    download_filename = media_item.download_filename or ""
+    query = """UPDATE media SET domain = ?, album_id = ? WHERE domain = 'no_crawler' and url_path = ? and referer = ?"""
+    try:
+        await _db_conn.execute(query, (domain, media_item.album_id, url_path, str(media_item.referer)))
+    except IntegrityError:
+        query = """DELETE FROM media WHERE domain = 'no_crawler' and url_path = ?"""
+        await _db_conn.execute(query, (url_path,))
 
-    async def add_duration(self, domain: str, media_item: MediaItem) -> None:
-        """Add the file size to the db."""
+    query = """INSERT OR IGNORE INTO media (referer, download_path, original_filename, domain, url_path, album_id,
+    download_filename,  completed, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)"""
 
-        url_path = get_db_path(media_item.url, str(media_item.referer))
-        duration = media_item.duration
-        await self.db_conn.execute(
-            """UPDATE media SET duration=? WHERE domain = ? and url_path = ?""",
-            (duration, domain, url_path),
-        )
-        await self.db_conn.commit()
+    item_values = map(str, (media_item.referer, media_item.download_folder, media_item.original_filename))
+    insert_values = (*item_values, domain, url_path, media_item.album_id, download_filename, 0)
+    query = """UPDATE media SET download_filename = ? WHERE domain = ? and url_path = ?"""
+    await _db_conn.execute(query, insert_values)
+    if download_filename:
+        await _db_conn.execute(query, (download_filename, domain, url_path))
+    await _db_conn.commit()
 
-    async def get_duration(self, domain: str, media_item: MediaItem) -> float:
-        """Returns the duration from the database."""
-        if media_item.is_segment:
-            return
-        url_path = get_db_path(media_item.url, str(media_item.referer))
-        cursor = await self.db_conn.cursor()
-        result = await cursor.execute(
-            """SELECT duration FROM media WHERE domain = ? and url_path = ?""",
-            (domain, url_path),
-        )
-        sql_duration = await result.fetchone()
-        return sql_duration[0] if sql_duration else None
 
-    async def add_download_filename(self, domain: str, media_item: MediaItem) -> None:
-        """Add the download_filename to the db."""
-        url_path = get_db_path(media_item.url, str(media_item.referer))
-        query = """UPDATE media SET download_filename=? WHERE domain = ? and url_path = ? and download_filename = '' """
-        await self.db_conn.execute(query, (media_item.download_filename, domain, url_path))
-        await self.db_conn.commit()
+async def mark_complete(domain: str, media_item: MediaItem) -> None:
+    url_path = get_db_path(media_item.url, media_item.referer)
+    query = ("""UPDATE media SET completed = 1, completed_at = CURRENT_TIMESTAMP WHERE domain = ? and url_path = ?""",)
+    await _db_conn.execute(query, (domain, url_path))
+    await _db_conn.commit()
 
-    async def check_filename_exists(self, filename: str) -> bool:
-        """Checks whether a downloaded filename exists in the database."""
-        cursor = await self.db_conn.cursor()
-        result = await cursor.execute("""SELECT EXISTS(SELECT 1 FROM media WHERE download_filename = ?)""", (filename,))
-        sql_file_check = await result.fetchone()
-        return sql_file_check == 1
 
-    async def get_downloaded_filename(self, domain: str, media_item: MediaItem) -> str:
-        """Returns the downloaded filename from the database."""
+async def add_filesize(domain: str, media_item: MediaItem) -> None:
+    url_path = get_db_path(media_item.url, media_item.referer)
+    file_size = await asyncio.to_thread(get_size_or_none, media_item.complete_file)
+    query = """UPDATE media SET file_size=? WHERE domain = ? and url_path = ?"""
+    await _db_conn.execute(query, (file_size, domain, url_path))
+    await _db_conn.commit()
 
-        url_path = get_db_path(media_item.url, str(media_item.referer))
-        cursor = await self.db_conn.cursor()
-        result = await cursor.execute(
-            """SELECT download_filename FROM media WHERE domain = ? and url_path = ?""",
-            (domain, url_path),
-        )
-        sql_file_check = await result.fetchone()
-        return sql_file_check[0] if sql_file_check else None
 
-    async def get_failed_items(self) -> Iterable[Row]:
-        """Returns a list of failed items."""
-        cursor = await self.db_conn.cursor()
-        result = await cursor.execute(
-            """SELECT referer, download_path,completed_at,created_at FROM media WHERE completed = 0""",
-        )
-        return await result.fetchall()
+async def add_duration(domain: str, media_item: MediaItem) -> None:
+    url_path = get_db_path(media_item.url, media_item.referer)
+    duration = media_item.duration
+    query = """UPDATE media SET duration=? WHERE domain = ? and url_path = ?"""
+    await _db_conn.execute(query, (duration, domain, url_path))
+    await _db_conn.commit()
 
-    async def get_all_items(self, after: datetime.date, before: datetime.date) -> Iterable[Row]:
-        """Returns a list of all items."""
-        cursor = await self.db_conn.cursor()
-        result = await cursor.execute(
-            """
-        SELECT referer, download_path,completed_at,created_at
-        FROM media
-        WHERE COALESCE(completed_at, '1970-01-01') BETWEEN ? AND ?
-        ORDER BY completed_at DESC;""",
-            (after.strftime("%Y-%m-%d"), before.strftime("%Y-%m-%d")),
-        )
-        return await result.fetchall()
 
-    async def get_unique_download_paths(self) -> Iterable[Row]:
-        """Returns a list of unique download paths."""
-        cursor = await self.db_conn.cursor()
-        result = await cursor.execute("""SELECT DISTINCT download_path FROM media""")
-        return await result.fetchall()
+async def get_duration(domain: str, media_item: MediaItem) -> float | None:
+    if media_item.is_segment:
+        return
+    url_path = get_db_path(media_item.url, media_item.referer)
+    query = """SELECT duration FROM media WHERE domain = ? and url_path = ?"""
+    cursor = await _db_conn.cursor()
+    result = await cursor.execute(query, (domain, url_path))
+    sql_duration = await result.fetchone()
+    return sql_duration[0] if sql_duration else None
 
-    async def get_all_bunkr_failed(self) -> list:
-        hash_list = await self.get_all_bunkr_failed_via_hash()
-        size_list = await self.get_all_bunkr_failed_via_size()
-        return hash_list + size_list
 
-    async def get_all_bunkr_failed_via_size(self) -> list:
-        try:
-            """Returns a list of all items"""
-            cursor = await self.db_conn.cursor()
-            result = await cursor.execute("""
-            SELECT referer,download_path,completed_at,created_at
-            from media
-            where file_size=322509
-    ;
-            """)
+async def add_download_filename(domain: str, media_item: MediaItem) -> None:
+    url_path = get_db_path(media_item.url, media_item.referer)
+    query = """UPDATE media SET download_filename=? WHERE domain = ? and url_path = ? and download_filename = '' """
+    await _db_conn.execute(query, (media_item.download_filename, domain, url_path))
+    await _db_conn.commit()
+
+
+async def check_filename_exists(filename: str) -> bool:
+    cursor = await _db_conn.cursor()
+    query = """SELECT EXISTS(SELECT 1 FROM media WHERE download_filename = ?)"""
+    result = await cursor.execute(query, (filename,))
+    sql_file_check = await result.fetchone()
+    return sql_file_check == 1
+
+
+async def get_downloaded_filename(domain: str, media_item: MediaItem) -> str | None:
+    url_path = get_db_path(media_item.url, media_item.referer)
+    cursor = await _db_conn.cursor()
+    query = """SELECT download_filename FROM media WHERE domain = ? and url_path = ?"""
+    result = await cursor.execute(query, (domain, url_path))
+    sql_file_check = await result.fetchone()
+    return sql_file_check[0] if sql_file_check else None
+
+
+async def get_failed_items() -> Iterable[Row]:
+    cursor = await _db_conn.cursor()
+    query = """SELECT referer, download_path,completed_at,created_at FROM media WHERE completed = 0"""
+    result = await cursor.execute(query)
+    return await result.fetchall()
+
+
+async def get_all_items(after: datetime.date, before: datetime.date) -> Iterable[Row]:
+    """Returns a list of all items."""
+    cursor = await _db_conn.cursor()
+    date_format = "%Y-%m-%d"
+    query = """
+    SELECT referer, download_path,completed_at,created_at
+    FROM media
+    WHERE COALESCE(completed_at, '1970-01-01') BETWEEN ? AND ?
+    ORDER BY completed_at DESC;"""
+    result = await cursor.execute(query, (after.strftime(date_format), before.strftime(date_format)))
+    return await result.fetchall()
+
+
+async def get_unique_download_paths() -> Iterable[Row]:
+    cursor = await _db_conn.cursor()
+    query = """SELECT DISTINCT download_path FROM media"""
+    result = await cursor.execute(query)
+    return await result.fetchall()
+
+
+async def get_all_bunkr_failed() -> list[tuple[str, str, str, str]]:
+    query_size = """SELECT referer, download_path, completed_at, created_at from media where file_size=322509;"""
+    query_hash = """SELECT m.referer, download_path,c ompleted_at, created_at FROM hash h
+    INNER JOIN media m ON h.download_filename= m.download_filename WHERE h.hash = 'eb669b6362e031fa2b0f1215480c4e30';"""
+    cursor = await _db_conn.cursor()
+    all_results = []
+    try:
+        for query in (query_size, query_hash):
+            result = await cursor.execute(query)
             all_files = await result.fetchall()
-            return list(all_files)
-        except Exception as e:
-            log(f"Error getting bunkr failed via size: {e}", 40, exc_info=e)
-            return []
+            all_results.append(list(all_files))
+    except Exception as e:
+        log(f"Error getting bunkr failed files: {e}", 40, exc_info=e)
+        return []
+    else:
+        return all_results
 
-    async def get_all_bunkr_failed_via_hash(self) -> list:
-        try:
-            """Returns a list of all items"""
-            cursor = await self.db_conn.cursor()
-            result = await cursor.execute("""
-    SELECT m.referer,download_path,completed_at,created_at
-    FROM hash h
-    INNER JOIN media m ON h.download_filename= m.download_filename
-    WHERE h.hash = 'eb669b6362e031fa2b0f1215480c4e30';
-            """)
-            all_files = await result.fetchall()
-            return list(all_files)
-        except Exception as e:
-            log(f"Error getting bunkr failed via hash: {e}", 40, exc_info=e)
-            return []
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+async def fix_bunkr_v4_entries() -> None:
+    cursor = await _db_conn.cursor()
+    query = """SELECT * from media WHERE domain = 'bunkr' and completed = 1"""
+    result = await cursor.execute(query)
+    bunkr_entries = await result.fetchall()
+    query = """INSERT or REPLACE INTO media VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)"""
+    for entry in bunkr_entries:
+        entry_list = list(entry)
+        entry_list[0] = "bunkrr"
+        await _db_conn.execute(query, entry_list)
 
-    async def fix_bunkr_v4_entries(self) -> None:
-        """Fixes bunkr v4 entries in the database."""
-        cursor = await self.db_conn.cursor()
-        result = await cursor.execute("""SELECT * from media WHERE domain = 'bunkr' and completed = 1""")
-        bunkr_entries = await result.fetchall()
+    query = """DELETE FROM media WHERE domain = 'bunkr'"""
+    await _db_conn.commit()
+    await _db_conn.execute(query)
+    await _db_conn.commit()
 
-        for entry in bunkr_entries:
-            entry_list = list(entry)
-            entry_list[0] = "bunkrr"
-            await self.db_conn.execute(
-                """INSERT or REPLACE INTO media VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)""",
-                entry_list,
-            )
-        await self.db_conn.commit()
 
-        await self.db_conn.execute("""DELETE FROM media WHERE domain = 'bunkr'""")
-        await self.db_conn.commit()
+async def fix_primary_keys() -> None:
+    cursor = await _db_conn.cursor()
+    result = await cursor.execute("""pragma table_info(media)""")
+    result = await result.fetchall()
+    query = """INSERT INTO media_copy (domain, url_path, referer, download_path, download_filename, original_filename, completed)
+    SELECT * FROM media GROUP BY domain, url_path, original_filename;"""
+    if result[0][5] == 0:  # type: ignore
+        await _db_conn.execute(create_fixed_history)
+        await _db_conn.commit()
+        await _db_conn.execute(query)
+        await _db_conn.commit()
+        query = """DROP TABLE media"""
+        await _db_conn.execute(query)
+        await _db_conn.commit()
+        query = """ALTER TABLE media_copy RENAME TO media"""
+        await _db_conn.execute(query)
+        await _db_conn.commit()
 
-    async def fix_primary_keys(self) -> None:
-        cursor = await self.db_conn.cursor()
-        result = await cursor.execute("""pragma table_info(media)""")
-        result = await result.fetchall()
-        if result[0][5] == 0:  # type: ignore
-            await self.db_conn.execute(create_fixed_history)
-            await self.db_conn.commit()
 
-            await self.db_conn.execute(
-                """INSERT INTO media_copy (domain, url_path, referer, download_path, download_filename, original_filename, completed) SELECT * FROM media GROUP BY domain, url_path, original_filename;""",
-            )
-            await self.db_conn.commit()
+async def add_columns_media() -> None:
+    cursor = await _db_conn.cursor()
+    query = """pragma table_info(media)"""
+    result = await cursor.execute(query)
+    result = await result.fetchall()
+    current_cols: list[str] = [col[1] for col in result]
 
-            await self.db_conn.execute("""DROP TABLE media""")
-            await self.db_conn.commit()
+    check_columns = [
+        ("album_id", "TEXT"),
+        ("created_at", "TIMESTAMP"),
+        ("completed_at", "TIMESTAMP"),
+        ("file_size", "INT"),
+        ("duration", "FLOAT"),
+    ]
 
-            await self.db_conn.execute("""ALTER TABLE media_copy RENAME TO media""")
-            await self.db_conn.commit()
-
-    async def add_columns_media(self) -> None:
-        cursor = await self.db_conn.cursor()
-        result = await cursor.execute("""pragma table_info(media)""")
-        result = await result.fetchall()
-        current_cols = [col[1] for col in result]
-
-        if "album_id" not in current_cols:
-            await self.db_conn.execute("""ALTER TABLE media ADD COLUMN album_id TEXT""")
-            await self.db_conn.commit()
-
-        if "created_at" not in current_cols:
-            await self.db_conn.execute("""ALTER TABLE media ADD COLUMN created_at TIMESTAMP""")
-            await self.db_conn.commit()
-
-        if "completed_at" not in current_cols:
-            await self.db_conn.execute("""ALTER TABLE media ADD COLUMN completed_at TIMESTAMP""")
-            await self.db_conn.commit()
-
-        if "file_size" not in current_cols:
-            await self.db_conn.execute("""ALTER TABLE media ADD COLUMN file_size INT""")
-            await self.db_conn.commit()
-
-        if "duration" not in current_cols:
-            await self.db_conn.execute("""ALTER TABLE media ADD COLUMN duration FLOAT""")
-            await self.db_conn.commit()
+    for col in check_columns:
+        if col[0] not in current_cols:
+            query = f"ALTER TABLE media ADD COLUMN {col[0]} {col[1]}"
+            await _db_conn.execute(query)
+            await _db_conn.commit()

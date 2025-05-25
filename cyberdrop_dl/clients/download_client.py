@@ -18,6 +18,7 @@ from yarl import URL
 
 from cyberdrop_dl.constants import FILE_FORMATS
 from cyberdrop_dl.exceptions import DDOSGuardError, DownloadError, InvalidContentTypeError, SlowDownloadError
+from cyberdrop_dl.utils.database.tables import history_table
 from cyberdrop_dl.utils.logger import log, log_debug
 
 if TYPE_CHECKING:
@@ -172,7 +173,8 @@ class DownloadClient:
         """Downloads a file."""
         download_headers = self.add_api_key_headers(domain, media_item.referer)
 
-        downloaded_filename = await self.manager.db_manager.history_table.get_downloaded_filename(domain, media_item)
+        downloaded_filename = await history_table.get_downloaded_filename(domain, media_item)
+        assert downloaded_filename
         download_dir = self.get_download_dir(media_item)
         media_item.partial_file = download_dir / f"{downloaded_filename}.part"
 
@@ -354,7 +356,7 @@ class DownloadClient:
         if downloaded:
             media_item.partial_file.rename(media_item.complete_file)
             proceed = check_file_duration(media_item, self.manager)
-            await self.manager.db_manager.history_table.add_duration(domain, media_item)
+            await history_table.add_duration(domain, media_item)
             if not proceed:
                 log(f"Download Skip {media_item.url} due to runtime restrictions", 10)
                 media_item.complete_file.unlink()
@@ -371,7 +373,7 @@ class DownloadClient:
         """Marks the media item as incomplete in the database."""
         if media_item.is_segment:
             return
-        await self.manager.db_manager.history_table.insert_incompleted(domain, media_item)
+        await history_table.insert_incompleted(domain, media_item)
 
     async def process_completed(self, media_item: MediaItem, domain: str) -> None:
         """Marks the media item as completed in the database and adds to the completed list."""
@@ -379,13 +381,13 @@ class DownloadClient:
         await self.add_file_size(domain, media_item)
 
     async def mark_completed(self, domain: str, media_item: MediaItem) -> None:
-        await self.manager.db_manager.history_table.mark_complete(domain, media_item)
+        await history_table.mark_complete(domain, media_item)
 
     async def add_file_size(self, domain: str, media_item: MediaItem) -> None:
         if not media_item.complete_file:
             media_item.complete_file = self.get_file_location(media_item)
         if await asyncio.to_thread(media_item.complete_file.is_file):
-            await self.manager.db_manager.history_table.add_filesize(domain, media_item)
+            await history_table.add_filesize(domain, media_item)
 
     async def handle_media_item_completion(self, media_item: MediaItem, downloaded: bool = False) -> None:
         """Sends to hash client to handle hashing and marks as completed/current download."""
@@ -440,7 +442,7 @@ class DownloadClient:
                 proceed = False
                 break
 
-            downloaded_filename = await self.manager.db_manager.history_table.get_downloaded_filename(
+            downloaded_filename = await history_table.get_downloaded_filename(
                 domain,
                 media_item,
             )
@@ -495,7 +497,7 @@ class DownloadClient:
 
             media_item.filename = downloaded_filename
         media_item.download_filename = media_item.complete_file.name
-        await self.manager.db_manager.history_table.add_download_filename(domain, media_item)
+        await history_table.add_download_filename(domain, media_item)
         return proceed, skip
 
     async def iterate_filename(self, complete_file: Path, media_item: MediaItem) -> tuple[Path, Path | None]:
@@ -504,10 +506,7 @@ class DownloadClient:
         for iteration in itertools.count(1):
             filename = f"{complete_file.stem} ({iteration}){complete_file.suffix}"
             temp_complete_file = media_item.download_folder / filename
-            if (
-                not temp_complete_file.exists()
-                and not await self.manager.db_manager.history_table.check_filename_exists(filename)
-            ):
+            if not temp_complete_file.exists() and not await history_table.check_filename_exists(filename):
                 media_item.filename = filename
                 complete_file = media_item.download_folder / media_item.filename
                 partial_file = complete_file.with_suffix(complete_file.suffix + ".part")
