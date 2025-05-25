@@ -10,10 +10,10 @@ from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Protocol, TypeVar
 
 from cyberdrop_dl import __version__, constants
 from cyberdrop_dl.config_definitions import ConfigSettings, GlobalSettings
+from cyberdrop_dl.managers import db_manager
 from cyberdrop_dl.managers.cache_manager import CacheManager
 from cyberdrop_dl.managers.client_manager import ClientManager
 from cyberdrop_dl.managers.config_manager import ConfigManager
-from cyberdrop_dl.managers.db_manager import DBManager
 from cyberdrop_dl.managers.download_manager import DownloadManager
 from cyberdrop_dl.managers.hash_manager import HashManager
 from cyberdrop_dl.managers.live_manager import LiveManager
@@ -72,7 +72,7 @@ class Manager:
         self.real_debrid_manager: RealDebridManager = field(init=False)
 
         self.log_manager: LogManager = field(init=False)
-        self.db_manager: DBManager = field(init=False)
+        self.db_manager = db_manager
         self.client_manager: ClientManager = field(init=False)
         self.storage_manager: StorageManager = field(init=False)
 
@@ -203,9 +203,7 @@ class Manager:
         constants.MAX_FOLDER_LENGTH = self.config_manager.global_settings_data.general.max_folder_name_length
 
     async def async_db_hash_startup(self) -> None:
-        if not isinstance(self.db_manager, DBManager):
-            self.db_manager = DBManager(self, self.path_manager.history_db)
-            await self.db_manager.startup()
+        await self.db_manager.startup(self.path_manager.history_db, self.config.runtime_options.ignore_history)
         transfer_v5_db_to_v6(self.path_manager.history_db)
         self.hash_manager = HashManager(self)
         if not isinstance(self.live_manager, LiveManager):

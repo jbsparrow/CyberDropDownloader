@@ -28,12 +28,9 @@ def log_if_error(message: str):
 _db_conn: aiosqlite.Connection
 
 
-def init(db_conn: aiosqlite.Connection) -> None:
+async def startup(db_conn: aiosqlite.Connection) -> None:
     global _db_conn
     _db_conn: aiosqlite.Connection = db_conn
-
-
-async def startup() -> None:
     await _create_hash_and_files_tables()
 
 

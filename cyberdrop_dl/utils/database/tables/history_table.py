@@ -36,13 +36,10 @@ _db_conn: aiosqlite.Connection
 _ignore_history: bool
 
 
-def init(db_conn: aiosqlite.Connection, ignore_history: bool = False) -> None:
+async def startup(db_conn: aiosqlite.Connection, ignore_history: bool = False) -> None:
     global _db_conn, _ignore_history
     _db_conn: aiosqlite.Connection = db_conn
     _ignore_history: bool = ignore_history
-
-
-async def startup() -> None:
     await _db_conn.execute(create_history)
     await _db_conn.commit()
     await fix_primary_keys()
