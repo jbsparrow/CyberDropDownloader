@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import aiosqlite
 
-from cyberdrop_dl.utils.database.tables.hash_table import HashTable
+from cyberdrop_dl.utils.database.tables import hash_table
 from cyberdrop_dl.utils.database.tables.history_table import HistoryTable
 from cyberdrop_dl.utils.database.tables.temp_referer_table import TempRefererTable
 
@@ -24,26 +24,20 @@ class DBManager:
         self.ignore_history: bool = False
 
         self.history_table: HistoryTable = field(init=False)
-        self.hash_table: HashTable = field(init=False)
         self.temp_referer_table: TempRefererTable = field(init=False)
 
     async def startup(self) -> None:
         """Startup process for the DBManager."""
         self._db_conn = await aiosqlite.connect(self._db_path)
-
         self.ignore_history = self.manager.config_manager.settings_data.runtime_options.ignore_history
-
         self.history_table = HistoryTable(self._db_conn)
-        self.hash_table = HashTable(self._db_conn)
+        hash_table.init(self._db_conn)
         self.temp_referer_table = TempRefererTable(self._db_conn)
-
         self.history_table.ignore_history = self.ignore_history
         self.temp_referer_table.ignore_history = self.ignore_history
-
         await self._pre_allocate()
-
         await self.history_table.startup()
-        await self.hash_table.startup()
+        await hash_table.startup()
         await self.temp_referer_table.startup()
         await self.run_fixes()
 

@@ -16,6 +16,7 @@ from xxhash import xxh128 as xxh128_hasher
 from cyberdrop_dl.constants import Hashing
 from cyberdrop_dl.types import AbsoluteHttpURL, Hash, HashAlgorithm
 from cyberdrop_dl.ui.prompts.basic_prompts import enter_to_continue
+from cyberdrop_dl.utils.database.tables import hash_table
 from cyberdrop_dl.utils.logger import log
 from cyberdrop_dl.utils.utilities import get_size_or_none
 
@@ -110,15 +111,16 @@ class HashManager:
 
     async def _get_hash(self, source: _Hashable, hash_type: HashAlgorithm) -> Hash:
         self.progress.update_currently_hashing(source.file)
-        hash_value = await self.manager.db_manager.hash_table.get_file_hash_if_exists(source.file, hash_type)
+        hash_value = await hash_table.get_file_hash_if_exists(source.file, hash_type)
         if hash_value:
             self.progress.add_prev_hash()
         else:
             hash_value = await compute_file_hash(source.file, hash_type)
             self.progress.add_new_completed_hash()
 
-        await self.manager.db_manager.hash_table.insert_or_update_hash_db(*source, hash_type, hash_value)
-        return Hash(hash_type, hash_value)
+        hash = Hash(hash_type, hash_value)
+        await hash_table.insert_or_update_hash_db(*source, hash)
+        return hash
 
     async def cleanup_dupes_after_download(self) -> None:
         if self.dupe_cleanup_options.hashing == Hashing.OFF:
@@ -138,20 +140,20 @@ class HashManager:
         tasks = []
         for hash, size_dict in final_dict.items():
             for size in size_dict:
-                params = hash, HashAlgorithm.xxh128, size
-                db_matches = await self.manager.db_manager.hash_table.get_files_with_hash_matches(*params)
-                if not db_matches or len(db_matches) < 2:
-                    continue
-                og_file = Path(*db_matches[0][:2])
-                for match in db_matches[1:]:
-                    file = Path(*match[:2])
-                    tasks.append(self.delete_and_log(file, hash, og_file))
+                original_file: Path | None = None
+                async for db_match in hash_table.get_files_with_hash_matches(hash, size):
+                    if not original_file:
+                        original_file = db_match
+                        continue
 
-        await asyncio.gather(*tasks)
+                    tasks.append(self.delete_and_log(db_match, hash, original_file))
+
+        if tasks:
+            await asyncio.gather(*tasks)
         log("Finished autodedupe")
 
-    async def delete_and_log(self, file: Path, hash_value: str, og_file: Path) -> None:
-        to_trash = self.manager.config_manager.settings_data.dupe_cleanup_options.send_deleted_to_trash
+    async def delete_and_log(self, file: Path, hash: Hash, original_file: Path) -> None:
+        to_trash = self.dupe_cleanup_options.send_deleted_to_trash
         suffix = "Sent to trash " if to_trash else "Permanently deleted"
         reason = "duplicate of file downloaded before"
         try:
@@ -160,17 +162,17 @@ class HashManager:
                 msg = (
                     f"Removed [{suffix}]: '{file}'"
                     f" -> Reason: {reason}\n"
-                    f" -> Original file: '{og_file}'\n"
-                    f" -> xxh128 hash: {hash_value} "
+                    f" -> Original file: '{original_file}'\n"
+                    f" -> Hash: {hash.hash_string} "
                     ""
                 )
 
                 log(msg, 10)
                 self.progress.add_removed_file()
-                await self.manager.log_manager.write_dedupe_log(og_file, hash_value, file)
+                await self.manager.log_manager.write_dedupe_log(original_file, hash.value, file)
 
         except OSError as e:
-            log(f"Unable to remove '{file}' with hash {hash_value}: {e}", 40)
+            log(f"Unable to remove '{file}' with hash {hash.hash_string}: {e}", 40)
 
     async def get_file_hashes_dict(self) -> _DedupeMapping:
         """Get a dictionary of files based on matching file hashes and file size."""
