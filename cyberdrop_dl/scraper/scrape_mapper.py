@@ -8,7 +8,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, NamedTuple
 
 import aiofiles
-import arrow
 from yarl import URL
 
 from cyberdrop_dl.constants import BLOCKED_DOMAINS, REGEX_LINKS
@@ -28,6 +27,8 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 existing_crawlers: dict[str, Crawler] = {}
+
+SQLITE_DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
 
 class ScrapeMapper:
@@ -176,7 +177,8 @@ class ScrapeMapper:
     async def load_all_bunkr_failed_links_via_hash(self) -> AsyncGenerator[ScrapeItem]:
         """Loads all bunkr links with maintenance hash."""
         entries = await self.manager.db_manager.history_table.get_all_bunkr_failed()
-        entries = sorted(set(entries), reverse=True, key=lambda x: arrow.get(x[-1]))
+
+        entries = sorted(set(entries), reverse=True, key=lambda x: datetime.strptime(x[-1], SQLITE_DATE_FORMAT))
         for entry in entries:
             yield create_item_from_entry(entry)
 

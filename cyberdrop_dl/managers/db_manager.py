@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from shutil import copy2
 from typing import TYPE_CHECKING, Any
 
 import aiosqlite
-import arrow
 from rich import print as rprint
 
 from cyberdrop_dl.types import HashAlgorithm
@@ -16,24 +14,32 @@ from cyberdrop_dl.utils.database.table_definitions import create_files, create_t
 from cyberdrop_dl.utils.database.tables import hash_table, history_table, temp_referer_table
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator, Iterable
+    from collections.abc import Iterable
 
-
-_db_conn: aiosqlite.Connection
-_ignore_history: bool
-_db_path: Path
+    _db_conn: aiosqlite.Connection
+    _ignore_history: bool
+    _db_path: Path
+else:
+    _db_conn = None
 
 
 async def startup(db_path: Path, ignore_history: bool = False) -> None:
     """Startup process for the DBManager."""
     global _db_conn, _ignore_history, _db_path
     db_file_exists = db_path.is_file()
+    if _db_conn is not None:
+        await _db_conn.close()
+
     _db_conn = await aiosqlite.connect(db_path)
     _db_path = db_path
-    _ignore_history: bool = ignore_history
+    _ignore_history = ignore_history
     if db_file_exists:
         await try_transfer_v5_db_to_v6()
 
+    await _init()
+
+
+async def _init() -> None:
     await _pre_allocate_100mb()
     await hash_table.startup(_db_conn)
     await history_table.startup(_db_conn, _ignore_history)
@@ -48,25 +54,26 @@ async def close() -> None:
 
 async def _pre_allocate_100mb() -> None:
     """We pre-allocate 100MB of space to the SQL file just in case the user runs out of disk space."""
-    create_pre_allocation_table = "CREATE TABLE IF NOT EXISTS t(x);"
-    drop_pre_allocation_table = "DROP TABLE t;"
-    fill_pre_allocation = "INSERT INTO t VALUES(zeroblob(100*1024*1024));"  # 100 mb
-    check_pre_allocation = "PRAGMA freelist_count;"
+    create_fill_and_drop_table = (
+        "CREATE TABLE IF NOT EXISTS t(x);",
+        "INSERT INTO t VALUES(zeroblob(100*1024*1024));",
+        "DROP TABLE t;",
+    )
 
-    result = await _db_conn.execute(check_pre_allocation)
+    result = await _db_conn.execute("PRAGMA freelist_count;")
     free_space = await result.fetchone()
     assert free_space
 
-    if free_space[0] <= 1024:
-        for query in (create_pre_allocation_table, fill_pre_allocation, drop_pre_allocation_table):
+    if free_space[0] > 1024:
+        for query in create_fill_and_drop_table:
             await _db_conn.execute(query)
             await _db_conn.commit()
 
 
 async def try_transfer_v5_db_to_v6() -> None:
-    """Transfers data from the old 'hash' table to new 'files' and 'temp_hash' tables, handling potential schema differences and errors."""
-
-    async with _db_transfer_context() as cursor:
+    """Transfers data from the old 'hash' table to new 'files' and 'temp_hash' tables"""
+    cursor = await _db_conn.cursor()
+    try:
         # Check if the 'hash' table exists
         if not _needs_transfer(cursor):
             return
@@ -74,6 +81,10 @@ async def try_transfer_v5_db_to_v6() -> None:
         old_hash_data = await _get_old_v5_hash_data(cursor)
         await _create_new_v6_tables(cursor)
         await _copy_v5_data_to_v6_tables(cursor, old_hash_data)
+        await _db_conn.commit()
+    except Exception:
+        await _db_conn.rollback()
+        raise
 
 
 async def _needs_transfer(cursor: aiosqlite.Cursor) -> bool:
@@ -90,7 +101,6 @@ async def _needs_transfer(cursor: aiosqlite.Cursor) -> bool:
     has_hash_type_column = result and result[0] > 0
     if has_hash_type_column:
         return False
-
     return True
 
 
@@ -105,7 +115,6 @@ async def _create_new_v6_tables(cursor: aiosqlite.Cursor) -> None:
     # Drop existing 'files' and 'temp_hash' tables if they exist
     await cursor.execute("DROP TABLE IF EXISTS files")
     await cursor.execute("DROP TABLE IF EXISTS temp_hash")
-
     # Create the 'temp_hash' table with the required schema
     await cursor.execute(create_temp_hash)
     await cursor.execute(create_files)
@@ -126,7 +135,7 @@ async def _copy_v5_data_to_v6_tables(cursor: aiosqlite.Cursor, old_hash_data: It
 
 
 async def _generate_hash_and_files_tables_data(old_hash_data: Iterable[aiosqlite.Row]) -> tuple[list[Any], list[Any]]:
-    now = int(arrow.now().float_timestamp)
+    now = int(datetime.now(UTC).timestamp())
     tasks = [_get_file_info(row, now) for row in old_hash_data]
     results = await asyncio.gather(*tasks)
     data_to_insert_files = [pair[0] for pair in results]
@@ -151,14 +160,3 @@ async def _get_file_info(row: aiosqlite.Row, now: int) -> tuple[tuple, tuple]:
 def _make_db_file_backup() -> None:
     new_file = Path(_db_path.parent, f"cyberdrop_v5_{datetime.now().strftime('%Y%m%d_%H%M%S')}.bak.db")
     copy2(_db_path, new_file)
-
-
-@contextlib.asynccontextmanager
-async def _db_transfer_context() -> AsyncGenerator[aiosqlite.Cursor]:
-    cursor = await _db_conn.cursor()
-    try:
-        yield cursor
-        await _db_conn.commit()  # commit changes if no exception occurs
-    except Exception:
-        await _db_conn.rollback()
-        raise
