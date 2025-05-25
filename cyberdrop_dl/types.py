@@ -12,19 +12,7 @@ import sys
 from collections.abc import Generator, Mapping, Sequence
 from functools import partial
 from pathlib import Path
-from typing import (
-    TYPE_CHECKING,
-    Annotated,
-    Any,
-    Generic,
-    Literal,
-    NewType,
-    Self,
-    TypeAlias,
-    TypeGuard,
-    TypeVar,
-    overload,
-)
+from typing import TYPE_CHECKING, Annotated, Any, Generic, Literal, NewType, Self, TypeAlias, TypeGuard, TypeVar
 
 import yarl
 from pydantic import (
@@ -190,27 +178,21 @@ class HashAlgorithm(StrEnum):
 
 class Hash(str):
     _valid_algorithms = HashAlgorithm.values()
-    algorithm = HashAlgorithm
-    value = str
+    algorithm: HashAlgorithm
+    value: str
     hash_string: str
 
-    @overload
-    def __new__(cls, algorithm: HashAlgorithm, hash_value: str, /) -> Self: ...
-
-    @overload
-    def __new__(cls, hash_string: str, /) -> Self: ...
-
-    def __new__(cls, arg1: HashAlgorithm | str, arg2: str | None = None, /) -> Self:
-        if not arg2:
-            assert ":" in arg1, "input should be in the format 'algorithm:hash_value'"
-            algo, _, value = arg1.partition(":")
-        else:
-            algo, value = arg1, arg2
-        assert algo in cls._valid_algorithms, f"Invalid algorithm. Valid algorithms: {cls._valid_algorithms}"
-        assert value
-
-        self = super().__new__(cls, value)
-        self.algorithm = HashAlgorithm(algo)
-        self.value = value
+    def __new__(cls, algorithm: HashAlgorithm, hash_value: str, /) -> Self:
+        assert algorithm in cls._valid_algorithms, f"Invalid algorithm. Valid algorithms: {cls._valid_algorithms}"
+        assert hash_value
+        self = super().__new__(cls, hash_value)
+        self.algorithm = algorithm
+        self.value = hash_value
         self.hash_string = f"{self.algorithm}:{self.value}"
         return self
+
+    @staticmethod
+    def from_hash_string(hash_string: str, /) -> Hash:
+        assert ":" in hash_string, "input should be in the format 'algorithm:hash_value'"
+        algo, _, hash_value = hash_string.partition(":")
+        return Hash(HashAlgorithm(algo), hash_value)

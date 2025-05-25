@@ -1,4 +1,5 @@
 import re
+from collections.abc import Generator
 from datetime import timedelta
 from logging import DEBUG
 from pathlib import Path
@@ -13,6 +14,7 @@ from cyberdrop_dl.data_structures.supported_domains import SUPPORTED_SITES_DOMAI
 from cyberdrop_dl.types import (
     AliasModel,
     ByteSizeSerilized,
+    HashAlgorithm,
     HttpAppriseURL,
     ListNonEmptyStr,
     ListNonNegativeInt,
@@ -193,6 +195,14 @@ class DupeCleanup(BaseModel):
     auto_dedupe: bool = True
     hashing: Hashing = Hashing.IN_PLACE
     send_deleted_to_trash: bool = True
+
+    @property
+    def algorithms_to_use(self) -> Generator[HashAlgorithm]:
+        if self.add_md5_hash:
+            yield HashAlgorithm.md5
+        if self.add_sha256_hash:
+            yield HashAlgorithm.sha256
+        yield HashAlgorithm.xxh128
 
 
 class ConfigSettings(AliasModel):

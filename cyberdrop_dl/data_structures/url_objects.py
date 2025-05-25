@@ -70,7 +70,7 @@ class MediaItem:
     _task_id: TaskID | None = field(default=None, init=False, hash=False, compare=False)
 
     # slots for __post_init__
-    referer: URL = field(init=False)
+    referer: AbsoluteHttpURL = field(init=False)
     album_id: str | None = field(init=False)
     datetime: int | None = field(init=False, hash=False, compare=False)
     parents: list[AbsoluteHttpURL] = field(init=False, hash=False, compare=False)

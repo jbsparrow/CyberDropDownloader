@@ -14,8 +14,8 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
-KEYS_TO_REMOVE = "file_lock_reference_name", "task_id"
-KEYS_TO_REPLACE = {"current_attempt": "attempts"}
+_KEYS_TO_REMOVE = "file_lock_reference_name", "task_id"
+_KEYS_TO_REPLACE = {"current_attempt": "attempts"}
 
 
 class Dumper:
@@ -38,10 +38,12 @@ def convert_to_dict(media_item: MediaItem) -> dict:
     item = asdict(media_item)
     if date and isinstance(date, int):
         item["datetime"] = datetime.datetime.fromtimestamp(date)
-    for key, new_key in KEYS_TO_REPLACE.items():
+    for key, new_key in _KEYS_TO_REPLACE.items():
         item[new_key] = item[key]
         del item[key]
-    return {k: v for k, v in item.items() if k not in KEYS_TO_REMOVE}
+
+    _ = [item.pop(key, None) for key in _KEYS_TO_REMOVE]
+    return item
 
 
 def dump_jsonl(data: Generator[dict], file: Path) -> None:
