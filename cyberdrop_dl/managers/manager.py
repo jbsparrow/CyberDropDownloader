@@ -68,7 +68,7 @@ class Manager:
         self.cache_manager: CacheManager = CacheManager(self)
         self.path_manager: PathManager = field(init=False)
         self.config_manager: ConfigManager = field(init=False)
-        self.hash_manager: HashManager = field(init=False)
+
         self.real_debrid_manager: RealDebridManager = field(init=False)
 
         self.log_manager: LogManager = field(init=False)
@@ -97,6 +97,7 @@ class Manager:
         self.multiconfig: bool = False
         self.loggers: dict[str, QueuedLogger] = {}
         self.states = AsyncioEvents()
+        self.hash_manager: HashManager
 
     @property
     def config(self):
@@ -206,8 +207,7 @@ class Manager:
             self.db_manager = DBManager(self, self.path_manager.history_db)
             await self.db_manager.startup()
         transfer_v5_db_to_v6(self.path_manager.history_db)
-        if not isinstance(self.hash_manager, HashManager):
-            self.hash_manager = HashManager(self)
+        self.hash_manager = HashManager(self)
         if not isinstance(self.live_manager, LiveManager):
             self.live_manager = LiveManager(self)
         if not isinstance(self.progress_manager, ProgressManager):
