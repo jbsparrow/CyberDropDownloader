@@ -26,7 +26,6 @@ from cyberdrop_dl.ui.textual import TextualUI
 from cyberdrop_dl.utils.args import ParsedArgs
 from cyberdrop_dl.utils.ffmpeg import FFmpeg, get_ffmpeg_version
 from cyberdrop_dl.utils.logger import QueuedLogger, log
-from cyberdrop_dl.utils.transfer import transfer_v5_db_to_v6
 from cyberdrop_dl.utils.utilities import get_system_information
 
 if TYPE_CHECKING:
@@ -204,7 +203,6 @@ class Manager:
 
     async def async_db_hash_startup(self) -> None:
         await self.db_manager.startup(self.path_manager.history_db, self.config.runtime_options.ignore_history)
-        transfer_v5_db_to_v6(self.path_manager.history_db)
         self.hash_manager = HashManager(self)
         if not isinstance(self.live_manager, LiveManager):
             self.live_manager = LiveManager(self)

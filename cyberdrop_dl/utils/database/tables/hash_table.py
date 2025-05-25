@@ -5,7 +5,6 @@ import contextlib
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from cyberdrop_dl.types import AbsoluteHttpURL, Hash
 from cyberdrop_dl.utils.database.table_definitions import create_files, create_hash
 from cyberdrop_dl.utils.logger import log
 
@@ -14,7 +13,7 @@ if TYPE_CHECKING:
 
     import aiosqlite
 
-    from cyberdrop_dl.types import HashAlgorithm
+    from cyberdrop_dl.types import AbsoluteHttpURL, Hash, HashAlgorithm
 
 
 @contextlib.contextmanager
@@ -30,7 +29,7 @@ _db_conn: aiosqlite.Connection
 
 async def startup(db_conn: aiosqlite.Connection) -> None:
     global _db_conn
-    _db_conn: aiosqlite.Connection = db_conn
+    _db_conn = db_conn
     await _create_hash_and_files_tables()
 
 
@@ -43,7 +42,7 @@ async def get_file_hash_if_exists(file: Path, hash_type: HashAlgorithm) -> Hash 
         await cursor.execute(query, (folder, file.name, hash_type))
         result = await cursor.fetchone()
         if result:
-            return Hash(hash_type, result[0])
+            return hash_type.create_hash(result[0])
 
 
 async def get_files_with_hash_matches(hash: Hash, size: int) -> AsyncGenerator[Path]:

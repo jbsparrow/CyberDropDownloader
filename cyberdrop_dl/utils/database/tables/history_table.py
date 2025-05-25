@@ -38,7 +38,7 @@ _ignore_history: bool
 
 async def startup(db_conn: aiosqlite.Connection, ignore_history: bool = False) -> None:
     global _db_conn, _ignore_history
-    _db_conn: aiosqlite.Connection = db_conn
+    _db_conn = db_conn
     _ignore_history: bool = ignore_history
     await _db_conn.execute(create_history)
     await _db_conn.commit()
