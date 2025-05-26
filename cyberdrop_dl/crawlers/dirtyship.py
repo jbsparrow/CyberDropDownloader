@@ -23,6 +23,7 @@ class Selectors:
     GALLERY_TITLE = "div#album p[style='text-align: center;']"
     GALLERY_ALTERNATIVE_TITLE = "h1.singletitle"
     GALLERY_THUMBNAILS = "div.gallery_grid img.gallery-img"
+    GALLERY_ALTERNATIVE_THUMBNAILS = "div#gallery-1 img"
     SINGLE_PHOTO = "div.resolutions a"
 
 
@@ -75,7 +76,10 @@ class DirtyShipCrawler(Crawler):
                 title = self.create_title(title)
                 scrape_item.setup_as_album(title)
 
-            for img in soup.select(_SELECTORS.GALLERY_THUMBNAILS):
+            thumbnails = soup.select(_SELECTORS.GALLERY_THUMBNAILS) or soup.select(
+                _SELECTORS.GALLERY_ALTERNATIVE_THUMBNAILS
+            )
+            for img in thumbnails:
                 url: URL = self.parse_url(get_highest_resolution_picture(img["srcset"]))
                 filename, ext = self.get_filename_and_ext(url.name)
                 await self.handle_file(url, scrape_item, filename, ext)
