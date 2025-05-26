@@ -24,6 +24,12 @@ class SQLiteDatabase(DBBackend):
         self._connection: aiosqlite.Connection | None = None
         self._lock = asyncio.Lock()
 
+    async def _get_connection(self) -> aiosqlite.Connection:
+        async with self._lock:
+            if self._connection is None:
+                self._connection = await aiosqlite.connect(self._db_path)
+        return self._connection
+
     @asynccontextmanager
     async def get_connection(self, commit_on_exit: bool = False) -> AsyncGenerator[aiosqlite.Connection]:
         conn = await self._get_connection()
@@ -46,12 +52,6 @@ class SQLiteDatabase(DBBackend):
     async def get_transaction_cursor(self) -> AsyncGenerator[aiosqlite.Cursor]:
         async with self.get_cursor(commit_on_exit=True) as cursor:
             yield cursor
-
-    async def _get_connection(self) -> aiosqlite.Connection:
-        async with self._lock:
-            if self._connection is None:
-                self._connection = await aiosqlite.connect(self._db_path)
-        return self._connection
 
     async def close(self) -> None:
         async with self._lock:

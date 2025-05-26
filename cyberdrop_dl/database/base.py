@@ -10,6 +10,9 @@ from cyberdrop_dl.types import AbsoluteHttpURL, Hash, HashAlgorithm
 
 
 class DBTable(ABC):
+    db: "DBBackend"
+    name: str
+
     @abstractmethod
     async def create(self) -> None: ...
 

@@ -9,9 +9,12 @@ def delay_import_error(exception: Exception) -> type[DBBackend]:
     return NotFoundBackend  # type: ignore
 
 
-from cyberdrop_dl.database.backends.sqlite import SQLiteDatabase  # noqa: F401
+from cyberdrop_dl.database.backends.sqlite import SQLiteDatabase
 
 try:
     from cyberdrop_dl.database.backends.postgres import PostgresDatabase
 except ImportError as e:
     PostgresDatabase = delay_import_error(e)
+
+
+__all__ = ["PostgresDatabase", "SQLiteDatabase"]

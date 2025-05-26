@@ -18,7 +18,8 @@ if TYPE_CHECKING:
 
 class SQliteHashTable(HashTable):
     def __init__(self, database: SQLiteDatabase) -> None:
-        self.db = database
+        self.db: SQLiteDatabase = database
+        self.name = "hash"
 
     async def create(self) -> None:
         async with self.db.get_transaction_cursor() as cursor:

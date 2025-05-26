@@ -23,7 +23,12 @@ if TYPE_CHECKING:
 
 class SQliteHistoryTable(HistoryTable):
     def __init__(self, database: SQLiteDatabase) -> None:
-        self.db = database
+        self.db: SQLiteDatabase = database
+        self.name = "history"
+
+    async def drop(self) -> None:
+        async with self.db.get_transaction_cursor() as cursor:
+            await cursor.execute(f"DROP TABLE IF EXISTS {self.name}")
 
     async def create(self) -> None:
         async with self.db.get_transaction_cursor() as cursor:
