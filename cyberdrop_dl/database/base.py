@@ -1,17 +1,21 @@
-import datetime
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from collections.abc import AsyncGenerator, Generator, Iterable
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-import aiosqlite
+if TYPE_CHECKING:
+    import datetime
+    from collections.abc import AsyncGenerator, Generator, Iterable
+    from pathlib import Path
 
-from cyberdrop_dl.data_structures.url_objects import MediaItem
-from cyberdrop_dl.types import AbsoluteHttpURL, Hash, HashAlgorithm
+    import aiosqlite
+
+    from cyberdrop_dl.data_structures.url_objects import MediaItem
+    from cyberdrop_dl.types import AbsoluteHttpURL, Hash, HashAlgorithm
 
 
 class DBTable(ABC):
-    db: "DBBackend"
-    name: str
+    db: Database
 
     @abstractmethod
     async def create(self) -> None: ...
@@ -79,18 +83,10 @@ class HistoryTable(DBTable):
 
 class TempRefererTable(DBTable):
     @abstractmethod
-    async def get_file_hash_if_exists(self, file: Path, hash_type: HashAlgorithm) -> Hash | None: ...
-
-    @abstractmethod
-    async def get_files_with_hash_matches(self, hash: Hash, size: int) -> AsyncGenerator[Path]: ...
-
-    @abstractmethod
-    async def insert_or_update_hash_db(
-        self, file: Path, original_filename: str | None, referer: AbsoluteHttpURL | None, hash: Hash
-    ) -> bool: ...
+    async def check_referer(self, referer: AbsoluteHttpURL) -> bool: ...
 
 
-class DBBackend(ABC):
+class Database(ABC):
     hash_table: HashTable
     history_table: HistoryTable
     temp_referer_table: TempRefererTable

@@ -1,7 +1,7 @@
-from cyberdrop_dl.database.base import DBBackend
+from cyberdrop_dl.database.base import Database
 
 
-def delay_import_error(exception: Exception) -> type[DBBackend]:
+def delay_import_error(exception: Exception) -> type[Database]:
     class NotFoundBackend:
         def __init__(*args, **kwargs) -> None:
             raise exception

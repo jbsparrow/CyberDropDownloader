@@ -24,11 +24,6 @@ if TYPE_CHECKING:
 class SQliteHistoryTable(HistoryTable):
     def __init__(self, database: SQLiteDatabase) -> None:
         self.db: SQLiteDatabase = database
-        self.name = "history"
-
-    async def drop(self) -> None:
-        async with self.db.get_transaction_cursor() as cursor:
-            await cursor.execute(f"DROP TABLE IF EXISTS {self.name}")
 
     async def create(self) -> None:
         async with self.db.get_transaction_cursor() as cursor:
@@ -182,7 +177,7 @@ class SQliteHistoryTable(HistoryTable):
             return await cursor.fetchall()
 
     async def get_all_bunkr_failed(self) -> list[tuple[str, str, str, str]]:
-        query_size = """SELECT referer, download_path, completed_at, created_at from media where file_size=322509;"""
+        query_size = """SELECT referer, download_path, completed_at, created_at from media where file_size = 322509;"""
         query_hash = """SELECT m.referer, download_path,c ompleted_at, created_at FROM hash h
         INNER JOIN media m ON h.download_filename= m.download_filename WHERE h.hash = 'eb669b6362e031fa2b0f1215480c4e30';"""
         results = []
@@ -255,14 +250,14 @@ async def _run_updates(cursor: aiosqlite.Cursor) -> None:
     await cursor.executescript(query)
 
 
-def get_db_path(url: URL, referer: str | AbsoluteHttpURL = "") -> str:
+def get_db_path(url: URL, referer: str | AbsoluteHttpURL = "", /) -> str:
     """Gets the URL path to be put into the DB and checked from the DB."""
     url_path = url.path
-    referer = str(referer)
     if referer:
-        if "e-hentai" in referer:
+        referer_str = str(referer)
+        if "e-hentai" in referer_str:
             url_path = url_path.split("keystamp")[0][:-1]
-        elif "mediafire" in referer:
+        elif "mediafire" in referer_str:
             url_path = url.name
 
     return url_path

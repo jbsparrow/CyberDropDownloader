@@ -1,4 +1,5 @@
-from .hash_table import SQliteHashTable
-from .history_table import SQliteHistoryTable
+from .hash import SQliteHashTable
+from .history import SQliteHistoryTable
+from .temp_referer import SQliteTempRefererTable
 
-__all__ = ["SQliteHashTable", "SQliteHistoryTable"]
+__all__ = ["SQliteHashTable", "SQliteHistoryTable", "SQliteTempRefererTable"]
