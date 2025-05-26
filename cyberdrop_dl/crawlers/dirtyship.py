@@ -16,12 +16,16 @@ if TYPE_CHECKING:
     from cyberdrop_dl.managers.manager import Manager
 
 
-VIDEO_SELECTOR = "video#fp-video-0 > source"
-FLOWPLAYER_VIDEO_SELECTOR = "div.freedomplayer"
-PLAYLIST_ITEM_SELECTOR = "li.thumi > a"
-GALLERY_TITLE_SELECTOR = "div#album p[style='text-align: center;']"
-GALLERY_ALTERNATIVE_TITLE_SELECTOR = "h1.singletitle"
-GALLERY_THUMBNAILS_SELECTOR = "div.gallery_grid img.gallery-img"
+class Selectors:
+    VIDEO = "video#fp-video-0 > source"
+    FLOWPLAYER_VIDEO = "div.freedomplayer"
+    PLAYLIST_ITEM = "li.thumi > a"
+    GALLERY_TITLE = "div#album p[style='text-align: center;']"
+    GALLERY_ALTERNATIVE_TITLE = "h1.singletitle"
+    GALLERY_THUMBNAILS = "div.gallery_grid img.gallery-img"
+
+
+_SELECTORS = Selectors()
 
 
 class Format(NamedTuple):
@@ -52,14 +56,14 @@ class DirtyShipCrawler(Crawler):
         title: str = ""
         async for soup in self.web_pager(scrape_item.url):
             if not title:
-                title_tag = soup.select_one(GALLERY_TITLE_SELECTOR) or soup.select_one(
-                    GALLERY_ALTERNATIVE_TITLE_SELECTOR
+                title_tag = soup.select_one(_SELECTORS.GALLERY_TITLE) or soup.select_one(
+                    _SELECTORS.GALLERY_ALTERNATIVE_TITLE
                 )
                 title: str = title_tag.get_text(strip=True)
                 title = self.create_title(title)
                 scrape_item.setup_as_album(title)
 
-            for img in soup.select(GALLERY_THUMBNAILS_SELECTOR):
+            for img in soup.select(_SELECTORS.GALLERY_THUMBNAILS):
                 url: URL = self.parse_url(get_highest_resolution_picture(img["srcset"]))
                 filename, ext = self.get_filename_and_ext(url.name)
                 await self.handle_file(url, scrape_item, filename, ext)
@@ -74,7 +78,7 @@ class DirtyShipCrawler(Crawler):
                 title = self.create_title(title)
                 scrape_item.setup_as_album(title)
 
-            for _, new_scrape_item in self.iter_children(scrape_item, soup, PLAYLIST_ITEM_SELECTOR):
+            for _, new_scrape_item in self.iter_children(scrape_item, soup, _SELECTORS.PLAYLIST_ITEM):
                 self.manager.task_group.create_task(self.run(new_scrape_item))
 
     @error_handling_wrapper
@@ -84,7 +88,7 @@ class DirtyShipCrawler(Crawler):
 
         title: str = soup.select_one("title").text  # type: ignore
         title = title.split(" - DirtyShip")[0]
-        videos = soup.select(VIDEO_SELECTOR)
+        videos = soup.select(_SELECTORS.VIDEO)
 
         def get_formats():
             for video in videos:
@@ -110,7 +114,7 @@ class DirtyShipCrawler(Crawler):
     """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
     def get_flowplayer_sources(self, soup: BeautifulSoup) -> set[Format]:
-        flow_player = soup.select_one(FLOWPLAYER_VIDEO_SELECTOR)
+        flow_player = soup.select_one(_SELECTORS.FLOWPLAYER_VIDEO)
         data_item: str = flow_player.get("data-item") if flow_player else None  # type: ignore
         if not data_item:
             return set()
