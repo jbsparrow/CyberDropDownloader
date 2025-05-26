@@ -40,12 +40,16 @@ async def startup(db_conn: aiosqlite.Connection, ignore_history: bool = False) -
     global _db_conn, _ignore_history
     _db_conn = db_conn
     _ignore_history: bool = ignore_history
+
+
+async def create() -> None:
     await _db_conn.execute(create_history)
     await _db_conn.commit()
-    await fix_primary_keys()
-    await add_columns_media()
-    await fix_bunkr_v4_entries()
-    await run_updates()
+    await _fix_primary_keys()
+    await _add_columns_media()
+    await _fix_bunkr_v4_entries()
+    await _run_updates()
+    await _delete_invalid_rows()
 
 
 async def update_previously_unsupported(crawlers: dict[str, Crawler]) -> None:
@@ -64,7 +68,7 @@ async def update_previously_unsupported(crawlers: dict[str, Crawler]) -> None:
     await _db_conn.commit()
 
 
-async def run_updates() -> None:
+async def _run_updates() -> None:
     cursor = await _db_conn.cursor()
     query = """UPDATE OR REPLACE media SET domain = 'jpg5.su' WHERE domain = 'sharex'"""
     await cursor.execute(query)
@@ -73,7 +77,7 @@ async def run_updates() -> None:
     await _db_conn.commit()
 
 
-async def delete_invalid_rows() -> None:
+async def _delete_invalid_rows() -> None:
     query = """DELETE FROM media WHERE download_filename = '' """
     cursor = await _db_conn.cursor()
     await cursor.execute(query)
@@ -234,13 +238,6 @@ async def get_all_items(after: datetime.date, before: datetime.date) -> Iterable
     return await result.fetchall()
 
 
-async def get_unique_download_paths() -> Iterable[Row]:
-    cursor = await _db_conn.cursor()
-    query = """SELECT DISTINCT download_path FROM media"""
-    result = await cursor.execute(query)
-    return await result.fetchall()
-
-
 async def get_all_bunkr_failed() -> list[tuple[str, str, str, str]]:
     query_size = """SELECT referer, download_path, completed_at, created_at from media where file_size=322509;"""
     query_hash = """SELECT m.referer, download_path,c ompleted_at, created_at FROM hash h
@@ -259,7 +256,7 @@ async def get_all_bunkr_failed() -> list[tuple[str, str, str, str]]:
         return all_results
 
 
-async def fix_bunkr_v4_entries() -> None:
+async def _fix_bunkr_v4_entries() -> None:
     cursor = await _db_conn.cursor()
     query = """SELECT * from media WHERE domain = 'bunkr' and completed = 1"""
     result = await cursor.execute(query)
@@ -276,7 +273,7 @@ async def fix_bunkr_v4_entries() -> None:
     await _db_conn.commit()
 
 
-async def fix_primary_keys() -> None:
+async def _fix_primary_keys() -> None:
     cursor = await _db_conn.cursor()
     result = await cursor.execute("""pragma table_info(media)""")
     result = await result.fetchall()
@@ -295,7 +292,7 @@ async def fix_primary_keys() -> None:
         await _db_conn.commit()
 
 
-async def add_columns_media() -> None:
+async def _add_columns_media() -> None:
     cursor = await _db_conn.cursor()
     query = """pragma table_info(media)"""
     result = await cursor.execute(query)

@@ -44,7 +44,7 @@ async def _init() -> None:
     await hash_table.startup(_db_conn)
     await history_table.startup(_db_conn, _ignore_history)
     await temp_referer_table.startup(_db_conn, _ignore_history)
-    await history_table.delete_invalid_rows()
+    await history_table._delete_invalid_rows()
 
 
 async def close() -> None:
