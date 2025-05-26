@@ -19,6 +19,9 @@ if TYPE_CHECKING:
 VIDEO_SELECTOR = "video#fp-video-0 > source"
 FLOWPLAYER_VIDEO_SELECTOR = "div.freedomplayer"
 PLAYLIST_ITEM_SELECTOR = "li.thumi > a"
+GALLERY_TITLE_SELECTOR = "div#album p[style='text-align: center;']"
+GALLERY_ALTERNATIVE_TITLE_SELECTOR = "h1.singletitle"
+GALLERY_THUMBNAILS_SELECTOR = "div.gallery_grid img.gallery-img"
 
 
 class Format(NamedTuple):
@@ -40,7 +43,26 @@ class DirtyShipCrawler(Crawler):
         """Determines where to send the scrape item based on the url."""
         if any(p in scrape_item.url.parts for p in ("tag", "category")):
             return await self.playlist(scrape_item)
+        if "gallery" in scrape_item.url.parts:
+            return await self.gallery(scrape_item)
         return await self.video(scrape_item)
+
+    @error_handling_wrapper
+    async def gallery(self, scrape_item: ScrapeItem) -> None:
+        title: str = ""
+        async for soup in self.web_pager(scrape_item.url):
+            if not title:
+                title_tag = soup.select_one(GALLERY_TITLE_SELECTOR) or soup.select_one(
+                    GALLERY_ALTERNATIVE_TITLE_SELECTOR
+                )
+                title: str = title_tag.get_text(strip=True)
+                title = self.create_title(title)
+                scrape_item.setup_as_album(title)
+
+            for img in soup.select(GALLERY_THUMBNAILS_SELECTOR):
+                url: URL = self.parse_url(get_highest_resolution_picture(img["srcset"]))
+                filename, ext = self.get_filename_and_ext(url.name)
+                await self.handle_file(url, scrape_item, filename, ext)
 
     @error_handling_wrapper
     async def playlist(self, scrape_item: ScrapeItem) -> None:
@@ -96,3 +118,25 @@ class DirtyShipCrawler(Crawler):
         json_data = json.loads(data_item)
         sources = json_data["sources"]
         return {Format(None, self.parse_url(s["src"])) for s in sources}
+
+
+"""~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+
+def get_highest_resolution_picture(srcset: str) -> str:
+    """
+    Parses a srcset string and returns the URL with the highest resolution (width).
+    """
+    candidates = []
+    for item in srcset.split(","):
+        parts = item.strip().split()
+        if len(parts) == 2:
+            url, width = parts
+            try:
+                width = int(width.rstrip("w"))
+                candidates.append((width, url))
+            except ValueError:
+                continue
+    if candidates:
+        return max(candidates)[1]
+    return ""
