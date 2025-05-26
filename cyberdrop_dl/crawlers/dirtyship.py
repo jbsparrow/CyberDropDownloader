@@ -58,6 +58,8 @@ class DirtyShipCrawler(Crawler):
 
     @error_handling_wrapper
     async def photo(self, scrape_item: ScrapeItem) -> None:
+        if await self.check_complete_from_referer(scrape_item):
+            return
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
         url = next(self.parse_url(a["href"]) for a in soup.select(_SELECTORS.SINGLE_PHOTO) if "full" in a.get_text())
