@@ -23,6 +23,7 @@ class Selectors:
     GALLERY_TITLE = "div#album p[style='text-align: center;']"
     GALLERY_ALTERNATIVE_TITLE = "h1.singletitle"
     GALLERY_THUMBNAILS = "div.gallery_grid img.gallery-img"
+    SINGLE_PHOTO = "div.resolutions a"
 
 
 _SELECTORS = Selectors()
@@ -48,8 +49,19 @@ class DirtyShipCrawler(Crawler):
         if any(p in scrape_item.url.parts for p in ("tag", "category")):
             return await self.playlist(scrape_item)
         if "gallery" in scrape_item.url.parts:
-            return await self.gallery(scrape_item)
+            if len(scrape_item.url.parts) >= 4:
+                return await self.photo(scrape_item)
+            else:
+                return await self.gallery(scrape_item)
         return await self.video(scrape_item)
+
+    @error_handling_wrapper
+    async def photo(self, scrape_item: ScrapeItem) -> None:
+        async with self.request_limiter:
+            soup: BeautifulSoup = await self.client.get_soup(self.domain, scrape_item.url)
+        url = next(self.parse_url(a["href"]) for a in soup.select(_SELECTORS.SINGLE_PHOTO) if "full" in a.get_text())
+        filename, ext = self.get_filename_and_ext(url.name)
+        await self.handle_file(url, scrape_item, filename, ext)
 
     @error_handling_wrapper
     async def gallery(self, scrape_item: ScrapeItem) -> None:
