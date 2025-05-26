@@ -82,7 +82,10 @@ class DirtyShipCrawler(Crawler):
                 _SELECTORS.GALLERY_ALTERNATIVE_THUMBNAILS
             )
             for img in thumbnails:
-                url: URL = self.parse_url(get_highest_resolution_picture(img["srcset"]))
+                url = get_highest_resolution_picture(img["srcset"])
+                if not url:
+                    raise ScrapeError(422)
+                url = self.parse_url(url)
                 filename, ext = self.get_filename_and_ext(url.name)
                 await self.handle_file(url, scrape_item, filename, ext)
 
@@ -145,7 +148,7 @@ class DirtyShipCrawler(Crawler):
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
 
 
-def get_highest_resolution_picture(srcset: str) -> str:
+def get_highest_resolution_picture(srcset: str) -> str | None:
     """
     Parses a srcset string and returns the URL with the highest resolution (width).
     """
@@ -159,6 +162,4 @@ def get_highest_resolution_picture(srcset: str) -> str:
                 candidates.append((width, url))
             except ValueError:
                 continue
-    if candidates:
-        return max(candidates)[1]
-    return ""
+    return max(candidates)[1] if candidates else None
