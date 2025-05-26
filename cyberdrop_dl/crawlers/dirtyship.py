@@ -24,6 +24,7 @@ class Selectors:
     GALLERY_ALTERNATIVE_TITLE = "h1.singletitle"
     GALLERY_THUMBNAILS = "div.gallery_grid img.gallery-img"
     GALLERY_ALTERNATIVE_THUMBNAILS = "div#gallery-1 img"
+    GALLERY_DECODING_ASYNC = "div#album img[decoding='async']"
     SINGLE_PHOTO = "div.resolutions a"
 
 
@@ -78,13 +79,16 @@ class DirtyShipCrawler(Crawler):
                 title = self.create_title(title)
                 scrape_item.setup_as_album(title)
 
-            thumbnails = soup.select(_SELECTORS.GALLERY_THUMBNAILS) or soup.select(
-                _SELECTORS.GALLERY_ALTERNATIVE_THUMBNAILS
+            thumbnails = (
+                soup.select(_SELECTORS.GALLERY_THUMBNAILS)
+                or soup.select(_SELECTORS.GALLERY_ALTERNATIVE_THUMBNAILS)
+                or soup.select(_SELECTORS.GALLERY_DECODING_ASYNC)
             )
+
             for img in thumbnails:
-                url = get_highest_resolution_picture(img["srcset"])
+                url = img["src"] if img.get("decoding") == "async" else get_highest_resolution_picture(img["srcset"])
                 if not url:
-                    raise ScrapeError(422)
+                    raise ScrapeError(404)
                 url = self.parse_url(url)
                 filename, ext = self.get_filename_and_ext(url.name)
                 await self.handle_file(url, scrape_item, filename, ext)
