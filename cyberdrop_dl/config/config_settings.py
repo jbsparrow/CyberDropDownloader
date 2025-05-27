@@ -3,11 +3,8 @@ from collections.abc import Generator
 from datetime import timedelta
 from logging import DEBUG
 from pathlib import Path
-from typing import Any
 
 from pydantic import BaseModel, ByteSize, NonNegativeInt, PositiveInt, field_serializer, field_validator
-from pydantic import Field as P_Field
-from pydantic.fields import _Unset
 
 from cyberdrop_dl.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE
 from cyberdrop_dl.data_structures.hash import HashAlgorithm, Hashing
@@ -25,11 +22,9 @@ from cyberdrop_dl.models.types import (
 )
 from cyberdrop_dl.models.validators import falsy_as, to_timedelta
 
+from ._common import Field
+
 ALL_SUPPORTED_SITES = ["<<ALL_SUPPORTED_SITES>>"]
-
-
-def Field(default: Any, validation_alias: str = _Unset, **kwargs) -> Any:  # noqa: N802
-    return P_Field(default=default, validation_alias=validation_alias, **kwargs)
 
 
 class DownloadOptions(BaseModel):
