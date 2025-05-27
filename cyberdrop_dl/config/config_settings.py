@@ -23,7 +23,7 @@ from cyberdrop_dl.models.types import (
     NonEmptyStrOrNone,
     PathOrNone,
 )
-from cyberdrop_dl.models.validators import parse_duration_as_timedelta, parse_falsy_as
+from cyberdrop_dl.models.validators import falsy_as, to_timedelta
 
 ALL_SUPPORTED_SITES = ["<<ALL_SUPPORTED_SITES>>"]
 
@@ -71,12 +71,12 @@ class Logs(AliasModel):
     @field_validator("webhook", mode="before")
     @classmethod
     def handle_falsy(cls, value: str) -> str | None:
-        return parse_falsy_as(value, None)
+        return falsy_as(value, None)
 
     @field_validator("logs_expire_after", mode="before")
     @staticmethod
     def parse_logs_duration(input_date: timedelta | str | int | None) -> timedelta | str | None:
-        return parse_falsy_as(input_date, None, parse_duration_as_timedelta)
+        return falsy_as(input_date, None, to_timedelta)
 
 
 class FileSizeLimits(BaseModel):
@@ -105,7 +105,7 @@ class MediaDurationLimits(BaseModel):
         """
         if input_date is None:
             return timedelta(seconds=0)
-        return parse_duration_as_timedelta(input_date)
+        return to_timedelta(input_date)
 
 
 class IgnoreOptions(BaseModel):
@@ -166,7 +166,7 @@ class BrowserCookies(BaseModel):
     @field_validator("browsers", mode="before")
     @classmethod
     def parse_browsers(cls, values: list) -> list:
-        values = parse_falsy_as(values, [])
+        values = falsy_as(values, [])
         if isinstance(values, list):
             return sorted(str(value).lower() for value in values)
         return values
@@ -174,7 +174,7 @@ class BrowserCookies(BaseModel):
     @field_validator("sites", mode="before")
     @classmethod
     def handle_list(cls, values: list) -> list:
-        values = parse_falsy_as(values, [])
+        values = falsy_as(values, [])
         if values == ALL_SUPPORTED_SITES:
             return SUPPORTED_SITES_DOMAINS
         if isinstance(values, list):

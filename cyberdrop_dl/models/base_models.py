@@ -1,10 +1,12 @@
 """Pydantic models"""
 
+from collections.abc import Mapping
+
 import yarl
 from pydantic import AnyUrl, BaseModel, ConfigDict, Secret, SerializationInfo, model_serializer, model_validator
 
 from cyberdrop_dl.models.types import HttpURL
-from cyberdrop_dl.models.validators import parse_apprise_url
+from cyberdrop_dl.models.validators import to_apprise_url_dict
 
 
 class AliasModel(BaseModel):
@@ -29,8 +31,8 @@ class AppriseURLModel(FrozenModel):
 
     @model_validator(mode="before")
     @staticmethod
-    def parse_input(value: yarl.URL | dict | str) -> dict:
-        return parse_apprise_url(value)
+    def parse_input(value: yarl.URL | dict | str) -> Mapping:
+        return to_apprise_url_dict(value)
 
 
 class HttpAppriseURL(AppriseURLModel):

@@ -5,12 +5,11 @@ from pydantic import BaseModel, ByteSize, Field, NonNegativeFloat, PositiveInt, 
 from yarl import URL
 
 from cyberdrop_dl.models import AliasModel
-from cyberdrop_dl.models.converters import convert_to_byte_size
 from cyberdrop_dl.models.types import ByteSizeSerilized, HttpURL, NonEmptyStr
-from cyberdrop_dl.models.validators import parse_duration_as_timedelta, parse_falsy_as
+from cyberdrop_dl.models.validators import falsy_as, to_bytesize, to_timedelta
 
-MIN_REQUIRED_FREE_SPACE = convert_to_byte_size("512MB")
-DEFAULT_REQUIRED_FREE_SPACE = convert_to_byte_size("5GB")
+MIN_REQUIRED_FREE_SPACE = to_bytesize("512MB")
+DEFAULT_REQUIRED_FREE_SPACE = to_bytesize("5GB")
 
 
 class General(BaseModel):
@@ -26,12 +25,12 @@ class General(BaseModel):
 
     @field_serializer("flaresolverr", "proxy")
     def serialize(self, value: URL | str) -> str | None:
-        return parse_falsy_as(value, None, str)
+        return falsy_as(value, None, str)
 
     @field_validator("flaresolverr", "proxy", mode="before")
     @classmethod
     def convert_to_str(cls, value: URL | str) -> str | None:
-        return parse_falsy_as(value, None, str)
+        return falsy_as(value, None, str)
 
     @field_validator("required_free_space", mode="after")
     @classmethod
@@ -55,7 +54,7 @@ class RateLimiting(BaseModel):
     @field_validator("file_host_cache_expire_after", "forum_cache_expire_after", mode="before")
     @staticmethod
     def parse_cache_duration(input_date: timedelta | str | int) -> timedelta:
-        return parse_duration_as_timedelta(input_date)
+        return to_timedelta(input_date)
 
     @property
     def total_delay(self) -> NonNegativeFloat:

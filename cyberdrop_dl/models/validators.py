@@ -1,45 +1,89 @@
-"""
-Functions to use with `BeforeValidator`, `field_validator(mode="before")` or `model_validator(mode="before")`
-"""
-
 from __future__ import annotations
 
+import re
 from datetime import timedelta
 from functools import singledispatch
-from typing import TYPE_CHECKING, Any
+from math import _SupportsTrunc
+from typing import TYPE_CHECKING, Any, SupportsIndex, SupportsInt, TypeAlias, TypedDict
 
-from pydantic import HttpUrl
-
-from cyberdrop_dl.models.converters import convert_str_to_timedelta, convert_to_yarl
+from pydantic import AnyUrl, ByteSize, HttpUrl, TypeAdapter
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from pathlib import Path
 
-    from yarl import URL
+    import yarl
 
 
-def pydantyc_yarl_url(value: str) -> URL:
+_DATE_PATTERN_REGEX = r"(\d+)\s*(second|seconds|minute|minutes|hour|hours|day|days|week|weeks|month|months|year|years)"
+_DATE_PATTERN = re.compile(_DATE_PATTERN_REGEX, re.IGNORECASE)
+_BYTE_SIZE_ADAPTER = TypeAdapter(ByteSize)
+_ConvertibleToInt: TypeAlias = str | SupportsInt | SupportsIndex | _SupportsTrunc
+
+
+def bytesize_to_str(value: _ConvertibleToInt) -> str:
+    if not isinstance(value, ByteSize):
+        value = ByteSize(value)
+    return value.human_readable(decimal=True)
+
+
+def to_yarl_url(value: AnyUrl | str, *args, **kwargs) -> yarl.URL:
+    from cyberdrop_dl.utils.utilities import parse_url
+
+    try:
+        return parse_url(str(value), *args, **kwargs)
+    except Exception as e:
+        raise ValueError(str(e)) from e
+
+
+def to_yarl_url_w_pydantyc_validation(value: str) -> yarl.URL:
     url = HttpUrl(value)
-    return convert_to_yarl(url)
+    return to_yarl_url(url)
 
 
-def parse_falsy_as(value: Any, falsy_value: Any, func: Callable | None = None, *args, **kwargs) -> Any:
-    """If `value` is falsy, returns `falsy_value`
-
-    If `value` is NOT falsy AND `func` is provided, returns `func(value, *args, **kwargs)`
-
-    Returns `value` otherwise
-    """
-    if isinstance(value, str) and value.casefold() in ("none", "null"):
-        value = None
-    if not value:
-        return falsy_value
-    if not func:
-        return value
-    return func(value, *args, **kwargs)
+def to_bytesize(value: ByteSize | str | int) -> ByteSize:
+    return _BYTE_SIZE_ADAPTER.validate_python(value)
 
 
-def parse_duration_as_timedelta(input_date: timedelta | str | int) -> timedelta:
+def change_path_suffix(suffix: str) -> Callable[[Path], Path]:
+    def with_suffix(value: Path) -> Path:
+        return value.with_suffix(suffix)
+
+    return with_suffix
+
+
+def str_to_timedelta(input_date: str) -> timedelta:
+    time_str = input_date.casefold()
+    matches: list[str] = re.findall(_DATE_PATTERN, time_str)
+    seen_units = set()
+    time_dict = {"days": 0}
+
+    for value, unit in matches:
+        value = int(value)
+        unit = unit.lower()
+        normalized_unit = unit.rstrip("s")
+        plural_unit = normalized_unit + "s"
+        if normalized_unit in seen_units:
+            msg = f"Duplicate time unit detected: '{unit}' conflicts with another entry"
+            raise ValueError(msg)
+        seen_units.add(normalized_unit)
+
+        if "day" in unit:
+            time_dict["days"] += value
+        elif "month" in unit:
+            time_dict["days"] += value * 30
+        elif "year" in unit:
+            time_dict["days"] += value * 365
+        else:
+            time_dict[plural_unit] = value
+
+    if not matches:
+        msg = f"Unable to convert '{input_date}' to timedelta object"
+        raise ValueError(msg)
+    return timedelta(**time_dict)
+
+
+def to_timedelta(input_date: timedelta | str | int) -> timedelta:
     """Parses `datetime.timedelta`, `str` or `int` into a timedelta format.
 
     For `str`, the expected format is `<value> <unit>`, ex: `5 days`, `10 minutes`, `1 year`
@@ -49,7 +93,7 @@ def parse_duration_as_timedelta(input_date: timedelta | str | int) -> timedelta:
 
     For `int`, `input_date` is assumed as `days`
     """
-    return parse_falsy_as(input_date, timedelta(0), _parse_as_timedelta)
+    return falsy_as(input_date, timedelta(0), _parse_as_timedelta)
 
 
 @singledispatch
@@ -65,38 +109,63 @@ def _(input_date: int) -> timedelta:
 @_parse_as_timedelta.register
 def _(input_date: str, raise_error: bool = False) -> timedelta | str:
     try:
-        return convert_str_to_timedelta(input_date)
+        return str_to_timedelta(input_date)
     except ValueError:
         if raise_error:
             raise
     return input_date
 
 
-def parse_list(value: list):
-    return parse_falsy_as(value, [])
+def falsy_as(value: Any, falsy_value: Any, func: Callable | None = None, *args, **kwargs) -> Any:
+    """If `value` is falsy, returns `falsy_value`
+
+    If `value` is NOT falsy AND `func` is provided, returns `func(value, *args, **kwargs)`
+
+    Returns `value` otherwise
+    """
+    if isinstance(value, str) and value.casefold() in ("none", "null"):
+        value = None
+    if not value:
+        return falsy_value
+    if not func:
+        return value
+    return func(value, *args, **kwargs)
 
 
-def parse_falsy_as_none(value: Any):
-    return parse_falsy_as(value, None)
+def falsy_as_list(value: Any) -> Any:
+    return falsy_as(value, [])
+
+
+def falsy_as_none(value: Any) -> Any:
+    return falsy_as(value, None)
+
+
+def falsy_as_dict(value: Any) -> Any:
+    return falsy_as(value, {})
+
+
+class AppriseURLDict(TypedDict):
+    url: str
+    tags: set[str]
 
 
 @singledispatch
-def parse_apprise_url(value: URL) -> dict:
+def to_apprise_url_dict(value: yarl.URL) -> AppriseURLDict:
     return {"url": str(value), "tags": set()}
 
 
-@parse_apprise_url.register
-def _(value: dict) -> dict:
+@to_apprise_url_dict.register
+def _(value: dict) -> AppriseURLDict:
     tags = value.get("tags") or set()
     url = str(value.get("url", ""))
     if not tags:
-        return parse_apprise_url(url)
+        return to_apprise_url_dict(url)
 
     return {"url": url, "tags": tags}
 
 
-@parse_apprise_url.register
-def _(value: str) -> dict:
+@to_apprise_url_dict.register
+def _(value: str) -> AppriseURLDict:
     tags = set()
     url = value
     parts = url.split("://", 1)[0].split("=", 1)
