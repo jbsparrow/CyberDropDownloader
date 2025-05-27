@@ -29,6 +29,46 @@ See the [list of supported sites](https://script-ware.gitbook.io/cyberdrop-dl/re
 
 Follow the [getting-started guide](https://script-ware.gitbook.io/cyberdrop-dl/getting-started) for instructions on how to install and configure Cyberdrop-DL
 
+## Docker
+
+You can also build and run `cyberdrop-dl` using Docker.
+
+### Building the Image
+
+To build the Docker image, navigate to the root directory of the project (where the `Dockerfile` is located) and run:
+
+```bash
+docker build -t cyberdrop-dl .
+```
+
+### Running the Container
+
+Once the image is built, you can run `cyberdrop-dl` in a container.
+You'll likely want to mount volumes for configuration and downloads.
+
+**Example:**
+
+To run the container and mount a local directory `./data` to `/app/downloads` inside the container, and a local `./config` to `/app/config` for configuration persistence:
+
+```bash
+docker run -it --rm \
+  -v ./data:/app/downloads \
+  -v ./config:/app/config \
+  cyberdrop-dl [cyberdrop-dl arguments]
+```
+
+Replace `[cyberdrop-dl arguments]` with any arguments you would normally pass to the `cyberdrop-dl` command-line tool.
+
+For example, to download files from a URL and save them to the mounted `downloads` directory:
+```bash
+docker run -it --rm \
+  -v ./data:/app/downloads \
+  -v ./config:/app/config \
+  cyberdrop-dl --url https://some-url.com/album
+```
+
+Refer to the [CLI arguments documentation](https://script-ware.gitbook.io/cyberdrop-dl/reference/cli-arguments) for available options.
+The application inside the container will look for its configuration in `/app/config`. Make sure to place your `config.yml` (or other configuration files) in the local directory you mount to `/app/config`.
 
 ## Contributing
 If there is a feature you want, you've discovered a bug, or if you have other general feedback, please create an issue for it!
