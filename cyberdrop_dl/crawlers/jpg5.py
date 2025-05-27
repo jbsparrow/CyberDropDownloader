@@ -14,6 +14,7 @@ from ._chevereto import CheveretoCrawler
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.types import AbsoluteHttpURL
 
 PRIMARY_BASE_DOMAIN = URL("https://jpg5.su")
 JPG5_REPLACE_HOST_REGEX = re.compile(r"(jpg\.fish/)|(jpg\.fishing/)|(jpg\.church/)")
@@ -47,7 +48,7 @@ class JPG5Crawler(CheveretoCrawler):
 
     @create_task_id
     async def fetch(self, scrape_item: ScrapeItem):
-        scrape_item.url = scrape_item.url.with_host("jpg5.su")
+        scrape_item.url = fix_host(scrape_item.url)
         return await self._fetch_chevereto_defaults(scrape_item)
 
     async def video(self, scrape_item: ScrapeItem) -> None:
@@ -62,11 +63,16 @@ class JPG5Crawler(CheveretoCrawler):
     async def handle_direct_link(self, scrape_item: ScrapeItem, url: URL | None = None) -> None:
         """Handles a direct link."""
         link = url or scrape_item.url
-        link = self.parse_url(re.sub(JPG5_REPLACE_HOST_REGEX, r"host.church/", str(link)))
+        link = fix_host(link)
         await super().handle_direct_link(scrape_item, link)
 
 
 """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
+
+
+def fix_host(url: AbsoluteHttpURL) -> AbsoluteHttpURL:
+    new_host = re.sub(JPG5_REPLACE_HOST_REGEX, r"jpg5.su", f"{url.host}/").removesuffix("/")
+    return url.with_host(new_host)
 
 
 def decrypt_xor(encrypted, key):
