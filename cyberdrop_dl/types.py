@@ -1,7 +1,7 @@
 """Custom types for type annotations
 
 
-1. Only add types here if they do NOT depend on any runtime import from `cyberdrop_dl` itself, except utils
+1. Only add types here if they do NOT depend on any runtime import from `cyberdrop_dl` itself
 2. Only add types here if they are going to be used across multiple modules
 """
 
@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import enum
 import sys
-from collections.abc import Generator, Mapping, Sequence
+from collections.abc import Iterator, Sequence
 from functools import partial
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, Any, Generic, Literal, NewType, Self, TypeAlias, TypeGuard, TypeVar
+from typing import TYPE_CHECKING, Annotated, Any, Generic, Literal, NewType, TypeAlias, TypeGuard, TypeVar
 
 import yarl
 from pydantic import (
@@ -122,77 +122,45 @@ U32IntSequence: TypeAlias = Sequence[U32Int]
 AnyDict: TypeAlias = dict[str, Any]
 
 AbsolutePath = NewType("AbsolutePath", Path)
-
 TimeStamp = NewType("TimeStamp", int)
 
 
-class ContainerEnumMixin(Generic[T]):
-    _member_map_: Mapping[str, Self]
-    _member_names_: list[str]
+EnumMemberT = TypeVar("EnumMemberT", bound=enum.Enum)
+EnumBaseT = TypeVar("EnumBaseT")
 
-    @classmethod
-    def values(cls) -> tuple[T, ...]:
-        return tuple(member.value for member in cls)  # type: ignore[reportGeneralTypeIssues]
+
+class ContainerEnumType(Generic[EnumBaseT], enum.EnumType):
+    _member_names_: list[str]
+    _member_map_: dict[str, enum.Enum]
+
+    def values(cls: type[EnumMemberT]) -> tuple[EnumBaseT, ...]:  # type: ignore[reportGeneralTypeIssues]
+        return tuple(member.value for member in cls)
 
     if sys.version_info < (3, 12):
 
-        @classmethod
-        def __contains__(cls, value: Self | T) -> bool:
-            if isinstance(value, cls):
+        def __contains__(cls: type[EnumMemberT], member: object) -> bool:  # type: ignore[reportGeneralTypeIssues]
+            if isinstance(member, cls):
                 return True
             try:
-                cls(value)  # type: ignore[reportCallIssue]
+                cls(member)
                 return True
             except ValueError:
                 return False
 
-        @classmethod
-        def __iter__(cls) -> Generator[Self, None, None]:
-            return (cls._member_map_[name] for name in cls._member_names_)
+        def __iter__(cls: type[EnumMemberT]) -> Iterator[EnumMemberT]:  # type: ignore[reportGeneralTypeIssues]
+            return (cls._member_map_[name] for name in cls._member_names_)  # type: ignore[reportReturnType]
 
 
-class Enum(ContainerEnumMixin, enum.Enum): ...
+class Enum(enum.Enum, metaclass=ContainerEnumType[Any]): ...
 
 
-class IntEnum(ContainerEnumMixin[int], enum.IntEnum): ...
+class IntEnum(enum.IntEnum, metaclass=ContainerEnumType[int]): ...
 
 
-class StrEnum(ContainerEnumMixin[str], enum.StrEnum): ...
+class StrEnum(enum.StrEnum, metaclass=ContainerEnumType[str]): ...
 
 
 class MayBeUpperStrEnum(StrEnum):
     @classmethod
-    def _missing_(cls, value: str) -> MayBeUpperStrEnum:
+    def __missing__(cls: type[EnumMemberT], value: str) -> EnumMemberT:
         return cls[value.upper()]
-
-
-class HashAlgorithm(StrEnum):
-    md5 = "md5"
-    sha256 = "sha256"
-    xxh128 = "xxh128"
-    sha1 = "sha1"
-
-    def create_hash(self, hash_value: str) -> Hash:
-        return Hash(self, hash_value)
-
-
-class Hash(str):
-    _valid_algorithms = HashAlgorithm.values()
-    algorithm: HashAlgorithm
-    value: str
-    hash_string: str
-
-    def __new__(cls, algorithm: HashAlgorithm, hash_value: str, /) -> Self:
-        assert algorithm in cls._valid_algorithms, f"Invalid algorithm. Valid algorithms: {cls._valid_algorithms}"
-        assert hash_value
-        self = super().__new__(cls, hash_value)
-        self.algorithm = algorithm
-        self.value = hash_value
-        self.hash_string = f"{self.algorithm}:{self.value}"
-        return self
-
-    @staticmethod
-    def from_hash_string(hash_string: str, /) -> Hash:
-        assert ":" in hash_string, "input should be in the format 'algorithm:hash_value'"
-        algo, _, hash_value = hash_string.partition(":")
-        return Hash(HashAlgorithm(algo), hash_value)

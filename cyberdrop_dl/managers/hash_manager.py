@@ -13,8 +13,7 @@ import aiofiles
 from send2trash import send2trash
 from xxhash import xxh128 as xxh128_hasher
 
-from cyberdrop_dl.constants import Hashing
-from cyberdrop_dl.types import AbsoluteHttpURL, Hash, HashAlgorithm
+from cyberdrop_dl.data_structures.hash import Hash, HashAlgorithm, Hashing
 from cyberdrop_dl.ui.prompts.basic_prompts import enter_to_continue
 from cyberdrop_dl.utils.database.tables import hash_table
 from cyberdrop_dl.utils.logger import log
@@ -26,6 +25,7 @@ if TYPE_CHECKING:
     from cyberdrop_dl.config_definitions.config_settings import DupeCleanup
     from cyberdrop_dl.data_structures.url_objects import MediaItem
     from cyberdrop_dl.managers.manager import Manager
+    from cyberdrop_dl.types import AbsoluteHttpURL
     from cyberdrop_dl.ui.progress.hash_progress import HashProgress
 
 _CHUNK_SIZE = 1024 * 1024 * 5  # 5MB

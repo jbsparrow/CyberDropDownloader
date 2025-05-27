@@ -6,7 +6,7 @@ from typing import Any
 
 from rich.text import Text
 
-from cyberdrop_dl.types import Enum, IntEnum, MayBeUpperStrEnum, StrEnum
+from cyberdrop_dl.types import Enum, IntEnum, StrEnum
 
 # TIME
 STARTUP_TIME = datetime.now()
@@ -56,12 +56,6 @@ BLOCKED_DOMAINS = ("facebook", "instagram", "fbcdn")
 APP_STORAGE = Path("./AppData")
 DOWNLOAD_STORAGE = Path("./Downloads")
 RESERVED_CONFIG_NAMES = ["all", "default"]
-
-
-class Hashing(MayBeUpperStrEnum):
-    OFF = auto()
-    IN_PLACE = auto()
-    POST_DOWNLOAD = auto()
 
 
 class BROWSERS(StrEnum):
