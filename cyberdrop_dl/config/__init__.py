@@ -5,12 +5,10 @@ from pathlib import Path
 from time import sleep
 from typing import TYPE_CHECKING
 
-from pydantic import BaseModel
-
 from cyberdrop_dl import constants
 from cyberdrop_dl.managers.log_manager import LogManager
-from cyberdrop_dl.utils import yaml
 from cyberdrop_dl.utils.apprise import get_apprise_urls
+from cyberdrop_dl.utils.args import ParsedArgs, parse_args
 
 from .auth_model import AuthSettings
 from .config_model import ConfigSettings
@@ -18,13 +16,13 @@ from .global_model import GlobalSettings
 
 if TYPE_CHECKING:
     from cyberdrop_dl.utils.apprise import AppriseURL
-    from cyberdrop_dl.utils.args import ParsedArgs
 
 
 _DEFAULT_CONFIG_KEY = "default_config"
 deep_scrape: bool = False
 
 current_config: Config
+cli: ParsedArgs
 appdata: AppData
 
 # re-export current config values for easy access
@@ -44,13 +42,13 @@ class AppData(Path):
         self.history_db = self.cache_dir / "cyberdrop.db"
 
     def mkdirs(self) -> None:
-        self.mkdir(parents=True, exist_ok=True)
         for dir in (self.configs_dir, self.cache_dir, self.cookies_dir):
-            dir.mkdir(exist_ok=True)
+            dir.mkdir(parents=True, exist_ok=True)
 
 
 def startup() -> None:
-    global appdata
+    global appdata, cli
+    cli = parse_args()
     appdata = AppData(constants.APP_STORAGE)
 
 
@@ -67,10 +65,25 @@ class Config:
             self.auth_config_file = auth_override
         else:
             self.auth_config_file = appdata.default_auth_config_file
-
         self.auth: AuthSettings
         self.settings: ConfigSettings
         self.global_settings: GlobalSettings
+
+    @staticmethod
+    def build(name: str, auth: AuthSettings, settings: ConfigSettings, global_settings: GlobalSettings) -> Config:
+        self = Config(name)
+        self.auth = auth
+        self.settings = settings
+        self.global_settings = global_settings
+        self.apprise_urls = get_apprise_urls(file=self.apprise_file)
+        return self
+
+    @staticmethod
+    def new_empty_config(name: str) -> Config:
+        assert name not in get_all_configs()
+        self = Config(name)
+        self._load()
+        return self
 
     def _load(self) -> None:
         """Read each config module from their respective files
@@ -86,22 +99,18 @@ class Config:
         self.settings.resolve_paths(self.folder.name)
         self.global_settings.resolve_paths(self.folder.name)
 
+    def _all_settings(self) -> tuple[ConfigSettings, AuthSettings, GlobalSettings]:
+        return self.settings, self.auth, self.global_settings
+
+    def write_updated_config(self) -> None:
+        """Writes config to disk."""
+        self.auth.save_to_file(self.auth_config_file)
+        self.settings.save_to_file(self.config_file)
+        self.global_settings.save_to_file(appdata.global_config_file)
+
 
 def get_default_config() -> str:
     return cache.get(_DEFAULT_CONFIG_KEY) or "Default"
-
-
-def save_as_new_config(config: Config) -> None:
-    """Creates a new settings config file."""
-    assert not config.folder.exists()
-    write_updated_config(config)
-
-
-def write_updated_config(config: Config) -> None:
-    """Write updated authentication data."""
-    yaml.save(config.auth_config_file, config.auth)
-    yaml.save(config.config_file, config.settings)
-    yaml.save(appdata.global_config_file, config.global_settings)
 
 
 def get_all_configs() -> list:
@@ -115,6 +124,8 @@ def change_default_config(config_name: str) -> None:
 def delete_config(config_name: str) -> None:
     all_configs = get_all_configs()
     assert config_name in all_configs
+    assert len(all_configs) > 1
+    assert config_name != current_config.folder.name
     all_configs.remove(config_name)
 
     if cache.get(_DEFAULT_CONFIG_KEY) == config_name:
@@ -125,15 +136,11 @@ def delete_config(config_name: str) -> None:
 
 
 def load_config(self, config_name: str) -> None:
-    global current_config
+    global current_config, auth, global_settings, settings
     current_config = Config(config_name)
     current_config._load()
     current_config._resolve_all_paths()
-
-    for key, value in vars(current_config).items():
-        if isinstance(value, BaseModel):
-            globals()[key] = value
-
+    settings, auth, global_settings = current_config._all_settings()
     self.manager.path_manager.startup()
     sleep(1)
     self.manager.log_manager = LogManager(self.manager)

@@ -45,6 +45,9 @@ class ConfigModel(PathAliasModel):
             yaml.save(file, config)
         return config
 
+    def save_to_file(self, file: Path) -> None:
+        yaml.save(file, self)
+
 
 def _is_in_file(search_value: str, file: Path) -> bool:
     try:
