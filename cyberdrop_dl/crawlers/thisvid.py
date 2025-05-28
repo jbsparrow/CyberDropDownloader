@@ -126,6 +126,9 @@ class ThisVidCrawler(Crawler):
 
     @error_handling_wrapper
     async def video(self, scrape_item: ScrapeItem) -> None:
+        if await self.check_complete_from_referer(scrape_item):
+            return
+
         async with self.request_limiter:
             soup: BeautifulSoup = await self.client.get_soup(self.DOMAIN, scrape_item.url)
 
@@ -138,11 +141,9 @@ class ThisVidCrawler(Crawler):
         video = get_video_info(script.text)
         title: str = css.select_one_get_text(soup, "title").split("- ThisVid.com")[0].strip()
         filename, ext = self.get_filename_and_ext(video.url.name)
-        canonical_url = PRIMARY_URL / "videos" / video.id
-        scrape_item.url = canonical_url
         custom_filename, _ = self.get_filename_and_ext(f"{title} [{video.id}] [{video.res}]{ext}")
         await self.handle_file(
-            canonical_url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=video.url
+            scrape_item.url, scrape_item, filename, ext, custom_filename=custom_filename, debrid_link=video.url
         )
 
     @error_handling_wrapper
