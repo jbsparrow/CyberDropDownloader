@@ -1,15 +1,16 @@
 import re
 from collections.abc import Generator
-from datetime import timedelta
+from datetime import datetime, timedelta
 from logging import DEBUG
 from pathlib import Path
 
 from pydantic import BaseModel, ByteSize, NonNegativeInt, PositiveInt, field_serializer, field_validator
 
+from cyberdrop_dl import constants
 from cyberdrop_dl.constants import APP_STORAGE, BROWSERS, DOWNLOAD_STORAGE
 from cyberdrop_dl.data_structures.hash import HashAlgorithm, Hashing
 from cyberdrop_dl.data_structures.supported_domains import SUPPORTED_SITES_DOMAINS
-from cyberdrop_dl.models import AliasModel, HttpAppriseURL
+from cyberdrop_dl.models import HttpAppriseURL
 from cyberdrop_dl.models.types import (
     ByteSizeSerilized,
     ListNonEmptyStr,
@@ -22,7 +23,7 @@ from cyberdrop_dl.models.types import (
 )
 from cyberdrop_dl.models.validators import falsy_as, to_timedelta
 
-from ._common import Field
+from ._common import Field, PathAliasModel
 
 ALL_SUPPORTED_SITES = ["<<ALL_SUPPORTED_SITES>>"]
 
@@ -44,14 +45,14 @@ class DownloadOptions(BaseModel):
     maximum_thread_depth: NonNegativeInt = 0
 
 
-class Files(AliasModel):
+class Files(PathAliasModel):
     download_folder: Path = Field(validation_alias="d", default=DOWNLOAD_STORAGE)
     dump_json: bool = Field(default=False, validation_alias="j")
     input_file: Path = Field(validation_alias="i", default=APP_STORAGE / "Configs" / "{config}" / "URLs.txt")
     save_pages_html: bool = False
 
 
-class Logs(AliasModel):
+class Logs(PathAliasModel):
     download_error_urls: LogPath = Field(Path("Download_Error_URLs.csv"), "download_error_urls_filename")
     last_forum_post: LogPath = Field(Path("Last_Scraped_Forum_Posts.csv"), "last_forum_post_filename")
     log_folder: Path = APP_STORAGE / "Configs" / "{config}" / "Logs"
@@ -72,6 +73,20 @@ class Logs(AliasModel):
     @staticmethod
     def parse_logs_duration(input_date: timedelta | str | int | None) -> timedelta | str | None:
         return falsy_as(input_date, None, to_timedelta)
+
+    def set_output_filenames(self, now: datetime) -> None:
+        current_time_file_iso: str = now.strftime(constants.LOGS_DATETIME_FORMAT)
+        current_time_folder_iso: str = now.strftime(constants.LOGS_DATE_FORMAT)
+        for attr, log_file in vars(self).items():
+            if not isinstance(log_file, Path) or log_file.suffix not in (".csv", ".log"):
+                continue
+
+            if self.rotate_logs:
+                new_name = f"{log_file.stem}_{current_time_file_iso}{log_file.suffix}"
+                log_file: Path = log_file.parent / current_time_folder_iso / new_name
+                setattr(self, attr, log_file)
+
+            log_file.parent.mkdir(exist_ok=True, parents=True)
 
 
 class FileSizeLimits(BaseModel):
@@ -199,7 +214,7 @@ class DupeCleanup(BaseModel):
         yield HashAlgorithm.xxh128
 
 
-class ConfigSettings(AliasModel):
+class ConfigSettings(PathAliasModel):
     browser_cookies: BrowserCookies = Field(validation_alias="Browser_Cookies", default=BrowserCookies())
     download_options: DownloadOptions = Field(validation_alias="Download_Options", default=DownloadOptions())
     dupe_cleanup_options: DupeCleanup = Field(validation_alias="Dupe_Cleanup_Options", default=DupeCleanup())
