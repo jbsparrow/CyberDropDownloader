@@ -1,16 +1,14 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
-from yarl import URL
-
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 DEFAULT_QUERY = """
     query SubredditQuery(
@@ -41,28 +39,25 @@ DEFAULT_QUERY = """
     }
 """
 
-API_ENTRYPOINT = URL("https://api.scrolller.com/api/v2/graphql")
+PRIMARY_URL = AbsoluteHttpURL("https://scrolller.com")
+API_ENTRYPOINT = AbsoluteHttpURL("https://api.scrolller.com/api/v2/graphql")
 
 
 class ScrolllerCrawler(Crawler):
-    primary_base_domain = URL("https://scrolller.com")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Subreddit": "/r/..."}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    DOMAIN: ClassVar[str] = "scrolller"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "scrolller", "Scrolller")
+    def __post_init__(self) -> None:
         self.headers = {"Content-Type": "application/json"}
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if "r" in scrape_item.url.parts:
             return await self.subreddit(scrape_item)
         raise ValueError
 
     @error_handling_wrapper
     async def subreddit(self, scrape_item: ScrapeItem) -> None:
-        """Scrapes an album."""
         subreddit = scrape_item.url.parts[-1]
         title = self.create_title(subreddit)
         scrape_item.setup_as_album(title)
@@ -78,7 +73,7 @@ class ScrolllerCrawler(Crawler):
         while True:
             request_body["variables"]["iterator"] = iterator
             data: dict[str, dict] = await self.client.post_data(
-                self.domain, API_ENTRYPOINT, data=json.dumps(request_body)
+                self.DOMAIN, API_ENTRYPOINT, data=json.dumps(request_body)
             )
             items: list[dict] = data["data"]["getSubreddit"]["children"]["items"] if data else []
             if not items:

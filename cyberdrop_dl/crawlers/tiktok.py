@@ -1,33 +1,37 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from aiolimiter import AsyncLimiter
-from yarl import URL
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
 VIDEO_PARTS = "video", "photo", "v"
-API_URL = URL("https://www.tikwm.com/api/")
+API_URL = AbsoluteHttpURL("https://www.tikwm.com/api/")
+PRIMARY_URL = AbsoluteHttpURL("https://tiktok.com/")
 
 
 class TikTokCrawler(Crawler):
-    primary_base_domain = URL("https://tiktok.com/")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {
+        "User": "/@<user>",
+        "Video": "/@<user>/video/<video_id>",
+        "Photo": "/@<user>/photo/<photo_id>",
+    }
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    DOMAIN: ClassVar[str] = "tiktok"
+    FOLDER_DOMAIN: ClassVar[str] = "TikTok"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "tiktok", "TikTok")
+    def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(1, 10)
 
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        assert scrape_item.url.host
         if any(p in scrape_item.url.parts for p in VIDEO_PARTS) or scrape_item.url.host.startswith("vm.tiktok"):
             return await self.video(scrape_item)
         if len(scrape_item.url.parts) > 1 and "@" in scrape_item.url.parts[1]:
@@ -41,7 +45,7 @@ class TikTokCrawler(Crawler):
             posts_api_url = API_URL / "user" / "posts"
             posts_api_url = posts_api_url.with_query(cursor=cursor, unique_id=username, count=50)
             async with self.request_limiter:
-                json_data = await self.client.get_json(self.domain, posts_api_url)
+                json_data = await self.client.get_json(self.DOMAIN, posts_api_url)
 
             if scrape_item.album_id is None:
                 author_id = json_data["data"]["videos"][0]["author"]["id"]
@@ -100,7 +104,7 @@ class TikTokCrawler(Crawler):
     async def video(self, scrape_item: ScrapeItem) -> None:
         video_data_url = API_URL.with_query(url=str(scrape_item.url))
         async with self.request_limiter:
-            json_data = await self.client.get_json(self.domain, video_data_url)
+            json_data = await self.client.get_json(self.DOMAIN, video_data_url)
 
         author_id = json_data["data"]["author"]["id"]
         video_id = json_data["data"]["video_id"] = json_data["data"]["id"]
@@ -145,12 +149,12 @@ class TikTokCrawler(Crawler):
         await self.handle_file(canonical_audio_url, new_scrape_item, filename, ext, debrid_link=audio_url)
         scrape_item.add_children()
 
-    async def get_canonical_url(self, author: str, post_id: str | None = None) -> URL:
+    async def get_canonical_url(self, author: str, post_id: str | None = None) -> AbsoluteHttpURL:
         if post_id is None:
-            return self.primary_base_domain / f"@{author}"
-        return self.primary_base_domain / f"@{author}/video/{post_id}"
+            return PRIMARY_URL / f"@{author}"
+        return PRIMARY_URL / f"@{author}/video/{post_id}"
 
-    async def get_canonical_audio_url(self, audio_title: str, audio_id: str) -> URL:
+    async def get_canonical_audio_url(self, audio_title: str, audio_id: str) -> AbsoluteHttpURL:
         if "original audio" in audio_title.lower():
-            return self.primary_base_domain / f"music/original-audio-{audio_id}"
-        return self.primary_base_domain / f"music/{audio_title.replace(' ', '-').lower()}-{audio_id}"
+            return PRIMARY_URL / f"music/original-audio-{audio_id}"
+        return PRIMARY_URL / f"music/{audio_title.replace(' ', '-').lower()}-{audio_id}"

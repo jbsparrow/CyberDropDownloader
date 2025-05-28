@@ -1,21 +1,21 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, NotRequired, TypedDict, cast
+from typing import TYPE_CHECKING, ClassVar, NotRequired, TypedDict, cast
 
 from aiolimiter import AsyncLimiter
 from bs4 import BeautifulSoup
-from yarl import URL
 
-from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
+from cyberdrop_dl.crawlers.crawler import Crawler
 from cyberdrop_dl.exceptions import ScrapeError
+from cyberdrop_dl.types import AbsoluteHttpURL, SupportedPaths
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
     from cyberdrop_dl.data_structures.url_objects import ScrapeItem
-    from cyberdrop_dl.managers.manager import Manager
 
-API_ENTRYPOINT = URL("https://a.4cdn.org/")
-FILES_BASE_URL = URL("https://i.4cdn.org/")
+API_ENTRYPOINT = AbsoluteHttpURL("https://a.4cdn.org/")
+FILES_BASE_URL = AbsoluteHttpURL("https://i.4cdn.org/")
+PRIMARY_URL = AbsoluteHttpURL("https://boards.4chan.org")
 
 
 class Post(TypedDict):
@@ -40,17 +40,14 @@ class ThreadList(TypedDict):
 
 
 class FourChanCrawler(Crawler):
-    primary_base_domain = URL("https://boards.4chan.org")
+    SUPPORTED_PATHS: ClassVar[SupportedPaths] = {"Board": "/<board>", "Thread": "/thread"}
+    PRIMARY_URL: ClassVar[AbsoluteHttpURL] = PRIMARY_URL
+    DOMAIN: ClassVar[str] = "4chan"
 
-    def __init__(self, manager: Manager) -> None:
-        super().__init__(manager, "4chan", "4chan")
+    def __post_init__(self) -> None:
         self.request_limiter = AsyncLimiter(3, 10)
 
-    """~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"""
-
-    @create_task_id
     async def fetch(self, scrape_item: ScrapeItem) -> None:
-        """Determines where to send the scrape item based on the url."""
         if "thread" in scrape_item.url.parts:
             return await self.thread(scrape_item)
         elif len(scrape_item.url.parts) == 2:
@@ -62,7 +59,7 @@ class FourChanCrawler(Crawler):
         board, _, thread_id = scrape_item.url.parts[1:4]
         api_url = API_ENTRYPOINT / board / f"thread/{thread_id}.json"
         async with self.request_limiter:
-            response: dict[str, list[Post]] = await self.client.get_json(self.domain, api_url, cache_disabled=True)
+            response: dict[str, list[Post]] = await self.client.get_json(self.DOMAIN, api_url, cache_disabled=True)
         if not response:
             raise ScrapeError(404)
 
@@ -97,12 +94,12 @@ class FourChanCrawler(Crawler):
         board: str = scrape_item.url.parts[-1]
         api_url = API_ENTRYPOINT / board / "threads.json"
         async with self.request_limiter:
-            threads: list[ThreadList] = await self.client.get_json(self.domain, api_url, cache_disabled=True)
+            threads: list[ThreadList] = await self.client.get_json(self.DOMAIN, api_url, cache_disabled=True)
 
         scrape_item.setup_as_forum("")
         for page in threads:
             for thread in page["threads"]:
-                url = self.primary_base_domain / board / f"thread/{thread['no']}"
+                url = PRIMARY_URL / board / f"thread/{thread['no']}"
                 new_scrape_item = scrape_item.create_child(url)
                 self.manager.task_group.create_task(self.run(new_scrape_item))
                 scrape_item.add_children()

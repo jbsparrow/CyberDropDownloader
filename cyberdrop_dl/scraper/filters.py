@@ -53,7 +53,7 @@ def is_outside_date_range(scrape_item: ScrapeItem, before: datetime.date | None,
 
 
 def is_in_domain_list(scrape_item: ScrapeItem, domain_list: Sequence[str]) -> bool:
-    return any(domain in scrape_item.url.host for domain in domain_list)  # type: ignore
+    return any(domain in scrape_item.url.host for domain in domain_list)
 
 
 def has_valid_extension(url: URL, forum: bool = False) -> bool:

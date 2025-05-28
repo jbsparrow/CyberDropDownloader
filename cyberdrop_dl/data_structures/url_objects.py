@@ -11,8 +11,7 @@ from typing import TYPE_CHECKING, NamedTuple
 from yarl import URL
 
 from cyberdrop_dl.exceptions import MaxChildrenError
-from cyberdrop_dl.types import is_absolute_http_url
-from cyberdrop_dl.utils.utilities import sanitize_folder
+from cyberdrop_dl.utils.utilities import is_absolute_http_url, sanitize_folder
 
 if TYPE_CHECKING:
     from collections.abc import Callable
