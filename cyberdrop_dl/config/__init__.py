@@ -1,90 +1,94 @@
 from __future__ import annotations
 
 import shutil
+from pathlib import Path
 from time import sleep
-from typing import TYPE_CHECKING, TypeVar
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel
 
 from cyberdrop_dl import constants
-from cyberdrop_dl.exceptions import InvalidYamlError
 from cyberdrop_dl.managers.log_manager import LogManager
-from cyberdrop_dl.models import get_model_fields
 from cyberdrop_dl.utils import yaml
 from cyberdrop_dl.utils.apprise import get_apprise_urls
 
-from .auth_config import AuthSettings
-from .config import ConfigSettings
-from .global_config import GlobalSettings
+from .auth_model import AuthSettings
+from .config_model import ConfigSettings
+from .global_model import GlobalSettings
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from cyberdrop_dl.utils.apprise import AppriseURL
     from cyberdrop_dl.utils.args import ParsedArgs
 
-ModelT = TypeVar("ModelT", bound=BaseModel)
 
-_configs_folder: Path
-_auth_config_file: Path
-_global_config_file: Path
-_current_config: Config
-_cli_options: ParsedArgs
+_DEFAULT_CONFIG_KEY = "default_config"
+deep_scrape: bool = False
 
-# current_config values re-exported
-deep_scrape: bool
-apprise_urls: list[AppriseURL]
-name: str
-folder: str
-apprise_file: Path
-config_file: Path
+current_config: Config
+appdata: AppData
+
+# re-export current config values for easy access
 auth: AuthSettings
 settings: ConfigSettings
 global_settings: GlobalSettings
 
 
-def set_root_folders(appdata: Path, cli_options: ParsedArgs) -> None:
-    global _auth_config_file, _global_config_file, _configs_folder, _cli_options
-    _cli_options = cli_options
-    _configs_folder = appdata / "Configs"
-    _auth_config_file = _configs_folder / "authentication.yaml"
-    _global_config_file = _configs_folder / "global_settings.yaml"
-    _cache_folder = constants.APP_STORAGE / "Cache"
-    _config_folder = constants.APP_STORAGE / "Configs"
-    _cookies_dir = constants.APP_STORAGE / "Cookies"
-    _cache_db = _cache_folder / "request_cache.db"
-    _history_db = _cache_folder / "cyberdrop.db"
+class AppData(Path):
+    def __init__(self, app_data_path: Path) -> None:
+        self.configs_dir = app_data_path / "Configs"
+        self.cache_dir = app_data_path / "Cache"
+        self.cookies_dir = app_data_path / "Cookies"
+        self.default_auth_config_file = self.configs_dir / "authentication.yaml"
+        self.global_config_file = self.configs_dir / "global_settings.yaml"
+        self.cache_db = self.cache_dir / "request_cache.db"
+        self.history_db = self.cache_dir / "cyberdrop.db"
+
+    def mkdirs(self) -> None:
+        self.mkdir(parents=True, exist_ok=True)
+        for dir in (self.configs_dir, self.cache_dir, self.cookies_dir):
+            dir.mkdir(exist_ok=True)
+
+
+def startup() -> None:
+    global appdata
+    appdata = AppData(constants.APP_STORAGE)
 
 
 class Config:
+    """Helper class to group a single config, not necessarily the current config"""
+
     def __init__(self, name: str) -> None:
-        self.deep_scrape: bool = False
         self.apprise_urls: list[AppriseURL] = []
-        self.folder = _configs_folder / name
+        self.folder = appdata.configs_dir / name
         self.apprise_file = self.folder / "apprise.txt"
         self.config_file = self.folder / "settings.yaml"
+        auth_override = self.folder / "authentication.yaml"
+        if auth_override.is_file():
+            self.auth_config_file = auth_override
+        else:
+            self.auth_config_file = appdata.default_auth_config_file
 
         self.auth: AuthSettings
         self.settings: ConfigSettings
         self.global_settings: GlobalSettings
 
-    @property
-    def auth_config_file(self) -> Path:
-        auth_override = self.folder / "authentication.yaml"
-        if auth_override.is_file():
-            return auth_override
-        return _auth_config_file
-
     def _load(self) -> None:
-        _configs_folder.mkdir(parents=True, exist_ok=True)
-        self.auth = _load_config_file(self.auth_config_file, AuthSettings, "socialmediagirls_username:")
-        self.settings = _load_config_file(self.config_file, ConfigSettings, "download_error_urls_filename:")
-        self.global_settings = _load_config_file(_global_config_file, GlobalSettings, "Dupe_Cleanup_Options:")
+        """Read each config module from their respective files
+
+        If a files does not exists, uses the default config and creates it"""
+        self.auth = AuthSettings.load_file(self.auth_config_file, "socialmediagirls_username:")
+        self.settings = ConfigSettings.load_file(self.config_file, "download_error_urls_filename:")
+        self.global_settings = GlobalSettings.load_file(appdata.global_config_file, "Dupe_Cleanup_Options:")
         self.apprise_urls = get_apprise_urls(file=self.apprise_file)
+
+    def _resolve_all_paths(self) -> None:
+        self.auth.resolve_paths(self.folder.name)
+        self.settings.resolve_paths(self.folder.name)
+        self.global_settings.resolve_paths(self.folder.name)
 
 
 def get_default_config() -> str:
-    return cache.get("default_config") or "Default"
+    return cache.get(_DEFAULT_CONFIG_KEY) or "Default"
 
 
 def save_as_new_config(config: Config) -> None:
@@ -97,15 +101,15 @@ def write_updated_config(config: Config) -> None:
     """Write updated authentication data."""
     yaml.save(config.auth_config_file, config.auth)
     yaml.save(config.config_file, config.settings)
-    yaml.save(_global_config_file, config.global_settings)
+    yaml.save(appdata.global_config_file, config.global_settings)
 
 
 def get_all_configs() -> list:
-    return sorted(config.name for config in _configs_folder.iterdir() if config.is_dir())
+    return sorted(config.name for config in appdata.configs_dir.iterdir() if config.is_dir())
 
 
 def change_default_config(config_name: str) -> None:
-    cache.save("default_config", config_name)
+    cache.save(_DEFAULT_CONFIG_KEY, config_name)
 
 
 def delete_config(config_name: str) -> None:
@@ -113,53 +117,24 @@ def delete_config(config_name: str) -> None:
     assert config_name in all_configs
     all_configs.remove(config_name)
 
-    if cache.get("default_config") == config_name:
+    if cache.get(_DEFAULT_CONFIG_KEY) == config_name:
         change_default_config(all_configs[0])
 
-    config_path = _configs_folder / config_name
+    config_path = appdata.configs_dir / config_name
     shutil.rmtree(config_path)
 
 
-def change_current_config(self, config_name: str) -> None:
-    global _current_config
-    _current_config = Config(config_name)
-    _current_config._load()
-    _current_config.settings.resolve_paths(config_name)
+def load_config(self, config_name: str) -> None:
+    global current_config
+    current_config = Config(config_name)
+    current_config._load()
+    current_config._resolve_all_paths()
 
-    for key, value in vars(_current_config).items():
-        globals()[key] = value
+    for key, value in vars(current_config).items():
+        if isinstance(value, BaseModel):
+            globals()[key] = value
 
     self.manager.path_manager.startup()
     sleep(1)
     self.manager.log_manager = LogManager(self.manager)
     sleep(1)
-
-    for path in (_cache_folder, _config_folder, _cookies_dir, _log_folder):
-        path.mkdir(parents=True, exist_ok=True)
-    _cache_db.touch(exist_ok=True)
-
-
-def is_in_file(search_value: str, file: Path) -> bool:
-    if not file.is_file():
-        return False
-    try:
-        return search_value.casefold() in file.read_text().casefold()
-    except Exception as e:
-        raise InvalidYamlError(file, e) from e
-
-
-def _load_config_file(path: Path, model: type[ModelT], update_if_has_string: str) -> ModelT:
-    default = model()
-    if not path.is_file():
-        config = default
-        needs_update = True
-
-    else:
-        all_fields = get_model_fields(default, exclude_unset=False)
-        config = model.model_validate(yaml.load(path))
-        set_fields = get_model_fields(config)
-        needs_update = all_fields != set_fields or is_in_file(update_if_has_string, path)
-
-    if needs_update:
-        yaml.save(path, config)
-    return config

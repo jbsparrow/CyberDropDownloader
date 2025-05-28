@@ -2,7 +2,7 @@ from pydantic import BaseModel
 
 from cyberdrop_dl.models import AliasModel
 
-from ._common import Field
+from ._common import ConfigModel, Field
 
 
 class CoomerAuth(BaseModel):
@@ -49,7 +49,7 @@ class RealDebridAuth(AliasModel):
     api_key: str = Field("", "realdebrid_api_key")
 
 
-class AuthSettings(AliasModel):
+class AuthSettings(ConfigModel):
     coomer: CoomerAuth = Field(CoomerAuth(), "Coomer")
     gofile: GoFileAuth = Field(GoFileAuth(), "GoFile")
     imgur: ImgurAuth = Field(ImgurAuth(), "Imgur")

@@ -1,10 +1,10 @@
 import random
 from datetime import timedelta
 
-from pydantic import BaseModel, ByteSize, Field, NonNegativeFloat, PositiveInt, field_serializer, field_validator
+from pydantic import BaseModel, ByteSize, NonNegativeFloat, PositiveInt, field_serializer, field_validator
 from yarl import URL
 
-from cyberdrop_dl.models import AliasModel
+from cyberdrop_dl.config._common import ConfigModel, Field
 from cyberdrop_dl.models.types import ByteSizeSerilized, HttpURL, NonEmptyStr
 from cyberdrop_dl.models.validators import falsy_as, to_bytesize, to_timedelta
 
@@ -73,7 +73,7 @@ class UIOptions(BaseModel):
     vi_mode: bool = False
 
 
-class GlobalSettings(AliasModel):
-    general: General = Field(validation_alias="General", default=General())
-    rate_limiting_options: RateLimiting = Field(validation_alias="Rate_Limiting_Options", default=RateLimiting())
-    ui_options: UIOptions = Field(validation_alias="UI_Options", default=UIOptions())
+class GlobalSettings(ConfigModel):
+    general: General = Field(General(), "General")
+    rate_limiting_options: RateLimiting = Field(RateLimiting(), "Rate_Limiting_Options")
+    ui_options: UIOptions = Field(UIOptions(), "UI_Options")

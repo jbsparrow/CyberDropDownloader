@@ -23,7 +23,7 @@ from cyberdrop_dl.models.types import (
 )
 from cyberdrop_dl.models.validators import falsy_as, to_timedelta
 
-from ._common import Field, PathAliasModel
+from ._common import ConfigModel, Field, PathAliasModel
 
 ALL_SUPPORTED_SITES = ["<<ALL_SUPPORTED_SITES>>"]
 
@@ -46,23 +46,23 @@ class DownloadOptions(BaseModel):
 
 
 class Files(PathAliasModel):
-    download_folder: Path = Field(validation_alias="d", default=DOWNLOAD_STORAGE)
-    dump_json: bool = Field(default=False, validation_alias="j")
-    input_file: Path = Field(validation_alias="i", default=APP_STORAGE / "Configs" / "{config}" / "URLs.txt")
+    download_folder: Path = Field(DOWNLOAD_STORAGE, "d")
+    dump_json: bool = Field(False, "j")
+    input_file: Path = Field(APP_STORAGE / "Configs{config}/URLs.txt", "i")
     save_pages_html: bool = False
 
 
 class Logs(PathAliasModel):
     download_error_urls: LogPath = Field(Path("Download_Error_URLs.csv"), "download_error_urls_filename")
     last_forum_post: LogPath = Field(Path("Last_Scraped_Forum_Posts.csv"), "last_forum_post_filename")
-    log_folder: Path = APP_STORAGE / "Configs" / "{config}" / "Logs"
-    log_line_width: PositiveInt = Field(default=240, ge=50)
+    log_folder: Path = APP_STORAGE / "Configs/{config}/Logs"
+    log_line_width: PositiveInt = Field(240, ge=50)
     logs_expire_after: timedelta | None = None
     main_log: MainLogPath = Field(Path("downloader.log"), "main_log_filename")
     rotate_logs: bool = False
     scrape_error_urls: LogPath = Field(Path("Scrape_Error_URLs.csv"), "scrape_error_urls_filename")
     unsupported_urls: LogPath = Field(Path("Unsupported_URLs.csv"), "unsupported_urls_filename")
-    webhook: HttpAppriseURL | None = Field(default=None, validation_alias="webhook_url")
+    webhook: HttpAppriseURL | None = Field(None, "webhook_url")
 
     @field_validator("webhook", mode="before")
     @classmethod
@@ -75,6 +75,7 @@ class Logs(PathAliasModel):
         return falsy_as(input_date, None, to_timedelta)
 
     def set_output_filenames(self, now: datetime) -> None:
+        self.log_folder.mkdir(exist_ok=True, parents=True)
         current_time_file_iso: str = now.strftime(constants.LOGS_DATETIME_FORMAT)
         current_time_folder_iso: str = now.strftime(constants.LOGS_DATE_FORMAT)
         for attr, log_file in vars(self).items():
@@ -214,14 +215,14 @@ class DupeCleanup(BaseModel):
         yield HashAlgorithm.xxh128
 
 
-class ConfigSettings(PathAliasModel):
-    browser_cookies: BrowserCookies = Field(validation_alias="Browser_Cookies", default=BrowserCookies())
-    download_options: DownloadOptions = Field(validation_alias="Download_Options", default=DownloadOptions())
-    dupe_cleanup_options: DupeCleanup = Field(validation_alias="Dupe_Cleanup_Options", default=DupeCleanup())
-    file_size_limits: FileSizeLimits = Field(validation_alias="File_Size_Limits", default=FileSizeLimits())
-    media_duration_limits: MediaDurationLimits = Field(validation_alias="Media_Duration_Limits", default=MediaDurationLimits())  # fmt: skip
-    files: Files = Field(validation_alias="Files", default=Files())
-    ignore_options: IgnoreOptions = Field(validation_alias="Ignore_Options", default=IgnoreOptions())
-    logs: Logs = Field(validation_alias="Logs", default=Logs())
-    runtime_options: RuntimeOptions = Field(validation_alias="Runtime_Options", default=RuntimeOptions())
-    sorting: Sorting = Field(validation_alias="Sorting", default=Sorting())
+class ConfigSettings(ConfigModel):
+    browser_cookies: BrowserCookies = Field(BrowserCookies(), "Browser_Cookies")
+    download_options: DownloadOptions = Field(DownloadOptions(), "Download_Options")
+    dupe_cleanup_options: DupeCleanup = Field(DupeCleanup(), "Dupe_Cleanup_Options")
+    file_size_limits: FileSizeLimits = Field(FileSizeLimits(), "File_Size_Limits")
+    media_duration_limits: MediaDurationLimits = Field(MediaDurationLimits(), "Media_Duration_Limits")
+    files: Files = Field(Files(), "Files")
+    ignore_options: IgnoreOptions = Field(IgnoreOptions(), "Ignore_Options")
+    logs: Logs = Field(Logs(), "Logs")
+    runtime_options: RuntimeOptions = Field(RuntimeOptions(), "Runtime_Options")
+    sorting: Sorting = Field(Sorting(), "Sorting")
