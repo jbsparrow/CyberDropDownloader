@@ -22,7 +22,7 @@ from cyberdrop_dl.utils.utilities import get_size_or_none
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from cyberdrop_dl.config_definitions.config_settings import DupeCleanup
+    from cyberdrop_dl.config.config_model import DupeCleanup
     from cyberdrop_dl.data_structures.url_objects import MediaItem
     from cyberdrop_dl.managers.manager import Manager
     from cyberdrop_dl.types import AbsoluteHttpURL

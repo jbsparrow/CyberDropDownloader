@@ -5,9 +5,8 @@ from pathlib import Path
 from time import sleep
 from typing import TYPE_CHECKING
 
-from cyberdrop_dl import cache, constants
+from cyberdrop_dl import cache, constants, env
 from cyberdrop_dl.utils.apprise import get_apprise_urls
-from cyberdrop_dl.utils.args import ParsedArgs, parse_args
 
 from .auth_model import AuthSettings
 from .config_model import ConfigSettings
@@ -15,6 +14,7 @@ from .global_model import GlobalSettings
 
 if TYPE_CHECKING:
     from cyberdrop_dl.utils.apprise import AppriseURL
+    from cyberdrop_dl.utils.args import ParsedArgs
 
 
 deep_scrape: bool = False
@@ -31,8 +31,17 @@ global_settings: GlobalSettings
 
 def startup() -> None:
     global appdata, cli
+    from cyberdrop_dl.utils.args import parse_args
+
     cli = parse_args()
-    appdata = AppData(constants.APP_STORAGE)
+
+    if env.RUNNING_IN_IDE and Path.cwd().name == "cyberdrop_dl":
+        """This is for testing purposes only"""
+        constants.APP_STORAGE = Path("../AppData")
+        constants.DOWNLOAD_STORAGE = Path("../Downloads")
+
+    appdata_path = cli.cli_only_args.appdata_folder or constants.APP_STORAGE
+    appdata = AppData(appdata_path.resolve())
     appdata.mkdirs()
     cache.startup(appdata.cache_file)
     load_config(get_default_config())

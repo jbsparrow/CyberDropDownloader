@@ -13,8 +13,11 @@ from typing import TYPE_CHECKING, NoReturn, Self
 from pydantic import BaseModel, Field, ValidationError, computed_field, field_validator, model_validator
 
 from cyberdrop_dl import __version__, env
-from cyberdrop_dl.config_definitions import ConfigSettings, GlobalSettings
-from cyberdrop_dl.types import AliasModel, AnyDict, HttpURL
+from cyberdrop_dl.config.config_model import ConfigSettings
+from cyberdrop_dl.config.global_model import GlobalSettings
+from cyberdrop_dl.models import AliasModel
+from cyberdrop_dl.models.types import HttpURL
+from cyberdrop_dl.types import AnyDict
 from cyberdrop_dl.utils.yaml import handle_validation_error
 
 if TYPE_CHECKING:
@@ -44,7 +47,7 @@ def is_terminal_in_portrait() -> bool:
     """Check if CDL is being run in portrait mode based on a few conditions."""
     # Return True if running in portait mode, False otherwise (landscape mode)
 
-    def check_terminal_size():
+    def check_terminal_size() -> bool:
         terminal_size = get_terminal_size()
         width, height = terminal_size.columns, terminal_size.lines
         aspect_ratio = width / height

@@ -16,7 +16,7 @@ from pydantic import ValidationError
 from rich.text import Text
 
 from cyberdrop_dl import constants
-from cyberdrop_dl.types import AppriseURLModel
+from cyberdrop_dl.models.base_models import AppriseURLModel
 from cyberdrop_dl.utils.logger import log, log_debug, log_spacer
 from cyberdrop_dl.utils.yaml import handle_validation_error
 
@@ -36,7 +36,7 @@ class AppriseURL:
     tags: set[str]
 
     @property
-    def raw_url(self):
+    def raw_url(self) -> str:
         tags = sorted(self.tags)
         return f"{','.join(tags)}{'=' if tags else ''}{self.url}"
 

@@ -20,9 +20,7 @@ _request_cache: SQLiteBackend = None  # type: ignore
 DEFAULT_CONFIG_KEY = "default_config"
 
 
-def startup(
-    cache_file: Path,
-) -> None:
+def startup(cache_file: Path) -> None:
     """Ensures that the cache file exists."""
     global _cache_file
     _cache_file = cache_file

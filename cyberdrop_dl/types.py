@@ -129,6 +129,7 @@ U32Int: TypeAlias = int
 U32IntArray: TypeAlias = Array[U32Int]
 U32IntSequence: TypeAlias = Sequence[U32Int]
 AnyDict: TypeAlias = dict[str, Any]
+AnyURL = TypeVar("AnyURL", bound=yarl.URL | AbsoluteHttpURL)
 
 AbsolutePath = NewType("AbsolutePath", Path)
 TimeStamp = NewType("TimeStamp", int)
