@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import calendar
 from datetime import datetime  # noqa: TC003
-from typing import TYPE_CHECKING, Any, ClassVar, NamedTuple
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from pydantic import AliasPath, Field
 
 from cyberdrop_dl.crawlers.crawler import Crawler, create_task_id
 from cyberdrop_dl.types import AbsoluteHttpURL, AliasModel
-from cyberdrop_dl.utils.m3u8 import M3U8, VariantM3U8
+from cyberdrop_dl.utils.m3u8 import M3U8, M3U8Media
 from cyberdrop_dl.utils.utilities import error_handling_wrapper
 
 if TYPE_CHECKING:
@@ -37,12 +37,6 @@ class Post(AliasModel):
     @property
     def timestamp(self) -> int:
         return calendar.timegm(self.created_at.timetuple())
-
-
-class M3U8Media(NamedTuple):
-    video: M3U8
-    audio: M3U8 | None = None
-    subtitles: M3U8 | None = None
 
 
 class FikFapCrawler(Crawler):
@@ -76,8 +70,7 @@ class FikFapCrawler(Crawler):
         if await self.check_complete_from_referer(canonical_url):
             return
         json_resp: dict[str, Any] = await self._make_api_request(scrape_item, API_ENTRYPOINT / "posts" / post_id)
-        post = Post.model_validate(json_resp)
-        await self.handle_post(scrape_item, post)
+        await self.handle_post(scrape_item, Post.model_validate(json_resp))
 
     async def user(self, scrape_item: ScrapeItem) -> None:
         user_name = scrape_item.url.name
@@ -116,7 +109,7 @@ class FikFapCrawler(Crawler):
         last_post_id: str = ""
         while True:
             json_resp: list[dict[str, Any]] = await self._make_api_request(scrape_item, api_url)
-            for post in (Post.model_validate(**data) for data in json_resp):
+            for post in (Post.model_validate(data) for data in json_resp):
                 await self._proccess_post(scrape_item, post)
                 last_post_id = post.id
 
@@ -159,21 +152,21 @@ class FikFapCrawler(Crawler):
         )
 
     async def get_m3u8_media(self, m3u8_url: AbsoluteHttpURL) -> M3U8Media:
-        main_m3u8 = await self._get_m3u8(m3u8_url)
+        main_m3u8 = await self._get_m3u8_from_url(m3u8_url)
         if not main_m3u8.is_variant:
             return M3U8Media(main_m3u8)
 
-        rendition_grup = VariantM3U8(main_m3u8).get_best_group(exclude="vp09")
+        rendition_group = main_m3u8.as_variant().get_best_group(exclude="vp09")
         audio = subtitle = None
-        video = await self._get_m3u8(rendition_grup.urls.video)
-        if rendition_grup.urls.audio:
-            audio = await self._get_m3u8(rendition_grup.urls.audio)
-        if rendition_grup.urls.subtitle:
-            subtitle = await self._get_m3u8(rendition_grup.urls.subtitle)
+        video = await self._get_m3u8_from_url(rendition_group.urls.video)
+        if rendition_group.urls.audio:
+            audio = await self._get_m3u8_from_url(rendition_group.urls.audio)
+        if rendition_group.urls.subtitle:
+            subtitle = await self._get_m3u8_from_url(rendition_group.urls.subtitle)
         return M3U8Media(video, audio, subtitle)
 
-    async def _get_m3u8(self, url: URL, headers: dict[str, str] | None = None) -> M3U8:
+    async def _get_m3u8_from_url(self, url: URL, headers: dict[str, str] | None = None) -> M3U8:
         headers = headers or self.headers
         async with self.request_limiter:
-            playlist_list_content = await self.client.get_text(self.DOMAIN, url, headers)
-        return M3U8.new(playlist_list_content, url.parent)
+            content = await self.client.get_text(self.DOMAIN, url, headers)
+        return M3U8(content, url.parent)
